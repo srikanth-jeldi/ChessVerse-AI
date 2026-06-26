@@ -137,6 +137,183 @@ class ChessPiece {
   final bool white;
 }
 
+class SquarePosition {
+  const SquarePosition(this.file, this.rank);
+
+  final int file;
+  final int rank;
+}
+
+class ChessRules {
+  static SquarePosition positionOf(String square) {
+    return SquarePosition(square.codeUnitAt(0) - 97, int.parse(square[1]));
+  }
+
+  static String squareOf(int file, int rank) {
+    return '${String.fromCharCode(97 + file)}$rank';
+  }
+
+  static bool isInside(int file, int rank) {
+    return file >= 0 && file < 8 && rank >= 1 && rank <= 8;
+  }
+
+  static List<String> legalTargets(
+    String from,
+    Map<String, ChessPiece> pieces,
+  ) {
+    final ChessPiece? piece = pieces[from];
+    if (piece == null) {
+      return <String>[];
+    }
+
+    return switch (piece.code) {
+      'P' => _pawnTargets(from, piece, pieces),
+      'N' => _jumpTargets(from, piece, pieces, const <SquarePosition>[
+          SquarePosition(1, 2),
+          SquarePosition(2, 1),
+          SquarePosition(2, -1),
+          SquarePosition(1, -2),
+          SquarePosition(-1, -2),
+          SquarePosition(-2, -1),
+          SquarePosition(-2, 1),
+          SquarePosition(-1, 2),
+        ]),
+      'B' => _rayTargets(from, piece, pieces, const <SquarePosition>[
+          SquarePosition(1, 1),
+          SquarePosition(1, -1),
+          SquarePosition(-1, 1),
+          SquarePosition(-1, -1),
+        ]),
+      'R' => _rayTargets(from, piece, pieces, const <SquarePosition>[
+          SquarePosition(1, 0),
+          SquarePosition(-1, 0),
+          SquarePosition(0, 1),
+          SquarePosition(0, -1),
+        ]),
+      'Q' => _rayTargets(from, piece, pieces, const <SquarePosition>[
+          SquarePosition(1, 0),
+          SquarePosition(-1, 0),
+          SquarePosition(0, 1),
+          SquarePosition(0, -1),
+          SquarePosition(1, 1),
+          SquarePosition(1, -1),
+          SquarePosition(-1, 1),
+          SquarePosition(-1, -1),
+        ]),
+      'K' => _jumpTargets(from, piece, pieces, const <SquarePosition>[
+          SquarePosition(1, 0),
+          SquarePosition(-1, 0),
+          SquarePosition(0, 1),
+          SquarePosition(0, -1),
+          SquarePosition(1, 1),
+          SquarePosition(1, -1),
+          SquarePosition(-1, 1),
+          SquarePosition(-1, -1),
+        ]),
+      _ => <String>[],
+    };
+  }
+
+  static List<String> _pawnTargets(
+    String from,
+    ChessPiece piece,
+    Map<String, ChessPiece> pieces,
+  ) {
+    final SquarePosition origin = positionOf(from);
+    final int direction = piece.white ? 1 : -1;
+    final int startRank = piece.white ? 2 : 7;
+    final List<String> targets = <String>[];
+    final int oneRank = origin.rank + direction;
+
+    if (isInside(origin.file, oneRank)) {
+      final String oneStep = squareOf(origin.file, oneRank);
+      if (!pieces.containsKey(oneStep)) {
+        targets.add(oneStep);
+
+        final int twoRank = origin.rank + direction * 2;
+        final String twoStep = squareOf(origin.file, twoRank);
+        if (origin.rank == startRank &&
+            isInside(origin.file, twoRank) &&
+            !pieces.containsKey(twoStep)) {
+          targets.add(twoStep);
+        }
+      }
+    }
+
+    for (final int fileDelta in <int>[-1, 1]) {
+      final int targetFile = origin.file + fileDelta;
+      final int targetRank = origin.rank + direction;
+      if (!isInside(targetFile, targetRank)) {
+        continue;
+      }
+      final String target = squareOf(targetFile, targetRank);
+      final ChessPiece? occupant = pieces[target];
+      if (occupant != null && occupant.white != piece.white) {
+        targets.add(target);
+      }
+    }
+
+    return targets;
+  }
+
+  static List<String> _jumpTargets(
+    String from,
+    ChessPiece piece,
+    Map<String, ChessPiece> pieces,
+    List<SquarePosition> deltas,
+  ) {
+    final SquarePosition origin = positionOf(from);
+    final List<String> targets = <String>[];
+
+    for (final SquarePosition delta in deltas) {
+      final int file = origin.file + delta.file;
+      final int rank = origin.rank + delta.rank;
+      if (!isInside(file, rank)) {
+        continue;
+      }
+      final String target = squareOf(file, rank);
+      final ChessPiece? occupant = pieces[target];
+      if (occupant == null || occupant.white != piece.white) {
+        targets.add(target);
+      }
+    }
+
+    return targets;
+  }
+
+  static List<String> _rayTargets(
+    String from,
+    ChessPiece piece,
+    Map<String, ChessPiece> pieces,
+    List<SquarePosition> directions,
+  ) {
+    final SquarePosition origin = positionOf(from);
+    final List<String> targets = <String>[];
+
+    for (final SquarePosition direction in directions) {
+      int file = origin.file + direction.file;
+      int rank = origin.rank + direction.rank;
+
+      while (isInside(file, rank)) {
+        final String target = squareOf(file, rank);
+        final ChessPiece? occupant = pieces[target];
+        if (occupant == null) {
+          targets.add(target);
+        } else {
+          if (occupant.white != piece.white) {
+            targets.add(target);
+          }
+          break;
+        }
+        file += direction.file;
+        rank += direction.rank;
+      }
+    }
+
+    return targets;
+  }
+}
+
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
 
@@ -146,7 +323,10 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   final List<String> _moves = <String>[];
+  final List<ChessPiece> _capturedWhite = <ChessPiece>[];
+  final List<ChessPiece> _capturedBlack = <ChessPiece>[];
   String? _selectedSquare;
+  String _coachNote = 'Select a coin to see legal moves.';
   BoardSkin _skin = BoardSkin.royalWalnut;
   double _aiLevel = 4;
   bool _coachEnabled = true;
@@ -192,6 +372,9 @@ class _GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     final BoardPalette palette = boardPalettes[_skin]!;
+    final Set<String> legalTargets = _selectedSquare == null
+        ? <String>{}
+        : ChessRules.legalTargets(_selectedSquare!, _pieces).toSet();
 
     return Scaffold(
       body: DecoratedBox(
@@ -218,6 +401,7 @@ class _GameScreenState extends State<GameScreen> {
               final Widget board = ChessBoard(
                 pieces: _pieces,
                 selectedSquare: _selectedSquare,
+                legalTargets: legalTargets,
                 palette: palette,
                 onSquareTap: _handleSquareTap,
               );
@@ -227,6 +411,9 @@ class _GameScreenState extends State<GameScreen> {
                 aiLevel: _aiLevel.round(),
                 coachEnabled: _coachEnabled,
                 moves: _moves,
+                capturedWhite: _capturedWhite,
+                capturedBlack: _capturedBlack,
+                coachNote: _coachNote,
                 skin: _skin,
                 onSkinChanged: (BoardSkin skin) => setState(() => _skin = skin),
                 onAiLevelChanged: (double level) {
@@ -281,9 +468,25 @@ class _GameScreenState extends State<GameScreen> {
 
   void _handleSquareTap(String square) {
     setState(() {
+      final bool whitesTurn = _moves.length.isEven;
       if (_selectedSquare == null) {
-        if (_pieces.containsKey(square)) {
+        final ChessPiece? piece = _pieces[square];
+        if (piece == null) {
+          _coachNote = 'Choose one of your coins first.';
+          return;
+        }
+        if (piece.white != whitesTurn) {
+          _coachNote = '${whitesTurn ? 'White' : 'Black'} to move.';
+          return;
+        }
+        final List<String> targets = ChessRules.legalTargets(square, _pieces);
+        if (targets.isEmpty) {
+          _coachNote = '${piece.code} has no legal target from $square.';
+        } else {
           _selectedSquare = square;
+          final String suffix = targets.length == 1 ? '' : 's';
+          _coachNote =
+              '${piece.code} from $square has ${targets.length} option$suffix.';
         }
         return;
       }
@@ -293,10 +496,32 @@ class _GameScreenState extends State<GameScreen> {
         return;
       }
 
-      final ChessPiece? piece = _pieces.remove(_selectedSquare);
+      final List<String> legalTargets =
+          ChessRules.legalTargets(_selectedSquare!, _pieces);
+      if (!legalTargets.contains(square)) {
+        _coachNote = 'That move is blocked. Pick a highlighted square.';
+        _selectedSquare = null;
+        return;
+      }
+
+      final String from = _selectedSquare!;
+      final ChessPiece? piece = _pieces.remove(from);
       if (piece != null) {
+        final ChessPiece? captured = _pieces[square];
+        if (captured != null) {
+          if (captured.white) {
+            _capturedWhite.add(captured);
+          } else {
+            _capturedBlack.add(captured);
+          }
+        }
         _pieces[square] = piece;
-        _moves.insert(0, '$_selectedSquare$square');
+        final String move =
+            captured == null ? '$from$square' : '$from x $square';
+        _moves.insert(0, move);
+        _coachNote = captured == null
+            ? '${piece.code} moves to $square.'
+            : '${piece.code} captures ${captured.code} on $square.';
       }
       _selectedSquare = null;
     });
@@ -306,7 +531,10 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       _pieces = Map<String, ChessPiece>.from(_initialPieces);
       _moves.clear();
+      _capturedWhite.clear();
+      _capturedBlack.clear();
       _selectedSquare = null;
+      _coachNote = 'Select a coin to see legal moves.';
     });
   }
 }
@@ -413,6 +641,7 @@ class ChessBoard extends StatelessWidget {
   const ChessBoard({
     required this.pieces,
     required this.selectedSquare,
+    required this.legalTargets,
     required this.palette,
     required this.onSquareTap,
     super.key,
@@ -420,6 +649,7 @@ class ChessBoard extends StatelessWidget {
 
   final Map<String, ChessPiece> pieces;
   final String? selectedSquare;
+  final Set<String> legalTargets;
   final BoardPalette palette;
   final ValueChanged<String> onSquareTap;
 
@@ -445,11 +675,16 @@ class ChessBoard extends StatelessWidget {
                 final bool dark = (row + col).isOdd;
                 final bool selected = square == selectedSquare;
                 final ChessPiece? piece = pieces[square];
+                final bool legalTarget = legalTargets.contains(square);
+                final bool captureTarget =
+                    legalTarget && piece != null && square != selectedSquare;
 
                 return BoardSquare(
                   square: square,
                   dark: dark,
                   selected: selected,
+                  legalTarget: legalTarget,
+                  captureTarget: captureTarget,
                   palette: palette,
                   piece: piece,
                   showRank: col == 0,
@@ -470,6 +705,8 @@ class BoardSquare extends StatelessWidget {
     required this.square,
     required this.dark,
     required this.selected,
+    required this.legalTarget,
+    required this.captureTarget,
     required this.palette,
     required this.showRank,
     required this.showFile,
@@ -481,6 +718,8 @@ class BoardSquare extends StatelessWidget {
   final String square;
   final bool dark;
   final bool selected;
+  final bool legalTarget;
+  final bool captureTarget;
   final BoardPalette palette;
   final bool showRank;
   final bool showFile;
@@ -532,6 +771,32 @@ class BoardSquare extends StatelessWidget {
                 ),
               ),
             ),
+            Center(
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 160),
+                opacity: legalTarget && piece == null ? 1 : 0,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: palette.accent.withOpacity(0.42),
+                  ),
+                  child: const SizedBox(width: 18, height: 18),
+                ),
+              ),
+            ),
+            if (captureTarget)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: const Color(0xFFFFD166),
+                        width: 4,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             Center(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 220),
@@ -703,6 +968,9 @@ class GamePanel extends StatelessWidget {
     required this.aiLevel,
     required this.coachEnabled,
     required this.moves,
+    required this.capturedWhite,
+    required this.capturedBlack,
+    required this.coachNote,
     required this.skin,
     required this.onSkinChanged,
     required this.onAiLevelChanged,
@@ -715,6 +983,9 @@ class GamePanel extends StatelessWidget {
   final int aiLevel;
   final bool coachEnabled;
   final List<String> moves;
+  final List<ChessPiece> capturedWhite;
+  final List<ChessPiece> capturedBlack;
+  final String coachNote;
   final BoardSkin skin;
   final ValueChanged<BoardSkin> onSkinChanged;
   final ValueChanged<double> onAiLevelChanged;
@@ -771,6 +1042,13 @@ class GamePanel extends StatelessWidget {
               StatusPill(icon: Icons.speed_rounded, label: 'Level $aiLevel'),
               StatusPill(icon: Icons.memory_rounded, label: activeColor),
             ],
+          ),
+          const SizedBox(height: 18),
+          CoachInsight(note: coachNote, enabled: coachEnabled),
+          const SizedBox(height: 18),
+          CapturedMaterial(
+            capturedWhite: capturedWhite,
+            capturedBlack: capturedBlack,
           ),
           const SizedBox(height: 18),
           Text('Board', style: Theme.of(context).textTheme.titleMedium),
@@ -885,6 +1163,160 @@ class EmptyMoveState extends StatelessWidget {
           child: Text(
             'Select a coin, then choose its target square.',
             textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class CoachInsight extends StatelessWidget {
+  const CoachInsight({required this.note, required this.enabled, super.key});
+
+  final String note;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: enabled ? const Color(0xFF242128) : const Color(0xFF17171B),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: enabled ? const Color(0xFF6C5530) : const Color(0xFF323238),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Icon(
+              enabled
+                  ? Icons.psychology_alt_rounded
+                  : Icons.visibility_off_rounded,
+              color: const Color(0xFFD6A84F),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                enabled ? note : 'AI coach is paused.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CapturedMaterial extends StatelessWidget {
+  const CapturedMaterial({
+    required this.capturedWhite,
+    required this.capturedBlack,
+    super.key,
+  });
+
+  final List<ChessPiece> capturedWhite;
+  final List<ChessPiece> capturedBlack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Text('Captured', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: CaptureRow(label: 'White', pieces: capturedWhite),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: CaptureRow(label: 'Black', pieces: capturedBlack),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class CaptureRow extends StatelessWidget {
+  const CaptureRow({required this.label, required this.pieces, super.key});
+
+  final String label;
+  final List<ChessPiece> pieces;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFF202127),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF3B352D)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(label, style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: pieces.isEmpty
+                  ? <Widget>[
+                      const Text(
+                        '-',
+                        style: TextStyle(color: Color(0xFF9B948A)),
+                      ),
+                    ]
+                  : pieces
+                      .map(
+                        (ChessPiece piece) => MiniCapturedPiece(piece: piece),
+                      )
+                      .toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class MiniCapturedPiece extends StatelessWidget {
+  const MiniCapturedPiece({required this.piece, super.key});
+
+  final ChessPiece piece;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color face =
+        piece.white ? const Color(0xFFF9F0DB) : const Color(0xFF202126);
+    final Color text =
+        piece.white ? const Color(0xFF2B2012) : const Color(0xFFF3E3BD);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: face,
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFFD6A84F)),
+      ),
+      child: SizedBox(
+        width: 26,
+        height: 26,
+        child: Center(
+          child: Text(
+            piece.code,
+            style: TextStyle(
+              color: text,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
       ),
