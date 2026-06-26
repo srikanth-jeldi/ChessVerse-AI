@@ -137,6 +137,22 @@ class ChessPiece {
   final bool white;
 }
 
+class GameSnapshot {
+  const GameSnapshot({
+    required this.pieces,
+    required this.moves,
+    required this.capturedWhite,
+    required this.capturedBlack,
+    required this.coachNote,
+  });
+
+  final Map<String, ChessPiece> pieces;
+  final List<String> moves;
+  final List<ChessPiece> capturedWhite;
+  final List<ChessPiece> capturedBlack;
+  final String coachNote;
+}
+
 class SquarePosition {
   const SquarePosition(this.file, this.rank);
 
@@ -325,6 +341,7 @@ class _GameScreenState extends State<GameScreen> {
   final List<String> _moves = <String>[];
   final List<ChessPiece> _capturedWhite = <ChessPiece>[];
   final List<ChessPiece> _capturedBlack = <ChessPiece>[];
+  final List<GameSnapshot> _history = <GameSnapshot>[];
   String? _selectedSquare;
   String _coachNote = 'Select a coin to see legal moves.';
   BoardSkin _skin = BoardSkin.royalWalnut;
@@ -423,6 +440,8 @@ class _GameScreenState extends State<GameScreen> {
                   setState(() => _coachEnabled = value);
                 },
                 onReset: _reset,
+                onUndo: _undo,
+                canUndo: _history.isNotEmpty,
               );
 
               return Padding(
@@ -467,6 +486,9 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _handleSquareTap(String square) {
+    String? promotionSquare;
+    bool? promotionWhite;
+
     setState(() {
       final bool whitesTurn = _moves.length.isEven;
       if (_selectedSquare == null) {
@@ -505,6 +527,7 @@ class _GameScreenState extends State<GameScreen> {
       }
 
       final String from = _selectedSquare!;
+      _saveSnapshot();
       final ChessPiece? piece = _pieces.remove(from);
       if (piece != null) {
         final ChessPiece? captured = _pieces[square];
@@ -522,9 +545,20 @@ class _GameScreenState extends State<GameScreen> {
         _coachNote = captured == null
             ? '${piece.code} moves to $square.'
             : '${piece.code} captures ${captured.code} on $square.';
+        if (piece.code == 'P' &&
+            ((piece.white && square.endsWith('8')) ||
+                (!piece.white && square.endsWith('1')))) {
+          promotionSquare = square;
+          promotionWhite = piece.white;
+          _coachNote = 'Choose a promotion coin for $square.';
+        }
       }
       _selectedSquare = null;
     });
+
+    if (promotionSquare != null && promotionWhite != null) {
+      _showPromotionPicker(promotionSquare!, promotionWhite!);
+    }
   }
 
   void _reset() {
@@ -533,9 +567,81 @@ class _GameScreenState extends State<GameScreen> {
       _moves.clear();
       _capturedWhite.clear();
       _capturedBlack.clear();
+      _history.clear();
       _selectedSquare = null;
       _coachNote = 'Select a coin to see legal moves.';
     });
+  }
+
+  void _saveSnapshot() {
+    _history.add(
+      GameSnapshot(
+        pieces: Map<String, ChessPiece>.from(_pieces),
+        moves: List<String>.from(_moves),
+        capturedWhite: List<ChessPiece>.from(_capturedWhite),
+        capturedBlack: List<ChessPiece>.from(_capturedBlack),
+        coachNote: _coachNote,
+      ),
+    );
+    if (_history.length > 80) {
+      _history.removeAt(0);
+    }
+  }
+
+  void _undo() {
+    if (_history.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      final GameSnapshot snapshot = _history.removeLast();
+      _pieces = Map<String, ChessPiece>.from(snapshot.pieces);
+      _moves
+        ..clear()
+        ..addAll(snapshot.moves);
+      _capturedWhite
+        ..clear()
+        ..addAll(snapshot.capturedWhite);
+      _capturedBlack
+        ..clear()
+        ..addAll(snapshot.capturedBlack);
+      _selectedSquare = null;
+      _coachNote = 'Move undone. ${snapshot.coachNote}';
+    });
+  }
+
+  Future<void> _showPromotionPicker(String square, bool white) async {
+    if (!mounted) {
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF191A1F),
+          title: const Text('Promote pawn'),
+          content: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: <String>['Q', 'R', 'B', 'N'].map((String code) {
+              return PromotionChoice(
+                piece: ChessPiece(code, white),
+                onSelected: () {
+                  setState(() {
+                    _pieces[square] = ChessPiece(code, white);
+                    _moves[0] = '${_moves.first}=$code';
+                    _coachNote = 'Pawn promoted to $code on $square.';
+                  });
+                  Navigator.of(context).pop();
+                },
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -962,6 +1068,52 @@ class CoinRingPainter extends CustomPainter {
   bool shouldRepaint(CoinRingPainter oldDelegate) => oldDelegate.color != color;
 }
 
+class PromotionChoice extends StatelessWidget {
+  const PromotionChoice({
+    required this.piece,
+    required this.onSelected,
+    super.key,
+  });
+
+  final ChessPiece piece;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 78,
+      child: FilledButton(
+        onPressed: onSelected,
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          backgroundColor: const Color(0xFF242128),
+          foregroundColor: const Color(0xFFF6F1E8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: ChessCoin(
+                piece: piece,
+                selected: false,
+                accent: const Color(0xFFD6A84F),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              piece.code,
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class GamePanel extends StatelessWidget {
   const GamePanel({
     required this.activeColor,
@@ -976,6 +1128,8 @@ class GamePanel extends StatelessWidget {
     required this.onAiLevelChanged,
     required this.onCoachChanged,
     required this.onReset,
+    required this.onUndo,
+    required this.canUndo,
     super.key,
   });
 
@@ -991,6 +1145,8 @@ class GamePanel extends StatelessWidget {
   final ValueChanged<double> onAiLevelChanged;
   final ValueChanged<bool> onCoachChanged;
   final VoidCallback onReset;
+  final VoidCallback onUndo;
+  final bool canUndo;
 
   @override
   Widget build(BuildContext context) {
@@ -1027,6 +1183,11 @@ class GamePanel extends StatelessWidget {
                 tooltip: 'Reset board',
                 onPressed: onReset,
                 icon: const Icon(Icons.refresh_rounded),
+              ),
+              IconButton(
+                tooltip: 'Undo move',
+                onPressed: canUndo ? onUndo : null,
+                icon: const Icon(Icons.undo_rounded),
               ),
             ],
           ),
