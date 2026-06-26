@@ -458,6 +458,17 @@ class _GameScreenState extends State<GameScreen> {
   bool _coachEnabled = true;
   int _whiteSeconds = 10 * 60;
   int _blackSeconds = 10 * 60;
+  bool _signedIn = false;
+  bool _awaitingCode = false;
+  bool _registerMode = true;
+  String _authMethod = 'Email';
+  String _authIdentity = '';
+  String _authPassword = '';
+  String _authCode = '';
+  String _authMessage =
+      'Create an account to save games, ratings and coach history.';
+  String _whitePlayerName = 'Guest Player';
+  final String _blackPlayerName = 'ChessVerse AI';
 
   static const Map<String, ChessPiece> _initialPieces = <String, ChessPiece>{
     'a8': ChessPiece('R', false),
@@ -566,6 +577,8 @@ class _GameScreenState extends State<GameScreen> {
               );
 
               final Widget panel = GamePanel(
+                whitePlayerName: _whitePlayerName,
+                blackPlayerName: _blackPlayerName,
                 activeColor: _moves.length.isEven ? 'White' : 'Black',
                 aiLevel: _aiLevel.round(),
                 coachEnabled: _coachEnabled,
@@ -592,47 +605,148 @@ class _GameScreenState extends State<GameScreen> {
 
               return Padding(
                 padding: pagePadding,
-                child: wide
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          Expanded(
-                            child: BoardStage(
-                              palette: palette,
-                              moveCount: _moves.length,
-                              whiteClock: _formatClock(_whiteSeconds),
-                              blackClock: _formatClock(_blackSeconds),
-                              child: board,
-                            ),
+                child: Stack(
+                  children: <Widget>[
+                    wide
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              Expanded(
+                                child: BoardStage(
+                                  palette: palette,
+                                  moveCount: _moves.length,
+                                  whiteClock: _formatClock(_whiteSeconds),
+                                  blackClock: _formatClock(_blackSeconds),
+                                  whitePlayerName: _whitePlayerName,
+                                  blackPlayerName: _blackPlayerName,
+                                  child: board,
+                                ),
+                              ),
+                              const SizedBox(width: 24),
+                              SizedBox(width: 380, child: panel),
+                            ],
+                          )
+                        : Column(
+                            children: <Widget>[
+                              CompactHeader(
+                                playerName: _whitePlayerName,
+                                onReset: _reset,
+                              ),
+                              const SizedBox(height: 12),
+                              Expanded(
+                                flex: 5,
+                                child: BoardStage(
+                                  palette: palette,
+                                  moveCount: _moves.length,
+                                  whiteClock: _formatClock(_whiteSeconds),
+                                  blackClock: _formatClock(_blackSeconds),
+                                  whitePlayerName: _whitePlayerName,
+                                  blackPlayerName: _blackPlayerName,
+                                  child: board,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Expanded(flex: 4, child: panel),
+                            ],
                           ),
-                          const SizedBox(width: 24),
-                          SizedBox(width: 380, child: panel),
-                        ],
-                      )
-                    : Column(
-                        children: <Widget>[
-                          CompactHeader(onReset: _reset),
-                          const SizedBox(height: 12),
-                          Expanded(
-                            flex: 5,
-                            child: BoardStage(
-                              palette: palette,
-                              moveCount: _moves.length,
-                              whiteClock: _formatClock(_whiteSeconds),
-                              blackClock: _formatClock(_blackSeconds),
-                              child: board,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Expanded(flex: 4, child: panel),
-                        ],
+                    if (!_signedIn)
+                      Positioned.fill(
+                        child: AuthOverlay(
+                          registerMode: _registerMode,
+                          awaitingCode: _awaitingCode,
+                          method: _authMethod,
+                          message: _authMessage,
+                          onModeChanged: _setAuthMode,
+                          onMethodChanged: _setAuthMethod,
+                          onIdentityChanged: (String value) {
+                            _authIdentity = value.trim();
+                          },
+                          onPasswordChanged: (String value) {
+                            _authPassword = value;
+                          },
+                          onCodeChanged: (String value) {
+                            _authCode = value.trim();
+                          },
+                          onSubmit: _submitAuth,
+                          onGoogle: () => _socialLogin('Google'),
+                          onApple: () => _socialLogin('Apple'),
+                        ),
                       ),
+                  ],
+                ),
               );
             },
           ),
         ),
       ),
     );
+  }
+
+  void _setAuthMode(bool registerMode) {
+    setState(() {
+      _registerMode = registerMode;
+      _awaitingCode = false;
+      _authMessage = registerMode
+          ? 'Create an account to save games, ratings and coach history.'
+          : 'Welcome back. Sign in with your user id and password.';
+    });
+  }
+
+  void _setAuthMethod(String method) {
+    setState(() {
+      _authMethod = method;
+      _awaitingCode = false;
+      _authMessage = method == 'Phone'
+          ? 'Use phone verification for first login.'
+          : 'Use email verification for first login.';
+    });
+  }
+
+  void _submitAuth() {
+    setState(() {
+      if (_registerMode && !_awaitingCode) {
+        if (_authIdentity.isEmpty) {
+          _authMessage = 'Enter your $_authMethod to receive a verification code.';
+          return;
+        }
+        _awaitingCode = true;
+        _authMessage =
+            'Verification code sent to $_authIdentity. Demo code: 246810';
+        return;
+      }
+
+      if (_awaitingCode) {
+        if (_authCode != '246810') {
+          _authMessage = 'Invalid code. Use demo code 246810.';
+          return;
+        }
+        _completeLogin(_authIdentity);
+        return;
+      }
+
+      if (_authIdentity.isEmpty || _authPassword.isEmpty) {
+        _authMessage = 'Enter user id and password to continue.';
+        return;
+      }
+      _completeLogin(_authIdentity);
+    });
+  }
+
+  void _socialLogin(String provider) {
+    setState(() {
+      _completeLogin('$provider Player');
+      _authMessage = 'Signed in with $provider.';
+    });
+  }
+
+  void _completeLogin(String identity) {
+    final String cleanName = identity.contains('@')
+        ? identity.split('@').first
+        : identity.replaceAll(RegExp(r'[^0-9A-Za-z ]'), '');
+    _whitePlayerName = cleanName.isEmpty ? 'Player' : cleanName;
+    _signedIn = true;
+    _awaitingCode = false;
+    _coachNote = 'Welcome $_whitePlayerName. Your arena is ready.';
   }
 
   void _handleSquareTap(String square) {
@@ -1100,8 +1214,9 @@ class _GameScreenState extends State<GameScreen> {
 }
 
 class CompactHeader extends StatelessWidget {
-  const CompactHeader({required this.onReset, super.key});
+  const CompactHeader({required this.playerName, required this.onReset, super.key});
 
+  final String playerName;
   final VoidCallback onReset;
 
   @override
@@ -1112,7 +1227,7 @@ class CompactHeader extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            'ChessVerse AI',
+            'ChessVerse AI  |  $playerName',
             style: Theme.of(context).textTheme.titleLarge,
             overflow: TextOverflow.ellipsis,
           ),
@@ -1133,6 +1248,8 @@ class BoardStage extends StatelessWidget {
     required this.moveCount,
     required this.whiteClock,
     required this.blackClock,
+    required this.whitePlayerName,
+    required this.blackPlayerName,
     required this.child,
     super.key,
   });
@@ -1141,6 +1258,8 @@ class BoardStage extends StatelessWidget {
   final int moveCount;
   final String whiteClock;
   final String blackClock;
+  final String whitePlayerName;
+  final String blackPlayerName;
   final Widget child;
 
   @override
@@ -1156,9 +1275,9 @@ class BoardStage extends StatelessWidget {
               Text('ChessVerse AI',
                   style: Theme.of(context).textTheme.headlineMedium),
               const Spacer(),
-              MatchClock(label: 'White', value: whiteClock),
+              MatchClock(label: whitePlayerName, value: whiteClock),
               const SizedBox(width: 8),
-              MatchClock(label: 'Black', value: blackClock),
+              MatchClock(label: blackPlayerName, value: blackClock),
             ],
           ),
           const SizedBox(height: 16),
@@ -1527,6 +1646,14 @@ class ChessCoin extends StatelessWidget {
               Positioned.fill(
                 child: CustomPaint(painter: CoinRingPainter(color: rim)),
               ),
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: PieceSculpturePainter(
+                    light: piece.white,
+                    accent: accent,
+                  ),
+                ),
+              ),
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
@@ -1534,26 +1661,16 @@ class ChessCoin extends StatelessWidget {
                     pieceGlyph(piece),
                     style: TextStyle(
                       color: text,
-                      fontSize: coinSize * 0.42,
+                      fontSize: coinSize * 0.52,
                       fontWeight: FontWeight.w900,
-                      height: 0.86,
+                      height: 0.82,
                       shadows: <Shadow>[
                         Shadow(
                           color: Colors.black.withValues(alpha: 0.22),
-                          blurRadius: 3,
+                          blurRadius: 5,
                           offset: const Offset(0, 1),
                         ),
                       ],
-                    ),
-                  ),
-                  Text(
-                    pieceName(piece.code),
-                    style: TextStyle(
-                      color: text.withValues(alpha: 0.78),
-                      fontSize: coinSize * 0.12,
-                      fontWeight: FontWeight.w900,
-                      height: 0.9,
-                      letterSpacing: 0.7,
                     ),
                   ),
                 ],
@@ -1584,17 +1701,6 @@ String pieceGlyph(ChessPiece piece) {
     'B' => '\u265D',
     'N' => '\u265E',
     _ => '\u265F',
-  };
-}
-
-String pieceName(String code) {
-  return switch (code) {
-    'K' => 'KING',
-    'Q' => 'QUEEN',
-    'R' => 'ROOK',
-    'B' => 'BISHOP',
-    'N' => 'KNIGHT',
-    _ => 'PAWN',
   };
 }
 
@@ -1633,6 +1739,80 @@ class CoinRingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CoinRingPainter oldDelegate) => oldDelegate.color != color;
+}
+
+class PieceSculpturePainter extends CustomPainter {
+  const PieceSculpturePainter({required this.light, required this.accent});
+
+  final bool light;
+  final Color accent;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+    final Color body = light ? const Color(0xFFF7E9C9) : const Color(0xFF252A32);
+    final Color edge = light ? const Color(0xFFC09035) : const Color(0xFF68707D);
+    final Paint shadow = Paint()
+      ..color = Colors.black.withValues(alpha: 0.28)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    final Paint bodyPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: <Color>[
+          light ? Colors.white : const Color(0xFF505763),
+          body,
+          light ? const Color(0xFFD8B56C) : const Color(0xFF16191F),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, w, h));
+    final Paint edgePaint = Paint()
+      ..color = edge
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(1.2, w * 0.035);
+
+    final RRect base = RRect.fromRectAndRadius(
+      Rect.fromLTWH(w * 0.18, h * 0.66, w * 0.64, h * 0.18),
+      Radius.circular(w * 0.12),
+    );
+    canvas.drawOval(
+      Rect.fromLTWH(w * 0.18, h * 0.72, w * 0.64, h * 0.18),
+      shadow,
+    );
+    canvas.drawRRect(base, bodyPaint);
+    canvas.drawRRect(base, edgePaint);
+
+    final Path stem = Path()
+      ..moveTo(w * 0.38, h * 0.68)
+      ..quadraticBezierTo(w * 0.32, h * 0.46, w * 0.43, h * 0.32)
+      ..lineTo(w * 0.57, h * 0.32)
+      ..quadraticBezierTo(w * 0.68, h * 0.46, w * 0.62, h * 0.68)
+      ..close();
+    canvas.drawPath(stem, shadow);
+    canvas.drawPath(stem, bodyPaint);
+    canvas.drawPath(stem, edgePaint);
+
+    canvas.drawCircle(Offset(w * 0.5, h * 0.26), w * 0.16, bodyPaint);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.26), w * 0.16, edgePaint);
+    canvas.drawCircle(
+      Offset(w * 0.43, h * 0.18),
+      w * 0.035,
+      Paint()..color = Colors.white.withValues(alpha: light ? 0.86 : 0.28),
+    );
+    canvas.drawCircle(
+      Offset(w * 0.5, h * 0.5),
+      w * 0.3,
+      Paint()
+        ..color = accent.withValues(alpha: 0.12)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * 0.035,
+    );
+  }
+
+  @override
+  bool shouldRepaint(PieceSculpturePainter oldDelegate) {
+    return oldDelegate.light != light || oldDelegate.accent != accent;
+  }
 }
 
 class PromotionChoice extends StatelessWidget {
@@ -1683,6 +1863,8 @@ class PromotionChoice extends StatelessWidget {
 
 class GamePanel extends StatelessWidget {
   const GamePanel({
+    required this.whitePlayerName,
+    required this.blackPlayerName,
     required this.activeColor,
     required this.aiLevel,
     required this.coachEnabled,
@@ -1704,6 +1886,8 @@ class GamePanel extends StatelessWidget {
     super.key,
   });
 
+  final String whitePlayerName;
+  final String blackPlayerName;
   final String activeColor;
   final int aiLevel;
   final bool coachEnabled;
@@ -1782,9 +1966,9 @@ class GamePanel extends StatelessWidget {
           const SizedBox(height: 18),
           Row(
             children: <Widget>[
-              Expanded(child: MatchClock(label: 'White', value: whiteClock)),
+              Expanded(child: MatchClock(label: whitePlayerName, value: whiteClock)),
               const SizedBox(width: 10),
-              Expanded(child: MatchClock(label: 'Black', value: blackClock)),
+              Expanded(child: MatchClock(label: blackPlayerName, value: blackClock)),
             ],
           ),
           const SizedBox(height: 18),
@@ -1910,6 +2094,167 @@ class EmptyMoveState extends StatelessWidget {
           child: Text(
             'Select a coin, then choose its target square.',
             textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AuthOverlay extends StatelessWidget {
+  const AuthOverlay({
+    required this.registerMode,
+    required this.awaitingCode,
+    required this.method,
+    required this.message,
+    required this.onModeChanged,
+    required this.onMethodChanged,
+    required this.onIdentityChanged,
+    required this.onPasswordChanged,
+    required this.onCodeChanged,
+    required this.onSubmit,
+    required this.onGoogle,
+    required this.onApple,
+    super.key,
+  });
+
+  final bool registerMode;
+  final bool awaitingCode;
+  final String method;
+  final String message;
+  final ValueChanged<bool> onModeChanged;
+  final ValueChanged<String> onMethodChanged;
+  final ValueChanged<String> onIdentityChanged;
+  final ValueChanged<String> onPasswordChanged;
+  final ValueChanged<String> onCodeChanged;
+  final VoidCallback onSubmit;
+  final VoidCallback onGoogle;
+  final VoidCallback onApple;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.62),
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFF15161B).withValues(alpha: 0.96),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFD6A84F)),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: const Color(0xFFD6A84F).withValues(alpha: 0.18),
+                  blurRadius: 38,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Text(
+                    registerMode ? 'Create ChessVerse ID' : 'Welcome back',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(message, style: Theme.of(context).textTheme.bodyMedium),
+                  const SizedBox(height: 16),
+                  SegmentedButton<bool>(
+                    segments: const <ButtonSegment<bool>>[
+                      ButtonSegment<bool>(value: true, label: Text('Register')),
+                      ButtonSegment<bool>(value: false, label: Text('Login')),
+                    ],
+                    selected: <bool>{registerMode},
+                    onSelectionChanged: (Set<bool> selected) {
+                      onModeChanged(selected.first);
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  if (registerMode)
+                    SegmentedButton<String>(
+                      segments: const <ButtonSegment<String>>[
+                        ButtonSegment<String>(value: 'Email', label: Text('Email')),
+                        ButtonSegment<String>(value: 'Phone', label: Text('Phone')),
+                      ],
+                      selected: <String>{method},
+                      onSelectionChanged: (Set<String> selected) {
+                        onMethodChanged(selected.first);
+                      },
+                    ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    onChanged: onIdentityChanged,
+                    keyboardType: method == 'Phone'
+                        ? TextInputType.phone
+                        : TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: registerMode ? method : 'User id',
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (!registerMode)
+                    TextField(
+                      onChanged: onPasswordChanged,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Password',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  if (awaitingCode) ...<Widget>[
+                    const SizedBox(height: 12),
+                    TextField(
+                      onChanged: onCodeChanged,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Verification code',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: onSubmit,
+                    icon: Icon(awaitingCode ? Icons.verified_rounded : Icons.login_rounded),
+                    label: Text(
+                      awaitingCode
+                          ? 'Verify and Continue'
+                          : registerMode
+                              ? 'Send Code'
+                              : 'Login',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: onGoogle,
+                          icon: const Icon(Icons.g_mobiledata_rounded),
+                          label: const Text('Gmail'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: onApple,
+                          icon: const Icon(Icons.apple_rounded),
+                          label: const Text('Apple'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
