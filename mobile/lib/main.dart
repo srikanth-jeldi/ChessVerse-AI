@@ -177,6 +177,28 @@ class ChessRules {
     String from,
     Map<String, ChessPiece> pieces,
   ) {
+    return pseudoLegalTargets(from, pieces);
+  }
+
+  static List<String> safeLegalTargets(
+    String from,
+    Map<String, ChessPiece> pieces,
+  ) {
+    final ChessPiece? piece = pieces[from];
+    if (piece == null) {
+      return <String>[];
+    }
+
+    return pseudoLegalTargets(from, pieces).where((String target) {
+      final Map<String, ChessPiece> next = applyMove(from, target, pieces);
+      return !isKingInCheck(piece.white, next);
+    }).toList();
+  }
+
+  static List<String> pseudoLegalTargets(
+    String from,
+    Map<String, ChessPiece> pieces,
+  ) {
     final ChessPiece? piece = pieces[from];
     if (piece == null) {
       return <String>[];
@@ -228,6 +250,71 @@ class ChessRules {
         ]),
       _ => <String>[],
     };
+  }
+
+  static bool hasAnySafeMove(bool white, Map<String, ChessPiece> pieces) {
+    for (final MapEntry<String, ChessPiece> entry in pieces.entries) {
+      if (entry.value.white == white &&
+          safeLegalTargets(entry.key, pieces).isNotEmpty) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static bool isKingInCheck(bool white, Map<String, ChessPiece> pieces) {
+    String? kingSquare;
+    for (final MapEntry<String, ChessPiece> entry in pieces.entries) {
+      if (entry.value.white == white && entry.value.code == 'K') {
+        kingSquare = entry.key;
+        break;
+      }
+    }
+    if (kingSquare == null) {
+      return false;
+    }
+
+    for (final MapEntry<String, ChessPiece> entry in pieces.entries) {
+      if (entry.value.white != white &&
+          attacksSquare(entry.key, kingSquare, pieces)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static bool attacksSquare(
+    String from,
+    String target,
+    Map<String, ChessPiece> pieces,
+  ) {
+    final ChessPiece? piece = pieces[from];
+    if (piece == null) {
+      return false;
+    }
+
+    if (piece.code == 'P') {
+      final SquarePosition origin = positionOf(from);
+      final SquarePosition attacked = positionOf(target);
+      final int direction = piece.white ? 1 : -1;
+      return attacked.rank == origin.rank + direction &&
+          (attacked.file - origin.file).abs() == 1;
+    }
+
+    return pseudoLegalTargets(from, pieces).contains(target);
+  }
+
+  static Map<String, ChessPiece> applyMove(
+    String from,
+    String target,
+    Map<String, ChessPiece> pieces,
+  ) {
+    final Map<String, ChessPiece> next = Map<String, ChessPiece>.from(pieces);
+    final ChessPiece? piece = next.remove(from);
+    if (piece != null) {
+      next[target] = piece;
+    }
+    return next;
   }
 
   static List<String> _pawnTargets(
@@ -391,7 +478,7 @@ class _GameScreenState extends State<GameScreen> {
     final BoardPalette palette = boardPalettes[_skin]!;
     final Set<String> legalTargets = _selectedSquare == null
         ? <String>{}
-        : ChessRules.legalTargets(_selectedSquare!, _pieces).toSet();
+        : ChessRules.safeLegalTargets(_selectedSquare!, _pieces).toSet();
 
     return Scaffold(
       body: DecoratedBox(
@@ -501,7 +588,8 @@ class _GameScreenState extends State<GameScreen> {
           _coachNote = '${whitesTurn ? 'White' : 'Black'} to move.';
           return;
         }
-        final List<String> targets = ChessRules.legalTargets(square, _pieces);
+        final List<String> targets =
+            ChessRules.safeLegalTargets(square, _pieces);
         if (targets.isEmpty) {
           _coachNote = '${piece.code} has no legal target from $square.';
         } else {
@@ -519,7 +607,7 @@ class _GameScreenState extends State<GameScreen> {
       }
 
       final List<String> legalTargets =
-          ChessRules.legalTargets(_selectedSquare!, _pieces);
+          ChessRules.safeLegalTargets(_selectedSquare!, _pieces);
       if (!legalTargets.contains(square)) {
         _coachNote = 'That move is blocked. Pick a highlighted square.';
         _selectedSquare = null;
@@ -551,6 +639,8 @@ class _GameScreenState extends State<GameScreen> {
           promotionSquare = square;
           promotionWhite = piece.white;
           _coachNote = 'Choose a promotion coin for $square.';
+        } else {
+          _coachNote = _gameStateNote(!piece.white, fallback: _coachNote);
         }
       }
       _selectedSquare = null;
@@ -632,7 +722,10 @@ class _GameScreenState extends State<GameScreen> {
                   setState(() {
                     _pieces[square] = ChessPiece(code, white);
                     _moves[0] = '${_moves.first}=$code';
-                    _coachNote = 'Pawn promoted to $code on $square.';
+                    _coachNote = _gameStateNote(
+                      !white,
+                      fallback: 'Pawn promoted to $code on $square.',
+                    );
                   });
                   Navigator.of(context).pop();
                 },
@@ -642,6 +735,23 @@ class _GameScreenState extends State<GameScreen> {
         );
       },
     );
+  }
+
+  String _gameStateNote(bool sideToMoveWhite, {required String fallback}) {
+    final bool inCheck = ChessRules.isKingInCheck(sideToMoveWhite, _pieces);
+    final bool hasMove = ChessRules.hasAnySafeMove(sideToMoveWhite, _pieces);
+    final String side = sideToMoveWhite ? 'White' : 'Black';
+
+    if (inCheck && !hasMove) {
+      return 'Checkmate. ${sideToMoveWhite ? 'Black' : 'White'} wins.';
+    }
+    if (!inCheck && !hasMove) {
+      return 'Stalemate. No legal move for $side.';
+    }
+    if (inCheck) {
+      return '$side is in check.';
+    }
+    return fallback;
   }
 }
 
