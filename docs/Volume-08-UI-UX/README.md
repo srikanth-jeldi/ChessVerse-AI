@@ -44,6 +44,14 @@ Current implementation direction:
 - Legal move highlights, capture rings, captured material display and undo controls.
 - Promotion dialog using the same premium chess coin visual language.
 - King-safe move filtering with check, checkmate and stalemate coach feedback.
+- Special chess moves including castling and en passant.
+- Live player clocks in the board header and arena panel.
+- Vibrant legal-target glow, red capture emphasis and last-move focus states.
+- Functional hint and analysis actions in the AI coach panel.
+- Improved chess coin faces with premium glyph treatment and embossed labels.
+- Login entry surface with Gmail, Apple, email verification and phone verification flows.
+- Player identity displayed beside clocks and in compact headers.
+- More realistic sculpted chess pieces with glossy body, pedestal, shadows and highlights.
 
 Quality bar:
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -144,6 +145,11 @@ class GameSnapshot {
     required this.capturedWhite,
     required this.capturedBlack,
     required this.coachNote,
+    required this.lastFromSquare,
+    required this.lastToSquare,
+    required this.lastCaptureSquare,
+    required this.whiteSeconds,
+    required this.blackSeconds,
   });
 
   final Map<String, ChessPiece> pieces;
@@ -151,6 +157,18 @@ class GameSnapshot {
   final List<ChessPiece> capturedWhite;
   final List<ChessPiece> capturedBlack;
   final String coachNote;
+  final String? lastFromSquare;
+  final String? lastToSquare;
+  final String? lastCaptureSquare;
+  final int whiteSeconds;
+  final int blackSeconds;
+}
+
+class ParsedMove {
+  const ParsedMove(this.from, this.to);
+
+  final String from;
+  final String to;
 }
 
 class SquarePosition {
@@ -429,11 +447,28 @@ class _GameScreenState extends State<GameScreen> {
   final List<ChessPiece> _capturedWhite = <ChessPiece>[];
   final List<ChessPiece> _capturedBlack = <ChessPiece>[];
   final List<GameSnapshot> _history = <GameSnapshot>[];
+  Timer? _clockTimer;
   String? _selectedSquare;
+  String? _lastFromSquare;
+  String? _lastToSquare;
+  String? _lastCaptureSquare;
   String _coachNote = 'Select a coin to see legal moves.';
   BoardSkin _skin = BoardSkin.royalWalnut;
   double _aiLevel = 4;
   bool _coachEnabled = true;
+  int _whiteSeconds = 10 * 60;
+  int _blackSeconds = 10 * 60;
+  bool _signedIn = false;
+  bool _awaitingCode = false;
+  bool _registerMode = true;
+  String _authMethod = 'Email';
+  String _authIdentity = '';
+  String _authPassword = '';
+  String _authCode = '';
+  String _authMessage =
+      'Create an account to save games, ratings and coach history.';
+  String _whitePlayerName = 'Guest Player';
+  final String _blackPlayerName = 'ChessVerse AI';
 
   static const Map<String, ChessPiece> _initialPieces = <String, ChessPiece>{
     'a8': ChessPiece('R', false),
@@ -474,11 +509,39 @@ class _GameScreenState extends State<GameScreen> {
       Map<String, ChessPiece>.from(_initialPieces);
 
   @override
+  void initState() {
+    super.initState();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || _moves.isEmpty) {
+        return;
+      }
+      setState(() {
+        if (_moves.length.isEven) {
+          _whiteSeconds = math.max(0, _whiteSeconds - 1);
+        } else {
+          _blackSeconds = math.max(0, _blackSeconds - 1);
+        }
+        if (_whiteSeconds == 0 || _blackSeconds == 0) {
+          _coachNote = _whiteSeconds == 0
+              ? 'White clock expired. Black wins on time.'
+              : 'Black clock expired. White wins on time.';
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _clockTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final BoardPalette palette = boardPalettes[_skin]!;
     final Set<String> legalTargets = _selectedSquare == null
         ? <String>{}
-        : ChessRules.safeLegalTargets(_selectedSquare!, _pieces).toSet();
+        : _legalTargetsFor(_selectedSquare!).toSet();
 
     return Scaffold(
       body: DecoratedBox(
@@ -506,11 +569,16 @@ class _GameScreenState extends State<GameScreen> {
                 pieces: _pieces,
                 selectedSquare: _selectedSquare,
                 legalTargets: legalTargets,
+                lastFromSquare: _lastFromSquare,
+                lastToSquare: _lastToSquare,
+                lastCaptureSquare: _lastCaptureSquare,
                 palette: palette,
                 onSquareTap: _handleSquareTap,
               );
 
               final Widget panel = GamePanel(
+                whitePlayerName: _whitePlayerName,
+                blackPlayerName: _blackPlayerName,
                 activeColor: _moves.length.isEven ? 'White' : 'Black',
                 aiLevel: _aiLevel.round(),
                 coachEnabled: _coachEnabled,
@@ -518,6 +586,8 @@ class _GameScreenState extends State<GameScreen> {
                 capturedWhite: _capturedWhite,
                 capturedBlack: _capturedBlack,
                 coachNote: _coachNote,
+                whiteClock: _formatClock(_whiteSeconds),
+                blackClock: _formatClock(_blackSeconds),
                 skin: _skin,
                 onSkinChanged: (BoardSkin skin) => setState(() => _skin = skin),
                 onAiLevelChanged: (double level) {
@@ -528,48 +598,155 @@ class _GameScreenState extends State<GameScreen> {
                 },
                 onReset: _reset,
                 onUndo: _undo,
+                onHint: _showHint,
+                onAnalyze: _showAnalysis,
                 canUndo: _history.isNotEmpty,
               );
 
               return Padding(
                 padding: pagePadding,
-                child: wide
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          Expanded(
-                            child: BoardStage(
-                              palette: palette,
-                              moveCount: _moves.length,
-                              child: board,
-                            ),
+                child: Stack(
+                  children: <Widget>[
+                    wide
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              Expanded(
+                                child: BoardStage(
+                                  palette: palette,
+                                  moveCount: _moves.length,
+                                  whiteClock: _formatClock(_whiteSeconds),
+                                  blackClock: _formatClock(_blackSeconds),
+                                  whitePlayerName: _whitePlayerName,
+                                  blackPlayerName: _blackPlayerName,
+                                  child: board,
+                                ),
+                              ),
+                              const SizedBox(width: 24),
+                              SizedBox(width: 380, child: panel),
+                            ],
+                          )
+                        : Column(
+                            children: <Widget>[
+                              CompactHeader(
+                                playerName: _whitePlayerName,
+                                onReset: _reset,
+                              ),
+                              const SizedBox(height: 12),
+                              Expanded(
+                                flex: 5,
+                                child: BoardStage(
+                                  palette: palette,
+                                  moveCount: _moves.length,
+                                  whiteClock: _formatClock(_whiteSeconds),
+                                  blackClock: _formatClock(_blackSeconds),
+                                  whitePlayerName: _whitePlayerName,
+                                  blackPlayerName: _blackPlayerName,
+                                  child: board,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Expanded(flex: 4, child: panel),
+                            ],
                           ),
-                          const SizedBox(width: 24),
-                          SizedBox(width: 380, child: panel),
-                        ],
-                      )
-                    : Column(
-                        children: <Widget>[
-                          CompactHeader(onReset: _reset),
-                          const SizedBox(height: 12),
-                          Expanded(
-                            flex: 5,
-                            child: BoardStage(
-                              palette: palette,
-                              moveCount: _moves.length,
-                              child: board,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Expanded(flex: 4, child: panel),
-                        ],
+                    if (!_signedIn)
+                      Positioned.fill(
+                        child: AuthOverlay(
+                          registerMode: _registerMode,
+                          awaitingCode: _awaitingCode,
+                          method: _authMethod,
+                          message: _authMessage,
+                          onModeChanged: _setAuthMode,
+                          onMethodChanged: _setAuthMethod,
+                          onIdentityChanged: (String value) {
+                            _authIdentity = value.trim();
+                          },
+                          onPasswordChanged: (String value) {
+                            _authPassword = value;
+                          },
+                          onCodeChanged: (String value) {
+                            _authCode = value.trim();
+                          },
+                          onSubmit: _submitAuth,
+                          onGoogle: () => _socialLogin('Google'),
+                          onApple: () => _socialLogin('Apple'),
+                        ),
                       ),
+                  ],
+                ),
               );
             },
           ),
         ),
       ),
     );
+  }
+
+  void _setAuthMode(bool registerMode) {
+    setState(() {
+      _registerMode = registerMode;
+      _awaitingCode = false;
+      _authMessage = registerMode
+          ? 'Create an account to save games, ratings and coach history.'
+          : 'Welcome back. Sign in with your user id and password.';
+    });
+  }
+
+  void _setAuthMethod(String method) {
+    setState(() {
+      _authMethod = method;
+      _awaitingCode = false;
+      _authMessage = method == 'Phone'
+          ? 'Use phone verification for first login.'
+          : 'Use email verification for first login.';
+    });
+  }
+
+  void _submitAuth() {
+    setState(() {
+      if (_registerMode && !_awaitingCode) {
+        if (_authIdentity.isEmpty) {
+          _authMessage = 'Enter your $_authMethod to receive a verification code.';
+          return;
+        }
+        _awaitingCode = true;
+        _authMessage =
+            'Verification code sent to $_authIdentity. Demo code: 246810';
+        return;
+      }
+
+      if (_awaitingCode) {
+        if (_authCode != '246810') {
+          _authMessage = 'Invalid code. Use demo code 246810.';
+          return;
+        }
+        _completeLogin(_authIdentity);
+        return;
+      }
+
+      if (_authIdentity.isEmpty || _authPassword.isEmpty) {
+        _authMessage = 'Enter user id and password to continue.';
+        return;
+      }
+      _completeLogin(_authIdentity);
+    });
+  }
+
+  void _socialLogin(String provider) {
+    setState(() {
+      _completeLogin('$provider Player');
+      _authMessage = 'Signed in with $provider.';
+    });
+  }
+
+  void _completeLogin(String identity) {
+    final String cleanName = identity.contains('@')
+        ? identity.split('@').first
+        : identity.replaceAll(RegExp(r'[^0-9A-Za-z ]'), '');
+    _whitePlayerName = cleanName.isEmpty ? 'Player' : cleanName;
+    _signedIn = true;
+    _awaitingCode = false;
+    _coachNote = 'Welcome $_whitePlayerName. Your arena is ready.';
   }
 
   void _handleSquareTap(String square) {
@@ -588,8 +765,7 @@ class _GameScreenState extends State<GameScreen> {
           _coachNote = '${whitesTurn ? 'White' : 'Black'} to move.';
           return;
         }
-        final List<String> targets =
-            ChessRules.safeLegalTargets(square, _pieces);
+        final List<String> targets = _legalTargetsFor(square);
         if (targets.isEmpty) {
           _coachNote = '${piece.code} has no legal target from $square.';
         } else {
@@ -607,7 +783,7 @@ class _GameScreenState extends State<GameScreen> {
       }
 
       final List<String> legalTargets =
-          ChessRules.safeLegalTargets(_selectedSquare!, _pieces);
+          _legalTargetsFor(_selectedSquare!);
       if (!legalTargets.contains(square)) {
         _coachNote = 'That move is blocked. Pick a highlighted square.';
         _selectedSquare = null;
@@ -616,23 +792,42 @@ class _GameScreenState extends State<GameScreen> {
 
       final String from = _selectedSquare!;
       _saveSnapshot();
+      _lastFromSquare = from;
+      _lastToSquare = square;
+      _lastCaptureSquare = null;
+      final bool castleMove = _isCastleMove(from, square);
+      final String? enPassantCaptureSquare =
+          _enPassantCaptureSquare(from, square);
       final ChessPiece? piece = _pieces.remove(from);
       if (piece != null) {
-        final ChessPiece? captured = _pieces[square];
+        final ChessPiece? captured = enPassantCaptureSquare == null
+            ? _pieces[square]
+            : _pieces.remove(enPassantCaptureSquare);
         if (captured != null) {
           if (captured.white) {
             _capturedWhite.add(captured);
           } else {
             _capturedBlack.add(captured);
           }
+          _lastCaptureSquare = square;
         }
         _pieces[square] = piece;
-        final String move =
-            captured == null ? '$from$square' : '$from x $square';
+        if (castleMove) {
+          _moveCastlingRook(square, piece.white);
+        }
+        final String move = castleMove
+            ? (square.startsWith('g') ? 'O-O' : 'O-O-O')
+            : enPassantCaptureSquare != null
+                ? '$from x $square e.p.'
+                : captured == null
+                    ? '$from$square'
+                    : '$from x $square';
         _moves.insert(0, move);
-        _coachNote = captured == null
-            ? '${piece.code} moves to $square.'
-            : '${piece.code} captures ${captured.code} on $square.';
+        _coachNote = castleMove
+            ? '${piece.white ? 'White' : 'Black'} castles ${square.startsWith('g') ? 'king side' : 'queen side'}.'
+            : captured == null
+                ? '${piece.code} moves to $square.'
+                : '${piece.code} captures ${captured.code} on $square.';
         if (piece.code == 'P' &&
             ((piece.white && square.endsWith('8')) ||
                 (!piece.white && square.endsWith('1')))) {
@@ -651,6 +846,197 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
+  List<String> _legalTargetsFor(String square) {
+    final ChessPiece? piece = _pieces[square];
+    if (piece == null) {
+      return <String>[];
+    }
+
+    final Set<String> targets =
+        ChessRules.safeLegalTargets(square, _pieces).toSet();
+    targets.addAll(_castlingTargets(square, piece));
+    targets.addAll(_enPassantTargets(square, piece));
+    return targets.toList();
+  }
+
+  List<String> _castlingTargets(String from, ChessPiece piece) {
+    if (piece.code != 'K' || _hasMovedFrom(from)) {
+      return <String>[];
+    }
+
+    final String rank = piece.white ? '1' : '8';
+    if (from != 'e$rank' || ChessRules.isKingInCheck(piece.white, _pieces)) {
+      return <String>[];
+    }
+
+    final List<String> targets = <String>[];
+    if (_canCastle(
+      white: piece.white,
+      rookFrom: 'h$rank',
+      emptySquares: <String>['f$rank', 'g$rank'],
+      kingPath: <String>['f$rank', 'g$rank'],
+    )) {
+      targets.add('g$rank');
+    }
+    if (_canCastle(
+      white: piece.white,
+      rookFrom: 'a$rank',
+      emptySquares: <String>['b$rank', 'c$rank', 'd$rank'],
+      kingPath: <String>['d$rank', 'c$rank'],
+    )) {
+      targets.add('c$rank');
+    }
+
+    return targets;
+  }
+
+  bool _canCastle({
+    required bool white,
+    required String rookFrom,
+    required List<String> emptySquares,
+    required List<String> kingPath,
+  }) {
+    final ChessPiece? rook = _pieces[rookFrom];
+    if (rook == null ||
+        rook.code != 'R' ||
+        rook.white != white ||
+        _hasMovedFrom(rookFrom)) {
+      return false;
+    }
+
+    for (final String square in emptySquares) {
+      if (_pieces.containsKey(square)) {
+        return false;
+      }
+    }
+
+    for (final String square in kingPath) {
+      final Map<String, ChessPiece> next =
+          ChessRules.applyMove(white ? 'e1' : 'e8', square, _pieces);
+      if (ChessRules.isKingInCheck(white, next)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  List<String> _enPassantTargets(String from, ChessPiece piece) {
+    if (piece.code != 'P' || _moves.isEmpty) {
+      return <String>[];
+    }
+
+    final ParsedMove? lastMove = _parseMove(_moves.first);
+    if (lastMove == null) {
+      return <String>[];
+    }
+
+    final ChessPiece? movedPiece = _pieces[lastMove.to];
+    if (movedPiece == null ||
+        movedPiece.code != 'P' ||
+        movedPiece.white == piece.white) {
+      return <String>[];
+    }
+
+    final SquarePosition fromPosition = ChessRules.positionOf(lastMove.from);
+    final SquarePosition toPosition = ChessRules.positionOf(lastMove.to);
+    if ((fromPosition.rank - toPosition.rank).abs() != 2) {
+      return <String>[];
+    }
+
+    final SquarePosition pawnPosition = ChessRules.positionOf(from);
+    final int requiredRank = piece.white ? 5 : 4;
+    if (pawnPosition.rank != requiredRank ||
+        (pawnPosition.file - toPosition.file).abs() != 1 ||
+        pawnPosition.rank != toPosition.rank) {
+      return <String>[];
+    }
+
+    final String target = ChessRules.squareOf(
+      toPosition.file,
+      pawnPosition.rank + (piece.white ? 1 : -1),
+    );
+    final Map<String, ChessPiece> next = Map<String, ChessPiece>.from(_pieces)
+      ..remove(from)
+      ..remove(lastMove.to);
+    next[target] = piece;
+
+    return ChessRules.isKingInCheck(piece.white, next)
+        ? <String>[]
+        : <String>[target];
+  }
+
+  bool _isCastleMove(String from, String to) {
+    final ChessPiece? piece = _pieces[from];
+    return piece != null &&
+        piece.code == 'K' &&
+        from.startsWith('e') &&
+        (to.startsWith('g') || to.startsWith('c'));
+  }
+
+  void _moveCastlingRook(String kingTarget, bool white) {
+    final String rank = white ? '1' : '8';
+    if (kingTarget == 'g$rank') {
+      final ChessPiece? rook = _pieces.remove('h$rank');
+      if (rook != null) {
+        _pieces['f$rank'] = rook;
+      }
+    } else if (kingTarget == 'c$rank') {
+      final ChessPiece? rook = _pieces.remove('a$rank');
+      if (rook != null) {
+        _pieces['d$rank'] = rook;
+      }
+    }
+  }
+
+  String? _enPassantCaptureSquare(String from, String to) {
+    final ChessPiece? piece = _pieces[from];
+    if (piece == null || piece.code != 'P' || _pieces.containsKey(to)) {
+      return null;
+    }
+
+    final SquarePosition fromPosition = ChessRules.positionOf(from);
+    final SquarePosition toPosition = ChessRules.positionOf(to);
+    if ((fromPosition.file - toPosition.file).abs() != 1) {
+      return null;
+    }
+
+    final String captureSquare =
+        ChessRules.squareOf(toPosition.file, fromPosition.rank);
+    final ChessPiece? captured = _pieces[captureSquare];
+    if (captured == null ||
+        captured.code != 'P' ||
+        captured.white == piece.white) {
+      return null;
+    }
+    return captureSquare;
+  }
+
+  bool _hasMovedFrom(String square) {
+    for (final String move in _moves) {
+      final ParsedMove? parsed = _parseMove(move);
+      if (parsed?.from == square) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  ParsedMove? _parseMove(String move) {
+    if (move.startsWith('O-O')) {
+      return null;
+    }
+
+    final String cleaned = move
+        .replaceAll(' x ', '')
+        .replaceAll(' e.p.', '')
+        .split('=')
+        .first;
+    if (cleaned.length < 4) {
+      return null;
+    }
+    return ParsedMove(cleaned.substring(0, 2), cleaned.substring(2, 4));
+  }
+
   void _reset() {
     setState(() {
       _pieces = Map<String, ChessPiece>.from(_initialPieces);
@@ -658,6 +1044,11 @@ class _GameScreenState extends State<GameScreen> {
       _capturedWhite.clear();
       _capturedBlack.clear();
       _history.clear();
+      _lastFromSquare = null;
+      _lastToSquare = null;
+      _lastCaptureSquare = null;
+      _whiteSeconds = 10 * 60;
+      _blackSeconds = 10 * 60;
       _selectedSquare = null;
       _coachNote = 'Select a coin to see legal moves.';
     });
@@ -671,6 +1062,11 @@ class _GameScreenState extends State<GameScreen> {
         capturedWhite: List<ChessPiece>.from(_capturedWhite),
         capturedBlack: List<ChessPiece>.from(_capturedBlack),
         coachNote: _coachNote,
+        lastFromSquare: _lastFromSquare,
+        lastToSquare: _lastToSquare,
+        lastCaptureSquare: _lastCaptureSquare,
+        whiteSeconds: _whiteSeconds,
+        blackSeconds: _blackSeconds,
       ),
     );
     if (_history.length > 80) {
@@ -695,8 +1091,63 @@ class _GameScreenState extends State<GameScreen> {
       _capturedBlack
         ..clear()
         ..addAll(snapshot.capturedBlack);
+      _lastFromSquare = snapshot.lastFromSquare;
+      _lastToSquare = snapshot.lastToSquare;
+      _lastCaptureSquare = snapshot.lastCaptureSquare;
+      _whiteSeconds = snapshot.whiteSeconds;
+      _blackSeconds = snapshot.blackSeconds;
       _selectedSquare = null;
       _coachNote = 'Move undone. ${snapshot.coachNote}';
+    });
+  }
+
+  void _showHint() {
+    final bool whiteToMove = _moves.length.isEven;
+    String? bestFrom;
+    List<String> bestTargets = <String>[];
+
+    for (final MapEntry<String, ChessPiece> entry in _pieces.entries) {
+      if (entry.value.white != whiteToMove) {
+        continue;
+      }
+      final List<String> targets = _legalTargetsFor(entry.key);
+      if (targets.length > bestTargets.length) {
+        bestFrom = entry.key;
+        bestTargets = targets;
+      }
+    }
+
+    setState(() {
+      _selectedSquare = bestFrom;
+      if (bestFrom == null) {
+        _coachNote = 'No legal moves found.';
+      } else {
+        _coachNote =
+            'Coach hint: inspect $bestFrom. It has ${bestTargets.length} promising squares.';
+      }
+    });
+  }
+
+  void _showAnalysis() {
+    final bool whiteToMove = _moves.length.isEven;
+    int legalMoveCount = 0;
+    int captureCount = 0;
+
+    for (final MapEntry<String, ChessPiece> entry in _pieces.entries) {
+      if (entry.value.white != whiteToMove) {
+        continue;
+      }
+      for (final String target in _legalTargetsFor(entry.key)) {
+        legalMoveCount++;
+        if (_pieces[target] != null) {
+          captureCount++;
+        }
+      }
+    }
+
+    setState(() {
+      _coachNote =
+          'AI analysis: ${whiteToMove ? 'White' : 'Black'} has $legalMoveCount legal moves and $captureCount capture threat${captureCount == 1 ? '' : 's'}.';
     });
   }
 
@@ -753,11 +1204,19 @@ class _GameScreenState extends State<GameScreen> {
     }
     return fallback;
   }
+
+  String _formatClock(int seconds) {
+    final int safeSeconds = math.max(0, seconds);
+    final int minutes = safeSeconds ~/ 60;
+    final int remainder = safeSeconds % 60;
+    return '$minutes:${remainder.toString().padLeft(2, '0')}';
+  }
 }
 
 class CompactHeader extends StatelessWidget {
-  const CompactHeader({required this.onReset, super.key});
+  const CompactHeader({required this.playerName, required this.onReset, super.key});
 
+  final String playerName;
   final VoidCallback onReset;
 
   @override
@@ -768,7 +1227,7 @@ class CompactHeader extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            'ChessVerse AI',
+            'ChessVerse AI  |  $playerName',
             style: Theme.of(context).textTheme.titleLarge,
             overflow: TextOverflow.ellipsis,
           ),
@@ -787,12 +1246,20 @@ class BoardStage extends StatelessWidget {
   const BoardStage({
     required this.palette,
     required this.moveCount,
+    required this.whiteClock,
+    required this.blackClock,
+    required this.whitePlayerName,
+    required this.blackPlayerName,
     required this.child,
     super.key,
   });
 
   final BoardPalette palette;
   final int moveCount;
+  final String whiteClock;
+  final String blackClock;
+  final String whitePlayerName;
+  final String blackPlayerName;
   final Widget child;
 
   @override
@@ -808,9 +1275,9 @@ class BoardStage extends StatelessWidget {
               Text('ChessVerse AI',
                   style: Theme.of(context).textTheme.headlineMedium),
               const Spacer(),
-              MatchClock(label: 'White', value: '10:00'),
+              MatchClock(label: whitePlayerName, value: whiteClock),
               const SizedBox(width: 8),
-              MatchClock(label: 'Black', value: '10:00'),
+              MatchClock(label: blackPlayerName, value: blackClock),
             ],
           ),
           const SizedBox(height: 16),
@@ -823,10 +1290,12 @@ class BoardStage extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: palette.frame,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: palette.accent.withOpacity(0.5)),
+                  border: Border.all(
+                    color: palette.accent.withValues(alpha: 0.5),
+                  ),
                   boxShadow: <BoxShadow>[
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.38),
+                      color: Colors.black.withValues(alpha: 0.38),
                       blurRadius: 32,
                       offset: const Offset(0, 24),
                     ),
@@ -858,6 +1327,9 @@ class ChessBoard extends StatelessWidget {
     required this.pieces,
     required this.selectedSquare,
     required this.legalTargets,
+    required this.lastFromSquare,
+    required this.lastToSquare,
+    required this.lastCaptureSquare,
     required this.palette,
     required this.onSquareTap,
     super.key,
@@ -866,6 +1338,9 @@ class ChessBoard extends StatelessWidget {
   final Map<String, ChessPiece> pieces;
   final String? selectedSquare;
   final Set<String> legalTargets;
+  final String? lastFromSquare;
+  final String? lastToSquare;
+  final String? lastCaptureSquare;
   final BoardPalette palette;
   final ValueChanged<String> onSquareTap;
 
@@ -894,6 +1369,9 @@ class ChessBoard extends StatelessWidget {
                 final bool legalTarget = legalTargets.contains(square);
                 final bool captureTarget =
                     legalTarget && piece != null && square != selectedSquare;
+                final bool lastMoveSquare =
+                    square == lastFromSquare || square == lastToSquare;
+                final bool lastCapture = square == lastCaptureSquare;
 
                 return BoardSquare(
                   square: square,
@@ -901,6 +1379,8 @@ class ChessBoard extends StatelessWidget {
                   selected: selected,
                   legalTarget: legalTarget,
                   captureTarget: captureTarget,
+                  lastMoveSquare: lastMoveSquare,
+                  lastCapture: lastCapture,
                   palette: palette,
                   piece: piece,
                   showRank: col == 0,
@@ -923,6 +1403,8 @@ class BoardSquare extends StatelessWidget {
     required this.selected,
     required this.legalTarget,
     required this.captureTarget,
+    required this.lastMoveSquare,
+    required this.lastCapture,
     required this.palette,
     required this.showRank,
     required this.showFile,
@@ -936,6 +1418,8 @@ class BoardSquare extends StatelessWidget {
   final bool selected;
   final bool legalTarget;
   final bool captureTarget;
+  final bool lastMoveSquare;
+  final bool lastCapture;
   final BoardPalette palette;
   final bool showRank;
   final bool showFile;
@@ -946,21 +1430,58 @@ class BoardSquare extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color base = dark ? palette.dark : palette.light;
     final Color coordinateColor =
-        dark ? palette.light.withOpacity(0.72) : palette.dark.withOpacity(0.72);
+        dark
+            ? palette.light.withValues(alpha: 0.72)
+            : palette.dark.withValues(alpha: 0.72);
+
+    final Color squareColor = lastCapture
+        ? Color.alphaBlend(const Color(0xFFE11D48).withValues(alpha: 0.62), base)
+        : selected
+            ? Color.alphaBlend(palette.accent.withValues(alpha: 0.55), base)
+            : lastMoveSquare
+                ? Color.alphaBlend(
+                    const Color(0xFFFFFFFF).withValues(alpha: 0.26),
+                    base,
+                  )
+                : base;
 
     return InkWell(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        decoration: BoxDecoration(
-          color: selected
-              ? Color.alphaBlend(palette.accent.withOpacity(0.55), base)
-              : base,
-          border: selected
-              ? Border.all(color: const Color(0xFFF8E7B0), width: 3)
-              : null,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(
+          begin: 0,
+          end: selected || legalTarget || lastCapture ? 1 : 0,
         ),
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+        builder: (BuildContext context, double glow, Widget? child) {
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              color: squareColor,
+              border: selected
+                  ? Border.all(color: const Color(0xFFF8E7B0), width: 3)
+                  : null,
+              boxShadow: <BoxShadow>[
+                if (legalTarget)
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.42 * glow),
+                    blurRadius: 18,
+                    spreadRadius: 2,
+                  ),
+                if (lastCapture || captureTarget)
+                  BoxShadow(
+                    color: const Color(0xFFFF1744)
+                        .withValues(alpha: 0.55 * glow),
+                    blurRadius: 24,
+                    spreadRadius: 3,
+                  ),
+              ],
+            ),
+            child: child,
+          );
+        },
         child: Stack(
           children: <Widget>[
             Positioned(
@@ -988,15 +1509,23 @@ class BoardSquare extends StatelessWidget {
               ),
             ),
             Center(
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 160),
-                opacity: legalTarget && piece == null ? 1 : 0,
+              child: AnimatedScale(
+                duration: const Duration(milliseconds: 360),
+                curve: Curves.easeOutBack,
+                scale: legalTarget && piece == null ? 1 : 0,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: palette.accent.withOpacity(0.42),
+                    color: Colors.white.withValues(alpha: 0.82),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: palette.accent.withValues(alpha: 0.85),
+                        blurRadius: 18,
+                        spreadRadius: 4,
+                      ),
+                    ],
                   ),
-                  child: const SizedBox(width: 18, height: 18),
+                  child: const SizedBox(width: 20, height: 20),
                 ),
               ),
             ),
@@ -1006,9 +1535,17 @@ class BoardSquare extends StatelessWidget {
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       border: Border.all(
-                        color: const Color(0xFFFFD166),
+                        color: const Color(0xFFFF1744),
                         width: 4,
                       ),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: const Color(0xFFFF1744)
+                              .withValues(alpha: 0.72),
+                          blurRadius: 20,
+                          spreadRadius: 3,
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -1073,7 +1610,13 @@ class ChessCoin extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           width: coinSize,
           height: coinSize,
-          transform: Matrix4.identity()..scale(selected ? 1.08 : 1.0),
+          transform: Matrix4.identity()
+            ..scaleByDouble(
+              selected ? 1.08 : 1.0,
+              selected ? 1.08 : 1.0,
+              1,
+              1,
+            ),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: RadialGradient(
@@ -1087,12 +1630,12 @@ class ChessCoin extends StatelessWidget {
             border: Border.all(color: selected ? accent : rim, width: 3),
             boxShadow: <BoxShadow>[
               BoxShadow(
-                color: Colors.black.withOpacity(0.34),
+                color: Colors.black.withValues(alpha: 0.34),
                 blurRadius: 10,
                 offset: const Offset(0, 5),
               ),
               BoxShadow(
-                color: accent.withOpacity(selected ? 0.35 : 0.08),
+                color: accent.withValues(alpha: selected ? 0.35 : 0.08),
                 blurRadius: selected ? 18 : 6,
               ),
             ],
@@ -1103,21 +1646,31 @@ class ChessCoin extends StatelessWidget {
               Positioned.fill(
                 child: CustomPaint(painter: CoinRingPainter(color: rim)),
               ),
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: PieceSculpturePainter(
+                    light: piece.white,
+                    accent: accent,
+                  ),
+                ),
+              ),
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  Icon(
-                    pieceIcon(piece.code),
-                    color: text,
-                    size: coinSize * 0.34,
-                  ),
                   Text(
-                    piece.code,
+                    pieceGlyph(piece),
                     style: TextStyle(
                       color: text,
-                      fontSize: coinSize * 0.24,
+                      fontSize: coinSize * 0.52,
                       fontWeight: FontWeight.w900,
-                      height: 0.9,
+                      height: 0.82,
+                      shadows: <Shadow>[
+                        Shadow(
+                          color: Colors.black.withValues(alpha: 0.22),
+                          blurRadius: 5,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -1130,14 +1683,24 @@ class ChessCoin extends StatelessWidget {
   }
 }
 
-IconData pieceIcon(String code) {
-  return switch (code) {
-    'K' => Icons.workspace_premium_rounded,
-    'Q' => Icons.diamond_rounded,
-    'R' => Icons.account_balance_rounded,
-    'B' => Icons.change_history_rounded,
-    'N' => Icons.navigation_rounded,
-    _ => Icons.circle_rounded,
+String pieceGlyph(ChessPiece piece) {
+  if (piece.white) {
+    return switch (piece.code) {
+      'K' => '\u2654',
+      'Q' => '\u2655',
+      'R' => '\u2656',
+      'B' => '\u2657',
+      'N' => '\u2658',
+      _ => '\u2659',
+    };
+  }
+  return switch (piece.code) {
+    'K' => '\u265A',
+    'Q' => '\u265B',
+    'R' => '\u265C',
+    'B' => '\u265D',
+    'N' => '\u265E',
+    _ => '\u265F',
   };
 }
 
@@ -1151,13 +1714,13 @@ class CoinRingPainter extends CustomPainter {
     final Offset center = Offset(size.width / 2, size.height / 2);
     final double radius = size.shortestSide / 2;
     final Paint ring = Paint()
-      ..color = color.withOpacity(0.22)
+      ..color = color.withValues(alpha: 0.22)
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(1, radius * 0.08);
     canvas.drawCircle(center, radius * 0.68, ring);
 
     final Paint tick = Paint()
-      ..color = color.withOpacity(0.28)
+      ..color = color.withValues(alpha: 0.28)
       ..strokeWidth = math.max(1, radius * 0.035)
       ..strokeCap = StrokeCap.round;
     for (int i = 0; i < 18; i++) {
@@ -1176,6 +1739,80 @@ class CoinRingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CoinRingPainter oldDelegate) => oldDelegate.color != color;
+}
+
+class PieceSculpturePainter extends CustomPainter {
+  const PieceSculpturePainter({required this.light, required this.accent});
+
+  final bool light;
+  final Color accent;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+    final Color body = light ? const Color(0xFFF7E9C9) : const Color(0xFF252A32);
+    final Color edge = light ? const Color(0xFFC09035) : const Color(0xFF68707D);
+    final Paint shadow = Paint()
+      ..color = Colors.black.withValues(alpha: 0.28)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    final Paint bodyPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: <Color>[
+          light ? Colors.white : const Color(0xFF505763),
+          body,
+          light ? const Color(0xFFD8B56C) : const Color(0xFF16191F),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, w, h));
+    final Paint edgePaint = Paint()
+      ..color = edge
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(1.2, w * 0.035);
+
+    final RRect base = RRect.fromRectAndRadius(
+      Rect.fromLTWH(w * 0.18, h * 0.66, w * 0.64, h * 0.18),
+      Radius.circular(w * 0.12),
+    );
+    canvas.drawOval(
+      Rect.fromLTWH(w * 0.18, h * 0.72, w * 0.64, h * 0.18),
+      shadow,
+    );
+    canvas.drawRRect(base, bodyPaint);
+    canvas.drawRRect(base, edgePaint);
+
+    final Path stem = Path()
+      ..moveTo(w * 0.38, h * 0.68)
+      ..quadraticBezierTo(w * 0.32, h * 0.46, w * 0.43, h * 0.32)
+      ..lineTo(w * 0.57, h * 0.32)
+      ..quadraticBezierTo(w * 0.68, h * 0.46, w * 0.62, h * 0.68)
+      ..close();
+    canvas.drawPath(stem, shadow);
+    canvas.drawPath(stem, bodyPaint);
+    canvas.drawPath(stem, edgePaint);
+
+    canvas.drawCircle(Offset(w * 0.5, h * 0.26), w * 0.16, bodyPaint);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.26), w * 0.16, edgePaint);
+    canvas.drawCircle(
+      Offset(w * 0.43, h * 0.18),
+      w * 0.035,
+      Paint()..color = Colors.white.withValues(alpha: light ? 0.86 : 0.28),
+    );
+    canvas.drawCircle(
+      Offset(w * 0.5, h * 0.5),
+      w * 0.3,
+      Paint()
+        ..color = accent.withValues(alpha: 0.12)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * 0.035,
+    );
+  }
+
+  @override
+  bool shouldRepaint(PieceSculpturePainter oldDelegate) {
+    return oldDelegate.light != light || oldDelegate.accent != accent;
+  }
 }
 
 class PromotionChoice extends StatelessWidget {
@@ -1226,6 +1863,8 @@ class PromotionChoice extends StatelessWidget {
 
 class GamePanel extends StatelessWidget {
   const GamePanel({
+    required this.whitePlayerName,
+    required this.blackPlayerName,
     required this.activeColor,
     required this.aiLevel,
     required this.coachEnabled,
@@ -1233,16 +1872,22 @@ class GamePanel extends StatelessWidget {
     required this.capturedWhite,
     required this.capturedBlack,
     required this.coachNote,
+    required this.whiteClock,
+    required this.blackClock,
     required this.skin,
     required this.onSkinChanged,
     required this.onAiLevelChanged,
     required this.onCoachChanged,
     required this.onReset,
     required this.onUndo,
+    required this.onHint,
+    required this.onAnalyze,
     required this.canUndo,
     super.key,
   });
 
+  final String whitePlayerName;
+  final String blackPlayerName;
   final String activeColor;
   final int aiLevel;
   final bool coachEnabled;
@@ -1250,12 +1895,16 @@ class GamePanel extends StatelessWidget {
   final List<ChessPiece> capturedWhite;
   final List<ChessPiece> capturedBlack;
   final String coachNote;
+  final String whiteClock;
+  final String blackClock;
   final BoardSkin skin;
   final ValueChanged<BoardSkin> onSkinChanged;
   final ValueChanged<double> onAiLevelChanged;
   final ValueChanged<bool> onCoachChanged;
   final VoidCallback onReset;
   final VoidCallback onUndo;
+  final VoidCallback onHint;
+  final VoidCallback onAnalyze;
   final bool canUndo;
 
   @override
@@ -1315,6 +1964,14 @@ class GamePanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
+          Row(
+            children: <Widget>[
+              Expanded(child: MatchClock(label: whitePlayerName, value: whiteClock)),
+              const SizedBox(width: 10),
+              Expanded(child: MatchClock(label: blackPlayerName, value: blackClock)),
+            ],
+          ),
+          const SizedBox(height: 18),
           CoachInsight(note: coachNote, enabled: coachEnabled),
           const SizedBox(height: 18),
           CapturedMaterial(
@@ -1356,30 +2013,33 @@ class GamePanel extends StatelessWidget {
             label: '$aiLevel',
             onChanged: onAiLevelChanged,
           ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: coachEnabled,
-            onChanged: onCoachChanged,
-            title: const Text('AI coach'),
-            secondary: const Icon(Icons.psychology_alt_rounded),
+          Material(
+            color: Colors.transparent,
+            child: SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: coachEnabled,
+              onChanged: onCoachChanged,
+              title: const Text('AI coach'),
+              secondary: const Icon(Icons.psychology_alt_rounded),
+            ),
           ),
           const SizedBox(height: 8),
           Row(
             children: <Widget>[
               Expanded(
-                child: FilledButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.psychology_alt_rounded),
-                  label: const Text('Hint'),
-                ),
+                  child: FilledButton.icon(
+                    onPressed: onHint,
+                    icon: const Icon(Icons.psychology_alt_rounded),
+                    label: const Text('Hint'),
+                  ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.analytics_rounded),
-                  label: const Text('Analyze'),
-                ),
+                  child: OutlinedButton.icon(
+                    onPressed: onAnalyze,
+                    icon: const Icon(Icons.analytics_rounded),
+                    label: const Text('Analyze'),
+                  ),
               ),
             ],
           ),
@@ -1401,7 +2061,7 @@ class GamePanel extends StatelessWidget {
 
         return DecoratedBox(
           decoration: BoxDecoration(
-            color: const Color(0xFF191A1F).withOpacity(0.92),
+            color: const Color(0xFF191A1F).withValues(alpha: 0.92),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: const Color(0xFF3A3124)),
           ),
@@ -1434,6 +2094,167 @@ class EmptyMoveState extends StatelessWidget {
           child: Text(
             'Select a coin, then choose its target square.',
             textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AuthOverlay extends StatelessWidget {
+  const AuthOverlay({
+    required this.registerMode,
+    required this.awaitingCode,
+    required this.method,
+    required this.message,
+    required this.onModeChanged,
+    required this.onMethodChanged,
+    required this.onIdentityChanged,
+    required this.onPasswordChanged,
+    required this.onCodeChanged,
+    required this.onSubmit,
+    required this.onGoogle,
+    required this.onApple,
+    super.key,
+  });
+
+  final bool registerMode;
+  final bool awaitingCode;
+  final String method;
+  final String message;
+  final ValueChanged<bool> onModeChanged;
+  final ValueChanged<String> onMethodChanged;
+  final ValueChanged<String> onIdentityChanged;
+  final ValueChanged<String> onPasswordChanged;
+  final ValueChanged<String> onCodeChanged;
+  final VoidCallback onSubmit;
+  final VoidCallback onGoogle;
+  final VoidCallback onApple;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.62),
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFF15161B).withValues(alpha: 0.96),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFD6A84F)),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: const Color(0xFFD6A84F).withValues(alpha: 0.18),
+                  blurRadius: 38,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Text(
+                    registerMode ? 'Create ChessVerse ID' : 'Welcome back',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(message, style: Theme.of(context).textTheme.bodyMedium),
+                  const SizedBox(height: 16),
+                  SegmentedButton<bool>(
+                    segments: const <ButtonSegment<bool>>[
+                      ButtonSegment<bool>(value: true, label: Text('Register')),
+                      ButtonSegment<bool>(value: false, label: Text('Login')),
+                    ],
+                    selected: <bool>{registerMode},
+                    onSelectionChanged: (Set<bool> selected) {
+                      onModeChanged(selected.first);
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  if (registerMode)
+                    SegmentedButton<String>(
+                      segments: const <ButtonSegment<String>>[
+                        ButtonSegment<String>(value: 'Email', label: Text('Email')),
+                        ButtonSegment<String>(value: 'Phone', label: Text('Phone')),
+                      ],
+                      selected: <String>{method},
+                      onSelectionChanged: (Set<String> selected) {
+                        onMethodChanged(selected.first);
+                      },
+                    ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    onChanged: onIdentityChanged,
+                    keyboardType: method == 'Phone'
+                        ? TextInputType.phone
+                        : TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: registerMode ? method : 'User id',
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (!registerMode)
+                    TextField(
+                      onChanged: onPasswordChanged,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Password',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  if (awaitingCode) ...<Widget>[
+                    const SizedBox(height: 12),
+                    TextField(
+                      onChanged: onCodeChanged,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Verification code',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: onSubmit,
+                    icon: Icon(awaitingCode ? Icons.verified_rounded : Icons.login_rounded),
+                    label: Text(
+                      awaitingCode
+                          ? 'Verify and Continue'
+                          : registerMode
+                              ? 'Send Code'
+                              : 'Login',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: onGoogle,
+                          icon: const Icon(Icons.g_mobiledata_rounded),
+                          label: const Text('Gmail'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: onApple,
+                          icon: const Icon(Icons.apple_rounded),
+                          label: const Text('Apple'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
