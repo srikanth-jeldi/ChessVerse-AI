@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: chessverse-ai-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/chessverse}
+    username: ${DB_USERNAME:chessverse}
+    password: ${DB_PASSWORD:chessverse}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+server:
+  port: ${PORT:8080}
+

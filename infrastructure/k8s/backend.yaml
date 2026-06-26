@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chessverse-backend
+  namespace: chessverse
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: chessverse-backend
+  template:
+    metadata:
+      labels:
+        app: chessverse-backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/srikanth-jeldi/chessverse-ai/backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: chessverse-backend-secret
+                  key: db-url
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: chessverse-backend-secret
+                  key: db-username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: chessverse-backend-secret
+                  key: db-password
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 45
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chessverse-backend
+  namespace: chessverse
+spec:
+  type: ClusterIP
+  selector:
+    app: chessverse-backend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+

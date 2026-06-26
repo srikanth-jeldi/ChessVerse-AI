@@ -2,7 +2,7 @@
 
 **Company:** EpitomeHub Technologies Pvt. Ltd.  
 **Product Type:** AI-powered chess learning and gameplay platform  
-**Status:** Documentation and product planning phase
+**Status:** Sprint 1 engineering foundation started
 
 ChessVerse AI is planned as a cross-platform chess product for Android, iOS and Web. The product goal is to combine chess gameplay, Stockfish-powered analysis, AI coaching, practice modes, multiplayer, learning paths, and enterprise-grade backend engineering into one professional product ecosystem.
 
@@ -34,6 +34,37 @@ web/               Future web application
 infrastructure/    Docker, AWS, CI/CD and deployment assets
 diagrams/          Architecture, database and flow diagrams
 .github/           GitHub workflows and issue templates
+```
+
+## Current Implementation
+
+- Spring Boot backend scaffold with game APIs, validation, persistence, Flyway migration and tests.
+- Flutter app scaffold with responsive chess board, move history panel and AI action controls.
+- Docker Compose for local PostgreSQL, Redis and backend runtime.
+- Kubernetes manifests for backend deployment on AWS EKS.
+- GitHub Actions CI for backend, mobile and backend container image builds.
+
+## Quick Start
+
+Backend tests:
+
+```bash
+cd backend
+mvn test
+```
+
+Local backend stack:
+
+```bash
+docker compose up --build
+```
+
+Flutter app:
+
+```bash
+cd mobile
+flutter pub get
+flutter run
 ```
 
 ## Documentation Volumes
@@ -73,4 +104,6 @@ Initial development will start as a modular monolith for speed, simplicity and m
 
 ## Current Phase
 
-Sprint 0: Product documentation, requirements, architecture planning and repository foundation.
+Sprint 1: Production codebase foundation, playable MVP architecture, CI/CD and cloud deployment baseline.
+
+See [docs/PRODUCTION-ROADMAP.md](docs/PRODUCTION-ROADMAP.md) for the end-to-end production plan.
