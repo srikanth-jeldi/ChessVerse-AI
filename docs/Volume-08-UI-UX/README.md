@@ -45,6 +45,10 @@ Current implementation direction:
 - Promotion dialog using the same premium chess coin visual language.
 - King-safe move filtering with check, checkmate and stalemate coach feedback.
 - Special chess moves including castling and en passant.
+- Live player clocks in the board header and arena panel.
+- Vibrant legal-target glow, red capture emphasis and last-move focus states.
+- Functional hint and analysis actions in the AI coach panel.
+- Improved chess coin faces with premium glyph treatment and embossed labels.
 
 Quality bar:
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -144,6 +145,11 @@ class GameSnapshot {
     required this.capturedWhite,
     required this.capturedBlack,
     required this.coachNote,
+    required this.lastFromSquare,
+    required this.lastToSquare,
+    required this.lastCaptureSquare,
+    required this.whiteSeconds,
+    required this.blackSeconds,
   });
 
   final Map<String, ChessPiece> pieces;
@@ -151,6 +157,11 @@ class GameSnapshot {
   final List<ChessPiece> capturedWhite;
   final List<ChessPiece> capturedBlack;
   final String coachNote;
+  final String? lastFromSquare;
+  final String? lastToSquare;
+  final String? lastCaptureSquare;
+  final int whiteSeconds;
+  final int blackSeconds;
 }
 
 class ParsedMove {
@@ -436,11 +447,17 @@ class _GameScreenState extends State<GameScreen> {
   final List<ChessPiece> _capturedWhite = <ChessPiece>[];
   final List<ChessPiece> _capturedBlack = <ChessPiece>[];
   final List<GameSnapshot> _history = <GameSnapshot>[];
+  Timer? _clockTimer;
   String? _selectedSquare;
+  String? _lastFromSquare;
+  String? _lastToSquare;
+  String? _lastCaptureSquare;
   String _coachNote = 'Select a coin to see legal moves.';
   BoardSkin _skin = BoardSkin.royalWalnut;
   double _aiLevel = 4;
   bool _coachEnabled = true;
+  int _whiteSeconds = 10 * 60;
+  int _blackSeconds = 10 * 60;
 
   static const Map<String, ChessPiece> _initialPieces = <String, ChessPiece>{
     'a8': ChessPiece('R', false),
@@ -481,6 +498,34 @@ class _GameScreenState extends State<GameScreen> {
       Map<String, ChessPiece>.from(_initialPieces);
 
   @override
+  void initState() {
+    super.initState();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || _moves.isEmpty) {
+        return;
+      }
+      setState(() {
+        if (_moves.length.isEven) {
+          _whiteSeconds = math.max(0, _whiteSeconds - 1);
+        } else {
+          _blackSeconds = math.max(0, _blackSeconds - 1);
+        }
+        if (_whiteSeconds == 0 || _blackSeconds == 0) {
+          _coachNote = _whiteSeconds == 0
+              ? 'White clock expired. Black wins on time.'
+              : 'Black clock expired. White wins on time.';
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _clockTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final BoardPalette palette = boardPalettes[_skin]!;
     final Set<String> legalTargets = _selectedSquare == null
@@ -513,6 +558,9 @@ class _GameScreenState extends State<GameScreen> {
                 pieces: _pieces,
                 selectedSquare: _selectedSquare,
                 legalTargets: legalTargets,
+                lastFromSquare: _lastFromSquare,
+                lastToSquare: _lastToSquare,
+                lastCaptureSquare: _lastCaptureSquare,
                 palette: palette,
                 onSquareTap: _handleSquareTap,
               );
@@ -525,6 +573,8 @@ class _GameScreenState extends State<GameScreen> {
                 capturedWhite: _capturedWhite,
                 capturedBlack: _capturedBlack,
                 coachNote: _coachNote,
+                whiteClock: _formatClock(_whiteSeconds),
+                blackClock: _formatClock(_blackSeconds),
                 skin: _skin,
                 onSkinChanged: (BoardSkin skin) => setState(() => _skin = skin),
                 onAiLevelChanged: (double level) {
@@ -535,6 +585,8 @@ class _GameScreenState extends State<GameScreen> {
                 },
                 onReset: _reset,
                 onUndo: _undo,
+                onHint: _showHint,
+                onAnalyze: _showAnalysis,
                 canUndo: _history.isNotEmpty,
               );
 
@@ -548,6 +600,8 @@ class _GameScreenState extends State<GameScreen> {
                             child: BoardStage(
                               palette: palette,
                               moveCount: _moves.length,
+                              whiteClock: _formatClock(_whiteSeconds),
+                              blackClock: _formatClock(_blackSeconds),
                               child: board,
                             ),
                           ),
@@ -564,6 +618,8 @@ class _GameScreenState extends State<GameScreen> {
                             child: BoardStage(
                               palette: palette,
                               moveCount: _moves.length,
+                              whiteClock: _formatClock(_whiteSeconds),
+                              blackClock: _formatClock(_blackSeconds),
                               child: board,
                             ),
                           ),
@@ -622,6 +678,9 @@ class _GameScreenState extends State<GameScreen> {
 
       final String from = _selectedSquare!;
       _saveSnapshot();
+      _lastFromSquare = from;
+      _lastToSquare = square;
+      _lastCaptureSquare = null;
       final bool castleMove = _isCastleMove(from, square);
       final String? enPassantCaptureSquare =
           _enPassantCaptureSquare(from, square);
@@ -636,6 +695,7 @@ class _GameScreenState extends State<GameScreen> {
           } else {
             _capturedBlack.add(captured);
           }
+          _lastCaptureSquare = square;
         }
         _pieces[square] = piece;
         if (castleMove) {
@@ -870,6 +930,11 @@ class _GameScreenState extends State<GameScreen> {
       _capturedWhite.clear();
       _capturedBlack.clear();
       _history.clear();
+      _lastFromSquare = null;
+      _lastToSquare = null;
+      _lastCaptureSquare = null;
+      _whiteSeconds = 10 * 60;
+      _blackSeconds = 10 * 60;
       _selectedSquare = null;
       _coachNote = 'Select a coin to see legal moves.';
     });
@@ -883,6 +948,11 @@ class _GameScreenState extends State<GameScreen> {
         capturedWhite: List<ChessPiece>.from(_capturedWhite),
         capturedBlack: List<ChessPiece>.from(_capturedBlack),
         coachNote: _coachNote,
+        lastFromSquare: _lastFromSquare,
+        lastToSquare: _lastToSquare,
+        lastCaptureSquare: _lastCaptureSquare,
+        whiteSeconds: _whiteSeconds,
+        blackSeconds: _blackSeconds,
       ),
     );
     if (_history.length > 80) {
@@ -907,8 +977,63 @@ class _GameScreenState extends State<GameScreen> {
       _capturedBlack
         ..clear()
         ..addAll(snapshot.capturedBlack);
+      _lastFromSquare = snapshot.lastFromSquare;
+      _lastToSquare = snapshot.lastToSquare;
+      _lastCaptureSquare = snapshot.lastCaptureSquare;
+      _whiteSeconds = snapshot.whiteSeconds;
+      _blackSeconds = snapshot.blackSeconds;
       _selectedSquare = null;
       _coachNote = 'Move undone. ${snapshot.coachNote}';
+    });
+  }
+
+  void _showHint() {
+    final bool whiteToMove = _moves.length.isEven;
+    String? bestFrom;
+    List<String> bestTargets = <String>[];
+
+    for (final MapEntry<String, ChessPiece> entry in _pieces.entries) {
+      if (entry.value.white != whiteToMove) {
+        continue;
+      }
+      final List<String> targets = _legalTargetsFor(entry.key);
+      if (targets.length > bestTargets.length) {
+        bestFrom = entry.key;
+        bestTargets = targets;
+      }
+    }
+
+    setState(() {
+      _selectedSquare = bestFrom;
+      if (bestFrom == null) {
+        _coachNote = 'No legal moves found.';
+      } else {
+        _coachNote =
+            'Coach hint: inspect $bestFrom. It has ${bestTargets.length} promising squares.';
+      }
+    });
+  }
+
+  void _showAnalysis() {
+    final bool whiteToMove = _moves.length.isEven;
+    int legalMoveCount = 0;
+    int captureCount = 0;
+
+    for (final MapEntry<String, ChessPiece> entry in _pieces.entries) {
+      if (entry.value.white != whiteToMove) {
+        continue;
+      }
+      for (final String target in _legalTargetsFor(entry.key)) {
+        legalMoveCount++;
+        if (_pieces[target] != null) {
+          captureCount++;
+        }
+      }
+    }
+
+    setState(() {
+      _coachNote =
+          'AI analysis: ${whiteToMove ? 'White' : 'Black'} has $legalMoveCount legal moves and $captureCount capture threat${captureCount == 1 ? '' : 's'}.';
     });
   }
 
@@ -965,6 +1090,13 @@ class _GameScreenState extends State<GameScreen> {
     }
     return fallback;
   }
+
+  String _formatClock(int seconds) {
+    final int safeSeconds = math.max(0, seconds);
+    final int minutes = safeSeconds ~/ 60;
+    final int remainder = safeSeconds % 60;
+    return '$minutes:${remainder.toString().padLeft(2, '0')}';
+  }
 }
 
 class CompactHeader extends StatelessWidget {
@@ -999,12 +1131,16 @@ class BoardStage extends StatelessWidget {
   const BoardStage({
     required this.palette,
     required this.moveCount,
+    required this.whiteClock,
+    required this.blackClock,
     required this.child,
     super.key,
   });
 
   final BoardPalette palette;
   final int moveCount;
+  final String whiteClock;
+  final String blackClock;
   final Widget child;
 
   @override
@@ -1020,9 +1156,9 @@ class BoardStage extends StatelessWidget {
               Text('ChessVerse AI',
                   style: Theme.of(context).textTheme.headlineMedium),
               const Spacer(),
-              const MatchClock(label: 'White', value: '10:00'),
+              MatchClock(label: 'White', value: whiteClock),
               const SizedBox(width: 8),
-              const MatchClock(label: 'Black', value: '10:00'),
+              MatchClock(label: 'Black', value: blackClock),
             ],
           ),
           const SizedBox(height: 16),
@@ -1072,6 +1208,9 @@ class ChessBoard extends StatelessWidget {
     required this.pieces,
     required this.selectedSquare,
     required this.legalTargets,
+    required this.lastFromSquare,
+    required this.lastToSquare,
+    required this.lastCaptureSquare,
     required this.palette,
     required this.onSquareTap,
     super.key,
@@ -1080,6 +1219,9 @@ class ChessBoard extends StatelessWidget {
   final Map<String, ChessPiece> pieces;
   final String? selectedSquare;
   final Set<String> legalTargets;
+  final String? lastFromSquare;
+  final String? lastToSquare;
+  final String? lastCaptureSquare;
   final BoardPalette palette;
   final ValueChanged<String> onSquareTap;
 
@@ -1108,6 +1250,9 @@ class ChessBoard extends StatelessWidget {
                 final bool legalTarget = legalTargets.contains(square);
                 final bool captureTarget =
                     legalTarget && piece != null && square != selectedSquare;
+                final bool lastMoveSquare =
+                    square == lastFromSquare || square == lastToSquare;
+                final bool lastCapture = square == lastCaptureSquare;
 
                 return BoardSquare(
                   square: square,
@@ -1115,6 +1260,8 @@ class ChessBoard extends StatelessWidget {
                   selected: selected,
                   legalTarget: legalTarget,
                   captureTarget: captureTarget,
+                  lastMoveSquare: lastMoveSquare,
+                  lastCapture: lastCapture,
                   palette: palette,
                   piece: piece,
                   showRank: col == 0,
@@ -1137,6 +1284,8 @@ class BoardSquare extends StatelessWidget {
     required this.selected,
     required this.legalTarget,
     required this.captureTarget,
+    required this.lastMoveSquare,
+    required this.lastCapture,
     required this.palette,
     required this.showRank,
     required this.showFile,
@@ -1150,6 +1299,8 @@ class BoardSquare extends StatelessWidget {
   final bool selected;
   final bool legalTarget;
   final bool captureTarget;
+  final bool lastMoveSquare;
+  final bool lastCapture;
   final BoardPalette palette;
   final bool showRank;
   final bool showFile;
@@ -1164,19 +1315,54 @@ class BoardSquare extends StatelessWidget {
             ? palette.light.withValues(alpha: 0.72)
             : palette.dark.withValues(alpha: 0.72);
 
+    final Color squareColor = lastCapture
+        ? Color.alphaBlend(const Color(0xFFE11D48).withValues(alpha: 0.62), base)
+        : selected
+            ? Color.alphaBlend(palette.accent.withValues(alpha: 0.55), base)
+            : lastMoveSquare
+                ? Color.alphaBlend(
+                    const Color(0xFFFFFFFF).withValues(alpha: 0.26),
+                    base,
+                  )
+                : base;
+
     return InkWell(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        decoration: BoxDecoration(
-          color: selected
-              ? Color.alphaBlend(palette.accent.withValues(alpha: 0.55), base)
-              : base,
-          border: selected
-              ? Border.all(color: const Color(0xFFF8E7B0), width: 3)
-              : null,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(
+          begin: 0,
+          end: selected || legalTarget || lastCapture ? 1 : 0,
         ),
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+        builder: (BuildContext context, double glow, Widget? child) {
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              color: squareColor,
+              border: selected
+                  ? Border.all(color: const Color(0xFFF8E7B0), width: 3)
+                  : null,
+              boxShadow: <BoxShadow>[
+                if (legalTarget)
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.42 * glow),
+                    blurRadius: 18,
+                    spreadRadius: 2,
+                  ),
+                if (lastCapture || captureTarget)
+                  BoxShadow(
+                    color: const Color(0xFFFF1744)
+                        .withValues(alpha: 0.55 * glow),
+                    blurRadius: 24,
+                    spreadRadius: 3,
+                  ),
+              ],
+            ),
+            child: child,
+          );
+        },
         child: Stack(
           children: <Widget>[
             Positioned(
@@ -1204,15 +1390,23 @@ class BoardSquare extends StatelessWidget {
               ),
             ),
             Center(
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 160),
-                opacity: legalTarget && piece == null ? 1 : 0,
+              child: AnimatedScale(
+                duration: const Duration(milliseconds: 360),
+                curve: Curves.easeOutBack,
+                scale: legalTarget && piece == null ? 1 : 0,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: palette.accent.withValues(alpha: 0.42),
+                    color: Colors.white.withValues(alpha: 0.82),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: palette.accent.withValues(alpha: 0.85),
+                        blurRadius: 18,
+                        spreadRadius: 4,
+                      ),
+                    ],
                   ),
-                  child: const SizedBox(width: 18, height: 18),
+                  child: const SizedBox(width: 20, height: 20),
                 ),
               ),
             ),
@@ -1222,9 +1416,17 @@ class BoardSquare extends StatelessWidget {
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       border: Border.all(
-                        color: const Color(0xFFFFD166),
+                        color: const Color(0xFFFF1744),
                         width: 4,
                       ),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: const Color(0xFFFF1744)
+                              .withValues(alpha: 0.72),
+                          blurRadius: 20,
+                          spreadRadius: 3,
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -1328,18 +1530,30 @@ class ChessCoin extends StatelessWidget {
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  Icon(
-                    pieceIcon(piece.code),
-                    color: text,
-                    size: coinSize * 0.34,
-                  ),
                   Text(
-                    piece.code,
+                    pieceGlyph(piece),
                     style: TextStyle(
                       color: text,
-                      fontSize: coinSize * 0.24,
+                      fontSize: coinSize * 0.42,
+                      fontWeight: FontWeight.w900,
+                      height: 0.86,
+                      shadows: <Shadow>[
+                        Shadow(
+                          color: Colors.black.withValues(alpha: 0.22),
+                          blurRadius: 3,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    pieceName(piece.code),
+                    style: TextStyle(
+                      color: text.withValues(alpha: 0.78),
+                      fontSize: coinSize * 0.12,
                       fontWeight: FontWeight.w900,
                       height: 0.9,
+                      letterSpacing: 0.7,
                     ),
                   ),
                 ],
@@ -1352,14 +1566,35 @@ class ChessCoin extends StatelessWidget {
   }
 }
 
-IconData pieceIcon(String code) {
+String pieceGlyph(ChessPiece piece) {
+  if (piece.white) {
+    return switch (piece.code) {
+      'K' => '\u2654',
+      'Q' => '\u2655',
+      'R' => '\u2656',
+      'B' => '\u2657',
+      'N' => '\u2658',
+      _ => '\u2659',
+    };
+  }
+  return switch (piece.code) {
+    'K' => '\u265A',
+    'Q' => '\u265B',
+    'R' => '\u265C',
+    'B' => '\u265D',
+    'N' => '\u265E',
+    _ => '\u265F',
+  };
+}
+
+String pieceName(String code) {
   return switch (code) {
-    'K' => Icons.workspace_premium_rounded,
-    'Q' => Icons.diamond_rounded,
-    'R' => Icons.account_balance_rounded,
-    'B' => Icons.change_history_rounded,
-    'N' => Icons.navigation_rounded,
-    _ => Icons.circle_rounded,
+    'K' => 'KING',
+    'Q' => 'QUEEN',
+    'R' => 'ROOK',
+    'B' => 'BISHOP',
+    'N' => 'KNIGHT',
+    _ => 'PAWN',
   };
 }
 
@@ -1455,12 +1690,16 @@ class GamePanel extends StatelessWidget {
     required this.capturedWhite,
     required this.capturedBlack,
     required this.coachNote,
+    required this.whiteClock,
+    required this.blackClock,
     required this.skin,
     required this.onSkinChanged,
     required this.onAiLevelChanged,
     required this.onCoachChanged,
     required this.onReset,
     required this.onUndo,
+    required this.onHint,
+    required this.onAnalyze,
     required this.canUndo,
     super.key,
   });
@@ -1472,12 +1711,16 @@ class GamePanel extends StatelessWidget {
   final List<ChessPiece> capturedWhite;
   final List<ChessPiece> capturedBlack;
   final String coachNote;
+  final String whiteClock;
+  final String blackClock;
   final BoardSkin skin;
   final ValueChanged<BoardSkin> onSkinChanged;
   final ValueChanged<double> onAiLevelChanged;
   final ValueChanged<bool> onCoachChanged;
   final VoidCallback onReset;
   final VoidCallback onUndo;
+  final VoidCallback onHint;
+  final VoidCallback onAnalyze;
   final bool canUndo;
 
   @override
@@ -1537,6 +1780,14 @@ class GamePanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
+          Row(
+            children: <Widget>[
+              Expanded(child: MatchClock(label: 'White', value: whiteClock)),
+              const SizedBox(width: 10),
+              Expanded(child: MatchClock(label: 'Black', value: blackClock)),
+            ],
+          ),
+          const SizedBox(height: 18),
           CoachInsight(note: coachNote, enabled: coachEnabled),
           const SizedBox(height: 18),
           CapturedMaterial(
@@ -1592,19 +1843,19 @@ class GamePanel extends StatelessWidget {
           Row(
             children: <Widget>[
               Expanded(
-                child: FilledButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.psychology_alt_rounded),
-                  label: const Text('Hint'),
-                ),
+                  child: FilledButton.icon(
+                    onPressed: onHint,
+                    icon: const Icon(Icons.psychology_alt_rounded),
+                    label: const Text('Hint'),
+                  ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.analytics_rounded),
-                  label: const Text('Analyze'),
-                ),
+                  child: OutlinedButton.icon(
+                    onPressed: onAnalyze,
+                    icon: const Icon(Icons.analytics_rounded),
+                    label: const Text('Analyze'),
+                  ),
               ),
             ],
           ),
