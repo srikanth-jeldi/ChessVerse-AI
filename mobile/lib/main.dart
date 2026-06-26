@@ -153,6 +153,13 @@ class GameSnapshot {
   final String coachNote;
 }
 
+class ParsedMove {
+  const ParsedMove(this.from, this.to);
+
+  final String from;
+  final String to;
+}
+
 class SquarePosition {
   const SquarePosition(this.file, this.rank);
 
@@ -478,7 +485,7 @@ class _GameScreenState extends State<GameScreen> {
     final BoardPalette palette = boardPalettes[_skin]!;
     final Set<String> legalTargets = _selectedSquare == null
         ? <String>{}
-        : ChessRules.safeLegalTargets(_selectedSquare!, _pieces).toSet();
+        : _legalTargetsFor(_selectedSquare!).toSet();
 
     return Scaffold(
       body: DecoratedBox(
@@ -588,8 +595,7 @@ class _GameScreenState extends State<GameScreen> {
           _coachNote = '${whitesTurn ? 'White' : 'Black'} to move.';
           return;
         }
-        final List<String> targets =
-            ChessRules.safeLegalTargets(square, _pieces);
+        final List<String> targets = _legalTargetsFor(square);
         if (targets.isEmpty) {
           _coachNote = '${piece.code} has no legal target from $square.';
         } else {
@@ -607,7 +613,7 @@ class _GameScreenState extends State<GameScreen> {
       }
 
       final List<String> legalTargets =
-          ChessRules.safeLegalTargets(_selectedSquare!, _pieces);
+          _legalTargetsFor(_selectedSquare!);
       if (!legalTargets.contains(square)) {
         _coachNote = 'That move is blocked. Pick a highlighted square.';
         _selectedSquare = null;
@@ -616,9 +622,14 @@ class _GameScreenState extends State<GameScreen> {
 
       final String from = _selectedSquare!;
       _saveSnapshot();
+      final bool castleMove = _isCastleMove(from, square);
+      final String? enPassantCaptureSquare =
+          _enPassantCaptureSquare(from, square);
       final ChessPiece? piece = _pieces.remove(from);
       if (piece != null) {
-        final ChessPiece? captured = _pieces[square];
+        final ChessPiece? captured = enPassantCaptureSquare == null
+            ? _pieces[square]
+            : _pieces.remove(enPassantCaptureSquare);
         if (captured != null) {
           if (captured.white) {
             _capturedWhite.add(captured);
@@ -627,12 +638,22 @@ class _GameScreenState extends State<GameScreen> {
           }
         }
         _pieces[square] = piece;
-        final String move =
-            captured == null ? '$from$square' : '$from x $square';
+        if (castleMove) {
+          _moveCastlingRook(square, piece.white);
+        }
+        final String move = castleMove
+            ? (square.startsWith('g') ? 'O-O' : 'O-O-O')
+            : enPassantCaptureSquare != null
+                ? '$from x $square e.p.'
+                : captured == null
+                    ? '$from$square'
+                    : '$from x $square';
         _moves.insert(0, move);
-        _coachNote = captured == null
-            ? '${piece.code} moves to $square.'
-            : '${piece.code} captures ${captured.code} on $square.';
+        _coachNote = castleMove
+            ? '${piece.white ? 'White' : 'Black'} castles ${square.startsWith('g') ? 'king side' : 'queen side'}.'
+            : captured == null
+                ? '${piece.code} moves to $square.'
+                : '${piece.code} captures ${captured.code} on $square.';
         if (piece.code == 'P' &&
             ((piece.white && square.endsWith('8')) ||
                 (!piece.white && square.endsWith('1')))) {
@@ -649,6 +670,197 @@ class _GameScreenState extends State<GameScreen> {
     if (promotionSquare != null && promotionWhite != null) {
       _showPromotionPicker(promotionSquare!, promotionWhite!);
     }
+  }
+
+  List<String> _legalTargetsFor(String square) {
+    final ChessPiece? piece = _pieces[square];
+    if (piece == null) {
+      return <String>[];
+    }
+
+    final Set<String> targets =
+        ChessRules.safeLegalTargets(square, _pieces).toSet();
+    targets.addAll(_castlingTargets(square, piece));
+    targets.addAll(_enPassantTargets(square, piece));
+    return targets.toList();
+  }
+
+  List<String> _castlingTargets(String from, ChessPiece piece) {
+    if (piece.code != 'K' || _hasMovedFrom(from)) {
+      return <String>[];
+    }
+
+    final String rank = piece.white ? '1' : '8';
+    if (from != 'e$rank' || ChessRules.isKingInCheck(piece.white, _pieces)) {
+      return <String>[];
+    }
+
+    final List<String> targets = <String>[];
+    if (_canCastle(
+      white: piece.white,
+      rookFrom: 'h$rank',
+      emptySquares: <String>['f$rank', 'g$rank'],
+      kingPath: <String>['f$rank', 'g$rank'],
+    )) {
+      targets.add('g$rank');
+    }
+    if (_canCastle(
+      white: piece.white,
+      rookFrom: 'a$rank',
+      emptySquares: <String>['b$rank', 'c$rank', 'd$rank'],
+      kingPath: <String>['d$rank', 'c$rank'],
+    )) {
+      targets.add('c$rank');
+    }
+
+    return targets;
+  }
+
+  bool _canCastle({
+    required bool white,
+    required String rookFrom,
+    required List<String> emptySquares,
+    required List<String> kingPath,
+  }) {
+    final ChessPiece? rook = _pieces[rookFrom];
+    if (rook == null ||
+        rook.code != 'R' ||
+        rook.white != white ||
+        _hasMovedFrom(rookFrom)) {
+      return false;
+    }
+
+    for (final String square in emptySquares) {
+      if (_pieces.containsKey(square)) {
+        return false;
+      }
+    }
+
+    for (final String square in kingPath) {
+      final Map<String, ChessPiece> next =
+          ChessRules.applyMove(white ? 'e1' : 'e8', square, _pieces);
+      if (ChessRules.isKingInCheck(white, next)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  List<String> _enPassantTargets(String from, ChessPiece piece) {
+    if (piece.code != 'P' || _moves.isEmpty) {
+      return <String>[];
+    }
+
+    final ParsedMove? lastMove = _parseMove(_moves.first);
+    if (lastMove == null) {
+      return <String>[];
+    }
+
+    final ChessPiece? movedPiece = _pieces[lastMove.to];
+    if (movedPiece == null ||
+        movedPiece.code != 'P' ||
+        movedPiece.white == piece.white) {
+      return <String>[];
+    }
+
+    final SquarePosition fromPosition = ChessRules.positionOf(lastMove.from);
+    final SquarePosition toPosition = ChessRules.positionOf(lastMove.to);
+    if ((fromPosition.rank - toPosition.rank).abs() != 2) {
+      return <String>[];
+    }
+
+    final SquarePosition pawnPosition = ChessRules.positionOf(from);
+    final int requiredRank = piece.white ? 5 : 4;
+    if (pawnPosition.rank != requiredRank ||
+        (pawnPosition.file - toPosition.file).abs() != 1 ||
+        pawnPosition.rank != toPosition.rank) {
+      return <String>[];
+    }
+
+    final String target = ChessRules.squareOf(
+      toPosition.file,
+      pawnPosition.rank + (piece.white ? 1 : -1),
+    );
+    final Map<String, ChessPiece> next = Map<String, ChessPiece>.from(_pieces)
+      ..remove(from)
+      ..remove(lastMove.to);
+    next[target] = piece;
+
+    return ChessRules.isKingInCheck(piece.white, next)
+        ? <String>[]
+        : <String>[target];
+  }
+
+  bool _isCastleMove(String from, String to) {
+    final ChessPiece? piece = _pieces[from];
+    return piece != null &&
+        piece.code == 'K' &&
+        from.startsWith('e') &&
+        (to.startsWith('g') || to.startsWith('c'));
+  }
+
+  void _moveCastlingRook(String kingTarget, bool white) {
+    final String rank = white ? '1' : '8';
+    if (kingTarget == 'g$rank') {
+      final ChessPiece? rook = _pieces.remove('h$rank');
+      if (rook != null) {
+        _pieces['f$rank'] = rook;
+      }
+    } else if (kingTarget == 'c$rank') {
+      final ChessPiece? rook = _pieces.remove('a$rank');
+      if (rook != null) {
+        _pieces['d$rank'] = rook;
+      }
+    }
+  }
+
+  String? _enPassantCaptureSquare(String from, String to) {
+    final ChessPiece? piece = _pieces[from];
+    if (piece == null || piece.code != 'P' || _pieces.containsKey(to)) {
+      return null;
+    }
+
+    final SquarePosition fromPosition = ChessRules.positionOf(from);
+    final SquarePosition toPosition = ChessRules.positionOf(to);
+    if ((fromPosition.file - toPosition.file).abs() != 1) {
+      return null;
+    }
+
+    final String captureSquare =
+        ChessRules.squareOf(toPosition.file, fromPosition.rank);
+    final ChessPiece? captured = _pieces[captureSquare];
+    if (captured == null ||
+        captured.code != 'P' ||
+        captured.white == piece.white) {
+      return null;
+    }
+    return captureSquare;
+  }
+
+  bool _hasMovedFrom(String square) {
+    for (final String move in _moves) {
+      final ParsedMove? parsed = _parseMove(move);
+      if (parsed?.from == square) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  ParsedMove? _parseMove(String move) {
+    if (move.startsWith('O-O')) {
+      return null;
+    }
+
+    final String cleaned = move
+        .replaceAll(' x ', '')
+        .replaceAll(' e.p.', '')
+        .split('=')
+        .first;
+    if (cleaned.length < 4) {
+      return null;
+    }
+    return ParsedMove(cleaned.substring(0, 2), cleaned.substring(2, 4));
   }
 
   void _reset() {

@@ -44,6 +44,7 @@ Current implementation direction:
 - Legal move highlights, capture rings, captured material display and undo controls.
 - Promotion dialog using the same premium chess coin visual language.
 - King-safe move filtering with check, checkmate and stalemate coach feedback.
+- Special chess moves including castling and en passant.
 
 Quality bar:
 
