@@ -41,6 +41,8 @@ Current implementation direction:
 - Animated square selection, coin movement replacement and move history updates.
 - AI control panel with coach toggle, strength slider, hint and analysis actions.
 - Board coordinates, match clocks and compact status pills for a serious gameplay feel.
+- Legal move highlights, capture rings, captured material display and undo controls.
+- Promotion dialog using the same premium chess coin visual language.
 
 Quality bar:
 
