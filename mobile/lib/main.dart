@@ -1020,9 +1020,9 @@ class BoardStage extends StatelessWidget {
               Text('ChessVerse AI',
                   style: Theme.of(context).textTheme.headlineMedium),
               const Spacer(),
-              MatchClock(label: 'White', value: '10:00'),
+              const MatchClock(label: 'White', value: '10:00'),
               const SizedBox(width: 8),
-              MatchClock(label: 'Black', value: '10:00'),
+              const MatchClock(label: 'Black', value: '10:00'),
             ],
           ),
           const SizedBox(height: 16),
@@ -1035,10 +1035,12 @@ class BoardStage extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: palette.frame,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: palette.accent.withOpacity(0.5)),
+                  border: Border.all(
+                    color: palette.accent.withValues(alpha: 0.5),
+                  ),
                   boxShadow: <BoxShadow>[
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.38),
+                      color: Colors.black.withValues(alpha: 0.38),
                       blurRadius: 32,
                       offset: const Offset(0, 24),
                     ),
@@ -1158,7 +1160,9 @@ class BoardSquare extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color base = dark ? palette.dark : palette.light;
     final Color coordinateColor =
-        dark ? palette.light.withOpacity(0.72) : palette.dark.withOpacity(0.72);
+        dark
+            ? palette.light.withValues(alpha: 0.72)
+            : palette.dark.withValues(alpha: 0.72);
 
     return InkWell(
       onTap: onTap,
@@ -1167,7 +1171,7 @@ class BoardSquare extends StatelessWidget {
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
           color: selected
-              ? Color.alphaBlend(palette.accent.withOpacity(0.55), base)
+              ? Color.alphaBlend(palette.accent.withValues(alpha: 0.55), base)
               : base,
           border: selected
               ? Border.all(color: const Color(0xFFF8E7B0), width: 3)
@@ -1206,7 +1210,7 @@ class BoardSquare extends StatelessWidget {
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: palette.accent.withOpacity(0.42),
+                    color: palette.accent.withValues(alpha: 0.42),
                   ),
                   child: const SizedBox(width: 18, height: 18),
                 ),
@@ -1285,7 +1289,13 @@ class ChessCoin extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           width: coinSize,
           height: coinSize,
-          transform: Matrix4.identity()..scale(selected ? 1.08 : 1.0),
+          transform: Matrix4.identity()
+            ..scaleByDouble(
+              selected ? 1.08 : 1.0,
+              selected ? 1.08 : 1.0,
+              1,
+              1,
+            ),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: RadialGradient(
@@ -1299,12 +1309,12 @@ class ChessCoin extends StatelessWidget {
             border: Border.all(color: selected ? accent : rim, width: 3),
             boxShadow: <BoxShadow>[
               BoxShadow(
-                color: Colors.black.withOpacity(0.34),
+                color: Colors.black.withValues(alpha: 0.34),
                 blurRadius: 10,
                 offset: const Offset(0, 5),
               ),
               BoxShadow(
-                color: accent.withOpacity(selected ? 0.35 : 0.08),
+                color: accent.withValues(alpha: selected ? 0.35 : 0.08),
                 blurRadius: selected ? 18 : 6,
               ),
             ],
@@ -1363,13 +1373,13 @@ class CoinRingPainter extends CustomPainter {
     final Offset center = Offset(size.width / 2, size.height / 2);
     final double radius = size.shortestSide / 2;
     final Paint ring = Paint()
-      ..color = color.withOpacity(0.22)
+      ..color = color.withValues(alpha: 0.22)
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(1, radius * 0.08);
     canvas.drawCircle(center, radius * 0.68, ring);
 
     final Paint tick = Paint()
-      ..color = color.withOpacity(0.28)
+      ..color = color.withValues(alpha: 0.28)
       ..strokeWidth = math.max(1, radius * 0.035)
       ..strokeCap = StrokeCap.round;
     for (int i = 0; i < 18; i++) {
@@ -1568,12 +1578,15 @@ class GamePanel extends StatelessWidget {
             label: '$aiLevel',
             onChanged: onAiLevelChanged,
           ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: coachEnabled,
-            onChanged: onCoachChanged,
-            title: const Text('AI coach'),
-            secondary: const Icon(Icons.psychology_alt_rounded),
+          Material(
+            color: Colors.transparent,
+            child: SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: coachEnabled,
+              onChanged: onCoachChanged,
+              title: const Text('AI coach'),
+              secondary: const Icon(Icons.psychology_alt_rounded),
+            ),
           ),
           const SizedBox(height: 8),
           Row(
@@ -1613,7 +1626,7 @@ class GamePanel extends StatelessWidget {
 
         return DecoratedBox(
           decoration: BoxDecoration(
-            color: const Color(0xFF191A1F).withOpacity(0.92),
+            color: const Color(0xFF191A1F).withValues(alpha: 0.92),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: const Color(0xFF3A3124)),
           ),
