@@ -142,7 +142,7 @@ class ChessVerseTheme {
 
 enum BoardSkin { royalWalnut, jadeGlass, tournament, marble, sapphire }
 
-enum GameMode { computer, local }
+enum GameMode { computer, local, online }
 
 class AiProfile {
   const AiProfile(this.name, this.elo, this.description);
@@ -174,6 +174,26 @@ class AiCandidate {
   final String from;
   final String to;
   final double score;
+}
+
+class PositionAnalysis {
+  const PositionAnalysis({
+    required this.side,
+    required this.evaluation,
+    required this.material,
+    required this.legalMoves,
+    required this.captures,
+    required this.bestMove,
+    required this.inCheck,
+  });
+
+  final String side;
+  final double evaluation;
+  final int material;
+  final int legalMoves;
+  final int captures;
+  final String? bestMove;
+  final bool inCheck;
 }
 
 class BoardPalette {
@@ -705,6 +725,7 @@ class _GameScreenState extends State<GameScreen> {
               );
 
               final Widget panel = GamePanel(
+                compact: !wide,
                 whitePlayerName: _whitePlayerName,
                 blackPlayerName: _blackPlayerName,
                 activeColor: _moves.length.isEven ? 'White' : 'Black',
@@ -765,7 +786,7 @@ class _GameScreenState extends State<GameScreen> {
                               ),
                               const SizedBox(height: 12),
                               Expanded(
-                                flex: 5,
+                                flex: 6,
                                 child: BoardStage(
                                   palette: palette,
                                   moveCount: _moves.length,
@@ -777,7 +798,7 @@ class _GameScreenState extends State<GameScreen> {
                                 ),
                               ),
                               const SizedBox(height: 14),
-                              Expanded(flex: 4, child: panel),
+                              Expanded(flex: 3, child: panel),
                             ],
                           ),
                     if (!_signedIn)
@@ -861,14 +882,6 @@ class _GameScreenState extends State<GameScreen> {
     if (_authLoading) {
       return;
     }
-    if (_registerMode && _authMethod == 'Phone') {
-      setState(() {
-        _authMessage =
-            'Phone OTP needs an SMS provider such as AWS SNS. Email OTP is ready now.';
-      });
-      return;
-    }
-
     if (_registerMode &&
         !_awaitingCode &&
         (_authUsername.isEmpty ||
@@ -882,8 +895,10 @@ class _GameScreenState extends State<GameScreen> {
       return;
     }
     if (_awaitingCode && !RegExp(r'^\d{6}$').hasMatch(_authCode)) {
-      setState(
-          () => _authMessage = 'Enter the six-digit code from your email.');
+      setState(() {
+        _authMessage =
+            'Enter the six-digit code sent to your ${_authMethod.toLowerCase()}.';
+      });
       return;
     }
     if (!_registerMode && (_authIdentity.isEmpty || _authPassword.isEmpty)) {
@@ -902,14 +917,22 @@ class _GameScreenState extends State<GameScreen> {
 
     try {
       if (_registerMode && !_awaitingCode) {
+        final bool phoneRegistration = _authMethod == 'Phone';
         final Map<String, dynamic> response = await _authApi.post(
-          'register',
-          <String, String>{
-            'username': _authUsername,
-            'displayName': _authDisplayName,
-            'email': _authIdentity,
-            'password': _authPassword,
-          },
+          phoneRegistration ? 'register-phone' : 'register',
+          phoneRegistration
+              ? <String, String>{
+                  'username': _authUsername,
+                  'displayName': _authDisplayName,
+                  'phone': _authIdentity,
+                  'password': _authPassword,
+                }
+              : <String, String>{
+                  'username': _authUsername,
+                  'displayName': _authDisplayName,
+                  'email': _authIdentity,
+                  'password': _authPassword,
+                },
         );
         if (!mounted) return;
         setState(() {
@@ -918,9 +941,13 @@ class _GameScreenState extends State<GameScreen> {
               'Verification code sent. Check your inbox.';
         });
       } else if (_awaitingCode) {
+        final bool phoneVerification = _authMethod == 'Phone';
         final Map<String, dynamic> response = await _authApi.post(
-          'verify-email',
-          <String, String>{'email': _authIdentity, 'code': _authCode},
+          phoneVerification ? 'verify-phone' : 'verify-email',
+          <String, String>{
+            phoneVerification ? 'phone' : 'email': _authIdentity,
+            'code': _authCode,
+          },
         );
         if (!mounted) return;
         final Map<String, dynamic>? player =
@@ -970,6 +997,10 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _changeGameMode(GameMode mode) {
+    if (mode == GameMode.online) {
+      _showOnlineMatchmakingInfo();
+      return;
+    }
     setState(() {
       _gameMode = mode;
       _blackPlayerName =
@@ -1511,8 +1542,28 @@ class _GameScreenState extends State<GameScreen> {
 
   void _showAnalysis() {
     final bool whiteToMove = _moves.length.isEven;
+    final PositionAnalysis analysis = _analyzePosition(whiteToMove);
+
+    setState(() {
+      _coachNote = analysis.bestMove == null
+          ? 'Analysis complete. No legal move is available.'
+          : 'Coach recommends ${analysis.bestMove} for ${analysis.side}.';
+    });
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) => PositionAnalysisSheet(
+        analysis: analysis,
+      ),
+    );
+  }
+
+  PositionAnalysis _analyzePosition(bool whiteToMove) {
     int legalMoveCount = 0;
     int captureCount = 0;
+    AiCandidate? bestMove;
 
     for (final MapEntry<String, ChessPiece> entry in _pieces.entries) {
       if (entry.value.white != whiteToMove) {
@@ -1523,13 +1574,71 @@ class _GameScreenState extends State<GameScreen> {
         if (_pieces[target] != null) {
           captureCount++;
         }
+        final AiCandidate candidate = AiCandidate(
+          entry.key,
+          target,
+          _analysisMoveScore(entry.key, target, entry.value),
+        );
+        if (bestMove == null || candidate.score > bestMove.score) {
+          bestMove = candidate;
+        }
       }
     }
 
-    setState(() {
-      _coachNote =
-          'AI analysis: ${whiteToMove ? 'White' : 'Black'} has $legalMoveCount legal moves and $captureCount capture threat${captureCount == 1 ? '' : 's'}.';
-    });
+    int material = 0;
+    for (final ChessPiece piece in _pieces.values) {
+      final int value = _pieceValue(piece.code);
+      material += piece.white ? value : -value;
+    }
+
+    final double evaluation =
+        material + (whiteToMove ? legalMoveCount : -legalMoveCount) * 0.03;
+    return PositionAnalysis(
+      side: whiteToMove ? 'White' : 'Black',
+      evaluation: evaluation,
+      material: material,
+      legalMoves: legalMoveCount,
+      captures: captureCount,
+      bestMove: bestMove == null ? null : '${bestMove.from} to ${bestMove.to}',
+      inCheck: ChessRules.isKingInCheck(whiteToMove, _pieces),
+    );
+  }
+
+  double _analysisMoveScore(
+    String from,
+    String target,
+    ChessPiece piece,
+  ) {
+    final ChessPiece? captured = _pieces[target];
+    final SquarePosition position = ChessRules.positionOf(target);
+    final double center =
+        7 - (position.file - 3.5).abs() - (position.rank - 4.5).abs();
+    final double capture = captured == null
+        ? 0
+        : _pieceValue(captured.code) * 10 - _pieceValue(piece.code) * 0.2;
+    final Map<String, ChessPiece> next =
+        ChessRules.applyMove(from, target, _pieces);
+    final bool givesCheck = ChessRules.isKingInCheck(!piece.white, next);
+    return capture + center + (givesCheck ? 6 : 0);
+  }
+
+  int _pieceValue(String code) {
+    return switch (code) {
+      'P' => 1,
+      'N' => 3,
+      'B' => 3,
+      'R' => 5,
+      'Q' => 9,
+      _ => 0,
+    };
+  }
+
+  Future<void> _showOnlineMatchmakingInfo() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) => const OnlineMatchmakingSheet(),
+    );
   }
 
   Future<void> _showPromotionPicker(String square, bool white) async {
@@ -2151,6 +2260,56 @@ class ChessCoin extends StatelessWidget {
                   semanticLabel:
                       '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}',
                 ),
+                IgnorePointer(
+                  child: ShaderMask(
+                    blendMode: BlendMode.srcATop,
+                    shaderCallback: (Rect bounds) {
+                      return LinearGradient(
+                        begin: const Alignment(-0.85, -1),
+                        end: const Alignment(0.7, 0.9),
+                        colors: <Color>[
+                          Colors.white.withValues(alpha: 0.58),
+                          Colors.white.withValues(alpha: 0.06),
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.18),
+                        ],
+                        stops: const <double>[0, 0.24, 0.58, 1],
+                      ).createShader(bounds);
+                    },
+                    child: Opacity(
+                      opacity: piece.white ? 0.34 : 0.24,
+                      child: Image.asset(
+                        pieceAsset(piece),
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: pieceSize * 0.11,
+                  left: pieceSize * 0.25,
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(
+                          alpha: piece.white ? 0.2 : 0.12,
+                        ),
+                        borderRadius: BorderRadius.circular(pieceSize),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: Colors.white.withValues(alpha: 0.22),
+                            blurRadius: pieceSize * 0.09,
+                          ),
+                        ],
+                      ),
+                      child: SizedBox(
+                        width: pieceSize * 0.13,
+                        height: pieceSize * 0.035,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -2357,6 +2516,7 @@ class PromotionChoice extends StatelessWidget {
 
 class GamePanel extends StatelessWidget {
   const GamePanel({
+    required this.compact,
     required this.whitePlayerName,
     required this.blackPlayerName,
     required this.activeColor,
@@ -2383,6 +2543,7 @@ class GamePanel extends StatelessWidget {
     super.key,
   });
 
+  final bool compact;
   final String whitePlayerName;
   final String blackPlayerName;
   final String activeColor;
@@ -2451,22 +2612,32 @@ class GamePanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          SegmentedButton<GameMode>(
-            segments: const <ButtonSegment<GameMode>>[
-              ButtonSegment<GameMode>(
+          DropdownButtonFormField<GameMode>(
+            key: const ValueKey<String>('game-mode-menu'),
+            initialValue: gameMode,
+            decoration: const InputDecoration(
+              labelText: 'Play mode',
+              prefixIcon: Icon(Icons.sports_esports_rounded),
+              border: OutlineInputBorder(),
+            ),
+            items: const <DropdownMenuItem<GameMode>>[
+              DropdownMenuItem<GameMode>(
                 value: GameMode.computer,
-                icon: Icon(Icons.memory_rounded),
-                label: Text('Vs Computer'),
+                child: Text('Vs Computer'),
               ),
-              ButtonSegment<GameMode>(
+              DropdownMenuItem<GameMode>(
                 value: GameMode.local,
-                icon: Icon(Icons.people_alt_outlined),
-                label: Text('2 Players'),
+                child: Text('Local 2P'),
+              ),
+              DropdownMenuItem<GameMode>(
+                value: GameMode.online,
+                child: Text('Online Match'),
               ),
             ],
-            selected: <GameMode>{gameMode},
-            onSelectionChanged: (Set<GameMode> selected) {
-              onGameModeChanged(selected.first);
+            onChanged: (GameMode? mode) {
+              if (mode != null) {
+                onGameModeChanged(mode);
+              }
             },
           ),
           const SizedBox(height: 12),
@@ -2500,26 +2671,38 @@ class GamePanel extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           CoachInsight(note: coachNote, enabled: coachEnabled),
-          const SizedBox(height: 18),
-          CapturedMaterial(
-            capturedWhite: capturedWhite,
-            capturedBlack: capturedBlack,
-          ),
+          if (!compact) ...<Widget>[
+            const SizedBox(height: 18),
+            CapturedMaterial(
+              capturedWhite: capturedWhite,
+              capturedBlack: capturedBlack,
+            ),
+          ],
           const SizedBox(height: 18),
           Text('Board', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: boardPalettes.entries
+          DropdownButtonFormField<BoardSkin>(
+            key: const ValueKey<String>('board-theme-menu'),
+            initialValue: skin,
+            decoration: const InputDecoration(
+              labelText: 'Board theme',
+              prefixIcon: Icon(Icons.palette_outlined),
+              border: OutlineInputBorder(),
+            ),
+            items: boardPalettes.entries
                 .map(
-                  (MapEntry<BoardSkin, BoardPalette> entry) => BoardThemeChoice(
-                    palette: entry.value,
-                    selected: skin == entry.key,
-                    onTap: () => onSkinChanged(entry.key),
+                  (MapEntry<BoardSkin, BoardPalette> entry) =>
+                      DropdownMenuItem<BoardSkin>(
+                    value: entry.key,
+                    child: BoardThemeMenuItem(palette: entry.value),
                   ),
                 )
                 .toList(),
+            onChanged: (BoardSkin? selectedSkin) {
+              if (selectedSkin != null) {
+                onSkinChanged(selectedSkin);
+              }
+            },
           ),
           if (gameMode == GameMode.computer) ...<Widget>[
             const SizedBox(height: 18),
@@ -2527,7 +2710,7 @@ class GamePanel extends StatelessWidget {
               children: <Widget>[
                 Expanded(
                   child: Text(
-                    '${aiProfile.name} · Level $aiLevel',
+                    '${aiProfile.name} - Level $aiLevel',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
@@ -2550,7 +2733,7 @@ class GamePanel extends StatelessWidget {
               min: 1,
               max: 10,
               divisions: 9,
-              label: '${aiProfile.name} · ~${aiProfile.elo} Elo',
+              label: '${aiProfile.name} - ~${aiProfile.elo} Elo',
               onChanged: onAiLevelChanged,
             ),
           ],
@@ -2585,7 +2768,12 @@ class GamePanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          Text('Move history', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'Move history',
+            style: compact
+                ? Theme.of(context).textTheme.titleMedium
+                : Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 8),
         ];
 
@@ -2593,7 +2781,7 @@ class GamePanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             ...controls,
-            SizedBox(height: 220, child: history),
+            SizedBox(height: compact ? 120 : 220, child: history),
           ],
         );
 
@@ -2613,11 +2801,242 @@ class GamePanel extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(18),
+            padding: EdgeInsets.all(compact ? 12 : 18),
             child: SingleChildScrollView(child: content),
           ),
         );
       },
+    );
+  }
+}
+
+class BoardThemeMenuItem extends StatelessWidget {
+  const BoardThemeMenuItem({required this.palette, super.key});
+
+  final BoardPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: SizedBox(
+            width: 34,
+            height: 24,
+            child: Row(
+              children: <Widget>[
+                Expanded(child: ColoredBox(color: palette.light)),
+                Expanded(child: ColoredBox(color: palette.dark)),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(palette.label),
+      ],
+    );
+  }
+}
+
+class PositionAnalysisSheet extends StatelessWidget {
+  const PositionAnalysisSheet({required this.analysis, super.key});
+
+  final PositionAnalysis analysis;
+
+  @override
+  Widget build(BuildContext context) {
+    final String evaluation = analysis.evaluation == 0
+        ? 'Equal'
+        : analysis.evaluation > 0
+            ? 'White +${analysis.evaluation.toStringAsFixed(1)}'
+            : 'Black +${analysis.evaluation.abs().toStringAsFixed(1)}';
+
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              color: Color(0xFF17231F),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+              border: Border.fromBorderSide(
+                BorderSide(color: Color(0xFF8B7147)),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF786B58),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: <Widget>[
+                      const Icon(
+                        Icons.analytics_rounded,
+                        color: Color(0xFFD6A84F),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Position analysis',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close analysis',
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  AnalysisMetric(
+                    icon: Icons.balance_rounded,
+                    label: 'Evaluation',
+                    value: evaluation,
+                  ),
+                  AnalysisMetric(
+                    icon: Icons.route_rounded,
+                    label: '${analysis.side} legal moves',
+                    value: '${analysis.legalMoves}',
+                  ),
+                  AnalysisMetric(
+                    icon: Icons.gps_fixed_rounded,
+                    label: 'Immediate captures',
+                    value: '${analysis.captures}',
+                  ),
+                  AnalysisMetric(
+                    icon: analysis.inCheck
+                        ? Icons.warning_amber_rounded
+                        : Icons.shield_outlined,
+                    label: 'King safety',
+                    value: analysis.inCheck ? 'In check' : 'Safe',
+                  ),
+                  const SizedBox(height: 12),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD6A84F).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(7),
+                      border: Border.all(
+                        color: const Color(0xFFD6A84F).withValues(alpha: 0.48),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: <Widget>[
+                          const Icon(
+                            Icons.auto_awesome_rounded,
+                            color: Color(0xFFD6A84F),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              analysis.bestMove == null
+                                  ? 'No legal move'
+                                  : 'Recommended: ${analysis.bestMove}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AnalysisMetric extends StatelessWidget {
+  const AnalysisMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+    super.key,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        children: <Widget>[
+          Icon(icon, size: 20, color: const Color(0xFF63D2B8)),
+          const SizedBox(width: 10),
+          Expanded(child: Text(label)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
+        ],
+      ),
+    );
+  }
+}
+
+class OnlineMatchmakingSheet extends StatelessWidget {
+  const OnlineMatchmakingSheet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: Color(0xFF17231F),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              const Icon(
+                Icons.public_rounded,
+                size: 38,
+                color: Color(0xFF63D2B8),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Online matchmaking',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'The realtime match gateway is not deployed yet. Local 2P remains available while authenticated matchmaking, reconnect and anti-cheat services are completed.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 18),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -2860,7 +3279,8 @@ class AuthOverlay extends StatelessWidget {
                                 : TextInputType.emailAddress
                             : TextInputType.text,
                         decoration: InputDecoration(
-                          labelText: registerMode ? method : 'User ID or email',
+                          labelText:
+                              registerMode ? method : 'User ID, email or phone',
                           prefixIcon: Icon(
                             registerMode && method == 'Phone'
                                 ? Icons.phone_outlined

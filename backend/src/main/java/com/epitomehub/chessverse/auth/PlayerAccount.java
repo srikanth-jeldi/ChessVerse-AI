@@ -19,8 +19,11 @@ class PlayerAccount {
     @Column(name = "display_name", nullable = false, length = 80)
     String displayName;
 
-    @Column(nullable = false, unique = true, length = 254)
+    @Column(unique = true, length = 254)
     String email;
+
+    @Column(unique = true, length = 20)
+    String phone;
 
     @Column(name = "password_hash", nullable = false, length = 100)
     String passwordHash;
@@ -37,12 +40,18 @@ class PlayerAccount {
     protected PlayerAccount() {
     }
 
-    PlayerAccount(String username, String displayName, String email, String passwordHash) {
+    PlayerAccount(
+            String username,
+            String displayName,
+            String email,
+            String phone,
+            String passwordHash) {
         Instant now = Instant.now();
         this.id = UUID.randomUUID();
         this.username = username;
         this.displayName = displayName;
         this.email = email;
+        this.phone = phone;
         this.passwordHash = passwordHash;
         this.createdAt = now;
         this.updatedAt = now;

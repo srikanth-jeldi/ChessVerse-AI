@@ -54,6 +54,23 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.message").value("Invalid user id or password."));
     }
 
+    @Test
+    void phoneRegistrationUsesSmsDelivery() throws Exception {
+        mockMvc.perform(post("/api/auth/register-phone")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "phone_player",
+                                  "displayName": "Phone Player",
+                                  "phone": "+919876543210",
+                                  "password": "StrongPass123"
+                                }
+                                """))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.message").value("Verification code sent to +91****3210"))
+                .andExpect(jsonPath("$.expiresAt").exists());
+    }
+
     @TestConfiguration
     static class TestOtpConfiguration {
         @Bean
@@ -62,6 +79,16 @@ class AuthControllerTest {
             return (email, displayName, code) -> {
                 if (!code.matches("\\d{6}")) {
                     throw new AssertionError("OTP must contain six digits");
+                }
+            };
+        }
+
+        @Bean
+        @Primary
+        SmsOtpDelivery testSmsOtpDelivery() {
+            return (phone, displayName, code) -> {
+                if (!phone.startsWith("+") || !code.matches("\\d{6}")) {
+                    throw new AssertionError("SMS OTP payload is invalid");
                 }
             };
         }

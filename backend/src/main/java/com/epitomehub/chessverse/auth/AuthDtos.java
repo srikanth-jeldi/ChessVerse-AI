@@ -20,8 +20,26 @@ final class AuthDtos {
             @NotBlank @Size(min = 8, max = 72) String password) {
     }
 
+    record RegisterPhoneRequest(
+            @NotBlank @Size(min = 3, max = 40)
+            @Pattern(regexp = "^[A-Za-z0-9_.-]+$", message = "use letters, numbers, dot, dash or underscore")
+            String username,
+            @NotBlank @Size(min = 2, max = 80) String displayName,
+            @NotBlank
+            @Pattern(regexp = "^\\+[1-9]\\d{7,14}$", message = "use E.164 format, for example +919876543210")
+            String phone,
+            @NotBlank @Size(min = 8, max = 72) String password) {
+    }
+
     record VerifyRequest(
             @NotBlank @Email String email,
+            @NotBlank @Pattern(regexp = "^\\d{6}$") String code) {
+    }
+
+    record VerifyPhoneRequest(
+            @NotBlank
+            @Pattern(regexp = "^\\+[1-9]\\d{7,14}$")
+            String phone,
             @NotBlank @Pattern(regexp = "^\\d{6}$") String code) {
     }
 
@@ -36,9 +54,19 @@ final class AuthDtos {
     record AuthResponse(String token, Instant expiresAt, PlayerResponse player) {
     }
 
-    record PlayerResponse(UUID id, String username, String displayName, String email) {
+    record PlayerResponse(
+            UUID id,
+            String username,
+            String displayName,
+            String email,
+            String phone) {
         static PlayerResponse from(PlayerAccount player) {
-            return new PlayerResponse(player.id, player.username, player.displayName, player.email);
+            return new PlayerResponse(
+                    player.id,
+                    player.username,
+                    player.displayName,
+                    player.email,
+                    player.phone);
         }
     }
 }

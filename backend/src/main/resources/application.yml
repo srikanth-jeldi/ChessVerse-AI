@@ -30,6 +30,10 @@ chessverse:
     otp-expiry-minutes: ${OTP_EXPIRY_MINUTES:10}
     session-expiry-days: ${SESSION_EXPIRY_DAYS:30}
     mail-from: ${MAIL_FROM:${MAIL_USERNAME:}}
+    sms:
+      gateway-url: ${SMS_GATEWAY_URL:}
+      gateway-token: ${SMS_GATEWAY_TOKEN:}
+      sender: ${SMS_SENDER:ChessVerse}
 
 management:
   endpoints:
