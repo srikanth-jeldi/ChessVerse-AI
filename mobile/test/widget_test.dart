@@ -1,4 +1,5 @@
 import 'package:chessverse_ai/main.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -30,5 +31,34 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('switches between computer and local players', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: GameScreen(initiallySignedIn: true)),
+    );
+
+    await tester.tap(find.text('2 Players'));
+    await tester.pump();
+
+    expect(find.text('Local Match'), findsOneWidget);
+    expect(find.text('Player 2'), findsWidgets);
+  });
+
+  testWidgets('computer replies after a legal white move', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: GameScreen(initiallySignedIn: true)),
+    );
+
+    await tester.tap(find.byKey(const ValueKey<String>('square-e2')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey<String>('square-e4')));
+    await tester.pump(const Duration(milliseconds: 900));
+
+    expect(find.text('2 moves'), findsOneWidget);
   });
 }
