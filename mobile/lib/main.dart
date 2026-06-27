@@ -650,6 +650,7 @@ class _GameScreenState extends State<GameScreen> {
   bool _signedIn = false;
   bool _awaitingCode = false;
   bool _authLoading = false;
+  bool _authHasError = false;
   bool _registerMode = true;
   String _authMethod = 'Email';
   String _authUsername = '';
@@ -871,6 +872,7 @@ class _GameScreenState extends State<GameScreen> {
                           awaitingCode: _awaitingCode,
                           method: _authMethod,
                           message: _authMessage,
+                          hasError: _authHasError,
                           onModeChanged: _setAuthMode,
                           onMethodChanged: _setAuthMethod,
                           onUsernameChanged: (String value) {
@@ -898,7 +900,10 @@ class _GameScreenState extends State<GameScreen> {
                           loading: _authLoading,
                           onSocialCredential: _socialLogin,
                           onSocialError: (String message) {
-                            setState(() => _authMessage = message);
+                            setState(() {
+                              _authHasError = true;
+                              _authMessage = message;
+                            });
                           },
                         ),
                       ),
@@ -927,6 +932,7 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       _registerMode = registerMode;
       _awaitingCode = false;
+      _authHasError = false;
       _authMessage = registerMode
           ? 'Create an account to save games, ratings and coach history.'
           : 'Welcome back. Sign in with your user id and password.';
@@ -937,6 +943,7 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       _authMethod = method;
       _awaitingCode = false;
+      _authHasError = false;
       _authMessage = method == 'Phone'
           ? 'Use phone verification for first login.'
           : 'Use email verification for first login.';
@@ -947,6 +954,7 @@ class _GameScreenState extends State<GameScreen> {
     if (_authLoading) {
       return;
     }
+    FocusManager.instance.primaryFocus?.unfocus();
     if (_registerMode &&
         !_awaitingCode &&
         (_authUsername.isEmpty ||
@@ -954,6 +962,7 @@ class _GameScreenState extends State<GameScreen> {
             _authIdentity.isEmpty ||
             _authPassword.length < 8)) {
       setState(() {
+        _authHasError = true;
         _authMessage =
             'Enter a user id, display name, valid email and an 8+ character password.';
       });
@@ -963,6 +972,7 @@ class _GameScreenState extends State<GameScreen> {
       final String? normalizedPhone = normalizePhone(_authIdentity);
       if (normalizedPhone == null) {
         setState(() {
+          _authHasError = true;
           _authMessage =
               'Enter a valid 10-digit Indian mobile number or international number with country code.';
         });
@@ -972,18 +982,23 @@ class _GameScreenState extends State<GameScreen> {
     }
     if (_awaitingCode && !RegExp(r'^\d{6}$').hasMatch(_authCode)) {
       setState(() {
+        _authHasError = true;
         _authMessage =
             'Enter the six-digit code sent to your ${_authMethod.toLowerCase()}.';
       });
       return;
     }
     if (!_registerMode && (_authIdentity.isEmpty || _authPassword.isEmpty)) {
-      setState(() => _authMessage = 'Enter your user id and password.');
+      setState(() {
+        _authHasError = true;
+        _authMessage = 'Enter your user id and password.';
+      });
       return;
     }
 
     setState(() {
       _authLoading = true;
+      _authHasError = false;
       _authMessage = _awaitingCode
           ? 'Verifying your code...'
           : _registerMode
@@ -1013,6 +1028,7 @@ class _GameScreenState extends State<GameScreen> {
         if (!mounted) return;
         setState(() {
           _awaitingCode = true;
+          _authHasError = false;
           final String baseMessage = response['message'] as String? ??
               'Verification code sent. Check your inbox.';
           final String? developmentCode =
@@ -1058,7 +1074,16 @@ class _GameScreenState extends State<GameScreen> {
       }
     } on AuthApiException catch (error) {
       if (mounted) {
-        setState(() => _authMessage = error.message);
+        setState(() {
+          _authHasError = true;
+          _authMessage = switch (error.message) {
+            'That user id is already taken.' =>
+              'User ID "$_authUsername" is already taken. Choose another User ID or select Login.',
+            'An account already exists for this phone number.' =>
+              'This phone number already has an account. Select Login and continue with your phone and password.',
+            _ => error.message,
+          };
+        });
       }
     } finally {
       if (mounted) {
@@ -1073,6 +1098,7 @@ class _GameScreenState extends State<GameScreen> {
     }
     setState(() {
       _authLoading = true;
+      _authHasError = false;
       _authMessage = 'Verifying ${credential.provider} account...';
     });
     try {
@@ -1095,7 +1121,10 @@ class _GameScreenState extends State<GameScreen> {
       );
     } on AuthApiException catch (error) {
       if (mounted) {
-        setState(() => _authMessage = error.message);
+        setState(() {
+          _authHasError = true;
+          _authMessage = error.message;
+        });
       }
     } finally {
       if (mounted) {
@@ -1111,6 +1140,7 @@ class _GameScreenState extends State<GameScreen> {
     _whitePlayerName = cleanName.isEmpty ? 'Player' : cleanName;
     _signedIn = true;
     _awaitingCode = false;
+    _authHasError = false;
     _coachNote = 'Welcome $_whitePlayerName. Your arena is ready.';
   }
 
@@ -3370,6 +3400,7 @@ class AuthOverlay extends StatelessWidget {
     required this.awaitingCode,
     required this.method,
     required this.message,
+    required this.hasError,
     required this.onModeChanged,
     required this.onMethodChanged,
     required this.onUsernameChanged,
@@ -3389,6 +3420,7 @@ class AuthOverlay extends StatelessWidget {
   final bool awaitingCode;
   final String method;
   final String message;
+  final bool hasError;
   final ValueChanged<bool> onModeChanged;
   final ValueChanged<String> onMethodChanged;
   final ValueChanged<String> onUsernameChanged;
@@ -3448,8 +3480,11 @@ class AuthOverlay extends StatelessWidget {
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                     const SizedBox(height: 8),
-                    Text(message,
-                        style: Theme.of(context).textTheme.bodyMedium),
+                    if (!hasError)
+                      Text(
+                        message,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
                     const SizedBox(height: 16),
                     if (!awaitingCode)
                       SegmentedButton<bool>(
@@ -3575,6 +3610,42 @@ class AuthOverlay extends StatelessWidget {
                         decoration: const InputDecoration(
                           labelText: 'Six-digit verification code',
                           border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                    if (hasError) ...<Widget>[
+                      const SizedBox(height: 14),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF5350).withValues(alpha: 0.12),
+                          border: Border.all(
+                            color:
+                                const Color(0xFFEF5350).withValues(alpha: 0.65),
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              const Icon(
+                                Icons.error_outline_rounded,
+                                color: Color(0xFFFF7774),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  message,
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFB4B2),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
