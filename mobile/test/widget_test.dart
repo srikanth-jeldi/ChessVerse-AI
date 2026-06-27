@@ -61,4 +61,33 @@ void main() {
 
     expect(find.text('2 moves'), findsOneWidget);
   });
+
+  testWidgets('checkmate marks the checked king square and shows the winner', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: GameScreen(initiallySignedIn: true)),
+    );
+    await tester.tap(find.text('2 Players'));
+    await tester.pump();
+
+    for (final (String from, String to) in <(String, String)>[
+      ('f2', 'f3'),
+      ('e7', 'e5'),
+      ('g2', 'g4'),
+      ('d8', 'h4'),
+    ]) {
+      await tester.tap(find.byKey(ValueKey<String>('square-$from')));
+      await tester.pump();
+      await tester.tap(find.byKey(ValueKey<String>('square-$to')));
+      await tester.pump();
+    }
+
+    final BoardSquare checkedKing = tester.widget<BoardSquare>(
+      find.byKey(const ValueKey<String>('square-e1')),
+    );
+    expect(checkedKing.checkedKing, isTrue);
+    expect(find.text('Black wins'), findsOneWidget);
+    expect(find.text('Checkmate'), findsOneWidget);
+  });
 }
