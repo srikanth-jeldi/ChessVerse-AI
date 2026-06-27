@@ -11,9 +11,10 @@ pubspec.lock
 *.iml
 *.log
 .env
+backend/data/
+backend-local*.log
 .env.*
 !.env.example
 coverage/
 node_modules/
 dist/
-
