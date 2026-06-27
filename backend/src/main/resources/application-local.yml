@@ -18,3 +18,7 @@ management:
   health:
     mail:
       enabled: false
+
+chessverse:
+  engine:
+    stockfish-path: ../.local/stockfish/stockfish.exe

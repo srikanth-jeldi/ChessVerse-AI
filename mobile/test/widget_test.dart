@@ -3,6 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('normalizes Indian and international phone numbers', () {
+    expect(normalizePhone('7569898494'), '+917569898494');
+    expect(normalizePhone('+1 415 555 2671'), '+14155552671');
+    expect(normalizePhone('12345'), isNull);
+  });
+
   testWidgets('renders game board shell', (WidgetTester tester) async {
     await tester.pumpWidget(const ChessVerseApp());
 
@@ -33,11 +39,27 @@ void main() {
     );
   });
 
+  testWidgets('phone registration explains automatic India country code', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const ChessVerseApp());
+
+    await tester.tap(find.text('Phone'));
+    await tester.pump();
+
+    expect(find.text('India +91 is added automatically'), findsOneWidget);
+  });
+
   testWidgets('switches between computer and local players', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(home: GameScreen(initiallySignedIn: true)),
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+        ),
+      ),
     );
 
     await tester.tap(find.byKey(const ValueKey<String>('game-mode-menu')));
@@ -53,7 +75,12 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(home: GameScreen(initiallySignedIn: true)),
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+        ),
+      ),
     );
 
     await tester.tap(find.byKey(const ValueKey<String>('square-e2')));
@@ -68,7 +95,12 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(home: GameScreen(initiallySignedIn: true)),
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+        ),
+      ),
     );
     await tester.tap(find.byKey(const ValueKey<String>('game-mode-menu')));
     await tester.pumpAndSettle();
@@ -106,7 +138,12 @@ void main() {
     });
 
     await tester.pumpWidget(
-      const MaterialApp(home: GameScreen(initiallySignedIn: true)),
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+        ),
+      ),
     );
 
     await tester.tap(find.text('Analyze'));

@@ -54,6 +54,62 @@ class AuthApiException implements Exception {
   final String message;
 }
 
+class EngineApi {
+  const EngineApi();
+
+  Future<Map<String, dynamic>> bestMove({
+    required String fen,
+    required int level,
+  }) async {
+    final http.Response response;
+    try {
+      response = await http
+          .post(
+            Uri.parse('$apiBaseUrl/api/v1/engine/best-move'),
+            headers: const <String, String>{'Content-Type': 'application/json'},
+            body: jsonEncode(<String, Object>{'fen': fen, 'level': level}),
+          )
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {
+      throw const EngineApiException('Chess engine is unavailable.');
+    }
+
+    final Object? decoded = jsonDecode(response.body);
+    final Map<String, dynamic> data =
+        decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw EngineApiException(
+        data['message'] as String? ?? 'Chess engine is unavailable.',
+      );
+    }
+    return data;
+  }
+}
+
+class EngineApiException implements Exception {
+  const EngineApiException(this.message);
+
+  final String message;
+}
+
+String? normalizePhone(String value) {
+  final String trimmed = value.trim();
+  final String digits = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
+  if (trimmed.startsWith('+') &&
+      digits.length >= 8 &&
+      digits.length <= 15 &&
+      !digits.startsWith('0')) {
+    return '+$digits';
+  }
+  if (digits.length == 10 && RegExp(r'^[6-9]').hasMatch(digits)) {
+    return '+91$digits';
+  }
+  if (digits.length == 12 && digits.startsWith('91')) {
+    return '+$digits';
+  }
+  return null;
+}
+
 void main() {
   runApp(const ChessVerseApp());
 }
@@ -153,19 +209,18 @@ class AiProfile {
 }
 
 AiProfile aiProfileFor(int level) {
-  if (level <= 2) {
-    return AiProfile('Beginner', 500 + level * 100, 'Learning pace');
-  }
-  if (level <= 4) {
-    return AiProfile('Casual', 700 + level * 125, 'Sees simple tactics');
-  }
-  if (level <= 6) {
-    return AiProfile('Club', 900 + level * 140, 'Plans and punishes');
-  }
-  if (level <= 8) {
-    return AiProfile('Expert', 1100 + level * 150, 'Strong calculation');
-  }
-  return AiProfile('Master', 1250 + level * 160, 'Tournament pressure');
+  return switch (level.clamp(1, 10)) {
+    1 => const AiProfile('Beginner', 1320, 'Beatable, short calculation'),
+    2 => const AiProfile('Learner', 1400, 'Basic tactics and development'),
+    3 => const AiProfile('Casual', 1500, 'Punishes simple mistakes'),
+    4 => const AiProfile('Intermediate', 1600, 'Plans two ideas ahead'),
+    5 => const AiProfile('Club', 1750, 'Solid positional play'),
+    6 => const AiProfile('Advanced', 1900, 'Finds tactical combinations'),
+    7 => const AiProfile('Expert', 2100, 'Deep calculation and defense'),
+    8 => const AiProfile('Candidate Master', 2300, 'Tournament strength'),
+    9 => const AiProfile('Master', 2600, 'Elite engine pressure'),
+    _ => const AiProfile('Grandmaster', 3000, 'Maximum challenge'),
+  };
 }
 
 class AiCandidate {
@@ -555,9 +610,14 @@ class ChessRules {
 }
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({this.initiallySignedIn = false, super.key});
+  const GameScreen({
+    this.initiallySignedIn = false,
+    this.useRemoteEngine = true,
+    super.key,
+  });
 
   final bool initiallySignedIn;
+  final bool useRemoteEngine;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -565,6 +625,7 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   static const AuthApi _authApi = AuthApi();
+  static const EngineApi _engineApi = EngineApi();
   final math.Random _random = math.Random();
   AudioPlayer? _warningPlayer;
   final List<String> _moves = <String>[];
@@ -894,6 +955,17 @@ class _GameScreenState extends State<GameScreen> {
       });
       return;
     }
+    if (_registerMode && !_awaitingCode && _authMethod == 'Phone') {
+      final String? normalizedPhone = normalizePhone(_authIdentity);
+      if (normalizedPhone == null) {
+        setState(() {
+          _authMessage =
+              'Enter a valid 10-digit Indian mobile number or international number with country code.';
+        });
+        return;
+      }
+      _authIdentity = normalizedPhone;
+    }
     if (_awaitingCode && !RegExp(r'^\d{6}$').hasMatch(_authCode)) {
       setState(() {
         _authMessage =
@@ -1145,7 +1217,36 @@ class _GameScreenState extends State<GameScreen> {
     Future<void>.delayed(const Duration(milliseconds: 650), _performAiMove);
   }
 
-  void _performAiMove() {
+  Future<void> _performAiMove() async {
+    if (!mounted ||
+        _gameMode != GameMode.computer ||
+        _gameResultTitle != null ||
+        !_aiThinking ||
+        _moves.length.isEven) {
+      return;
+    }
+
+    AiCandidate? engineMove;
+    if (widget.useRemoteEngine) {
+      try {
+        final Map<String, dynamic> response = await _engineApi.bestMove(
+          fen: _toFen(),
+          level: _aiLevel.round(),
+        );
+        final String uci = response['move'] as String? ?? '';
+        if (uci.length >= 4) {
+          final String from = uci.substring(0, 2);
+          final String to = uci.substring(2, 4);
+          if (_pieces[from]?.white == false &&
+              _legalTargetsFor(from).contains(to)) {
+            engineMove = AiCandidate(from, to, 1000);
+          }
+        }
+      } on EngineApiException {
+        // The deterministic local fallback keeps offline games playable.
+      }
+    }
+
     if (!mounted ||
         _gameMode != GameMode.computer ||
         _gameResultTitle != null ||
@@ -1206,7 +1307,9 @@ class _GameScreenState extends State<GameScreen> {
       candidates.length,
       math.max(1, ((11 - level) / 2).ceil()),
     );
-    final AiCandidate move = candidates[_random.nextInt(poolSize)];
+    final AiCandidate move =
+        engineMove ?? candidates[_random.nextInt(poolSize)];
+    final bool stockfishPowered = engineMove != null;
 
     setState(() {
       _saveSnapshot();
@@ -1242,9 +1345,92 @@ class _GameScreenState extends State<GameScreen> {
       final String action = captured == null
           ? '${piece.code} moves to ${move.to}.'
           : '${piece.code} captures ${captured.code} on ${move.to}.';
-      _coachNote = _gameStateNote(true, fallback: 'AI: $action');
+      _coachNote = _gameStateNote(
+        true,
+        fallback: '${stockfishPowered ? 'Stockfish' : 'Offline AI'}: $action',
+      );
       _aiThinking = false;
     });
+  }
+
+  String _toFen() {
+    final List<String> ranks = <String>[];
+    for (int rank = 8; rank >= 1; rank--) {
+      int empty = 0;
+      final StringBuffer row = StringBuffer();
+      for (int file = 0; file < 8; file++) {
+        final String square = '${String.fromCharCode(97 + file)}$rank';
+        final ChessPiece? piece = _pieces[square];
+        if (piece == null) {
+          empty++;
+          continue;
+        }
+        if (empty > 0) {
+          row.write(empty);
+          empty = 0;
+        }
+        row.write(piece.white ? piece.code : piece.code.toLowerCase());
+      }
+      if (empty > 0) {
+        row.write(empty);
+      }
+      ranks.add(row.toString());
+    }
+
+    final String side = _moves.length.isEven ? 'w' : 'b';
+    final String castling = _fenCastlingRights();
+    final String enPassant = _fenEnPassantSquare();
+    final int fullMove = _moves.length ~/ 2 + 1;
+    return '${ranks.join('/')} $side $castling $enPassant 0 $fullMove';
+  }
+
+  String _fenCastlingRights() {
+    final StringBuffer rights = StringBuffer();
+    if (_pieces['e1']?.code == 'K' &&
+        _pieces['e1']?.white == true &&
+        !_hasMovedFrom('e1')) {
+      if (_pieces['h1']?.code == 'R' &&
+          _pieces['h1']?.white == true &&
+          !_hasMovedFrom('h1')) {
+        rights.write('K');
+      }
+      if (_pieces['a1']?.code == 'R' &&
+          _pieces['a1']?.white == true &&
+          !_hasMovedFrom('a1')) {
+        rights.write('Q');
+      }
+    }
+    if (_pieces['e8']?.code == 'K' &&
+        _pieces['e8']?.white == false &&
+        !_hasMovedFrom('e8')) {
+      if (_pieces['h8']?.code == 'R' &&
+          _pieces['h8']?.white == false &&
+          !_hasMovedFrom('h8')) {
+        rights.write('k');
+      }
+      if (_pieces['a8']?.code == 'R' &&
+          _pieces['a8']?.white == false &&
+          !_hasMovedFrom('a8')) {
+        rights.write('q');
+      }
+    }
+    return rights.isEmpty ? '-' : rights.toString();
+  }
+
+  String _fenEnPassantSquare() {
+    if (_moves.isEmpty) {
+      return '-';
+    }
+    final ParsedMove? last = _parseMove(_moves.first);
+    if (last == null || _pieces[last.to]?.code != 'P') {
+      return '-';
+    }
+    final int fromRank = int.parse(last.from.substring(1));
+    final int toRank = int.parse(last.to.substring(1));
+    if ((fromRank - toRank).abs() != 2) {
+      return '-';
+    }
+    return '${last.to.substring(0, 1)}${(fromRank + toRank) ~/ 2}';
   }
 
   List<String> _legalTargetsFor(String square) {
@@ -3281,6 +3467,9 @@ class AuthOverlay extends StatelessWidget {
                         decoration: InputDecoration(
                           labelText:
                               registerMode ? method : 'User ID, email or phone',
+                          helperText: registerMode && method == 'Phone'
+                              ? 'India +91 is added automatically'
+                              : null,
                           prefixIcon: Icon(
                             registerMode && method == 'Phone'
                                 ? Icons.phone_outlined

@@ -12,6 +12,7 @@ pubspec.lock
 *.log
 .env
 backend/data/
+.local/
 backend-local*.log
 .env.*
 !.env.example

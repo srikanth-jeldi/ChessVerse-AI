@@ -26,6 +26,9 @@ spring:
             required: true
 
 chessverse:
+  engine:
+    stockfish-path: ${STOCKFISH_PATH:stockfish}
+    response-timeout-seconds: ${STOCKFISH_TIMEOUT_SECONDS:5}
   auth:
     otp-expiry-minutes: ${OTP_EXPIRY_MINUTES:10}
     session-expiry-days: ${SESSION_EXPIRY_DAYS:30}

@@ -179,7 +179,7 @@ class AuthService {
                 .orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED, "Invalid user id or password."));
 
         if (!player.verified) {
-            throw new AuthException(HttpStatus.FORBIDDEN, "Verify your email before signing in.");
+            throw new AuthException(HttpStatus.FORBIDDEN, "Verify your account before signing in.");
         }
         if (!passwordEncoder.matches(request.password(), player.passwordHash)) {
             throw new AuthException(HttpStatus.UNAUTHORIZED, "Invalid user id or password.");
