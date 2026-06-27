@@ -1,6 +1,7 @@
 package com.epitomehub.chessverse.api;
 
 import com.epitomehub.chessverse.auth.AuthException;
+import com.epitomehub.chessverse.engine.EngineException;
 import com.epitomehub.chessverse.game.GameNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
@@ -17,6 +18,11 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<Map<String, Object>> auth(AuthException ex, HttpServletRequest request) {
+        return error(ex.status(), ex.getMessage(), request.getRequestURI());
+    }
+
+    @ExceptionHandler(EngineException.class)
+    public ResponseEntity<Map<String, Object>> engine(EngineException ex, HttpServletRequest request) {
         return error(ex.status(), ex.getMessage(), request.getRequestURI());
     }
 

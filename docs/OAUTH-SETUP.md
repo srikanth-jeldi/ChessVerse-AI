@@ -15,10 +15,12 @@ session.
    - Android: register the Android package name plus release and debug SHA-1
      fingerprints.
    - iOS: register the iOS bundle identifier and URL scheme.
-4. Set `GOOGLE_WEB_CLIENT_ID` and `GOOGLE_SERVER_CLIENT_ID` in the deployment
-   environment. Never put a client secret in the Flutter application.
+4. Set `GOOGLE_WEB_CLIENT_ID` and `GOOGLE_SERVER_CLIENT_ID` in the Flutter
+   build. Set `GOOGLE_CLIENT_IDS` on the backend to a comma-separated list of
+   every accepted Web, Android, iOS and server client ID. Never put a client
+   secret in the Flutter application.
 5. The Flutter client uses `google_sign_in` and sends the Google identity token
-   or server authorization code to the backend.
+   to the backend.
 6. The backend verifies the token issuer, audience, signature, expiry, and
    nonce before finding or creating the ChessVerse account and issuing its own
    session token.
@@ -33,12 +35,13 @@ session.
    `https://api.example.com/api/auth/apple/callback`.
 5. Create a Sign in with Apple key and record the Team ID and Key ID. The `.p8`
    private key can only be downloaded once.
-6. Store `APPLE_SERVICE_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`,
+6. Store `APPLE_SERVICE_ID`, `APPLE_CLIENT_IDS`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`,
    `APPLE_REDIRECT_URI`, and the `.p8` key in AWS Secrets Manager or an
    equivalent secret store. Never commit the key.
-7. The Flutter client sends Apple's authorization code and nonce to the
-   backend. The backend exchanges and validates them with Apple, then issues a
-   ChessVerse session.
+7. The Flutter client sends Apple's identity token to the backend. The backend
+   validates its Apple signature, issuer, accepted audience and expiry, then
+   issues a ChessVerse session. Authorization-code exchange and Apple refresh
+   token revocation monitoring remain a production hardening milestone.
 
 Apple web login requires a public HTTPS domain. Use a temporary HTTPS tunnel
 for local callback testing; `localhost` is not a production return URL.

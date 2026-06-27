@@ -6,6 +6,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import 'social_auth.dart';
+
 const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: 'http://127.0.0.1:8080',
@@ -52,6 +54,62 @@ class AuthApiException implements Exception {
   const AuthApiException(this.message);
 
   final String message;
+}
+
+class EngineApi {
+  const EngineApi();
+
+  Future<Map<String, dynamic>> bestMove({
+    required String fen,
+    required int level,
+  }) async {
+    final http.Response response;
+    try {
+      response = await http
+          .post(
+            Uri.parse('$apiBaseUrl/api/v1/engine/best-move'),
+            headers: const <String, String>{'Content-Type': 'application/json'},
+            body: jsonEncode(<String, Object>{'fen': fen, 'level': level}),
+          )
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {
+      throw const EngineApiException('Chess engine is unavailable.');
+    }
+
+    final Object? decoded = jsonDecode(response.body);
+    final Map<String, dynamic> data =
+        decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw EngineApiException(
+        data['message'] as String? ?? 'Chess engine is unavailable.',
+      );
+    }
+    return data;
+  }
+}
+
+class EngineApiException implements Exception {
+  const EngineApiException(this.message);
+
+  final String message;
+}
+
+String? normalizePhone(String value) {
+  final String trimmed = value.trim();
+  final String digits = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
+  if (trimmed.startsWith('+') &&
+      digits.length >= 8 &&
+      digits.length <= 15 &&
+      !digits.startsWith('0')) {
+    return '+$digits';
+  }
+  if (digits.length == 10 && RegExp(r'^[6-9]').hasMatch(digits)) {
+    return '+91$digits';
+  }
+  if (digits.length == 12 && digits.startsWith('91')) {
+    return '+$digits';
+  }
+  return null;
 }
 
 void main() {
@@ -142,7 +200,7 @@ class ChessVerseTheme {
 
 enum BoardSkin { royalWalnut, jadeGlass, tournament, marble, sapphire }
 
-enum GameMode { computer, local }
+enum GameMode { computer, local, online }
 
 class AiProfile {
   const AiProfile(this.name, this.elo, this.description);
@@ -153,19 +211,18 @@ class AiProfile {
 }
 
 AiProfile aiProfileFor(int level) {
-  if (level <= 2) {
-    return AiProfile('Beginner', 500 + level * 100, 'Learning pace');
-  }
-  if (level <= 4) {
-    return AiProfile('Casual', 700 + level * 125, 'Sees simple tactics');
-  }
-  if (level <= 6) {
-    return AiProfile('Club', 900 + level * 140, 'Plans and punishes');
-  }
-  if (level <= 8) {
-    return AiProfile('Expert', 1100 + level * 150, 'Strong calculation');
-  }
-  return AiProfile('Master', 1250 + level * 160, 'Tournament pressure');
+  return switch (level.clamp(1, 10)) {
+    1 => const AiProfile('Beginner', 1320, 'Beatable, short calculation'),
+    2 => const AiProfile('Learner', 1400, 'Basic tactics and development'),
+    3 => const AiProfile('Casual', 1500, 'Punishes simple mistakes'),
+    4 => const AiProfile('Intermediate', 1600, 'Plans two ideas ahead'),
+    5 => const AiProfile('Club', 1750, 'Solid positional play'),
+    6 => const AiProfile('Advanced', 1900, 'Finds tactical combinations'),
+    7 => const AiProfile('Expert', 2100, 'Deep calculation and defense'),
+    8 => const AiProfile('Candidate Master', 2300, 'Tournament strength'),
+    9 => const AiProfile('Master', 2600, 'Elite engine pressure'),
+    _ => const AiProfile('Grandmaster', 3000, 'Maximum challenge'),
+  };
 }
 
 class AiCandidate {
@@ -174,6 +231,26 @@ class AiCandidate {
   final String from;
   final String to;
   final double score;
+}
+
+class PositionAnalysis {
+  const PositionAnalysis({
+    required this.side,
+    required this.evaluation,
+    required this.material,
+    required this.legalMoves,
+    required this.captures,
+    required this.bestMove,
+    required this.inCheck,
+  });
+
+  final String side;
+  final double evaluation;
+  final int material;
+  final int legalMoves;
+  final int captures;
+  final String? bestMove;
+  final bool inCheck;
 }
 
 class BoardPalette {
@@ -535,9 +612,14 @@ class ChessRules {
 }
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({this.initiallySignedIn = false, super.key});
+  const GameScreen({
+    this.initiallySignedIn = false,
+    this.useRemoteEngine = true,
+    super.key,
+  });
 
   final bool initiallySignedIn;
+  final bool useRemoteEngine;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -545,6 +627,7 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   static const AuthApi _authApi = AuthApi();
+  static const EngineApi _engineApi = EngineApi();
   final math.Random _random = math.Random();
   AudioPlayer? _warningPlayer;
   final List<String> _moves = <String>[];
@@ -567,6 +650,7 @@ class _GameScreenState extends State<GameScreen> {
   bool _signedIn = false;
   bool _awaitingCode = false;
   bool _authLoading = false;
+  bool _authHasError = false;
   bool _registerMode = true;
   String _authMethod = 'Email';
   String _authUsername = '';
@@ -705,6 +789,7 @@ class _GameScreenState extends State<GameScreen> {
               );
 
               final Widget panel = GamePanel(
+                compact: !wide,
                 whitePlayerName: _whitePlayerName,
                 blackPlayerName: _blackPlayerName,
                 activeColor: _moves.length.isEven ? 'White' : 'Black',
@@ -765,7 +850,7 @@ class _GameScreenState extends State<GameScreen> {
                               ),
                               const SizedBox(height: 12),
                               Expanded(
-                                flex: 5,
+                                flex: 6,
                                 child: BoardStage(
                                   palette: palette,
                                   moveCount: _moves.length,
@@ -777,7 +862,7 @@ class _GameScreenState extends State<GameScreen> {
                                 ),
                               ),
                               const SizedBox(height: 14),
-                              Expanded(flex: 4, child: panel),
+                              Expanded(flex: 3, child: panel),
                             ],
                           ),
                     if (!_signedIn)
@@ -787,6 +872,7 @@ class _GameScreenState extends State<GameScreen> {
                           awaitingCode: _awaitingCode,
                           method: _authMethod,
                           message: _authMessage,
+                          hasError: _authHasError,
                           onModeChanged: _setAuthMode,
                           onMethodChanged: _setAuthMethod,
                           onUsernameChanged: (String value) {
@@ -812,8 +898,13 @@ class _GameScreenState extends State<GameScreen> {
                                 'Update your details or request a new code.';
                           }),
                           loading: _authLoading,
-                          onGoogle: () => _socialLogin('Google'),
-                          onApple: () => _socialLogin('Apple'),
+                          onSocialCredential: _socialLogin,
+                          onSocialError: (String message) {
+                            setState(() {
+                              _authHasError = true;
+                              _authMessage = message;
+                            });
+                          },
                         ),
                       ),
                     if (_signedIn && _gameResultTitle != null && _resultVisible)
@@ -841,6 +932,7 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       _registerMode = registerMode;
       _awaitingCode = false;
+      _authHasError = false;
       _authMessage = registerMode
           ? 'Create an account to save games, ratings and coach history.'
           : 'Welcome back. Sign in with your user id and password.';
@@ -851,6 +943,7 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       _authMethod = method;
       _awaitingCode = false;
+      _authHasError = false;
       _authMessage = method == 'Phone'
           ? 'Use phone verification for first login.'
           : 'Use email verification for first login.';
@@ -861,14 +954,7 @@ class _GameScreenState extends State<GameScreen> {
     if (_authLoading) {
       return;
     }
-    if (_registerMode && _authMethod == 'Phone') {
-      setState(() {
-        _authMessage =
-            'Phone OTP needs an SMS provider such as AWS SNS. Email OTP is ready now.';
-      });
-      return;
-    }
-
+    FocusManager.instance.primaryFocus?.unfocus();
     if (_registerMode &&
         !_awaitingCode &&
         (_authUsername.isEmpty ||
@@ -876,23 +962,43 @@ class _GameScreenState extends State<GameScreen> {
             _authIdentity.isEmpty ||
             _authPassword.length < 8)) {
       setState(() {
+        _authHasError = true;
         _authMessage =
             'Enter a user id, display name, valid email and an 8+ character password.';
       });
       return;
     }
+    if (_registerMode && !_awaitingCode && _authMethod == 'Phone') {
+      final String? normalizedPhone = normalizePhone(_authIdentity);
+      if (normalizedPhone == null) {
+        setState(() {
+          _authHasError = true;
+          _authMessage =
+              'Enter a valid 10-digit Indian mobile number or international number with country code.';
+        });
+        return;
+      }
+      _authIdentity = normalizedPhone;
+    }
     if (_awaitingCode && !RegExp(r'^\d{6}$').hasMatch(_authCode)) {
-      setState(
-          () => _authMessage = 'Enter the six-digit code from your email.');
+      setState(() {
+        _authHasError = true;
+        _authMessage =
+            'Enter the six-digit code sent to your ${_authMethod.toLowerCase()}.';
+      });
       return;
     }
     if (!_registerMode && (_authIdentity.isEmpty || _authPassword.isEmpty)) {
-      setState(() => _authMessage = 'Enter your user id and password.');
+      setState(() {
+        _authHasError = true;
+        _authMessage = 'Enter your user id and password.';
+      });
       return;
     }
 
     setState(() {
       _authLoading = true;
+      _authHasError = false;
       _authMessage = _awaitingCode
           ? 'Verifying your code...'
           : _registerMode
@@ -902,25 +1008,43 @@ class _GameScreenState extends State<GameScreen> {
 
     try {
       if (_registerMode && !_awaitingCode) {
+        final bool phoneRegistration = _authMethod == 'Phone';
         final Map<String, dynamic> response = await _authApi.post(
-          'register',
-          <String, String>{
-            'username': _authUsername,
-            'displayName': _authDisplayName,
-            'email': _authIdentity,
-            'password': _authPassword,
-          },
+          phoneRegistration ? 'register-phone' : 'register',
+          phoneRegistration
+              ? <String, String>{
+                  'username': _authUsername,
+                  'displayName': _authDisplayName,
+                  'phone': _authIdentity,
+                  'password': _authPassword,
+                }
+              : <String, String>{
+                  'username': _authUsername,
+                  'displayName': _authDisplayName,
+                  'email': _authIdentity,
+                  'password': _authPassword,
+                },
         );
         if (!mounted) return;
         setState(() {
           _awaitingCode = true;
-          _authMessage = response['message'] as String? ??
+          _authHasError = false;
+          final String baseMessage = response['message'] as String? ??
               'Verification code sent. Check your inbox.';
+          final String? developmentCode =
+              response['developmentCode'] as String?;
+          _authMessage = developmentCode == null
+              ? baseMessage
+              : '$baseMessage Local test code: $developmentCode';
         });
       } else if (_awaitingCode) {
+        final bool phoneVerification = _authMethod == 'Phone';
         final Map<String, dynamic> response = await _authApi.post(
-          'verify-email',
-          <String, String>{'email': _authIdentity, 'code': _authCode},
+          phoneVerification ? 'verify-phone' : 'verify-email',
+          <String, String>{
+            phoneVerification ? 'phone' : 'email': _authIdentity,
+            'code': _authCode,
+          },
         );
         if (!mounted) return;
         final Map<String, dynamic>? player =
@@ -929,6 +1053,13 @@ class _GameScreenState extends State<GameScreen> {
           player?['displayName'] as String? ?? _authDisplayName,
         );
       } else {
+        if (_authIdentity.trim().startsWith('+') ||
+            RegExp(r'^[0-9 ()-]{10,}$').hasMatch(_authIdentity.trim())) {
+          final String? normalizedPhone = normalizePhone(_authIdentity);
+          if (normalizedPhone != null) {
+            _authIdentity = normalizedPhone;
+          }
+        }
         final Map<String, dynamic> response = await _authApi.post(
           'login',
           <String, String>{
@@ -943,7 +1074,16 @@ class _GameScreenState extends State<GameScreen> {
       }
     } on AuthApiException catch (error) {
       if (mounted) {
-        setState(() => _authMessage = error.message);
+        setState(() {
+          _authHasError = true;
+          _authMessage = switch (error.message) {
+            'That user id is already taken.' =>
+              'User ID "$_authUsername" is already taken. Choose another User ID or select Login.',
+            'An account already exists for this phone number.' =>
+              'This phone number already has an account. Select Login and continue with your phone and password.',
+            _ => error.message,
+          };
+        });
       }
     } finally {
       if (mounted) {
@@ -952,11 +1092,45 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  void _socialLogin(String provider) {
+  Future<void> _socialLogin(SocialCredential credential) async {
+    if (_authLoading) {
+      return;
+    }
     setState(() {
-      _authMessage =
-          '$provider sign-in needs OAuth app credentials. Email login is ready now.';
+      _authLoading = true;
+      _authHasError = false;
+      _authMessage = 'Verifying ${credential.provider} account...';
     });
+    try {
+      final Map<String, dynamic> response = await _authApi.post(
+        'oauth',
+        <String, String>{
+          'provider': credential.provider,
+          'idToken': credential.idToken,
+          if (credential.displayName != null)
+            'displayName': credential.displayName!,
+        },
+      );
+      if (!mounted) return;
+      final Map<String, dynamic>? player =
+          response['player'] as Map<String, dynamic>?;
+      _completeLogin(
+        player?['displayName'] as String? ??
+            credential.displayName ??
+            'Player',
+      );
+    } on AuthApiException catch (error) {
+      if (mounted) {
+        setState(() {
+          _authHasError = true;
+          _authMessage = error.message;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _authLoading = false);
+      }
+    }
   }
 
   void _completeLogin(String identity) {
@@ -966,10 +1140,15 @@ class _GameScreenState extends State<GameScreen> {
     _whitePlayerName = cleanName.isEmpty ? 'Player' : cleanName;
     _signedIn = true;
     _awaitingCode = false;
+    _authHasError = false;
     _coachNote = 'Welcome $_whitePlayerName. Your arena is ready.';
   }
 
   void _changeGameMode(GameMode mode) {
+    if (mode == GameMode.online) {
+      _showOnlineMatchmakingInfo();
+      return;
+    }
     setState(() {
       _gameMode = mode;
       _blackPlayerName =
@@ -1114,7 +1293,36 @@ class _GameScreenState extends State<GameScreen> {
     Future<void>.delayed(const Duration(milliseconds: 650), _performAiMove);
   }
 
-  void _performAiMove() {
+  Future<void> _performAiMove() async {
+    if (!mounted ||
+        _gameMode != GameMode.computer ||
+        _gameResultTitle != null ||
+        !_aiThinking ||
+        _moves.length.isEven) {
+      return;
+    }
+
+    AiCandidate? engineMove;
+    if (widget.useRemoteEngine) {
+      try {
+        final Map<String, dynamic> response = await _engineApi.bestMove(
+          fen: _toFen(),
+          level: _aiLevel.round(),
+        );
+        final String uci = response['move'] as String? ?? '';
+        if (uci.length >= 4) {
+          final String from = uci.substring(0, 2);
+          final String to = uci.substring(2, 4);
+          if (_pieces[from]?.white == false &&
+              _legalTargetsFor(from).contains(to)) {
+            engineMove = AiCandidate(from, to, 1000);
+          }
+        }
+      } on EngineApiException {
+        // The deterministic local fallback keeps offline games playable.
+      }
+    }
+
     if (!mounted ||
         _gameMode != GameMode.computer ||
         _gameResultTitle != null ||
@@ -1175,7 +1383,9 @@ class _GameScreenState extends State<GameScreen> {
       candidates.length,
       math.max(1, ((11 - level) / 2).ceil()),
     );
-    final AiCandidate move = candidates[_random.nextInt(poolSize)];
+    final AiCandidate move =
+        engineMove ?? candidates[_random.nextInt(poolSize)];
+    final bool stockfishPowered = engineMove != null;
 
     setState(() {
       _saveSnapshot();
@@ -1211,9 +1421,92 @@ class _GameScreenState extends State<GameScreen> {
       final String action = captured == null
           ? '${piece.code} moves to ${move.to}.'
           : '${piece.code} captures ${captured.code} on ${move.to}.';
-      _coachNote = _gameStateNote(true, fallback: 'AI: $action');
+      _coachNote = _gameStateNote(
+        true,
+        fallback: '${stockfishPowered ? 'Stockfish' : 'Offline AI'}: $action',
+      );
       _aiThinking = false;
     });
+  }
+
+  String _toFen() {
+    final List<String> ranks = <String>[];
+    for (int rank = 8; rank >= 1; rank--) {
+      int empty = 0;
+      final StringBuffer row = StringBuffer();
+      for (int file = 0; file < 8; file++) {
+        final String square = '${String.fromCharCode(97 + file)}$rank';
+        final ChessPiece? piece = _pieces[square];
+        if (piece == null) {
+          empty++;
+          continue;
+        }
+        if (empty > 0) {
+          row.write(empty);
+          empty = 0;
+        }
+        row.write(piece.white ? piece.code : piece.code.toLowerCase());
+      }
+      if (empty > 0) {
+        row.write(empty);
+      }
+      ranks.add(row.toString());
+    }
+
+    final String side = _moves.length.isEven ? 'w' : 'b';
+    final String castling = _fenCastlingRights();
+    final String enPassant = _fenEnPassantSquare();
+    final int fullMove = _moves.length ~/ 2 + 1;
+    return '${ranks.join('/')} $side $castling $enPassant 0 $fullMove';
+  }
+
+  String _fenCastlingRights() {
+    final StringBuffer rights = StringBuffer();
+    if (_pieces['e1']?.code == 'K' &&
+        _pieces['e1']?.white == true &&
+        !_hasMovedFrom('e1')) {
+      if (_pieces['h1']?.code == 'R' &&
+          _pieces['h1']?.white == true &&
+          !_hasMovedFrom('h1')) {
+        rights.write('K');
+      }
+      if (_pieces['a1']?.code == 'R' &&
+          _pieces['a1']?.white == true &&
+          !_hasMovedFrom('a1')) {
+        rights.write('Q');
+      }
+    }
+    if (_pieces['e8']?.code == 'K' &&
+        _pieces['e8']?.white == false &&
+        !_hasMovedFrom('e8')) {
+      if (_pieces['h8']?.code == 'R' &&
+          _pieces['h8']?.white == false &&
+          !_hasMovedFrom('h8')) {
+        rights.write('k');
+      }
+      if (_pieces['a8']?.code == 'R' &&
+          _pieces['a8']?.white == false &&
+          !_hasMovedFrom('a8')) {
+        rights.write('q');
+      }
+    }
+    return rights.isEmpty ? '-' : rights.toString();
+  }
+
+  String _fenEnPassantSquare() {
+    if (_moves.isEmpty) {
+      return '-';
+    }
+    final ParsedMove? last = _parseMove(_moves.first);
+    if (last == null || _pieces[last.to]?.code != 'P') {
+      return '-';
+    }
+    final int fromRank = int.parse(last.from.substring(1));
+    final int toRank = int.parse(last.to.substring(1));
+    if ((fromRank - toRank).abs() != 2) {
+      return '-';
+    }
+    return '${last.to.substring(0, 1)}${(fromRank + toRank) ~/ 2}';
   }
 
   List<String> _legalTargetsFor(String square) {
@@ -1511,8 +1804,28 @@ class _GameScreenState extends State<GameScreen> {
 
   void _showAnalysis() {
     final bool whiteToMove = _moves.length.isEven;
+    final PositionAnalysis analysis = _analyzePosition(whiteToMove);
+
+    setState(() {
+      _coachNote = analysis.bestMove == null
+          ? 'Analysis complete. No legal move is available.'
+          : 'Coach recommends ${analysis.bestMove} for ${analysis.side}.';
+    });
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) => PositionAnalysisSheet(
+        analysis: analysis,
+      ),
+    );
+  }
+
+  PositionAnalysis _analyzePosition(bool whiteToMove) {
     int legalMoveCount = 0;
     int captureCount = 0;
+    AiCandidate? bestMove;
 
     for (final MapEntry<String, ChessPiece> entry in _pieces.entries) {
       if (entry.value.white != whiteToMove) {
@@ -1523,13 +1836,71 @@ class _GameScreenState extends State<GameScreen> {
         if (_pieces[target] != null) {
           captureCount++;
         }
+        final AiCandidate candidate = AiCandidate(
+          entry.key,
+          target,
+          _analysisMoveScore(entry.key, target, entry.value),
+        );
+        if (bestMove == null || candidate.score > bestMove.score) {
+          bestMove = candidate;
+        }
       }
     }
 
-    setState(() {
-      _coachNote =
-          'AI analysis: ${whiteToMove ? 'White' : 'Black'} has $legalMoveCount legal moves and $captureCount capture threat${captureCount == 1 ? '' : 's'}.';
-    });
+    int material = 0;
+    for (final ChessPiece piece in _pieces.values) {
+      final int value = _pieceValue(piece.code);
+      material += piece.white ? value : -value;
+    }
+
+    final double evaluation =
+        material + (whiteToMove ? legalMoveCount : -legalMoveCount) * 0.03;
+    return PositionAnalysis(
+      side: whiteToMove ? 'White' : 'Black',
+      evaluation: evaluation,
+      material: material,
+      legalMoves: legalMoveCount,
+      captures: captureCount,
+      bestMove: bestMove == null ? null : '${bestMove.from} to ${bestMove.to}',
+      inCheck: ChessRules.isKingInCheck(whiteToMove, _pieces),
+    );
+  }
+
+  double _analysisMoveScore(
+    String from,
+    String target,
+    ChessPiece piece,
+  ) {
+    final ChessPiece? captured = _pieces[target];
+    final SquarePosition position = ChessRules.positionOf(target);
+    final double center =
+        7 - (position.file - 3.5).abs() - (position.rank - 4.5).abs();
+    final double capture = captured == null
+        ? 0
+        : _pieceValue(captured.code) * 10 - _pieceValue(piece.code) * 0.2;
+    final Map<String, ChessPiece> next =
+        ChessRules.applyMove(from, target, _pieces);
+    final bool givesCheck = ChessRules.isKingInCheck(!piece.white, next);
+    return capture + center + (givesCheck ? 6 : 0);
+  }
+
+  int _pieceValue(String code) {
+    return switch (code) {
+      'P' => 1,
+      'N' => 3,
+      'B' => 3,
+      'R' => 5,
+      'Q' => 9,
+      _ => 0,
+    };
+  }
+
+  Future<void> _showOnlineMatchmakingInfo() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) => const OnlineMatchmakingSheet(),
+    );
   }
 
   Future<void> _showPromotionPicker(String square, bool white) async {
@@ -2151,6 +2522,56 @@ class ChessCoin extends StatelessWidget {
                   semanticLabel:
                       '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}',
                 ),
+                IgnorePointer(
+                  child: ShaderMask(
+                    blendMode: BlendMode.srcATop,
+                    shaderCallback: (Rect bounds) {
+                      return LinearGradient(
+                        begin: const Alignment(-0.85, -1),
+                        end: const Alignment(0.7, 0.9),
+                        colors: <Color>[
+                          Colors.white.withValues(alpha: 0.58),
+                          Colors.white.withValues(alpha: 0.06),
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.18),
+                        ],
+                        stops: const <double>[0, 0.24, 0.58, 1],
+                      ).createShader(bounds);
+                    },
+                    child: Opacity(
+                      opacity: piece.white ? 0.34 : 0.24,
+                      child: Image.asset(
+                        pieceAsset(piece),
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: pieceSize * 0.11,
+                  left: pieceSize * 0.25,
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(
+                          alpha: piece.white ? 0.2 : 0.12,
+                        ),
+                        borderRadius: BorderRadius.circular(pieceSize),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: Colors.white.withValues(alpha: 0.22),
+                            blurRadius: pieceSize * 0.09,
+                          ),
+                        ],
+                      ),
+                      child: SizedBox(
+                        width: pieceSize * 0.13,
+                        height: pieceSize * 0.035,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -2357,6 +2778,7 @@ class PromotionChoice extends StatelessWidget {
 
 class GamePanel extends StatelessWidget {
   const GamePanel({
+    required this.compact,
     required this.whitePlayerName,
     required this.blackPlayerName,
     required this.activeColor,
@@ -2383,6 +2805,7 @@ class GamePanel extends StatelessWidget {
     super.key,
   });
 
+  final bool compact;
   final String whitePlayerName;
   final String blackPlayerName;
   final String activeColor;
@@ -2451,22 +2874,32 @@ class GamePanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          SegmentedButton<GameMode>(
-            segments: const <ButtonSegment<GameMode>>[
-              ButtonSegment<GameMode>(
+          DropdownButtonFormField<GameMode>(
+            key: const ValueKey<String>('game-mode-menu'),
+            initialValue: gameMode,
+            decoration: const InputDecoration(
+              labelText: 'Play mode',
+              prefixIcon: Icon(Icons.sports_esports_rounded),
+              border: OutlineInputBorder(),
+            ),
+            items: const <DropdownMenuItem<GameMode>>[
+              DropdownMenuItem<GameMode>(
                 value: GameMode.computer,
-                icon: Icon(Icons.memory_rounded),
-                label: Text('Vs Computer'),
+                child: Text('Vs Computer'),
               ),
-              ButtonSegment<GameMode>(
+              DropdownMenuItem<GameMode>(
                 value: GameMode.local,
-                icon: Icon(Icons.people_alt_outlined),
-                label: Text('2 Players'),
+                child: Text('Local 2P'),
+              ),
+              DropdownMenuItem<GameMode>(
+                value: GameMode.online,
+                child: Text('Online Match'),
               ),
             ],
-            selected: <GameMode>{gameMode},
-            onSelectionChanged: (Set<GameMode> selected) {
-              onGameModeChanged(selected.first);
+            onChanged: (GameMode? mode) {
+              if (mode != null) {
+                onGameModeChanged(mode);
+              }
             },
           ),
           const SizedBox(height: 12),
@@ -2500,26 +2933,38 @@ class GamePanel extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           CoachInsight(note: coachNote, enabled: coachEnabled),
-          const SizedBox(height: 18),
-          CapturedMaterial(
-            capturedWhite: capturedWhite,
-            capturedBlack: capturedBlack,
-          ),
+          if (!compact) ...<Widget>[
+            const SizedBox(height: 18),
+            CapturedMaterial(
+              capturedWhite: capturedWhite,
+              capturedBlack: capturedBlack,
+            ),
+          ],
           const SizedBox(height: 18),
           Text('Board', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: boardPalettes.entries
+          DropdownButtonFormField<BoardSkin>(
+            key: const ValueKey<String>('board-theme-menu'),
+            initialValue: skin,
+            decoration: const InputDecoration(
+              labelText: 'Board theme',
+              prefixIcon: Icon(Icons.palette_outlined),
+              border: OutlineInputBorder(),
+            ),
+            items: boardPalettes.entries
                 .map(
-                  (MapEntry<BoardSkin, BoardPalette> entry) => BoardThemeChoice(
-                    palette: entry.value,
-                    selected: skin == entry.key,
-                    onTap: () => onSkinChanged(entry.key),
+                  (MapEntry<BoardSkin, BoardPalette> entry) =>
+                      DropdownMenuItem<BoardSkin>(
+                    value: entry.key,
+                    child: BoardThemeMenuItem(palette: entry.value),
                   ),
                 )
                 .toList(),
+            onChanged: (BoardSkin? selectedSkin) {
+              if (selectedSkin != null) {
+                onSkinChanged(selectedSkin);
+              }
+            },
           ),
           if (gameMode == GameMode.computer) ...<Widget>[
             const SizedBox(height: 18),
@@ -2527,7 +2972,7 @@ class GamePanel extends StatelessWidget {
               children: <Widget>[
                 Expanded(
                   child: Text(
-                    '${aiProfile.name} · Level $aiLevel',
+                    '${aiProfile.name} - Level $aiLevel',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
@@ -2550,7 +2995,7 @@ class GamePanel extends StatelessWidget {
               min: 1,
               max: 10,
               divisions: 9,
-              label: '${aiProfile.name} · ~${aiProfile.elo} Elo',
+              label: '${aiProfile.name} - ~${aiProfile.elo} Elo',
               onChanged: onAiLevelChanged,
             ),
           ],
@@ -2585,7 +3030,12 @@ class GamePanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          Text('Move history', style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            'Move history',
+            style: compact
+                ? Theme.of(context).textTheme.titleMedium
+                : Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 8),
         ];
 
@@ -2593,7 +3043,7 @@ class GamePanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             ...controls,
-            SizedBox(height: 220, child: history),
+            SizedBox(height: compact ? 120 : 220, child: history),
           ],
         );
 
@@ -2613,11 +3063,242 @@ class GamePanel extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(18),
+            padding: EdgeInsets.all(compact ? 12 : 18),
             child: SingleChildScrollView(child: content),
           ),
         );
       },
+    );
+  }
+}
+
+class BoardThemeMenuItem extends StatelessWidget {
+  const BoardThemeMenuItem({required this.palette, super.key});
+
+  final BoardPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: SizedBox(
+            width: 34,
+            height: 24,
+            child: Row(
+              children: <Widget>[
+                Expanded(child: ColoredBox(color: palette.light)),
+                Expanded(child: ColoredBox(color: palette.dark)),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(palette.label),
+      ],
+    );
+  }
+}
+
+class PositionAnalysisSheet extends StatelessWidget {
+  const PositionAnalysisSheet({required this.analysis, super.key});
+
+  final PositionAnalysis analysis;
+
+  @override
+  Widget build(BuildContext context) {
+    final String evaluation = analysis.evaluation == 0
+        ? 'Equal'
+        : analysis.evaluation > 0
+            ? 'White +${analysis.evaluation.toStringAsFixed(1)}'
+            : 'Black +${analysis.evaluation.abs().toStringAsFixed(1)}';
+
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              color: Color(0xFF17231F),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+              border: Border.fromBorderSide(
+                BorderSide(color: Color(0xFF8B7147)),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF786B58),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: <Widget>[
+                      const Icon(
+                        Icons.analytics_rounded,
+                        color: Color(0xFFD6A84F),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Position analysis',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close analysis',
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  AnalysisMetric(
+                    icon: Icons.balance_rounded,
+                    label: 'Evaluation',
+                    value: evaluation,
+                  ),
+                  AnalysisMetric(
+                    icon: Icons.route_rounded,
+                    label: '${analysis.side} legal moves',
+                    value: '${analysis.legalMoves}',
+                  ),
+                  AnalysisMetric(
+                    icon: Icons.gps_fixed_rounded,
+                    label: 'Immediate captures',
+                    value: '${analysis.captures}',
+                  ),
+                  AnalysisMetric(
+                    icon: analysis.inCheck
+                        ? Icons.warning_amber_rounded
+                        : Icons.shield_outlined,
+                    label: 'King safety',
+                    value: analysis.inCheck ? 'In check' : 'Safe',
+                  ),
+                  const SizedBox(height: 12),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD6A84F).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(7),
+                      border: Border.all(
+                        color: const Color(0xFFD6A84F).withValues(alpha: 0.48),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: <Widget>[
+                          const Icon(
+                            Icons.auto_awesome_rounded,
+                            color: Color(0xFFD6A84F),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              analysis.bestMove == null
+                                  ? 'No legal move'
+                                  : 'Recommended: ${analysis.bestMove}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AnalysisMetric extends StatelessWidget {
+  const AnalysisMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+    super.key,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        children: <Widget>[
+          Icon(icon, size: 20, color: const Color(0xFF63D2B8)),
+          const SizedBox(width: 10),
+          Expanded(child: Text(label)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
+        ],
+      ),
+    );
+  }
+}
+
+class OnlineMatchmakingSheet extends StatelessWidget {
+  const OnlineMatchmakingSheet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: Color(0xFF17231F),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              const Icon(
+                Icons.public_rounded,
+                size: 38,
+                color: Color(0xFF63D2B8),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Online matchmaking',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'The realtime match gateway is not deployed yet. Local 2P remains available while authenticated matchmaking, reconnect and anti-cheat services are completed.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 18),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -2719,6 +3400,7 @@ class AuthOverlay extends StatelessWidget {
     required this.awaitingCode,
     required this.method,
     required this.message,
+    required this.hasError,
     required this.onModeChanged,
     required this.onMethodChanged,
     required this.onUsernameChanged,
@@ -2729,8 +3411,8 @@ class AuthOverlay extends StatelessWidget {
     required this.onSubmit,
     required this.onBackFromCode,
     required this.loading,
-    required this.onGoogle,
-    required this.onApple,
+    required this.onSocialCredential,
+    required this.onSocialError,
     super.key,
   });
 
@@ -2738,6 +3420,7 @@ class AuthOverlay extends StatelessWidget {
   final bool awaitingCode;
   final String method;
   final String message;
+  final bool hasError;
   final ValueChanged<bool> onModeChanged;
   final ValueChanged<String> onMethodChanged;
   final ValueChanged<String> onUsernameChanged;
@@ -2748,8 +3431,8 @@ class AuthOverlay extends StatelessWidget {
   final VoidCallback onSubmit;
   final VoidCallback onBackFromCode;
   final bool loading;
-  final VoidCallback onGoogle;
-  final VoidCallback onApple;
+  final ValueChanged<SocialCredential> onSocialCredential;
+  final ValueChanged<String> onSocialError;
 
   @override
   Widget build(BuildContext context) {
@@ -2797,8 +3480,11 @@ class AuthOverlay extends StatelessWidget {
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                     const SizedBox(height: 8),
-                    Text(message,
-                        style: Theme.of(context).textTheme.bodyMedium),
+                    if (!hasError)
+                      Text(
+                        message,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
                     const SizedBox(height: 16),
                     if (!awaitingCode)
                       SegmentedButton<bool>(
@@ -2860,7 +3546,11 @@ class AuthOverlay extends StatelessWidget {
                                 : TextInputType.emailAddress
                             : TextInputType.text,
                         decoration: InputDecoration(
-                          labelText: registerMode ? method : 'User ID or email',
+                          labelText:
+                              registerMode ? method : 'User ID, email or phone',
+                          helperText: registerMode && method == 'Phone'
+                              ? 'India +91 is added automatically'
+                              : null,
                           prefixIcon: Icon(
                             registerMode && method == 'Phone'
                                 ? Icons.phone_outlined
@@ -2893,11 +3583,13 @@ class AuthOverlay extends StatelessWidget {
                                 const Color(0xFFD6A84F).withValues(alpha: 0.12),
                             shape: BoxShape.circle,
                           ),
-                          child: const Padding(
-                            padding: EdgeInsets.all(14),
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
                             child: Icon(
-                              Icons.mark_email_read_outlined,
-                              color: Color(0xFFD6A84F),
+                              method == 'Phone'
+                                  ? Icons.sms_outlined
+                                  : Icons.mark_email_read_outlined,
+                              color: const Color(0xFFD6A84F),
                               size: 34,
                             ),
                           ),
@@ -2918,6 +3610,42 @@ class AuthOverlay extends StatelessWidget {
                         decoration: const InputDecoration(
                           labelText: 'Six-digit verification code',
                           border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                    if (hasError) ...<Widget>[
+                      const SizedBox(height: 14),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF5350).withValues(alpha: 0.12),
+                          border: Border.all(
+                            color:
+                                const Color(0xFFEF5350).withValues(alpha: 0.65),
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              const Icon(
+                                Icons.error_outline_rounded,
+                                color: Color(0xFFFF7774),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  message,
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFB4B2),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -2965,24 +3693,9 @@ class AuthOverlay extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: onGoogle,
-                              icon: const Icon(Icons.g_mobiledata_rounded),
-                              label: const Text('Google'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: onApple,
-                              icon: const Icon(Icons.apple_rounded),
-                              label: const Text('Apple'),
-                            ),
-                          ),
-                        ],
+                      SocialLoginButtons(
+                        onCredential: onSocialCredential,
+                        onError: onSocialError,
                       ),
                     ],
                   ],

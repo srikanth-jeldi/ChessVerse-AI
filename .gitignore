@@ -7,11 +7,11 @@ target/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
-pubspec.lock
 *.iml
 *.log
 .env
 backend/data/
+.local/
 backend-local*.log
 .env.*
 !.env.example

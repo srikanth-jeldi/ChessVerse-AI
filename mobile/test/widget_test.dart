@@ -3,6 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('normalizes Indian and international phone numbers', () {
+    expect(normalizePhone('7569898494'), '+917569898494');
+    expect(normalizePhone('+1 415 555 2671'), '+14155552671');
+    expect(normalizePhone('12345'), isNull);
+  });
+
   testWidgets('renders game board shell', (WidgetTester tester) async {
     await tester.pumpWidget(const ChessVerseApp());
 
@@ -19,29 +25,47 @@ void main() {
     await tester.tap(find.text('Login'));
     await tester.pump();
     expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('User ID or email'), findsOneWidget);
+    expect(find.text('User ID, email or phone'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
 
-    await tester.tap(find.text('Google'));
+    await tester.tap(find.text('Continue with Google'));
     await tester.pump();
     expect(find.text('Welcome back'), findsOneWidget);
     expect(
       find.text(
-        'Google sign-in needs OAuth app credentials. Email login is ready now.',
+        'Google login needs GOOGLE_WEB_CLIENT_ID and GOOGLE_SERVER_CLIENT_ID.',
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('phone registration explains automatic India country code', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const ChessVerseApp());
+
+    await tester.tap(find.text('Phone'));
+    await tester.pump();
+
+    expect(find.text('India +91 is added automatically'), findsOneWidget);
   });
 
   testWidgets('switches between computer and local players', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(home: GameScreen(initiallySignedIn: true)),
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+        ),
+      ),
     );
 
-    await tester.tap(find.text('2 Players'));
-    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey<String>('game-mode-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Local 2P').last);
+    await tester.pumpAndSettle();
 
     expect(find.text('Local Match'), findsOneWidget);
     expect(find.text('Player 2'), findsWidgets);
@@ -51,7 +75,12 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(home: GameScreen(initiallySignedIn: true)),
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+        ),
+      ),
     );
 
     await tester.tap(find.byKey(const ValueKey<String>('square-e2')));
@@ -66,10 +95,17 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(home: GameScreen(initiallySignedIn: true)),
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+        ),
+      ),
     );
-    await tester.tap(find.text('2 Players'));
-    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey<String>('game-mode-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Local 2P').last);
+    await tester.pumpAndSettle();
 
     for (final (String from, String to) in <(String, String)>[
       ('f2', 'f3'),
@@ -89,5 +125,33 @@ void main() {
     expect(checkedKing.checkedKing, isTrue);
     expect(find.text('Black wins'), findsOneWidget);
     expect(find.text('Checkmate'), findsOneWidget);
+  });
+
+  testWidgets('analysis opens a useful position report', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Analyze'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Position analysis'), findsOneWidget);
+    expect(find.text('Evaluation'), findsOneWidget);
+    expect(find.text('White legal moves'), findsOneWidget);
+    expect(find.textContaining('Recommended:'), findsOneWidget);
   });
 }
