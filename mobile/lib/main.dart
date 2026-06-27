@@ -1,7 +1,56 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+const String apiBaseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'http://127.0.0.1:8080',
+);
+
+class AuthApi {
+  const AuthApi();
+
+  Future<Map<String, dynamic>> post(
+    String path,
+    Map<String, String> body,
+  ) async {
+    final http.Response response;
+    try {
+      response = await http
+          .post(
+            Uri.parse('$apiBaseUrl/api/auth/$path'),
+            headers: const <String, String>{'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15));
+    } on TimeoutException {
+      throw const AuthApiException('The server took too long to respond.');
+    } catch (_) {
+      throw const AuthApiException(
+        'Cannot reach the ChessVerse server. Start the backend on port 8080.',
+      );
+    }
+
+    final Object? decoded = jsonDecode(response.body);
+    final Map<String, dynamic> data =
+        decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw AuthApiException(
+        data['message'] as String? ?? 'Authentication failed.',
+      );
+    }
+    return data;
+  }
+}
+
+class AuthApiException implements Exception {
+  const AuthApiException(this.message);
+
+  final String message;
+}
 
 void main() {
   runApp(const ChessVerseApp());
@@ -443,6 +492,7 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
+  static const AuthApi _authApi = AuthApi();
   final List<String> _moves = <String>[];
   final List<ChessPiece> _capturedWhite = <ChessPiece>[];
   final List<ChessPiece> _capturedBlack = <ChessPiece>[];
@@ -460,8 +510,11 @@ class _GameScreenState extends State<GameScreen> {
   int _blackSeconds = 10 * 60;
   bool _signedIn = false;
   bool _awaitingCode = false;
+  bool _authLoading = false;
   bool _registerMode = true;
   String _authMethod = 'Email';
+  String _authUsername = '';
+  String _authDisplayName = '';
   String _authIdentity = '';
   String _authPassword = '';
   String _authCode = '';
@@ -469,6 +522,9 @@ class _GameScreenState extends State<GameScreen> {
       'Create an account to save games, ratings and coach history.';
   String _whitePlayerName = 'Guest Player';
   final String _blackPlayerName = 'ChessVerse AI';
+  String? _gameResultTitle;
+  String? _gameResultDetail;
+  bool _resultVisible = true;
 
   static const Map<String, ChessPiece> _initialPieces = <String, ChessPiece>{
     'a8': ChessPiece('R', false),
@@ -512,7 +568,7 @@ class _GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted || _moves.isEmpty) {
+      if (!mounted || _moves.isEmpty || _gameResultTitle != null) {
         return;
       }
       setState(() {
@@ -522,9 +578,10 @@ class _GameScreenState extends State<GameScreen> {
           _blackSeconds = math.max(0, _blackSeconds - 1);
         }
         if (_whiteSeconds == 0 || _blackSeconds == 0) {
-          _coachNote = _whiteSeconds == 0
-              ? 'White clock expired. Black wins on time.'
-              : 'Black clock expired. White wins on time.';
+          _gameResultTitle = _whiteSeconds == 0 ? 'Black wins' : 'White wins';
+          _gameResultDetail = 'Victory on time';
+          _resultVisible = true;
+          _coachNote = '$_gameResultTitle. $_gameResultDetail.';
         }
       });
     });
@@ -658,6 +715,12 @@ class _GameScreenState extends State<GameScreen> {
                           message: _authMessage,
                           onModeChanged: _setAuthMode,
                           onMethodChanged: _setAuthMethod,
+                          onUsernameChanged: (String value) {
+                            _authUsername = value.trim();
+                          },
+                          onDisplayNameChanged: (String value) {
+                            _authDisplayName = value.trim();
+                          },
                           onIdentityChanged: (String value) {
                             _authIdentity = value.trim();
                           },
@@ -668,8 +731,26 @@ class _GameScreenState extends State<GameScreen> {
                             _authCode = value.trim();
                           },
                           onSubmit: _submitAuth,
+                          onBackFromCode: () => setState(() {
+                            _awaitingCode = false;
+                            _authCode = '';
+                            _authMessage =
+                                'Update your details or request a new code.';
+                          }),
+                          loading: _authLoading,
                           onGoogle: () => _socialLogin('Google'),
                           onApple: () => _socialLogin('Apple'),
+                        ),
+                      ),
+                    if (_signedIn && _gameResultTitle != null && _resultVisible)
+                      Positioned.fill(
+                        child: GameResultOverlay(
+                          title: _gameResultTitle!,
+                          detail: _gameResultDetail ?? 'Game complete',
+                          onNewGame: _reset,
+                          onReview: () => setState(() {
+                            _resultVisible = false;
+                          }),
                         ),
                       ),
                   ],
@@ -702,40 +783,105 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
-  void _submitAuth() {
-    setState(() {
-      if (_registerMode && !_awaitingCode) {
-        if (_authIdentity.isEmpty) {
-          _authMessage = 'Enter your $_authMethod to receive a verification code.';
-          return;
-        }
-        _awaitingCode = true;
+  Future<void> _submitAuth() async {
+    if (_authLoading) {
+      return;
+    }
+    if (_registerMode && _authMethod == 'Phone') {
+      setState(() {
         _authMessage =
-            'Verification code sent to $_authIdentity. Demo code: 246810';
-        return;
-      }
+            'Phone OTP needs an SMS provider such as AWS SNS. Email OTP is ready now.';
+      });
+      return;
+    }
 
-      if (_awaitingCode) {
-        if (_authCode != '246810') {
-          _authMessage = 'Invalid code. Use demo code 246810.';
-          return;
-        }
-        _completeLogin(_authIdentity);
-        return;
-      }
+    if (_registerMode &&
+        !_awaitingCode &&
+        (_authUsername.isEmpty ||
+            _authDisplayName.isEmpty ||
+            _authIdentity.isEmpty ||
+            _authPassword.length < 8)) {
+      setState(() {
+        _authMessage =
+            'Enter a user id, display name, valid email and an 8+ character password.';
+      });
+      return;
+    }
+    if (_awaitingCode && !RegExp(r'^\d{6}$').hasMatch(_authCode)) {
+      setState(
+          () => _authMessage = 'Enter the six-digit code from your email.');
+      return;
+    }
+    if (!_registerMode && (_authIdentity.isEmpty || _authPassword.isEmpty)) {
+      setState(() => _authMessage = 'Enter your user id and password.');
+      return;
+    }
 
-      if (_authIdentity.isEmpty || _authPassword.isEmpty) {
-        _authMessage = 'Enter user id and password to continue.';
-        return;
-      }
-      _completeLogin(_authIdentity);
+    setState(() {
+      _authLoading = true;
+      _authMessage = _awaitingCode
+          ? 'Verifying your code...'
+          : _registerMode
+              ? 'Sending a secure verification code...'
+              : 'Signing you in...';
     });
+
+    try {
+      if (_registerMode && !_awaitingCode) {
+        final Map<String, dynamic> response = await _authApi.post(
+          'register',
+          <String, String>{
+            'username': _authUsername,
+            'displayName': _authDisplayName,
+            'email': _authIdentity,
+            'password': _authPassword,
+          },
+        );
+        if (!mounted) return;
+        setState(() {
+          _awaitingCode = true;
+          _authMessage = response['message'] as String? ??
+              'Verification code sent. Check your inbox.';
+        });
+      } else if (_awaitingCode) {
+        final Map<String, dynamic> response = await _authApi.post(
+          'verify-email',
+          <String, String>{'email': _authIdentity, 'code': _authCode},
+        );
+        if (!mounted) return;
+        final Map<String, dynamic>? player =
+            response['player'] as Map<String, dynamic>?;
+        _completeLogin(
+          player?['displayName'] as String? ?? _authDisplayName,
+        );
+      } else {
+        final Map<String, dynamic> response = await _authApi.post(
+          'login',
+          <String, String>{
+            'identity': _authIdentity,
+            'password': _authPassword,
+          },
+        );
+        if (!mounted) return;
+        final Map<String, dynamic>? player =
+            response['player'] as Map<String, dynamic>?;
+        _completeLogin(player?['displayName'] as String? ?? _authIdentity);
+      }
+    } on AuthApiException catch (error) {
+      if (mounted) {
+        setState(() => _authMessage = error.message);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _authLoading = false);
+      }
+    }
   }
 
   void _socialLogin(String provider) {
     setState(() {
-      _completeLogin('$provider Player');
-      _authMessage = 'Signed in with $provider.';
+      _authMessage =
+          '$provider sign-in needs OAuth app credentials. Email login is ready now.';
     });
   }
 
@@ -750,6 +896,9 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _handleSquareTap(String square) {
+    if (_gameResultTitle != null) {
+      return;
+    }
     String? promotionSquare;
     bool? promotionWhite;
 
@@ -782,8 +931,7 @@ class _GameScreenState extends State<GameScreen> {
         return;
       }
 
-      final List<String> legalTargets =
-          _legalTargetsFor(_selectedSquare!);
+      final List<String> legalTargets = _legalTargetsFor(_selectedSquare!);
       if (!legalTargets.contains(square)) {
         _coachNote = 'That move is blocked. Pick a highlighted square.';
         _selectedSquare = null;
@@ -1026,11 +1174,8 @@ class _GameScreenState extends State<GameScreen> {
       return null;
     }
 
-    final String cleaned = move
-        .replaceAll(' x ', '')
-        .replaceAll(' e.p.', '')
-        .split('=')
-        .first;
+    final String cleaned =
+        move.replaceAll(' x ', '').replaceAll(' e.p.', '').split('=').first;
     if (cleaned.length < 4) {
       return null;
     }
@@ -1051,6 +1196,9 @@ class _GameScreenState extends State<GameScreen> {
       _blackSeconds = 10 * 60;
       _selectedSquare = null;
       _coachNote = 'Select a coin to see legal moves.';
+      _gameResultTitle = null;
+      _gameResultDetail = null;
+      _resultVisible = true;
     });
   }
 
@@ -1097,6 +1245,9 @@ class _GameScreenState extends State<GameScreen> {
       _whiteSeconds = snapshot.whiteSeconds;
       _blackSeconds = snapshot.blackSeconds;
       _selectedSquare = null;
+      _gameResultTitle = null;
+      _gameResultDetail = null;
+      _resultVisible = true;
       _coachNote = 'Move undone. ${snapshot.coachNote}';
     });
   }
@@ -1194,9 +1345,15 @@ class _GameScreenState extends State<GameScreen> {
     final String side = sideToMoveWhite ? 'White' : 'Black';
 
     if (inCheck && !hasMove) {
-      return 'Checkmate. ${sideToMoveWhite ? 'Black' : 'White'} wins.';
+      _gameResultTitle = '${sideToMoveWhite ? 'Black' : 'White'} wins';
+      _gameResultDetail = 'Checkmate';
+      _resultVisible = true;
+      return 'Checkmate. $_gameResultTitle.';
     }
     if (!inCheck && !hasMove) {
+      _gameResultTitle = 'Draw';
+      _gameResultDetail = 'Stalemate';
+      _resultVisible = true;
       return 'Stalemate. No legal move for $side.';
     }
     if (inCheck) {
@@ -1214,7 +1371,8 @@ class _GameScreenState extends State<GameScreen> {
 }
 
 class CompactHeader extends StatelessWidget {
-  const CompactHeader({required this.playerName, required this.onReset, super.key});
+  const CompactHeader(
+      {required this.playerName, required this.onReset, super.key});
 
   final String playerName;
   final VoidCallback onReset;
@@ -1429,13 +1587,13 @@ class BoardSquare extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color base = dark ? palette.dark : palette.light;
-    final Color coordinateColor =
-        dark
-            ? palette.light.withValues(alpha: 0.72)
-            : palette.dark.withValues(alpha: 0.72);
+    final Color coordinateColor = dark
+        ? palette.light.withValues(alpha: 0.72)
+        : palette.dark.withValues(alpha: 0.72);
 
     final Color squareColor = lastCapture
-        ? Color.alphaBlend(const Color(0xFFE11D48).withValues(alpha: 0.62), base)
+        ? Color.alphaBlend(
+            const Color(0xFFE11D48).withValues(alpha: 0.62), base)
         : selected
             ? Color.alphaBlend(palette.accent.withValues(alpha: 0.55), base)
             : lastMoveSquare
@@ -1472,8 +1630,8 @@ class BoardSquare extends StatelessWidget {
                   ),
                 if (lastCapture || captureTarget)
                   BoxShadow(
-                    color: const Color(0xFFFF1744)
-                        .withValues(alpha: 0.55 * glow),
+                    color:
+                        const Color(0xFFFF1744).withValues(alpha: 0.55 * glow),
                     blurRadius: 24,
                     spreadRadius: 3,
                   ),
@@ -1540,8 +1698,8 @@ class BoardSquare extends StatelessWidget {
                       ),
                       boxShadow: <BoxShadow>[
                         BoxShadow(
-                          color: const Color(0xFFFF1744)
-                              .withValues(alpha: 0.72),
+                          color:
+                              const Color(0xFFFF1744).withValues(alpha: 0.72),
                           blurRadius: 20,
                           spreadRadius: 3,
                         ),
@@ -1557,7 +1715,8 @@ class BoardSquare extends StatelessWidget {
                 switchOutCurve: Curves.easeIn,
                 transitionBuilder: (Widget child, Animation<double> animation) {
                   return ScaleTransition(
-                    scale: Tween<double>(begin: 0.82, end: 1).animate(animation),
+                    scale:
+                        Tween<double>(begin: 0.82, end: 1).animate(animation),
                     child: FadeTransition(opacity: animation, child: child),
                   );
                 },
@@ -1598,89 +1757,60 @@ class ChessCoin extends StatelessWidget {
       builder: (BuildContext context, BoxConstraints constraints) {
         final double size =
             math.min(constraints.maxWidth, constraints.maxHeight);
-        final double coinSize = size * 0.76;
-        final Color face =
-            piece.white ? const Color(0xFFF9F0DB) : const Color(0xFF202126);
-        final Color rim =
-            piece.white ? const Color(0xFFB78B3F) : const Color(0xFF5D6470);
-        final Color text =
-            piece.white ? const Color(0xFF2B2012) : const Color(0xFFF3E3BD);
+        final double pieceSize = size * 0.94;
 
-        return AnimatedContainer(
+        return AnimatedScale(
           duration: const Duration(milliseconds: 180),
-          width: coinSize,
-          height: coinSize,
-          transform: Matrix4.identity()
-            ..scaleByDouble(
-              selected ? 1.08 : 1.0,
-              selected ? 1.08 : 1.0,
-              1,
-              1,
-            ),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              center: const Alignment(-0.35, -0.45),
-              radius: 0.92,
-              colors: <Color>[
-                piece.white ? Colors.white : const Color(0xFF3A3B42),
-                face,
-              ],
-            ),
-            border: Border.all(color: selected ? accent : rim, width: 3),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.34),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-              BoxShadow(
-                color: accent.withValues(alpha: selected ? 0.35 : 0.08),
-                blurRadius: selected ? 18 : 6,
-              ),
-            ],
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: <Widget>[
-              Positioned.fill(
-                child: CustomPaint(painter: CoinRingPainter(color: rim)),
-              ),
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: PieceSculpturePainter(
-                    light: piece.white,
-                    accent: accent,
+          scale: selected ? 1.08 : 1,
+          curve: Curves.easeOutBack,
+          child: SizedBox(
+            width: pieceSize,
+            height: pieceSize,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.34),
+                    blurRadius: 9,
+                    offset: const Offset(0, 5),
                   ),
-                ),
-              ),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Text(
-                    pieceGlyph(piece),
-                    style: TextStyle(
-                      color: text,
-                      fontSize: coinSize * 0.52,
-                      fontWeight: FontWeight.w900,
-                      height: 0.82,
-                      shadows: <Shadow>[
-                        Shadow(
-                          color: Colors.black.withValues(alpha: 0.22),
-                          blurRadius: 5,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
+                  if (selected)
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.5),
+                      blurRadius: 20,
+                      spreadRadius: 2,
                     ),
-                  ),
                 ],
               ),
-            ],
+              child: Image.asset(
+                pieceAsset(piece),
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
+                semanticLabel:
+                    '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}',
+              ),
+            ),
           ),
         );
       },
     );
   }
+}
+
+String pieceAsset(ChessPiece piece) {
+  return 'assets/pieces/staunton_${piece.white ? 'white' : 'black'}_${pieceName(piece.code)}.png';
+}
+
+String pieceName(String code) {
+  return switch (code) {
+    'K' => 'king',
+    'Q' => 'queen',
+    'R' => 'rook',
+    'B' => 'bishop',
+    'N' => 'knight',
+    _ => 'pawn',
+  };
 }
 
 String pieceGlyph(ChessPiece piece) {
@@ -1751,8 +1881,10 @@ class PieceSculpturePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final double w = size.width;
     final double h = size.height;
-    final Color body = light ? const Color(0xFFF7E9C9) : const Color(0xFF252A32);
-    final Color edge = light ? const Color(0xFFC09035) : const Color(0xFF68707D);
+    final Color body =
+        light ? const Color(0xFFF7E9C9) : const Color(0xFF252A32);
+    final Color edge =
+        light ? const Color(0xFFC09035) : const Color(0xFF68707D);
     final Paint shadow = Paint()
       ..color = Colors.black.withValues(alpha: 0.28)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
@@ -1966,9 +2098,11 @@ class GamePanel extends StatelessWidget {
           const SizedBox(height: 18),
           Row(
             children: <Widget>[
-              Expanded(child: MatchClock(label: whitePlayerName, value: whiteClock)),
+              Expanded(
+                  child: MatchClock(label: whitePlayerName, value: whiteClock)),
               const SizedBox(width: 10),
-              Expanded(child: MatchClock(label: blackPlayerName, value: blackClock)),
+              Expanded(
+                  child: MatchClock(label: blackPlayerName, value: blackClock)),
             ],
           ),
           const SizedBox(height: 18),
@@ -2027,19 +2161,19 @@ class GamePanel extends StatelessWidget {
           Row(
             children: <Widget>[
               Expanded(
-                  child: FilledButton.icon(
-                    onPressed: onHint,
-                    icon: const Icon(Icons.psychology_alt_rounded),
-                    label: const Text('Hint'),
-                  ),
+                child: FilledButton.icon(
+                  onPressed: onHint,
+                  icon: const Icon(Icons.psychology_alt_rounded),
+                  label: const Text('Hint'),
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onAnalyze,
-                    icon: const Icon(Icons.analytics_rounded),
-                    label: const Text('Analyze'),
-                  ),
+                child: OutlinedButton.icon(
+                  onPressed: onAnalyze,
+                  icon: const Icon(Icons.analytics_rounded),
+                  label: const Text('Analyze'),
+                ),
               ),
             ],
           ),
@@ -2067,9 +2201,8 @@ class GamePanel extends StatelessWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.all(18),
-            child: scrollPanel
-                ? SingleChildScrollView(child: content)
-                : content,
+            child:
+                scrollPanel ? SingleChildScrollView(child: content) : content,
           ),
         );
       },
@@ -2109,10 +2242,14 @@ class AuthOverlay extends StatelessWidget {
     required this.message,
     required this.onModeChanged,
     required this.onMethodChanged,
+    required this.onUsernameChanged,
+    required this.onDisplayNameChanged,
     required this.onIdentityChanged,
     required this.onPasswordChanged,
     required this.onCodeChanged,
     required this.onSubmit,
+    required this.onBackFromCode,
+    required this.loading,
     required this.onGoogle,
     required this.onApple,
     super.key,
@@ -2124,10 +2261,14 @@ class AuthOverlay extends StatelessWidget {
   final String message;
   final ValueChanged<bool> onModeChanged;
   final ValueChanged<String> onMethodChanged;
+  final ValueChanged<String> onUsernameChanged;
+  final ValueChanged<String> onDisplayNameChanged;
   final ValueChanged<String> onIdentityChanged;
   final ValueChanged<String> onPasswordChanged;
   final ValueChanged<String> onCodeChanged;
   final VoidCallback onSubmit;
+  final VoidCallback onBackFromCode;
+  final bool loading;
   final VoidCallback onGoogle;
   final VoidCallback onApple;
 
@@ -2155,99 +2296,298 @@ class AuthOverlay extends StatelessWidget {
             ),
             child: Padding(
               padding: const EdgeInsets.all(22),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        const Icon(Icons.bolt_rounded,
+                            color: Color(0xFFD6A84F)),
+                        const SizedBox(width: 8),
+                        Text(
+                          'CHESSVERSE',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      registerMode ? 'Create ChessVerse ID' : 'Welcome back',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(message,
+                        style: Theme.of(context).textTheme.bodyMedium),
+                    const SizedBox(height: 16),
+                    if (!awaitingCode)
+                      SegmentedButton<bool>(
+                        segments: const <ButtonSegment<bool>>[
+                          ButtonSegment<bool>(
+                              value: true, label: Text('Register')),
+                          ButtonSegment<bool>(
+                              value: false, label: Text('Login')),
+                        ],
+                        selected: <bool>{registerMode},
+                        onSelectionChanged: (Set<bool> selected) {
+                          onModeChanged(selected.first);
+                        },
+                      ),
+                    if (!awaitingCode) const SizedBox(height: 14),
+                    if (registerMode && !awaitingCode)
+                      SegmentedButton<String>(
+                        segments: const <ButtonSegment<String>>[
+                          ButtonSegment<String>(
+                              value: 'Email', label: Text('Email')),
+                          ButtonSegment<String>(
+                              value: 'Phone', label: Text('Phone')),
+                        ],
+                        selected: <String>{method},
+                        onSelectionChanged: (Set<String> selected) {
+                          onMethodChanged(selected.first);
+                        },
+                      ),
+                    if (!awaitingCode) ...<Widget>[
+                      const SizedBox(height: 14),
+                      if (registerMode) ...<Widget>[
+                        TextField(
+                          onChanged: onUsernameChanged,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            labelText: 'User ID',
+                            prefixIcon: Icon(Icons.alternate_email_rounded),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          onChanged: onDisplayNameChanged,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            labelText: 'Player name',
+                            prefixIcon: Icon(Icons.person_outline_rounded),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      TextField(
+                        onChanged: onIdentityChanged,
+                        textInputAction: TextInputAction.next,
+                        keyboardType: registerMode
+                            ? method == 'Phone'
+                                ? TextInputType.phone
+                                : TextInputType.emailAddress
+                            : TextInputType.text,
+                        decoration: InputDecoration(
+                          labelText: registerMode ? method : 'User ID or email',
+                          prefixIcon: Icon(
+                            registerMode && method == 'Phone'
+                                ? Icons.phone_outlined
+                                : Icons.mail_outline_rounded,
+                          ),
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        onChanged: onPasswordChanged,
+                        obscureText: true,
+                        onSubmitted: (_) => onSubmit(),
+                        decoration: InputDecoration(
+                          labelText:
+                              registerMode ? 'Create password' : 'Password',
+                          prefixIcon: const Icon(Icons.lock_outline_rounded),
+                          helperText:
+                              registerMode ? 'At least 8 characters' : null,
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                    if (awaitingCode) ...<Widget>[
+                      const SizedBox(height: 18),
+                      Center(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFFD6A84F).withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.all(14),
+                            child: Icon(
+                              Icons.mark_email_read_outlined,
+                              color: Color(0xFFD6A84F),
+                              size: 34,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        onChanged: onCodeChanged,
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0,
+                        ),
+                        onSubmitted: (_) => onSubmit(),
+                        decoration: const InputDecoration(
+                          labelText: 'Six-digit verification code',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: loading ? null : onSubmit,
+                      icon: loading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(
+                              awaitingCode
+                                  ? Icons.verified_rounded
+                                  : Icons.login_rounded,
+                            ),
+                      label: Text(
+                        awaitingCode
+                            ? 'Verify and Continue'
+                            : registerMode
+                                ? 'Send Code'
+                                : 'Login',
+                      ),
+                    ),
+                    if (awaitingCode)
+                      TextButton.icon(
+                        onPressed: loading ? null : onBackFromCode,
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        label: const Text('Change registration details'),
+                      ),
+                    if (!awaitingCode) ...<Widget>[
+                      const SizedBox(height: 16),
+                      Row(
+                        children: <Widget>[
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'OR CONTINUE WITH',
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                          ),
+                          const Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: onGoogle,
+                              icon: const Icon(Icons.g_mobiledata_rounded),
+                              label: const Text('Google'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: onApple,
+                              icon: const Icon(Icons.apple_rounded),
+                              label: const Text('Apple'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class GameResultOverlay extends StatelessWidget {
+  const GameResultOverlay({
+    required this.title,
+    required this.detail,
+    required this.onNewGame,
+    required this.onReview,
+    super.key,
+  });
+
+  final String title;
+  final String detail;
+  final VoidCallback onNewGame;
+  final VoidCallback onReview;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: Colors.black.withValues(alpha: 0.72),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFF17181D),
+              border: Border.all(color: const Color(0xFFD6A84F)),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: const Color(0xFFD6A84F).withValues(alpha: 0.25),
+                  blurRadius: 40,
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(28),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
+                  const Icon(
+                    Icons.emoji_events_rounded,
+                    color: Color(0xFFD6A84F),
+                    size: 56,
+                  ),
+                  const SizedBox(height: 16),
                   Text(
-                    registerMode ? 'Create ChessVerse ID' : 'Welcome back',
+                    title,
+                    textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                   const SizedBox(height: 8),
-                  Text(message, style: Theme.of(context).textTheme.bodyMedium),
-                  const SizedBox(height: 16),
-                  SegmentedButton<bool>(
-                    segments: const <ButtonSegment<bool>>[
-                      ButtonSegment<bool>(value: true, label: Text('Register')),
-                      ButtonSegment<bool>(value: false, label: Text('Login')),
-                    ],
-                    selected: <bool>{registerMode},
-                    onSelectionChanged: (Set<bool> selected) {
-                      onModeChanged(selected.first);
-                    },
+                  Text(
+                    detail,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  const SizedBox(height: 14),
-                  if (registerMode)
-                    SegmentedButton<String>(
-                      segments: const <ButtonSegment<String>>[
-                        ButtonSegment<String>(value: 'Email', label: Text('Email')),
-                        ButtonSegment<String>(value: 'Phone', label: Text('Phone')),
-                      ],
-                      selected: <String>{method},
-                      onSelectionChanged: (Set<String> selected) {
-                        onMethodChanged(selected.first);
-                      },
-                    ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    onChanged: onIdentityChanged,
-                    keyboardType: method == 'Phone'
-                        ? TextInputType.phone
-                        : TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      labelText: registerMode ? method : 'User id',
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (!registerMode)
-                    TextField(
-                      onChanged: onPasswordChanged,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Password',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  if (awaitingCode) ...<Widget>[
-                    const SizedBox(height: 12),
-                    TextField(
-                      onChanged: onCodeChanged,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Verification code',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: onSubmit,
-                    icon: Icon(awaitingCode ? Icons.verified_rounded : Icons.login_rounded),
-                    label: Text(
-                      awaitingCode
-                          ? 'Verify and Continue'
-                          : registerMode
-                              ? 'Send Code'
-                              : 'Login',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 24),
                   Row(
                     children: <Widget>[
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: onGoogle,
-                          icon: const Icon(Icons.g_mobiledata_rounded),
-                          label: const Text('Gmail'),
+                          onPressed: onReview,
+                          icon: const Icon(Icons.analytics_outlined),
+                          label: const Text('Review board'),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: onApple,
-                          icon: const Icon(Icons.apple_rounded),
-                          label: const Text('Apple'),
+                        child: FilledButton.icon(
+                          onPressed: onNewGame,
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('New game'),
                         ),
                       ),
                     ],

@@ -56,15 +56,22 @@ mvn test
 Local backend stack:
 
 ```bash
+copy .env.example .env
+# Set a newly generated Gmail app password in .env.
 docker compose up --build
 ```
+
+SMTP credentials are loaded from `MAIL_USERNAME`, `MAIL_PASSWORD`, and
+`MAIL_FROM`. Never commit `.env` or a real app password. Registration OTPs are
+hashed, expire after ten minutes, allow five attempts, and are throttled to one
+request per minute.
 
 Flutter app:
 
 ```bash
 cd mobile
 flutter pub get
-flutter run
+flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8080
 ```
 
 ## Documentation Volumes
