@@ -45,4 +45,9 @@ class AuthController {
     AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
     }
+
+    @PostMapping("/oauth")
+    AuthResponse oauthLogin(@Valid @RequestBody OAuthLoginRequest request) {
+        return authService.oauthLogin(request);
+    }
 }

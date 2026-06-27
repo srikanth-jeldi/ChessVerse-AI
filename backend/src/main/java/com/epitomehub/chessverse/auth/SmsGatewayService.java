@@ -2,12 +2,18 @@ package com.epitomehub.chessverse.auth;
 
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 @Service
+@ConditionalOnProperty(
+        prefix = "chessverse.auth.sms",
+        name = "mode",
+        havingValue = "gateway",
+        matchIfMissing = true)
 class SmsGatewayService implements SmsOtpDelivery {
     private final RestClient restClient;
     private final String gatewayUrl;

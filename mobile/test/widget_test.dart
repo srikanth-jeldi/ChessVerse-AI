@@ -28,12 +28,12 @@ void main() {
     expect(find.text('User ID, email or phone'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
 
-    await tester.tap(find.text('Google'));
+    await tester.tap(find.text('Continue with Google'));
     await tester.pump();
     expect(find.text('Welcome back'), findsOneWidget);
     expect(
       find.text(
-        'Google sign-in needs OAuth app credentials. Email login is ready now.',
+        'Google login needs GOOGLE_WEB_CLIENT_ID and GOOGLE_SERVER_CLIENT_ID.',
       ),
       findsOneWidget,
     );

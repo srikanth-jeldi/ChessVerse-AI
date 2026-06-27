@@ -68,7 +68,24 @@ class AuthControllerTest {
                                 """))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.message").value("Verification code sent to +91****3210"))
-                .andExpect(jsonPath("$.expiresAt").exists());
+                .andExpect(jsonPath("$.expiresAt").exists())
+                .andExpect(jsonPath("$.developmentCode").doesNotExist());
+    }
+
+    @Test
+    void oauthLoginRequiresConfiguredProviderClientIds() throws Exception {
+        mockMvc.perform(post("/api/auth/oauth")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "provider": "google",
+                                  "idToken": "not-a-real-token",
+                                  "displayName": "Google Player"
+                                }
+                                """))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.message").value(
+                        "Google login is not configured on this server."));
     }
 
     @TestConfiguration

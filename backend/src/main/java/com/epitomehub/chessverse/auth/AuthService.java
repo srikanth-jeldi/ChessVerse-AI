@@ -26,10 +26,13 @@ class AuthService {
     private final AuthSessionRepository sessions;
     private final OtpDelivery otpDelivery;
     private final SmsOtpDelivery smsOtpDelivery;
+    private final OAuthIdentityRepository oauthIdentities;
+    private final OAuthTokenVerifier oauthTokenVerifier;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
     private final SecureRandom random = new SecureRandom();
     private final Duration otpExpiry;
     private final Duration sessionExpiry;
+    private final boolean exposeSmsDevelopmentCode;
 
     AuthService(
             PlayerAccountRepository players,
@@ -37,15 +40,22 @@ class AuthService {
             AuthSessionRepository sessions,
             OtpDelivery otpDelivery,
             SmsOtpDelivery smsOtpDelivery,
+            OAuthIdentityRepository oauthIdentities,
+            OAuthTokenVerifier oauthTokenVerifier,
             @Value("${chessverse.auth.otp-expiry-minutes:10}") long otpExpiryMinutes,
-            @Value("${chessverse.auth.session-expiry-days:30}") long sessionExpiryDays) {
+            @Value("${chessverse.auth.session-expiry-days:30}") long sessionExpiryDays,
+            @Value("${chessverse.auth.sms.expose-development-code:false}")
+            boolean exposeSmsDevelopmentCode) {
         this.players = players;
         this.verifications = verifications;
         this.sessions = sessions;
         this.otpDelivery = otpDelivery;
         this.smsOtpDelivery = smsOtpDelivery;
+        this.oauthIdentities = oauthIdentities;
+        this.oauthTokenVerifier = oauthTokenVerifier;
         this.otpExpiry = Duration.ofMinutes(otpExpiryMinutes);
         this.sessionExpiry = Duration.ofDays(sessionExpiryDays);
+        this.exposeSmsDevelopmentCode = exposeSmsDevelopmentCode;
     }
 
     @Transactional
@@ -90,7 +100,10 @@ class AuthService {
         Instant expiresAt = Instant.now().plus(otpExpiry);
         verifications.save(new EmailVerification(player, passwordEncoder.encode(code), expiresAt));
         otpDelivery.sendVerificationCode(player.email, player.displayName, code);
-        return new MessageResponse("Verification code sent to " + maskEmail(email), expiresAt);
+        return new MessageResponse(
+                "Verification code sent to " + maskEmail(email),
+                expiresAt,
+                null);
     }
 
     @Transactional
@@ -126,7 +139,8 @@ class AuthService {
         smsOtpDelivery.sendVerificationCode(phone, player.displayName, verificationCode.code());
         return new MessageResponse(
                 "Verification code sent to " + maskPhone(phone),
-                verificationCode.expiresAt());
+                verificationCode.expiresAt(),
+                exposeSmsDevelopmentCode ? verificationCode.code() : null);
     }
 
     @Transactional
@@ -185,6 +199,56 @@ class AuthService {
             throw new AuthException(HttpStatus.UNAUTHORIZED, "Invalid user id or password.");
         }
         return createSession(player);
+    }
+
+    @Transactional
+    AuthResponse oauthLogin(OAuthLoginRequest request) {
+        OAuthTokenVerifier.VerifiedIdentity identity = oauthTokenVerifier.verify(request);
+        OAuthIdentity existingIdentity = oauthIdentities
+                .findByProviderAndSubject(identity.provider(), identity.subject())
+                .orElse(null);
+        if (existingIdentity != null) {
+            return createSession(existingIdentity.player);
+        }
+        if (identity.email() == null || !identity.emailVerified()) {
+            throw new AuthException(
+                    HttpStatus.UNAUTHORIZED,
+                    "The provider did not return a verified email address.");
+        }
+
+        PlayerAccount player = players.findByEmailIgnoreCase(identity.email()).orElse(null);
+        if (player == null) {
+            String displayName = identity.displayName() == null || identity.displayName().isBlank()
+                    ? identity.email().substring(0, identity.email().indexOf('@'))
+                    : identity.displayName().trim();
+            player = new PlayerAccount(
+                    availableUsername(displayName),
+                    displayName,
+                    identity.email(),
+                    null,
+                    passwordEncoder.encode(UUID.randomUUID().toString() + UUID.randomUUID()));
+        }
+        player.verified = true;
+        player.updatedAt = Instant.now();
+        players.save(player);
+        oauthIdentities.save(new OAuthIdentity(identity.provider(), identity.subject(), player));
+        return createSession(player);
+    }
+
+    private String availableUsername(String preferredName) {
+        String base = preferredName.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9_.-]", "_")
+                .replaceAll("_+", "_")
+                .replaceAll("^[_\\-.]+|[_\\-.]+$", "");
+        if (base.length() < 3) {
+            base = "player";
+        }
+        base = base.substring(0, Math.min(base.length(), 32));
+        String candidate = base;
+        while (players.findByUsernameIgnoreCase(candidate).isPresent()) {
+            candidate = base + "_" + (1000 + random.nextInt(9000));
+        }
+        return candidate;
     }
 
     private AuthResponse createSession(PlayerAccount player) {

@@ -17,7 +17,8 @@ present yet, so the project is not ready for Play Store or App Store submission.
 - Legal move highlighting, captures, castling, en passant and promotion
 - Clocks, undo, move history, check/checkmate effects and result overlay
 - Email registration, OTP verification and password login
-- Phone registration API, E.164 normalization and SMS gateway contract
+- Phone registration, local test OTP, verification and phone/password login
+- Google and Apple client flows plus backend identity-token validation
 - Stockfish-backed AI endpoint with ten calibrated levels
 - Spring Boot, PostgreSQL/H2, Flyway, Docker and Kubernetes foundations
 - GitHub Actions tests and backend container publishing
@@ -25,7 +26,7 @@ present yet, so the project is not ready for Play Store or App Store submission.
 ## Remaining Production Work
 
 - Configure a real SMS provider for phone OTP
-- Configure and verify Google and Apple OAuth
+- Supply provider credentials and complete live Google/Apple account QA
 - Build Redis-backed worldwide matchmaking and authenticated WebSockets
 - Add server-authoritative chess rules, clocks, reconnect and anti-cheat
 - Generate Android and iOS Flutter platform projects

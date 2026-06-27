@@ -6,6 +6,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import 'social_auth.dart';
+
 const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: 'http://127.0.0.1:8080',
@@ -894,8 +896,10 @@ class _GameScreenState extends State<GameScreen> {
                                 'Update your details or request a new code.';
                           }),
                           loading: _authLoading,
-                          onGoogle: () => _socialLogin('Google'),
-                          onApple: () => _socialLogin('Apple'),
+                          onSocialCredential: _socialLogin,
+                          onSocialError: (String message) {
+                            setState(() => _authMessage = message);
+                          },
                         ),
                       ),
                     if (_signedIn && _gameResultTitle != null && _resultVisible)
@@ -1009,8 +1013,13 @@ class _GameScreenState extends State<GameScreen> {
         if (!mounted) return;
         setState(() {
           _awaitingCode = true;
-          _authMessage = response['message'] as String? ??
+          final String baseMessage = response['message'] as String? ??
               'Verification code sent. Check your inbox.';
+          final String? developmentCode =
+              response['developmentCode'] as String?;
+          _authMessage = developmentCode == null
+              ? baseMessage
+              : '$baseMessage Local test code: $developmentCode';
         });
       } else if (_awaitingCode) {
         final bool phoneVerification = _authMethod == 'Phone';
@@ -1028,6 +1037,13 @@ class _GameScreenState extends State<GameScreen> {
           player?['displayName'] as String? ?? _authDisplayName,
         );
       } else {
+        if (_authIdentity.trim().startsWith('+') ||
+            RegExp(r'^[0-9 ()-]{10,}$').hasMatch(_authIdentity.trim())) {
+          final String? normalizedPhone = normalizePhone(_authIdentity);
+          if (normalizedPhone != null) {
+            _authIdentity = normalizedPhone;
+          }
+        }
         final Map<String, dynamic> response = await _authApi.post(
           'login',
           <String, String>{
@@ -1051,11 +1067,41 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  void _socialLogin(String provider) {
+  Future<void> _socialLogin(SocialCredential credential) async {
+    if (_authLoading) {
+      return;
+    }
     setState(() {
-      _authMessage =
-          '$provider sign-in needs OAuth app credentials. Email login is ready now.';
+      _authLoading = true;
+      _authMessage = 'Verifying ${credential.provider} account...';
     });
+    try {
+      final Map<String, dynamic> response = await _authApi.post(
+        'oauth',
+        <String, String>{
+          'provider': credential.provider,
+          'idToken': credential.idToken,
+          if (credential.displayName != null)
+            'displayName': credential.displayName!,
+        },
+      );
+      if (!mounted) return;
+      final Map<String, dynamic>? player =
+          response['player'] as Map<String, dynamic>?;
+      _completeLogin(
+        player?['displayName'] as String? ??
+            credential.displayName ??
+            'Player',
+      );
+    } on AuthApiException catch (error) {
+      if (mounted) {
+        setState(() => _authMessage = error.message);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _authLoading = false);
+      }
+    }
   }
 
   void _completeLogin(String identity) {
@@ -3334,8 +3380,8 @@ class AuthOverlay extends StatelessWidget {
     required this.onSubmit,
     required this.onBackFromCode,
     required this.loading,
-    required this.onGoogle,
-    required this.onApple,
+    required this.onSocialCredential,
+    required this.onSocialError,
     super.key,
   });
 
@@ -3353,8 +3399,8 @@ class AuthOverlay extends StatelessWidget {
   final VoidCallback onSubmit;
   final VoidCallback onBackFromCode;
   final bool loading;
-  final VoidCallback onGoogle;
-  final VoidCallback onApple;
+  final ValueChanged<SocialCredential> onSocialCredential;
+  final ValueChanged<String> onSocialError;
 
   @override
   Widget build(BuildContext context) {
@@ -3502,11 +3548,13 @@ class AuthOverlay extends StatelessWidget {
                                 const Color(0xFFD6A84F).withValues(alpha: 0.12),
                             shape: BoxShape.circle,
                           ),
-                          child: const Padding(
-                            padding: EdgeInsets.all(14),
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
                             child: Icon(
-                              Icons.mark_email_read_outlined,
-                              color: Color(0xFFD6A84F),
+                              method == 'Phone'
+                                  ? Icons.sms_outlined
+                                  : Icons.mark_email_read_outlined,
+                              color: const Color(0xFFD6A84F),
                               size: 34,
                             ),
                           ),
@@ -3574,24 +3622,9 @@ class AuthOverlay extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: onGoogle,
-                              icon: const Icon(Icons.g_mobiledata_rounded),
-                              label: const Text('Google'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: onApple,
-                              icon: const Icon(Icons.apple_rounded),
-                              label: const Text('Apple'),
-                            ),
-                          ),
-                        ],
+                      SocialLoginButtons(
+                        onCredential: onSocialCredential,
+                        onError: onSocialError,
                       ),
                     ],
                   ],

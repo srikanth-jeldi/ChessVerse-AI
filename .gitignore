@@ -7,7 +7,6 @@ target/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
-pubspec.lock
 *.iml
 *.log
 .env

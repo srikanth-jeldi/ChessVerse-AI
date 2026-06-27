@@ -22,3 +22,7 @@ management:
 chessverse:
   engine:
     stockfish-path: ../.local/stockfish/stockfish.exe
+  auth:
+    sms:
+      mode: console
+      expose-development-code: true

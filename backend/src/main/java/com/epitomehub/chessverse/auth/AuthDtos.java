@@ -48,7 +48,14 @@ final class AuthDtos {
             @NotBlank @Size(max = 72) String password) {
     }
 
-    record MessageResponse(String message, Instant expiresAt) {
+    record OAuthLoginRequest(
+            @NotBlank @Pattern(regexp = "^(google|apple)$") String provider,
+            @NotBlank String idToken,
+            @Size(max = 80) String displayName,
+            @Size(max = 128) String nonce) {
+    }
+
+    record MessageResponse(String message, Instant expiresAt, String developmentCode) {
     }
 
     record AuthResponse(String token, Instant expiresAt, PlayerResponse player) {
