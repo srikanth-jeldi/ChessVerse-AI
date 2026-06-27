@@ -66,6 +66,15 @@ SMTP credentials are loaded from `MAIL_USERNAME`, `MAIL_PASSWORD`, and
 hashed, expire after ten minutes, allow five attempts, and are throttled to one
 request per minute.
 
+Local backend without Docker:
+
+```bash
+cd backend
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+The local profile reads the ignored repository-root `.env` file automatically.
+
 Flutter app:
 
 ```bash
