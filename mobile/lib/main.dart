@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -545,6 +546,7 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   static const AuthApi _authApi = AuthApi();
   final math.Random _random = math.Random();
+  AudioPlayer? _warningPlayer;
   final List<String> _moves = <String>[];
   final List<ChessPiece> _capturedWhite = <ChessPiece>[];
   final List<ChessPiece> _capturedBlack = <ChessPiece>[];
@@ -579,6 +581,7 @@ class _GameScreenState extends State<GameScreen> {
   String? _gameResultTitle;
   String? _gameResultDetail;
   bool _resultVisible = true;
+  bool _checkWarningActive = false;
 
   static const Map<String, ChessPiece> _initialPieces = <String, ChessPiece>{
     'a8': ChessPiece('R', false),
@@ -645,6 +648,10 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void dispose() {
     _clockTimer?.cancel();
+    final AudioPlayer? warningPlayer = _warningPlayer;
+    if (warningPlayer != null) {
+      unawaited(warningPlayer.dispose());
+    }
     super.dispose();
   }
 
@@ -1415,6 +1422,7 @@ class _GameScreenState extends State<GameScreen> {
       _gameResultTitle = null;
       _gameResultDetail = null;
       _resultVisible = true;
+      _checkWarningActive = false;
     });
   }
 
@@ -1468,6 +1476,8 @@ class _GameScreenState extends State<GameScreen> {
       _gameResultTitle = null;
       _gameResultDetail = null;
       _resultVisible = true;
+      _checkWarningActive =
+          ChessRules.isKingInCheck(_moves.length.isEven, _pieces);
       _coachNote = 'Move undone. ${snapshot.coachNote}';
     });
   }
@@ -1564,6 +1574,13 @@ class _GameScreenState extends State<GameScreen> {
     final bool hasMove = ChessRules.hasAnySafeMove(sideToMoveWhite, _pieces);
     final String side = sideToMoveWhite ? 'White' : 'Black';
 
+    if (inCheck && !_checkWarningActive) {
+      _checkWarningActive = true;
+      unawaited(_playCheckWarning());
+    } else if (!inCheck) {
+      _checkWarningActive = false;
+    }
+
     if (inCheck && !hasMove) {
       _gameResultTitle = '${sideToMoveWhite ? 'Black' : 'White'} wins';
       _gameResultDetail = 'Checkmate';
@@ -1580,6 +1597,19 @@ class _GameScreenState extends State<GameScreen> {
       return '$side is in check.';
     }
     return fallback;
+  }
+
+  Future<void> _playCheckWarning() async {
+    try {
+      final AudioPlayer player = _warningPlayer ??= AudioPlayer();
+      await player.stop();
+      await player.play(
+        AssetSource('audio/check-warning.wav'),
+        volume: 0.72,
+      );
+    } catch (_) {
+      // A muted device or browser policy should never interrupt the game.
+    }
   }
 
   String _formatClock(int seconds) {
