@@ -9,6 +9,7 @@ const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: 'http://127.0.0.1:8080',
 );
+const bool arenaPreview = bool.fromEnvironment('ARENA_PREVIEW');
 
 class AuthApi {
   const AuthApi();
@@ -65,7 +66,7 @@ class ChessVerseApp extends StatelessWidget {
       title: 'ChessVerse AI',
       debugShowCheckedModeBanner: false,
       theme: ChessVerseTheme.dark(),
-      home: const GameScreen(),
+      home: const GameScreen(initiallySignedIn: arenaPreview),
     );
   }
 }
@@ -138,7 +139,41 @@ class ChessVerseTheme {
   }
 }
 
-enum BoardSkin { royalWalnut, jadeGlass, tournament }
+enum BoardSkin { royalWalnut, jadeGlass, tournament, marble, sapphire }
+
+enum GameMode { computer, local }
+
+class AiProfile {
+  const AiProfile(this.name, this.elo, this.description);
+
+  final String name;
+  final int elo;
+  final String description;
+}
+
+AiProfile aiProfileFor(int level) {
+  if (level <= 2) {
+    return AiProfile('Beginner', 500 + level * 100, 'Learning pace');
+  }
+  if (level <= 4) {
+    return AiProfile('Casual', 700 + level * 125, 'Sees simple tactics');
+  }
+  if (level <= 6) {
+    return AiProfile('Club', 900 + level * 140, 'Plans and punishes');
+  }
+  if (level <= 8) {
+    return AiProfile('Expert', 1100 + level * 150, 'Strong calculation');
+  }
+  return AiProfile('Master', 1250 + level * 160, 'Tournament pressure');
+}
+
+class AiCandidate {
+  const AiCandidate(this.from, this.to, this.score);
+
+  final String from;
+  final String to;
+  final double score;
+}
 
 class BoardPalette {
   const BoardPalette({
@@ -177,6 +212,20 @@ const Map<BoardSkin, BoardPalette> boardPalettes = <BoardSkin, BoardPalette>{
     dark: Color(0xFFB58863),
     frame: Color(0xFF30251E),
     accent: Color(0xFFE2B458),
+  ),
+  BoardSkin.marble: BoardPalette(
+    label: 'Marble',
+    light: Color(0xFFF2F0EA),
+    dark: Color(0xFF667078),
+    frame: Color(0xFF252A2D),
+    accent: Color(0xFFB9E4EE),
+  ),
+  BoardSkin.sapphire: BoardPalette(
+    label: 'Sapphire',
+    light: Color(0xFFDCE7EA),
+    dark: Color(0xFF28546A),
+    frame: Color(0xFF142B35),
+    accent: Color(0xFF60D6D0),
   ),
 };
 
@@ -485,7 +534,9 @@ class ChessRules {
 }
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
+  const GameScreen({this.initiallySignedIn = false, super.key});
+
+  final bool initiallySignedIn;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -493,6 +544,7 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   static const AuthApi _authApi = AuthApi();
+  final math.Random _random = math.Random();
   final List<String> _moves = <String>[];
   final List<ChessPiece> _capturedWhite = <ChessPiece>[];
   final List<ChessPiece> _capturedBlack = <ChessPiece>[];
@@ -504,7 +556,9 @@ class _GameScreenState extends State<GameScreen> {
   String? _lastCaptureSquare;
   String _coachNote = 'Select a coin to see legal moves.';
   BoardSkin _skin = BoardSkin.royalWalnut;
+  GameMode _gameMode = GameMode.computer;
   double _aiLevel = 4;
+  bool _aiThinking = false;
   bool _coachEnabled = true;
   int _whiteSeconds = 10 * 60;
   int _blackSeconds = 10 * 60;
@@ -521,7 +575,7 @@ class _GameScreenState extends State<GameScreen> {
   String _authMessage =
       'Create an account to save games, ratings and coach history.';
   String _whitePlayerName = 'Guest Player';
-  final String _blackPlayerName = 'ChessVerse AI';
+  String _blackPlayerName = 'ChessVerse AI';
   String? _gameResultTitle;
   String? _gameResultDetail;
   bool _resultVisible = true;
@@ -567,6 +621,7 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
+    _signedIn = widget.initiallySignedIn;
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted || _moves.isEmpty || _gameResultTitle != null) {
         return;
@@ -596,21 +651,27 @@ class _GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     final BoardPalette palette = boardPalettes[_skin]!;
+    final bool sideToMoveWhite = _moves.length.isEven;
+    final bool sideInCheck = ChessRules.isKingInCheck(sideToMoveWhite, _pieces);
+    final String? checkedKingSquare =
+        sideInCheck ? _kingSquare(sideToMoveWhite) : null;
     final Set<String> legalTargets = _selectedSquare == null
         ? <String>{}
         : _legalTargetsFor(_selectedSquare!).toSet();
 
     return Scaffold(
       body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[
-              Color(0xFF111014),
-              Color(0xFF21170F),
-              Color(0xFF101A17),
-            ],
+        decoration: BoxDecoration(
+          color: const Color(0xFF193128),
+          image: DecorationImage(
+            image: const AssetImage(
+              'assets/backgrounds/grandmaster-table-v1.webp',
+            ),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              const Color(0xFF10251E).withValues(alpha: 0.28),
+              BlendMode.multiply,
+            ),
           ),
         ),
         child: SafeArea(
@@ -629,6 +690,9 @@ class _GameScreenState extends State<GameScreen> {
                 lastFromSquare: _lastFromSquare,
                 lastToSquare: _lastToSquare,
                 lastCaptureSquare: _lastCaptureSquare,
+                checkedKingSquare: checkedKingSquare,
+                decisiveSquare:
+                    _gameResultDetail == 'Checkmate' ? _lastToSquare : null,
                 palette: palette,
                 onSquareTap: _handleSquareTap,
               );
@@ -637,7 +701,9 @@ class _GameScreenState extends State<GameScreen> {
                 whitePlayerName: _whitePlayerName,
                 blackPlayerName: _blackPlayerName,
                 activeColor: _moves.length.isEven ? 'White' : 'Black',
+                gameMode: _gameMode,
                 aiLevel: _aiLevel.round(),
+                aiThinking: _aiThinking,
                 coachEnabled: _coachEnabled,
                 moves: _moves,
                 capturedWhite: _capturedWhite,
@@ -647,6 +713,7 @@ class _GameScreenState extends State<GameScreen> {
                 blackClock: _formatClock(_blackSeconds),
                 skin: _skin,
                 onSkinChanged: (BoardSkin skin) => setState(() => _skin = skin),
+                onGameModeChanged: _changeGameMode,
                 onAiLevelChanged: (double level) {
                   setState(() => _aiLevel = level);
                 },
@@ -895,15 +962,29 @@ class _GameScreenState extends State<GameScreen> {
     _coachNote = 'Welcome $_whitePlayerName. Your arena is ready.';
   }
 
+  void _changeGameMode(GameMode mode) {
+    setState(() {
+      _gameMode = mode;
+      _blackPlayerName =
+          mode == GameMode.computer ? 'ChessVerse AI' : 'Player 2';
+    });
+    _reset();
+  }
+
   void _handleSquareTap(String square) {
-    if (_gameResultTitle != null) {
+    if (_gameResultTitle != null || _aiThinking) {
       return;
     }
     String? promotionSquare;
     bool? promotionWhite;
+    bool moveCommitted = false;
 
     setState(() {
       final bool whitesTurn = _moves.length.isEven;
+      if (_gameMode == GameMode.computer && !whitesTurn) {
+        _coachNote = 'ChessVerse AI is calculating its reply.';
+        return;
+      }
       if (_selectedSquare == null) {
         final ChessPiece? piece = _pieces[square];
         if (piece == null) {
@@ -960,6 +1041,7 @@ class _GameScreenState extends State<GameScreen> {
           _lastCaptureSquare = square;
         }
         _pieces[square] = piece;
+        moveCommitted = true;
         if (castleMove) {
           _moveCastlingRook(square, piece.white);
         }
@@ -990,8 +1072,141 @@ class _GameScreenState extends State<GameScreen> {
     });
 
     if (promotionSquare != null && promotionWhite != null) {
-      _showPromotionPicker(promotionSquare!, promotionWhite!);
+      _showPromotionPicker(
+        promotionSquare!,
+        promotionWhite!,
+      ).then((_) => _scheduleAiMove());
+    } else if (moveCommitted) {
+      _scheduleAiMove();
     }
+  }
+
+  String? _kingSquare(bool white) {
+    for (final MapEntry<String, ChessPiece> entry in _pieces.entries) {
+      if (entry.value.code == 'K' && entry.value.white == white) {
+        return entry.key;
+      }
+    }
+    return null;
+  }
+
+  void _scheduleAiMove() {
+    if (_gameMode != GameMode.computer ||
+        _moves.length.isEven ||
+        _gameResultTitle != null ||
+        _aiThinking) {
+      return;
+    }
+
+    setState(() {
+      _aiThinking = true;
+      _selectedSquare = null;
+      _coachNote =
+          '${aiProfileFor(_aiLevel.round()).name} AI is calculating...';
+    });
+    Future<void>.delayed(const Duration(milliseconds: 650), _performAiMove);
+  }
+
+  void _performAiMove() {
+    if (!mounted ||
+        _gameMode != GameMode.computer ||
+        _gameResultTitle != null ||
+        !_aiThinking ||
+        _moves.length.isEven) {
+      return;
+    }
+
+    final List<AiCandidate> candidates = <AiCandidate>[];
+    for (final MapEntry<String, ChessPiece> entry in _pieces.entries) {
+      if (entry.value.white) {
+        continue;
+      }
+      for (final String target in _legalTargetsFor(entry.key)) {
+        final ChessPiece? captured = _pieces[target];
+        final SquarePosition targetPosition = ChessRules.positionOf(target);
+        final double centerBonus = 3.5 -
+            (targetPosition.file - 3.5).abs() +
+            3.5 -
+            (targetPosition.rank - 4.5).abs();
+        final double captureScore = captured == null
+            ? 0
+            : <String, double>{
+                  'P': 1,
+                  'N': 3.2,
+                  'B': 3.3,
+                  'R': 5,
+                  'Q': 9,
+                  'K': 100,
+                }[captured.code] ??
+                0;
+        candidates.add(
+          AiCandidate(
+            entry.key,
+            target,
+            captureScore * 10 + centerBonus + _random.nextDouble(),
+          ),
+        );
+      }
+    }
+
+    if (candidates.isEmpty) {
+      setState(() {
+        _aiThinking = false;
+        _coachNote = _gameStateNote(
+          false,
+          fallback: 'ChessVerse AI has no legal move.',
+        );
+      });
+      return;
+    }
+
+    candidates.sort(
+      (AiCandidate a, AiCandidate b) => b.score.compareTo(a.score),
+    );
+    final int level = _aiLevel.round();
+    final int poolSize = math.min(
+      candidates.length,
+      math.max(1, ((11 - level) / 2).ceil()),
+    );
+    final AiCandidate move = candidates[_random.nextInt(poolSize)];
+
+    setState(() {
+      _saveSnapshot();
+      _lastFromSquare = move.from;
+      _lastToSquare = move.to;
+      _lastCaptureSquare = null;
+      final bool castleMove = _isCastleMove(move.from, move.to);
+      final String? enPassantCaptureSquare =
+          _enPassantCaptureSquare(move.from, move.to);
+      final ChessPiece piece = _pieces.remove(move.from)!;
+      final ChessPiece? captured = enPassantCaptureSquare == null
+          ? _pieces[move.to]
+          : _pieces.remove(enPassantCaptureSquare);
+      if (captured != null) {
+        captured.white
+            ? _capturedWhite.add(captured)
+            : _capturedBlack.add(captured);
+        _lastCaptureSquare = move.to;
+      }
+      _pieces[move.to] = piece;
+      if (castleMove) {
+        _moveCastlingRook(move.to, false);
+      }
+      if (piece.code == 'P' && move.to.endsWith('1')) {
+        _pieces[move.to] = const ChessPiece('Q', false);
+      }
+      final String notation = castleMove
+          ? (move.to.startsWith('g') ? 'O-O' : 'O-O-O')
+          : captured == null
+              ? '${move.from}${move.to}'
+              : '${move.from} x ${move.to}';
+      _moves.insert(0, notation);
+      final String action = captured == null
+          ? '${piece.code} moves to ${move.to}.'
+          : '${piece.code} captures ${captured.code} on ${move.to}.';
+      _coachNote = _gameStateNote(true, fallback: 'AI: $action');
+      _aiThinking = false;
+    });
   }
 
   List<String> _legalTargetsFor(String square) {
@@ -1195,6 +1410,7 @@ class _GameScreenState extends State<GameScreen> {
       _whiteSeconds = 10 * 60;
       _blackSeconds = 10 * 60;
       _selectedSquare = null;
+      _aiThinking = false;
       _coachNote = 'Select a coin to see legal moves.';
       _gameResultTitle = null;
       _gameResultDetail = null;
@@ -1228,7 +1444,10 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     setState(() {
-      final GameSnapshot snapshot = _history.removeLast();
+      final int steps =
+          _gameMode == GameMode.computer && _history.length >= 2 ? 2 : 1;
+      final GameSnapshot snapshot = _history[_history.length - steps];
+      _history.removeRange(_history.length - steps, _history.length);
       _pieces = Map<String, ChessPiece>.from(snapshot.pieces);
       _moves
         ..clear()
@@ -1245,6 +1464,7 @@ class _GameScreenState extends State<GameScreen> {
       _whiteSeconds = snapshot.whiteSeconds;
       _blackSeconds = snapshot.blackSeconds;
       _selectedSquare = null;
+      _aiThinking = false;
       _gameResultTitle = null;
       _gameResultDetail = null;
       _resultVisible = true;
@@ -1430,9 +1650,25 @@ class BoardStage extends StatelessWidget {
             children: <Widget>[
               const Icon(Icons.bolt_rounded, color: Color(0xFFD6A84F)),
               const SizedBox(width: 10),
-              Text('ChessVerse AI',
-                  style: Theme.of(context).textTheme.headlineMedium),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'ChessVerse AI',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  Text(
+                    'GRANDMASTER TABLE',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: const Color(0xFF63D2B8),
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                ],
+              ),
               const Spacer(),
+              PlayerAvatar(name: whitePlayerName),
+              const SizedBox(width: 8),
               MatchClock(label: whitePlayerName, value: whiteClock),
               const SizedBox(width: 8),
               MatchClock(label: blackPlayerName, value: blackClock),
@@ -1446,21 +1682,38 @@ class BoardStage extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 760),
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: palette.frame,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: <Color>[
+                      Color.alphaBlend(
+                        palette.accent.withValues(alpha: 0.24),
+                        palette.frame,
+                      ),
+                      palette.frame,
+                      const Color(0xFF101A17),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: palette.accent.withValues(alpha: 0.5),
+                    color: palette.accent.withValues(alpha: 0.75),
+                    width: 2,
                   ),
                   boxShadow: <BoxShadow>[
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.38),
-                      blurRadius: 32,
-                      offset: const Offset(0, 24),
+                      color: Colors.black.withValues(alpha: 0.58),
+                      blurRadius: 34,
+                      offset: const Offset(0, 22),
+                    ),
+                    BoxShadow(
+                      color: palette.accent.withValues(alpha: 0.2),
+                      blurRadius: 18,
+                      spreadRadius: -3,
                     ),
                   ],
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(13),
                   child: child,
                 ),
               ),
@@ -1488,6 +1741,8 @@ class ChessBoard extends StatelessWidget {
     required this.lastFromSquare,
     required this.lastToSquare,
     required this.lastCaptureSquare,
+    required this.checkedKingSquare,
+    required this.decisiveSquare,
     required this.palette,
     required this.onSquareTap,
     super.key,
@@ -1499,6 +1754,8 @@ class ChessBoard extends StatelessWidget {
   final String? lastFromSquare;
   final String? lastToSquare;
   final String? lastCaptureSquare;
+  final String? checkedKingSquare;
+  final String? decisiveSquare;
   final BoardPalette palette;
   final ValueChanged<String> onSquareTap;
 
@@ -1530,8 +1787,11 @@ class ChessBoard extends StatelessWidget {
                 final bool lastMoveSquare =
                     square == lastFromSquare || square == lastToSquare;
                 final bool lastCapture = square == lastCaptureSquare;
+                final bool checkedKing = square == checkedKingSquare;
+                final bool decisiveMove = square == decisiveSquare;
 
                 return BoardSquare(
+                  key: ValueKey<String>('square-$square'),
                   square: square,
                   dark: dark,
                   selected: selected,
@@ -1539,6 +1799,8 @@ class ChessBoard extends StatelessWidget {
                   captureTarget: captureTarget,
                   lastMoveSquare: lastMoveSquare,
                   lastCapture: lastCapture,
+                  checkedKing: checkedKing,
+                  decisiveMove: decisiveMove,
                   palette: palette,
                   piece: piece,
                   showRank: col == 0,
@@ -1563,6 +1825,8 @@ class BoardSquare extends StatelessWidget {
     required this.captureTarget,
     required this.lastMoveSquare,
     required this.lastCapture,
+    required this.checkedKing,
+    required this.decisiveMove,
     required this.palette,
     required this.showRank,
     required this.showFile,
@@ -1578,6 +1842,8 @@ class BoardSquare extends StatelessWidget {
   final bool captureTarget;
   final bool lastMoveSquare;
   final bool lastCapture;
+  final bool checkedKing;
+  final bool decisiveMove;
   final BoardPalette palette;
   final bool showRank;
   final bool showFile;
@@ -1591,24 +1857,41 @@ class BoardSquare extends StatelessWidget {
         ? palette.light.withValues(alpha: 0.72)
         : palette.dark.withValues(alpha: 0.72);
 
-    final Color squareColor = lastCapture
+    final Color squareColor = checkedKing
         ? Color.alphaBlend(
-            const Color(0xFFE11D48).withValues(alpha: 0.62), base)
-        : selected
-            ? Color.alphaBlend(palette.accent.withValues(alpha: 0.55), base)
-            : lastMoveSquare
+            const Color(0xFFE11D48).withValues(alpha: 0.76),
+            base,
+          )
+        : decisiveMove
+            ? Color.alphaBlend(
+                palette.accent.withValues(alpha: 0.62),
+                base,
+              )
+            : lastCapture
                 ? Color.alphaBlend(
-                    const Color(0xFFFFFFFF).withValues(alpha: 0.26),
-                    base,
-                  )
-                : base;
+                    const Color(0xFFE11D48).withValues(alpha: 0.62), base)
+                : selected
+                    ? Color.alphaBlend(
+                        palette.accent.withValues(alpha: 0.55), base)
+                    : lastMoveSquare
+                        ? Color.alphaBlend(
+                            const Color(0xFFFFFFFF).withValues(alpha: 0.26),
+                            base,
+                          )
+                        : base;
 
     return InkWell(
       onTap: onTap,
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(
           begin: 0,
-          end: selected || legalTarget || lastCapture ? 1 : 0,
+          end: selected ||
+                  legalTarget ||
+                  lastCapture ||
+                  checkedKing ||
+                  decisiveMove
+              ? 1
+              : 0,
         ),
         duration: const Duration(milliseconds: 420),
         curve: Curves.easeOutCubic,
@@ -1618,9 +1901,13 @@ class BoardSquare extends StatelessWidget {
             curve: Curves.easeOutCubic,
             decoration: BoxDecoration(
               color: squareColor,
-              border: selected
-                  ? Border.all(color: const Color(0xFFF8E7B0), width: 3)
-                  : null,
+              border: Border.all(
+                color: selected
+                    ? const Color(0xFFF8E7B0)
+                    : (dark ? Colors.black : Colors.white)
+                        .withValues(alpha: 0.08),
+                width: selected ? 3 : 1,
+              ),
               boxShadow: <BoxShadow>[
                 if (legalTarget)
                   BoxShadow(
@@ -1634,6 +1921,19 @@ class BoardSquare extends StatelessWidget {
                         const Color(0xFFFF1744).withValues(alpha: 0.55 * glow),
                     blurRadius: 24,
                     spreadRadius: 3,
+                  ),
+                if (checkedKing)
+                  BoxShadow(
+                    color:
+                        const Color(0xFFFF1744).withValues(alpha: 0.9 * glow),
+                    blurRadius: 28,
+                    spreadRadius: 5,
+                  ),
+                if (decisiveMove)
+                  BoxShadow(
+                    color: palette.accent.withValues(alpha: 0.8 * glow),
+                    blurRadius: 24,
+                    spreadRadius: 4,
                   ),
               ],
             ),
@@ -1708,6 +2008,26 @@ class BoardSquare extends StatelessWidget {
                   ),
                 ),
               ),
+            if (checkedKing)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: const Color(0xFFFFD1D8),
+                        width: 4,
+                      ),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.48),
+                          blurRadius: 9,
+                          spreadRadius: -2,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             Center(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 220),
@@ -1766,30 +2086,42 @@ class ChessCoin extends StatelessWidget {
           child: SizedBox(
             width: pieceSize,
             height: pieceSize,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: <BoxShadow>[
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.34),
-                    blurRadius: 9,
-                    offset: const Offset(0, 5),
-                  ),
-                  if (selected)
-                    BoxShadow(
-                      color: accent.withValues(alpha: 0.5),
-                      blurRadius: 20,
-                      spreadRadius: 2,
+            child: Stack(
+              alignment: Alignment.center,
+              children: <Widget>[
+                Positioned(
+                  bottom: pieceSize * 0.045,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(pieceSize),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.62),
+                          blurRadius: pieceSize * 0.09,
+                          spreadRadius: pieceSize * 0.025,
+                        ),
+                        if (selected)
+                          BoxShadow(
+                            color: accent.withValues(alpha: 0.68),
+                            blurRadius: pieceSize * 0.2,
+                            spreadRadius: pieceSize * 0.06,
+                          ),
+                      ],
                     ),
-                ],
-              ),
-              child: Image.asset(
-                pieceAsset(piece),
-                fit: BoxFit.contain,
-                filterQuality: FilterQuality.high,
-                semanticLabel:
-                    '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}',
-              ),
+                    child: SizedBox(
+                      width: pieceSize * 0.54,
+                      height: pieceSize * 0.055,
+                    ),
+                  ),
+                ),
+                Image.asset(
+                  pieceAsset(piece),
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                  semanticLabel:
+                      '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}',
+                ),
+              ],
             ),
           ),
         );
@@ -1998,7 +2330,9 @@ class GamePanel extends StatelessWidget {
     required this.whitePlayerName,
     required this.blackPlayerName,
     required this.activeColor,
+    required this.gameMode,
     required this.aiLevel,
+    required this.aiThinking,
     required this.coachEnabled,
     required this.moves,
     required this.capturedWhite,
@@ -2008,6 +2342,7 @@ class GamePanel extends StatelessWidget {
     required this.blackClock,
     required this.skin,
     required this.onSkinChanged,
+    required this.onGameModeChanged,
     required this.onAiLevelChanged,
     required this.onCoachChanged,
     required this.onReset,
@@ -2021,7 +2356,9 @@ class GamePanel extends StatelessWidget {
   final String whitePlayerName;
   final String blackPlayerName;
   final String activeColor;
+  final GameMode gameMode;
   final int aiLevel;
+  final bool aiThinking;
   final bool coachEnabled;
   final List<String> moves;
   final List<ChessPiece> capturedWhite;
@@ -2031,6 +2368,7 @@ class GamePanel extends StatelessWidget {
   final String blackClock;
   final BoardSkin skin;
   final ValueChanged<BoardSkin> onSkinChanged;
+  final ValueChanged<GameMode> onGameModeChanged;
   final ValueChanged<double> onAiLevelChanged;
   final ValueChanged<bool> onCoachChanged;
   final VoidCallback onReset;
@@ -2043,7 +2381,7 @@ class GamePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final bool scrollPanel = constraints.maxHeight < 620;
+        final AiProfile aiProfile = aiProfileFor(aiLevel);
         final Widget history = moves.isEmpty
             ? const EmptyMoveState()
             : ListView.separated(
@@ -2065,7 +2403,7 @@ class GamePanel extends StatelessWidget {
             children: <Widget>[
               Expanded(
                 child: Text(
-                  'AI Arena',
+                  gameMode == GameMode.computer ? 'AI Arena' : 'Local Match',
                   style: Theme.of(context).textTheme.headlineMedium,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -2083,6 +2421,25 @@ class GamePanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+          SegmentedButton<GameMode>(
+            segments: const <ButtonSegment<GameMode>>[
+              ButtonSegment<GameMode>(
+                value: GameMode.computer,
+                icon: Icon(Icons.memory_rounded),
+                label: Text('Vs Computer'),
+              ),
+              ButtonSegment<GameMode>(
+                value: GameMode.local,
+                icon: Icon(Icons.people_alt_outlined),
+                label: Text('2 Players'),
+              ),
+            ],
+            selected: <GameMode>{gameMode},
+            onSelectionChanged: (Set<GameMode> selected) {
+              onGameModeChanged(selected.first);
+            },
+          ),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -2091,7 +2448,13 @@ class GamePanel extends StatelessWidget {
                 icon: Icons.auto_awesome_rounded,
                 label: coachEnabled ? 'Coach on' : 'Coach off',
               ),
-              StatusPill(icon: Icons.speed_rounded, label: 'Level $aiLevel'),
+              if (gameMode == GameMode.computer)
+                StatusPill(
+                  icon: aiThinking
+                      ? Icons.hourglass_top_rounded
+                      : Icons.speed_rounded,
+                  label: aiThinking ? 'Thinking' : aiProfile.name,
+                ),
               StatusPill(icon: Icons.memory_rounded, label: activeColor),
             ],
           ),
@@ -2115,38 +2478,52 @@ class GamePanel extends StatelessWidget {
           const SizedBox(height: 18),
           Text('Board', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          SegmentedButton<BoardSkin>(
-            segments: boardPalettes.entries
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: boardPalettes.entries
                 .map(
-                  (MapEntry<BoardSkin, BoardPalette> entry) =>
-                      ButtonSegment<BoardSkin>(
-                    value: entry.key,
-                    label: Text(entry.value.label),
+                  (MapEntry<BoardSkin, BoardPalette> entry) => BoardThemeChoice(
+                    palette: entry.value,
+                    selected: skin == entry.key,
+                    onTap: () => onSkinChanged(entry.key),
                   ),
                 )
                 .toList(),
-            selected: <BoardSkin>{skin},
-            onSelectionChanged: (Set<BoardSkin> selected) {
-              onSkinChanged(selected.first);
-            },
-            style: ButtonStyle(
-              shape: WidgetStatePropertyAll<RoundedRectangleBorder>(
-                RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          ),
+          if (gameMode == GameMode.computer) ...<Widget>[
+            const SizedBox(height: 18),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    '${aiProfile.name} · Level $aiLevel',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
-              ),
+                Text(
+                  '~${aiProfile.elo} Elo',
+                  style: const TextStyle(
+                    color: Color(0xFF63D2B8),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 18),
-          Text('AI strength', style: Theme.of(context).textTheme.titleMedium),
-          Slider(
-            value: aiLevel.toDouble(),
-            min: 1,
-            max: 10,
-            divisions: 9,
-            label: '$aiLevel',
-            onChanged: onAiLevelChanged,
-          ),
+            const SizedBox(height: 3),
+            Text(
+              aiProfile.description,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            Slider(
+              value: aiLevel.toDouble(),
+              min: 1,
+              max: 10,
+              divisions: 9,
+              label: '${aiProfile.name} · ~${aiProfile.elo} Elo',
+              onChanged: onAiLevelChanged,
+            ),
+          ],
           Material(
             color: Colors.transparent,
             child: SwitchListTile(
@@ -2186,26 +2563,98 @@ class GamePanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             ...controls,
-            if (scrollPanel)
-              SizedBox(height: 220, child: history)
-            else
-              Expanded(child: history),
+            SizedBox(height: 220, child: history),
           ],
         );
 
         return DecoratedBox(
           decoration: BoxDecoration(
-            color: const Color(0xFF191A1F).withValues(alpha: 0.92),
+            color: const Color(0xFF17231F).withValues(alpha: 0.96),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFF3A3124)),
+            border: Border.all(
+              color: const Color(0xFF98743B).withValues(alpha: 0.72),
+            ),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.34),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+              ),
+            ],
           ),
           child: Padding(
             padding: const EdgeInsets.all(18),
-            child:
-                scrollPanel ? SingleChildScrollView(child: content) : content,
+            child: SingleChildScrollView(child: content),
           ),
         );
       },
+    );
+  }
+}
+
+class BoardThemeChoice extends StatelessWidget {
+  const BoardThemeChoice({
+    required this.palette,
+    required this.selected,
+    required this.onTap,
+    super.key,
+  });
+
+  final BoardPalette palette;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: '${palette.label} board',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(7),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          width: 104,
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected
+                ? palette.accent.withValues(alpha: 0.16)
+                : const Color(0xFF202329),
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(
+              color: selected ? palette.accent : const Color(0xFF45474C),
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            children: <Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: SizedBox(
+                  width: 25,
+                  height: 25,
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(child: ColoredBox(color: palette.light)),
+                      Expanded(child: ColoredBox(color: palette.dark)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  palette.label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -2748,6 +3197,47 @@ class MiniCapturedPiece extends StatelessWidget {
               color: text,
               fontSize: 12,
               fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class PlayerAvatar extends StatelessWidget {
+  const PlayerAvatar({required this.name, super.key});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final String initial =
+        name.trim().isEmpty ? 'P' : name.trim().substring(0, 1).toUpperCase();
+    return Tooltip(
+      message: 'Signed in as $name',
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF245A4A),
+          border: Border.all(color: const Color(0xFF63D2B8), width: 2),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: const Color(0xFF63D2B8).withValues(alpha: 0.2),
+              blurRadius: 10,
+            ),
+          ],
+        ),
+        child: SizedBox(
+          width: 38,
+          height: 38,
+          child: Center(
+            child: Text(
+              initial,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
             ),
           ),
         ),
