@@ -50,15 +50,20 @@ class _SocialLoginButtonsState extends State<SocialLoginButtons> {
   }
 
   Future<void> _initializeGoogle() async {
-    if (googleWebClientId.isEmpty && googleServerClientId.isEmpty) {
+    final String? clientId =
+        kIsWeb && googleWebClientId.isNotEmpty ? googleWebClientId : null;
+    final String? serverClientId =
+        !kIsWeb && googleServerClientId.isNotEmpty
+            ? googleServerClientId
+            : null;
+    if (clientId == null && serverClientId == null) {
       return;
     }
     try {
       final GoogleSignIn google = GoogleSignIn.instance;
       await google.initialize(
-        clientId: googleWebClientId.isEmpty ? null : googleWebClientId,
-        serverClientId:
-            googleServerClientId.isEmpty ? null : googleServerClientId,
+        clientId: clientId,
+        serverClientId: serverClientId,
       );
       _googleSubscription = google.authenticationEvents.listen(
         (GoogleSignInAuthenticationEvent event) {
