@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
@@ -38,7 +39,10 @@ class SnsSmsOtpDelivery implements SmsOtpDelivery {
             @Value("${chessverse.auth.sms.max-price:}") String maxPrice,
             @Value("${chessverse.auth.sms.india-entity-id:}") String entityId,
             @Value("${chessverse.auth.sms.india-template-id:}") String templateId) {
-        this.snsClient = SnsClient.builder().region(Region.of(awsRegion)).build();
+        this.snsClient = SnsClient.builder()
+                .region(Region.of(awsRegion))
+                .httpClientBuilder(UrlConnectionHttpClient.builder())
+                .build();
         this.senderId = senderId;
         this.maxPrice = maxPrice;
         this.entityId = entityId;
