@@ -52,10 +52,9 @@ class _SocialLoginButtonsState extends State<SocialLoginButtons> {
   Future<void> _initializeGoogle() async {
     final String? clientId =
         kIsWeb && googleWebClientId.isNotEmpty ? googleWebClientId : null;
-    final String? serverClientId =
-        !kIsWeb && googleServerClientId.isNotEmpty
-            ? googleServerClientId
-            : null;
+    final String? serverClientId = !kIsWeb && googleServerClientId.isNotEmpty
+        ? googleServerClientId
+        : null;
     if (clientId == null && serverClientId == null) {
       return;
     }
@@ -71,7 +70,8 @@ class _SocialLoginButtonsState extends State<SocialLoginButtons> {
             _submitGoogleAccount(event.user);
           }
         },
-        onError: (Object error) => widget.onError(_socialError('Google', error)),
+        onError: (Object error) =>
+            widget.onError(_socialError('Google', error)),
       );
       if (mounted) {
         setState(() => _googleReady = true);
@@ -112,7 +112,10 @@ class _SocialLoginButtonsState extends State<SocialLoginButtons> {
   }
 
   Future<void> _startApple() async {
-    if (kIsWeb && (appleServiceId.isEmpty || appleRedirectUri.isEmpty)) {
+    final bool usesWebAuthentication =
+        kIsWeb || defaultTargetPlatform == TargetPlatform.android;
+    if (usesWebAuthentication &&
+        (appleServiceId.isEmpty || appleRedirectUri.isEmpty)) {
       widget.onError(
         'Apple login needs APPLE_SERVICE_ID and APPLE_REDIRECT_URI.',
       );
@@ -125,7 +128,7 @@ class _SocialLoginButtonsState extends State<SocialLoginButtons> {
           AppleIDAuthorizationScopes.email,
           AppleIDAuthorizationScopes.fullName,
         ],
-        webAuthenticationOptions: kIsWeb
+        webAuthenticationOptions: usesWebAuthentication
             ? WebAuthenticationOptions(
                 clientId: appleServiceId,
                 redirectUri: Uri.parse(appleRedirectUri),
@@ -185,13 +188,13 @@ class _SocialLoginButtonsState extends State<SocialLoginButtons> {
         else
           buildGoogleProviderButton(_startGoogle),
         const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: _startApple,
-            icon: const Icon(Icons.apple_rounded),
-            label: const Text('Continue with Apple'),
-          ),
+        SignInWithAppleButton(
+          onPressed: _startApple,
+          text: 'Continue with Apple',
+          height: 44,
+          style: SignInWithAppleButtonStyle.black,
+          borderRadius: const BorderRadius.all(Radius.circular(6)),
+          iconAlignment: SignInWithAppleIconAlignment.left,
         ),
       ],
     );
