@@ -1,3 +1,9 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: chessverse-backend
+  namespace: chessverse
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -13,6 +19,7 @@ spec:
       labels:
         app: chessverse-backend
     spec:
+      serviceAccountName: chessverse-backend
       containers:
         - name: backend
           image: ghcr.io/srikanth-jeldi/chessverse-ai/backend:latest
@@ -35,6 +42,28 @@ spec:
                 secretKeyRef:
                   name: chessverse-backend-secret
                   key: db-password
+            - name: SMS_MODE
+              value: sns
+            - name: AWS_REGION
+              value: ap-south-1
+            - name: SMS_SENDER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: chessverse-backend-secret
+                  key: sms-sender-id
+                  optional: true
+            - name: SMS_INDIA_ENTITY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: chessverse-backend-secret
+                  key: sms-india-entity-id
+                  optional: true
+            - name: SMS_INDIA_TEMPLATE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: chessverse-backend-secret
+                  key: sms-india-template-id
+                  optional: true
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
@@ -68,4 +97,3 @@ spec:
     - name: http
       port: 80
       targetPort: 8080
-

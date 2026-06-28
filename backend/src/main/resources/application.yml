@@ -39,6 +39,11 @@ chessverse:
       gateway-url: ${SMS_GATEWAY_URL:}
       gateway-token: ${SMS_GATEWAY_TOKEN:}
       sender: ${SMS_SENDER:ChessVerse}
+      aws-region: ${AWS_REGION:ap-south-1}
+      sender-id: ${SMS_SENDER_ID:}
+      max-price: ${SMS_MAX_PRICE:}
+      india-entity-id: ${SMS_INDIA_ENTITY_ID:}
+      india-template-id: ${SMS_INDIA_TEMPLATE_ID:}
     oauth:
       google-client-ids: ${GOOGLE_CLIENT_IDS:${GOOGLE_WEB_CLIENT_ID:}}
       apple-client-ids: ${APPLE_CLIENT_IDS:${APPLE_SERVICE_ID:}}

@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ChessVerse backend permission to send OTP messages with Amazon SNS
+
+Parameters:
+  ClusterName:
+    Type: String
+    Default: ""
+    Description: Existing EKS cluster name. Leave empty to create only the IAM role.
+  KubernetesNamespace:
+    Type: String
+    Default: chessverse
+  KubernetesServiceAccount:
+    Type: String
+    Default: chessverse-backend
+
+Conditions:
+  HasEksCluster: !Not [!Equals [!Ref ClusterName, ""]]
+
+Resources:
+  ChessVerseSnsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: chessverse-backend-sns
+      Description: Temporary AWS credentials for the ChessVerse backend pod
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: pods.eks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+              - sts:TagSession
+      Policies:
+        - PolicyName: publish-transactional-sms
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: PublishDirectSms
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: "*"
+
+  ChessVersePodIdentityAssociation:
+    Type: AWS::EKS::PodIdentityAssociation
+    Condition: HasEksCluster
+    Properties:
+      ClusterName: !Ref ClusterName
+      Namespace: !Ref KubernetesNamespace
+      ServiceAccount: !Ref KubernetesServiceAccount
+      RoleArn: !GetAtt ChessVerseSnsRole.Arn
+
+Outputs:
+  SnsRoleArn:
+    Description: IAM role used by the ChessVerse backend
+    Value: !GetAtt ChessVerseSnsRole.Arn

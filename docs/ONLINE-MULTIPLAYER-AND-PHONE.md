@@ -8,18 +8,32 @@ The backend supports:
 - `POST /api/auth/verify-phone`
 - password login using an E.164 phone number such as `+919876543210`
 
-Configure an HTTPS SMS gateway with:
+For production, use native Amazon SNS:
 
 ```text
-SMS_GATEWAY_URL=
-SMS_GATEWAY_TOKEN=
-SMS_SENDER=ChessVerse
+SMS_MODE=sns
+AWS_REGION=ap-south-1
 ```
 
-The gateway receives a bearer-authenticated JSON request containing `to`,
-`from`, and `message`. In AWS, API Gateway plus Lambda can validate this request
-and publish the message through SNS. Keep provider credentials in AWS Secrets
-Manager, not in the Flutter build or Git.
+The AWS SDK publishes a `Transactional` SMS directly to the E.164 phone number.
+Locally it uses the AWS CLI credential profile. On EKS it uses Pod Identity and
+the least-privilege `sns:Publish` role in
+`infrastructure/aws/sns-pod-identity.yaml`; no long-lived AWS key is stored in
+the application.
+
+New AWS accounts start in the SNS SMS sandbox and can send only to verified
+test numbers. India local-route production delivery also requires TRAI/DLT
+registration, an approved sender ID, Entity ID and Template ID. Those values
+map to `SMS_SENDER_ID`, `SMS_INDIA_ENTITY_ID`, and
+`SMS_INDIA_TEMPLATE_ID`.
+
+The generic HTTPS gateway mode remains available for a non-AWS provider:
+
+```text
+SMS_MODE=gateway
+SMS_GATEWAY_URL=
+SMS_GATEWAY_TOKEN=
+```
 
 ## Worldwide Matchmaking
 
