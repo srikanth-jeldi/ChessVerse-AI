@@ -1,6 +1,6 @@
 # ChessVerse Project Status
 
-Updated: 2026-06-27
+Updated: 2026-06-28
 
 ## Current Completion
 
@@ -17,7 +17,8 @@ present yet, so the project is not ready for Play Store or App Store submission.
 - Legal move highlighting, captures, castling, en passant and promotion
 - Clocks, undo, move history, check/checkmate effects and result overlay
 - Email registration, OTP verification and password login
-- Phone registration, local test OTP, verification and phone/password login
+- Phone registration, AWS SNS OTP delivery, verification and phone/password login
+- AWS SNS sandbox phone verified with a successful end-to-end app OTP test
 - Google and Apple client flows plus backend identity-token validation
 - Stockfish-backed AI endpoint with ten calibrated levels
 - Spring Boot, PostgreSQL/H2, Flyway, Docker and Kubernetes foundations
@@ -25,7 +26,8 @@ present yet, so the project is not ready for Play Store or App Store submission.
 
 ## Remaining Production Work
 
-- Configure a real SMS provider for phone OTP
+- Request AWS SMS production access and complete India sender/DLT registration
+- Verify production email OTP delivery after rotating the exposed Gmail app password
 - Supply provider credentials and complete live Google/Apple account QA
 - Build Redis-backed worldwide matchmaking and authenticated WebSockets
 - Add server-authoritative chess rules, clocks, reconnect and anti-cheat
@@ -37,6 +39,7 @@ present yet, so the project is not ready for Play Store or App Store submission.
 
 ## Next Milestone
 
-The next production milestone should be native Android/iOS scaffolding plus
-server-authoritative online matchmaking. Phone OTP can be enabled independently
-as soon as an SMS provider and credentials are selected.
+The next production milestone is authentication production readiness: move AWS
+SMS out of the sandbox, verify email delivery, and complete live Google/Apple
+provider configuration. After that, build native Android/iOS scaffolding and
+server-authoritative online matchmaking.
