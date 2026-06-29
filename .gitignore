@@ -18,3 +18,11 @@ backend-local*.log
 coverage/
 node_modules/
 dist/
+
+# Mobile signing material must never be committed.
+mobile/android/key.properties
+mobile/android/keystore/
+*.jks
+*.keystore
+*.p12
+*.mobileprovision

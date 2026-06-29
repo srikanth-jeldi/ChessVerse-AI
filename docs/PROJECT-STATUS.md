@@ -29,7 +29,7 @@ Play Store or App Store submission.
 - Verify production email OTP delivery after rotating the exposed Gmail app password
 - Build Redis-backed worldwide matchmaking and authenticated WebSockets
 - Add server-authoritative chess rules, clocks, reconnect and anti-cheat
-- Generate Android and iOS Flutter platform projects
+- Configure production Android/iOS signing and complete physical-device QA
 - Add push notifications, crash reporting, analytics and privacy controls
 - Complete AWS managed database, Redis, secrets, TLS and observability
 - Add store signing, subscriptions, legal pages and release-device testing
@@ -37,6 +37,7 @@ Play Store or App Store submission.
 
 ## Next Milestone
 
-The next production milestone is server-authoritative online matchmaking.
-Email delivery, Redis presence, reconnect handling and rated-game integrity
-must be production-verified before launch.
+The next production milestone is mobile core hardening: modular Flutter
+architecture, proven chess rules, persisted authentication, signed Android/iOS
+test builds, and physical-device QA. Server-authoritative matchmaking follows
+after these foundations are reliable.

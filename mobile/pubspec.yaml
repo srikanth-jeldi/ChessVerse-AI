@@ -22,4 +22,5 @@ flutter:
   assets:
     - assets/audio/
     - assets/backgrounds/
+    - assets/branding/
     - assets/pieces/

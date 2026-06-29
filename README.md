@@ -75,14 +75,21 @@ mvn spring-boot:run -Dspring-boot.run.profiles=local
 
 The local profile reads the ignored repository-root `.env` file automatically.
 
-Flutter app:
+Flutter Android app:
 
 ```bash
 cd mobile
 flutter pub get
-flutter run -d web-server --web-hostname localhost --web-port 53123 \
-  --dart-define=API_BASE_URL=http://127.0.0.1:8080
+flutter run -d <android-device-id> \
+  --dart-define=API_BASE_URL=http://10.0.2.2:8080
 ```
+
+Use `http://127.0.0.1:8080` for an iOS simulator when the backend runs on the
+same Mac. Physical devices need the development machine's reachable LAN address
+and a debug-only network configuration. Production builds require HTTPS.
+
+See `docs/MOBILE-RELEASE-GUIDELINES.md` before creating Android or iOS release
+artifacts.
 
 Authentication intentionally uses email OTP/password plus a no-account guest
 mode. Paid SMS and social provider dependencies are excluded from the

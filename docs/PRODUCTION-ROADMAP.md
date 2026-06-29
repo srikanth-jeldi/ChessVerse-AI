@@ -88,10 +88,11 @@ Goal: Release-ready Android, iOS, desktop, and web builds.
 
 ## Immediate Next Code Tasks
 
-1. Add a real chess rules package to Flutter and backend contract tests.
-2. Add Stockfish engine adapter behind an interface.
-3. Split Flutter UI into feature folders: game, coach, practice, profile, settings.
-4. Add authentication module in backend.
-5. Add OpenAPI specification and generated API client.
-6. Add Terraform for AWS networking, EKS, RDS, Redis, and IAM.
+1. Split Flutter UI into feature folders without changing current gameplay.
+2. Replace handwritten move rules with a proven chess rules package and tests.
+3. Persist mobile sessions in Android Keystore and Apple Keychain.
+4. Make backend games validate moves and own FEN, clocks, and results.
+5. Add OpenAPI specification and generated mobile API client.
+6. Build signed internal Android and TestFlight releases before expanding cloud
+   infrastructure.
 
