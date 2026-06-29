@@ -3,15 +3,12 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import 'google_provider_button.dart';
 
 const String googleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
 const String googleServerClientId =
     String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
-const String appleServiceId = String.fromEnvironment('APPLE_SERVICE_ID');
-const String appleRedirectUri = String.fromEnvironment('APPLE_REDIRECT_URI');
 
 class SocialCredential {
   const SocialCredential({
@@ -111,54 +108,7 @@ class _SocialLoginButtonsState extends State<SocialLoginButtons> {
     }
   }
 
-  Future<void> _startApple() async {
-    final bool usesWebAuthentication =
-        kIsWeb || defaultTargetPlatform == TargetPlatform.android;
-    if (usesWebAuthentication &&
-        (appleServiceId.isEmpty || appleRedirectUri.isEmpty)) {
-      widget.onError(
-        'Apple login needs APPLE_SERVICE_ID and APPLE_REDIRECT_URI.',
-      );
-      return;
-    }
-    try {
-      final AuthorizationCredentialAppleID credential =
-          await SignInWithApple.getAppleIDCredential(
-        scopes: const <AppleIDAuthorizationScopes>[
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-        webAuthenticationOptions: usesWebAuthentication
-            ? WebAuthenticationOptions(
-                clientId: appleServiceId,
-                redirectUri: Uri.parse(appleRedirectUri),
-              )
-            : null,
-      );
-      final String? idToken = credential.identityToken;
-      if (idToken == null || idToken.isEmpty) {
-        widget.onError('Apple did not return an identity token.');
-        return;
-      }
-      final String displayName = <String?>[
-        credential.givenName,
-        credential.familyName,
-      ].whereType<String>().where((String part) => part.isNotEmpty).join(' ');
-      widget.onCredential(SocialCredential(
-        provider: 'apple',
-        idToken: idToken,
-        displayName: displayName.isEmpty ? null : displayName,
-      ));
-    } catch (error) {
-      widget.onError(_socialError('Apple', error));
-    }
-  }
-
   String _socialError(String provider, Object error) {
-    if (error is SignInWithAppleAuthorizationException &&
-        error.code == AuthorizationErrorCode.canceled) {
-      return '$provider sign-in was cancelled.';
-    }
     if (error is GoogleSignInException &&
         error.code == GoogleSignInExceptionCode.canceled) {
       return '$provider sign-in was cancelled.';
@@ -187,15 +137,6 @@ class _SocialLoginButtonsState extends State<SocialLoginButtons> {
           )
         else
           buildGoogleProviderButton(_startGoogle),
-        const SizedBox(height: 10),
-        SignInWithAppleButton(
-          onPressed: _startApple,
-          text: 'Continue with Apple',
-          height: 44,
-          style: SignInWithAppleButtonStyle.black,
-          borderRadius: const BorderRadius.all(Radius.circular(6)),
-          iconAlignment: SignInWithAppleIconAlignment.left,
-        ),
       ],
     );
   }

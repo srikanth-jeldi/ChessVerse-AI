@@ -83,9 +83,7 @@ flutter pub get
 flutter run -d web-server --web-hostname localhost --web-port 53123 \
   --dart-define=API_BASE_URL=http://127.0.0.1:8080 \
   --dart-define=GOOGLE_WEB_CLIENT_ID=your-web-client-id \
-  --dart-define=GOOGLE_SERVER_CLIENT_ID=your-server-client-id \
-  --dart-define=APPLE_SERVICE_ID=your-apple-service-id \
-  --dart-define=APPLE_REDIRECT_URI=https://your-domain.example/
+  --dart-define=GOOGLE_SERVER_CLIENT_ID=your-server-client-id
 ```
 
 The local backend profile returns a development phone OTP in the registration
@@ -93,7 +91,7 @@ response so the complete phone flow can be tested without spending SMS credit.
 Production defaults to `SMS_MODE=gateway`, never returns the OTP, and requires
 `SMS_GATEWAY_URL` plus `SMS_GATEWAY_TOKEN`.
 
-Google and Apple buttons use their official Flutter provider SDKs. The backend
+The Google button uses the official Flutter provider SDK. The backend
 validates provider token signature, issuer, audience and expiry before creating
 a ChessVerse session. See [docs/OAUTH-SETUP.md](docs/OAUTH-SETUP.md).
 

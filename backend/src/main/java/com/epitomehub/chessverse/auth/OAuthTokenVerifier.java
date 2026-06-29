@@ -18,13 +18,10 @@ import org.springframework.stereotype.Service;
 @Service
 class OAuthTokenVerifier {
     private final List<String> googleClientIds;
-    private final List<String> appleClientIds;
 
     OAuthTokenVerifier(
-            @Value("${chessverse.auth.oauth.google-client-ids:}") String googleClientIds,
-            @Value("${chessverse.auth.oauth.apple-client-ids:}") String appleClientIds) {
+            @Value("${chessverse.auth.oauth.google-client-ids:}") String googleClientIds) {
         this.googleClientIds = splitClientIds(googleClientIds);
-        this.appleClientIds = splitClientIds(appleClientIds);
     }
 
     VerifiedIdentity verify(AuthDtos.OAuthLoginRequest request) {
@@ -34,10 +31,6 @@ class OAuthTokenVerifier {
                     "https://accounts.google.com",
                     "https://www.googleapis.com/oauth2/v3/certs",
                     googleClientIds);
-            case "apple" -> new ProviderConfiguration(
-                    "https://appleid.apple.com",
-                    "https://appleid.apple.com/auth/keys",
-                    appleClientIds);
             default -> throw new AuthException(HttpStatus.BAD_REQUEST, "Unsupported login provider.");
         };
 

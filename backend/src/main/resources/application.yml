@@ -46,7 +46,6 @@ chessverse:
       india-template-id: ${SMS_INDIA_TEMPLATE_ID:}
     oauth:
       google-client-ids: ${GOOGLE_CLIENT_IDS:${GOOGLE_WEB_CLIENT_ID:}}
-      apple-client-ids: ${APPLE_CLIENT_IDS:${APPLE_SERVICE_ID:}}
 
 management:
   endpoints:

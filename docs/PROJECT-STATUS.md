@@ -19,7 +19,7 @@ present yet, so the project is not ready for Play Store or App Store submission.
 - Email registration, OTP verification and password login
 - Phone registration, AWS SNS OTP delivery, verification and phone/password login
 - AWS SNS sandbox phone verified with a successful end-to-end app OTP test
-- Google and Apple client flows plus backend identity-token validation
+- Google client flow plus backend identity-token validation
 - Stockfish-backed AI endpoint with ten calibrated levels
 - Spring Boot, PostgreSQL/H2, Flyway, Docker and Kubernetes foundations
 - GitHub Actions tests and backend container publishing
@@ -28,7 +28,7 @@ present yet, so the project is not ready for Play Store or App Store submission.
 
 - Request AWS SMS production access and complete India sender/DLT registration
 - Verify production email OTP delivery after rotating the exposed Gmail app password
-- Supply provider credentials and complete live Google/Apple account QA
+- Complete live Google account QA on Web and Android
 - Build Redis-backed worldwide matchmaking and authenticated WebSockets
 - Add server-authoritative chess rules, clocks, reconnect and anti-cheat
 - Generate Android and iOS Flutter platform projects
@@ -40,6 +40,5 @@ present yet, so the project is not ready for Play Store or App Store submission.
 ## Next Milestone
 
 The next production milestone is authentication production readiness: move AWS
-SMS out of the sandbox, verify email delivery, and complete live Google/Apple
-provider configuration. After that, build native Android/iOS scaffolding and
-server-authoritative online matchmaking.
+SMS out of the sandbox, verify email delivery, and complete live Google
+configuration. After that, build server-authoritative online matchmaking.
