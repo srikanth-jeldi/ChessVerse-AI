@@ -6,8 +6,6 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import 'social_auth.dart';
-
 const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: 'http://127.0.0.1:8080',
@@ -92,24 +90,6 @@ class EngineApiException implements Exception {
   const EngineApiException(this.message);
 
   final String message;
-}
-
-String? normalizePhone(String value) {
-  final String trimmed = value.trim();
-  final String digits = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
-  if (trimmed.startsWith('+') &&
-      digits.length >= 8 &&
-      digits.length <= 15 &&
-      !digits.startsWith('0')) {
-    return '+$digits';
-  }
-  if (digits.length == 10 && RegExp(r'^[6-9]').hasMatch(digits)) {
-    return '+91$digits';
-  }
-  if (digits.length == 12 && digits.startsWith('91')) {
-    return '+$digits';
-  }
-  return null;
 }
 
 void main() {
@@ -652,7 +632,6 @@ class _GameScreenState extends State<GameScreen> {
   bool _authLoading = false;
   bool _authHasError = false;
   bool _registerMode = true;
-  String _authMethod = 'Email';
   String _authUsername = '';
   String _authDisplayName = '';
   String _authIdentity = '';
@@ -784,6 +763,7 @@ class _GameScreenState extends State<GameScreen> {
                 checkedKingSquare: checkedKingSquare,
                 decisiveSquare:
                     _gameResultDetail == 'Checkmate' ? _lastToSquare : null,
+                flipped: _gameMode == GameMode.local && !sideToMoveWhite,
                 palette: palette,
                 onSquareTap: _handleSquareTap,
               );
@@ -816,6 +796,7 @@ class _GameScreenState extends State<GameScreen> {
                 onUndo: _undo,
                 onHint: _showHint,
                 onAnalyze: _showAnalysis,
+                onEditBlackPlayer: _editBlackPlayerName,
                 canUndo: _history.isNotEmpty,
               );
 
@@ -870,11 +851,9 @@ class _GameScreenState extends State<GameScreen> {
                         child: AuthOverlay(
                           registerMode: _registerMode,
                           awaitingCode: _awaitingCode,
-                          method: _authMethod,
                           message: _authMessage,
                           hasError: _authHasError,
                           onModeChanged: _setAuthMode,
-                          onMethodChanged: _setAuthMethod,
                           onUsernameChanged: (String value) {
                             _authUsername = value.trim();
                           },
@@ -898,13 +877,7 @@ class _GameScreenState extends State<GameScreen> {
                                 'Update your details or request a new code.';
                           }),
                           loading: _authLoading,
-                          onSocialCredential: _socialLogin,
-                          onSocialError: (String message) {
-                            setState(() {
-                              _authHasError = true;
-                              _authMessage = message;
-                            });
-                          },
+                          onGuest: _continueAsGuest,
                         ),
                       ),
                     if (_signedIn && _gameResultTitle != null && _resultVisible)
@@ -939,17 +912,6 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
-  void _setAuthMethod(String method) {
-    setState(() {
-      _authMethod = method;
-      _awaitingCode = false;
-      _authHasError = false;
-      _authMessage = method == 'Phone'
-          ? 'Use phone verification for first login.'
-          : 'Use email verification for first login.';
-    });
-  }
-
   Future<void> _submitAuth() async {
     if (_authLoading) {
       return;
@@ -968,23 +930,10 @@ class _GameScreenState extends State<GameScreen> {
       });
       return;
     }
-    if (_registerMode && !_awaitingCode && _authMethod == 'Phone') {
-      final String? normalizedPhone = normalizePhone(_authIdentity);
-      if (normalizedPhone == null) {
-        setState(() {
-          _authHasError = true;
-          _authMessage =
-              'Enter a valid 10-digit Indian mobile number or international number with country code.';
-        });
-        return;
-      }
-      _authIdentity = normalizedPhone;
-    }
     if (_awaitingCode && !RegExp(r'^\d{6}$').hasMatch(_authCode)) {
       setState(() {
         _authHasError = true;
-        _authMessage =
-            'Enter the six-digit code sent to your ${_authMethod.toLowerCase()}.';
+        _authMessage = 'Enter the six-digit code sent to your email.';
       });
       return;
     }
@@ -1008,22 +957,14 @@ class _GameScreenState extends State<GameScreen> {
 
     try {
       if (_registerMode && !_awaitingCode) {
-        final bool phoneRegistration = _authMethod == 'Phone';
         final Map<String, dynamic> response = await _authApi.post(
-          phoneRegistration ? 'register-phone' : 'register',
-          phoneRegistration
-              ? <String, String>{
-                  'username': _authUsername,
-                  'displayName': _authDisplayName,
-                  'phone': _authIdentity,
-                  'password': _authPassword,
-                }
-              : <String, String>{
-                  'username': _authUsername,
-                  'displayName': _authDisplayName,
-                  'email': _authIdentity,
-                  'password': _authPassword,
-                },
+          'register',
+          <String, String>{
+            'username': _authUsername,
+            'displayName': _authDisplayName,
+            'email': _authIdentity,
+            'password': _authPassword,
+          },
         );
         if (!mounted) return;
         setState(() {
@@ -1038,11 +979,10 @@ class _GameScreenState extends State<GameScreen> {
               : '$baseMessage Local test code: $developmentCode';
         });
       } else if (_awaitingCode) {
-        final bool phoneVerification = _authMethod == 'Phone';
         final Map<String, dynamic> response = await _authApi.post(
-          phoneVerification ? 'verify-phone' : 'verify-email',
+          'verify-email',
           <String, String>{
-            phoneVerification ? 'phone' : 'email': _authIdentity,
+            'email': _authIdentity,
             'code': _authCode,
           },
         );
@@ -1053,13 +993,6 @@ class _GameScreenState extends State<GameScreen> {
           player?['displayName'] as String? ?? _authDisplayName,
         );
       } else {
-        if (_authIdentity.trim().startsWith('+') ||
-            RegExp(r'^[0-9 ()-]{10,}$').hasMatch(_authIdentity.trim())) {
-          final String? normalizedPhone = normalizePhone(_authIdentity);
-          if (normalizedPhone != null) {
-            _authIdentity = normalizedPhone;
-          }
-        }
         final Map<String, dynamic> response = await _authApi.post(
           'login',
           <String, String>{
@@ -1079,51 +1012,8 @@ class _GameScreenState extends State<GameScreen> {
           _authMessage = switch (error.message) {
             'That user id is already taken.' =>
               'User ID "$_authUsername" is already taken. Choose another User ID or select Login.',
-            'An account already exists for this phone number.' =>
-              'This phone number already has an account. Select Login and continue with your phone and password.',
             _ => error.message,
           };
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _authLoading = false);
-      }
-    }
-  }
-
-  Future<void> _socialLogin(SocialCredential credential) async {
-    if (_authLoading) {
-      return;
-    }
-    setState(() {
-      _authLoading = true;
-      _authHasError = false;
-      _authMessage = 'Verifying ${credential.provider} account...';
-    });
-    try {
-      final Map<String, dynamic> response = await _authApi.post(
-        'oauth',
-        <String, String>{
-          'provider': credential.provider,
-          'idToken': credential.idToken,
-          if (credential.displayName != null)
-            'displayName': credential.displayName!,
-        },
-      );
-      if (!mounted) return;
-      final Map<String, dynamic>? player =
-          response['player'] as Map<String, dynamic>?;
-      _completeLogin(
-        player?['displayName'] as String? ??
-            credential.displayName ??
-            'Player',
-      );
-    } on AuthApiException catch (error) {
-      if (mounted) {
-        setState(() {
-          _authHasError = true;
-          _authMessage = error.message;
         });
       }
     } finally {
@@ -1144,6 +1034,15 @@ class _GameScreenState extends State<GameScreen> {
     _coachNote = 'Welcome $_whitePlayerName. Your arena is ready.';
   }
 
+  void _continueAsGuest() {
+    setState(() {
+      _whitePlayerName = 'Guest Player';
+      _signedIn = true;
+      _authHasError = false;
+      _coachNote = 'Guest arena ready. Create an account later to sync games.';
+    });
+  }
+
   void _changeGameMode(GameMode mode) {
     if (mode == GameMode.online) {
       _showOnlineMatchmakingInfo();
@@ -1155,6 +1054,52 @@ class _GameScreenState extends State<GameScreen> {
           mode == GameMode.computer ? 'ChessVerse AI' : 'Player 2';
     });
     _reset();
+  }
+
+  Future<void> _editBlackPlayerName() async {
+    String candidate = _blackPlayerName;
+    final String? name = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Rename Player 2'),
+        content: TextFormField(
+          initialValue: candidate,
+          autofocus: true,
+          maxLength: 24,
+          textCapitalization: TextCapitalization.words,
+          onChanged: (String value) => candidate = value,
+          decoration: const InputDecoration(
+            labelText: 'Player name',
+            prefixIcon: Icon(Icons.manage_accounts_outlined),
+            border: OutlineInputBorder(),
+          ),
+          onFieldSubmitted: (String value) {
+            final String clean = value.trim();
+            if (clean.isNotEmpty) {
+              Navigator.of(context).pop(clean);
+            }
+          },
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final String clean = candidate.trim();
+              if (clean.isNotEmpty) {
+                Navigator.of(context).pop(clean);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (name != null && mounted) {
+      setState(() => _blackPlayerName = name);
+    }
   }
 
   void _handleSquareTap(String square) {
@@ -2144,6 +2089,7 @@ class ChessBoard extends StatelessWidget {
     required this.lastCaptureSquare,
     required this.checkedKingSquare,
     required this.decisiveSquare,
+    required this.flipped,
     required this.palette,
     required this.onSquareTap,
     super.key,
@@ -2157,6 +2103,7 @@ class ChessBoard extends StatelessWidget {
   final String? lastCaptureSquare;
   final String? checkedKingSquare;
   final String? decisiveSquare;
+  final bool flipped;
   final BoardPalette palette;
   final ValueChanged<String> onSquareTap;
 
@@ -2177,8 +2124,9 @@ class ChessBoard extends StatelessWidget {
               itemBuilder: (BuildContext context, int index) {
                 final int row = index ~/ 8;
                 final int col = index % 8;
-                final String square =
-                    '${String.fromCharCode(97 + col)}${8 - row}';
+                final int file = flipped ? 7 - col : col;
+                final int rank = flipped ? row + 1 : 8 - row;
+                final String square = '${String.fromCharCode(97 + file)}$rank';
                 final bool dark = (row + col).isOdd;
                 final bool selected = square == selectedSquare;
                 final ChessPiece? piece = pieces[square];
@@ -2210,10 +2158,144 @@ class ChessBoard extends StatelessWidget {
                 );
               },
             ),
+            if (lastFromSquare != null && lastToSquare != null)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: TweenAnimationBuilder<double>(
+                    key: ValueKey<String>(
+                      'move-trail-$lastFromSquare-$lastToSquare-$flipped',
+                    ),
+                    tween: Tween<double>(begin: 0, end: 1),
+                    duration: const Duration(milliseconds: 560),
+                    curve: Curves.easeOutCubic,
+                    builder: (
+                      BuildContext context,
+                      double progress,
+                      Widget? child,
+                    ) {
+                      return CustomPaint(
+                        painter: LastMoveTrailPainter(
+                          from: lastFromSquare!,
+                          to: lastToSquare!,
+                          flipped: flipped,
+                          progress: progress,
+                          accent: palette.accent,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
+  }
+}
+
+class LastMoveTrailPainter extends CustomPainter {
+  const LastMoveTrailPainter({
+    required this.from,
+    required this.to,
+    required this.flipped,
+    required this.progress,
+    required this.accent,
+  });
+
+  final String from;
+  final String to;
+  final bool flipped;
+  final double progress;
+  final Color accent;
+
+  Offset _center(String square, Size size) {
+    final int file = square.codeUnitAt(0) - 97;
+    final int rank = int.parse(square.substring(1));
+    final int col = flipped ? 7 - file : file;
+    final int row = flipped ? rank - 1 : 8 - rank;
+    final double cell = size.shortestSide / 8;
+    return Offset((col + 0.5) * cell, (row + 0.5) * cell);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Offset start = _center(from, size);
+    final Offset target = _center(to, size);
+    final Offset end = Offset.lerp(start, target, progress)!;
+    final double cell = size.shortestSide / 8;
+    final Offset delta = end - start;
+    final double distance = delta.distance;
+    if (distance < 1) {
+      return;
+    }
+
+    final Offset direction = delta / distance;
+    final Offset perpendicular = Offset(-direction.dy, direction.dx);
+    final double headLength = math.min(cell * 0.28, distance * 0.36);
+    final Offset lineEnd = end - direction * headLength * 0.42;
+    final Paint glow = Paint()
+      ..color = Colors.black.withValues(alpha: 0.34 * progress)
+      ..strokeWidth = cell * 0.18
+      ..strokeCap = StrokeCap.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    final Paint line = Paint()
+      ..shader = LinearGradient(
+        colors: <Color>[
+          Colors.white.withValues(alpha: 0.9),
+          accent,
+        ],
+      ).createShader(Rect.fromPoints(start, end))
+      ..strokeWidth = cell * 0.075
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(start, lineEnd, glow);
+    canvas.drawLine(start, lineEnd, line);
+    canvas.drawCircle(
+      start,
+      cell * 0.13 * progress,
+      Paint()
+        ..color = Colors.transparent
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = cell * 0.045
+        ..shader = line.shader,
+    );
+
+    final Path arrow = Path()
+      ..moveTo(end.dx, end.dy)
+      ..lineTo(
+        end.dx -
+            direction.dx * headLength +
+            perpendicular.dx * headLength * 0.52,
+        end.dy -
+            direction.dy * headLength +
+            perpendicular.dy * headLength * 0.52,
+      )
+      ..lineTo(
+        end.dx -
+            direction.dx * headLength -
+            perpendicular.dx * headLength * 0.52,
+        end.dy -
+            direction.dy * headLength -
+            perpendicular.dy * headLength * 0.52,
+      )
+      ..close();
+    canvas.drawPath(arrow, Paint()..color = accent);
+    canvas.drawCircle(
+      target,
+      cell * 0.31 * progress,
+      Paint()
+        ..color = accent.withValues(alpha: 0.16 * progress)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+    );
+  }
+
+  @override
+  bool shouldRepaint(LastMoveTrailPainter oldDelegate) {
+    return oldDelegate.from != from ||
+        oldDelegate.to != to ||
+        oldDelegate.flipped != flipped ||
+        oldDelegate.progress != progress ||
+        oldDelegate.accent != accent;
   }
 }
 
@@ -2801,6 +2883,7 @@ class GamePanel extends StatelessWidget {
     required this.onUndo,
     required this.onHint,
     required this.onAnalyze,
+    required this.onEditBlackPlayer,
     required this.canUndo,
     super.key,
   });
@@ -2828,6 +2911,7 @@ class GamePanel extends StatelessWidget {
   final VoidCallback onUndo;
   final VoidCallback onHint;
   final VoidCallback onAnalyze;
+  final VoidCallback onEditBlackPlayer;
   final bool canUndo;
 
   @override
@@ -2921,6 +3005,15 @@ class GamePanel extends StatelessWidget {
               StatusPill(icon: Icons.memory_rounded, label: activeColor),
             ],
           ),
+          if (gameMode == GameMode.local) ...<Widget>[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              key: const ValueKey<String>('rename-player-two'),
+              onPressed: onEditBlackPlayer,
+              icon: const Icon(Icons.manage_accounts_outlined),
+              label: Text('Player 2: $blackPlayerName'),
+            ),
+          ],
           const SizedBox(height: 18),
           Row(
             children: <Widget>[
@@ -3398,11 +3491,9 @@ class AuthOverlay extends StatelessWidget {
   const AuthOverlay({
     required this.registerMode,
     required this.awaitingCode,
-    required this.method,
     required this.message,
     required this.hasError,
     required this.onModeChanged,
-    required this.onMethodChanged,
     required this.onUsernameChanged,
     required this.onDisplayNameChanged,
     required this.onIdentityChanged,
@@ -3411,18 +3502,15 @@ class AuthOverlay extends StatelessWidget {
     required this.onSubmit,
     required this.onBackFromCode,
     required this.loading,
-    required this.onSocialCredential,
-    required this.onSocialError,
+    required this.onGuest,
     super.key,
   });
 
   final bool registerMode;
   final bool awaitingCode;
-  final String method;
   final String message;
   final bool hasError;
   final ValueChanged<bool> onModeChanged;
-  final ValueChanged<String> onMethodChanged;
   final ValueChanged<String> onUsernameChanged;
   final ValueChanged<String> onDisplayNameChanged;
   final ValueChanged<String> onIdentityChanged;
@@ -3431,8 +3519,7 @@ class AuthOverlay extends StatelessWidget {
   final VoidCallback onSubmit;
   final VoidCallback onBackFromCode;
   final bool loading;
-  final ValueChanged<SocialCredential> onSocialCredential;
-  final ValueChanged<String> onSocialError;
+  final VoidCallback onGuest;
 
   @override
   Widget build(BuildContext context) {
@@ -3500,21 +3587,7 @@ class AuthOverlay extends StatelessWidget {
                         },
                       ),
                     if (!awaitingCode) const SizedBox(height: 14),
-                    if (registerMode && !awaitingCode)
-                      SegmentedButton<String>(
-                        segments: const <ButtonSegment<String>>[
-                          ButtonSegment<String>(
-                              value: 'Email', label: Text('Email')),
-                          ButtonSegment<String>(
-                              value: 'Phone', label: Text('Phone')),
-                        ],
-                        selected: <String>{method},
-                        onSelectionChanged: (Set<String> selected) {
-                          onMethodChanged(selected.first);
-                        },
-                      ),
                     if (!awaitingCode) ...<Widget>[
-                      const SizedBox(height: 14),
                       if (registerMode) ...<Widget>[
                         TextField(
                           onChanged: onUsernameChanged,
@@ -3541,21 +3614,12 @@ class AuthOverlay extends StatelessWidget {
                         onChanged: onIdentityChanged,
                         textInputAction: TextInputAction.next,
                         keyboardType: registerMode
-                            ? method == 'Phone'
-                                ? TextInputType.phone
-                                : TextInputType.emailAddress
+                            ? TextInputType.emailAddress
                             : TextInputType.text,
                         decoration: InputDecoration(
                           labelText:
-                              registerMode ? method : 'User ID, email or phone',
-                          helperText: registerMode && method == 'Phone'
-                              ? 'India +91 is added automatically'
-                              : null,
-                          prefixIcon: Icon(
-                            registerMode && method == 'Phone'
-                                ? Icons.phone_outlined
-                                : Icons.mail_outline_rounded,
-                          ),
+                              registerMode ? 'Email' : 'User ID or email',
+                          prefixIcon: const Icon(Icons.mail_outline_rounded),
                           border: const OutlineInputBorder(),
                         ),
                       ),
@@ -3583,13 +3647,11 @@ class AuthOverlay extends StatelessWidget {
                                 const Color(0xFFD6A84F).withValues(alpha: 0.12),
                             shape: BoxShape.circle,
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(14),
+                          child: const Padding(
+                            padding: EdgeInsets.all(14),
                             child: Icon(
-                              method == 'Phone'
-                                  ? Icons.sms_outlined
-                                  : Icons.mark_email_read_outlined,
-                              color: const Color(0xFFD6A84F),
+                              Icons.mark_email_read_outlined,
+                              color: Color(0xFFD6A84F),
                               size: 34,
                             ),
                           ),
@@ -3617,7 +3679,8 @@ class AuthOverlay extends StatelessWidget {
                       const SizedBox(height: 14),
                       DecoratedBox(
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEF5350).withValues(alpha: 0.12),
+                          color:
+                              const Color(0xFFEF5350).withValues(alpha: 0.12),
                           border: Border.all(
                             color:
                                 const Color(0xFFEF5350).withValues(alpha: 0.65),
@@ -3685,7 +3748,7 @@ class AuthOverlay extends StatelessWidget {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: Text(
-                              'OR CONTINUE WITH',
+                              'NO ACCOUNT NEEDED',
                               style: Theme.of(context).textTheme.labelSmall,
                             ),
                           ),
@@ -3693,9 +3756,11 @@ class AuthOverlay extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      SocialLoginButtons(
-                        onCredential: onSocialCredential,
-                        onError: onSocialError,
+                      OutlinedButton.icon(
+                        key: const ValueKey<String>('continue-as-guest'),
+                        onPressed: loading ? null : onGuest,
+                        icon: const Icon(Icons.person_outline_rounded),
+                        label: const Text('Continue as Guest'),
                       ),
                     ],
                   ],

@@ -49,7 +49,7 @@ Current implementation direction:
 - Vibrant legal-target glow, red capture emphasis and last-move focus states.
 - Functional hint and analysis actions in the AI coach panel.
 - Improved chess coin faces with premium glyph treatment and embossed labels.
-- Login entry surface with Google, email verification and phone verification flows.
+- Login entry surface with email verification, password login and guest access.
 - Player identity displayed beside clocks and in compact headers.
 - More realistic sculpted chess pieces with glossy body, pedestal, shadows and highlights.
 

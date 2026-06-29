@@ -42,28 +42,6 @@ spec:
                 secretKeyRef:
                   name: chessverse-backend-secret
                   key: db-password
-            - name: SMS_MODE
-              value: sns
-            - name: AWS_REGION
-              value: ap-south-1
-            - name: SMS_SENDER_ID
-              valueFrom:
-                secretKeyRef:
-                  name: chessverse-backend-secret
-                  key: sms-sender-id
-                  optional: true
-            - name: SMS_INDIA_ENTITY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: chessverse-backend-secret
-                  key: sms-india-entity-id
-                  optional: true
-            - name: SMS_INDIA_TEMPLATE_ID
-              valueFrom:
-                secretKeyRef:
-                  name: chessverse-backend-secret
-                  key: sms-india-template-id
-                  optional: true
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
