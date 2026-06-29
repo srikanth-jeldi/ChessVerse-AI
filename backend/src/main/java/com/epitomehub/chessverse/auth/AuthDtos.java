@@ -49,7 +49,7 @@ final class AuthDtos {
     }
 
     record OAuthLoginRequest(
-            @NotBlank @Pattern(regexp = "^(google|apple)$") String provider,
+            @NotBlank @Pattern(regexp = "^google$") String provider,
             @NotBlank String idToken,
             @Size(max = 80) String displayName,
             @Size(max = 128) String nonce) {

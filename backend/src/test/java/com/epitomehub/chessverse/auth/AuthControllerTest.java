@@ -88,6 +88,19 @@ class AuthControllerTest {
                         "Google login is not configured on this server."));
     }
 
+    @Test
+    void oauthLoginRejectsRemovedAppleProvider() throws Exception {
+        mockMvc.perform(post("/api/auth/oauth")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "provider": "apple",
+                                  "idToken": "not-a-real-token"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
     @TestConfiguration
     static class TestOtpConfiguration {
         @Bean
