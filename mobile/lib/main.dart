@@ -632,6 +632,7 @@ class _GameScreenState extends State<GameScreen> {
   bool _authLoading = false;
   bool _authHasError = false;
   bool _registerMode = true;
+  bool _guestSession = false;
   String _authUsername = '';
   String _authDisplayName = '';
   String _authIdentity = '';
@@ -777,6 +778,7 @@ class _GameScreenState extends State<GameScreen> {
                 aiLevel: _aiLevel.round(),
                 aiThinking: _aiThinking,
                 coachEnabled: _coachEnabled,
+                guestSession: _guestSession,
                 moves: _moves,
                 capturedWhite: _capturedWhite,
                 capturedBlack: _capturedBlack,
@@ -796,6 +798,7 @@ class _GameScreenState extends State<GameScreen> {
                 onUndo: _undo,
                 onHint: _showHint,
                 onAnalyze: _showAnalysis,
+                onEditWhitePlayer: _editWhitePlayerName,
                 onEditBlackPlayer: _editBlackPlayerName,
                 canUndo: _history.isNotEmpty,
               );
@@ -1029,6 +1032,7 @@ class _GameScreenState extends State<GameScreen> {
         : identity.replaceAll(RegExp(r'[^0-9A-Za-z ]'), '');
     _whitePlayerName = cleanName.isEmpty ? 'Player' : cleanName;
     _signedIn = true;
+    _guestSession = false;
     _awaitingCode = false;
     _authHasError = false;
     _coachNote = 'Welcome $_whitePlayerName. Your arena is ready.';
@@ -1038,6 +1042,7 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       _whitePlayerName = 'Guest Player';
       _signedIn = true;
+      _guestSession = true;
       _authHasError = false;
       _coachNote = 'Guest arena ready. Create an account later to sync games.';
     });
@@ -1056,12 +1061,15 @@ class _GameScreenState extends State<GameScreen> {
     _reset();
   }
 
-  Future<void> _editBlackPlayerName() async {
-    String candidate = _blackPlayerName;
+  Future<String?> _promptForPlayerName({
+    required String title,
+    required String currentName,
+  }) async {
+    String candidate = currentName;
     final String? name = await showDialog<String>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
-        title: const Text('Rename Player 2'),
+        title: Text(title),
         content: TextFormField(
           initialValue: candidate,
           autofocus: true,
@@ -1096,6 +1104,24 @@ class _GameScreenState extends State<GameScreen> {
           ),
         ],
       ),
+    );
+    return name;
+  }
+
+  Future<void> _editWhitePlayerName() async {
+    final String? name = await _promptForPlayerName(
+      title: 'Choose guest name',
+      currentName: _whitePlayerName,
+    );
+    if (name != null && mounted) {
+      setState(() => _whitePlayerName = name);
+    }
+  }
+
+  Future<void> _editBlackPlayerName() async {
+    final String? name = await _promptForPlayerName(
+      title: 'Rename Player 2',
+      currentName: _blackPlayerName,
     );
     if (name != null && mounted) {
       setState(() => _blackPlayerName = name);
@@ -2221,71 +2247,64 @@ class LastMoveTrailPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final Offset start = _center(from, size);
     final Offset target = _center(to, size);
-    final Offset end = Offset.lerp(start, target, progress)!;
     final double cell = size.shortestSide / 8;
-    final Offset delta = end - start;
-    final double distance = delta.distance;
+    final Offset fullDelta = target - start;
+    final double distance = fullDelta.distance;
     if (distance < 1) {
       return;
     }
 
-    final Offset direction = delta / distance;
+    final Offset direction = fullDelta / distance;
     final Offset perpendicular = Offset(-direction.dy, direction.dx);
-    final double headLength = math.min(cell * 0.28, distance * 0.36);
-    final Offset lineEnd = end - direction * headLength * 0.42;
+    final Offset finalEnd = target - direction * cell * 0.29;
+    final Offset end = Offset.lerp(start, finalEnd, progress)!;
+    final Offset midpoint = Offset.lerp(start, end, 0.5)!;
+    final double bend = math.min(cell * 0.11, distance * 0.035);
+    final Offset control = midpoint + perpendicular * bend;
+    final Path trail = Path()
+      ..moveTo(start.dx, start.dy)
+      ..quadraticBezierTo(control.dx, control.dy, end.dx, end.dy);
     final Paint glow = Paint()
-      ..color = Colors.black.withValues(alpha: 0.34 * progress)
-      ..strokeWidth = cell * 0.18
+      ..color = accent.withValues(alpha: 0.22 * progress)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = cell * 0.12
       ..strokeCap = StrokeCap.round
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
     final Paint line = Paint()
       ..shader = LinearGradient(
         colors: <Color>[
-          Colors.white.withValues(alpha: 0.9),
-          accent,
+          Colors.white.withValues(alpha: 0.72),
+          accent.withValues(alpha: 0.82),
         ],
       ).createShader(Rect.fromPoints(start, end))
-      ..strokeWidth = cell * 0.075
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = cell * 0.035
       ..strokeCap = StrokeCap.round;
 
-    canvas.drawLine(start, lineEnd, glow);
-    canvas.drawLine(start, lineEnd, line);
+    canvas.drawPath(trail, glow);
+    canvas.drawPath(trail, line);
     canvas.drawCircle(
       start,
-      cell * 0.13 * progress,
+      cell * 0.105 * progress,
       Paint()
         ..color = Colors.transparent
         ..style = PaintingStyle.stroke
-        ..strokeWidth = cell * 0.045
+        ..strokeWidth = cell * 0.025
         ..shader = line.shader,
     );
-
-    final Path arrow = Path()
-      ..moveTo(end.dx, end.dy)
-      ..lineTo(
-        end.dx -
-            direction.dx * headLength +
-            perpendicular.dx * headLength * 0.52,
-        end.dy -
-            direction.dy * headLength +
-            perpendicular.dy * headLength * 0.52,
-      )
-      ..lineTo(
-        end.dx -
-            direction.dx * headLength -
-            perpendicular.dx * headLength * 0.52,
-        end.dy -
-            direction.dy * headLength -
-            perpendicular.dy * headLength * 0.52,
-      )
-      ..close();
-    canvas.drawPath(arrow, Paint()..color = accent);
     canvas.drawCircle(
       target,
-      cell * 0.31 * progress,
+      cell * 0.22 * progress,
       Paint()
-        ..color = accent.withValues(alpha: 0.16 * progress)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+        ..color = accent.withValues(alpha: 0.11 * progress)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+    );
+    canvas.drawCircle(
+      end,
+      cell * 0.045,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.88 * progress)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
     );
   }
 
@@ -2560,7 +2579,7 @@ class ChessCoin extends StatelessWidget {
       builder: (BuildContext context, BoxConstraints constraints) {
         final double size =
             math.min(constraints.maxWidth, constraints.maxHeight);
-        final double pieceSize = size * 0.94;
+        final double pieceSize = size * (piece.white ? 0.91 : 0.96);
 
         return AnimatedScale(
           duration: const Duration(milliseconds: 180),
@@ -2868,6 +2887,7 @@ class GamePanel extends StatelessWidget {
     required this.aiLevel,
     required this.aiThinking,
     required this.coachEnabled,
+    required this.guestSession,
     required this.moves,
     required this.capturedWhite,
     required this.capturedBlack,
@@ -2883,6 +2903,7 @@ class GamePanel extends StatelessWidget {
     required this.onUndo,
     required this.onHint,
     required this.onAnalyze,
+    required this.onEditWhitePlayer,
     required this.onEditBlackPlayer,
     required this.canUndo,
     super.key,
@@ -2896,6 +2917,7 @@ class GamePanel extends StatelessWidget {
   final int aiLevel;
   final bool aiThinking;
   final bool coachEnabled;
+  final bool guestSession;
   final List<String> moves;
   final List<ChessPiece> capturedWhite;
   final List<ChessPiece> capturedBlack;
@@ -2911,6 +2933,7 @@ class GamePanel extends StatelessWidget {
   final VoidCallback onUndo;
   final VoidCallback onHint;
   final VoidCallback onAnalyze;
+  final VoidCallback onEditWhitePlayer;
   final VoidCallback onEditBlackPlayer;
   final bool canUndo;
 
@@ -3005,6 +3028,15 @@ class GamePanel extends StatelessWidget {
               StatusPill(icon: Icons.memory_rounded, label: activeColor),
             ],
           ),
+          if (guestSession) ...<Widget>[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              key: const ValueKey<String>('rename-guest-player'),
+              onPressed: onEditWhitePlayer,
+              icon: const Icon(Icons.badge_outlined),
+              label: Text('Guest: $whitePlayerName'),
+            ),
+          ],
           if (gameMode == GameMode.local) ...<Widget>[
             const SizedBox(height: 10),
             OutlinedButton.icon(
@@ -3528,8 +3560,8 @@ class AuthOverlay extends StatelessWidget {
         color: Colors.black.withValues(alpha: 0.62),
       ),
       child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460),
+        child: SizedBox(
+          width: math.min(MediaQuery.sizeOf(context).width - 32, 460),
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: const Color(0xFF15161B).withValues(alpha: 0.96),

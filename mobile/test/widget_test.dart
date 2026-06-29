@@ -14,6 +14,13 @@ void main() {
   testWidgets('login and guest actions keep the auth flow usable', (
     WidgetTester tester,
   ) async {
+    tester.view.physicalSize = const Size(1400, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
     await tester.pumpWidget(const ChessVerseApp());
 
     await tester.tap(find.text('Login'));
@@ -26,6 +33,17 @@ void main() {
     await tester.pump();
     expect(find.text('Welcome back'), findsNothing);
     expect(find.textContaining('Guest Player'), findsWidgets);
+
+    expect(
+      find.byKey(const ValueKey<String>('rename-guest-player')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey<String>('rename-guest-player')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), 'Srikanth');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('Guest: Srikanth'), findsOneWidget);
   });
 
   testWidgets('switches between computer and local players', (

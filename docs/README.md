@@ -2,6 +2,12 @@
 
 This folder contains the official product documentation suite for ChessVerse AI by EpitomeHub Technologies Pvt. Ltd.
 
+Current operational guides:
+
+- [Project status](PROJECT-STATUS.md)
+- [AWS cost safety](AWS-COST-SAFETY.md)
+- [Online multiplayer architecture](ONLINE-MULTIPLAYER.md)
+
 ## Volumes
 
 | Volume | Document | Purpose |

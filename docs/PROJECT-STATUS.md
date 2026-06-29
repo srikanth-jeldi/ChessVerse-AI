@@ -19,7 +19,8 @@ Play Store or App Store submission.
 - Email registration, OTP verification, password login and guest access
 - Cost-conscious authentication with no paid SMS or social-login dependency
 - Animated last-move trail and automatic Local 2P board orientation
-- Editable second-player name for shared-device matches
+- Editable guest and second-player names
+- Branded native splash, app icons, favicon and PWA metadata
 - Stockfish-backed AI endpoint with ten calibrated levels
 - Spring Boot, PostgreSQL/H2, Flyway, Docker and Kubernetes foundations
 - GitHub Actions tests and backend container publishing
@@ -29,7 +30,7 @@ Play Store or App Store submission.
 - Verify production email OTP delivery after rotating the exposed Gmail app password
 - Build Redis-backed worldwide matchmaking and authenticated WebSockets
 - Add server-authoritative chess rules, clocks, reconnect and anti-cheat
-- Generate Android and iOS Flutter platform projects
+- Complete Android/iOS release signing and physical-device QA
 - Add push notifications, crash reporting, analytics and privacy controls
 - Complete AWS managed database, Redis, secrets, TLS and observability
 - Add store signing, subscriptions, legal pages and release-device testing
