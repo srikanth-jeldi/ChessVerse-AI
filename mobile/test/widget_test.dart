@@ -7,7 +7,8 @@ void main() {
     await tester.pumpWidget(const ChessVerseApp());
 
     expect(find.text('ChessVerse AI'), findsOneWidget);
-    expect(find.text('AI Arena'), findsOneWidget);
+    expect(find.text('Solo Challenge'), findsOneWidget);
+    expect(find.byType(ChessVerseMark), findsWidgets);
     expect(find.text('Hint'), findsOneWidget);
   });
 
@@ -52,7 +53,7 @@ void main() {
     await tester.tap(find.text('Local 2P').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Local Match'), findsOneWidget);
+    expect(find.text('Pass & Play'), findsOneWidget);
     expect(find.text('Player 2'), findsWidgets);
     expect(
       find.byKey(const ValueKey<String>('rename-player-two')),
@@ -99,7 +100,33 @@ void main() {
     await tester.tap(find.byKey(const ValueKey<String>('square-e4')));
     await tester.pump(const Duration(milliseconds: 900));
 
-    expect(find.text('2 moves'), findsOneWidget);
+    final GamePanel panel = tester.widget<GamePanel>(find.byType(GamePanel));
+    expect(panel.moves, hasLength(2));
+  });
+
+  testWidgets('phone layout prioritizes the playable board', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+        ),
+      ),
+    );
+
+    final Size boardSize = tester.getSize(find.byType(ChessBoard));
+    expect(boardSize.width, greaterThan(405));
+    expect(boardSize.height, boardSize.width);
+    expect(find.text('Solo Challenge'), findsOneWidget);
   });
 
   testWidgets('checkmate marks the checked king square and shows the winner', (

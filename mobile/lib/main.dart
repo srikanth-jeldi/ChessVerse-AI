@@ -1,98 +1,16 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
-const String apiBaseUrl = String.fromEnvironment(
-  'API_BASE_URL',
-  defaultValue: 'http://127.0.0.1:8080',
-);
-const bool arenaPreview = bool.fromEnvironment('ARENA_PREVIEW');
-
-class AuthApi {
-  const AuthApi();
-
-  Future<Map<String, dynamic>> post(
-    String path,
-    Map<String, String> body,
-  ) async {
-    final http.Response response;
-    try {
-      response = await http
-          .post(
-            Uri.parse('$apiBaseUrl/api/auth/$path'),
-            headers: const <String, String>{'Content-Type': 'application/json'},
-            body: jsonEncode(body),
-          )
-          .timeout(const Duration(seconds: 15));
-    } on TimeoutException {
-      throw const AuthApiException('The server took too long to respond.');
-    } catch (_) {
-      throw const AuthApiException(
-        'Cannot reach the ChessVerse server. Start the backend on port 8080.',
-      );
-    }
-
-    final Object? decoded = jsonDecode(response.body);
-    final Map<String, dynamic> data =
-        decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw AuthApiException(
-        data['message'] as String? ?? 'Authentication failed.',
-      );
-    }
-    return data;
-  }
-}
-
-class AuthApiException implements Exception {
-  const AuthApiException(this.message);
-
-  final String message;
-}
-
-class EngineApi {
-  const EngineApi();
-
-  Future<Map<String, dynamic>> bestMove({
-    required String fen,
-    required int level,
-  }) async {
-    final http.Response response;
-    try {
-      response = await http
-          .post(
-            Uri.parse('$apiBaseUrl/api/v1/engine/best-move'),
-            headers: const <String, String>{'Content-Type': 'application/json'},
-            body: jsonEncode(<String, Object>{'fen': fen, 'level': level}),
-          )
-          .timeout(const Duration(seconds: 5));
-    } catch (_) {
-      throw const EngineApiException('Chess engine is unavailable.');
-    }
-
-    final Object? decoded = jsonDecode(response.body);
-    final Map<String, dynamic> data =
-        decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw EngineApiException(
-        data['message'] as String? ?? 'Chess engine is unavailable.',
-      );
-    }
-    return data;
-  }
-}
-
-class EngineApiException implements Exception {
-  const EngineApiException(this.message);
-
-  final String message;
-}
+import 'core/config/app_config.dart';
+import 'features/auth/data/auth_api.dart';
+import 'features/engine/data/engine_api.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  AppConfig.validate();
   runApp(const ChessVerseApp());
 }
 
@@ -105,7 +23,7 @@ class ChessVerseApp extends StatelessWidget {
       title: 'ChessVerse AI',
       debugShowCheckedModeBanner: false,
       theme: ChessVerseTheme.dark(),
-      home: const GameScreen(initiallySignedIn: arenaPreview),
+      home: const GameScreen(initiallySignedIn: AppConfig.arenaPreview),
     );
   }
 }
@@ -749,8 +667,8 @@ class _GameScreenState extends State<GameScreen> {
             builder: (BuildContext context, BoxConstraints constraints) {
               final bool wide = constraints.maxWidth >= 980;
               final EdgeInsets pagePadding = EdgeInsets.symmetric(
-                horizontal: wide ? 28 : 16,
-                vertical: wide ? 20 : 12,
+                horizontal: wide ? 28 : 6,
+                vertical: wide ? 20 : 8,
               );
 
               final Widget board = ChessBoard(
@@ -829,9 +747,12 @@ class _GameScreenState extends State<GameScreen> {
                                 playerName: _whitePlayerName,
                                 onReset: _reset,
                               ),
-                              const SizedBox(height: 12),
-                              Expanded(
-                                flex: 6,
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                height: math.min(
+                                  constraints.maxWidth - pagePadding.horizontal,
+                                  constraints.maxHeight * 0.62,
+                                ),
                                 child: BoardStage(
                                   palette: palette,
                                   moveCount: _moves.length,
@@ -842,8 +763,8 @@ class _GameScreenState extends State<GameScreen> {
                                   child: board,
                                 ),
                               ),
-                              const SizedBox(height: 14),
-                              Expanded(flex: 3, child: panel),
+                              const SizedBox(height: 8),
+                              Expanded(child: panel),
                             ],
                           ),
                     if (!_signedIn)
@@ -1947,7 +1868,7 @@ class CompactHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: <Widget>[
-        const Icon(Icons.bolt_rounded, color: Color(0xFFD6A84F)),
+        const ChessVerseMark(size: 36),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -1962,6 +1883,27 @@ class CompactHeader extends StatelessWidget {
           icon: const Icon(Icons.refresh_rounded),
         ),
       ],
+    );
+  }
+}
+
+class ChessVerseMark extends StatelessWidget {
+  const ChessVerseMark({this.size = 38, super.key});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(size * 0.24),
+      child: Image.asset(
+        'assets/branding/app_icon.png',
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        filterQuality: FilterQuality.medium,
+        semanticLabel: 'ChessVerse logo',
+      ),
     );
   }
 }
@@ -1988,13 +1930,15 @@ class BoardStage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool wide = MediaQuery.sizeOf(context).width >= 980;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        if (MediaQuery.sizeOf(context).width >= 980) ...<Widget>[
+        if (wide) ...<Widget>[
           Row(
             children: <Widget>[
-              const Icon(Icons.bolt_rounded, color: Color(0xFFD6A84F)),
+              const ChessVerseMark(size: 42),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2059,21 +2003,26 @@ class BoardStage extends StatelessWidget {
                   ],
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(13),
+                  padding: EdgeInsets.all(wide ? 13 : 4),
                   child: child,
                 ),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: <Widget>[
-            StatusPill(icon: Icons.shield_rounded, label: palette.label),
-            const SizedBox(width: 8),
-            StatusPill(icon: Icons.timeline_rounded, label: '$moveCount moves'),
-          ],
-        ),
+        if (wide) ...<Widget>[
+          const SizedBox(height: 12),
+          Row(
+            children: <Widget>[
+              StatusPill(icon: Icons.shield_rounded, label: palette.label),
+              const SizedBox(width: 8),
+              StatusPill(
+                icon: Icons.timeline_rounded,
+                label: '$moveCount moves',
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
@@ -2940,8 +2889,17 @@ class GamePanel extends StatelessWidget {
             children: <Widget>[
               Expanded(
                 child: Text(
-                  gameMode == GameMode.computer ? 'AI Arena' : 'Local Match',
-                  style: Theme.of(context).textTheme.headlineMedium,
+                  switch (gameMode) {
+                    GameMode.computer => 'Solo Challenge',
+                    GameMode.local => 'Pass & Play',
+                    GameMode.online => 'Online Battle',
+                  },
+                  style: compact
+                      ? Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          )
+                      : Theme.of(context).textTheme.headlineMedium,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -2961,10 +2919,11 @@ class GamePanel extends StatelessWidget {
           DropdownButtonFormField<GameMode>(
             key: const ValueKey<String>('game-mode-menu'),
             initialValue: gameMode,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Play mode',
-              prefixIcon: Icon(Icons.sports_esports_rounded),
-              border: OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.sports_esports_rounded),
+              border: const OutlineInputBorder(),
+              isDense: compact,
             ),
             items: const <DropdownMenuItem<GameMode>>[
               DropdownMenuItem<GameMode>(
@@ -3156,7 +3115,7 @@ class GamePanel extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding: EdgeInsets.all(compact ? 12 : 18),
+            padding: EdgeInsets.all(compact ? 10 : 18),
             child: SingleChildScrollView(child: content),
           ),
         );
@@ -3552,8 +3511,7 @@ class AuthOverlay extends StatelessWidget {
                   children: <Widget>[
                     Row(
                       children: <Widget>[
-                        const Icon(Icons.bolt_rounded,
-                            color: Color(0xFFD6A84F)),
+                        const ChessVerseMark(size: 34),
                         const SizedBox(width: 8),
                         Text(
                           'CHESSVERSE',
