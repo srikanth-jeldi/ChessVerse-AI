@@ -3,12 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('normalizes Indian and international phone numbers', () {
-    expect(normalizePhone('7569898494'), '+917569898494');
-    expect(normalizePhone('+1 415 555 2671'), '+14155552671');
-    expect(normalizePhone('12345'), isNull);
-  });
-
   testWidgets('renders game board shell', (WidgetTester tester) async {
     await tester.pumpWidget(const ChessVerseApp());
 
@@ -17,7 +11,7 @@ void main() {
     expect(find.text('Hint'), findsOneWidget);
   });
 
-  testWidgets('login and provider actions keep the auth form visible', (
+  testWidgets('login and guest actions keep the auth flow usable', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ChessVerseApp());
@@ -25,34 +19,25 @@ void main() {
     await tester.tap(find.text('Login'));
     await tester.pump();
     expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('User ID, email or phone'), findsOneWidget);
+    expect(find.text('User ID or email'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
 
-    await tester.tap(find.text('Continue with Google'));
+    await tester.tap(find.text('Continue as Guest'));
     await tester.pump();
-    expect(find.text('Welcome back'), findsOneWidget);
-    expect(
-      find.text(
-        'Google login needs GOOGLE_WEB_CLIENT_ID and GOOGLE_SERVER_CLIENT_ID.',
-      ),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('phone registration explains automatic India country code', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(const ChessVerseApp());
-
-    await tester.tap(find.text('Phone'));
-    await tester.pump();
-
-    expect(find.text('India +91 is added automatically'), findsOneWidget);
+    expect(find.text('Welcome back'), findsNothing);
+    expect(find.textContaining('Guest Player'), findsWidgets);
   });
 
   testWidgets('switches between computer and local players', (
     WidgetTester tester,
   ) async {
+    tester.view.physicalSize = const Size(1400, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
     await tester.pumpWidget(
       const MaterialApp(
         home: GameScreen(
@@ -69,6 +54,32 @@ void main() {
 
     expect(find.text('Local Match'), findsOneWidget);
     expect(find.text('Player 2'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey<String>('rename-player-two')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey<String>('rename-player-two')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), 'Anu');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('Player 2: Anu'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey<String>('square-e2')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey<String>('square-e4')));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    final ChessBoard board = tester.widget<ChessBoard>(find.byType(ChessBoard));
+    expect(board.flipped, isTrue);
+    expect(
+      find.byWidgetPredicate(
+        (Widget widget) =>
+            widget is CustomPaint && widget.painter is LastMoveTrailPainter,
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('computer replies after a legal white move', (

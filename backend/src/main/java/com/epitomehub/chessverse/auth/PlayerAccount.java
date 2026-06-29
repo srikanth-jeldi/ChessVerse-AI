@@ -44,14 +44,13 @@ class PlayerAccount {
             String username,
             String displayName,
             String email,
-            String phone,
             String passwordHash) {
         Instant now = Instant.now();
         this.id = UUID.randomUUID();
         this.username = username;
         this.displayName = displayName;
         this.email = email;
-        this.phone = phone;
+        this.phone = null;
         this.passwordHash = passwordHash;
         this.createdAt = now;
         this.updatedAt = now;

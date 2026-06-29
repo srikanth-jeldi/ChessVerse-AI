@@ -25,20 +25,9 @@ class AuthController {
         return authService.register(request);
     }
 
-    @PostMapping("/register-phone")
-    @ResponseStatus(HttpStatus.ACCEPTED)
-    MessageResponse registerPhone(@Valid @RequestBody RegisterPhoneRequest request) {
-        return authService.registerPhone(request);
-    }
-
     @PostMapping("/verify-email")
     AuthResponse verify(@Valid @RequestBody VerifyRequest request) {
         return authService.verify(request);
-    }
-
-    @PostMapping("/verify-phone")
-    AuthResponse verifyPhone(@Valid @RequestBody VerifyPhoneRequest request) {
-        return authService.verifyPhone(request);
     }
 
     @PostMapping("/login")
@@ -46,8 +35,4 @@ class AuthController {
         return authService.login(request);
     }
 
-    @PostMapping("/oauth")
-    AuthResponse oauthLogin(@Valid @RequestBody OAuthLoginRequest request) {
-        return authService.oauthLogin(request);
-    }
 }
