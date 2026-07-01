@@ -1,32 +1,61 @@
 import 'package:chessverse_ai/main.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('renders game board shell', (WidgetTester tester) async {
-    await tester.pumpWidget(const ChessVerseApp());
-
-    expect(find.text('ChessVerse AI'), findsOneWidget);
-    expect(find.text('Solo Challenge'), findsOneWidget);
-    expect(find.byType(ChessVerseMark), findsWidgets);
-    expect(find.text('Hint'), findsOneWidget);
+  setUp(() {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{});
   });
 
-  testWidgets('login and guest actions keep the auth flow usable', (
+  testWidgets('shows branded splash before required account access', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ChessVerseApp());
+
+    expect(find.byKey(const ValueKey<String>('branded-splash-image')),
+        findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 1600));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.text('Create ChessVerse ID'), findsOneWidget);
+    expect(find.text('Continue as Guest Player'), findsOneWidget);
+    expect(find.textContaining('Guest Player is local-only'), findsOneWidget);
+  });
+
+  testWidgets('registration and login actions remain available', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const ChessVerseApp());
+    await tester.pump(const Duration(milliseconds: 1600));
+    await tester.pump(const Duration(milliseconds: 600));
 
     await tester.tap(find.text('Login'));
     await tester.pump();
     expect(find.text('Welcome back'), findsOneWidget);
     expect(find.text('User ID or email'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
+    expect(find.text('Forgot password?'), findsOneWidget);
+  });
 
-    await tester.tap(find.text('Continue as Guest'));
+  testWidgets('password reset dialog cancels without an error screen', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const ChessVerseApp());
+    await tester.pump(const Duration(milliseconds: 1600));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    await tester.tap(find.text('Login'));
     await tester.pump();
-    expect(find.text('Welcome back'), findsNothing);
-    expect(find.textContaining('Guest Player'), findsWidgets);
+    await tester.tap(find.text('Forgot password?'));
+    await tester.pumpAndSettle();
+    expect(find.text('Reset password'), findsOneWidget);
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('Reset password'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('switches between computer and local players', (
@@ -48,6 +77,10 @@ void main() {
       ),
     );
 
+    await tester.tap(
+      find.byKey(const ValueKey<String>('game-controls-handle')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey<String>('game-mode-menu')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Local 2P').last);
@@ -127,6 +160,24 @@ void main() {
     expect(boardSize.width, greaterThan(405));
     expect(boardSize.height, boardSize.width);
     expect(find.text('Solo Challenge'), findsOneWidget);
+
+    final Finder panelFinder =
+        find.byKey(const ValueKey<String>('game-controls-panel'));
+    final double collapsedHeight = tester.getSize(panelFinder).height;
+    await tester.tap(
+      find.byKey(const ValueKey<String>('game-controls-handle')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    final GamePanel expandedPanel =
+        tester.widget<GamePanel>(find.byType(GamePanel));
+    expect(expandedPanel.expanded, isTrue);
+    final double expandedHeight = tester.getSize(panelFinder).height;
+    expect(expandedHeight, collapsedHeight);
+    expect(
+      tester.getBottomRight(panelFinder).dy,
+      closeTo(tester.view.physicalSize.height, 1),
+    );
   });
 
   testWidgets('checkmate marks the checked king square and shows the winner', (
@@ -140,6 +191,10 @@ void main() {
         ),
       ),
     );
+    await tester.tap(
+      find.byKey(const ValueKey<String>('game-controls-handle')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey<String>('game-mode-menu')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Local 2P').last);
@@ -184,6 +239,10 @@ void main() {
       ),
     );
 
+    await tester.tap(
+      find.byKey(const ValueKey<String>('game-controls-handle')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Analyze'));
     await tester.pumpAndSettle();
 

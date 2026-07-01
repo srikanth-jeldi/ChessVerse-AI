@@ -12,7 +12,7 @@ spring:
     enabled: true
 
 server:
-  address: 127.0.0.1
+  address: ${SERVER_ADDRESS:127.0.0.1}
 
 management:
   health:
@@ -20,5 +20,8 @@ management:
       enabled: false
 
 chessverse:
+  auth:
+    expose-development-code: ${AUTH_EXPOSE_DEVELOPMENT_CODE:true}
+    delivery: ${AUTH_DELIVERY:local}
   engine:
     stockfish-path: ../.local/stockfish/stockfish.exe

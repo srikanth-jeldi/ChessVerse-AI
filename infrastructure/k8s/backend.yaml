@@ -10,7 +10,8 @@ metadata:
   name: chessverse-backend
   namespace: chessverse
 spec:
-  replicas: 2
+  # Keep one replica until the auth limiter is moved to Redis.
+  replicas: 1
   selector:
     matchLabels:
       app: chessverse-backend
@@ -27,6 +28,8 @@ spec:
           ports:
             - containerPort: 8080
           env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
             - name: DB_URL
               valueFrom:
                 secretKeyRef:
@@ -42,6 +45,26 @@ spec:
                 secretKeyRef:
                   name: chessverse-backend-secret
                   key: db-password
+            - name: MAIL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: chessverse-backend-secret
+                  key: mail-username
+            - name: MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: chessverse-backend-secret
+                  key: mail-password
+            - name: MAIL_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: chessverse-backend-secret
+                  key: mail-from
+            - name: ALLOWED_ORIGIN_PATTERNS
+              valueFrom:
+                secretKeyRef:
+                  name: chessverse-backend-secret
+                  key: allowed-origin-patterns
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness

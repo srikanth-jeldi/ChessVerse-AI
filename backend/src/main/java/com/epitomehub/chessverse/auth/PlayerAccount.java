@@ -31,6 +31,12 @@ class PlayerAccount {
     @Column(nullable = false)
     boolean verified;
 
+    @Column(name = "failed_login_attempts", nullable = false)
+    int failedLoginAttempts;
+
+    @Column(name = "locked_until")
+    Instant lockedUntil;
+
     @Column(name = "created_at", nullable = false)
     Instant createdAt;
 

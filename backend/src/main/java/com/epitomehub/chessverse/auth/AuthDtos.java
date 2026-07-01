@@ -25,6 +25,16 @@ final class AuthDtos {
             @NotBlank @Pattern(regexp = "^\\d{6}$") String code) {
     }
 
+    record EmailRequest(
+            @NotBlank @Email @Size(max = 254) String email) {
+    }
+
+    record ResetPasswordRequest(
+            @NotBlank @Email @Size(max = 254) String email,
+            @NotBlank @Pattern(regexp = "^\\d{6}$") String code,
+            @NotBlank @Size(min = 8, max = 72) String newPassword) {
+    }
+
     record LoginRequest(
             @NotBlank String identity,
             @NotBlank @Size(max = 72) String password) {

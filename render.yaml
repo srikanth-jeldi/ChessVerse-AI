@@ -1,0 +1,49 @@
+services:
+  - type: web
+    name: chessverse-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /actuator/health/readiness
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_HOST
+        fromDatabase:
+          name: chessverse-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: chessverse-postgres
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: chessverse-postgres
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: chessverse-postgres
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: chessverse-postgres
+          property: password
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: ALLOWED_ORIGIN_PATTERNS
+        sync: false
+      - key: AUTH_DELIVERY
+        value: mail
+      - key: AUTH_RATE_LIMIT_ENABLED
+        value: "true"
+
+databases:
+  - name: chessverse-postgres
+    plan: basic-256mb
+    databaseName: chessverse
+    user: chessverse

@@ -3,13 +3,22 @@ import 'dart:math' as math;
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'core/config/app_config.dart';
 import 'features/auth/data/auth_api.dart';
+import 'features/auth/data/auth_session_store.dart';
 import 'features/engine/data/engine_api.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations(
+    <DeviceOrientation>[
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ],
+  );
   AppConfig.validate();
   runApp(const ChessVerseApp());
 }
@@ -23,7 +32,93 @@ class ChessVerseApp extends StatelessWidget {
       title: 'ChessVerse AI',
       debugShowCheckedModeBanner: false,
       theme: ChessVerseTheme.dark(),
-      home: const GameScreen(initiallySignedIn: AppConfig.arenaPreview),
+      home: const SplashGate(),
+    );
+  }
+}
+
+class SplashGate extends StatefulWidget {
+  const SplashGate({super.key});
+
+  @override
+  State<SplashGate> createState() => _SplashGateState();
+}
+
+class _SplashGateState extends State<SplashGate> {
+  Timer? _timer;
+  bool _showSplash = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        setState(() => _showSplash = false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 520),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      child: _showSplash
+          ? const BrandedSplash(key: ValueKey<String>('splash'))
+          : const GameScreen(
+              key: ValueKey<String>('game'),
+              initiallySignedIn: AppConfig.arenaPreview,
+            ),
+    );
+  }
+}
+
+class BrandedSplash extends StatelessWidget {
+  const BrandedSplash({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF02070D),
+      body: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          final bool wide = constraints.maxWidth > constraints.maxHeight;
+          return Stack(
+            fit: StackFit.expand,
+            children: <Widget>[
+              Image(
+                key: const ValueKey<String>('branded-splash-image'),
+                image: AssetImage(
+                  wide
+                      ? 'assets/branding/splash_screen_wide.png'
+                      : 'assets/branding/splash_screen_mobile.png',
+                ),
+                fit: BoxFit.contain,
+              ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      Color(0x12000000),
+                      Color(0x00000000),
+                      Color(0x66000000),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -525,6 +620,7 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   static const AuthApi _authApi = AuthApi();
+  static const AuthSessionStore _sessionStore = AuthSessionStore();
   static const EngineApi _engineApi = EngineApi();
   final math.Random _random = math.Random();
   AudioPlayer? _warningPlayer;
@@ -546,6 +642,7 @@ class _GameScreenState extends State<GameScreen> {
   int _whiteSeconds = 10 * 60;
   int _blackSeconds = 10 * 60;
   bool _signedIn = false;
+  String? _authToken;
   bool _awaitingCode = false;
   bool _authLoading = false;
   bool _authHasError = false;
@@ -563,6 +660,7 @@ class _GameScreenState extends State<GameScreen> {
   String? _gameResultDetail;
   bool _resultVisible = true;
   bool _checkWarningActive = false;
+  bool _controlsExpanded = false;
 
   static const Map<String, ChessPiece> _initialPieces = <String, ChessPiece>{
     'a8': ChessPiece('R', false),
@@ -606,6 +704,9 @@ class _GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     _signedIn = widget.initiallySignedIn;
+    if (widget.initiallySignedIn) {
+      _whitePlayerName = 'Preview Player';
+    }
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted || _moves.isEmpty || _gameResultTitle != null) {
         return;
@@ -665,10 +766,37 @@ class _GameScreenState extends State<GameScreen> {
         child: SafeArea(
           child: LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
-              final bool wide = constraints.maxWidth >= 980;
-              final EdgeInsets pagePadding = EdgeInsets.symmetric(
-                horizontal: wide ? 28 : 6,
-                vertical: wide ? 20 : 8,
+              final bool landscape =
+                  constraints.maxWidth > constraints.maxHeight;
+              final bool wide = constraints.maxWidth >= 980 ||
+                  (landscape && constraints.maxWidth >= 700);
+              const EdgeInsets pagePadding = EdgeInsets.zero;
+              final double availableHeight =
+                  constraints.maxHeight - pagePadding.vertical;
+              final double mobileHeaderHeight = wide ? 0 : 58;
+              final double widePanelWidth = _controlsExpanded
+                  ? math.min(
+                      340,
+                      math.max(320, constraints.maxWidth * 0.26),
+                    )
+                  : 84;
+              const double portraitPanelMinimum = 190;
+              final double boardDimension = math.min(
+                wide
+                    ? constraints.maxWidth -
+                        pagePadding.horizontal -
+                        widePanelWidth -
+                        10
+                    : constraints.maxWidth - pagePadding.horizontal,
+                math.max(
+                  260,
+                  wide
+                      ? availableHeight
+                      : availableHeight -
+                          mobileHeaderHeight -
+                          portraitPanelMinimum -
+                          18,
+                ),
               );
 
               final Widget board = ChessBoard(
@@ -687,7 +815,11 @@ class _GameScreenState extends State<GameScreen> {
               );
 
               final Widget panel = GamePanel(
-                compact: !wide,
+                compact: !wide ||
+                    constraints.maxHeight < 620 ||
+                    widePanelWidth < 340,
+                collapsible: true,
+                expanded: _controlsExpanded,
                 whitePlayerName: _whitePlayerName,
                 blackPlayerName: _blackPlayerName,
                 activeColor: _moves.length.isEven ? 'White' : 'Black',
@@ -715,58 +847,78 @@ class _GameScreenState extends State<GameScreen> {
                 onHint: _showHint,
                 onAnalyze: _showAnalysis,
                 onEditBlackPlayer: _editBlackPlayerName,
+                onToggleExpanded: () {
+                  setState(() => _controlsExpanded = !_controlsExpanded);
+                },
+                onLogout: _logout,
                 canUndo: _history.isNotEmpty,
               );
 
               return Padding(
                 padding: pagePadding,
                 child: Stack(
+                  fit: StackFit.expand,
                   children: <Widget>[
-                    wide
-                        ? Row(
+                    if (wide)
+                      Center(
+                        child: SizedBox(
+                          width: boardDimension + widePanelWidth + 10,
+                          height: boardDimension,
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: <Widget>[
-                              Expanded(
-                                child: BoardStage(
-                                  palette: palette,
-                                  moveCount: _moves.length,
-                                  whiteClock: _formatClock(_whiteSeconds),
-                                  blackClock: _formatClock(_blackSeconds),
-                                  whitePlayerName: _whitePlayerName,
-                                  blackPlayerName: _blackPlayerName,
-                                  child: board,
-                                ),
-                              ),
-                              const SizedBox(width: 24),
-                              SizedBox(width: 380, child: panel),
-                            ],
-                          )
-                        : Column(
-                            children: <Widget>[
-                              CompactHeader(
-                                playerName: _whitePlayerName,
-                                onReset: _reset,
-                              ),
-                              const SizedBox(height: 8),
                               SizedBox(
-                                height: math.min(
-                                  constraints.maxWidth - pagePadding.horizontal,
-                                  constraints.maxHeight * 0.62,
-                                ),
+                                width: boardDimension,
+                                height: boardDimension,
                                 child: BoardStage(
                                   palette: palette,
-                                  moveCount: _moves.length,
-                                  whiteClock: _formatClock(_whiteSeconds),
-                                  blackClock: _formatClock(_blackSeconds),
-                                  whitePlayerName: _whitePlayerName,
-                                  blackPlayerName: _blackPlayerName,
                                   child: board,
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              Expanded(child: panel),
+                              const SizedBox(width: 10),
+                              AnimatedContainer(
+                                key: const ValueKey<String>(
+                                  'landscape-game-controls',
+                                ),
+                                duration: const Duration(milliseconds: 320),
+                                curve: Curves.easeOutCubic,
+                                width: widePanelWidth,
+                                child: panel,
+                              ),
                             ],
                           ),
+                        ),
+                      )
+                    else
+                      Column(
+                        children: <Widget>[
+                          CompactHeader(
+                            playerName: _whitePlayerName,
+                            onReset: _reset,
+                            onLogout: _logout,
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: boardDimension,
+                            height: boardDimension,
+                            child: BoardStage(
+                              palette: palette,
+                              child: board,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Expanded(
+                            key: const ValueKey<String>('game-controls-panel'),
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 260),
+                              child: SizedBox.expand(
+                                key: ValueKey<bool>(_controlsExpanded),
+                                child: panel,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     if (!_signedIn)
                       Positioned.fill(
                         child: AuthOverlay(
@@ -791,6 +943,10 @@ class _GameScreenState extends State<GameScreen> {
                             _authCode = value.trim();
                           },
                           onSubmit: _submitAuth,
+                          onContinueDefault: _continueAsDefaultPlayer,
+                          onFacebookLogin: _showFacebookSetupMessage,
+                          onForgotPassword: _showPasswordResetDialog,
+                          onResendCode: _resendVerificationCode,
                           onBackFromCode: () => setState(() {
                             _awaitingCode = false;
                             _authCode = '';
@@ -798,7 +954,6 @@ class _GameScreenState extends State<GameScreen> {
                                 'Update your details or request a new code.';
                           }),
                           loading: _authLoading,
-                          onGuest: _continueAsGuest,
                         ),
                       ),
                     if (_signedIn && _gameResultTitle != null && _resultVisible)
@@ -831,6 +986,229 @@ class _GameScreenState extends State<GameScreen> {
           ? 'Create an account to save games, ratings and coach history.'
           : 'Welcome back. Sign in with your user id and password.';
     });
+  }
+
+  void _continueAsDefaultPlayer() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      _authToken = null;
+      _whitePlayerName = 'Guest Player';
+      _signedIn = true;
+      _authLoading = false;
+      _authHasError = false;
+      _awaitingCode = false;
+      _coachNote =
+          'Guest Player mode is ready. Create an account later to save progress.';
+    });
+  }
+
+  void _showFacebookSetupMessage() {
+    setState(() {
+      _authHasError = false;
+      _authMessage =
+          'Facebook login needs Meta app credentials, package SHA setup, iOS bundle setup, privacy policy, and data deletion URL before store release. ChessVerse login and Guest Player work now.';
+    });
+  }
+
+  Future<void> _resendVerificationCode() async {
+    if (_authLoading || _authIdentity.isEmpty) {
+      return;
+    }
+    setState(() {
+      _authLoading = true;
+      _authHasError = false;
+      _authMessage = 'Requesting a new verification code...';
+    });
+    try {
+      final Map<String, dynamic> response = await _authApi.post(
+        'resend-verification',
+        <String, String>{'email': _authIdentity},
+      );
+      if (!mounted) return;
+      final String baseMessage =
+          response['message'] as String? ?? 'A new code has been sent.';
+      final String? developmentCode = response['developmentCode'] as String?;
+      setState(() {
+        _authMessage = developmentCode == null
+            ? baseMessage
+            : '$baseMessage Local test code: $developmentCode';
+      });
+    } on AuthApiException catch (error) {
+      if (mounted) {
+        setState(() {
+          _authHasError = true;
+          _authMessage = error.message;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _authLoading = false);
+      }
+    }
+  }
+
+  Future<void> _showPasswordResetDialog() async {
+    final TextEditingController emailController = TextEditingController(
+        text: _authIdentity.contains('@') ? _authIdentity : '');
+    final TextEditingController codeController = TextEditingController();
+    final TextEditingController passwordController = TextEditingController();
+
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        bool codeSent = false;
+        bool loading = false;
+        bool hasError = false;
+        String message =
+            'Enter your verified email to receive a password reset code.';
+
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setDialogState) {
+            Future<void> submit() async {
+              final String email = emailController.text.trim();
+              final String code = codeController.text.trim();
+              final String password = passwordController.text;
+              if (email.isEmpty ||
+                  (codeSent &&
+                      (!RegExp(r'^\d{6}$').hasMatch(code) ||
+                          password.length < 8))) {
+                setDialogState(() {
+                  hasError = true;
+                  message = codeSent
+                      ? 'Enter the six-digit code and an 8+ character password.'
+                      : 'Enter your verified email address.';
+                });
+                return;
+              }
+
+              setDialogState(() {
+                loading = true;
+                hasError = false;
+                message = codeSent
+                    ? 'Updating your password...'
+                    : 'Sending a secure reset code...';
+              });
+              try {
+                final Map<String, dynamic> response = await _authApi.post(
+                  codeSent ? 'password/reset' : 'password/forgot',
+                  codeSent
+                      ? <String, String>{
+                          'email': email,
+                          'code': code,
+                          'newPassword': password,
+                        }
+                      : <String, String>{'email': email},
+                );
+                if (!dialogContext.mounted) return;
+                if (codeSent) {
+                  Navigator.of(dialogContext).pop();
+                  if (!mounted) return;
+                  setState(() {
+                    _registerMode = false;
+                    _awaitingCode = false;
+                    _authIdentity = email;
+                    _authHasError = false;
+                    _authMessage =
+                        'Password updated. Sign in with your new password.';
+                  });
+                } else {
+                  final String baseMessage = response['message'] as String? ??
+                      'If the account exists, a reset code was sent.';
+                  final String? developmentCode =
+                      response['developmentCode'] as String?;
+                  setDialogState(() {
+                    codeSent = true;
+                    message = developmentCode == null
+                        ? baseMessage
+                        : '$baseMessage Local test code: $developmentCode';
+                  });
+                }
+              } on AuthApiException catch (error) {
+                if (dialogContext.mounted) {
+                  setDialogState(() {
+                    hasError = true;
+                    message = error.message;
+                  });
+                }
+              } finally {
+                if (dialogContext.mounted) {
+                  setDialogState(() => loading = false);
+                }
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Reset password'),
+              content: SingleChildScrollView(
+                child: SizedBox(
+                  width: 380,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Text(message),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: emailController,
+                        enabled: !codeSent && !loading,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'Verified email',
+                          prefixIcon: Icon(Icons.mail_outline_rounded),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      if (codeSent) ...<Widget>[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: codeController,
+                          enabled: !loading,
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                          decoration: const InputDecoration(
+                            labelText: 'Six-digit reset code',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        TextField(
+                          controller: passwordController,
+                          enabled: !loading,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: 'New password',
+                            helperText: 'At least 8 characters',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ],
+                      if (hasError) ...<Widget>[
+                        const SizedBox(height: 10),
+                        Text(
+                          message,
+                          style: const TextStyle(color: Color(0xFFFF7774)),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed:
+                      loading ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: loading ? null : submit,
+                  child: Text(codeSent ? 'Update password' : 'Send reset code'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _submitAuth() async {
@@ -908,11 +1286,7 @@ class _GameScreenState extends State<GameScreen> {
           },
         );
         if (!mounted) return;
-        final Map<String, dynamic>? player =
-            response['player'] as Map<String, dynamic>?;
-        _completeLogin(
-          player?['displayName'] as String? ?? _authDisplayName,
-        );
+        await _completeLogin(response);
       } else {
         final Map<String, dynamic> response = await _authApi.post(
           'login',
@@ -922,9 +1296,7 @@ class _GameScreenState extends State<GameScreen> {
           },
         );
         if (!mounted) return;
-        final Map<String, dynamic>? player =
-            response['player'] as Map<String, dynamic>?;
-        _completeLogin(player?['displayName'] as String? ?? _authIdentity);
+        await _completeLogin(response);
       }
     } on AuthApiException catch (error) {
       if (mounted) {
@@ -944,23 +1316,55 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  void _completeLogin(String identity) {
-    final String cleanName = identity.contains('@')
-        ? identity.split('@').first
-        : identity.replaceAll(RegExp(r'[^0-9A-Za-z ]'), '');
-    _whitePlayerName = cleanName.isEmpty ? 'Player' : cleanName;
-    _signedIn = true;
-    _awaitingCode = false;
-    _authHasError = false;
-    _coachNote = 'Welcome $_whitePlayerName. Your arena is ready.';
+  Future<void> _completeLogin(Map<String, dynamic> response) async {
+    final String token = response['token'] as String? ?? '';
+    final DateTime? expiresAt =
+        DateTime.tryParse(response['expiresAt'] as String? ?? '');
+    final Map<String, dynamic>? player =
+        response['player'] as Map<String, dynamic>?;
+    final String displayName =
+        player?['displayName'] as String? ?? _authIdentity;
+    if (token.isEmpty || expiresAt == null) {
+      throw const AuthApiException('The server returned an invalid session.');
+    }
+
+    await _sessionStore.write(
+      StoredAuthSession(
+        token: token,
+        expiresAt: expiresAt,
+        displayName: displayName,
+      ),
+    );
+    if (!mounted) return;
+    setState(() {
+      _authToken = token;
+      _whitePlayerName = displayName;
+      _signedIn = true;
+      _awaitingCode = false;
+      _authHasError = false;
+      _authCode = '';
+      _authPassword = '';
+      _coachNote = 'Welcome $displayName. Your game is ready.';
+    });
   }
 
-  void _continueAsGuest() {
+  Future<void> _logout() async {
+    final String? token = _authToken;
+    if (token != null) {
+      await _authApi.logout(token);
+    }
+    await _sessionStore.clear();
+    if (!mounted) return;
     setState(() {
-      _whitePlayerName = 'Guest Player';
-      _signedIn = true;
+      _authToken = null;
+      _signedIn = false;
+      _registerMode = false;
+      _awaitingCode = false;
       _authHasError = false;
-      _coachNote = 'Guest arena ready. Create an account later to sync games.';
+      _authIdentity = '';
+      _authPassword = '';
+      _authMessage = 'Session closed securely. Sign in to continue.';
+      _whitePlayerName = 'Player';
     });
   }
 
@@ -1858,11 +2262,16 @@ class _GameScreenState extends State<GameScreen> {
 }
 
 class CompactHeader extends StatelessWidget {
-  const CompactHeader(
-      {required this.playerName, required this.onReset, super.key});
+  const CompactHeader({
+    required this.playerName,
+    required this.onReset,
+    required this.onLogout,
+    super.key,
+  });
 
   final String playerName;
   final VoidCallback onReset;
+  final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -1881,6 +2290,11 @@ class CompactHeader extends StatelessWidget {
           tooltip: 'Reset board',
           onPressed: onReset,
           icon: const Icon(Icons.refresh_rounded),
+        ),
+        IconButton(
+          tooltip: 'Sign out',
+          onPressed: onLogout,
+          icon: const Icon(Icons.logout_rounded),
         ),
       ],
     );
@@ -1911,119 +2325,51 @@ class ChessVerseMark extends StatelessWidget {
 class BoardStage extends StatelessWidget {
   const BoardStage({
     required this.palette,
-    required this.moveCount,
-    required this.whiteClock,
-    required this.blackClock,
-    required this.whitePlayerName,
-    required this.blackPlayerName,
     required this.child,
     super.key,
   });
 
   final BoardPalette palette;
-  final int moveCount;
-  final String whiteClock;
-  final String blackClock;
-  final String whitePlayerName;
-  final String blackPlayerName;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final bool wide = MediaQuery.sizeOf(context).width >= 980;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        if (wide) ...<Widget>[
-          Row(
-            children: <Widget>[
-              const ChessVerseMark(size: 42),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    'ChessVerse AI',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  Text(
-                    'GRANDMASTER TABLE',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: const Color(0xFF63D2B8),
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              PlayerAvatar(name: whitePlayerName),
-              const SizedBox(width: 8),
-              MatchClock(label: whitePlayerName, value: whiteClock),
-              const SizedBox(width: 8),
-              MatchClock(label: blackPlayerName, value: blackClock),
-            ],
-          ),
-          const SizedBox(height: 16),
-        ],
-        Expanded(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: <Color>[
-                      Color.alphaBlend(
-                        palette.accent.withValues(alpha: 0.24),
-                        palette.frame,
-                      ),
-                      palette.frame,
-                      const Color(0xFF101A17),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: palette.accent.withValues(alpha: 0.75),
-                    width: 2,
-                  ),
-                  boxShadow: <BoxShadow>[
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.58),
-                      blurRadius: 34,
-                      offset: const Offset(0, 22),
-                    ),
-                    BoxShadow(
-                      color: palette.accent.withValues(alpha: 0.2),
-                      blurRadius: 18,
-                      spreadRadius: -3,
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(wide ? 13 : 4),
-                  child: child,
-                ),
-              ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            Color.alphaBlend(
+              palette.accent.withValues(alpha: 0.24),
+              palette.frame,
             ),
-          ),
+            palette.frame,
+            const Color(0xFF101A17),
+          ],
         ),
-        if (wide) ...<Widget>[
-          const SizedBox(height: 12),
-          Row(
-            children: <Widget>[
-              StatusPill(icon: Icons.shield_rounded, label: palette.label),
-              const SizedBox(width: 8),
-              StatusPill(
-                icon: Icons.timeline_rounded,
-                label: '$moveCount moves',
-              ),
-            ],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: palette.accent.withValues(alpha: 0.75),
+          width: 2,
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.58),
+            blurRadius: 34,
+            offset: const Offset(0, 22),
+          ),
+          BoxShadow(
+            color: palette.accent.withValues(alpha: 0.2),
+            blurRadius: 18,
+            spreadRadius: -3,
           ),
         ],
-      ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: child,
+      ),
     );
   }
 }
@@ -2179,61 +2525,65 @@ class LastMoveTrailPainter extends CustomPainter {
     }
 
     final Offset direction = delta / distance;
-    final Offset perpendicular = Offset(-direction.dy, direction.dx);
-    final double headLength = math.min(cell * 0.28, distance * 0.36);
-    final Offset lineEnd = end - direction * headLength * 0.42;
+    final double pieceClearance = cell * 0.27;
+    final Offset visualStart = start + direction * pieceClearance;
+    final Offset visualEnd = end - direction * pieceClearance;
+    if ((visualEnd - visualStart).distance < cell * 0.18) {
+      return;
+    }
+    final Offset mid = Offset.lerp(visualStart, visualEnd, 0.5)!;
+    final double bend = math.min(cell * 0.22, distance * 0.12);
+    final Offset normal = Offset(-direction.dy, direction.dx);
+    final Offset control = mid + normal * bend;
+    final Path trail = Path()
+      ..moveTo(visualStart.dx, visualStart.dy)
+      ..quadraticBezierTo(
+        control.dx,
+        control.dy,
+        visualEnd.dx,
+        visualEnd.dy,
+      );
     final Paint glow = Paint()
-      ..color = Colors.black.withValues(alpha: 0.34 * progress)
-      ..strokeWidth = cell * 0.18
+      ..color = accent.withValues(alpha: 0.34 * progress)
+      ..strokeWidth = cell * 0.19
       ..strokeCap = StrokeCap.round
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+      ..style = PaintingStyle.stroke
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+    final Paint shadow = Paint()
+      ..color = Colors.black.withValues(alpha: 0.32 * progress)
+      ..strokeWidth = cell * 0.14
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
     final Paint line = Paint()
       ..shader = LinearGradient(
         colors: <Color>[
-          Colors.white.withValues(alpha: 0.9),
-          accent,
+          Colors.white.withValues(alpha: 0.82),
+          accent.withValues(alpha: 0.9),
+          Colors.white.withValues(alpha: 0.7),
         ],
-      ).createShader(Rect.fromPoints(start, end))
+      ).createShader(Rect.fromPoints(visualStart, visualEnd))
       ..strokeWidth = cell * 0.075
-      ..strokeCap = StrokeCap.round;
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
 
-    canvas.drawLine(start, lineEnd, glow);
-    canvas.drawLine(start, lineEnd, line);
+    canvas.drawPath(trail, shadow);
+    canvas.drawPath(trail, glow);
+    canvas.drawPath(trail, line);
     canvas.drawCircle(
       start,
-      cell * 0.13 * progress,
+      cell * 0.11 * progress,
       Paint()
         ..color = Colors.transparent
         ..style = PaintingStyle.stroke
         ..strokeWidth = cell * 0.045
         ..shader = line.shader,
     );
-
-    final Path arrow = Path()
-      ..moveTo(end.dx, end.dy)
-      ..lineTo(
-        end.dx -
-            direction.dx * headLength +
-            perpendicular.dx * headLength * 0.52,
-        end.dy -
-            direction.dy * headLength +
-            perpendicular.dy * headLength * 0.52,
-      )
-      ..lineTo(
-        end.dx -
-            direction.dx * headLength -
-            perpendicular.dx * headLength * 0.52,
-        end.dy -
-            direction.dy * headLength -
-            perpendicular.dy * headLength * 0.52,
-      )
-      ..close();
-    canvas.drawPath(arrow, Paint()..color = accent);
     canvas.drawCircle(
       target,
-      cell * 0.31 * progress,
+      cell * 0.24 * progress,
       Paint()
-        ..color = accent.withValues(alpha: 0.16 * progress)
+        ..color = accent.withValues(alpha: 0.12 * progress)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
     );
   }
@@ -2810,6 +3160,8 @@ class PromotionChoice extends StatelessWidget {
 class GamePanel extends StatelessWidget {
   const GamePanel({
     required this.compact,
+    required this.collapsible,
+    required this.expanded,
     required this.whitePlayerName,
     required this.blackPlayerName,
     required this.activeColor,
@@ -2833,11 +3185,15 @@ class GamePanel extends StatelessWidget {
     required this.onHint,
     required this.onAnalyze,
     required this.onEditBlackPlayer,
+    required this.onToggleExpanded,
+    required this.onLogout,
     required this.canUndo,
     super.key,
   });
 
   final bool compact;
+  final bool collapsible;
+  final bool expanded;
   final String whitePlayerName;
   final String blackPlayerName;
   final String activeColor;
@@ -2861,6 +3217,8 @@ class GamePanel extends StatelessWidget {
   final VoidCallback onHint;
   final VoidCallback onAnalyze;
   final VoidCallback onEditBlackPlayer;
+  final VoidCallback onToggleExpanded;
+  final VoidCallback onLogout;
   final bool canUndo;
 
   @override
@@ -2868,6 +3226,8 @@ class GamePanel extends StatelessWidget {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final AiProfile aiProfile = aiProfileFor(aiLevel);
+        final bool collapsed = collapsible && !expanded;
+        final bool collapsedRail = constraints.maxWidth < 310;
         final Widget history = moves.isEmpty
             ? const EmptyMoveState()
             : ListView.separated(
@@ -2884,7 +3244,104 @@ class GamePanel extends StatelessWidget {
                 },
               );
 
+        if (collapsedRail) {
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFF17231F).withValues(alpha: 0.96),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: const Color(0xFF98743B).withValues(alpha: 0.72),
+              ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.34),
+                  blurRadius: 24,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: Column(
+                children: <Widget>[
+                  Expanded(
+                    child: InkWell(
+                      key: const ValueKey<String>('game-controls-handle'),
+                      onTap: onToggleExpanded,
+                      borderRadius: BorderRadius.circular(8),
+                      child: const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Icon(Icons.tune_rounded, size: 30),
+                            SizedBox(height: 8),
+                            RotatedBox(
+                              quarterTurns: 3,
+                              child: Text(
+                                'GAME CONTROLS',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            Icon(Icons.chevron_left_rounded, size: 28),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Reset board',
+                    onPressed: onReset,
+                    icon: const Icon(Icons.refresh_rounded),
+                  ),
+                  IconButton(
+                    tooltip: 'Undo move',
+                    onPressed: canUndo ? onUndo : null,
+                    icon: const Icon(Icons.undo_rounded),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          );
+        }
+
         final List<Widget> controls = <Widget>[
+          if (collapsible)
+            Semantics(
+              button: true,
+              label:
+                  expanded ? 'Collapse game controls' : 'Expand game controls',
+              child: InkWell(
+                key: const ValueKey<String>('game-controls-handle'),
+                onTap: onToggleExpanded,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      const Icon(Icons.drag_handle_rounded, size: 28),
+                      const SizedBox(width: 6),
+                      Text(
+                        expanded ? 'Less controls' : 'More controls',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        expanded
+                            ? Icons.keyboard_arrow_down_rounded
+                            : Icons.keyboard_arrow_up_rounded,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           Row(
             children: <Widget>[
               Expanded(
@@ -2913,6 +3370,12 @@ class GamePanel extends StatelessWidget {
                 onPressed: canUndo ? onUndo : null,
                 icon: const Icon(Icons.undo_rounded),
               ),
+              if (!compact)
+                IconButton(
+                  tooltip: 'Sign out',
+                  onPressed: onLogout,
+                  icon: const Icon(Icons.logout_rounded),
+                ),
             ],
           ),
           const SizedBox(height: 12),
@@ -2921,7 +3384,8 @@ class GamePanel extends StatelessWidget {
             initialValue: gameMode,
             decoration: InputDecoration(
               labelText: 'Play mode',
-              prefixIcon: const Icon(Icons.sports_esports_rounded),
+              prefixIcon:
+                  compact ? null : const Icon(Icons.sports_esports_rounded),
               border: const OutlineInputBorder(),
               isDense: compact,
             ),
@@ -2973,6 +3437,24 @@ class GamePanel extends StatelessWidget {
               label: Text('Player 2: $blackPlayerName'),
             ),
           ],
+          if (collapsed) ...<Widget>[
+            const SizedBox(height: 8),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: MatchClock(label: whitePlayerName, value: whiteClock),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: MatchClock(label: blackPlayerName, value: blackClock),
+                ),
+              ],
+            ),
+          ],
+          if (collapsed) const SizedBox(height: 10),
+        ];
+
+        final List<Widget> expandedOnlyControls = <Widget>[
           const SizedBox(height: 18),
           Row(
             children: <Widget>[
@@ -3095,7 +3577,10 @@ class GamePanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             ...controls,
-            SizedBox(height: compact ? 120 : 220, child: history),
+            if (!collapsed) ...<Widget>[
+              ...expandedOnlyControls,
+              SizedBox(height: compact ? 120 : 220, child: history),
+            ],
           ],
         );
 
@@ -3446,6 +3931,29 @@ class EmptyMoveState extends StatelessWidget {
   }
 }
 
+class SessionLoadingOverlay extends StatelessWidget {
+  const SessionLoadingOverlay({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Color(0xFF07120F),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ChessVerseMark(size: 76),
+            SizedBox(height: 20),
+            CircularProgressIndicator(color: Color(0xFFD6A84F)),
+            SizedBox(height: 14),
+            Text('Restoring your secure session...'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class AuthOverlay extends StatelessWidget {
   const AuthOverlay({
     required this.registerMode,
@@ -3459,9 +3967,12 @@ class AuthOverlay extends StatelessWidget {
     required this.onPasswordChanged,
     required this.onCodeChanged,
     required this.onSubmit,
+    required this.onContinueDefault,
+    required this.onFacebookLogin,
+    required this.onForgotPassword,
+    required this.onResendCode,
     required this.onBackFromCode,
     required this.loading,
-    required this.onGuest,
     super.key,
   });
 
@@ -3476,252 +3987,283 @@ class AuthOverlay extends StatelessWidget {
   final ValueChanged<String> onPasswordChanged;
   final ValueChanged<String> onCodeChanged;
   final VoidCallback onSubmit;
+  final VoidCallback onContinueDefault;
+  final VoidCallback onFacebookLogin;
+  final VoidCallback onForgotPassword;
+  final VoidCallback onResendCode;
   final VoidCallback onBackFromCode;
   final bool loading;
-  final VoidCallback onGuest;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.62),
+        color: const Color(0xFF07120F).withValues(alpha: 0.97),
       ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: const Color(0xFF15161B).withValues(alpha: 0.96),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFD6A84F)),
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: const Color(0xFFD6A84F).withValues(alpha: 0.18),
-                  blurRadius: 38,
-                  spreadRadius: 4,
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(8, 12, 8, 16),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF15161B).withValues(alpha: 0.96),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFD6A84F)),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: const Color(0xFFD6A84F).withValues(alpha: 0.18),
+                      blurRadius: 38,
+                      spreadRadius: 4,
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(22),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        const ChessVerseMark(size: 34),
-                        const SizedBox(width: 8),
-                        Text(
-                          'CHESSVERSE',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      registerMode ? 'Create ChessVerse ID' : 'Welcome back',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    if (!hasError)
-                      Text(
-                        message,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    const SizedBox(height: 16),
-                    if (!awaitingCode)
-                      SegmentedButton<bool>(
-                        segments: const <ButtonSegment<bool>>[
-                          ButtonSegment<bool>(
-                              value: true, label: Text('Register')),
-                          ButtonSegment<bool>(
-                              value: false, label: Text('Login')),
-                        ],
-                        selected: <bool>{registerMode},
-                        onSelectionChanged: (Set<bool> selected) {
-                          onModeChanged(selected.first);
-                        },
-                      ),
-                    if (!awaitingCode) const SizedBox(height: 14),
-                    if (!awaitingCode) ...<Widget>[
-                      if (registerMode) ...<Widget>[
-                        TextField(
-                          onChanged: onUsernameChanged,
-                          textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(
-                            labelText: 'User ID',
-                            prefixIcon: Icon(Icons.alternate_email_rounded),
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          onChanged: onDisplayNameChanged,
-                          textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(
-                            labelText: 'Player name',
-                            prefixIcon: Icon(Icons.person_outline_rounded),
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                      TextField(
-                        onChanged: onIdentityChanged,
-                        textInputAction: TextInputAction.next,
-                        keyboardType: registerMode
-                            ? TextInputType.emailAddress
-                            : TextInputType.text,
-                        decoration: InputDecoration(
-                          labelText:
-                              registerMode ? 'Email' : 'User ID or email',
-                          prefixIcon: const Icon(Icons.mail_outline_rounded),
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        onChanged: onPasswordChanged,
-                        obscureText: true,
-                        onSubmitted: (_) => onSubmit(),
-                        decoration: InputDecoration(
-                          labelText:
-                              registerMode ? 'Create password' : 'Password',
-                          prefixIcon: const Icon(Icons.lock_outline_rounded),
-                          helperText:
-                              registerMode ? 'At least 8 characters' : null,
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                    ],
-                    if (awaitingCode) ...<Widget>[
-                      const SizedBox(height: 18),
-                      Center(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color:
-                                const Color(0xFFD6A84F).withValues(alpha: 0.12),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Padding(
-                            padding: EdgeInsets.all(14),
-                            child: Icon(
-                              Icons.mark_email_read_outlined,
-                              color: Color(0xFFD6A84F),
-                              size: 34,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        onChanged: onCodeChanged,
-                        keyboardType: TextInputType.number,
-                        maxLength: 6,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0,
-                        ),
-                        onSubmitted: (_) => onSubmit(),
-                        decoration: const InputDecoration(
-                          labelText: 'Six-digit verification code',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ],
-                    if (hasError) ...<Widget>[
-                      const SizedBox(height: 14),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          color:
-                              const Color(0xFFEF5350).withValues(alpha: 0.12),
-                          border: Border.all(
-                            color:
-                                const Color(0xFFEF5350).withValues(alpha: 0.65),
-                          ),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              const Icon(
-                                Icons.error_outline_rounded,
-                                color: Color(0xFFFF7774),
-                                size: 20,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  message,
-                                  style: const TextStyle(
-                                    color: Color(0xFFFFB4B2),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: loading ? null : onSubmit,
-                      icon: loading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(
-                              awaitingCode
-                                  ? Icons.verified_rounded
-                                  : Icons.login_rounded,
-                            ),
-                      label: Text(
-                        awaitingCode
-                            ? 'Verify and Continue'
-                            : registerMode
-                                ? 'Send Code'
-                                : 'Login',
-                      ),
-                    ),
-                    if (awaitingCode)
-                      TextButton.icon(
-                        onPressed: loading ? null : onBackFromCode,
-                        icon: const Icon(Icons.arrow_back_rounded),
-                        label: const Text('Change registration details'),
-                      ),
-                    if (!awaitingCode) ...<Widget>[
-                      const SizedBox(height: 16),
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
                       Row(
                         children: <Widget>[
-                          const Expanded(child: Divider()),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: Text(
-                              'NO ACCOUNT NEEDED',
-                              style: Theme.of(context).textTheme.labelSmall,
-                            ),
+                          const ChessVerseMark(size: 34),
+                          const SizedBox(width: 8),
+                          Text(
+                            'CHESSVERSE',
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
-                          const Expanded(child: Divider()),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        key: const ValueKey<String>('continue-as-guest'),
-                        onPressed: loading ? null : onGuest,
-                        icon: const Icon(Icons.person_outline_rounded),
-                        label: const Text('Continue as Guest'),
+                      const SizedBox(height: 14),
+                      Text(
+                        registerMode ? 'Create ChessVerse ID' : 'Welcome back',
+                        style: Theme.of(context).textTheme.headlineMedium,
                       ),
+                      const SizedBox(height: 8),
+                      if (!hasError && message.trim().isNotEmpty)
+                        Text(
+                          message,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      const SizedBox(height: 16),
+                      if (!awaitingCode)
+                        SegmentedButton<bool>(
+                          segments: const <ButtonSegment<bool>>[
+                            ButtonSegment<bool>(
+                                value: true, label: Text('Register')),
+                            ButtonSegment<bool>(
+                                value: false, label: Text('Login')),
+                          ],
+                          selected: <bool>{registerMode},
+                          onSelectionChanged: (Set<bool> selected) {
+                            onModeChanged(selected.first);
+                          },
+                        ),
+                      if (!awaitingCode) const SizedBox(height: 14),
+                      if (!awaitingCode) ...<Widget>[
+                        if (registerMode) ...<Widget>[
+                          TextField(
+                            onChanged: onUsernameChanged,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'User ID',
+                              prefixIcon: Icon(Icons.alternate_email_rounded),
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            onChanged: onDisplayNameChanged,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'Player name',
+                              prefixIcon: Icon(Icons.person_outline_rounded),
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        TextField(
+                          onChanged: onIdentityChanged,
+                          textInputAction: TextInputAction.next,
+                          keyboardType: registerMode
+                              ? TextInputType.emailAddress
+                              : TextInputType.text,
+                          decoration: InputDecoration(
+                            labelText:
+                                registerMode ? 'Email' : 'User ID or email',
+                            prefixIcon: const Icon(Icons.mail_outline_rounded),
+                            border: const OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          onChanged: onPasswordChanged,
+                          obscureText: true,
+                          onSubmitted: (_) => onSubmit(),
+                          decoration: InputDecoration(
+                            labelText:
+                                registerMode ? 'Create password' : 'Password',
+                            prefixIcon: const Icon(Icons.lock_outline_rounded),
+                            helperText:
+                                registerMode ? 'At least 8 characters' : null,
+                            border: const OutlineInputBorder(),
+                          ),
+                        ),
+                        if (!registerMode)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: loading ? null : onForgotPassword,
+                              child: const Text('Forgot password?'),
+                            ),
+                          ),
+                      ],
+                      if (awaitingCode) ...<Widget>[
+                        const SizedBox(height: 18),
+                        Center(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD6A84F)
+                                  .withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Padding(
+                              padding: EdgeInsets.all(14),
+                              child: Icon(
+                                Icons.mark_email_read_outlined,
+                                color: Color(0xFFD6A84F),
+                                size: 34,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextField(
+                          onChanged: onCodeChanged,
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0,
+                          ),
+                          onSubmitted: (_) => onSubmit(),
+                          decoration: const InputDecoration(
+                            labelText: 'Six-digit verification code',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ],
+                      if (hasError) ...<Widget>[
+                        const SizedBox(height: 14),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFFEF5350).withValues(alpha: 0.12),
+                            border: Border.all(
+                              color: const Color(0xFFEF5350)
+                                  .withValues(alpha: 0.65),
+                            ),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                const Icon(
+                                  Icons.error_outline_rounded,
+                                  color: Color(0xFFFF7774),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    message,
+                                    style: const TextStyle(
+                                      color: Color(0xFFFFB4B2),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: loading ? null : onSubmit,
+                        icon: loading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Icon(
+                                awaitingCode
+                                    ? Icons.verified_rounded
+                                    : Icons.login_rounded,
+                              ),
+                        label: Text(
+                          awaitingCode
+                              ? 'Verify and Continue'
+                              : registerMode
+                                  ? 'Send Code'
+                                  : 'Login',
+                        ),
+                      ),
+                      if (!awaitingCode) ...<Widget>[
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: loading ? null : onContinueDefault,
+                          icon: const Icon(Icons.person_pin_circle_outlined),
+                          label: const Text('Continue as Guest Player'),
+                        ),
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: loading ? null : onFacebookLogin,
+                          icon: const Icon(Icons.facebook_rounded),
+                          label: const Text(
+                            'Facebook Login',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                      if (awaitingCode)
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 8,
+                          children: <Widget>[
+                            TextButton.icon(
+                              onPressed: loading ? null : onResendCode,
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('Resend code'),
+                            ),
+                            TextButton.icon(
+                              onPressed: loading ? null : onBackFromCode,
+                              icon: const Icon(Icons.arrow_back_rounded),
+                              label: const Text('Change details'),
+                            ),
+                          ],
+                        ),
+                      if (!awaitingCode) ...<Widget>[
+                        const SizedBox(height: 14),
+                        const Text(
+                          'Use a verified ChessVerse account to save games, ratings and coach history. Guest Player is local-only for quick testing.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFFAAA69E),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -3942,28 +4484,38 @@ class MiniCapturedPiece extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color face =
-        piece.white ? const Color(0xFFF9F0DB) : const Color(0xFF202126);
-    final Color text =
-        piece.white ? const Color(0xFF2B2012) : const Color(0xFFF3E3BD);
-
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: face,
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFD6A84F)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: piece.white
+              ? const <Color>[Color(0xFFFFF6E1), Color(0xFFC99B49)]
+              : const <Color>[Color(0xFF41454D), Color(0xFF111319)],
+        ),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(
+          color: const Color(0xFFD6A84F).withValues(alpha: 0.9),
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.28),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: SizedBox(
-        width: 26,
-        height: 26,
-        child: Center(
-          child: Text(
-            piece.code,
-            style: TextStyle(
-              color: text,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-            ),
+        width: 34,
+        height: 34,
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: Image.asset(
+            pieceAsset(piece),
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium,
+            semanticLabel:
+                'Captured ${piece.white ? 'white' : 'black'} ${pieceName(piece.code)}',
           ),
         ),
       ),
