@@ -91,9 +91,26 @@ and a debug-only network configuration. Production builds require HTTPS.
 See `docs/MOBILE-RELEASE-GUIDELINES.md` before creating Android or iOS release
 artifacts.
 
-Authentication intentionally uses email OTP/password plus a no-account guest
-mode. Paid SMS and social provider dependencies are excluded from the
-cost-conscious release.
+For physical-device testing on the same Wi-Fi network, expose only the local
+development backend and build the APK with the development machine's LAN IP:
+
+```powershell
+$env:SERVER_ADDRESS = "0.0.0.0"
+cd backend
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+
+cd ../mobile
+flutter build apk --debug --split-per-abi `
+  --dart-define=API_BASE_URL=http://<development-machine-ip>:8080
+```
+
+The local profile returns a development OTP in the registration response so the
+complete login flow can be tested without SMTP. Production never exposes this
+code and must use configured email delivery, HTTPS, and managed secrets.
+
+Authentication uses verified email/password accounts with encrypted mobile
+session storage. Paid SMS and social-provider dependencies remain excluded from
+the cost-conscious release.
 
 ## Documentation Volumes
 

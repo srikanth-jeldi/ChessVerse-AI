@@ -1,0 +1,22 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+server:
+  forward-headers-strategy: framework
+  shutdown: graceful
+
+chessverse:
+  auth:
+    expose-development-code: false
+    delivery: mail
+    rate-limit:
+      enabled: true
+
+management:
+  health:
+    mail:
+      enabled: true
