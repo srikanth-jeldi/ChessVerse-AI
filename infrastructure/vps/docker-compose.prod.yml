@@ -1,0 +1,104 @@
+name: chessverse
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 768m
+    cpus: 0.50
+    networks:
+      - internal
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend:
+    build:
+      context: ../../backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM}
+      ALLOWED_ORIGIN_PATTERNS: https://${APP_DOMAIN}
+      AUTH_DELIVERY: mail
+      AUTH_RATE_LIMIT_ENABLED: "true"
+      MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+      STOCKFISH_TIMEOUT_SECONDS: "12"
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70 -XX:+UseG1GC
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8080"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "curl --fail --silent http://127.0.0.1:8080/actuator/health/readiness | grep -q '\"status\":\"UP\"'"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    mem_limit: 1792m
+    cpus: 0.85
+    networks:
+      - internal
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infrastructure/vps/web/Dockerfile
+      args:
+        API_BASE_URL: https://${API_DOMAIN}
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    mem_limit: 256m
+    cpus: 0.15
+    networks:
+      - internal
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  internal:
+    driver: bridge
