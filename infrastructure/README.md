@@ -31,3 +31,10 @@ For AWS, the intended target is EKS with AWS Load Balancer Controller, RDS Postg
 
 Authentication uses email delivery and guest access, so this deployment does
 not require an SMS provider or social OAuth secrets.
+
+## Budget Hostinger VPS
+
+The single-server, Docker-based MVP deployment is documented in
+[`../docs/HOSTINGER-VPS-DEPLOYMENT.md`](../docs/HOSTINGER-VPS-DEPLOYMENT.md).
+It includes Flutter Web, Spring Boot, PostgreSQL, Stockfish, automatic HTTPS,
+container health checks and an optional off-server database backup workflow.

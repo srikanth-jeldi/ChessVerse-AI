@@ -7,7 +7,7 @@ RUN mvn -q -DskipTests package
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends stockfish \
+    && apt-get install --yes --no-install-recommends curl stockfish \
     && rm -rf /var/lib/apt/lists/*
 ENV STOCKFISH_PATH=/usr/games/stockfish
 RUN useradd --system --create-home chessverse
