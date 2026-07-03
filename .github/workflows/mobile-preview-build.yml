@@ -1,0 +1,63 @@
+name: Mobile Preview Build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - mobile/**
+      - .github/workflows/mobile-preview-build.yml
+
+jobs:
+  flutter-preview-build:
+    name: Build Android APK and Web Preview
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze Flutter app
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
+      - name: Build Android debug APK
+        run: flutter build apk --debug
+
+      - name: Build Flutter web preview
+        run: flutter build web --release
+
+      - name: Upload Android APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chessverse-debug-apk
+          path: mobile/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload web preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chessverse-web-preview
+          path: mobile/build/web
+          if-no-files-found: error
+          retention-days: 7
