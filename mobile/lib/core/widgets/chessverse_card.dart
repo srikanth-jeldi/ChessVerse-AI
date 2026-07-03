@@ -23,7 +23,7 @@ class ChessVerseCard extends StatelessWidget {
     return Container(
       margin: margin,
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.92),
+        color: AppColors.surface.withOpacity(0.92),
         borderRadius: borderRadius,
         border: Border.all(color: AppColors.border),
         boxShadow: const <BoxShadow>[
