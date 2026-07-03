@@ -193,7 +193,41 @@ class ChessVerseTheme {
 
 enum BoardSkin { royalWalnut, jadeGlass, tournament, marble, sapphire }
 
-enum GameMode { computer, local, online }
+enum GameMode { computer, daily, local, online }
+
+enum DailyChallengeDifficulty { easy, medium, hard }
+
+extension DailyChallengeDifficultyDetails on DailyChallengeDifficulty {
+  String get label => switch (this) {
+        DailyChallengeDifficulty.easy => 'Easy · 3 moves',
+        DailyChallengeDifficulty.medium => 'Medium · 4 moves',
+        DailyChallengeDifficulty.hard => 'Hard · 5 moves',
+      };
+
+  int get prefixPlyCount => switch (this) {
+        DailyChallengeDifficulty.easy => 4,
+        DailyChallengeDifficulty.medium => 2,
+        DailyChallengeDifficulty.hard => 0,
+      };
+}
+
+class DailyChallenge {
+  const DailyChallenge({
+    required this.id,
+    required this.title,
+    required this.difficulty,
+    required this.setupMoves,
+    required this.solution,
+  });
+
+  final String id;
+  final String title;
+  final DailyChallengeDifficulty difficulty;
+  final List<String> setupMoves;
+  final List<String> solution;
+
+  int get playerMoveGoal => (solution.length + 1) ~/ 2;
+}
 
 class AiProfile {
   const AiProfile(this.name, this.elo, this.description);
@@ -661,6 +695,10 @@ class _GameScreenState extends State<GameScreen> {
   bool _resultVisible = true;
   bool _checkWarningActive = false;
   bool _controlsExpanded = false;
+  DailyChallengeDifficulty _dailyDifficulty = DailyChallengeDifficulty.medium;
+  late DailyChallenge _dailyChallenge;
+  int _dailyPlyIndex = 0;
+  int _dailyMistakes = 0;
 
   static const Map<String, ChessPiece> _initialPieces = <String, ChessPiece>{
     'a8': ChessPiece('R', false),
@@ -703,6 +741,7 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
+    _dailyChallenge = _challengeForToday(_dailyDifficulty);
     _signedIn = widget.initiallySignedIn;
     if (widget.initiallySignedIn) {
       _whitePlayerName = 'Preview Player';
@@ -836,6 +875,11 @@ class _GameScreenState extends State<GameScreen> {
                 skin: _skin,
                 onSkinChanged: (BoardSkin skin) => setState(() => _skin = skin),
                 onGameModeChanged: _changeGameMode,
+                dailyDifficulty: _dailyDifficulty,
+                dailyProgress: _dailyPlayerMovesCompleted,
+                dailyGoal: _dailyChallenge.playerMoveGoal,
+                dailyMistakes: _dailyMistakes,
+                onDailyDifficultyChanged: _changeDailyDifficulty,
                 onAiLevelChanged: (double level) {
                   setState(() => _aiLevel = level);
                 },
@@ -1375,10 +1419,67 @@ class _GameScreenState extends State<GameScreen> {
     }
     setState(() {
       _gameMode = mode;
-      _blackPlayerName =
-          mode == GameMode.computer ? 'ChessVerse AI' : 'Player 2';
+      _blackPlayerName = switch (mode) {
+        GameMode.computer => 'ChessVerse AI',
+        GameMode.daily => 'Puzzle Defense',
+        _ => 'Player 2',
+      };
     });
     _reset();
+  }
+
+  void _changeDailyDifficulty(DailyChallengeDifficulty difficulty) {
+    setState(() => _dailyDifficulty = difficulty);
+    _reset();
+  }
+
+  int get _dailyPlayerMovesCompleted => (_dailyPlyIndex + 1) ~/ 2;
+
+  DailyChallenge _challengeForToday(
+    DailyChallengeDifficulty difficulty,
+  ) {
+    final DateTime today = DateTime.now().toUtc();
+    final int dayNumber = DateTime.utc(today.year, today.month, today.day)
+        .difference(DateTime.utc(2026))
+        .inDays;
+    final List<List<String>> quietOpenings = <List<String>>[
+      <String>['a2a3', 'a7a6'],
+      <String>['h2h3', 'h7h6'],
+      <String>['b2b3', 'b7b6'],
+    ];
+    final List<String> fullLine = <String>[
+      ...quietOpenings[dayNumber.abs() % quietOpenings.length],
+      'e2e4',
+      'e7e5',
+      'f1c4',
+      'b8c6',
+      'd1h5',
+      'g8f6',
+      'h5f7',
+    ];
+    final int prefix = difficulty.prefixPlyCount;
+    final String date =
+        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    return DailyChallenge(
+      id: '$date-${difficulty.name}',
+      title: 'Royal Net · ${difficulty.label}',
+      difficulty: difficulty,
+      setupMoves: fullLine.take(prefix).toList(growable: false),
+      solution: fullLine.skip(prefix).toList(growable: false),
+    );
+  }
+
+  Map<String, ChessPiece> _dailyStartingPosition(DailyChallenge challenge) {
+    Map<String, ChessPiece> position =
+        Map<String, ChessPiece>.from(_initialPieces);
+    for (final String move in challenge.setupMoves) {
+      position = ChessRules.applyMove(
+        move.substring(0, 2),
+        move.substring(2, 4),
+        position,
+      );
+    }
+    return position;
   }
 
   Future<void> _editBlackPlayerName() async {
@@ -1476,6 +1577,16 @@ class _GameScreenState extends State<GameScreen> {
       }
 
       final String from = _selectedSquare!;
+      if (_gameMode == GameMode.daily) {
+        final String expected = _dailyChallenge.solution[_dailyPlyIndex];
+        if ('$from$square' != expected) {
+          _dailyMistakes++;
+          _coachNote =
+              'Not the mating line. Try again — the position is unchanged.';
+          _selectedSquare = null;
+          return;
+        }
+      }
       _saveSnapshot();
       _lastFromSquare = from;
       _lastToSquare = square;
@@ -1509,6 +1620,9 @@ class _GameScreenState extends State<GameScreen> {
                     ? '$from$square'
                     : '$from x $square';
         _moves.insert(0, move);
+        if (_gameMode == GameMode.daily) {
+          _dailyPlyIndex++;
+        }
         _coachNote = castleMove
             ? '${piece.white ? 'White' : 'Black'} castles ${square.startsWith('g') ? 'king side' : 'queen side'}.'
             : captured == null
@@ -1522,6 +1636,13 @@ class _GameScreenState extends State<GameScreen> {
           _coachNote = 'Choose a promotion coin for $square.';
         } else {
           _coachNote = _gameStateNote(!piece.white, fallback: _coachNote);
+          if (_gameMode == GameMode.daily && _gameResultDetail == 'Checkmate') {
+            _gameResultTitle = 'Challenge complete';
+            _gameResultDetail =
+                '${_dailyChallenge.playerMoveGoal}-move checkmate';
+            _coachNote =
+                'Brilliant! Today’s ${_dailyDifficulty.label.toLowerCase()} challenge is complete.';
+          }
         }
       }
       _selectedSquare = null;
@@ -1547,6 +1668,10 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _scheduleAiMove() {
+    if (_gameMode == GameMode.daily) {
+      _scheduleDailyReply();
+      return;
+    }
     if (_gameMode != GameMode.computer ||
         _moves.length.isEven ||
         _gameResultTitle != null ||
@@ -1561,6 +1686,67 @@ class _GameScreenState extends State<GameScreen> {
           '${aiProfileFor(_aiLevel.round()).name} AI is calculating...';
     });
     Future<void>.delayed(const Duration(milliseconds: 650), _performAiMove);
+  }
+
+  void _scheduleDailyReply() {
+    if (_dailyPlyIndex >= _dailyChallenge.solution.length ||
+        _dailyPlyIndex.isEven ||
+        _gameResultTitle != null ||
+        _aiThinking) {
+      return;
+    }
+    setState(() {
+      _aiThinking = true;
+      _selectedSquare = null;
+      _coachNote = 'Puzzle defense is replying…';
+    });
+    Future<void>.delayed(
+      const Duration(milliseconds: 520),
+      _performDailyReply,
+    );
+  }
+
+  void _performDailyReply() {
+    if (!mounted ||
+        _gameMode != GameMode.daily ||
+        !_aiThinking ||
+        _dailyPlyIndex >= _dailyChallenge.solution.length) {
+      return;
+    }
+    final String uci = _dailyChallenge.solution[_dailyPlyIndex];
+    final String from = uci.substring(0, 2);
+    final String to = uci.substring(2, 4);
+    if (_pieces[from]?.white != false || !_legalTargetsFor(from).contains(to)) {
+      setState(() {
+        _aiThinking = false;
+        _coachNote = 'This daily puzzle could not continue. Reset and retry.';
+      });
+      return;
+    }
+
+    setState(() {
+      _saveSnapshot();
+      _lastFromSquare = from;
+      _lastToSquare = to;
+      _lastCaptureSquare = null;
+      final ChessPiece piece = _pieces.remove(from)!;
+      final ChessPiece? captured = _pieces[to];
+      if (captured != null) {
+        captured.white
+            ? _capturedWhite.add(captured)
+            : _capturedBlack.add(captured);
+        _lastCaptureSquare = to;
+      }
+      _pieces[to] = piece;
+      _moves.insert(0, captured == null ? '$from$to' : '$from x $to');
+      _dailyPlyIndex++;
+      _aiThinking = false;
+      _coachNote = _gameStateNote(
+        true,
+        fallback:
+            '${_dailyChallenge.playerMoveGoal - _dailyPlayerMovesCompleted} winning move(s) remain.',
+      );
+    });
   }
 
   Future<void> _performAiMove() async {
@@ -1968,8 +2154,15 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _reset() {
+    final DailyChallenge challenge = _challengeForToday(_dailyDifficulty);
+    final Map<String, ChessPiece> resetPieces = _gameMode == GameMode.daily
+        ? _dailyStartingPosition(challenge)
+        : Map<String, ChessPiece>.from(_initialPieces);
     setState(() {
-      _pieces = Map<String, ChessPiece>.from(_initialPieces);
+      _dailyChallenge = challenge;
+      _dailyPlyIndex = 0;
+      _dailyMistakes = 0;
+      _pieces = resetPieces;
       _moves.clear();
       _capturedWhite.clear();
       _capturedBlack.clear();
@@ -1981,7 +2174,9 @@ class _GameScreenState extends State<GameScreen> {
       _blackSeconds = 10 * 60;
       _selectedSquare = null;
       _aiThinking = false;
-      _coachNote = 'Select a coin to see legal moves.';
+      _coachNote = _gameMode == GameMode.daily
+          ? 'Checkmate in ${challenge.playerMoveGoal} moves. Find the first move.'
+          : 'Select a coin to see legal moves.';
       _gameResultTitle = null;
       _gameResultDetail = null;
       _resultVisible = true;
@@ -2016,13 +2211,19 @@ class _GameScreenState extends State<GameScreen> {
 
     setState(() {
       final int steps =
-          _gameMode == GameMode.computer && _history.length >= 2 ? 2 : 1;
+          (_gameMode == GameMode.computer || _gameMode == GameMode.daily) &&
+                  _history.length >= 2
+              ? 2
+              : 1;
       final GameSnapshot snapshot = _history[_history.length - steps];
       _history.removeRange(_history.length - steps, _history.length);
       _pieces = Map<String, ChessPiece>.from(snapshot.pieces);
       _moves
         ..clear()
         ..addAll(snapshot.moves);
+      if (_gameMode == GameMode.daily) {
+        _dailyPlyIndex = _moves.length;
+      }
       _capturedWhite
         ..clear()
         ..addAll(snapshot.capturedWhite);
@@ -2046,6 +2247,16 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _showHint() {
+    if (_gameMode == GameMode.daily &&
+        _dailyPlyIndex < _dailyChallenge.solution.length) {
+      final String expected = _dailyChallenge.solution[_dailyPlyIndex];
+      setState(() {
+        _selectedSquare = expected.substring(0, 2);
+        _coachNote =
+            'Daily hint: start with ${expected.substring(0, 2)}. Find the winning destination.';
+      });
+      return;
+    }
     final bool whiteToMove = _moves.length.isEven;
     String? bestFrom;
     List<String> bestTargets = <String>[];
@@ -3178,6 +3389,11 @@ class GamePanel extends StatelessWidget {
     required this.skin,
     required this.onSkinChanged,
     required this.onGameModeChanged,
+    required this.dailyDifficulty,
+    required this.dailyProgress,
+    required this.dailyGoal,
+    required this.dailyMistakes,
+    required this.onDailyDifficultyChanged,
     required this.onAiLevelChanged,
     required this.onCoachChanged,
     required this.onReset,
@@ -3210,6 +3426,11 @@ class GamePanel extends StatelessWidget {
   final BoardSkin skin;
   final ValueChanged<BoardSkin> onSkinChanged;
   final ValueChanged<GameMode> onGameModeChanged;
+  final DailyChallengeDifficulty dailyDifficulty;
+  final int dailyProgress;
+  final int dailyGoal;
+  final int dailyMistakes;
+  final ValueChanged<DailyChallengeDifficulty> onDailyDifficultyChanged;
   final ValueChanged<double> onAiLevelChanged;
   final ValueChanged<bool> onCoachChanged;
   final VoidCallback onReset;
@@ -3348,6 +3569,7 @@ class GamePanel extends StatelessWidget {
                 child: Text(
                   switch (gameMode) {
                     GameMode.computer => 'Solo Challenge',
+                    GameMode.daily => 'Daily Checkmate',
                     GameMode.local => 'Pass & Play',
                     GameMode.online => 'Online Battle',
                   },
@@ -3382,6 +3604,7 @@ class GamePanel extends StatelessWidget {
           DropdownButtonFormField<GameMode>(
             key: const ValueKey<String>('game-mode-menu'),
             initialValue: gameMode,
+            isExpanded: true,
             decoration: InputDecoration(
               labelText: 'Play mode',
               prefixIcon:
@@ -3393,6 +3616,10 @@ class GamePanel extends StatelessWidget {
               DropdownMenuItem<GameMode>(
                 value: GameMode.computer,
                 child: Text('Vs Computer'),
+              ),
+              DropdownMenuItem<GameMode>(
+                value: GameMode.daily,
+                child: Text('Daily Checkmate'),
               ),
               DropdownMenuItem<GameMode>(
                 value: GameMode.local,
@@ -3425,6 +3652,11 @@ class GamePanel extends StatelessWidget {
                       : Icons.speed_rounded,
                   label: aiThinking ? 'Thinking' : aiProfile.name,
                 ),
+              if (gameMode == GameMode.daily)
+                StatusPill(
+                  icon: Icons.local_fire_department_rounded,
+                  label: '$dailyProgress/$dailyGoal solved',
+                ),
               StatusPill(icon: Icons.memory_rounded, label: activeColor),
             ],
           ),
@@ -3436,6 +3668,40 @@ class GamePanel extends StatelessWidget {
               icon: const Icon(Icons.manage_accounts_outlined),
               label: Text('Player 2: $blackPlayerName'),
             ),
+          ],
+          if (gameMode == GameMode.daily) ...<Widget>[
+            const SizedBox(height: 10),
+            DropdownButtonFormField<DailyChallengeDifficulty>(
+              key: const ValueKey<String>('daily-difficulty-menu'),
+              initialValue: dailyDifficulty,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Challenge difficulty',
+                prefixIcon: Icon(Icons.emoji_events_outlined),
+                border: OutlineInputBorder(),
+              ),
+              items: DailyChallengeDifficulty.values
+                  .map(
+                    (DailyChallengeDifficulty difficulty) =>
+                        DropdownMenuItem<DailyChallengeDifficulty>(
+                      value: difficulty,
+                      child: Text(difficulty.label),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: (DailyChallengeDifficulty? difficulty) {
+                if (difficulty != null) {
+                  onDailyDifficultyChanged(difficulty);
+                }
+              },
+            ),
+            if (dailyMistakes > 0) ...<Widget>[
+              const SizedBox(height: 8),
+              Text(
+                '$dailyMistakes attempt${dailyMistakes == 1 ? '' : 's'} missed · keep calculating',
+                style: const TextStyle(color: Color(0xFFE2B458)),
+              ),
+            ],
           ],
           if (collapsed) ...<Widget>[
             const SizedBox(height: 8),
