@@ -20,6 +20,7 @@ To build an intelligent chess platform where beginners can learn, intermediate p
 - AI coach explanations
 - Practice puzzles and training modes
 - Game analysis and move history
+- Daily checkmate challenges with date-based positions and 3/4/5-move difficulty
 - Ratings, leaderboards and tournaments
 - Android, iOS and Web support
 - CI/CD, cloud deployment and production monitoring

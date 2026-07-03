@@ -137,6 +137,57 @@ void main() {
     expect(panel.moves, hasLength(2));
   });
 
+  testWidgets('daily challenge follows the forced line and ends in checkmate', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+        ),
+      ),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey<String>('game-controls-handle')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey<String>('game-mode-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Daily Checkmate').last);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('daily-difficulty-menu')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Easy · 3 moves').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Daily Checkmate'), findsWidgets);
+    expect(find.text('0/3 solved'), findsOneWidget);
+
+    for (final (String from, String to) in <(String, String)>[
+      ('f1', 'c4'),
+      ('d1', 'h5'),
+      ('h5', 'f7'),
+    ]) {
+      await tester.tap(find.byKey(ValueKey<String>('square-$from')));
+      await tester.pump();
+      await tester.tap(find.byKey(ValueKey<String>('square-$to')));
+      await tester.pump(const Duration(milliseconds: 650));
+    }
+
+    expect(find.text('Challenge complete'), findsOneWidget);
+    expect(find.text('3-move checkmate'), findsOneWidget);
+  });
+
   testWidgets('phone layout prioritizes the playable board', (
     WidgetTester tester,
   ) async {
