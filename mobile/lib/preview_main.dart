@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import 'core/config/app_config.dart';
 import 'features/home/presentation/home_dashboard_screen.dart';
+import 'features/profile/presentation/profile_screen.dart';
+import 'features/settings/presentation/settings_screen.dart';
 import 'main.dart' as game;
 
 Future<void> main() async {
@@ -43,7 +45,7 @@ class PreviewShell extends StatelessWidget {
       onDailyChallenge: () => _openGame(context, game.GameMode.daily),
       onLocalGame: () => _openGame(context, game.GameMode.local),
       onAnalysis: () => _showComingSoon(context, 'Analysis'),
-      onProfile: () => _showComingSoon(context, 'Profile'),
+      onProfile: () => _openProfile(context),
     );
   }
 
@@ -51,6 +53,14 @@ class PreviewShell extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => _PreviewGameLauncher(mode: mode),
+      ),
+    );
+  }
+
+  void _openProfile(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const ProfileScreen(),
       ),
     );
   }
@@ -84,9 +94,23 @@ class _PreviewGameLauncherState extends State<_PreviewGameLauncher> {
         game.GameMode.online => 'Online mode is not enabled yet.',
       };
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+        SnackBar(
+          content: Text(message),
+          action: SnackBarAction(
+            label: 'Settings',
+            onPressed: () => _openSettings(context),
+          ),
+        ),
       );
     });
+  }
+
+  void _openSettings(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const SettingsScreen(),
+      ),
+    );
   }
 
   @override
