@@ -46,7 +46,7 @@ jobs:
         run: flutter build apk --debug -t lib/preview_main.dart
 
       - name: Upload Android APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: chessverse-debug-apk
           path: mobile/build/app/outputs/flutter-apk/app-debug.apk
@@ -59,7 +59,7 @@ jobs:
 
       - name: Upload web preview artifact
         if: hashFiles('mobile/build/web/index.html') != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: chessverse-web-preview
           path: mobile/build/web
