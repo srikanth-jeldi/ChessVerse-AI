@@ -43,7 +43,7 @@ jobs:
         run: flutter test
 
       - name: Build Android debug APK
-        run: flutter build apk --debug -t lib/preview_main.dart
+        run: flutter build apk --debug -t lib/gold_splash_main.dart
 
       - name: Upload Android APK artifact
         uses: actions/upload-artifact@v7
@@ -55,7 +55,7 @@ jobs:
 
       - name: Build Flutter web preview
         continue-on-error: true
-        run: flutter build web --release -t lib/preview_main.dart
+        run: flutter build web --release -t lib/gold_splash_main.dart
 
       - name: Upload web preview artifact
         if: hashFiles('mobile/build/web/index.html') != ''
