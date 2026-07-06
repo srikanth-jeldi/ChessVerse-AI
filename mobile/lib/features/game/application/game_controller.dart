@@ -225,8 +225,8 @@ class GameController extends ChangeNotifier {
     if (moves.isEmpty) return null;
     moves.sort((_AiMove a, _AiMove b) => b.score.compareTo(a.score));
     final int pool = switch (_difficulty) {
-      AiDifficulty.easy => moves.length.clamp(1, 8),
-      AiDifficulty.medium => moves.length.clamp(1, 4),
+      AiDifficulty.easy => moves.length.clamp(1, 8).toInt(),
+      AiDifficulty.medium => moves.length.clamp(1, 4).toInt(),
       AiDifficulty.hard => 1,
     };
     return moves[_random.nextInt(pool)];
