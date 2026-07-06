@@ -16,6 +16,7 @@ class HomeDashboardScreen extends StatelessWidget {
     required this.onLocalGame,
     required this.onAnalysis,
     required this.onProfile,
+    required this.onSettings,
     super.key,
   });
 
@@ -25,6 +26,7 @@ class HomeDashboardScreen extends StatelessWidget {
   final VoidCallback onLocalGame;
   final VoidCallback onAnalysis;
   final VoidCallback onProfile;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +45,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 onLocalGame: onLocalGame,
                 onAnalysis: onAnalysis,
                 onProfile: onProfile,
+                onSettings: onSettings,
               )
             : _PhoneHomeLayout(
                 playerName: playerName,
@@ -52,6 +55,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 onLocalGame: onLocalGame,
                 onAnalysis: onAnalysis,
                 onProfile: onProfile,
+                onSettings: onSettings,
               ),
       ),
     );
@@ -67,6 +71,7 @@ class _PhoneHomeLayout extends StatelessWidget {
     required this.onLocalGame,
     required this.onAnalysis,
     required this.onProfile,
+    required this.onSettings,
   });
 
   final String playerName;
@@ -76,13 +81,18 @@ class _PhoneHomeLayout extends StatelessWidget {
   final VoidCallback onLocalGame;
   final VoidCallback onAnalysis;
   final VoidCallback onProfile;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        _HomeHeader(playerName: playerName, onProfile: onProfile),
+        _HomeHeader(
+          playerName: playerName,
+          onProfile: onProfile,
+          onSettings: onSettings,
+        ),
         const SizedBox(height: 20),
         _HeroPlayCard(onPlayVsAi: onPlayVsAi),
         const SizedBox(height: 18),
@@ -97,6 +107,8 @@ class _PhoneHomeLayout extends StatelessWidget {
           onDailyChallenge: onDailyChallenge,
           onLocalGame: onLocalGame,
           onAnalysis: onAnalysis,
+          onProfile: onProfile,
+          onSettings: onSettings,
         ),
       ],
     );
@@ -112,6 +124,7 @@ class _WideHomeLayout extends StatelessWidget {
     required this.onLocalGame,
     required this.onAnalysis,
     required this.onProfile,
+    required this.onSettings,
   });
 
   final String playerName;
@@ -121,13 +134,18 @@ class _WideHomeLayout extends StatelessWidget {
   final VoidCallback onLocalGame;
   final VoidCallback onAnalysis;
   final VoidCallback onProfile;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        _HomeHeader(playerName: playerName, onProfile: onProfile),
+        _HomeHeader(
+          playerName: playerName,
+          onProfile: onProfile,
+          onSettings: onSettings,
+        ),
         const SizedBox(height: 24),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,6 +161,8 @@ class _WideHomeLayout extends StatelessWidget {
                     onDailyChallenge: onDailyChallenge,
                     onLocalGame: onLocalGame,
                     onAnalysis: onAnalysis,
+                    onProfile: onProfile,
+                    onSettings: onSettings,
                   ),
                 ],
               ),
@@ -164,10 +184,15 @@ class _WideHomeLayout extends StatelessWidget {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.playerName, required this.onProfile});
+  const _HomeHeader({
+    required this.playerName,
+    required this.onProfile,
+    required this.onSettings,
+  });
 
   final String playerName;
   final VoidCallback onProfile;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -193,6 +218,12 @@ class _HomeHeader extends StatelessWidget {
             ],
           ),
         ),
+        IconButton.filledTonal(
+          onPressed: onSettings,
+          icon: const Icon(Icons.settings_rounded),
+          tooltip: 'Settings',
+        ),
+        const SizedBox(width: 8),
         IconButton.filledTonal(
           onPressed: onProfile,
           icon: const Icon(Icons.person_rounded),
@@ -252,17 +283,21 @@ class _QuickActionsGrid extends StatelessWidget {
     required this.onDailyChallenge,
     required this.onLocalGame,
     required this.onAnalysis,
+    required this.onProfile,
+    required this.onSettings,
   });
 
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
   final VoidCallback onAnalysis;
+  final VoidCallback onProfile;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
     return GridView.count(
-      crossAxisCount: AppBreakpoints.isTabletOrLarger(context) ? 4 : 2,
+      crossAxisCount: AppBreakpoints.isTabletOrLarger(context) ? 3 : 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 12,
@@ -292,6 +327,18 @@ class _QuickActionsGrid extends StatelessWidget {
           title: 'Analysis',
           subtitle: 'Review',
           onTap: onAnalysis,
+        ),
+        _ActionTile(
+          icon: Icons.person_rounded,
+          title: 'Profile',
+          subtitle: 'Stats',
+          onTap: onProfile,
+        ),
+        _ActionTile(
+          icon: Icons.settings_rounded,
+          title: 'Settings',
+          subtitle: 'Prefs',
+          onTap: onSettings,
         ),
       ],
     );
