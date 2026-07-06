@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'core/config/app_config.dart';
+import 'features/analysis/presentation/analysis_screen.dart';
 import 'features/home/presentation/home_dashboard_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
@@ -44,8 +45,9 @@ class PreviewShell extends StatelessWidget {
       onPlayVsAi: () => _openGame(context, game.GameMode.computer),
       onDailyChallenge: () => _openGame(context, game.GameMode.daily),
       onLocalGame: () => _openGame(context, game.GameMode.local),
-      onAnalysis: () => _showComingSoon(context, 'Analysis'),
+      onAnalysis: () => _openAnalysis(context),
       onProfile: () => _openProfile(context),
+      onSettings: () => _openSettings(context),
     );
   }
 
@@ -53,6 +55,14 @@ class PreviewShell extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => _PreviewGameLauncher(mode: mode),
+      ),
+    );
+  }
+
+  void _openAnalysis(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const AnalysisScreen(),
       ),
     );
   }
@@ -65,9 +75,11 @@ class PreviewShell extends StatelessWidget {
     );
   }
 
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature screen is coming next.')),
+  void _openSettings(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const SettingsScreen(),
+      ),
     );
   }
 }
