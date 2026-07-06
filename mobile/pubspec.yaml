@@ -39,11 +39,10 @@ flutter_launcher_icons:
 
 flutter_native_splash:
   color: "#02070D"
-  background_image: assets/branding/splash_screen_mobile.png
+  image: assets/branding/transparent_splash_icon.png
   android: true
   ios: true
   fullscreen: true
-  ios_content_mode: scaleAspectFit
   android_12:
     color: "#02070D"
     image: assets/branding/transparent_splash_icon.png
