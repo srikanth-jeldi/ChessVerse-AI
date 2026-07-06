@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -6,6 +8,7 @@ import 'features/analysis/presentation/analysis_screen.dart';
 import 'features/home/presentation/home_dashboard_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
+import 'features/splash/presentation/premium_splash_screen.dart';
 import 'main.dart' as game;
 
 Future<void> main() async {
@@ -30,7 +33,47 @@ class ChessVersePreviewApp extends StatelessWidget {
       title: 'ChessVerse AI Preview',
       debugShowCheckedModeBanner: false,
       theme: game.ChessVerseTheme.dark(),
-      home: const PreviewShell(),
+      home: const PreviewSplashGate(),
+    );
+  }
+}
+
+class PreviewSplashGate extends StatefulWidget {
+  const PreviewSplashGate({super.key});
+
+  @override
+  State<PreviewSplashGate> createState() => _PreviewSplashGateState();
+}
+
+class _PreviewSplashGateState extends State<PreviewSplashGate> {
+  Timer? _timer;
+  bool _showSplash = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(const Duration(milliseconds: 1300), () {
+      if (mounted) {
+        setState(() => _showSplash = false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 420),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      child: _showSplash
+          ? const PremiumSplashScreen(key: ValueKey<String>('premium-splash'))
+          : const PreviewShell(key: ValueKey<String>('preview-home')),
     );
   }
 }
