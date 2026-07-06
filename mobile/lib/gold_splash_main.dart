@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'core/config/app_config.dart';
+import 'core/theme/chessverse_theme.dart';
 import 'features/splash/presentation/reference_splash_screen.dart';
-import 'main.dart' as game;
 import 'preview_main.dart' show PreviewShell;
 
 Future<void> main() async {
@@ -29,7 +29,7 @@ class GoldSplashApp extends StatelessWidget {
     return MaterialApp(
       title: 'ChessVerse AI',
       debugShowCheckedModeBanner: false,
-      theme: game.ChessVerseTheme.dark(),
+      theme: ChessVerseTheme.dark(),
       home: const GoldSplashGate(),
     );
   }
