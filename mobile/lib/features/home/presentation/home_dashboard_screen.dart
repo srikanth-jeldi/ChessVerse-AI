@@ -15,6 +15,8 @@ class HomeDashboardScreen extends StatelessWidget {
     required this.onDailyChallenge,
     required this.onLocalGame,
     required this.onAnalysis,
+    required this.onPuzzles,
+    required this.onSavedGames,
     required this.onProfile,
     required this.onSettings,
     super.key,
@@ -25,6 +27,8 @@ class HomeDashboardScreen extends StatelessWidget {
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
   final VoidCallback onAnalysis;
+  final VoidCallback onPuzzles;
+  final VoidCallback onSavedGames;
   final VoidCallback onProfile;
   final VoidCallback onSettings;
 
@@ -44,6 +48,8 @@ class HomeDashboardScreen extends StatelessWidget {
                 onDailyChallenge: onDailyChallenge,
                 onLocalGame: onLocalGame,
                 onAnalysis: onAnalysis,
+                onPuzzles: onPuzzles,
+                onSavedGames: onSavedGames,
                 onProfile: onProfile,
                 onSettings: onSettings,
               )
@@ -54,6 +60,8 @@ class HomeDashboardScreen extends StatelessWidget {
                 onDailyChallenge: onDailyChallenge,
                 onLocalGame: onLocalGame,
                 onAnalysis: onAnalysis,
+                onPuzzles: onPuzzles,
+                onSavedGames: onSavedGames,
                 onProfile: onProfile,
                 onSettings: onSettings,
               ),
@@ -70,6 +78,8 @@ class _PhoneHomeLayout extends StatelessWidget {
     required this.onDailyChallenge,
     required this.onLocalGame,
     required this.onAnalysis,
+    required this.onPuzzles,
+    required this.onSavedGames,
     required this.onProfile,
     required this.onSettings,
   });
@@ -80,6 +90,8 @@ class _PhoneHomeLayout extends StatelessWidget {
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
   final VoidCallback onAnalysis;
+  final VoidCallback onPuzzles;
+  final VoidCallback onSavedGames;
   final VoidCallback onProfile;
   final VoidCallback onSettings;
 
@@ -107,6 +119,8 @@ class _PhoneHomeLayout extends StatelessWidget {
           onDailyChallenge: onDailyChallenge,
           onLocalGame: onLocalGame,
           onAnalysis: onAnalysis,
+          onPuzzles: onPuzzles,
+          onSavedGames: onSavedGames,
           onProfile: onProfile,
           onSettings: onSettings,
         ),
@@ -123,6 +137,8 @@ class _WideHomeLayout extends StatelessWidget {
     required this.onDailyChallenge,
     required this.onLocalGame,
     required this.onAnalysis,
+    required this.onPuzzles,
+    required this.onSavedGames,
     required this.onProfile,
     required this.onSettings,
   });
@@ -133,6 +149,8 @@ class _WideHomeLayout extends StatelessWidget {
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
   final VoidCallback onAnalysis;
+  final VoidCallback onPuzzles;
+  final VoidCallback onSavedGames;
   final VoidCallback onProfile;
   final VoidCallback onSettings;
 
@@ -161,6 +179,8 @@ class _WideHomeLayout extends StatelessWidget {
                     onDailyChallenge: onDailyChallenge,
                     onLocalGame: onLocalGame,
                     onAnalysis: onAnalysis,
+                    onPuzzles: onPuzzles,
+                    onSavedGames: onSavedGames,
                     onProfile: onProfile,
                     onSettings: onSettings,
                   ),
@@ -283,6 +303,8 @@ class _QuickActionsGrid extends StatelessWidget {
     required this.onDailyChallenge,
     required this.onLocalGame,
     required this.onAnalysis,
+    required this.onPuzzles,
+    required this.onSavedGames,
     required this.onProfile,
     required this.onSettings,
   });
@@ -291,6 +313,8 @@ class _QuickActionsGrid extends StatelessWidget {
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
   final VoidCallback onAnalysis;
+  final VoidCallback onPuzzles;
+  final VoidCallback onSavedGames;
   final VoidCallback onProfile;
   final VoidCallback onSettings;
 
@@ -327,6 +351,18 @@ class _QuickActionsGrid extends StatelessWidget {
           title: 'Analysis',
           subtitle: 'Review',
           onTap: onAnalysis,
+        ),
+        _ActionTile(
+          icon: Icons.extension_rounded,
+          title: 'Puzzles',
+          subtitle: 'Tactics',
+          onTap: onPuzzles,
+        ),
+        _ActionTile(
+          icon: Icons.bookmark_rounded,
+          title: 'Saved',
+          subtitle: 'Games',
+          onTap: onSavedGames,
         ),
         _ActionTile(
           icon: Icons.person_rounded,

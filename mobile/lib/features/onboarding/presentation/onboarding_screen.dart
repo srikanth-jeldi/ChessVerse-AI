@@ -127,79 +127,119 @@ class _OnboardingPage extends StatelessWidget {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final bool compact = constraints.maxHeight < 620;
+        final bool landscape = constraints.maxWidth > constraints.maxHeight;
+        final double artSize = landscape
+            ? (constraints.maxHeight * 0.46).clamp(96.0, 150.0)
+            : compact
+                ? 150
+                : 210;
+        final Widget art = Container(
+          width: artSize,
+          height: artSize,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: <Color>[
+                AppColors.primary.withValues(alpha: 0.42),
+                AppColors.primaryDark.withValues(alpha: 0.18),
+                Colors.transparent,
+              ],
+            ),
+          ),
+          child: Center(
+            child: Container(
+              width: artSize * 0.72,
+              height: artSize * 0.72,
+              padding: EdgeInsets.all(landscape ? 16 : 22),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(landscape ? 26 : 34),
+                border: Border.all(color: AppColors.border),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.26),
+                    blurRadius: 46,
+                  ),
+                ],
+              ),
+              child: Icon(
+                data.icon,
+                color: AppColors.accentGold,
+                size: landscape ? 46 : compact ? 56 : 78,
+              ),
+            ),
+          ),
+        );
+
+        final Widget copy = Flexible(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 470),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  data.title,
+                  textAlign: TextAlign.center,
+                  maxLines: landscape ? 2 : null,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontSize: landscape ? 28 : null,
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+                SizedBox(height: landscape ? 6 : 10),
+                Text(
+                  data.subtitle,
+                  textAlign: TextAlign.center,
+                  maxLines: landscape ? 1 : null,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppColors.accentGold,
+                      ),
+                ),
+                SizedBox(height: landscape ? 10 : 18),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface.withValues(alpha: 0.82),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(landscape ? 14 : 18),
+                    child: Text(
+                      data.body,
+                      textAlign: TextAlign.center,
+                      maxLines: landscape ? 3 : null,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+        if (landscape) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              art,
+              const SizedBox(width: 28),
+              copy,
+            ],
+          );
+        }
+
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Container(
-              width: compact ? 150 : 210,
-              height: compact ? 150 : 210,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: <Color>[
-                    AppColors.primary.withValues(alpha: 0.42),
-                    AppColors.primaryDark.withValues(alpha: 0.18),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-              child: Center(
-                child: Container(
-                  width: compact ? 112 : 150,
-                  height: compact ? 112 : 150,
-                  padding: const EdgeInsets.all(22),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(34),
-                    border: Border.all(color: AppColors.border),
-                    boxShadow: <BoxShadow>[
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.26),
-                        blurRadius: 46,
-                      ),
-                    ],
-                  ),
-                  child: Icon(data.icon, color: AppColors.accentGold, size: compact ? 56 : 78),
-                ),
-              ),
-            ),
+            art,
             SizedBox(height: compact ? 20 : 34),
-            Text(
-              data.title,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              data.subtitle,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.accentGold,
-                  ),
-            ),
-            const SizedBox(height: 18),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 430),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppColors.surface.withValues(alpha: 0.82),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Text(
-                    data.body,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                  ),
-                ),
-              ),
-            ),
+            copy,
           ],
         );
       },

@@ -13,6 +13,7 @@ import 'features/auth/presentation/auth_screen.dart';
 import 'features/engine/data/engine_api.dart';
 import 'features/analysis/presentation/analysis_screen.dart';
 import 'features/home/presentation/home_dashboard_screen.dart';
+import 'features/library/presentation/reference_screens.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
@@ -102,6 +103,8 @@ class _SplashGateState extends State<SplashGate> {
             onDailyChallenge: () => _openGame(context, GameMode.daily),
             onLocalGame: () => _openGame(context, GameMode.local),
             onAnalysis: () => _push(context, const AnalysisScreen()),
+            onPuzzles: () => _push(context, const PuzzlesScreen()),
+            onSavedGames: () => _push(context, const SavedGamesScreen()),
             onProfile: () => _push(context, const ProfileScreen()),
             onSettings: () => _push(context, const SettingsScreen()),
           ),
@@ -974,36 +977,33 @@ class _GameScreenState extends State<GameScreen> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: <Widget>[
-                    if (wide)
-                      Center(
+                    if (wide) ...<Widget>[
+                      Align(
+                        alignment: Alignment.centerLeft,
                         child: SizedBox(
-                          width: boardDimension + widePanelWidth + 10,
+                          width: boardDimension,
                           height: boardDimension,
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              SizedBox(
-                                width: boardDimension,
-                                height: boardDimension,
-                                child: BoardStage(
-                                  palette: palette,
-                                  child: board,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              AnimatedContainer(
-                                key: const ValueKey<String>(
-                                  'landscape-game-controls',
-                                ),
-                                duration: const Duration(milliseconds: 320),
-                                curve: Curves.easeOutCubic,
-                                width: widePanelWidth,
-                                child: panel,
-                              ),
-                            ],
+                          child: BoardStage(
+                            palette: palette,
+                            child: board,
                           ),
                         ),
-                      )
+                      ),
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: AnimatedContainer(
+                          key: const ValueKey<String>(
+                            'landscape-game-controls',
+                          ),
+                          duration: const Duration(milliseconds: 320),
+                          curve: Curves.easeOutCubic,
+                          width: widePanelWidth,
+                          child: panel,
+                        ),
+                      ),
+                    ]
                     else
                       Column(
                         children: <Widget>[

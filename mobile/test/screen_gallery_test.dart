@@ -3,6 +3,7 @@ import 'package:chessverse_ai/features/analysis/presentation/analysis_screen.dar
 import 'package:chessverse_ai/features/auth/presentation/auth_screen.dart';
 import 'package:chessverse_ai/features/daily_challenge/presentation/daily_challenge_screen.dart';
 import 'package:chessverse_ai/features/home/presentation/home_dashboard_screen.dart';
+import 'package:chessverse_ai/features/library/presentation/reference_screens.dart';
 import 'package:chessverse_ai/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:chessverse_ai/features/profile/presentation/profile_screen.dart';
 import 'package:chessverse_ai/features/settings/presentation/settings_screen.dart';
@@ -61,6 +62,16 @@ void main() {
     );
   });
 
+  testWidgets('screen gallery - onboarding landscape', (WidgetTester tester) async {
+    await _setLandscape(tester);
+    await tester.pumpWidget(_app(OnboardingScreen(onComplete: () {})));
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byType(OnboardingScreen),
+      matchesGoldenFile('goldens/02b_onboarding_landscape.png'),
+    );
+  });
+
   testWidgets('screen gallery - auth login', (WidgetTester tester) async {
     await _setPhone(tester);
     await tester.pumpWidget(_app(AuthScreen(onAuthenticated: (_) {})));
@@ -68,6 +79,16 @@ void main() {
     await expectLater(
       find.byType(AuthScreen),
       matchesGoldenFile('goldens/03_auth_login.png'),
+    );
+  });
+
+  testWidgets('screen gallery - auth landscape', (WidgetTester tester) async {
+    await _setLandscape(tester);
+    await tester.pumpWidget(_app(AuthScreen(onAuthenticated: (_) {})));
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byType(AuthScreen),
+      matchesGoldenFile('goldens/03b_auth_landscape.png'),
     );
   });
 
@@ -81,6 +102,8 @@ void main() {
           onDailyChallenge: () {},
           onLocalGame: () {},
           onAnalysis: () {},
+          onPuzzles: () {},
+          onSavedGames: () {},
           onProfile: () {},
           onSettings: () {},
         ),
@@ -90,6 +113,30 @@ void main() {
     await expectLater(
       find.byType(HomeDashboardScreen),
       matchesGoldenFile('goldens/04_home.png'),
+    );
+  });
+
+  testWidgets('screen gallery - home landscape', (WidgetTester tester) async {
+    await _setLandscape(tester);
+    await tester.pumpWidget(
+      _app(
+        HomeDashboardScreen(
+          playerName: 'Guest Player',
+          onPlayVsAi: () {},
+          onDailyChallenge: () {},
+          onLocalGame: () {},
+          onAnalysis: () {},
+          onPuzzles: () {},
+          onSavedGames: () {},
+          onProfile: () {},
+          onSettings: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byType(HomeDashboardScreen),
+      matchesGoldenFile('goldens/04b_home_landscape.png'),
     );
   });
 
@@ -198,6 +245,66 @@ void main() {
     await expectLater(
       find.byType(SettingsScreen),
       matchesGoldenFile('goldens/11_settings.png'),
+    );
+  });
+
+  testWidgets('screen gallery - options', (WidgetTester tester) async {
+    await _setPhone(tester);
+    await tester.pumpWidget(_app(const GameOptionsScreen()));
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byType(GameOptionsScreen),
+      matchesGoldenFile('goldens/12_game_options.png'),
+    );
+  });
+
+  testWidgets('screen gallery - move history', (WidgetTester tester) async {
+    await _setPhone(tester);
+    await tester.pumpWidget(_app(const MoveHistoryScreen()));
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byType(MoveHistoryScreen),
+      matchesGoldenFile('goldens/13_move_history.png'),
+    );
+  });
+
+  testWidgets('screen gallery - result win', (WidgetTester tester) async {
+    await _setPhone(tester);
+    await tester.pumpWidget(_app(const GameResultScreen()));
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byType(GameResultScreen),
+      matchesGoldenFile('goldens/14_game_result_win.png'),
+    );
+  });
+
+  testWidgets('screen gallery - result draw', (WidgetTester tester) async {
+    await _setPhone(tester);
+    await tester.pumpWidget(_app(const GameResultScreen(draw: true)));
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byType(GameResultScreen),
+      matchesGoldenFile('goldens/15_game_result_draw.png'),
+    );
+  });
+
+  testWidgets('screen gallery - puzzles', (WidgetTester tester) async {
+    await _setPhone(tester);
+    await tester.pumpWidget(_app(const PuzzlesScreen()));
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byType(PuzzlesScreen),
+      matchesGoldenFile('goldens/16_puzzles.png'),
+    );
+  });
+
+  testWidgets('screen gallery - saved games', (WidgetTester tester) async {
+    await _setPhone(tester);
+    await tester.pumpWidget(_app(const SavedGamesScreen()));
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byType(SavedGamesScreen),
+      matchesGoldenFile('goldens/17_saved_games.png'),
     );
   });
 }

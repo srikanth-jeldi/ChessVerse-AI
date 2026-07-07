@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'core/config/app_config.dart';
 import 'features/analysis/presentation/analysis_screen.dart';
 import 'features/home/presentation/home_dashboard_screen.dart';
+import 'features/library/presentation/reference_screens.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/splash/presentation/premium_splash_screen.dart';
@@ -89,6 +90,8 @@ class PreviewShell extends StatelessWidget {
       onDailyChallenge: () => _openGame(context, game.GameMode.daily),
       onLocalGame: () => _openGame(context, game.GameMode.local),
       onAnalysis: () => _openAnalysis(context),
+      onPuzzles: () => _push(context, const PuzzlesScreen()),
+      onSavedGames: () => _push(context, const SavedGamesScreen()),
       onProfile: () => _openProfile(context),
       onSettings: () => _openSettings(context),
     );
@@ -103,25 +106,21 @@ class PreviewShell extends StatelessWidget {
   }
 
   void _openAnalysis(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const AnalysisScreen(),
-      ),
-    );
+    _push(context, const AnalysisScreen());
   }
 
   void _openProfile(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const ProfileScreen(),
-      ),
-    );
+    _push(context, const ProfileScreen());
   }
 
   void _openSettings(BuildContext context) {
+    _push(context, const SettingsScreen());
+  }
+
+  void _push(BuildContext context, Widget screen) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => const SettingsScreen(),
+        builder: (_) => screen,
       ),
     );
   }
