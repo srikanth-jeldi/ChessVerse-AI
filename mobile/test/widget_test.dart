@@ -8,7 +8,7 @@ void main() {
     FlutterSecureStorage.setMockInitialValues(<String, String>{});
   });
 
-  testWidgets('shows branded splash before required account access', (
+  testWidgets('shows branded splash before onboarding and account access', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ChessVerseApp());
@@ -19,7 +19,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1600));
     await tester.pump(const Duration(milliseconds: 600));
 
-    expect(find.text('Create ChessVerse ID'), findsOneWidget);
+    expect(find.text('Welcome to ChessVerse AI'), findsOneWidget);
+
+    await tester.tap(find.text('Skip'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Welcome back'), findsOneWidget);
     expect(find.text('Continue as Guest Player'), findsOneWidget);
     expect(find.textContaining('Guest Player is local-only'), findsOneWidget);
   });
@@ -30,31 +35,34 @@ void main() {
     await tester.pumpWidget(const ChessVerseApp());
     await tester.pump(const Duration(milliseconds: 1600));
     await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(find.text('Skip'));
+    await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Login'));
-    await tester.pump();
     expect(find.text('Welcome back'), findsOneWidget);
     expect(find.text('User ID or email'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
     expect(find.text('Forgot password?'), findsOneWidget);
+
+    await tester.tap(find.text('Register'));
+    await tester.pumpAndSettle();
+    expect(find.text('Create ChessVerse ID'), findsOneWidget);
   });
 
-  testWidgets('password reset dialog cancels without an error screen', (
+  testWidgets('password reset validates email without an error screen', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ChessVerseApp());
     await tester.pump(const Duration(milliseconds: 1600));
     await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(find.text('Skip'));
+    await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Login'));
-    await tester.pump();
     await tester.tap(find.text('Forgot password?'));
     await tester.pumpAndSettle();
-    expect(find.text('Reset password'), findsOneWidget);
-
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
-    expect(find.text('Reset password'), findsNothing);
+    expect(
+      find.text('Enter your email first, then tap Forgot password.'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 

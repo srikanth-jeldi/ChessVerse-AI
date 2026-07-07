@@ -5,10 +5,17 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'core/audio/chess_sound_service.dart';
 import 'core/config/app_config.dart';
 import 'features/auth/data/auth_api.dart';
 import 'features/auth/data/auth_session_store.dart';
+import 'features/auth/presentation/auth_screen.dart';
 import 'features/engine/data/engine_api.dart';
+import 'features/analysis/presentation/analysis_screen.dart';
+import 'features/home/presentation/home_dashboard_screen.dart';
+import 'features/onboarding/presentation/onboarding_screen.dart';
+import 'features/profile/presentation/profile_screen.dart';
+import 'features/settings/presentation/settings_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,14 +53,15 @@ class SplashGate extends StatefulWidget {
 
 class _SplashGateState extends State<SplashGate> {
   Timer? _timer;
-  bool _showSplash = true;
+  _RootStage _stage = _RootStage.splash;
+  String _playerName = 'Guest Player';
 
   @override
   void initState() {
     super.initState();
     _timer = Timer(const Duration(milliseconds: 1500), () {
       if (mounted) {
-        setState(() => _showSplash = false);
+        setState(() => _stage = _RootStage.onboarding);
       }
     });
   }
@@ -70,14 +78,63 @@ class _SplashGateState extends State<SplashGate> {
       duration: const Duration(milliseconds: 520),
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
-      child: _showSplash
-          ? const BrandedSplash(key: ValueKey<String>('splash'))
-          : const GameScreen(
-              key: ValueKey<String>('game'),
-              initiallySignedIn: AppConfig.arenaPreview,
-            ),
+      child: switch (_stage) {
+        _RootStage.splash => const BrandedSplash(
+            key: ValueKey<String>('splash'),
+          ),
+        _RootStage.onboarding => OnboardingScreen(
+            key: const ValueKey<String>('onboarding'),
+            onComplete: () => setState(() => _stage = _RootStage.auth),
+          ),
+        _RootStage.auth => AuthScreen(
+            key: const ValueKey<String>('auth'),
+            onAuthenticated: (ChessVerseAuthResult result) {
+              setState(() {
+                _playerName = result.playerName;
+                _stage = _RootStage.home;
+              });
+            },
+          ),
+        _RootStage.home => HomeDashboardScreen(
+            key: const ValueKey<String>('home'),
+            playerName: _playerName,
+            onPlayVsAi: () => _openGame(context, GameMode.computer),
+            onDailyChallenge: () => _openGame(context, GameMode.daily),
+            onLocalGame: () => _openGame(context, GameMode.local),
+            onAnalysis: () => _push(context, const AnalysisScreen()),
+            onProfile: () => _push(context, const ProfileScreen()),
+            onSettings: () => _push(context, const SettingsScreen()),
+          ),
+      },
     );
   }
+
+  void _openGame(BuildContext context, GameMode mode) {
+    _push(
+      context,
+      GameScreen(
+        initiallySignedIn: true,
+        useRemoteEngine: false,
+        initialGameMode: mode,
+        initialPlayerName: _playerName,
+      ),
+    );
+  }
+
+  void _push(BuildContext context, Widget screen) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => screen,
+      ),
+    );
+  }
+}
+
+enum _RootStage {
+  splash,
+  onboarding,
+  auth,
+  home,
 }
 
 class BrandedSplash extends StatelessWidget {
@@ -642,11 +699,15 @@ class GameScreen extends StatefulWidget {
   const GameScreen({
     this.initiallySignedIn = false,
     this.useRemoteEngine = true,
+    this.initialGameMode = GameMode.computer,
+    this.initialPlayerName,
     super.key,
   });
 
   final bool initiallySignedIn;
   final bool useRemoteEngine;
+  final GameMode initialGameMode;
+  final String? initialPlayerName;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -742,9 +803,18 @@ class _GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     _dailyChallenge = _challengeForToday(_dailyDifficulty);
+    _gameMode = widget.initialGameMode;
+    _blackPlayerName = switch (_gameMode) {
+      GameMode.computer => 'ChessVerse AI',
+      GameMode.daily => 'Puzzle Defense',
+      GameMode.local => 'Player 2',
+      GameMode.online => 'Online Rival',
+    };
     _signedIn = widget.initiallySignedIn;
-    if (widget.initiallySignedIn) {
-      _whitePlayerName = 'Preview Player';
+    if (widget.initialPlayerName != null && widget.initialPlayerName!.trim().isNotEmpty) {
+      _whitePlayerName = widget.initialPlayerName!.trim();
+    } else if (widget.initiallySignedIn) {
+      _whitePlayerName = 'Guest Player';
     }
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted || _moves.isEmpty || _gameResultTitle != null) {
@@ -761,6 +831,7 @@ class _GameScreenState extends State<GameScreen> {
           _gameResultDetail = 'Victory on time';
           _resultVisible = true;
           _coachNote = '$_gameResultTitle. $_gameResultDetail.';
+          unawaited(ChessSoundService.instance.victory());
         }
       });
     });
@@ -1620,6 +1691,11 @@ class _GameScreenState extends State<GameScreen> {
                     ? '$from$square'
                     : '$from x $square';
         _moves.insert(0, move);
+        unawaited(
+          captured == null
+              ? ChessSoundService.instance.move()
+              : ChessSoundService.instance.capture(),
+        );
         if (_gameMode == GameMode.daily) {
           _dailyPlyIndex++;
         }
@@ -1739,6 +1815,11 @@ class _GameScreenState extends State<GameScreen> {
       }
       _pieces[to] = piece;
       _moves.insert(0, captured == null ? '$from$to' : '$from x $to');
+      unawaited(
+        captured == null
+            ? ChessSoundService.instance.move()
+            : ChessSoundService.instance.capture(),
+      );
       _dailyPlyIndex++;
       _aiThinking = false;
       _coachNote = _gameStateNote(
@@ -1874,6 +1955,11 @@ class _GameScreenState extends State<GameScreen> {
               ? '${move.from}${move.to}'
               : '${move.from} x ${move.to}';
       _moves.insert(0, notation);
+      unawaited(
+        captured == null
+            ? ChessSoundService.instance.move()
+            : ChessSoundService.instance.capture(),
+      );
       final String action = captured == null
           ? '${piece.code} moves to ${move.to}.'
           : '${piece.code} captures ${captured.code} on ${move.to}.';
@@ -2428,6 +2514,7 @@ class _GameScreenState extends State<GameScreen> {
 
     if (inCheck && !_checkWarningActive) {
       _checkWarningActive = true;
+      unawaited(ChessSoundService.instance.check());
       unawaited(_playCheckWarning());
     } else if (!inCheck) {
       _checkWarningActive = false;
@@ -2437,12 +2524,14 @@ class _GameScreenState extends State<GameScreen> {
       _gameResultTitle = '${sideToMoveWhite ? 'Black' : 'White'} wins';
       _gameResultDetail = 'Checkmate';
       _resultVisible = true;
+      unawaited(ChessSoundService.instance.checkmate());
       return 'Checkmate. $_gameResultTitle.';
     }
     if (!inCheck && !hasMove) {
       _gameResultTitle = 'Draw';
       _gameResultDetail = 'Stalemate';
       _resultVisible = true;
+      unawaited(ChessSoundService.instance.draw());
       return 'Stalemate. No legal move for $side.';
     }
     if (inCheck) {
@@ -2452,6 +2541,9 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _playCheckWarning() async {
+    if (!ChessSoundService.instance.enabled) {
+      return;
+    }
     try {
       final AudioPlayer player = _warningPlayer ??= AudioPlayer();
       await player.stop();

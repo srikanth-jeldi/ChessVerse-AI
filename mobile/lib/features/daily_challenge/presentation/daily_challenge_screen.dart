@@ -186,7 +186,7 @@ class _RulesCard extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: AppColors.info.withOpacity(0.14),
+                  color: AppColors.info.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.lightbulb_rounded, color: AppColors.info),

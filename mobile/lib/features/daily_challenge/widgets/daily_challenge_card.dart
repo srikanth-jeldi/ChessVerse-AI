@@ -147,8 +147,8 @@ class _StatusPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: completed
-            ? AppColors.success.withOpacity(0.16)
-            : AppColors.accentGold.withOpacity(0.16),
+            ? AppColors.success.withValues(alpha: 0.16)
+            : AppColors.accentGold.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
           color: completed ? AppColors.success : AppColors.accentGold,
@@ -177,7 +177,7 @@ class _MetricChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.backgroundDeep.withOpacity(0.36),
+        color: AppColors.backgroundDeep.withValues(alpha: 0.36),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: AppColors.border),
       ),
@@ -237,7 +237,7 @@ class _ProgressSection extends StatelessWidget {
           child: LinearProgressIndicator(
             minHeight: 9,
             value: challenge.progress,
-            backgroundColor: AppColors.backgroundDeep.withOpacity(0.55),
+            backgroundColor: AppColors.backgroundDeep.withValues(alpha: 0.55),
             valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accentGold),
           ),
         ),

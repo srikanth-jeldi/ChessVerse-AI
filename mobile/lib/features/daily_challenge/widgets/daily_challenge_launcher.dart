@@ -148,7 +148,7 @@ class _InlineMetric extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.backgroundDeep.withOpacity(0.38),
+        color: AppColors.backgroundDeep.withValues(alpha: 0.38),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),

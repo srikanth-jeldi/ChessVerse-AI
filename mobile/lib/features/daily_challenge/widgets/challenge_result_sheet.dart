@@ -59,7 +59,7 @@ class DailyChallengeResultSheet extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.backgroundDeep.withOpacity(0.42),
+              color: AppColors.backgroundDeep.withValues(alpha: 0.42),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.border),
             ),
