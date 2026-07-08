@@ -142,9 +142,9 @@ class _PreviewGameLauncherState extends State<_PreviewGameLauncher> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final String message = switch (widget.mode) {
-        game.GameMode.computer => 'Use Play mode: Vs Computer.',
-        game.GameMode.daily => 'Use Play mode: Daily Checkmate.',
-        game.GameMode.local => 'Use Play mode: Local 2P.',
+        game.GameMode.computer => 'Use the Play vs AI card.',
+        game.GameMode.daily => 'Use the Daily Checkmate card.',
+        game.GameMode.local => 'Use the 2 Players card.',
         game.GameMode.online => 'Online mode is not enabled yet.',
       };
       ScaffoldMessenger.of(context).showSnackBar(

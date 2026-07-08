@@ -89,9 +89,7 @@ void main() {
       find.byKey(const ValueKey<String>('game-controls-handle')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey<String>('game-mode-menu')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Local 2P').last);
+    await tester.tap(find.text('2 Players').last);
     await tester.pumpAndSettle();
 
     expect(find.text('Pass & Play'), findsOneWidget);
@@ -167,15 +165,9 @@ void main() {
       find.byKey(const ValueKey<String>('game-controls-handle')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey<String>('game-mode-menu')));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Daily Checkmate').last);
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey<String>('daily-difficulty-menu')),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Easy · 3 moves').last);
+    await tester.tap(find.text('Easy - 3-step finish').last);
     await tester.pumpAndSettle();
 
     expect(find.text('Daily Checkmate'), findsWidgets);
@@ -254,9 +246,7 @@ void main() {
       find.byKey(const ValueKey<String>('game-controls-handle')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey<String>('game-mode-menu')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Local 2P').last);
+    await tester.tap(find.text('2 Players').last);
     await tester.pumpAndSettle();
 
     for (final (String from, String to) in <(String, String)>[

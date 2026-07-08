@@ -259,15 +259,15 @@ enum DailyChallengeDifficulty { easy, medium, hard }
 
 extension DailyChallengeDifficultyDetails on DailyChallengeDifficulty {
   String get label => switch (this) {
-        DailyChallengeDifficulty.easy => 'Easy · 3 moves',
-        DailyChallengeDifficulty.medium => 'Medium · 4 moves',
-        DailyChallengeDifficulty.hard => 'Hard · 5 moves',
+        DailyChallengeDifficulty.easy => 'Easy - 3-step finish',
+        DailyChallengeDifficulty.medium => 'Medium - 4-step finish',
+        DailyChallengeDifficulty.hard => 'Hard - 5-step finish',
       };
 
   int get prefixPlyCount => switch (this) {
-        DailyChallengeDifficulty.easy => 4,
-        DailyChallengeDifficulty.medium => 2,
-        DailyChallengeDifficulty.hard => 0,
+        DailyChallengeDifficulty.easy => 6,
+        DailyChallengeDifficulty.medium => 4,
+        DailyChallengeDifficulty.hard => 2,
       };
 }
 
@@ -1510,16 +1510,11 @@ class _GameScreenState extends State<GameScreen> {
     DailyChallengeDifficulty difficulty,
   ) {
     final DateTime today = DateTime.now().toUtc();
-    final int dayNumber = DateTime.utc(today.year, today.month, today.day)
-        .difference(DateTime.utc(2026))
-        .inDays;
-    final List<List<String>> quietOpenings = <List<String>>[
-      <String>['a2a3', 'a7a6'],
-      <String>['h2h3', 'h7h6'],
-      <String>['b2b3', 'b7b6'],
-    ];
     final List<String> fullLine = <String>[
-      ...quietOpenings[dayNumber.abs() % quietOpenings.length],
+      'h2h3',
+      'h7h6',
+      'a2a3',
+      'a7a6',
       'e2e4',
       'e7e5',
       'f1c4',
@@ -1533,7 +1528,7 @@ class _GameScreenState extends State<GameScreen> {
         '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
     return DailyChallenge(
       id: '$date-${difficulty.name}',
-      title: 'Royal Net · ${difficulty.label}',
+      title: 'Royal Net - ${difficulty.label}',
       difficulty: difficulty,
       setupMoves: fullLine.take(prefix).toList(growable: false),
       solution: fullLine.skip(prefix).toList(growable: false),
@@ -1653,7 +1648,7 @@ class _GameScreenState extends State<GameScreen> {
         if ('$from$square' != expected) {
           _dailyMistakes++;
           _coachNote =
-              'Not the mating line. Try again — the position is unchanged.';
+              'Not the mating line. Try again - the position is unchanged.';
           _selectedSquare = null;
           return;
         }
@@ -1717,7 +1712,7 @@ class _GameScreenState extends State<GameScreen> {
             _gameResultDetail =
                 '${_dailyChallenge.playerMoveGoal}-move checkmate';
             _coachNote =
-                'Brilliant! Today’s ${_dailyDifficulty.label.toLowerCase()} challenge is complete.';
+                'Brilliant! Today's ${_dailyDifficulty.label.toLowerCase()} challenge is complete.';
           }
         }
       }
@@ -1774,7 +1769,7 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       _aiThinking = true;
       _selectedSquare = null;
-      _coachNote = 'Puzzle defense is replying…';
+      _coachNote = 'Puzzle defense is replying...';
     });
     Future<void>.delayed(
       const Duration(milliseconds: 520),
@@ -2985,7 +2980,22 @@ class BoardSquare extends StatelessWidget {
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOutCubic,
             decoration: BoxDecoration(
-              color: squareColor,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  Color.alphaBlend(
+                    Colors.white.withValues(alpha: dark ? 0.10 : 0.22),
+                    squareColor,
+                  ),
+                  squareColor,
+                  Color.alphaBlend(
+                    Colors.black.withValues(alpha: dark ? 0.18 : 0.08),
+                    squareColor,
+                  ),
+                ],
+                stops: const <double>[0, 0.48, 1],
+              ),
               border: Border.all(
                 color: selected
                     ? const Color(0xFFF8E7B0)
@@ -3027,6 +3037,23 @@ class BoardSquare extends StatelessWidget {
         },
         child: Stack(
           children: <Widget>[
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        Colors.white.withValues(alpha: dark ? 0.045 : 0.09),
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: dark ? 0.10 : 0.045),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
             Positioned(
               top: 5,
               left: 6,
@@ -3184,6 +3211,11 @@ class ChessCoin extends StatelessWidget {
                           color: Colors.black.withValues(alpha: 0.62),
                           blurRadius: pieceSize * 0.09,
                           spreadRadius: pieceSize * 0.025,
+                        ),
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.28),
+                          blurRadius: pieceSize * 0.16,
+                          offset: Offset(0, pieceSize * 0.08),
                         ),
                         if (selected)
                           BoxShadow(
@@ -3693,40 +3725,10 @@ class GamePanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<GameMode>(
-            key: const ValueKey<String>('game-mode-menu'),
-            initialValue: gameMode,
-            isExpanded: true,
-            decoration: InputDecoration(
-              labelText: 'Play mode',
-              prefixIcon:
-                  compact ? null : const Icon(Icons.sports_esports_rounded),
-              border: const OutlineInputBorder(),
-              isDense: compact,
-            ),
-            items: const <DropdownMenuItem<GameMode>>[
-              DropdownMenuItem<GameMode>(
-                value: GameMode.computer,
-                child: Text('Vs Computer'),
-              ),
-              DropdownMenuItem<GameMode>(
-                value: GameMode.daily,
-                child: Text('Daily Checkmate'),
-              ),
-              DropdownMenuItem<GameMode>(
-                value: GameMode.local,
-                child: Text('Local 2P'),
-              ),
-              DropdownMenuItem<GameMode>(
-                value: GameMode.online,
-                child: Text('Online Match'),
-              ),
-            ],
-            onChanged: (GameMode? mode) {
-              if (mode != null) {
-                onGameModeChanged(mode);
-              }
-            },
+          GameModeLauncher(
+            selected: gameMode,
+            compact: compact,
+            onChanged: onGameModeChanged,
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -3763,34 +3765,14 @@ class GamePanel extends StatelessWidget {
           ],
           if (gameMode == GameMode.daily) ...<Widget>[
             const SizedBox(height: 10),
-            DropdownButtonFormField<DailyChallengeDifficulty>(
-              key: const ValueKey<String>('daily-difficulty-menu'),
-              initialValue: dailyDifficulty,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Challenge difficulty',
-                prefixIcon: Icon(Icons.emoji_events_outlined),
-                border: OutlineInputBorder(),
-              ),
-              items: DailyChallengeDifficulty.values
-                  .map(
-                    (DailyChallengeDifficulty difficulty) =>
-                        DropdownMenuItem<DailyChallengeDifficulty>(
-                      value: difficulty,
-                      child: Text(difficulty.label),
-                    ),
-                  )
-                  .toList(growable: false),
-              onChanged: (DailyChallengeDifficulty? difficulty) {
-                if (difficulty != null) {
-                  onDailyDifficultyChanged(difficulty);
-                }
-              },
+            DailyDifficultyChips(
+              selected: dailyDifficulty,
+              onChanged: onDailyDifficultyChanged,
             ),
             if (dailyMistakes > 0) ...<Widget>[
               const SizedBox(height: 8),
               Text(
-                '$dailyMistakes attempt${dailyMistakes == 1 ? '' : 's'} missed · keep calculating',
+                '$dailyMistakes attempt${dailyMistakes == 1 ? '' : 's'} missed - keep calculating',
                 style: const TextStyle(color: Color(0xFFE2B458)),
               ),
             ],
@@ -3963,6 +3945,166 @@ class GamePanel extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class GameModeLauncher extends StatelessWidget {
+  const GameModeLauncher({
+    required this.selected,
+    required this.compact,
+    required this.onChanged,
+    super.key,
+  });
+
+  final GameMode selected;
+  final bool compact;
+  final ValueChanged<GameMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<_GameModeChoice> choices = <_GameModeChoice>[
+      const _GameModeChoice(
+        mode: GameMode.computer,
+        icon: Icons.smart_toy_rounded,
+        title: 'Play vs AI',
+        subtitle: 'Challenge ChessVerse',
+      ),
+      const _GameModeChoice(
+        mode: GameMode.daily,
+        icon: Icons.local_fire_department_rounded,
+        title: 'Daily Checkmate',
+        subtitle: 'Finish a late-game puzzle',
+      ),
+      const _GameModeChoice(
+        mode: GameMode.local,
+        icon: Icons.groups_2_rounded,
+        title: '2 Players',
+        subtitle: 'Same-device match',
+      ),
+      const _GameModeChoice(
+        mode: GameMode.online,
+        icon: Icons.public_rounded,
+        title: 'Online',
+        subtitle: 'Coming soon',
+      ),
+    ];
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: choices.map((choice) {
+        final bool active = selected == choice.mode;
+        return SizedBox(
+          width: compact ? 148 : 178,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => onChanged(choice.mode),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: active
+                      ? const <Color>[Color(0xFF2B2140), Color(0xFF6D4FD8)]
+                      : <Color>[
+                          const Color(0xFF211D24),
+                          const Color(0xFF111C18).withValues(alpha: 0.92),
+                        ],
+                ),
+                border: Border.all(
+                  color: active
+                      ? const Color(0xFFE2B458)
+                      : const Color(0xFF7A6038).withValues(alpha: 0.55),
+                ),
+                boxShadow: <BoxShadow>[
+                  if (active)
+                    BoxShadow(
+                      color: const Color(0xFF6D4FD8).withValues(alpha: 0.28),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                ],
+              ),
+              child: Row(
+                children: <Widget>[
+                  Icon(choice.icon, color: const Color(0xFFE2B458), size: 22),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          choice.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          choice.subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(growable: false),
+    );
+  }
+}
+
+class _GameModeChoice {
+  const _GameModeChoice({
+    required this.mode,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final GameMode mode;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+}
+
+class DailyDifficultyChips extends StatelessWidget {
+  const DailyDifficultyChips({
+    required this.selected,
+    required this.onChanged,
+    super.key,
+  });
+
+  final DailyChallengeDifficulty selected;
+  final ValueChanged<DailyChallengeDifficulty> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: DailyChallengeDifficulty.values.map((difficulty) {
+        final bool active = selected == difficulty;
+        return ChoiceChip(
+          selected: active,
+          avatar: Icon(
+            Icons.emoji_events_outlined,
+            size: 18,
+            color: active ? Colors.black : const Color(0xFFE2B458),
+          ),
+          label: Text(difficulty.label),
+          onSelected: (_) => onChanged(difficulty),
+        );
+      }).toList(growable: false),
     );
   }
 }
