@@ -2632,41 +2632,72 @@ class BoardStage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
+    return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            Color.alphaBlend(
-              palette.accent.withValues(alpha: 0.24),
-              palette.frame,
-            ),
-            palette.frame,
-            const Color(0xFF101A17),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: palette.accent.withValues(alpha: 0.75),
-          width: 2,
-        ),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.58),
-            blurRadius: 34,
-            offset: const Offset(0, 22),
+            color: Colors.black.withValues(alpha: 0.62),
+            blurRadius: 38,
+            offset: const Offset(0, 24),
           ),
           BoxShadow(
-            color: palette.accent.withValues(alpha: 0.2),
-            blurRadius: 18,
-            spreadRadius: -3,
+            color: palette.accent.withValues(alpha: 0.24),
+            blurRadius: 26,
+            spreadRadius: -4,
+            offset: const Offset(-5, -7),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: child,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[
+              Color.alphaBlend(
+                Colors.white.withValues(alpha: 0.22),
+                palette.frame,
+              ),
+              Color.alphaBlend(
+                palette.accent.withValues(alpha: 0.18),
+                palette.frame,
+              ),
+              Color.alphaBlend(
+                Colors.black.withValues(alpha: 0.42),
+                palette.frame,
+              ),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.16),
+            width: 1.4,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(9),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: palette.accent.withValues(alpha: 0.55),
+                width: 2,
+              ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.32),
+                  blurRadius: 18,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(3),
+              child: child,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -2750,6 +2781,32 @@ class ChessBoard extends StatelessWidget {
                   onTap: () => onSquareTap(square),
                 );
               },
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      width: 1.2,
+                    ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: Colors.white.withValues(alpha: 0.10),
+                        blurRadius: 18,
+                        spreadRadius: -6,
+                        offset: const Offset(-8, -8),
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.18),
+                        blurRadius: 16,
+                        spreadRadius: -6,
+                        offset: const Offset(8, 10),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
             if (lastFromSquare != null && lastToSquare != null)
               Positioned.fill(
@@ -3006,9 +3063,10 @@ class BoardSquare extends StatelessWidget {
               boxShadow: <BoxShadow>[
                 if (legalTarget)
                   BoxShadow(
-                    color: Colors.white.withValues(alpha: 0.42 * glow),
-                    blurRadius: 18,
-                    spreadRadius: 2,
+                    color: const Color(0xFFBDE6FF)
+                        .withValues(alpha: 0.72 * glow),
+                    blurRadius: 22,
+                    spreadRadius: 4,
                   ),
                 if (lastCapture || captureTarget)
                   BoxShadow(
@@ -3085,17 +3143,28 @@ class BoardSquare extends StatelessWidget {
                 scale: legalTarget && piece == null ? 1 : 0,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.82),
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: RadialGradient(
+                      colors: <Color>[
+                        Colors.white.withValues(alpha: 0.92),
+                        const Color(0xFFCBEAFF).withValues(alpha: 0.72),
+                        const Color(0xFF6DBDFF).withValues(alpha: 0.28),
+                      ],
+                    ),
                     boxShadow: <BoxShadow>[
                       BoxShadow(
-                        color: palette.accent.withValues(alpha: 0.85),
-                        blurRadius: 18,
-                        spreadRadius: 4,
+                        color: const Color(0xFF8EDBFF).withValues(alpha: 0.72),
+                        blurRadius: 24,
+                        spreadRadius: 5,
+                      ),
+                      BoxShadow(
+                        color: Colors.white.withValues(alpha: 0.42),
+                        blurRadius: 8,
+                        spreadRadius: -1,
                       ),
                     ],
                   ),
-                  child: const SizedBox(width: 20, height: 20),
+                  child: const SizedBox(width: 28, height: 28),
                 ),
               ),
             ),
@@ -3202,6 +3271,27 @@ class ChessCoin extends StatelessWidget {
               alignment: Alignment.center,
               children: <Widget>[
                 Positioned(
+                  bottom: pieceSize * 0.08,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: <Color>[
+                          (piece.white
+                                  ? const Color(0xFFFFF0C8)
+                                  : const Color(0xFF5D6674))
+                              .withValues(alpha: 0.28),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                    child: SizedBox(
+                      width: pieceSize * 0.72,
+                      height: pieceSize * 0.34,
+                    ),
+                  ),
+                ),
+                Positioned(
                   bottom: pieceSize * 0.045,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
@@ -3231,12 +3321,15 @@ class ChessCoin extends StatelessWidget {
                     ),
                   ),
                 ),
-                Image.asset(
-                  pieceAsset(piece),
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.high,
-                  semanticLabel:
-                      '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}',
+                Transform.translate(
+                  offset: Offset(0, selected ? -pieceSize * 0.035 : 0),
+                  child: Image.asset(
+                    pieceAsset(piece),
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
+                    semanticLabel:
+                        '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}',
+                  ),
                 ),
                 IgnorePointer(
                   child: ShaderMask(
