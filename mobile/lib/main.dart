@@ -353,6 +353,8 @@ class PositionAnalysis {
     required this.legalMoves,
     required this.captures,
     required this.bestMove,
+    required this.quality,
+    required this.coachLine,
     required this.inCheck,
   });
 
@@ -362,6 +364,8 @@ class PositionAnalysis {
   final int legalMoves;
   final int captures;
   final String? bestMove;
+  final String quality;
+  final String coachLine;
   final bool inCheck;
 }
 
@@ -836,6 +840,9 @@ class _GameScreenState extends State<GameScreen> {
     super.initState();
     _dailyChallenge = _challengeForToday(_dailyDifficulty);
     _gameMode = widget.initialGameMode;
+    _pieces = _gameMode == GameMode.daily
+        ? _dailyStartingPosition(_dailyChallenge)
+        : Map<String, ChessPiece>.from(_initialPieces);
     _blackPlayerName = switch (_gameMode) {
       GameMode.computer => 'ChessVerse AI',
       GameMode.daily => 'Puzzle Defense',
@@ -848,6 +855,10 @@ class _GameScreenState extends State<GameScreen> {
       _whitePlayerName = widget.initialPlayerName!.trim();
     } else if (widget.initiallySignedIn) {
       _whitePlayerName = 'Guest Player';
+    }
+    if (_gameMode == GameMode.daily) {
+      _coachNote =
+          'Checkmate in ${_dailyChallenge.playerMoveGoal} moves. Find the first move.';
     }
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted || _moves.isEmpty || _gameResultTitle != null) {
@@ -1665,6 +1676,7 @@ class _GameScreenState extends State<GameScreen> {
         final ChessPiece? piece = _pieces[square];
         if (piece == null) {
           _coachNote = 'Choose one of your coins first.';
+          unawaited(ChessSoundService.instance.error());
           return;
         }
         final String? expectedMove = _dailyExpectedMove;
@@ -1673,26 +1685,31 @@ class _GameScreenState extends State<GameScreen> {
             square != expectedMove.substring(0, 2)) {
           _coachNote =
               'Daily Checkmate is a tactical line. Find the forcing coin.';
+          unawaited(ChessSoundService.instance.error());
           return;
         }
         if (piece.white != whitesTurn) {
           _coachNote = '${whitesTurn ? 'White' : 'Black'} to move.';
+          unawaited(ChessSoundService.instance.error());
           return;
         }
         final List<String> targets = _legalTargetsFor(square);
         if (targets.isEmpty) {
           _coachNote = '${piece.code} has no legal target from $square.';
+          unawaited(ChessSoundService.instance.error());
         } else {
           _selectedSquare = square;
           final String suffix = targets.length == 1 ? '' : 's';
           _coachNote =
               '${piece.code} from $square has ${targets.length} option$suffix.';
+          unawaited(ChessSoundService.instance.tap());
         }
         return;
       }
 
       if (_selectedSquare == square) {
         _selectedSquare = null;
+        unawaited(ChessSoundService.instance.tap());
         return;
       }
 
@@ -1700,6 +1717,7 @@ class _GameScreenState extends State<GameScreen> {
       if (!legalTargets.contains(square)) {
         _coachNote = 'That move is blocked. Pick a highlighted square.';
         _selectedSquare = null;
+        unawaited(ChessSoundService.instance.error());
         return;
       }
 
@@ -1711,6 +1729,7 @@ class _GameScreenState extends State<GameScreen> {
           _coachNote =
               'Not the mating line. Try again - the position is unchanged.';
           _selectedSquare = null;
+          unawaited(ChessSoundService.instance.error());
           return;
         }
       }
@@ -2605,6 +2624,25 @@ class _GameScreenState extends State<GameScreen> {
 
     final double evaluation =
         material + (whiteToMove ? legalMoveCount : -legalMoveCount) * 0.03;
+    final double bestScore = bestMove?.score ?? 0;
+    final String quality = bestMove == null
+        ? 'No move'
+        : bestScore >= 14
+            ? 'Best move'
+            : bestScore >= 7
+                ? 'Good move'
+                : bestScore >= 3
+                    ? 'Ordinary move'
+                    : 'Quiet move';
+    final String coachLine = bestMove == null
+        ? 'No legal move is available in this position.'
+        : bestScore >= 14
+            ? 'This move creates a strong tactical threat or wins material.'
+            : bestScore >= 7
+                ? 'This is a healthy move: it improves the position and keeps pressure.'
+                : bestScore >= 3
+                    ? 'Playable, but keep looking for forcing checks, captures, or threats.'
+                    : 'Safe but quiet. A sharper move may exist if you calculate forcing lines.';
     return PositionAnalysis(
       side: whiteToMove ? 'White' : 'Black',
       evaluation: evaluation,
@@ -2612,6 +2650,8 @@ class _GameScreenState extends State<GameScreen> {
       legalMoves: legalMoveCount,
       captures: captureCount,
       bestMove: bestMove == null ? null : '${bestMove.from} to ${bestMove.to}',
+      quality: quality,
+      coachLine: coachLine,
       inCheck: ChessRules.isKingInCheck(whiteToMove, _pieces),
     );
   }
@@ -4558,7 +4598,7 @@ class PositionAnalysisSheet extends StatelessWidget {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Position analysis',
+                          'AI Agent Coach',
                           style: Theme.of(context).textTheme.headlineSmall,
                         ),
                       ),
@@ -4584,6 +4624,11 @@ class PositionAnalysisSheet extends StatelessWidget {
                     icon: Icons.gps_fixed_rounded,
                     label: 'Immediate captures',
                     value: '${analysis.captures}',
+                  ),
+                  AnalysisMetric(
+                    icon: Icons.auto_graph_rounded,
+                    label: 'Move quality',
+                    value: analysis.quality,
                   ),
                   AnalysisMetric(
                     icon: analysis.inCheck
@@ -4614,7 +4659,7 @@ class PositionAnalysisSheet extends StatelessWidget {
                             child: Text(
                               analysis.bestMove == null
                                   ? 'No legal move'
-                                  : 'Recommended: ${analysis.bestMove}',
+                                  : 'Recommended: ${analysis.bestMove}\n${analysis.coachLine}',
                               style: const TextStyle(
                                 fontWeight: FontWeight.w800,
                               ),
@@ -4719,9 +4764,53 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Mock lobby is ready now. Real-time rooms will connect after VPS/WebSocket deployment.',
+                    'Choose Play with Friend using a room code, or Random Match to pair with another online player after VPS/WebSocket deployment.',
                   ),
                   const SizedBox(height: 16),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: <Color>[Color(0xFF3B2376), Color(0xFF10251E)],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF8B7147)),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          Row(
+                            children: <Widget>[
+                              const Icon(
+                                Icons.travel_explore_rounded,
+                                color: Color(0xFFD6A84F),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Random Match',
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                ),
+                              ),
+                              const Chip(label: Text('Coming soon')),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Auto-match with any available ChessVerse player worldwide.',
+                          ),
+                          const SizedBox(height: 10),
+                          FilledButton.icon(
+                            onPressed: () {},
+                            icon: const Icon(Icons.bolt_rounded),
+                            label: const Text('Find random player'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   DecoratedBox(
                     decoration: BoxDecoration(
                       color: const Color(0xFF242128),
@@ -4733,7 +4822,7 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
-                          const Text('Invite room code'),
+                          const Text('Play with Friend - invite room code'),
                           const SizedBox(height: 8),
                           SelectableText(
                             roomCode,

@@ -24,7 +24,10 @@ class ChessSoundService {
   AudioPlayer? _capturePlayer;
   AudioPlayer? _checkPlayer;
   AudioPlayer? _checkmatePlayer;
+  AudioPlayer? _victoryPlayer;
+  AudioPlayer? _drawPlayer;
   AudioPlayer? _uiPlayer;
+  AudioPlayer? _errorPlayer;
 
   bool enabled = true;
 
@@ -33,7 +36,7 @@ class ChessSoundService {
     return _play(
       _movePlayer ??= AudioPlayer(playerId: 'chessverse-move'),
       'audio/chess_move.wav',
-      volume: 0.62,
+      volume: 0.82,
     );
   }
 
@@ -60,23 +63,31 @@ class ChessSoundService {
     return _play(
       _checkmatePlayer ??= AudioPlayer(playerId: 'chessverse-checkmate'),
       'audio/chess_checkmate_dark.wav',
-      volume: 0.9,
-    );
+      volume: 1.0,
+    ).then((_) {
+      return Future<void>.delayed(const Duration(milliseconds: 180), () {
+        return _play(
+          _victoryPlayer ??= AudioPlayer(playerId: 'chessverse-victory'),
+          'audio/chess_victory.wav',
+          volume: 0.92,
+        );
+      });
+    });
   }
 
   Future<void> victory() {
     if (!enabled) return Future<void>.value();
     return _play(
-      _checkmatePlayer ??= AudioPlayer(playerId: 'chessverse-checkmate'),
+      _victoryPlayer ??= AudioPlayer(playerId: 'chessverse-victory'),
       'audio/chess_victory.wav',
-      volume: 0.86,
+      volume: 0.92,
     );
   }
 
   Future<void> draw() {
     if (!enabled) return Future<void>.value();
     return _play(
-      _checkmatePlayer ??= AudioPlayer(playerId: 'chessverse-checkmate'),
+      _drawPlayer ??= AudioPlayer(playerId: 'chessverse-draw'),
       'audio/chess_draw.wav',
       volume: 0.72,
     );
@@ -94,7 +105,7 @@ class ChessSoundService {
   Future<void> error() {
     if (!enabled) return Future<void>.value();
     return _play(
-      _uiPlayer ??= AudioPlayer(playerId: 'chessverse-ui'),
+      _errorPlayer ??= AudioPlayer(playerId: 'chessverse-error'),
       'audio/chess_error.wav',
       volume: 0.62,
     );
@@ -106,7 +117,10 @@ class ChessSoundService {
       if (_capturePlayer != null) _capturePlayer!.dispose(),
       if (_checkPlayer != null) _checkPlayer!.dispose(),
       if (_checkmatePlayer != null) _checkmatePlayer!.dispose(),
+      if (_victoryPlayer != null) _victoryPlayer!.dispose(),
+      if (_drawPlayer != null) _drawPlayer!.dispose(),
       if (_uiPlayer != null) _uiPlayer!.dispose(),
+      if (_errorPlayer != null) _errorPlayer!.dispose(),
     ]);
   }
 
