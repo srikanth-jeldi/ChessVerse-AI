@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 
 import 'core/audio/chess_sound_service.dart';
 import 'core/config/app_config.dart';
+import 'core/local_game_archive.dart';
 import 'features/auth/data/auth_api.dart';
 import 'features/auth/data/auth_session_store.dart';
 import 'features/auth/presentation/auth_screen.dart';
@@ -759,6 +760,10 @@ class _GameScreenState extends State<GameScreen> {
   bool _resultVisible = true;
   bool _checkWarningActive = false;
   bool _controlsExpanded = false;
+  bool _resultSaved = false;
+  bool _soundEnabled = true;
+  bool _showCoordinates = true;
+  bool _showMoveHints = true;
   DailyChallengeDifficulty _dailyDifficulty = DailyChallengeDifficulty.medium;
   late DailyChallenge _dailyChallenge;
   int _dailyPlyIndex = 0;
@@ -834,6 +839,7 @@ class _GameScreenState extends State<GameScreen> {
           _gameResultDetail = 'Victory on time';
           _resultVisible = true;
           _coachNote = '$_gameResultTitle. $_gameResultDetail.';
+          _archiveFinishedGame();
           unawaited(ChessSoundService.instance.victory());
         }
       });
@@ -857,7 +863,7 @@ class _GameScreenState extends State<GameScreen> {
     final bool sideInCheck = ChessRules.isKingInCheck(sideToMoveWhite, _pieces);
     final String? checkedKingSquare =
         sideInCheck ? _kingSquare(sideToMoveWhite) : null;
-    final Set<String> legalTargets = _selectedSquare == null
+    final Set<String> legalTargets = !_showMoveHints || _selectedSquare == null
         ? <String>{}
         : _legalTargetsFor(_selectedSquare!).toSet();
 
@@ -923,6 +929,7 @@ class _GameScreenState extends State<GameScreen> {
                 decisiveSquare:
                     _gameResultDetail == 'Checkmate' ? _lastToSquare : null,
                 flipped: _gameMode == GameMode.local && !sideToMoveWhite,
+                showCoordinates: _showCoordinates,
                 palette: palette,
                 onSquareTap: _handleSquareTap,
               );
@@ -960,10 +967,23 @@ class _GameScreenState extends State<GameScreen> {
                 onCoachChanged: (bool value) {
                   setState(() => _coachEnabled = value);
                 },
-                onReset: _reset,
+                onNewGameRequested: _confirmNewGame,
+                onResign: _resignGame,
+                onOfferDraw: _offerDraw,
+                onMoveHistory: _showMoveHistory,
                 onUndo: _undo,
                 onHint: _showHint,
                 onAnalyze: _showAnalysis,
+                soundEnabled: _soundEnabled,
+                showCoordinates: _showCoordinates,
+                showMoveHints: _showMoveHints,
+                onSoundChanged: _setSoundEnabled,
+                onShowCoordinatesChanged: (bool value) {
+                  setState(() => _showCoordinates = value);
+                },
+                onShowMoveHintsChanged: (bool value) {
+                  setState(() => _showMoveHints = value);
+                },
                 onEditBlackPlayer: _editBlackPlayerName,
                 onToggleExpanded: () {
                   setState(() => _controlsExpanded = !_controlsExpanded);
@@ -1009,7 +1029,7 @@ class _GameScreenState extends State<GameScreen> {
                         children: <Widget>[
                           CompactHeader(
                             playerName: _whitePlayerName,
-                            onReset: _reset,
+                            onReset: _confirmNewGame,
                             onLogout: _logout,
                           ),
                           const SizedBox(height: 8),
@@ -2261,8 +2281,125 @@ class _GameScreenState extends State<GameScreen> {
       _gameResultTitle = null;
       _gameResultDetail = null;
       _resultVisible = true;
+      _resultSaved = false;
       _checkWarningActive = false;
     });
+  }
+
+  Future<void> _confirmNewGame() async {
+    if (_moves.isEmpty && _gameResultTitle == null) {
+      _reset();
+      return;
+    }
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Start new game?'),
+        content: const Text(
+          'Current board will be cleared. Finished games are saved automatically.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('New game'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      _reset();
+    }
+  }
+
+  void _setSoundEnabled(bool value) {
+    setState(() => _soundEnabled = value);
+    ChessSoundService.instance.enabled = value;
+  }
+
+  void _resignGame() {
+    if (_gameResultTitle != null) {
+      return;
+    }
+    final bool whiteToMove = _moves.length.isEven;
+    setState(() {
+      _gameResultTitle = whiteToMove ? 'Black wins' : 'White wins';
+      _gameResultDetail = '${whiteToMove ? _whitePlayerName : _blackPlayerName} resigned';
+      _resultVisible = true;
+      _coachNote = 'Resignation accepted. $_gameResultTitle.';
+      _archiveFinishedGame();
+    });
+    unawaited(ChessSoundService.instance.victory());
+  }
+
+  Future<void> _offerDraw() async {
+    if (_gameResultTitle != null) {
+      return;
+    }
+    final bool? accepted = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Offer draw?'),
+        content: const Text(
+          'For offline play this records a mutual draw immediately.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Accept draw'),
+          ),
+        ],
+      ),
+    );
+    if (accepted == true) {
+      setState(() {
+        _gameResultTitle = 'Draw';
+        _gameResultDetail = 'Draw agreed';
+        _resultVisible = true;
+        _coachNote = 'Draw agreed by both players.';
+        _archiveFinishedGame();
+      });
+      unawaited(ChessSoundService.instance.draw());
+    }
+  }
+
+  void _archiveFinishedGame() {
+    if (_resultSaved || _gameResultTitle == null) {
+      return;
+    }
+    _resultSaved = true;
+    LocalGameArchive.addGame(
+      SavedGameRecord(
+        mode: switch (_gameMode) {
+          GameMode.computer => 'Play vs AI',
+          GameMode.daily => 'Daily Checkmate',
+          GameMode.local => '2 Players',
+          GameMode.online => 'Online',
+        },
+        result: _gameResultTitle!,
+        detail: _gameResultDetail ?? 'Game complete',
+        moves: List<String>.from(_moves.reversed),
+        playedAt: DateTime.now(),
+        whitePlayer: _whitePlayerName,
+        blackPlayer: _blackPlayerName,
+      ),
+    );
+  }
+
+  void _showMoveHistory() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) => MoveHistorySheet(moves: _moves),
+    );
   }
 
   void _saveSnapshot() {
@@ -2519,6 +2656,7 @@ class _GameScreenState extends State<GameScreen> {
       _gameResultTitle = '${sideToMoveWhite ? 'Black' : 'White'} wins';
       _gameResultDetail = 'Checkmate';
       _resultVisible = true;
+      _archiveFinishedGame();
       unawaited(ChessSoundService.instance.checkmate());
       return 'Checkmate. $_gameResultTitle.';
     }
@@ -2526,6 +2664,7 @@ class _GameScreenState extends State<GameScreen> {
       _gameResultTitle = 'Draw';
       _gameResultDetail = 'Stalemate';
       _resultVisible = true;
+      _archiveFinishedGame();
       unawaited(ChessSoundService.instance.draw());
       return 'Stalemate. No legal move for $side.';
     }
@@ -2714,6 +2853,7 @@ class ChessBoard extends StatelessWidget {
     required this.checkedKingSquare,
     required this.decisiveSquare,
     required this.flipped,
+    required this.showCoordinates,
     required this.palette,
     required this.onSquareTap,
     super.key,
@@ -2728,6 +2868,7 @@ class ChessBoard extends StatelessWidget {
   final String? checkedKingSquare;
   final String? decisiveSquare;
   final bool flipped;
+  final bool showCoordinates;
   final BoardPalette palette;
   final ValueChanged<String> onSquareTap;
 
@@ -2776,8 +2917,8 @@ class ChessBoard extends StatelessWidget {
                   decisiveMove: decisiveMove,
                   palette: palette,
                   piece: piece,
-                  showRank: col == 0,
-                  showFile: row == 7,
+                  showRank: showCoordinates && col == 0,
+                  showFile: showCoordinates && row == 7,
                   onTap: () => onSquareTap(square),
                 );
               },
@@ -3613,10 +3754,19 @@ class GamePanel extends StatelessWidget {
     required this.onDailyDifficultyChanged,
     required this.onAiLevelChanged,
     required this.onCoachChanged,
-    required this.onReset,
+    required this.onNewGameRequested,
+    required this.onResign,
+    required this.onOfferDraw,
+    required this.onMoveHistory,
     required this.onUndo,
     required this.onHint,
     required this.onAnalyze,
+    required this.soundEnabled,
+    required this.showCoordinates,
+    required this.showMoveHints,
+    required this.onSoundChanged,
+    required this.onShowCoordinatesChanged,
+    required this.onShowMoveHintsChanged,
     required this.onEditBlackPlayer,
     required this.onToggleExpanded,
     required this.onLogout,
@@ -3650,10 +3800,19 @@ class GamePanel extends StatelessWidget {
   final ValueChanged<DailyChallengeDifficulty> onDailyDifficultyChanged;
   final ValueChanged<double> onAiLevelChanged;
   final ValueChanged<bool> onCoachChanged;
-  final VoidCallback onReset;
+  final VoidCallback onNewGameRequested;
+  final VoidCallback onResign;
+  final VoidCallback onOfferDraw;
+  final VoidCallback onMoveHistory;
   final VoidCallback onUndo;
   final VoidCallback onHint;
   final VoidCallback onAnalyze;
+  final bool soundEnabled;
+  final bool showCoordinates;
+  final bool showMoveHints;
+  final ValueChanged<bool> onSoundChanged;
+  final ValueChanged<bool> onShowCoordinatesChanged;
+  final ValueChanged<bool> onShowMoveHintsChanged;
   final VoidCallback onEditBlackPlayer;
   final VoidCallback onToggleExpanded;
   final VoidCallback onLogout;
@@ -3732,8 +3891,8 @@ class GamePanel extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Reset board',
-                    onPressed: onReset,
+                    tooltip: 'New game',
+                    onPressed: onNewGameRequested,
                     icon: const Icon(Icons.refresh_rounded),
                   ),
                   IconButton(
@@ -3800,8 +3959,8 @@ class GamePanel extends StatelessWidget {
                 ),
               ),
               IconButton(
-                tooltip: 'Reset board',
-                onPressed: onReset,
+                tooltip: 'New game',
+                onPressed: onNewGameRequested,
                 icon: const Icon(Icons.refresh_rounded),
               ),
               IconButton(
@@ -3892,6 +4051,34 @@ class GamePanel extends StatelessWidget {
           Row(
             children: <Widget>[
               Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onMoveHistory,
+                  icon: const Icon(Icons.history_rounded),
+                  label: const Text('History'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onOfferDraw,
+                  icon: const Icon(Icons.handshake_rounded),
+                  label: const Text('Draw'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onResign,
+                  icon: const Icon(Icons.flag_rounded),
+                  label: const Text('Resign'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: <Widget>[
+              Expanded(
                   child: MatchClock(label: whitePlayerName, value: whiteClock)),
               const SizedBox(width: 10),
               Expanded(
@@ -3975,6 +4162,42 @@ class GamePanel extends StatelessWidget {
               title: const Text('AI coach'),
               secondary: const Icon(Icons.psychology_alt_rounded),
             ),
+          ),
+          Material(
+            color: Colors.transparent,
+            child: SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: soundEnabled,
+              onChanged: onSoundChanged,
+              title: const Text('Sound effects'),
+              secondary: const Icon(Icons.volume_up_rounded),
+            ),
+          ),
+          Material(
+            color: Colors.transparent,
+            child: SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: showCoordinates,
+              onChanged: onShowCoordinatesChanged,
+              title: const Text('Show coordinates'),
+              secondary: const Icon(Icons.grid_4x4_rounded),
+            ),
+          ),
+          Material(
+            color: Colors.transparent,
+            child: SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: showMoveHints,
+              onChanged: onShowMoveHintsChanged,
+              title: const Text('Move hints'),
+              secondary: const Icon(Icons.lightbulb_outline_rounded),
+            ),
+          ),
+          const ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.view_in_ar_rounded),
+            title: Text('Piece theme'),
+            subtitle: Text('Staunton 3D active - more themes coming soon'),
           ),
           const SizedBox(height: 8),
           Row(
@@ -4392,11 +4615,12 @@ class OnlineMatchmakingSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const String roomCode = 'CV-7429';
     return SafeArea(
       child: DecoratedBox(
         decoration: const BoxDecoration(
           color: Color(0xFF17231F),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
@@ -4404,31 +4628,172 @@ class OnlineMatchmakingSheet extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              const Icon(
-                Icons.public_rounded,
-                size: 38,
-                color: Color(0xFF63D2B8),
+              Row(
+                children: <Widget>[
+                  const Icon(Icons.public_rounded, size: 34, color: Color(0xFF63D2B8)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Online 2 Players',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Mock lobby is ready now. Real-time rooms will connect after VPS/WebSocket deployment.',
+              ),
+              const SizedBox(height: 16),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF242128),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF6C5530)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      const Text('Invite room code'),
+                      const SizedBox(height: 8),
+                      SelectableText(
+                        roomCode,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                              color: const Color(0xFFD6A84F),
+                              letterSpacing: 2,
+                            ),
+                      ),
+                      const SizedBox(height: 10),
+                      FilledButton.icon(
+                        onPressed: () {
+                          Clipboard.setData(const ClipboardData(text: roomCode));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Invite code copied')),
+                          );
+                        },
+                        icon: const Icon(Icons.copy_rounded),
+                        label: const Text('Copy invite code'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                decoration: const InputDecoration(
+                  labelText: 'Join code',
+                  prefixIcon: Icon(Icons.login_rounded),
+                  border: OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.characters,
               ),
               const SizedBox(height: 12),
-              Text(
-                'Online matchmaking',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineSmall,
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.group_add_rounded),
+                      label: const Text('Create room'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () {},
+                      icon: const Icon(Icons.sports_esports_rounded),
+                      label: const Text('Join mock'),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               const Text(
-                'The realtime match gateway is not deployed yet. Local 2P remains available while authenticated matchmaking, reconnect and anti-cheat services are completed.',
+                'Waiting screen, room code, and invite flow are local UI only until backend is live.',
                 textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 18),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Continue'),
+                style: TextStyle(color: Color(0xFFAAA69E), fontSize: 12),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class MoveHistorySheet extends StatelessWidget {
+  const MoveHistorySheet({required this.moves, super.key});
+
+  final List<String> moves;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<String> chronological = moves.reversed.toList(growable: false);
+    return DraggableScrollableSheet(
+      initialChildSize: 0.78,
+      minChildSize: 0.45,
+      maxChildSize: 0.94,
+      builder: (BuildContext context, ScrollController controller) {
+        return DecoratedBox(
+          decoration: const BoxDecoration(
+            color: Color(0xFF17231F),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        'Move History',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                Expanded(
+                  child: chronological.isEmpty
+                      ? const EmptyMoveState()
+                      : ListView.separated(
+                          controller: controller,
+                          itemCount: chronological.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (BuildContext context, int index) {
+                            final bool whiteMove = index.isEven;
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: whiteMove
+                                    ? const Color(0xFFE9D5B7)
+                                    : const Color(0xFF242128),
+                                foregroundColor: whiteMove ? Colors.black : Colors.white,
+                                child: Text('${index + 1}'),
+                              ),
+                              title: Text(chronological[index]),
+                              subtitle: Text(whiteMove ? 'White move' : 'Black move'),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -4883,6 +5248,7 @@ class GameResultOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool draw = title.toLowerCase().contains('draw');
     return ColoredBox(
       color: Colors.black.withValues(alpha: 0.72),
       child: Center(
@@ -4905,9 +5271,11 @@ class GameResultOverlay extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  const Icon(
-                    Icons.emoji_events_rounded,
-                    color: Color(0xFFD6A84F),
+                  Icon(
+                    draw
+                        ? Icons.handshake_rounded
+                        : Icons.emoji_events_rounded,
+                    color: draw ? const Color(0xFFAAA69E) : const Color(0xFFD6A84F),
                     size: 56,
                   ),
                   const SizedBox(height: 16),
@@ -4918,9 +5286,20 @@ class GameResultOverlay extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    detail,
+                    draw ? '½ - ½' : (title.startsWith('White') || title == 'Challenge complete' ? '1 - 0' : '0 - 1'),
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                          color: const Color(0xFFD6A84F),
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(detail, textAlign: TextAlign.center),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Saved locally. Open Saved Games to review this match.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Color(0xFFAAA69E)),
                   ),
                   const SizedBox(height: 24),
                   Row(

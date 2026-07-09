@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/audio/chess_sound_service.dart';
 import '../../../core/layout/responsive_page.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_button.dart';
@@ -17,6 +18,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _hintsEnabled = true;
   bool _coachEnabled = true;
   bool _animationsEnabled = true;
+  bool _coordinatesEnabled = true;
 
   @override
   Widget build(BuildContext context) {
@@ -37,15 +39,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Sound effects',
                     subtitle: 'Move sounds, check alerts, and result effects',
                     value: _soundEnabled,
-                    onChanged: (bool value) => setState(() => _soundEnabled = value),
+                    onChanged: (bool value) {
+                      setState(() => _soundEnabled = value);
+                      ChessSoundService.instance.enabled = value;
+                    },
                   ),
                   const Divider(color: AppColors.border),
                   _SettingSwitch(
                     icon: Icons.lightbulb_rounded,
-                    title: 'Hints',
+                    title: 'Move hints',
                     subtitle: 'Show legal move and daily challenge hints',
                     value: _hintsEnabled,
                     onChanged: (bool value) => setState(() => _hintsEnabled = value),
+                  ),
+                  const Divider(color: AppColors.border),
+                  _SettingSwitch(
+                    icon: Icons.grid_4x4_rounded,
+                    title: 'Show coordinates',
+                    subtitle: 'Display a-h and 1-8 board labels',
+                    value: _coordinatesEnabled,
+                    onChanged: (bool value) => setState(() => _coordinatesEnabled = value),
                   ),
                   const Divider(color: AppColors.border),
                   _SettingSwitch(
@@ -81,7 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _SettingRow(
                     icon: Icons.extension_rounded,
                     title: 'Piece style',
-                    value: 'Classic',
+                    value: 'Staunton 3D',
                   ),
                   Divider(color: AppColors.border),
                   _SettingRow(

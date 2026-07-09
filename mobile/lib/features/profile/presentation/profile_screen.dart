@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/layout/responsive_page.dart';
+import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_button.dart';
 import '../../../core/widgets/chessverse_card.dart';
@@ -10,6 +11,7 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final LocalGameStats stats = LocalGameArchive.stats();
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Profile')),
@@ -40,7 +42,7 @@ class ProfileScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Preview account · local progress',
+                          'Preview account - local progress',
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ],
@@ -59,15 +61,15 @@ class ProfileScreen extends StatelessWidget {
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
               childAspectRatio: 1.35,
-              children: const <Widget>[
-                _StatCard(label: 'Games', value: '12', icon: Icons.sports_esports_rounded),
-                _StatCard(label: 'Wins', value: '7', icon: Icons.emoji_events_rounded),
-                _StatCard(label: 'Draws', value: '2', icon: Icons.handshake_rounded),
-                _StatCard(label: 'Losses', value: '3', icon: Icons.close_rounded),
-                _StatCard(label: 'Daily streak', value: '5', icon: Icons.local_fire_department_rounded),
-                _StatCard(label: 'Best AI', value: 'Level 4', icon: Icons.smart_toy_rounded),
-                _StatCard(label: 'Puzzles', value: '18', icon: Icons.extension_rounded),
-                _StatCard(label: 'Accuracy', value: '72%', icon: Icons.insights_rounded),
+              children: <Widget>[
+                _StatCard(label: 'Games', value: '${stats.gamesPlayed}', icon: Icons.sports_esports_rounded),
+                _StatCard(label: 'Wins', value: '${stats.wins}', icon: Icons.emoji_events_rounded),
+                _StatCard(label: 'Draws', value: '${stats.draws}', icon: Icons.handshake_rounded),
+                _StatCard(label: 'Losses', value: '${stats.losses}', icon: Icons.close_rounded),
+                _StatCard(label: 'Daily streak', value: '${stats.dailyStreak}', icon: Icons.local_fire_department_rounded),
+                const _StatCard(label: 'Best AI', value: 'Level 4', icon: Icons.smart_toy_rounded),
+                _StatCard(label: 'Puzzles', value: '${stats.puzzlesSolved}', icon: Icons.extension_rounded),
+                _StatCard(label: 'Win rate', value: '${stats.winRate}%', icon: Icons.insights_rounded),
               ],
             ),
             const SizedBox(height: 18),
