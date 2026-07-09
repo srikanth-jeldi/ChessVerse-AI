@@ -1141,7 +1141,9 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       _authHasError = false;
       _authMessage =
-          'Facebook login needs Meta app credentials, package SHA setup, iOS bundle setup, privacy policy, and data deletion URL before store release. ChessVerse login and Guest Player work now.';
+          AppConfig.usesDummySocialConfig
+              ? 'Google, Apple, Facebook, and VPS placeholders are wired. Replace dummy IDs/tokens in CI/VPS before store release. ChessVerse login and Guest Player work now.'
+              : 'Social login config is present. Backend OAuth callback endpoints must be enabled on the live VPS before store release.';
     });
   }
 

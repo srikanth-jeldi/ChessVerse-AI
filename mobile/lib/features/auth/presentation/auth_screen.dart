@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/auth_api.dart';
 
@@ -206,14 +207,34 @@ class _AuthScreenState extends State<AuthScreen> {
                           label: const Text('Continue as Guest Player'),
                         ),
                         const SizedBox(height: 10),
+                        Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _loading
+                                    ? null
+                                    : () => _showSocialPlaceholder('Google'),
+                                icon: const Icon(Icons.g_mobiledata_rounded),
+                                label: const Text('Google'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _loading
+                                    ? null
+                                    : () => _showSocialPlaceholder('Apple'),
+                                icon: const Icon(Icons.apple_rounded),
+                                label: const Text('Apple'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
                         OutlinedButton.icon(
                           onPressed: _loading
                               ? null
-                              : () => setState(() {
-                                    _message =
-                                        'Facebook Login needs Meta app credentials before store release.';
-                                    _error = null;
-                                  }),
+                              : () => _showSocialPlaceholder('Facebook'),
                           icon: const Icon(Icons.facebook_rounded),
                           label: const Text('Facebook Login'),
                         ),
@@ -235,6 +256,15 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
       ),
     );
+  }
+
+  void _showSocialPlaceholder(String provider) {
+    setState(() {
+      _message = AppConfig.usesDummySocialConfig
+          ? '$provider login UI is ready with dummy placeholders. Replace IDs/tokens and enable backend OAuth callbacks before release.'
+          : '$provider credentials are configured. Enable the live backend OAuth callback before release.';
+      _error = null;
+    });
   }
 
   Future<void> _submit() async {
