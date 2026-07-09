@@ -95,7 +95,10 @@ class _AuthScreenState extends State<AuthScreen> {
                             Expanded(
                               child: Text(
                                 'CHESSVERSE',
-                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.copyWith(
                                       fontWeight: FontWeight.w900,
                                       letterSpacing: 0.4,
                                     ),
@@ -106,7 +109,10 @@ class _AuthScreenState extends State<AuthScreen> {
                         const SizedBox(height: 28),
                         Text(
                           _loginMode ? 'Welcome back' : 'Create ChessVerse ID',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(
                                 fontSize: 34,
                                 fontWeight: FontWeight.w900,
                               ),
@@ -188,7 +194,8 @@ class _AuthScreenState extends State<AuthScreen> {
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : const Icon(Icons.login_rounded),
                           label: Text(_loginMode ? 'Login' : 'Send Code'),
@@ -242,9 +249,10 @@ class _AuthScreenState extends State<AuthScreen> {
                         Text(
                           'Use a verified account to save games, ratings and coach history. Guest Player is local-only for quick testing.',
                           textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
                         ),
                       ],
                     ),
@@ -318,7 +326,8 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _forgotPassword() async {
     if (_emailController.text.trim().isEmpty) {
-      setState(() => _error = 'Enter your email first, then tap Forgot password.');
+      setState(
+          () => _error = 'Enter your email first, then tap Forgot password.');
       return;
     }
     setState(() {
@@ -331,7 +340,8 @@ class _AuthScreenState extends State<AuthScreen> {
         'forgot-password',
         <String, String>{'email': _emailController.text.trim()},
       );
-      setState(() => _message = 'If that account exists, a reset code has been sent.');
+      setState(() =>
+          _message = 'If that account exists, a reset code has been sent.');
     } on AuthApiException catch (error) {
       setState(() => _error = error.message);
     } finally {
@@ -395,7 +405,11 @@ class _Notice extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Icon(isError ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded, color: color),
+            Icon(
+                isError
+                    ? Icons.error_outline_rounded
+                    : Icons.check_circle_outline_rounded,
+                color: color),
             const SizedBox(width: 10),
             Expanded(child: Text(message)),
           ],

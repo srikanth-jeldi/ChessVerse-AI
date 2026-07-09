@@ -819,7 +819,8 @@ class _GameScreenState extends State<GameScreen> {
       GameMode.online => 'Online Rival',
     };
     _signedIn = widget.initiallySignedIn;
-    if (widget.initialPlayerName != null && widget.initialPlayerName!.trim().isNotEmpty) {
+    if (widget.initialPlayerName != null &&
+        widget.initialPlayerName!.trim().isNotEmpty) {
       _whitePlayerName = widget.initialPlayerName!.trim();
     } else if (widget.initiallySignedIn) {
       _whitePlayerName = 'Guest Player';
@@ -998,14 +999,22 @@ class _GameScreenState extends State<GameScreen> {
                   fit: StackFit.expand,
                   children: <Widget>[
                     if (wide) ...<Widget>[
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: SizedBox(
-                          width: boardDimension,
-                          height: boardDimension,
-                          child: BoardStage(
-                            palette: palette,
-                            child: board,
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        right: widePanelWidth + 8,
+                        child: Align(
+                          alignment: _controlsExpanded
+                              ? Alignment.center
+                              : Alignment.centerRight,
+                          child: SizedBox(
+                            width: boardDimension,
+                            height: boardDimension,
+                            child: BoardStage(
+                              palette: palette,
+                              child: board,
+                            ),
                           ),
                         ),
                       ),
@@ -1023,8 +1032,7 @@ class _GameScreenState extends State<GameScreen> {
                           child: panel,
                         ),
                       ),
-                    ]
-                    else
+                    ] else
                       Column(
                         children: <Widget>[
                           CompactHeader(
@@ -1140,10 +1148,9 @@ class _GameScreenState extends State<GameScreen> {
   void _showFacebookSetupMessage() {
     setState(() {
       _authHasError = false;
-      _authMessage =
-          AppConfig.usesDummySocialConfig
-              ? 'Google, Apple, Facebook, and VPS placeholders are wired. Replace dummy IDs/tokens in CI/VPS before store release. ChessVerse login and Guest Player work now.'
-              : 'Social login config is present. Backend OAuth callback endpoints must be enabled on the live VPS before store release.';
+      _authMessage = AppConfig.usesDummySocialConfig
+          ? 'Google, Apple, Facebook, and VPS placeholders are wired. Replace dummy IDs/tokens in CI/VPS before store release. ChessVerse login and Guest Player work now.'
+          : 'Social login config is present. Backend OAuth callback endpoints must be enabled on the live VPS before store release.';
     });
   }
 
@@ -1734,7 +1741,7 @@ class _GameScreenState extends State<GameScreen> {
             _gameResultDetail =
                 '${_dailyChallenge.playerMoveGoal}-move checkmate';
             _coachNote =
-                'Brilliant! Today's ${_dailyDifficulty.label.toLowerCase()} challenge is complete.';
+                "Brilliant! Today's ${_dailyDifficulty.label.toLowerCase()} challenge is complete.";
           }
         }
       }
@@ -2329,7 +2336,8 @@ class _GameScreenState extends State<GameScreen> {
     final bool whiteToMove = _moves.length.isEven;
     setState(() {
       _gameResultTitle = whiteToMove ? 'Black wins' : 'White wins';
-      _gameResultDetail = '${whiteToMove ? _whitePlayerName : _blackPlayerName} resigned';
+      _gameResultDetail =
+          '${whiteToMove ? _whitePlayerName : _blackPlayerName} resigned';
       _resultVisible = true;
       _coachNote = 'Resignation accepted. $_gameResultTitle.';
       _archiveFinishedGame();
@@ -3206,8 +3214,8 @@ class BoardSquare extends StatelessWidget {
               boxShadow: <BoxShadow>[
                 if (legalTarget)
                   BoxShadow(
-                    color: const Color(0xFFBDE6FF)
-                        .withValues(alpha: 0.72 * glow),
+                    color:
+                        const Color(0xFFBDE6FF).withValues(alpha: 0.72 * glow),
                     blurRadius: 22,
                     spreadRadius: 4,
                   ),
@@ -4632,7 +4640,8 @@ class OnlineMatchmakingSheet extends StatelessWidget {
             children: <Widget>[
               Row(
                 children: <Widget>[
-                  const Icon(Icons.public_rounded, size: 34, color: Color(0xFF63D2B8)),
+                  const Icon(Icons.public_rounded,
+                      size: 34, color: Color(0xFF63D2B8)),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -4667,7 +4676,10 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                       SelectableText(
                         roomCode,
                         textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineMedium
+                            ?.copyWith(
                               color: const Color(0xFFD6A84F),
                               letterSpacing: 2,
                             ),
@@ -4675,7 +4687,8 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                       const SizedBox(height: 10),
                       FilledButton.icon(
                         onPressed: () {
-                          Clipboard.setData(const ClipboardData(text: roomCode));
+                          Clipboard.setData(
+                              const ClipboardData(text: roomCode));
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Invite code copied')),
                           );
@@ -4782,11 +4795,13 @@ class MoveHistorySheet extends StatelessWidget {
                                 backgroundColor: whiteMove
                                     ? const Color(0xFFE9D5B7)
                                     : const Color(0xFF242128),
-                                foregroundColor: whiteMove ? Colors.black : Colors.white,
+                                foregroundColor:
+                                    whiteMove ? Colors.black : Colors.white,
                                 child: Text('${index + 1}'),
                               ),
                               title: Text(chronological[index]),
-                              subtitle: Text(whiteMove ? 'White move' : 'Black move'),
+                              subtitle:
+                                  Text(whiteMove ? 'White move' : 'Black move'),
                             );
                           },
                         ),
@@ -5274,10 +5289,10 @@ class GameResultOverlay extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   Icon(
-                    draw
-                        ? Icons.handshake_rounded
-                        : Icons.emoji_events_rounded,
-                    color: draw ? const Color(0xFFAAA69E) : const Color(0xFFD6A84F),
+                    draw ? Icons.handshake_rounded : Icons.emoji_events_rounded,
+                    color: draw
+                        ? const Color(0xFFAAA69E)
+                        : const Color(0xFFD6A84F),
                     size: 56,
                   ),
                   const SizedBox(height: 16),
@@ -5288,7 +5303,12 @@ class GameResultOverlay extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    draw ? '½ - ½' : (title.startsWith('White') || title == 'Challenge complete' ? '1 - 0' : '0 - 1'),
+                    draw
+                        ? '½ - ½'
+                        : (title.startsWith('White') ||
+                                title == 'Challenge complete'
+                            ? '1 - 0'
+                            : '0 - 1'),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                           color: const Color(0xFFD6A84F),
