@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
 
@@ -8,22 +9,28 @@ class PuzzlesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final LocalGameStats stats = LocalGameArchive.stats();
     return _ReferenceScaffold(
       title: 'Puzzles',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: const <Widget>[
-          _FeatureHero(
+        children: <Widget>[
+          const _FeatureHero(
             icon: Icons.extension_rounded,
             title: 'Daily Puzzle',
-            subtitle: 'Solve puzzle and improve your skills',
+            subtitle: 'Late-game mate challenge with local streak tracking',
             action: 'Solve',
           ),
-          SizedBox(height: 18),
-          _SectionTitle('Puzzle Categories'),
-          _ProgressTile(label: 'Easy', value: '0/150', color: AppColors.success),
-          _ProgressTile(label: 'Medium', value: '0/150', color: AppColors.accentGold),
-          _ProgressTile(label: 'Hard', value: '0/150', color: AppColors.warning),
+          const SizedBox(height: 18),
+          const _SectionTitle('Puzzle Categories'),
+          _ProgressTile(label: 'Easy', value: '${stats.puzzlesSolved}/150', color: AppColors.success),
+          const _ProgressTile(label: 'Medium', value: '0/150', color: AppColors.accentGold),
+          const _ProgressTile(label: 'Hard', value: '0/150', color: AppColors.warning),
+          const SizedBox(height: 18),
+          _PuzzleResultCard(
+            streak: stats.dailyStreak,
+            solved: stats.dailySolved,
+          ),
         ],
       ),
     );
@@ -35,12 +42,7 @@ class SavedGamesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const List<_SavedGame> games = <_SavedGame>[
-      _SavedGame('vs AI (Medium)', 'You won', 'Today, 10:30 AM', AppColors.success),
-      _SavedGame('vs AI (Easy)', 'You won', 'Today, 09:15 AM', AppColors.success),
-      _SavedGame('vs Player', 'You lost', 'Yesterday, 08:45 PM', AppColors.danger),
-      _SavedGame('vs AI (Hard)', 'Draw', 'Yesterday, 07:10 PM', AppColors.accentGold),
-    ];
+    final List<SavedGameRecord> games = LocalGameArchive.games;
 
     return _ReferenceScaffold(
       title: 'My Games',
@@ -48,7 +50,10 @@ class SavedGamesScreen extends StatelessWidget {
         children: <Widget>[
           const _SegmentTabs(labels: <String>['All', 'White', 'Black']),
           const SizedBox(height: 16),
-          ...games.map((_SavedGame game) => _SavedGameTile(game: game)),
+          if (games.isEmpty)
+            const _EmptySavedGames()
+          else
+            ...games.map((SavedGameRecord game) => _SavedGameTile(game: game)),
         ],
       ),
     );
@@ -373,19 +378,63 @@ class _SegmentTabs extends StatelessWidget {
   }
 }
 
-class _SavedGame {
-  const _SavedGame(this.title, this.result, this.time, this.color);
-  final String title;
-  final String result;
-  final String time;
-  final Color color;
+class _PuzzleResultCard extends StatelessWidget {
+  const _PuzzleResultCard({required this.streak, required this.solved});
+
+  final int streak;
+  final int solved;
+
+  @override
+  Widget build(BuildContext context) {
+    return _MenuSurface(
+      child: Row(
+        children: <Widget>[
+          const Icon(Icons.local_fire_department_rounded, color: AppColors.accentGold),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              solved == 0
+                  ? 'Solve Daily Checkmate to start your streak.'
+                  : 'Puzzle result saved. Daily streak: $streak',
+            ),
+          ),
+          Text('$solved solved', style: const TextStyle(color: AppColors.success)),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptySavedGames extends StatelessWidget {
+  const _EmptySavedGames();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _MenuSurface(
+      child: Column(
+        children: <Widget>[
+          Icon(Icons.save_alt_rounded, color: AppColors.accentGold, size: 34),
+          SizedBox(height: 10),
+          Text(
+            'No saved games yet. Finish a game, resign, draw, or complete Daily Checkmate to save it locally.',
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SavedGameTile extends StatelessWidget {
   const _SavedGameTile({required this.game});
-  final _SavedGame game;
+  final SavedGameRecord game;
   @override
   Widget build(BuildContext context) {
+    final Color resultColor = game.result.toLowerCase().contains('draw')
+        ? AppColors.accentGold
+        : game.result.toLowerCase().contains('black')
+            ? AppColors.danger
+            : AppColors.success;
     return _MenuSurface(
       child: Row(
         children: <Widget>[
@@ -403,14 +452,71 @@ class _SavedGameTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(game.title, style: Theme.of(context).textTheme.titleMedium),
-                Text(game.result, style: TextStyle(color: game.color)),
-                Text(game.time, style: Theme.of(context).textTheme.bodySmall),
+                Text(game.mode, style: Theme.of(context).textTheme.titleMedium),
+                Text('${game.result} - ${game.detail}', style: TextStyle(color: resultColor)),
+                Text(
+                  '${game.summary} - ${game.moves.length} moves',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right_rounded),
+          Tooltip(
+            message: 'Review mode preview',
+            child: IconButton(
+              onPressed: () {
+                showModalBottomSheet<void>(
+                  context: context,
+                  backgroundColor: Colors.transparent,
+                  builder: (BuildContext context) => _SavedGameReviewSheet(game: game),
+                );
+              },
+              icon: const Icon(Icons.chevron_right_rounded),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _SavedGameReviewSheet extends StatelessWidget {
+  const _SavedGameReviewSheet({required this.game});
+
+  final SavedGameRecord game;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text('Review saved game', style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 8),
+              Text('${game.mode} - ${game.result}'),
+              const SizedBox(height: 12),
+              _MenuSurface(
+                child: Text(
+                  game.moves.isEmpty
+                      ? 'No moves recorded.'
+                      : game.moves.take(12).join('  '),
+                ),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close review'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
