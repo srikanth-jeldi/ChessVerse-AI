@@ -22,7 +22,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _OnboardingPageData(
       title: 'Welcome to ChessVerse AI',
       subtitle: 'Your intelligent chess companion.',
-      body: 'Play, learn and improve with AI coaching, puzzles and rich game analysis.',
+      body:
+          'Play, learn and improve with AI coaching, puzzles and rich game analysis.',
       icon: Icons.auto_awesome_rounded,
     ),
     _OnboardingPageData(
@@ -51,65 +52,80 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: DecoratedBox(
         decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: <Widget>[
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: widget.onComplete,
-                    child: const Text('Skip'),
-                  ),
-                ),
-                Expanded(
-                  child: PageView.builder(
-                    controller: _controller,
-                    itemCount: _pages.length,
-                    onPageChanged: (int value) => setState(() => _page = value),
-                    itemBuilder: (BuildContext context, int index) {
-                      return _OnboardingPage(data: _pages[index]);
-                    },
-                  ),
-                ),
-                Row(
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final bool landscape =
+                  constraints.maxWidth > constraints.maxHeight;
+              final bool tight = constraints.maxHeight < 430;
+              final EdgeInsets padding = EdgeInsets.symmetric(
+                horizontal: landscape ? 28 : 20,
+                vertical: tight ? 8 : 20,
+              );
+
+              return Padding(
+                padding: padding,
+                child: Column(
                   children: <Widget>[
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: widget.onComplete,
+                        child: const Text('Skip'),
+                      ),
+                    ),
                     Expanded(
-                      child: Row(
-                        children: List<Widget>.generate(
-                          _pages.length,
-                          (int index) => AnimatedContainer(
-                            duration: const Duration(milliseconds: 220),
-                            margin: const EdgeInsets.only(right: 8),
-                            width: index == _page ? 28 : 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: index == _page
-                                  ? AppColors.primary
-                                  : AppColors.border,
-                              borderRadius: BorderRadius.circular(99),
+                      child: PageView.builder(
+                        controller: _controller,
+                        itemCount: _pages.length,
+                        onPageChanged: (int value) =>
+                            setState(() => _page = value),
+                        itemBuilder: (BuildContext context, int index) {
+                          return _OnboardingPage(data: _pages[index]);
+                        },
+                      ),
+                    ),
+                    SizedBox(height: tight ? 4 : 10),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Row(
+                            children: List<Widget>.generate(
+                              _pages.length,
+                              (int index) => AnimatedContainer(
+                                duration: const Duration(milliseconds: 220),
+                                margin: const EdgeInsets.only(right: 8),
+                                width: index == _page ? 28 : 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: index == _page
+                                      ? AppColors.primary
+                                      : AppColors.border,
+                                  borderRadius: BorderRadius.circular(99),
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                    FilledButton(
-                      onPressed: () {
-                        if (_page == _pages.length - 1) {
-                          widget.onComplete();
-                        } else {
-                          _controller.nextPage(
-                            duration: const Duration(milliseconds: 260),
-                            curve: Curves.easeOutCubic,
-                          );
-                        }
-                      },
-                      child: Text(_page == _pages.length - 1 ? 'Start' : 'Next'),
+                        FilledButton(
+                          onPressed: () {
+                            if (_page == _pages.length - 1) {
+                              widget.onComplete();
+                            } else {
+                              _controller.nextPage(
+                                duration: const Duration(milliseconds: 260),
+                                curve: Curves.easeOutCubic,
+                              );
+                            }
+                          },
+                          child: Text(
+                              _page == _pages.length - 1 ? 'Start' : 'Next'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),
@@ -128,8 +144,10 @@ class _OnboardingPage extends StatelessWidget {
       builder: (BuildContext context, BoxConstraints constraints) {
         final bool compact = constraints.maxHeight < 620;
         final bool landscape = constraints.maxWidth > constraints.maxHeight;
+        final bool tightLandscape = landscape && constraints.maxHeight < 360;
         final double artSize = landscape
-            ? (constraints.maxHeight * 0.46).clamp(96.0, 150.0)
+            ? (constraints.maxHeight * (tightLandscape ? 0.34 : 0.42))
+                .clamp(78.0, 136.0)
             : compact
                 ? 150
                 : 210;
@@ -150,10 +168,10 @@ class _OnboardingPage extends StatelessWidget {
             child: Container(
               width: artSize * 0.72,
               height: artSize * 0.72,
-              padding: EdgeInsets.all(landscape ? 16 : 22),
+              padding: EdgeInsets.all(landscape ? 14 : 22),
               decoration: BoxDecoration(
                 color: AppColors.surface,
-                borderRadius: BorderRadius.circular(landscape ? 26 : 34),
+                borderRadius: BorderRadius.circular(landscape ? 24 : 34),
                 border: Border.all(color: AppColors.border),
                 boxShadow: <BoxShadow>[
                   BoxShadow(
@@ -165,7 +183,11 @@ class _OnboardingPage extends StatelessWidget {
               child: Icon(
                 data.icon,
                 color: AppColors.accentGold,
-                size: landscape ? 46 : compact ? 56 : 78,
+                size: landscape
+                    ? 42
+                    : compact
+                        ? 56
+                        : 78,
               ),
             ),
           ),
@@ -184,11 +206,16 @@ class _OnboardingPage extends StatelessWidget {
                   maxLines: landscape ? 2 : null,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontSize: landscape ? 28 : null,
+                        fontSize: landscape ? (tightLandscape ? 22 : 28) : null,
                         fontWeight: FontWeight.w900,
                       ),
                 ),
-                SizedBox(height: landscape ? 6 : 10),
+                SizedBox(
+                    height: tightLandscape
+                        ? 3
+                        : landscape
+                            ? 6
+                            : 10),
                 Text(
                   data.subtitle,
                   textAlign: TextAlign.center,
@@ -198,26 +225,28 @@ class _OnboardingPage extends StatelessWidget {
                         color: AppColors.accentGold,
                       ),
                 ),
-                SizedBox(height: landscape ? 10 : 18),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface.withValues(alpha: 0.82),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(landscape ? 14 : 18),
-                    child: Text(
-                      data.body,
-                      textAlign: TextAlign.center,
-                      maxLines: landscape ? 3 : null,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
+                if (!tightLandscape) ...<Widget>[
+                  SizedBox(height: landscape ? 10 : 18),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface.withValues(alpha: 0.82),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(landscape ? 14 : 18),
+                      child: Text(
+                        data.body,
+                        textAlign: TextAlign.center,
+                        maxLines: landscape ? 3 : null,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

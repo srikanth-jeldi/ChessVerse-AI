@@ -24,6 +24,21 @@
 		<string>????</string>
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
+		<key>FacebookAppID</key>
+		<string>replace-facebook-app-id</string>
+		<key>FacebookClientToken</key>
+		<string>replace-facebook-client-token</string>
+		<key>FacebookDisplayName</key>
+		<string>ChessVerse AI</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>fbreplace-facebook-app-id</string>
+				</array>
+			</dict>
+		</array>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
 		<key>UIApplicationSceneManifest</key>
