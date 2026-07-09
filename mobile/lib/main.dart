@@ -265,10 +265,34 @@ extension DailyChallengeDifficultyDetails on DailyChallengeDifficulty {
         DailyChallengeDifficulty.hard => 'Hard - 5-step finish',
       };
 
-  int get prefixPlyCount => switch (this) {
-        DailyChallengeDifficulty.easy => 6,
-        DailyChallengeDifficulty.medium => 4,
-        DailyChallengeDifficulty.hard => 2,
+  List<String> get solutionLine => switch (this) {
+        DailyChallengeDifficulty.easy => <String>[
+            'h5f7',
+            'g8h8',
+            'c3d5',
+            'h8g8',
+            'd5e7',
+          ],
+        DailyChallengeDifficulty.medium => <String>[
+            'h5f7',
+            'g8h8',
+            'c3d5',
+            'h8g8',
+            'd5e7',
+            'g8h8',
+            'f7f8',
+          ],
+        DailyChallengeDifficulty.hard => <String>[
+            'h5f7',
+            'g8h8',
+            'c3d5',
+            'h8g8',
+            'd5e7',
+            'g8h8',
+            'f7f8',
+            'h8g8',
+            'f8g7',
+          ],
       };
 }
 
@@ -1535,46 +1559,46 @@ class _GameScreenState extends State<GameScreen> {
 
   int get _dailyPlayerMovesCompleted => (_dailyPlyIndex + 1) ~/ 2;
 
+  String? get _dailyExpectedMove => _gameMode == GameMode.daily &&
+          _dailyPlyIndex < _dailyChallenge.solution.length
+      ? _dailyChallenge.solution[_dailyPlyIndex]
+      : null;
+
+  bool get _dailyPuzzleSolved =>
+      _gameMode == GameMode.daily &&
+      _dailyPlyIndex >= _dailyChallenge.solution.length;
+
   DailyChallenge _challengeForToday(
     DailyChallengeDifficulty difficulty,
   ) {
     final DateTime today = DateTime.now().toUtc();
-    final List<String> fullLine = <String>[
-      'h2h3',
-      'h7h6',
-      'a2a3',
-      'a7a6',
-      'e2e4',
-      'e7e5',
-      'f1c4',
-      'b8c6',
-      'd1h5',
-      'g8f6',
-      'h5f7',
-    ];
-    final int prefix = difficulty.prefixPlyCount;
     final String date =
         '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
     return DailyChallenge(
       id: '$date-${difficulty.name}',
       title: 'Royal Net - ${difficulty.label}',
       difficulty: difficulty,
-      setupMoves: fullLine.take(prefix).toList(growable: false),
-      solution: fullLine.skip(prefix).toList(growable: false),
+      setupMoves: const <String>[],
+      solution: difficulty.solutionLine,
     );
   }
 
   Map<String, ChessPiece> _dailyStartingPosition(DailyChallenge challenge) {
-    Map<String, ChessPiece> position =
-        Map<String, ChessPiece>.from(_initialPieces);
-    for (final String move in challenge.setupMoves) {
-      position = ChessRules.applyMove(
-        move.substring(0, 2),
-        move.substring(2, 4),
-        position,
-      );
-    }
-    return position;
+    return <String, ChessPiece>{
+      'g1': const ChessPiece('K', true),
+      'h5': const ChessPiece('Q', true),
+      'c3': const ChessPiece('N', true),
+      'c4': const ChessPiece('B', true),
+      'a1': const ChessPiece('R', true),
+      'b2': const ChessPiece('P', true),
+      'g2': const ChessPiece('P', true),
+      'h2': const ChessPiece('P', true),
+      'g8': const ChessPiece('K', false),
+      'a8': const ChessPiece('R', false),
+      'f7': const ChessPiece('P', false),
+      'g7': const ChessPiece('P', false),
+      'h7': const ChessPiece('P', false),
+    };
   }
 
   Future<void> _editBlackPlayerName() async {
@@ -1641,6 +1665,14 @@ class _GameScreenState extends State<GameScreen> {
         final ChessPiece? piece = _pieces[square];
         if (piece == null) {
           _coachNote = 'Choose one of your coins first.';
+          return;
+        }
+        final String? expectedMove = _dailyExpectedMove;
+        if (_gameMode == GameMode.daily &&
+            expectedMove != null &&
+            square != expectedMove.substring(0, 2)) {
+          _coachNote =
+              'Daily Checkmate is a tactical line. Find the forcing coin.';
           return;
         }
         if (piece.white != whitesTurn) {
@@ -1736,10 +1768,15 @@ class _GameScreenState extends State<GameScreen> {
           _coachNote = 'Choose a promotion coin for $square.';
         } else {
           _coachNote = _gameStateNote(!piece.white, fallback: _coachNote);
-          if (_gameMode == GameMode.daily && _gameResultDetail == 'Checkmate') {
+          if (_dailyPuzzleSolved ||
+              (_gameMode == GameMode.daily &&
+                  _gameResultDetail == 'Checkmate')) {
             _gameResultTitle = 'Challenge complete';
             _gameResultDetail =
                 '${_dailyChallenge.playerMoveGoal}-move checkmate';
+            _resultVisible = true;
+            _archiveFinishedGame();
+            unawaited(ChessSoundService.instance.checkmate());
             _coachNote =
                 "Brilliant! Today's ${_dailyDifficulty.label.toLowerCase()} challenge is complete.";
           }
@@ -2085,6 +2122,10 @@ class _GameScreenState extends State<GameScreen> {
         ChessRules.safeLegalTargets(square, _pieces).toSet();
     targets.addAll(_castlingTargets(square, piece));
     targets.addAll(_enPassantTargets(square, piece));
+    final String? expectedMove = _dailyExpectedMove;
+    if (expectedMove != null && square == expectedMove.substring(0, 2)) {
+      targets.add(expectedMove.substring(2, 4));
+    }
     return targets.toList();
   }
 
@@ -2608,6 +2649,7 @@ class _GameScreenState extends State<GameScreen> {
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (BuildContext context) => const OnlineMatchmakingSheet(),
     );
   }
@@ -4626,116 +4668,139 @@ class OnlineMatchmakingSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const String roomCode = 'CV-7429';
+    final Size size = MediaQuery.sizeOf(context);
+    final bool landscape = size.width > size.height;
+    final double maxWidth = landscape ? 760 : 560;
+    final double maxHeight = size.height * (landscape ? 0.82 : 0.9);
+
     return SafeArea(
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: Color(0xFF17231F),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Row(
+      child: Align(
+        alignment: landscape ? Alignment.center : Alignment.bottomCenter,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: maxHeight),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFF17231F),
+              borderRadius: BorderRadius.vertical(
+                top: const Radius.circular(18),
+                bottom: Radius.circular(landscape ? 18 : 0),
+              ),
+            ),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                22,
+                landscape ? 16 : 18,
+                22,
+                landscape ? 18 : 28,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  const Icon(Icons.public_rounded,
-                      size: 34, color: Color(0xFF63D2B8)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Online 2 Players',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Mock lobby is ready now. Real-time rooms will connect after VPS/WebSocket deployment.',
-              ),
-              const SizedBox(height: 16),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF242128),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFF6C5530)),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  Row(
                     children: <Widget>[
-                      const Text('Invite room code'),
-                      const SizedBox(height: 8),
-                      SelectableText(
-                        roomCode,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineMedium
-                            ?.copyWith(
-                              color: const Color(0xFFD6A84F),
-                              letterSpacing: 2,
-                            ),
+                      const Icon(
+                        Icons.public_rounded,
+                        size: 34,
+                        color: Color(0xFF63D2B8),
                       ),
-                      const SizedBox(height: 10),
-                      FilledButton.icon(
-                        onPressed: () {
-                          Clipboard.setData(
-                              const ClipboardData(text: roomCode));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Invite code copied')),
-                          );
-                        },
-                        icon: const Icon(Icons.copy_rounded),
-                        label: const Text('Copy invite code'),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Online 2 Players',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close_rounded),
                       ),
                     ],
                   ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Join code',
-                  prefixIcon: Icon(Icons.login_rounded),
-                  border: OutlineInputBorder(),
-                ),
-                textCapitalization: TextCapitalization.characters,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.group_add_rounded),
-                      label: const Text('Create room'),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Mock lobby is ready now. Real-time rooms will connect after VPS/WebSocket deployment.',
+                  ),
+                  const SizedBox(height: 16),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF242128),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF6C5530)),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          const Text('Invite room code'),
+                          const SizedBox(height: 8),
+                          SelectableText(
+                            roomCode,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineMedium
+                                ?.copyWith(
+                                  color: const Color(0xFFD6A84F),
+                                  letterSpacing: 2,
+                                  fontSize: landscape ? 30 : null,
+                                ),
+                          ),
+                          const SizedBox(height: 10),
+                          FilledButton.icon(
+                            onPressed: () {
+                              Clipboard.setData(
+                                const ClipboardData(text: roomCode),
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Invite code copied'),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.copy_rounded),
+                            label: const Text('Copy invite code'),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.sports_esports_rounded),
-                      label: const Text('Join mock'),
+                  const SizedBox(height: 14),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: 'Join code',
+                      prefixIcon: Icon(Icons.login_rounded),
+                      border: OutlineInputBorder(),
                     ),
+                    textCapitalization: TextCapitalization.characters,
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: <Widget>[
+                      OutlinedButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.group_add_rounded),
+                        label: const Text('Create room'),
+                      ),
+                      FilledButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.sports_esports_rounded),
+                        label: const Text('Join mock'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Waiting screen, room code, and invite flow are local UI only until backend is live.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Color(0xFFAAA69E), fontSize: 12),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Waiting screen, room code, and invite flow are local UI only until backend is live.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFFAAA69E), fontSize: 12),
-              ),
-            ],
+            ),
           ),
         ),
       ),

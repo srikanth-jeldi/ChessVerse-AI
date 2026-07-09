@@ -320,13 +320,14 @@ class _QuickActionsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool wide = AppBreakpoints.isTabletOrLarger(context);
     return GridView.count(
-      crossAxisCount: AppBreakpoints.isTabletOrLarger(context) ? 3 : 2,
+      crossAxisCount: wide ? 3 : 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      childAspectRatio: 1.18,
+      childAspectRatio: wide ? 0.94 : 1.02,
       children: <Widget>[
         _ActionTile(
           icon: Icons.smart_toy_rounded,
@@ -407,9 +408,19 @@ class _ActionTile extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(title, style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 3),
-              Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ],
           ),
         ],
