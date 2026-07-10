@@ -151,14 +151,15 @@ class BrandedSplash extends StatelessWidget {
       backgroundColor: const Color(0xFF02070D),
       body: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          final bool wide = constraints.maxWidth > constraints.maxHeight;
+          final bool useWideSplash =
+              constraints.maxWidth >= 600 || constraints.maxWidth <= 0;
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
               Image(
                 key: const ValueKey<String>('branded-splash-image'),
                 image: AssetImage(
-                  wide
+                  useWideSplash
                       ? 'assets/branding/splash_screen_wide.png'
                       : 'assets/branding/splash_screen_mobile.png',
                 ),
@@ -5581,11 +5582,7 @@ class GameResultOverlay extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    draw
-                        ? '½ - ½'
-                        : (whiteWin
-                            ? '1 - 0'
-                            : '0 - 1'),
+                    draw ? '½ - ½' : (whiteWin ? '1 - 0' : '0 - 1'),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                           color: const Color(0xFFD6A84F),
