@@ -1716,7 +1716,7 @@ class _GameScreenState extends State<GameScreen> {
     if (!_dailyCompletedToday || _gameMode != GameMode.daily) {
       return;
     }
-    _gameResultTitle = 'Daily challenge complete';
+    _gameResultTitle = 'Challenge complete';
     _gameResultDetail = 'Come back tomorrow for a new checkmate puzzle';
     _resultVisible = true;
     _coachNote =
@@ -2466,7 +2466,7 @@ class _GameScreenState extends State<GameScreen> {
               : 'Checkmate in ${challenge.playerMoveGoal} moves. Find the first move.'
           : 'Select a coin to see legal moves.';
       _gameResultTitle = completedToday && _gameMode == GameMode.daily
-          ? 'Daily challenge complete'
+          ? 'Challenge complete'
           : null;
       _gameResultDetail = completedToday && _gameMode == GameMode.daily
           ? 'Come back tomorrow for a new checkmate puzzle'
@@ -5542,6 +5542,8 @@ class GameResultOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool draw = title.toLowerCase().contains('draw');
+    final bool whiteWin = title.startsWith('White') ||
+        title.toLowerCase().contains('challenge complete');
     return ColoredBox(
       color: Colors.black.withValues(alpha: 0.72),
       child: Center(
@@ -5581,8 +5583,7 @@ class GameResultOverlay extends StatelessWidget {
                   Text(
                     draw
                         ? '½ - ½'
-                        : (title.startsWith('White') ||
-                                title == 'Challenge complete'
+                        : (whiteWin
                             ? '1 - 0'
                             : '0 - 1'),
                     textAlign: TextAlign.center,
