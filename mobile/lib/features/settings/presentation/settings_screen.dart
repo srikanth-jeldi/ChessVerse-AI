@@ -5,6 +5,7 @@ import '../../../core/layout/responsive_page.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_button.dart';
 import '../../../core/widgets/chessverse_card.dart';
+import '../../legal/presentation/legal_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -29,7 +30,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Game preferences', style: Theme.of(context).textTheme.titleLarge),
+            Text('Game preferences',
+                style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             ChessVerseCard(
               child: Column(
@@ -50,7 +52,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Move hints',
                     subtitle: 'Show legal move and daily challenge hints',
                     value: _hintsEnabled,
-                    onChanged: (bool value) => setState(() => _hintsEnabled = value),
+                    onChanged: (bool value) =>
+                        setState(() => _hintsEnabled = value),
                   ),
                   const Divider(color: AppColors.border),
                   _SettingSwitch(
@@ -58,7 +61,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Show coordinates',
                     subtitle: 'Display a-h and 1-8 board labels',
                     value: _coordinatesEnabled,
-                    onChanged: (bool value) => setState(() => _coordinatesEnabled = value),
+                    onChanged: (bool value) =>
+                        setState(() => _coordinatesEnabled = value),
                   ),
                   const Divider(color: AppColors.border),
                   _SettingSwitch(
@@ -66,7 +70,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'AI coach',
                     subtitle: 'Explain moves and tactical ideas',
                     value: _coachEnabled,
-                    onChanged: (bool value) => setState(() => _coachEnabled = value),
+                    onChanged: (bool value) =>
+                        setState(() => _coachEnabled = value),
                   ),
                   const Divider(color: AppColors.border),
                   _SettingSwitch(
@@ -74,7 +79,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Animations',
                     subtitle: 'Board highlights and smooth transitions',
                     value: _animationsEnabled,
-                    onChanged: (bool value) => setState(() => _animationsEnabled = value),
+                    onChanged: (bool value) =>
+                        setState(() => _animationsEnabled = value),
                   ),
                 ],
               ),
@@ -114,13 +120,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _ActionRow(
                     icon: Icons.privacy_tip_rounded,
                     title: 'Privacy Policy',
-                    onTap: () => _showMessage(context, 'Privacy Policy coming soon.'),
+                    onTap: () => _openLegal(context, LegalPageType.privacy),
                   ),
                   const Divider(color: AppColors.border),
                   _ActionRow(
                     icon: Icons.description_rounded,
                     title: 'Terms of Service',
-                    onTap: () => _showMessage(context, 'Terms of Service coming soon.'),
+                    onTap: () => _openLegal(context, LegalPageType.terms),
                   ),
                 ],
               ),
@@ -129,7 +135,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ChessVerseButton(
               label: 'Logout preview',
               icon: Icons.logout_rounded,
-              onPressed: () => _showMessage(context, 'Logout will be connected to real auth later.'),
+              onPressed: () => _showMessage(
+                  context, 'Logout will be connected to real auth later.'),
             ),
           ],
         ),
@@ -138,7 +145,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _openLegal(BuildContext context, LegalPageType type) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => LegalScreen(type: type),
+      ),
+    );
   }
 }
 
@@ -171,7 +187,8 @@ class _SettingSwitch extends StatelessWidget {
 }
 
 class _SettingRow extends StatelessWidget {
-  const _SettingRow({required this.icon, required this.title, required this.value});
+  const _SettingRow(
+      {required this.icon, required this.title, required this.value});
 
   final IconData icon;
   final String title;
@@ -189,7 +206,8 @@ class _SettingRow extends StatelessWidget {
 }
 
 class _ActionRow extends StatelessWidget {
-  const _ActionRow({required this.icon, required this.title, required this.onTap});
+  const _ActionRow(
+      {required this.icon, required this.title, required this.onTap});
 
   final IconData icon;
   final String title;

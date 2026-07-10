@@ -170,22 +170,7 @@ class _WideHomeLayout extends StatelessWidget {
           children: <Widget>[
             Expanded(
               flex: 6,
-              child: Column(
-                children: <Widget>[
-                  _HeroPlayCard(onPlayVsAi: onPlayVsAi),
-                  const SizedBox(height: 18),
-                  _QuickActionsGrid(
-                    onPlayVsAi: onPlayVsAi,
-                    onDailyChallenge: onDailyChallenge,
-                    onLocalGame: onLocalGame,
-                    onAnalysis: onAnalysis,
-                    onPuzzles: onPuzzles,
-                    onSavedGames: onSavedGames,
-                    onProfile: onProfile,
-                    onSettings: onSettings,
-                  ),
-                ],
-              ),
+              child: _HeroPlayCard(onPlayVsAi: onPlayVsAi),
             ),
             const SizedBox(width: 22),
             Expanded(
@@ -197,6 +182,17 @@ class _WideHomeLayout extends StatelessWidget {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 18),
+        _QuickActionsGrid(
+          onPlayVsAi: onPlayVsAi,
+          onDailyChallenge: onDailyChallenge,
+          onLocalGame: onLocalGame,
+          onAnalysis: onAnalysis,
+          onPuzzles: onPuzzles,
+          onSavedGames: onSavedGames,
+          onProfile: onProfile,
+          onSettings: onSettings,
         ),
       ],
     );
@@ -322,12 +318,12 @@ class _QuickActionsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool wide = AppBreakpoints.isTabletOrLarger(context);
     return GridView.count(
-      crossAxisCount: wide ? 3 : 2,
+      crossAxisCount: wide ? 4 : 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      childAspectRatio: wide ? 0.94 : 1.02,
+      childAspectRatio: wide ? 1.45 : 1.02,
       children: <Widget>[
         _ActionTile(
           icon: Icons.smart_toy_rounded,

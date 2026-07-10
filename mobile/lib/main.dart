@@ -28,6 +28,7 @@ Future<void> main() async {
       DeviceOrientation.landscapeRight,
     ],
   );
+  await LocalGameArchive.init();
   AppConfig.validate();
   runApp(const ChessVerseApp());
 }
@@ -150,14 +151,15 @@ class BrandedSplash extends StatelessWidget {
       backgroundColor: const Color(0xFF02070D),
       body: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          final bool wide = constraints.maxWidth > constraints.maxHeight;
+          final bool useWideSplash =
+              constraints.maxWidth >= 600 || constraints.maxWidth <= 0;
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
               Image(
                 key: const ValueKey<String>('branded-splash-image'),
                 image: AssetImage(
-                  wide
+                  useWideSplash
                       ? 'assets/branding/splash_screen_wide.png'
                       : 'assets/branding/splash_screen_mobile.png',
                 ),
@@ -264,36 +266,6 @@ extension DailyChallengeDifficultyDetails on DailyChallengeDifficulty {
         DailyChallengeDifficulty.medium => 'Medium - 4-step finish',
         DailyChallengeDifficulty.hard => 'Hard - 5-step finish',
       };
-
-  List<String> get solutionLine => switch (this) {
-        DailyChallengeDifficulty.easy => <String>[
-            'h5f7',
-            'g8h8',
-            'c3d5',
-            'h8g8',
-            'd5e7',
-          ],
-        DailyChallengeDifficulty.medium => <String>[
-            'h5f7',
-            'g8h8',
-            'c3d5',
-            'h8g8',
-            'd5e7',
-            'g8h8',
-            'f7f8',
-          ],
-        DailyChallengeDifficulty.hard => <String>[
-            'h5f7',
-            'g8h8',
-            'c3d5',
-            'h8g8',
-            'd5e7',
-            'g8h8',
-            'f7f8',
-            'h8g8',
-            'f8g7',
-          ],
-      };
 }
 
 class DailyChallenge {
@@ -301,6 +273,7 @@ class DailyChallenge {
     required this.id,
     required this.title,
     required this.difficulty,
+    required this.pattern,
     required this.setupMoves,
     required this.solution,
   });
@@ -308,6 +281,7 @@ class DailyChallenge {
   final String id;
   final String title;
   final DailyChallengeDifficulty difficulty;
+  final int pattern;
   final List<String> setupMoves;
   final List<String> solution;
 
@@ -353,6 +327,8 @@ class PositionAnalysis {
     required this.legalMoves,
     required this.captures,
     required this.bestMove,
+    required this.quality,
+    required this.coachLine,
     required this.inCheck,
   });
 
@@ -362,6 +338,8 @@ class PositionAnalysis {
   final int legalMoves;
   final int captures;
   final String? bestMove;
+  final String quality;
+  final String coachLine;
   final bool inCheck;
 }
 
@@ -790,6 +768,7 @@ class _GameScreenState extends State<GameScreen> {
   bool _showMoveHints = true;
   DailyChallengeDifficulty _dailyDifficulty = DailyChallengeDifficulty.medium;
   late DailyChallenge _dailyChallenge;
+  bool _dailyCompletedToday = false;
   int _dailyPlyIndex = 0;
   int _dailyMistakes = 0;
 
@@ -835,7 +814,12 @@ class _GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     _dailyChallenge = _challengeForToday(_dailyDifficulty);
+    _dailyCompletedToday =
+        LocalGameArchive.isDailyChallengeComplete(_dailyChallenge.id);
     _gameMode = widget.initialGameMode;
+    _pieces = _gameMode == GameMode.daily
+        ? _dailyStartingPosition(_dailyChallenge)
+        : Map<String, ChessPiece>.from(_initialPieces);
     _blackPlayerName = switch (_gameMode) {
       GameMode.computer => 'ChessVerse AI',
       GameMode.daily => 'Puzzle Defense',
@@ -848,6 +832,13 @@ class _GameScreenState extends State<GameScreen> {
       _whitePlayerName = widget.initialPlayerName!.trim();
     } else if (widget.initiallySignedIn) {
       _whitePlayerName = 'Guest Player';
+    }
+    if (_gameMode == GameMode.daily) {
+      _applyDailyCompletionState();
+      if (!_dailyCompletedToday) {
+        _coachNote =
+            'Checkmate in ${_dailyChallenge.playerMoveGoal} moves. Find the first move.';
+      }
     }
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted || _moves.isEmpty || _gameResultTitle != null) {
@@ -1029,9 +1020,7 @@ class _GameScreenState extends State<GameScreen> {
                         bottom: 0,
                         right: widePanelWidth + 8,
                         child: Align(
-                          alignment: _controlsExpanded
-                              ? Alignment.center
-                              : Alignment.centerRight,
+                          alignment: Alignment.center,
                           child: SizedBox(
                             width: boardDimension,
                             height: boardDimension,
@@ -1572,33 +1561,167 @@ class _GameScreenState extends State<GameScreen> {
     DailyChallengeDifficulty difficulty,
   ) {
     final DateTime today = DateTime.now().toUtc();
+    final DateTime dayKey = DateTime.utc(today.year, today.month, today.day);
+    final int seed = dayKey.difference(DateTime.utc(2026)).inDays;
+    final int pattern = seed % 3;
     final String date =
         '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    final String title = switch (pattern) {
+      0 => 'Royal Net',
+      1 => 'Back Rank Spark',
+      _ => 'Moonlight Mate',
+    };
     return DailyChallenge(
-      id: '$date-${difficulty.name}',
-      title: 'Royal Net - ${difficulty.label}',
+      id: '$date-${difficulty.name}-p$pattern',
+      title: '$title - ${difficulty.label}',
       difficulty: difficulty,
+      pattern: pattern,
       setupMoves: const <String>[],
-      solution: difficulty.solutionLine,
+      solution: _dailySolutionLine(difficulty, pattern),
     );
   }
 
-  Map<String, ChessPiece> _dailyStartingPosition(DailyChallenge challenge) {
-    return <String, ChessPiece>{
-      'g1': const ChessPiece('K', true),
-      'h5': const ChessPiece('Q', true),
-      'c3': const ChessPiece('N', true),
-      'c4': const ChessPiece('B', true),
-      'a1': const ChessPiece('R', true),
-      'b2': const ChessPiece('P', true),
-      'g2': const ChessPiece('P', true),
-      'h2': const ChessPiece('P', true),
-      'g8': const ChessPiece('K', false),
-      'a8': const ChessPiece('R', false),
-      'f7': const ChessPiece('P', false),
-      'g7': const ChessPiece('P', false),
-      'h7': const ChessPiece('P', false),
+  List<String> _dailySolutionLine(
+    DailyChallengeDifficulty difficulty,
+    int pattern,
+  ) {
+    final List<List<String>> lines = switch (pattern) {
+      0 => <List<String>>[
+          <String>['h5f7', 'g8h8', 'c3d5', 'h8g8', 'd5e7'],
+          <String>[
+            'h5f7',
+            'g8h8',
+            'c3d5',
+            'h8g8',
+            'd5e7',
+            'g8h8',
+            'f7f8',
+          ],
+          <String>[
+            'h5f7',
+            'g8h8',
+            'c3d5',
+            'h8g8',
+            'd5e7',
+            'g8h8',
+            'f7f8',
+            'h8g8',
+            'f8g7',
+          ],
+        ],
+      1 => <List<String>>[
+          <String>['d5e7', 'g8h8', 'd1h5', 'h8g8', 'h5f7'],
+          <String>[
+            'd5e7',
+            'g8h8',
+            'd1h5',
+            'h8g8',
+            'h5f7',
+            'g8h8',
+            'f7f8',
+          ],
+          <String>[
+            'd5e7',
+            'g8h8',
+            'd1h5',
+            'h8g8',
+            'h5f7',
+            'g8h8',
+            'f7f8',
+            'h8g8',
+            'e7g6',
+          ],
+        ],
+      _ => <List<String>>[
+          <String>['g5f7', 'g8h8', 'b3f7', 'h8g8', 'f7f8'],
+          <String>[
+            'g5f7',
+            'g8h8',
+            'b3f7',
+            'h8g8',
+            'f7f8',
+            'g8h8',
+            'e1e8',
+          ],
+          <String>[
+            'g5f7',
+            'g8h8',
+            'b3f7',
+            'h8g8',
+            'f7f8',
+            'g8h8',
+            'e1e8',
+            'h8g8',
+            'e8e7',
+          ],
+        ],
     };
+    return switch (difficulty) {
+      DailyChallengeDifficulty.easy => lines[0],
+      DailyChallengeDifficulty.medium => lines[1],
+      DailyChallengeDifficulty.hard => lines[2],
+    };
+  }
+
+  Map<String, ChessPiece> _dailyStartingPosition(DailyChallenge challenge) {
+    return switch (challenge.pattern) {
+      0 => <String, ChessPiece>{
+          'g1': const ChessPiece('K', true),
+          'h5': const ChessPiece('Q', true),
+          'c3': const ChessPiece('N', true),
+          'c4': const ChessPiece('B', true),
+          'a1': const ChessPiece('R', true),
+          'b2': const ChessPiece('P', true),
+          'g2': const ChessPiece('P', true),
+          'h2': const ChessPiece('P', true),
+          'g8': const ChessPiece('K', false),
+          'a8': const ChessPiece('R', false),
+          'f7': const ChessPiece('P', false),
+          'g7': const ChessPiece('P', false),
+          'h7': const ChessPiece('P', false),
+        },
+      1 => <String, ChessPiece>{
+          'g1': const ChessPiece('K', true),
+          'd1': const ChessPiece('Q', true),
+          'e1': const ChessPiece('R', true),
+          'c4': const ChessPiece('B', true),
+          'd5': const ChessPiece('N', true),
+          'g2': const ChessPiece('P', true),
+          'h2': const ChessPiece('P', true),
+          'g8': const ChessPiece('K', false),
+          'd8': const ChessPiece('Q', false),
+          'a8': const ChessPiece('R', false),
+          'f7': const ChessPiece('P', false),
+          'g7': const ChessPiece('P', false),
+          'h7': const ChessPiece('P', false),
+        },
+      _ => <String, ChessPiece>{
+          'g1': const ChessPiece('K', true),
+          'b3': const ChessPiece('Q', true),
+          'a1': const ChessPiece('R', true),
+          'e1': const ChessPiece('R', true),
+          'c4': const ChessPiece('B', true),
+          'g5': const ChessPiece('N', true),
+          'g2': const ChessPiece('P', true),
+          'h2': const ChessPiece('P', true),
+          'g8': const ChessPiece('K', false),
+          'a8': const ChessPiece('R', false),
+          'f7': const ChessPiece('P', false),
+          'g7': const ChessPiece('P', false),
+          'h7': const ChessPiece('P', false),
+        },
+    };
+  }
+
+  void _applyDailyCompletionState() {
+    if (!_dailyCompletedToday || _gameMode != GameMode.daily) {
+      return;
+    }
+    _gameResultTitle = 'Challenge complete';
+    _gameResultDetail = 'Come back tomorrow for a new checkmate puzzle';
+    _resultVisible = true;
+    _coachNote =
+        "Today's Daily Checkmate is complete. A new challenge unlocks tomorrow.";
   }
 
   Future<void> _editBlackPlayerName() async {
@@ -1665,6 +1788,7 @@ class _GameScreenState extends State<GameScreen> {
         final ChessPiece? piece = _pieces[square];
         if (piece == null) {
           _coachNote = 'Choose one of your coins first.';
+          unawaited(ChessSoundService.instance.error());
           return;
         }
         final String? expectedMove = _dailyExpectedMove;
@@ -1673,26 +1797,31 @@ class _GameScreenState extends State<GameScreen> {
             square != expectedMove.substring(0, 2)) {
           _coachNote =
               'Daily Checkmate is a tactical line. Find the forcing coin.';
+          unawaited(ChessSoundService.instance.error());
           return;
         }
         if (piece.white != whitesTurn) {
           _coachNote = '${whitesTurn ? 'White' : 'Black'} to move.';
+          unawaited(ChessSoundService.instance.error());
           return;
         }
         final List<String> targets = _legalTargetsFor(square);
         if (targets.isEmpty) {
           _coachNote = '${piece.code} has no legal target from $square.';
+          unawaited(ChessSoundService.instance.error());
         } else {
           _selectedSquare = square;
           final String suffix = targets.length == 1 ? '' : 's';
           _coachNote =
               '${piece.code} from $square has ${targets.length} option$suffix.';
+          unawaited(ChessSoundService.instance.tap());
         }
         return;
       }
 
       if (_selectedSquare == square) {
         _selectedSquare = null;
+        unawaited(ChessSoundService.instance.tap());
         return;
       }
 
@@ -1700,6 +1829,7 @@ class _GameScreenState extends State<GameScreen> {
       if (!legalTargets.contains(square)) {
         _coachNote = 'That move is blocked. Pick a highlighted square.';
         _selectedSquare = null;
+        unawaited(ChessSoundService.instance.error());
         return;
       }
 
@@ -1711,6 +1841,7 @@ class _GameScreenState extends State<GameScreen> {
           _coachNote =
               'Not the mating line. Try again - the position is unchanged.';
           _selectedSquare = null;
+          unawaited(ChessSoundService.instance.error());
           return;
         }
       }
@@ -1775,6 +1906,8 @@ class _GameScreenState extends State<GameScreen> {
             _gameResultDetail =
                 '${_dailyChallenge.playerMoveGoal}-move checkmate';
             _resultVisible = true;
+            _dailyCompletedToday = true;
+            LocalGameArchive.markDailyChallengeComplete(_dailyChallenge.id);
             _archiveFinishedGame();
             unawaited(ChessSoundService.instance.checkmate());
             _coachNote =
@@ -2306,11 +2439,14 @@ class _GameScreenState extends State<GameScreen> {
 
   void _reset() {
     final DailyChallenge challenge = _challengeForToday(_dailyDifficulty);
+    final bool completedToday =
+        LocalGameArchive.isDailyChallengeComplete(challenge.id);
     final Map<String, ChessPiece> resetPieces = _gameMode == GameMode.daily
         ? _dailyStartingPosition(challenge)
         : Map<String, ChessPiece>.from(_initialPieces);
     setState(() {
       _dailyChallenge = challenge;
+      _dailyCompletedToday = completedToday;
       _dailyPlyIndex = 0;
       _dailyMistakes = 0;
       _pieces = resetPieces;
@@ -2326,10 +2462,16 @@ class _GameScreenState extends State<GameScreen> {
       _selectedSquare = null;
       _aiThinking = false;
       _coachNote = _gameMode == GameMode.daily
-          ? 'Checkmate in ${challenge.playerMoveGoal} moves. Find the first move.'
+          ? completedToday
+              ? "Today's Daily Checkmate is complete. A new challenge unlocks tomorrow."
+              : 'Checkmate in ${challenge.playerMoveGoal} moves. Find the first move.'
           : 'Select a coin to see legal moves.';
-      _gameResultTitle = null;
-      _gameResultDetail = null;
+      _gameResultTitle = completedToday && _gameMode == GameMode.daily
+          ? 'Challenge complete'
+          : null;
+      _gameResultDetail = completedToday && _gameMode == GameMode.daily
+          ? 'Come back tomorrow for a new checkmate puzzle'
+          : null;
       _resultVisible = true;
       _resultSaved = false;
       _checkWarningActive = false;
@@ -2605,6 +2747,25 @@ class _GameScreenState extends State<GameScreen> {
 
     final double evaluation =
         material + (whiteToMove ? legalMoveCount : -legalMoveCount) * 0.03;
+    final double bestScore = bestMove?.score ?? 0;
+    final String quality = bestMove == null
+        ? 'No move'
+        : bestScore >= 14
+            ? 'Best move'
+            : bestScore >= 7
+                ? 'Good move'
+                : bestScore >= 3
+                    ? 'Ordinary move'
+                    : 'Quiet move';
+    final String coachLine = bestMove == null
+        ? 'No legal move is available in this position.'
+        : bestScore >= 14
+            ? 'This move creates a strong tactical threat or wins material.'
+            : bestScore >= 7
+                ? 'This is a healthy move: it improves the position and keeps pressure.'
+                : bestScore >= 3
+                    ? 'Playable, but keep looking for forcing checks, captures, or threats.'
+                    : 'Safe but quiet. A sharper move may exist if you calculate forcing lines.';
     return PositionAnalysis(
       side: whiteToMove ? 'White' : 'Black',
       evaluation: evaluation,
@@ -2612,6 +2773,8 @@ class _GameScreenState extends State<GameScreen> {
       legalMoves: legalMoveCount,
       captures: captureCount,
       bestMove: bestMove == null ? null : '${bestMove.from} to ${bestMove.to}',
+      quality: quality,
+      coachLine: coachLine,
       inCheck: ChessRules.isKingInCheck(whiteToMove, _pieces),
     );
   }
@@ -4558,7 +4721,7 @@ class PositionAnalysisSheet extends StatelessWidget {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Position analysis',
+                          'AI Agent Coach',
                           style: Theme.of(context).textTheme.headlineSmall,
                         ),
                       ),
@@ -4584,6 +4747,11 @@ class PositionAnalysisSheet extends StatelessWidget {
                     icon: Icons.gps_fixed_rounded,
                     label: 'Immediate captures',
                     value: '${analysis.captures}',
+                  ),
+                  AnalysisMetric(
+                    icon: Icons.auto_graph_rounded,
+                    label: 'Move quality',
+                    value: analysis.quality,
                   ),
                   AnalysisMetric(
                     icon: analysis.inCheck
@@ -4614,7 +4782,7 @@ class PositionAnalysisSheet extends StatelessWidget {
                             child: Text(
                               analysis.bestMove == null
                                   ? 'No legal move'
-                                  : 'Recommended: ${analysis.bestMove}',
+                                  : 'Recommended: ${analysis.bestMove}\n${analysis.coachLine}',
                               style: const TextStyle(
                                 fontWeight: FontWeight.w800,
                               ),
@@ -4719,9 +4887,53 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Mock lobby is ready now. Real-time rooms will connect after VPS/WebSocket deployment.',
+                    'Choose Play with Friend using a room code, or Random Match to pair with another online player after VPS/WebSocket deployment.',
                   ),
                   const SizedBox(height: 16),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: <Color>[Color(0xFF3B2376), Color(0xFF10251E)],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF8B7147)),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          Row(
+                            children: <Widget>[
+                              const Icon(
+                                Icons.travel_explore_rounded,
+                                color: Color(0xFFD6A84F),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Random Match',
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                ),
+                              ),
+                              const Chip(label: Text('Coming soon')),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Auto-match with any available ChessVerse player worldwide.',
+                          ),
+                          const SizedBox(height: 10),
+                          FilledButton.icon(
+                            onPressed: () {},
+                            icon: const Icon(Icons.bolt_rounded),
+                            label: const Text('Find random player'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   DecoratedBox(
                     decoration: BoxDecoration(
                       color: const Color(0xFF242128),
@@ -4733,7 +4945,7 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
-                          const Text('Invite room code'),
+                          const Text('Play with Friend - invite room code'),
                           const SizedBox(height: 8),
                           SelectableText(
                             roomCode,
@@ -5331,6 +5543,8 @@ class GameResultOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool draw = title.toLowerCase().contains('draw');
+    final bool whiteWin = title.startsWith('White') ||
+        title.toLowerCase().contains('challenge complete');
     return ColoredBox(
       color: Colors.black.withValues(alpha: 0.72),
       child: Center(
@@ -5368,12 +5582,7 @@ class GameResultOverlay extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    draw
-                        ? '½ - ½'
-                        : (title.startsWith('White') ||
-                                title == 'Challenge complete'
-                            ? '1 - 0'
-                            : '0 - 1'),
+                    draw ? '½ - ½' : (whiteWin ? '1 - 0' : '0 - 1'),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                           color: const Color(0xFFD6A84F),
