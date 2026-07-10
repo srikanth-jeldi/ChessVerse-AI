@@ -28,6 +28,7 @@ Future<void> main() async {
       DeviceOrientation.landscapeRight,
     ],
   );
+  await LocalGameArchive.init();
   AppConfig.validate();
   runApp(const ChessVerseApp());
 }

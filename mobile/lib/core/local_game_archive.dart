@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 class SavedGameRecord {
   const SavedGameRecord({
     required this.mode,
@@ -46,6 +50,9 @@ class LocalGameStats {
 class LocalGameArchive {
   LocalGameArchive._();
 
+  static const FlutterSecureStorage _storage = FlutterSecureStorage();
+  static const String _completedDailyKey =
+      'chessverse_completed_daily_challenges';
   static final List<SavedGameRecord> _games = <SavedGameRecord>[];
   static final Set<String> _completedDailyChallengeIds = <String>{};
   static int _dailySolved = 0;
@@ -54,6 +61,19 @@ class LocalGameArchive {
 
   static List<SavedGameRecord> get games =>
       List<SavedGameRecord>.unmodifiable(_games);
+
+  static Future<void> init() async {
+    final String? raw = await _storage.read(key: _completedDailyKey);
+    if (raw == null || raw.trim().isEmpty) {
+      return;
+    }
+    _completedDailyChallengeIds.addAll(
+      raw
+          .split(',')
+          .map((String id) => id.trim())
+          .where((String id) => id.isNotEmpty),
+    );
+  }
 
   static void addGame(SavedGameRecord record) {
     _games.insert(0, record);
@@ -71,6 +91,12 @@ class LocalGameArchive {
       _dailySolved++;
       _puzzlesSolved++;
       _dailyStreak = _dailyStreak == 0 ? 1 : _dailyStreak + 1;
+      unawaited(
+        _storage.write(
+          key: _completedDailyKey,
+          value: _completedDailyChallengeIds.join(','),
+        ),
+      );
     }
   }
 
