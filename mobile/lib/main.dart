@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -151,8 +152,9 @@ class BrandedSplash extends StatelessWidget {
       backgroundColor: const Color(0xFF02070D),
       body: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          final bool useWideSplash =
-              constraints.maxWidth >= 600 || constraints.maxWidth <= 0;
+          final bool useWideSplash = kIsWeb ||
+              constraints.maxWidth >= 600 ||
+              constraints.maxWidth <= 0;
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
