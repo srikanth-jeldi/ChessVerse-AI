@@ -39,25 +39,35 @@ class LocalGameStats {
   final int puzzlesSolved;
   final int dailyStreak;
 
-  int get winRate => gamesPlayed == 0 ? 0 : ((wins / gamesPlayed) * 100).round();
+  int get winRate =>
+      gamesPlayed == 0 ? 0 : ((wins / gamesPlayed) * 100).round();
 }
 
 class LocalGameArchive {
   LocalGameArchive._();
 
   static final List<SavedGameRecord> _games = <SavedGameRecord>[];
+  static final Set<String> _completedDailyChallengeIds = <String>{};
   static int _dailySolved = 0;
   static int _puzzlesSolved = 0;
   static int _dailyStreak = 0;
 
-  static List<SavedGameRecord> get games => List<SavedGameRecord>.unmodifiable(_games);
+  static List<SavedGameRecord> get games =>
+      List<SavedGameRecord>.unmodifiable(_games);
 
   static void addGame(SavedGameRecord record) {
     _games.insert(0, record);
     if (_games.length > 50) {
       _games.removeLast();
     }
-    if (record.mode == 'Daily Checkmate' && record.result.contains('complete')) {
+  }
+
+  static bool isDailyChallengeComplete(String challengeId) {
+    return _completedDailyChallengeIds.contains(challengeId);
+  }
+
+  static void markDailyChallengeComplete(String challengeId) {
+    if (_completedDailyChallengeIds.add(challengeId)) {
       _dailySolved++;
       _puzzlesSolved++;
       _dailyStreak = _dailyStreak == 0 ? 1 : _dailyStreak + 1;
@@ -76,7 +86,8 @@ class LocalGameArchive {
       final String result = game.result.toLowerCase();
       if (result.contains('draw')) {
         draws++;
-      } else if (result.contains('white wins') || result.contains('challenge complete')) {
+      } else if (result.contains('white wins') ||
+          result.contains('challenge complete')) {
         wins++;
       } else if (result.contains('black wins')) {
         losses++;
