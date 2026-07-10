@@ -4265,26 +4265,29 @@ class GamePanel extends StatelessWidget {
 
         final List<Widget> expandedOnlyControls = <Widget>[
           const SizedBox(height: 18),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: <Widget>[
-              Expanded(
-                child: OutlinedButton.icon(
+              SizedBox(
+                width: compact ? 116 : 132,
+                child: _PanelActionButton(
                   onPressed: onMoveHistory,
                   icon: const Icon(Icons.history_rounded),
                   label: const Text('History'),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
+              SizedBox(
+                width: compact ? 100 : 118,
+                child: _PanelActionButton(
                   onPressed: onOfferDraw,
                   icon: const Icon(Icons.handshake_rounded),
                   label: const Text('Draw'),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
+              SizedBox(
+                width: compact ? 108 : 124,
+                child: _PanelActionButton(
                   onPressed: onResign,
                   icon: const Icon(Icons.flag_rounded),
                   label: const Text('Resign'),
@@ -4478,6 +4481,38 @@ class GamePanel extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _PanelActionButton extends StatelessWidget {
+  const _PanelActionButton({
+    required this.onPressed,
+    required this.icon,
+    required this.label,
+  });
+
+  final VoidCallback onPressed;
+  final Widget icon;
+  final Widget label;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: IconTheme.merge(
+        data: const IconThemeData(size: 18),
+        child: icon,
+      ),
+      label: DefaultTextStyle.merge(
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        child: label,
+      ),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        minimumSize: const Size(0, 50),
+      ),
     );
   }
 }
