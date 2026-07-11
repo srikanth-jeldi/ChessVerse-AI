@@ -62,7 +62,8 @@ void main() {
     );
   });
 
-  testWidgets('screen gallery - onboarding landscape', (WidgetTester tester) async {
+  testWidgets('screen gallery - onboarding landscape',
+      (WidgetTester tester) async {
     await _setLandscape(tester);
     await tester.pumpWidget(_app(OnboardingScreen(onComplete: () {})));
     await tester.pumpAndSettle();
@@ -104,6 +105,7 @@ void main() {
           onAnalysis: () {},
           onPuzzles: () {},
           onSavedGames: () {},
+          onLearnChess: () {},
           onProfile: () {},
           onSettings: () {},
         ),
@@ -128,6 +130,7 @@ void main() {
           onAnalysis: () {},
           onPuzzles: () {},
           onSavedGames: () {},
+          onLearnChess: () {},
           onProfile: () {},
           onSettings: () {},
         ),
