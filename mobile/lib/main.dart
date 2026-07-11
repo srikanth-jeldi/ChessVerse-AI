@@ -64,9 +64,14 @@ class _SplashGateState extends State<SplashGate> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer(const Duration(milliseconds: 1500), () {
+    _timer = Timer(const Duration(milliseconds: 1300), () {
       if (mounted) {
-        setState(() => _stage = _RootStage.onboarding);
+        setState(() => _stage = _RootStage.loading);
+        _timer = Timer(const Duration(milliseconds: 1200), () {
+          if (mounted) {
+            setState(() => _stage = _RootStage.onboarding);
+          }
+        });
       }
     });
   }
@@ -86,6 +91,9 @@ class _SplashGateState extends State<SplashGate> {
       child: switch (_stage) {
         _RootStage.splash => const BrandedSplash(
             key: ValueKey<String>('splash'),
+          ),
+        _RootStage.loading => const ChessVerseLoadingScreen(
+            key: ValueKey<String>('loading'),
           ),
         _RootStage.onboarding => OnboardingScreen(
             key: const ValueKey<String>('onboarding'),
@@ -205,6 +213,7 @@ class _SplashGateState extends State<SplashGate> {
 
 enum _RootStage {
   splash,
+  loading,
   onboarding,
   auth,
   home,
@@ -225,12 +234,56 @@ class BrandedSplash extends StatelessWidget {
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
-              DecoratedBox(
+              Image(
+                image: AssetImage(
+                  wide
+                      ? 'assets/branding/splash_screen_wide.png'
+                      : 'assets/branding/splash_screen_mobile.png',
+                ),
+                fit: BoxFit.contain,
+              ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      Color(0x00000000),
+                      Color(0x12000000),
+                      Color(0x44000000),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class ChessVerseLoadingScreen extends StatelessWidget {
+  const ChessVerseLoadingScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF02070D),
+      body: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          final bool wide = kIsWeb ||
+              constraints.maxWidth >= 720 ||
+              constraints.maxWidth <= 0;
+          return Stack(
+            fit: StackFit.expand,
+            children: <Widget>[
+              const DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: RadialGradient(
-                    center: wide ? const Alignment(0, -0.05) : Alignment.center,
-                    radius: wide ? 1.0 : 0.9,
-                    colors: const <Color>[
+                    center: Alignment(0, -0.05),
+                    radius: 1.05,
+                    colors: <Color>[
                       Color(0xFF0A5A50),
                       Color(0xFF071B22),
                       Color(0xFF02070D),
@@ -238,43 +291,30 @@ class BrandedSplash extends StatelessWidget {
                   ),
                 ),
               ),
-              Opacity(
-                opacity: wide ? 0.22 : 0.18,
-                child: Image(
-                  image: AssetImage(
-                    wide
-                        ? 'assets/branding/splash_screen_wide.png'
-                        : 'assets/branding/splash_screen_mobile.png',
-                  ),
-                  fit: BoxFit.cover,
-                ),
-              ),
               Center(
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: wide ? 620 : 360,
-                  ),
+                  constraints: BoxConstraints(maxWidth: wide ? 560 : 360),
                   child: Padding(
                     padding: const EdgeInsets.all(28),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
                         Container(
-                          width: wide ? 132 : 108,
-                          height: wide ? 132 : 108,
+                          width: wide ? 126 : 106,
+                          height: wide ? 126 : 106,
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color:
-                                const Color(0xFF0A111A).withValues(alpha: 0.8),
-                            borderRadius: BorderRadius.circular(34),
+                                const Color(0xFF0A111A).withValues(alpha: 0.82),
+                            borderRadius: BorderRadius.circular(32),
                             border: Border.all(
                               color: const Color(0xFFD6A84F)
-                                  .withValues(alpha: 0.65),
+                                  .withValues(alpha: 0.7),
                             ),
                             boxShadow: <BoxShadow>[
                               BoxShadow(
                                 color: const Color(0xFF63D2B8)
-                                    .withValues(alpha: 0.32),
+                                    .withValues(alpha: 0.28),
                                 blurRadius: 42,
                                 offset: const Offset(0, 18),
                               ),
@@ -304,7 +344,7 @@ class BrandedSplash extends StatelessWidget {
                                     letterSpacing: 1.2,
                                   ),
                         ),
-                        const SizedBox(height: 46),
+                        const SizedBox(height: 44),
                         Text(
                           'LOADING...',
                           style:
@@ -315,22 +355,34 @@ class BrandedSplash extends StatelessWidget {
                         ),
                         const SizedBox(height: 14),
                         TweenAnimationBuilder<double>(
-                          tween: Tween<double>(begin: 0.05, end: 0.82),
-                          duration: const Duration(milliseconds: 1350),
+                          tween: Tween<double>(begin: 0.08, end: 0.88),
+                          duration: const Duration(milliseconds: 1100),
                           curve: Curves.easeOutCubic,
                           builder: (
                             BuildContext context,
                             double value,
                             Widget? child,
                           ) {
-                            return ClipRRect(
-                              borderRadius: BorderRadius.circular(999),
-                              child: LinearProgressIndicator(
-                                value: value,
-                                minHeight: 16,
-                                backgroundColor: const Color(0xFF3B1C0F),
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  Color(0xFF39D329),
+                            return Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF4A210C),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: const Color(0xFFE0C47C)
+                                      .withValues(alpha: 0.38),
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(999),
+                                child: LinearProgressIndicator(
+                                  value: value,
+                                  minHeight: 14,
+                                  backgroundColor: const Color(0xFF3B1C0F),
+                                  valueColor:
+                                      const AlwaysStoppedAnimation<Color>(
+                                    Color(0xFFE0C47C),
+                                  ),
                                 ),
                               ),
                             );
@@ -911,10 +963,12 @@ class _GameScreenState extends State<GameScreen> {
   final List<ChessPiece> _capturedBlack = <ChessPiece>[];
   final List<GameSnapshot> _history = <GameSnapshot>[];
   Timer? _clockTimer;
+  Timer? _moveQualityTimer;
   String? _selectedSquare;
   String? _lastFromSquare;
   String? _lastToSquare;
   String? _lastCaptureSquare;
+  String? _moveQualityText;
   String _coachNote = 'Select a coin to see legal moves.';
   BoardSkin _skin = BoardSkin.royalWalnut;
   GameMode _gameMode = GameMode.computer;
@@ -1056,6 +1110,7 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void dispose() {
     _clockTimer?.cancel();
+    _moveQualityTimer?.cancel();
     final AudioPlayer? warningPlayer = _warningPlayer;
     if (warningPlayer != null) {
       unawaited(warningPlayer.dispose());
@@ -1306,12 +1361,71 @@ class _GameScreenState extends State<GameScreen> {
                     if (_signedIn && _gameResultTitle != null && _resultVisible)
                       Positioned.fill(
                         child: GameResultOverlay(
-                          title: _gameResultTitle!,
+                          title: _resultDisplayTitle(),
                           detail: _gameResultDetail ?? 'Game complete',
+                          scoreLabel: _resultScoreLabel(),
                           onNewGame: _reset,
                           onReview: () => setState(() {
                             _resultVisible = false;
                           }),
+                        ),
+                      ),
+                    if (_moveQualityText != null &&
+                        _gameMode == GameMode.computer &&
+                        _gameResultTitle == null)
+                      Positioned(
+                        top: 72,
+                        left: 18,
+                        right: 18,
+                        child: IgnorePointer(
+                          child: Center(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF16171C)
+                                    .withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: const Color(0xFFD6A84F)
+                                      .withValues(alpha: 0.72),
+                                ),
+                                boxShadow: <BoxShadow>[
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.32),
+                                    blurRadius: 24,
+                                    offset: const Offset(0, 12),
+                                  ),
+                                ],
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                  vertical: 10,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    const Icon(
+                                      Icons.psychology_alt_rounded,
+                                      color: Color(0xFFD6A84F),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        _moveQualityText!,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Color(0xFFF6F1E8),
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                   ],
@@ -1793,18 +1907,61 @@ class _GameScreenState extends State<GameScreen> {
         target.rank >= 3 &&
         target.rank <= 6;
     if (givesCheck && captured != null) {
-      return 'Great move.';
+      return 'Amazing step — check with material gain.';
     }
     if (givesCheck || castleMove || captured?.code == 'Q') {
-      return 'Good move.';
+      return 'Superb step — strong chess idea.';
     }
     if (captured != null || central) {
-      return 'Average-to-good move.';
+      return 'Good step — useful improvement.';
     }
     if (piece.code == 'K' && !castleMove) {
-      return 'Careful move.';
+      return 'Not good step — king safety first.';
     }
-    return 'Average move.';
+    return 'Average step — playable, but look for more pressure.';
+  }
+
+  void _scheduleMoveQualityDismiss() {
+    _moveQualityTimer?.cancel();
+    _moveQualityTimer = Timer(const Duration(milliseconds: 2300), () {
+      if (mounted) {
+        setState(() => _moveQualityText = null);
+      }
+    });
+  }
+
+  String _resultScoreLabel() {
+    final String lowerTitle = (_gameResultTitle ?? '').toLowerCase();
+    if (lowerTitle.contains('draw')) {
+      return '½ - ½';
+    }
+    if (lowerTitle.contains('challenge complete')) {
+      return '1 - 0';
+    }
+    final bool whiteWon = lowerTitle.startsWith('white');
+    final bool blackWon = lowerTitle.startsWith('black');
+    if (!whiteWon && !blackWon) {
+      return '1 - 0';
+    }
+    final bool userWon = _humanPlaysWhite ? whiteWon : blackWon;
+    return userWon ? '1 - 0' : '0 - 1';
+  }
+
+  String _resultDisplayTitle() {
+    final String title = _gameResultTitle ?? 'Game complete';
+    final String lowerTitle = title.toLowerCase();
+    if (lowerTitle.contains('draw') ||
+        lowerTitle.contains('challenge complete') ||
+        _gameMode != GameMode.computer) {
+      return title;
+    }
+    final bool whiteWon = lowerTitle.startsWith('white');
+    final bool blackWon = lowerTitle.startsWith('black');
+    if (!whiteWon && !blackWon) {
+      return title;
+    }
+    final bool userWon = _humanPlaysWhite ? whiteWon : blackWon;
+    return userWon ? 'You win' : 'ChessVerse AI wins';
   }
 
   DailyChallenge _challengeForToday(
@@ -2143,6 +2300,9 @@ class _GameScreenState extends State<GameScreen> {
           captured: captured,
           castleMove: castleMove,
         );
+        if (_gameMode == GameMode.computer) {
+          _moveQualityText = moveFeedback;
+        }
         _coachNote = castleMove
             ? '${piece.white ? 'White' : 'Black'} castles ${square.startsWith('g') ? 'king side' : 'queen side'}.'
             : captured == null
@@ -2184,6 +2344,9 @@ class _GameScreenState extends State<GameScreen> {
         promotionWhite!,
       ).then((_) => _scheduleAiMove());
     } else if (moveCommitted) {
+      if (_moveQualityText != null) {
+        _scheduleMoveQualityDismiss();
+      }
       _scheduleAiMove();
     }
   }
@@ -2725,6 +2888,7 @@ class _GameScreenState extends State<GameScreen> {
       _lastFromSquare = null;
       _lastToSquare = null;
       _lastCaptureSquare = null;
+      _moveQualityText = null;
       _whiteSeconds = 10 * 60;
       _blackSeconds = 10 * 60;
       _selectedSquare = null;
@@ -5833,6 +5997,7 @@ class GameResultOverlay extends StatelessWidget {
   const GameResultOverlay({
     required this.title,
     required this.detail,
+    required this.scoreLabel,
     required this.onNewGame,
     required this.onReview,
     super.key,
@@ -5840,14 +6005,13 @@ class GameResultOverlay extends StatelessWidget {
 
   final String title;
   final String detail;
+  final String scoreLabel;
   final VoidCallback onNewGame;
   final VoidCallback onReview;
 
   @override
   Widget build(BuildContext context) {
     final bool draw = title.toLowerCase().contains('draw');
-    final bool whiteWin = title.startsWith('White') ||
-        title.toLowerCase().contains('challenge complete');
     return ColoredBox(
       color: Colors.black.withValues(alpha: 0.72),
       child: Center(
@@ -5885,7 +6049,7 @@ class GameResultOverlay extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    draw ? '½ - ½' : (whiteWin ? '1 - 0' : '0 - 1'),
+                    scoreLabel,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                           color: const Color(0xFFD6A84F),
