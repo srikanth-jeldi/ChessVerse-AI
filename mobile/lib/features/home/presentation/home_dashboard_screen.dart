@@ -17,6 +17,7 @@ class HomeDashboardScreen extends StatelessWidget {
     required this.onAnalysis,
     required this.onPuzzles,
     required this.onSavedGames,
+    required this.onLearnChess,
     required this.onProfile,
     required this.onSettings,
     super.key,
@@ -29,6 +30,7 @@ class HomeDashboardScreen extends StatelessWidget {
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
   final VoidCallback onSavedGames;
+  final VoidCallback onLearnChess;
   final VoidCallback onProfile;
   final VoidCallback onSettings;
 
@@ -50,6 +52,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 onAnalysis: onAnalysis,
                 onPuzzles: onPuzzles,
                 onSavedGames: onSavedGames,
+                onLearnChess: onLearnChess,
                 onProfile: onProfile,
                 onSettings: onSettings,
               )
@@ -62,6 +65,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 onAnalysis: onAnalysis,
                 onPuzzles: onPuzzles,
                 onSavedGames: onSavedGames,
+                onLearnChess: onLearnChess,
                 onProfile: onProfile,
                 onSettings: onSettings,
               ),
@@ -80,6 +84,7 @@ class _PhoneHomeLayout extends StatelessWidget {
     required this.onAnalysis,
     required this.onPuzzles,
     required this.onSavedGames,
+    required this.onLearnChess,
     required this.onProfile,
     required this.onSettings,
   });
@@ -92,6 +97,7 @@ class _PhoneHomeLayout extends StatelessWidget {
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
   final VoidCallback onSavedGames;
+  final VoidCallback onLearnChess;
   final VoidCallback onProfile;
   final VoidCallback onSettings;
 
@@ -121,6 +127,7 @@ class _PhoneHomeLayout extends StatelessWidget {
           onAnalysis: onAnalysis,
           onPuzzles: onPuzzles,
           onSavedGames: onSavedGames,
+          onLearnChess: onLearnChess,
           onProfile: onProfile,
           onSettings: onSettings,
         ),
@@ -139,6 +146,7 @@ class _WideHomeLayout extends StatelessWidget {
     required this.onAnalysis,
     required this.onPuzzles,
     required this.onSavedGames,
+    required this.onLearnChess,
     required this.onProfile,
     required this.onSettings,
   });
@@ -151,6 +159,7 @@ class _WideHomeLayout extends StatelessWidget {
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
   final VoidCallback onSavedGames;
+  final VoidCallback onLearnChess;
   final VoidCallback onProfile;
   final VoidCallback onSettings;
 
@@ -191,6 +200,7 @@ class _WideHomeLayout extends StatelessWidget {
           onAnalysis: onAnalysis,
           onPuzzles: onPuzzles,
           onSavedGames: onSavedGames,
+          onLearnChess: onLearnChess,
           onProfile: onProfile,
           onSettings: onSettings,
         ),
@@ -301,6 +311,7 @@ class _QuickActionsGrid extends StatelessWidget {
     required this.onAnalysis,
     required this.onPuzzles,
     required this.onSavedGames,
+    required this.onLearnChess,
     required this.onProfile,
     required this.onSettings,
   });
@@ -311,6 +322,7 @@ class _QuickActionsGrid extends StatelessWidget {
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
   final VoidCallback onSavedGames;
+  final VoidCallback onLearnChess;
   final VoidCallback onProfile;
   final VoidCallback onSettings;
 
@@ -360,6 +372,12 @@ class _QuickActionsGrid extends StatelessWidget {
           title: 'Saved',
           subtitle: 'Games',
           onTap: onSavedGames,
+        ),
+        _ActionTile(
+          icon: Icons.school_rounded,
+          title: 'Learn',
+          subtitle: 'Coach tips',
+          onTap: onLearnChess,
         ),
         _ActionTile(
           icon: Icons.person_rounded,

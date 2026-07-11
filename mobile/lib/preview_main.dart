@@ -10,6 +10,7 @@ import 'features/library/presentation/reference_screens.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/splash/presentation/premium_splash_screen.dart';
+import 'features/tutorial/presentation/learn_chess_screen.dart';
 import 'main.dart' as game;
 
 Future<void> main() async {
@@ -92,6 +93,7 @@ class PreviewShell extends StatelessWidget {
       onAnalysis: () => _openAnalysis(context),
       onPuzzles: () => _push(context, const PuzzlesScreen()),
       onSavedGames: () => _push(context, const SavedGamesScreen()),
+      onLearnChess: () => _push(context, const LearnChessScreen()),
       onProfile: () => _openProfile(context),
       onSettings: () => _openSettings(context),
     );
