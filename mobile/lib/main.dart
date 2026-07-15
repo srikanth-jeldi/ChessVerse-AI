@@ -275,6 +275,9 @@ class ChessVerseLoadingScreen extends StatelessWidget {
           final bool wide = kIsWeb ||
               constraints.maxWidth >= 720 ||
               constraints.maxWidth <= 0;
+          final bool short = constraints.maxHeight > 0 &&
+              constraints.maxHeight < (wide ? 420 : 620);
+          final double logoSize = short ? 62 : (wide ? 126 : 106);
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
@@ -292,103 +295,114 @@ class ChessVerseLoadingScreen extends StatelessWidget {
                 ),
               ),
               Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: wide ? 560 : 360),
-                  child: Padding(
-                    padding: const EdgeInsets.all(28),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        Container(
-                          width: wide ? 126 : 106,
-                          height: wide ? 126 : 106,
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color:
-                                const Color(0xFF0A111A).withValues(alpha: 0.82),
-                            borderRadius: BorderRadius.circular(32),
-                            border: Border.all(
-                              color: const Color(0xFFD6A84F)
-                                  .withValues(alpha: 0.7),
+                child: SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: wide ? 560 : 360),
+                    child: Padding(
+                      padding: EdgeInsets.all(short ? 14 : 28),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Container(
+                            width: logoSize,
+                            height: logoSize,
+                            padding: EdgeInsets.all(short ? 8 : 14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0A111A)
+                                  .withValues(alpha: 0.82),
+                              borderRadius:
+                                  BorderRadius.circular(short ? 20 : 32),
+                              border: Border.all(
+                                color: const Color(0xFFD6A84F)
+                                    .withValues(alpha: 0.7),
+                              ),
+                              boxShadow: <BoxShadow>[
+                                BoxShadow(
+                                  color: const Color(0xFF63D2B8)
+                                      .withValues(alpha: 0.28),
+                                  blurRadius: short ? 22 : 42,
+                                  offset: Offset(0, short ? 8 : 18),
+                                ),
+                              ],
                             ),
-                            boxShadow: <BoxShadow>[
-                              BoxShadow(
-                                color: const Color(0xFF63D2B8)
-                                    .withValues(alpha: 0.28),
-                                blurRadius: 42,
-                                offset: const Offset(0, 18),
-                              ),
-                            ],
+                            child: Image.asset('assets/branding/app_icon.png'),
                           ),
-                          child: Image.asset('assets/branding/app_icon.png'),
-                        ),
-                        const SizedBox(height: 26),
-                        Text(
-                          'CHESSVERSE AI',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineLarge
-                              ?.copyWith(
-                                letterSpacing: 2,
-                                fontWeight: FontWeight.w900,
-                                color: const Color(0xFFF8F2E4),
-                              ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Think  •  Move  •  Master',
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: const Color(0xFFE0C47C),
-                                    letterSpacing: 1.2,
-                                  ),
-                        ),
-                        const SizedBox(height: 44),
-                        Text(
-                          'LOADING...',
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    letterSpacing: 2,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                        ),
-                        const SizedBox(height: 14),
-                        TweenAnimationBuilder<double>(
-                          tween: Tween<double>(begin: 0.08, end: 0.88),
-                          duration: const Duration(milliseconds: 1100),
-                          curve: Curves.easeOutCubic,
-                          builder: (
-                            BuildContext context,
-                            double value,
-                            Widget? child,
-                          ) {
-                            return Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF4A210C),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: const Color(0xFFE0C47C)
-                                      .withValues(alpha: 0.38),
+                          SizedBox(height: short ? 10 : 26),
+                          Text(
+                            'CHESSVERSE AI',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineLarge
+                                ?.copyWith(
+                                  letterSpacing: 2,
+                                  fontSize: short ? 20 : null,
+                                  fontWeight: FontWeight.w900,
+                                  color: const Color(0xFFF8F2E4),
                                 ),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(999),
-                                child: LinearProgressIndicator(
-                                  value: value,
-                                  minHeight: 14,
-                                  backgroundColor: const Color(0xFF3B1C0F),
-                                  valueColor:
-                                      const AlwaysStoppedAnimation<Color>(
-                                    Color(0xFFE0C47C),
+                          ),
+                          SizedBox(height: short ? 4 : 8),
+                          Text(
+                            'Think  -  Move  -  Master',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  color: const Color(0xFFE0C47C),
+                                  fontSize: short ? 10 : null,
+                                  letterSpacing: 1.2,
+                                ),
+                          ),
+                          SizedBox(height: short ? 14 : 44),
+                          Text(
+                            'LOADING...',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  letterSpacing: 2,
+                                  fontSize: short ? 10 : null,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                          SizedBox(height: short ? 8 : 14),
+                          TweenAnimationBuilder<double>(
+                            tween: Tween<double>(begin: 0.08, end: 0.88),
+                            duration: const Duration(milliseconds: 1100),
+                            curve: Curves.easeOutCubic,
+                            builder: (
+                              BuildContext context,
+                              double value,
+                              Widget? child,
+                            ) {
+                              return Container(
+                                padding: const EdgeInsets.all(3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF4A210C),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: const Color(0xFFE0C47C)
+                                        .withValues(alpha: 0.38),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(999),
+                                  child: LinearProgressIndicator(
+                                    value: value,
+                                    minHeight: short ? 9 : 14,
+                                    backgroundColor: const Color(0xFF3B1C0F),
+                                    valueColor:
+                                        const AlwaysStoppedAnimation<Color>(
+                                      Color(0xFFE0C47C),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1907,18 +1921,18 @@ class _GameScreenState extends State<GameScreen> {
         target.rank >= 3 &&
         target.rank <= 6;
     if (givesCheck && captured != null) {
-      return 'Amazing step — check with material gain.';
+      return 'Amazing step - check with material gain.';
     }
     if (givesCheck || castleMove || captured?.code == 'Q') {
-      return 'Superb step — strong chess idea.';
+      return 'Superb step - strong chess idea.';
     }
     if (captured != null || central) {
-      return 'Good step — useful improvement.';
+      return 'Good step - useful improvement.';
     }
     if (piece.code == 'K' && !castleMove) {
-      return 'Not good step — king safety first.';
+      return 'Not good step - king safety first.';
     }
-    return 'Average step — playable, but look for more pressure.';
+    return 'Average step - playable, but look for more pressure.';
   }
 
   void _scheduleMoveQualityDismiss() {
@@ -1933,7 +1947,7 @@ class _GameScreenState extends State<GameScreen> {
   String _resultScoreLabel() {
     final String lowerTitle = (_gameResultTitle ?? '').toLowerCase();
     if (lowerTitle.contains('draw')) {
-      return '½ - ½';
+      return '1/2 - 1/2';
     }
     if (lowerTitle.contains('challenge complete')) {
       return '1 - 0';
@@ -1992,77 +2006,21 @@ class _GameScreenState extends State<GameScreen> {
     DailyChallengeDifficulty difficulty,
     int pattern,
   ) {
-    final List<List<String>> lines = switch (pattern) {
-      0 => <List<String>>[
-          <String>['h5f7', 'g8h8', 'c3d5', 'h8g8', 'd5e7'],
-          <String>[
-            'h5f7',
-            'g8h8',
-            'c3d5',
-            'h8g8',
-            'd5e7',
-            'g8h8',
-            'f7f8',
-          ],
-          <String>[
-            'h5f7',
-            'g8h8',
-            'c3d5',
-            'h8g8',
-            'd5e7',
-            'g8h8',
-            'f7f8',
-            'h8g8',
-            'f8g7',
-          ],
-        ],
-      1 => <List<String>>[
-          <String>['d5e7', 'g8h8', 'd1h5', 'h8g8', 'h5f7'],
-          <String>[
-            'd5e7',
-            'g8h8',
-            'd1h5',
-            'h8g8',
-            'h5f7',
-            'g8h8',
-            'f7f8',
-          ],
-          <String>[
-            'd5e7',
-            'g8h8',
-            'd1h5',
-            'h8g8',
-            'h5f7',
-            'g8h8',
-            'f7f8',
-            'h8g8',
-            'e7g6',
-          ],
-        ],
-      _ => <List<String>>[
-          <String>['g5f7', 'g8h8', 'b3f7', 'h8g8', 'f7f8'],
-          <String>[
-            'g5f7',
-            'g8h8',
-            'b3f7',
-            'h8g8',
-            'f7f8',
-            'g8h8',
-            'e1e8',
-          ],
-          <String>[
-            'g5f7',
-            'g8h8',
-            'b3f7',
-            'h8g8',
-            'f7f8',
-            'g8h8',
-            'e1e8',
-            'h8g8',
-            'e8e7',
-          ],
-        ],
-    };
+    final List<List<String>> lines = <List<String>>[
+      <String>['c3d5', 'a8a7', 'h5f7', 'g8h8', 'f7f8'],
+      <String>['c3d5', 'a8a7', 'a1e1', 'a7a6', 'h5f7', 'g8h8', 'f7f8'],
+      <String>[
+        'c3d5',
+        'a8a7',
+        'a1e1',
+        'a7a6',
+        'c4b3',
+        'a6a5',
+        'h5f7',
+        'g8h8',
+        'f7f8',
+      ],
+    ];
     return switch (difficulty) {
       DailyChallengeDifficulty.easy => lines[0],
       DailyChallengeDifficulty.medium => lines[1],
@@ -2071,52 +2029,20 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Map<String, ChessPiece> _dailyStartingPosition(DailyChallenge challenge) {
-    return switch (challenge.pattern) {
-      0 => <String, ChessPiece>{
-          'g1': const ChessPiece('K', true),
-          'h5': const ChessPiece('Q', true),
-          'c3': const ChessPiece('N', true),
-          'c4': const ChessPiece('B', true),
-          'a1': const ChessPiece('R', true),
-          'b2': const ChessPiece('P', true),
-          'g2': const ChessPiece('P', true),
-          'h2': const ChessPiece('P', true),
-          'g8': const ChessPiece('K', false),
-          'a8': const ChessPiece('R', false),
-          'f7': const ChessPiece('P', false),
-          'g7': const ChessPiece('P', false),
-          'h7': const ChessPiece('P', false),
-        },
-      1 => <String, ChessPiece>{
-          'g1': const ChessPiece('K', true),
-          'd1': const ChessPiece('Q', true),
-          'e1': const ChessPiece('R', true),
-          'c4': const ChessPiece('B', true),
-          'd5': const ChessPiece('N', true),
-          'g2': const ChessPiece('P', true),
-          'h2': const ChessPiece('P', true),
-          'g8': const ChessPiece('K', false),
-          'd8': const ChessPiece('Q', false),
-          'a8': const ChessPiece('R', false),
-          'f7': const ChessPiece('P', false),
-          'g7': const ChessPiece('P', false),
-          'h7': const ChessPiece('P', false),
-        },
-      _ => <String, ChessPiece>{
-          'g1': const ChessPiece('K', true),
-          'b3': const ChessPiece('Q', true),
-          'a1': const ChessPiece('R', true),
-          'e1': const ChessPiece('R', true),
-          'c4': const ChessPiece('B', true),
-          'g5': const ChessPiece('N', true),
-          'g2': const ChessPiece('P', true),
-          'h2': const ChessPiece('P', true),
-          'g8': const ChessPiece('K', false),
-          'a8': const ChessPiece('R', false),
-          'f7': const ChessPiece('P', false),
-          'g7': const ChessPiece('P', false),
-          'h7': const ChessPiece('P', false),
-        },
+    return <String, ChessPiece>{
+      'g1': const ChessPiece('K', true),
+      'h5': const ChessPiece('Q', true),
+      'c3': const ChessPiece('N', true),
+      'c4': const ChessPiece('B', true),
+      'a1': const ChessPiece('R', true),
+      'b2': const ChessPiece('P', true),
+      'g2': const ChessPiece('P', true),
+      'h2': const ChessPiece('P', true),
+      'g8': const ChessPiece('K', false),
+      'a8': const ChessPiece('R', false),
+      'f7': const ChessPiece('P', false),
+      'g7': const ChessPiece('P', false),
+      'h7': const ChessPiece('P', false),
     };
   }
 
@@ -2685,10 +2611,6 @@ class _GameScreenState extends State<GameScreen> {
         ChessRules.safeLegalTargets(square, _pieces).toSet();
     targets.addAll(_castlingTargets(square, piece));
     targets.addAll(_enPassantTargets(square, piece));
-    final String? expectedMove = _dailyExpectedMove;
-    if (expectedMove != null && square == expectedMove.substring(0, 2)) {
-      targets.add(expectedMove.substring(2, 4));
-    }
     return targets.toList();
   }
 
