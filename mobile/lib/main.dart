@@ -240,7 +240,7 @@ class BrandedSplash extends StatelessWidget {
                       ? 'assets/branding/splash_screen_wide.png'
                       : 'assets/branding/splash_screen_mobile.png',
                 ),
-                fit: BoxFit.contain,
+                fit: BoxFit.cover,
               ),
               const DecoratedBox(
                 decoration: BoxDecoration(
@@ -1388,9 +1388,17 @@ class _GameScreenState extends State<GameScreen> {
                         _gameMode == GameMode.computer &&
                         _gameResultTitle == null)
                       Positioned(
-                        top: 72,
-                        left: 18,
-                        right: 18,
+                        left: wide ? 22 : 18,
+                        right: wide ? widePanelWidth + 30 : 18,
+                        bottom: wide
+                            ? 18
+                            : math.max(
+                                18,
+                                constraints.maxHeight -
+                                    mobileHeaderHeight -
+                                    boardDimension -
+                                    2,
+                              ),
                         child: IgnorePointer(
                           child: Center(
                             child: DecoratedBox(
@@ -1427,7 +1435,7 @@ class _GameScreenState extends State<GameScreen> {
                                     Flexible(
                                       child: Text(
                                         _moveQualityText!,
-                                        maxLines: 2,
+                                        maxLines: 3,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           color: Color(0xFFF6F1E8),
@@ -1935,6 +1943,22 @@ class _GameScreenState extends State<GameScreen> {
     return 'Average step - playable, but look for more pressure.';
   }
 
+  String _moveSuggestionText(
+    PositionAnalysis analysis,
+    String from,
+    String to,
+  ) {
+    final String playedMove = '$from to $to';
+    final String? bestMove = analysis.bestMove;
+    if (bestMove == null) {
+      return 'No stronger coach suggestion found.';
+    }
+    if (bestMove == playedMove) {
+      return 'Coach agrees: this was the best move.';
+    }
+    return 'Coach idea: move $bestMove for a ${analysis.quality.toLowerCase()}.';
+  }
+
   void _scheduleMoveQualityDismiss() {
     _moveQualityTimer?.cancel();
     _moveQualityTimer = Timer(const Duration(milliseconds: 2300), () {
@@ -2167,6 +2191,7 @@ class _GameScreenState extends State<GameScreen> {
       }
 
       final String from = _selectedSquare!;
+      final PositionAnalysis preMoveAnalysis = _analyzePosition(whitesTurn);
       if (_gameMode == GameMode.daily) {
         final String expected = _dailyChallenge.solution[_dailyPlyIndex];
         if ('$from$square' != expected) {
@@ -2227,7 +2252,8 @@ class _GameScreenState extends State<GameScreen> {
           castleMove: castleMove,
         );
         if (_gameMode == GameMode.computer) {
-          _moveQualityText = moveFeedback;
+          _moveQualityText =
+              '$moveFeedback ${_moveSuggestionText(preMoveAnalysis, from, square)}';
         }
         _coachNote = castleMove
             ? '${piece.white ? 'White' : 'Black'} castles ${square.startsWith('g') ? 'king side' : 'queen side'}.'

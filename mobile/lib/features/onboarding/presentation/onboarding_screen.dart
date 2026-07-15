@@ -200,15 +200,21 @@ class _OnboardingPage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Text(
-                  data.title,
-                  textAlign: TextAlign.center,
-                  maxLines: landscape ? 2 : null,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontSize: landscape ? (tightLandscape ? 22 : 28) : null,
-                        fontWeight: FontWeight.w900,
-                      ),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    data.title,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontSize: landscape
+                              ? (tightLandscape ? 22 : 28)
+                              : compact
+                                  ? 30
+                                  : 34,
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
                 ),
                 SizedBox(
                     height: tightLandscape
@@ -220,7 +226,7 @@ class _OnboardingPage extends StatelessWidget {
                   data.subtitle,
                   textAlign: TextAlign.center,
                   maxLines: landscape ? 1 : null,
-                  overflow: TextOverflow.ellipsis,
+                  overflow: TextOverflow.fade,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: AppColors.accentGold,
                       ),
@@ -239,7 +245,7 @@ class _OnboardingPage extends StatelessWidget {
                         data.body,
                         textAlign: TextAlign.center,
                         maxLines: landscape ? 3 : null,
-                        overflow: TextOverflow.ellipsis,
+                        overflow: TextOverflow.fade,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: AppColors.textSecondary,
                             ),
