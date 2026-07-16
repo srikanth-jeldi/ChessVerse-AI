@@ -232,41 +232,51 @@ class BrandedSplash extends StatelessWidget {
           final bool wide = kIsWeb ||
               constraints.maxWidth >= 720 ||
               constraints.maxWidth <= 0;
+          final String asset = wide
+              ? 'assets/branding/splash_screen_wide.png'
+              : 'assets/branding/splash_screen_mobile.png';
+          final double maxHeroWidth = wide
+              ? constraints.maxWidth.clamp(520.0, 980.0)
+              : constraints.maxWidth * 0.96;
+          final double maxHeroHeight = wide
+              ? constraints.maxHeight * 0.9
+              : constraints.maxHeight * 0.86;
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
               ImageFiltered(
-                imageFilter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                imageFilter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                 child: Image(
-                  image: AssetImage(
-                    wide
-                        ? 'assets/branding/splash_screen_wide.png'
-                        : 'assets/branding/splash_screen_mobile.png',
-                  ),
+                  image: AssetImage(asset),
                   fit: BoxFit.cover,
+                  alignment: Alignment.center,
                 ),
-              ),
-              ColoredBox(
-                color: const Color(0xFF02070D).withValues(alpha: 0.32),
-              ),
-              Image(
-                image: AssetImage(
-                  wide
-                      ? 'assets/branding/splash_screen_wide.png'
-                      : 'assets/branding/splash_screen_mobile.png',
-                ),
-                fit: BoxFit.contain,
               ),
               const DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+                  gradient: RadialGradient(
+                    center: Alignment(0, -0.08),
+                    radius: 0.9,
                     colors: <Color>[
-                      Color(0x00000000),
-                      Color(0x12000000),
-                      Color(0x44000000),
+                      Color(0x66066C63),
+                      Color(0xD902070D),
+                      Color(0xFF02070D),
                     ],
+                  ),
+                ),
+              ),
+              SafeArea(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: maxHeroWidth,
+                      maxHeight: maxHeroHeight,
+                    ),
+                    child: Image(
+                      image: AssetImage(asset),
+                      fit: BoxFit.contain,
+                      alignment: Alignment.center,
+                    ),
                   ),
                 ),
               ),
@@ -2036,9 +2046,23 @@ class _GameScreenState extends State<GameScreen> {
       title: '$title - ${difficulty.label}',
       difficulty: difficulty,
       pattern: pattern,
-      setupMoves: const <String>[],
+      setupMoves: _dailySetupLine(difficulty, pattern),
       solution: _dailySolutionLine(difficulty, pattern),
     );
+  }
+
+  List<String> _dailySetupLine(
+    DailyChallengeDifficulty difficulty,
+    int pattern,
+  ) {
+    // Start from a real chess position after legal opening moves. Keeping the
+    // setup legal is more important than making a flashy position: the user
+    // must never see same-colour captures or a false mate.
+    return switch (difficulty) {
+      DailyChallengeDifficulty.easy => <String>['e2e4', 'e7e5'],
+      DailyChallengeDifficulty.medium => const <String>[],
+      DailyChallengeDifficulty.hard => const <String>[],
+    };
   }
 
   List<String> _dailySolutionLine(
@@ -2046,18 +2070,23 @@ class _GameScreenState extends State<GameScreen> {
     int pattern,
   ) {
     final List<List<String>> lines = <List<String>>[
-      <String>['c3d5', 'a8a7', 'h5f7', 'g8h8', 'f7f8'],
-      <String>['c3d5', 'a8a7', 'a1e1', 'a7a6', 'h5f7', 'g8h8', 'f7f8'],
+      // Easy: position starts after 1. e4 e5, then White finds the
+      // three-move Scholar mate pattern.
+      <String>['d1h5', 'b8c6', 'f1c4', 'g8f6', 'h5f7'],
+      // Medium: same legal pattern from the starting board, four White moves.
+      <String>['e2e4', 'e7e5', 'd1h5', 'b8c6', 'f1c4', 'g8f6', 'h5f7'],
+      // Hard: one waiting move is included before the forced mating pattern,
+      // giving the player five legal White moves before checkmate.
       <String>[
-        'c3d5',
-        'a8a7',
-        'a1e1',
+        'a2a3',
         'a7a6',
-        'c4b3',
-        'a6a5',
+        'e2e4',
+        'e7e5',
+        'd1h5',
+        'b8c6',
+        'f1c4',
+        'g8f6',
         'h5f7',
-        'g8h8',
-        'f7f8',
       ],
     ];
     return switch (difficulty) {
@@ -2068,21 +2097,20 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Map<String, ChessPiece> _dailyStartingPosition(DailyChallenge challenge) {
-    return <String, ChessPiece>{
-      'g1': const ChessPiece('K', true),
-      'h5': const ChessPiece('Q', true),
-      'c3': const ChessPiece('N', true),
-      'c4': const ChessPiece('B', true),
-      'a1': const ChessPiece('R', true),
-      'b2': const ChessPiece('P', true),
-      'g2': const ChessPiece('P', true),
-      'h2': const ChessPiece('P', true),
-      'g8': const ChessPiece('K', false),
-      'a8': const ChessPiece('R', false),
-      'f7': const ChessPiece('P', false),
-      'g7': const ChessPiece('P', false),
-      'h7': const ChessPiece('P', false),
-    };
+    Map<String, ChessPiece> pieces = Map<String, ChessPiece>.from(
+      _initialPieces,
+    );
+    for (final String move in challenge.setupMoves) {
+      final String from = move.substring(0, 2);
+      final String to = move.substring(2, 4);
+      final ChessPiece? piece = pieces[from];
+      if (piece == null ||
+          !ChessRules.safeLegalTargets(from, pieces).contains(to)) {
+        return Map<String, ChessPiece>.from(_initialPieces);
+      }
+      pieces = ChessRules.applyMove(from, to, pieces);
+    }
+    return pieces;
   }
 
   void _applyDailyCompletionState() {
@@ -2286,19 +2314,27 @@ class _GameScreenState extends State<GameScreen> {
           if (_gameResultTitle == null) {
             _coachNote = '$moveFeedback $_coachNote';
           }
-          if (_dailyPuzzleSolved ||
-              (_gameMode == GameMode.daily &&
-                  _gameResultDetail == 'Checkmate')) {
-            _gameResultTitle = 'Challenge complete';
-            _gameResultDetail =
-                '${_dailyChallenge.playerMoveGoal}-move checkmate';
-            _resultVisible = true;
-            _dailyCompletedToday = true;
-            LocalGameArchive.markDailyChallengeComplete(_dailyChallenge.id);
-            _archiveFinishedGame();
-            unawaited(ChessSoundService.instance.checkmate());
-            _coachNote =
-                "Brilliant! Today's ${_dailyDifficulty.label.toLowerCase()} challenge is complete.";
+          if (_gameMode == GameMode.daily && _dailyPuzzleSolved) {
+            final bool opponentMated =
+                ChessRules.isKingInCheck(!piece.white, _pieces) &&
+                    !ChessRules.hasAnySafeMove(!piece.white, _pieces);
+            if (opponentMated) {
+              _gameResultTitle = 'Challenge complete';
+              _gameResultDetail =
+                  '${_dailyChallenge.playerMoveGoal}-move checkmate';
+              _resultVisible = true;
+              _dailyCompletedToday = true;
+              LocalGameArchive.markDailyChallengeComplete(_dailyChallenge.id);
+              _archiveFinishedGame();
+              unawaited(ChessSoundService.instance.checkmate());
+              _coachNote =
+                  "Brilliant! Today's ${_dailyDifficulty.label.toLowerCase()} challenge is complete.";
+            } else {
+              _coachNote =
+                  'Puzzle line reached, but this is not true checkmate. Please reset and retry.';
+              _gameResultTitle = null;
+              _gameResultDetail = null;
+            }
           }
         }
       }
