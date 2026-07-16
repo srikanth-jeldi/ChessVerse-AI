@@ -4441,12 +4441,23 @@ class GamePanel extends StatelessWidget {
                 itemCount: moves.length,
                 separatorBuilder: (_, __) => const Divider(height: 1),
                 itemBuilder: (BuildContext context, int index) {
+                  final bool whiteMove = (moves.length - 1 - index).isEven;
+                  final String move = moves[index];
                   return ListTile(
                     dense: true,
                     minLeadingWidth: 32,
                     leading: Text('${moves.length - index}.'),
-                    title: Text(moves[index]),
-                    trailing: const Icon(Icons.chevron_right_rounded),
+                    title: Row(
+                      children: <Widget>[
+                        Expanded(child: Text(move)),
+                        MoveQualityBadge(move: move),
+                      ],
+                    ),
+                    subtitle: Text(
+                      moveCoachNoteForMove(move, whiteMove),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   );
                 },
               );
@@ -5506,9 +5517,14 @@ class MoveHistorySheet extends StatelessWidget {
                                     whiteMove ? Colors.black : Colors.white,
                                 child: Text('${index + 1}'),
                               ),
-                              title: Text(chronological[index]),
+                              title: Row(
+                                children: <Widget>[
+                                  Expanded(child: Text(chronological[index])),
+                                  MoveQualityBadge(move: chronological[index]),
+                                ],
+                              ),
                               subtitle: Text(
-                                _coachNoteForMove(
+                                moveCoachNoteForMove(
                                   chronological[index],
                                   whiteMove,
                                 ),
@@ -5525,24 +5541,83 @@ class MoveHistorySheet extends StatelessWidget {
     );
   }
 
-  String _coachNoteForMove(String move, bool whiteMove) {
-    final String side = whiteMove ? 'White' : 'Black';
-    final String clean = move.replaceAll(' e.p.', '').trim();
-    if (clean.contains('O-O')) {
-      return '$side superb step: king safety improved. Next look for central pressure.';
-    }
-    if (clean.contains('x')) {
-      return '$side good step: capture found. Also check if a forcing check was available first.';
-    }
-    if (clean.contains('+') || clean.toLowerCase().contains('check')) {
-      return '$side superb step: check creates tempo. Calculate the king replies.';
-    }
-    if (clean.length >= 4 &&
-        <String>{'d4', 'd5', 'e4', 'e5'}.contains(clean.substring(clean.length - 2))) {
-      return '$side good step: central square occupied. Keep developing pieces.';
-    }
-    return '$side average step: playable. Coach idea: compare checks, captures, and threats before moving.';
+}
+
+class MoveQualityBadge extends StatelessWidget {
+  const MoveQualityBadge({required this.move, super.key});
+
+  final String move;
+
+  @override
+  Widget build(BuildContext context) {
+    final String label = moveCoachLabelForMove(move);
+    final Color color = moveCoachColorForLabel(label);
+    return Container(
+      margin: const EdgeInsets.only(left: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.7)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
   }
+}
+
+String moveCoachLabelForMove(String move) {
+  final String clean = move.replaceAll(' e.p.', '').trim().toLowerCase();
+  if (clean.contains('o-o') ||
+      clean.contains('+') ||
+      clean.contains('check')) {
+    return 'Superb';
+  }
+  if (clean.contains('x')) {
+    return 'Good';
+  }
+  if (clean.length >= 4 &&
+      <String>{'d4', 'd5', 'e4', 'e5'}.contains(
+        clean.substring(clean.length - 2),
+      )) {
+    return 'Good';
+  }
+  return 'Average';
+}
+
+Color moveCoachColorForLabel(String label) {
+  return switch (label) {
+    'Superb' => const Color(0xFF63D2B8),
+    'Good' => const Color(0xFFD6A84F),
+    _ => const Color(0xFFAAA69E),
+  };
+}
+
+String moveCoachNoteForMove(String move, bool whiteMove) {
+  final String side = whiteMove ? 'White' : 'Black';
+  final String clean = move.replaceAll(' e.p.', '').trim();
+  if (clean.contains('O-O')) {
+    return '$side superb step: king safety improved. Best follow-up is central pressure.';
+  }
+  if (clean.contains('+') || clean.toLowerCase().contains('check')) {
+    return '$side superb step: check creates tempo. Calculate every king reply.';
+  }
+  if (clean.contains('x')) {
+    return '$side good step: capture found. Before moving, compare checks and stronger captures.';
+  }
+  if (clean.length >= 4 &&
+      <String>{'d4', 'd5', 'e4', 'e5'}.contains(
+        clean.substring(clean.length - 2),
+      )) {
+    return '$side good step: central square controlled. Next develop with tempo.';
+  }
+  return '$side average step: playable. Best habit: check checks, captures, then threats.';
 }
 
 class BoardThemeChoice extends StatelessWidget {
