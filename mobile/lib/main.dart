@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -234,13 +235,27 @@ class BrandedSplash extends StatelessWidget {
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
+              ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                child: Image(
+                  image: AssetImage(
+                    wide
+                        ? 'assets/branding/splash_screen_wide.png'
+                        : 'assets/branding/splash_screen_mobile.png',
+                  ),
+                  fit: BoxFit.cover,
+                ),
+              ),
+              ColoredBox(
+                color: const Color(0xFF02070D).withValues(alpha: 0.32),
+              ),
               Image(
                 image: AssetImage(
                   wide
                       ? 'assets/branding/splash_screen_wide.png'
                       : 'assets/branding/splash_screen_mobile.png',
                 ),
-                fit: BoxFit.cover,
+                fit: BoxFit.contain,
               ),
               const DecoratedBox(
                 decoration: BoxDecoration(
@@ -5492,8 +5507,12 @@ class MoveHistorySheet extends StatelessWidget {
                                 child: Text('${index + 1}'),
                               ),
                               title: Text(chronological[index]),
-                              subtitle:
-                                  Text(whiteMove ? 'White move' : 'Black move'),
+                              subtitle: Text(
+                                _coachNoteForMove(
+                                  chronological[index],
+                                  whiteMove,
+                                ),
+                              ),
                             );
                           },
                         ),
@@ -5504,6 +5523,25 @@ class MoveHistorySheet extends StatelessWidget {
         );
       },
     );
+  }
+
+  String _coachNoteForMove(String move, bool whiteMove) {
+    final String side = whiteMove ? 'White' : 'Black';
+    final String clean = move.replaceAll(' e.p.', '').trim();
+    if (clean.contains('O-O')) {
+      return '$side superb step: king safety improved. Next look for central pressure.';
+    }
+    if (clean.contains('x')) {
+      return '$side good step: capture found. Also check if a forcing check was available first.';
+    }
+    if (clean.contains('+') || clean.toLowerCase().contains('check')) {
+      return '$side superb step: check creates tempo. Calculate the king replies.';
+    }
+    if (clean.length >= 4 &&
+        <String>{'d4', 'd5', 'e4', 'e5'}.contains(clean.substring(clean.length - 2))) {
+      return '$side good step: central square occupied. Keep developing pieces.';
+    }
+    return '$side average step: playable. Coach idea: compare checks, captures, and threats before moving.';
   }
 }
 
