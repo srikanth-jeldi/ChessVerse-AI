@@ -232,11 +232,33 @@ class BrandedSplash extends StatelessWidget {
           final bool wide = kIsWeb ||
               constraints.maxWidth >= 720 ||
               constraints.maxWidth <= 0;
-          final String asset = wide
-              ? 'assets/branding/splash_screen_wide.png'
-              : 'assets/branding/splash_screen_mobile.png';
+          const String asset =
+              'assets/branding/chessverse_king_dual_splash.jpg';
           if (!wide) {
-            return const _MobilePremiumSplash();
+            return Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                const Image(
+                  image: AssetImage(asset),
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  filterQuality: FilterQuality.high,
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        const Color(0xFF02070D).withValues(alpha: 0.22),
+                        Colors.transparent,
+                        const Color(0xFF02070D).withValues(alpha: 0.28),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
           }
           if (!wide) {
             return Stack(
