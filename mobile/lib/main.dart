@@ -235,6 +235,102 @@ class BrandedSplash extends StatelessWidget {
           final String asset = wide
               ? 'assets/branding/splash_screen_wide.png'
               : 'assets/branding/splash_screen_mobile.png';
+          if (!wide) {
+            return Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                Image(
+                  image: AssetImage(asset),
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                ),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        Color(0xCC02070D),
+                        Color(0x66066C63),
+                        Color(0xDD02070D),
+                      ],
+                    ),
+                  ),
+                ),
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 34,
+                    ),
+                    child: Column(
+                      children: <Widget>[
+                        const Spacer(flex: 2),
+                        Container(
+                          width: 112,
+                          height: 112,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFF071018).withValues(alpha: 0.86),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: const Color(0xFFD6A84F),
+                              width: 1.4,
+                            ),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: const Color(0xFF63D2B8)
+                                    .withValues(alpha: 0.35),
+                                blurRadius: 44,
+                                spreadRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: Image.asset('assets/branding/app_icon.png'),
+                        ),
+                        const SizedBox(height: 28),
+                        FittedBox(
+                          child: Text(
+                            'CHESSVERSE AI',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context)
+                                .textTheme
+                                .displayMedium
+                                ?.copyWith(
+                                  color: const Color(0xFFF8F2E4),
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 2.4,
+                                ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Think  •  Move  •  Master',
+                          textAlign: TextAlign.center,
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    color: const Color(0xFFE0C47C),
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.8,
+                                  ),
+                        ),
+                        const Spacer(flex: 3),
+                        Text(
+                          'Powered by EpitomeHub',
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: const Color(0xCCF8F2E4),
+                                    letterSpacing: 0.8,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
           final double maxHeroWidth = wide
               ? constraints.maxWidth.clamp(520.0, 980.0)
               : constraints.maxWidth * 0.96;
@@ -1931,11 +2027,6 @@ class _GameScreenState extends State<GameScreen> {
 
   int get _dailyPlayerMovesCompleted => (_dailyPlyIndex + 1) ~/ 2;
 
-  String? get _dailyExpectedMove => _gameMode == GameMode.daily &&
-          _dailyPlyIndex < _dailyChallenge.solution.length
-      ? _dailyChallenge.solution[_dailyPlyIndex]
-      : null;
-
   bool get _dailyPuzzleSolved =>
       _gameMode == GameMode.daily &&
       _dailyPlyIndex >= _dailyChallenge.solution.length;
@@ -2042,7 +2133,7 @@ class _GameScreenState extends State<GameScreen> {
       _ => 'Moonlight Mate',
     };
     return DailyChallenge(
-      id: '$date-${difficulty.name}-p$pattern',
+      id: '$date-${difficulty.name}-p$pattern-lategame-v2',
       title: '$title - ${difficulty.label}',
       difficulty: difficulty,
       pattern: pattern,
@@ -2055,14 +2146,10 @@ class _GameScreenState extends State<GameScreen> {
     DailyChallengeDifficulty difficulty,
     int pattern,
   ) {
-    // Start from a real chess position after legal opening moves. Keeping the
-    // setup legal is more important than making a flashy position: the user
-    // must never see same-colour captures or a false mate.
-    return switch (difficulty) {
-      DailyChallengeDifficulty.easy => <String>['e2e4', 'e7e5'],
-      DailyChallengeDifficulty.medium => const <String>[],
-      DailyChallengeDifficulty.hard => const <String>[],
-    };
+    // Daily Checkmate starts from a composed late-game board, not a full
+    // opening. Setup moves are intentionally empty so the player sees only the
+    // puzzle position.
+    return const <String>[];
   }
 
   List<String> _dailySolutionLine(
@@ -2070,23 +2157,20 @@ class _GameScreenState extends State<GameScreen> {
     int pattern,
   ) {
     final List<List<String>> lines = <List<String>>[
-      // Easy: position starts after 1. e4 e5, then White finds the
-      // three-move Scholar mate pattern.
-      <String>['d1h5', 'b8c6', 'f1c4', 'g8f6', 'h5f7'],
-      // Medium: same legal pattern from the starting board, four White moves.
-      <String>['e2e4', 'e7e5', 'd1h5', 'b8c6', 'f1c4', 'g8f6', 'h5f7'],
-      // Hard: one waiting move is included before the forced mating pattern,
-      // giving the player five legal White moves before checkmate.
+      // A late-game queen lift ending in Qxh7#. Black only has quiet pawn
+      // replies while the mating net is built.
+      <String>['a1a3', 'a7a6', 'a3h3', 'a6a5', 'h3h7'],
+      <String>['a1a2', 'a7a6', 'a2a3', 'a6a5', 'a3h3', 'b7b6', 'h3h7'],
       <String>[
-        'a2a3',
+        'a1a2',
         'a7a6',
-        'e2e4',
-        'e7e5',
-        'd1h5',
-        'b8c6',
-        'f1c4',
-        'g8f6',
-        'h5f7',
+        'a2a3',
+        'a6a5',
+        'a3h3',
+        'b7b6',
+        'h3h4',
+        'b6b5',
+        'h4h7',
       ],
     ];
     return switch (difficulty) {
@@ -2097,20 +2181,23 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Map<String, ChessPiece> _dailyStartingPosition(DailyChallenge challenge) {
-    Map<String, ChessPiece> pieces = Map<String, ChessPiece>.from(
-      _initialPieces,
-    );
-    for (final String move in challenge.setupMoves) {
-      final String from = move.substring(0, 2);
-      final String to = move.substring(2, 4);
-      final ChessPiece? piece = pieces[from];
-      if (piece == null ||
-          !ChessRules.safeLegalTargets(from, pieces).contains(to)) {
-        return Map<String, ChessPiece>.from(_initialPieces);
-      }
-      pieces = ChessRules.applyMove(from, to, pieces);
-    }
-    return pieces;
+    return <String, ChessPiece>{
+      // White mating force.
+      'f6': const ChessPiece('K', true),
+      'a1': const ChessPiece('Q', true),
+      'd3': const ChessPiece('B', true),
+      'h2': const ChessPiece('P', true),
+      'b4': const ChessPiece('P', true),
+      'g2': const ChessPiece('P', true),
+      // Black king is boxed by its own pawns; the final Qxh7# is protected
+      // by the bishop on d3.
+      'h8': const ChessPiece('K', false),
+      'h7': const ChessPiece('P', false),
+      'g7': const ChessPiece('P', false),
+      'a7': const ChessPiece('P', false),
+      'b7': const ChessPiece('P', false),
+      'e6': const ChessPiece('P', false),
+    };
   }
 
   void _applyDailyCompletionState() {
@@ -2188,15 +2275,6 @@ class _GameScreenState extends State<GameScreen> {
         final ChessPiece? piece = _pieces[square];
         if (piece == null) {
           _coachNote = 'Choose one of your coins first.';
-          unawaited(ChessSoundService.instance.error());
-          return;
-        }
-        final String? expectedMove = _dailyExpectedMove;
-        if (_gameMode == GameMode.daily &&
-            expectedMove != null &&
-            square != expectedMove.substring(0, 2)) {
-          _coachNote =
-              'Daily Checkmate is a tactical line. Find the forcing coin.';
           unawaited(ChessSoundService.instance.error());
           return;
         }
