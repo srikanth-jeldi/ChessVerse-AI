@@ -1193,6 +1193,9 @@ class _GameScreenState extends State<GameScreen> {
       PlayerSideChoice.black => false,
       PlayerSideChoice.random => _random.nextBool(),
     };
+    if (_gameMode == GameMode.daily) {
+      _humanPlaysWhite = true;
+    }
     _pieces = _gameMode == GameMode.daily
         ? _dailyStartingPosition(_dailyChallenge)
         : Map<String, ChessPiece>.from(_initialPieces);
@@ -1214,7 +1217,7 @@ class _GameScreenState extends State<GameScreen> {
       _applyDailyCompletionState();
       if (!_dailyCompletedToday) {
         _coachNote =
-            'Checkmate in ${_dailyChallenge.playerMoveGoal} moves. Find the first move.';
+            'Daily Checkmate: ${_dailyChallenge.playerMoveGoal} winning moves. Best move: ${_dailyNextMoveLabel()}.';
       }
     }
     if (_gameMode == GameMode.computer && !_humanPlaysWhite) {
@@ -1511,15 +1514,7 @@ class _GameScreenState extends State<GameScreen> {
                       Positioned(
                         left: wide ? 22 : 18,
                         right: wide ? widePanelWidth + 30 : 18,
-                        bottom: wide
-                            ? 18
-                            : math.max(
-                                18,
-                                constraints.maxHeight -
-                                    mobileHeaderHeight -
-                                    boardDimension -
-                                    2,
-                              ),
+                        bottom: 18,
                         child: IgnorePointer(
                           child: Center(
                             child: DecoratedBox(
@@ -1980,6 +1975,9 @@ class _GameScreenState extends State<GameScreen> {
     }
     setState(() {
       _gameMode = mode;
+      if (_gameMode == GameMode.daily) {
+        _humanPlaysWhite = true;
+      }
       _applyPlayerSideNames(_playerDisplayName);
     });
     _reset();
@@ -2030,6 +2028,15 @@ class _GameScreenState extends State<GameScreen> {
   bool get _dailyPuzzleSolved =>
       _gameMode == GameMode.daily &&
       _dailyPlyIndex >= _dailyChallenge.solution.length;
+
+  String _dailyNextMoveLabel() {
+    if (_gameMode != GameMode.daily ||
+        _dailyPlyIndex >= _dailyChallenge.solution.length) {
+      return 'review the board';
+    }
+    final String uci = _dailyChallenge.solution[_dailyPlyIndex];
+    return '${uci.substring(0, 2)} → ${uci.substring(2, 4)}';
+  }
 
   String _moveFeedback({
     required ChessPiece piece,
@@ -2133,7 +2140,7 @@ class _GameScreenState extends State<GameScreen> {
       _ => 'Moonlight Mate',
     };
     return DailyChallenge(
-      id: '$date-${difficulty.name}-p$pattern',
+      id: '$date-${difficulty.name}-p$pattern-lategame-v2',
       title: '$title - ${difficulty.label}',
       difficulty: difficulty,
       pattern: pattern,
@@ -2318,8 +2325,8 @@ class _GameScreenState extends State<GameScreen> {
         if ('$from$square' != expected) {
           _dailyMistakes++;
           _coachNote =
-              'Not the mating line. Try again - the position is unchanged.';
-          _selectedSquare = null;
+              'Not the mating line. Best move: ${expected.substring(0, 2)} → ${expected.substring(2, 4)}.';
+          _selectedSquare = expected.substring(0, 2);
           unawaited(ChessSoundService.instance.error());
           return;
         }
@@ -2525,7 +2532,7 @@ class _GameScreenState extends State<GameScreen> {
       _coachNote = _gameStateNote(
         true,
         fallback:
-            '${_dailyChallenge.playerMoveGoal - _dailyPlayerMovesCompleted} winning move(s) remain.',
+            '${_dailyChallenge.playerMoveGoal - _dailyPlayerMovesCompleted} winning move(s) remain. Best move: ${_dailyNextMoveLabel()}.',
       );
     });
   }
@@ -2948,6 +2955,9 @@ class _GameScreenState extends State<GameScreen> {
     final DailyChallenge challenge = _challengeForToday(_dailyDifficulty);
     final bool completedToday =
         LocalGameArchive.isDailyChallengeComplete(challenge.id);
+    if (_gameMode == GameMode.daily) {
+      _humanPlaysWhite = true;
+    }
     final Map<String, ChessPiece> resetPieces = _gameMode == GameMode.daily
         ? _dailyStartingPosition(challenge)
         : Map<String, ChessPiece>.from(_initialPieces);
@@ -2973,7 +2983,7 @@ class _GameScreenState extends State<GameScreen> {
       _coachNote = _gameMode == GameMode.daily
           ? completedToday
               ? "Today's Daily Checkmate is complete. A new challenge unlocks tomorrow."
-              : 'Checkmate in ${challenge.playerMoveGoal} moves. Find the first move.'
+              : 'Daily Checkmate: ${challenge.playerMoveGoal} winning moves. Best move: ${challenge.solution.first.substring(0, 2)} → ${challenge.solution.first.substring(2, 4)}.'
           : 'Select a coin to see legal moves.';
       _gameResultTitle = completedToday && _gameMode == GameMode.daily
           ? 'Challenge complete'
@@ -3173,7 +3183,7 @@ class _GameScreenState extends State<GameScreen> {
       setState(() {
         _selectedSquare = expected.substring(0, 2);
         _coachNote =
-            'Daily hint: start with ${expected.substring(0, 2)}. Find the winning destination.';
+            'Daily best move: ${expected.substring(0, 2)} → ${expected.substring(2, 4)}. This keeps the forced checkmate line alive.';
       });
       return;
     }
