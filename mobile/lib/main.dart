@@ -232,41 +232,147 @@ class BrandedSplash extends StatelessWidget {
           final bool wide = kIsWeb ||
               constraints.maxWidth >= 720 ||
               constraints.maxWidth <= 0;
+          final String asset = wide
+              ? 'assets/branding/splash_screen_wide.png'
+              : 'assets/branding/splash_screen_mobile.png';
+          if (!wide) {
+            return Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                Image(
+                  image: AssetImage(asset),
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                ),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        Color(0xCC02070D),
+                        Color(0x66066C63),
+                        Color(0xDD02070D),
+                      ],
+                    ),
+                  ),
+                ),
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 34,
+                    ),
+                    child: Column(
+                      children: <Widget>[
+                        const Spacer(flex: 2),
+                        Container(
+                          width: 112,
+                          height: 112,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFF071018).withValues(alpha: 0.86),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: const Color(0xFFD6A84F),
+                              width: 1.4,
+                            ),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: const Color(0xFF63D2B8)
+                                    .withValues(alpha: 0.35),
+                                blurRadius: 44,
+                                spreadRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: Image.asset('assets/branding/app_icon.png'),
+                        ),
+                        const SizedBox(height: 28),
+                        FittedBox(
+                          child: Text(
+                            'CHESSVERSE AI',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context)
+                                .textTheme
+                                .displayMedium
+                                ?.copyWith(
+                                  color: const Color(0xFFF8F2E4),
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 2.4,
+                                ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Think  •  Move  •  Master',
+                          textAlign: TextAlign.center,
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    color: const Color(0xFFE0C47C),
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.8,
+                                  ),
+                        ),
+                        const Spacer(flex: 3),
+                        Text(
+                          'Powered by EpitomeHub',
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: const Color(0xCCF8F2E4),
+                                    letterSpacing: 0.8,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+          final double maxHeroWidth = wide
+              ? constraints.maxWidth.clamp(520.0, 980.0)
+              : constraints.maxWidth * 0.96;
+          final double maxHeroHeight = wide
+              ? constraints.maxHeight * 0.9
+              : constraints.maxHeight * 0.86;
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
               ImageFiltered(
-                imageFilter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                imageFilter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                 child: Image(
-                  image: AssetImage(
-                    wide
-                        ? 'assets/branding/splash_screen_wide.png'
-                        : 'assets/branding/splash_screen_mobile.png',
-                  ),
+                  image: AssetImage(asset),
                   fit: BoxFit.cover,
+                  alignment: Alignment.center,
                 ),
-              ),
-              ColoredBox(
-                color: const Color(0xFF02070D).withValues(alpha: 0.32),
-              ),
-              Image(
-                image: AssetImage(
-                  wide
-                      ? 'assets/branding/splash_screen_wide.png'
-                      : 'assets/branding/splash_screen_mobile.png',
-                ),
-                fit: BoxFit.contain,
               ),
               const DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+                  gradient: RadialGradient(
+                    center: Alignment(0, -0.08),
+                    radius: 0.9,
                     colors: <Color>[
-                      Color(0x00000000),
-                      Color(0x12000000),
-                      Color(0x44000000),
+                      Color(0x66066C63),
+                      Color(0xD902070D),
+                      Color(0xFF02070D),
                     ],
+                  ),
+                ),
+              ),
+              SafeArea(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: maxHeroWidth,
+                      maxHeight: maxHeroHeight,
+                    ),
+                    child: Image(
+                      image: AssetImage(asset),
+                      fit: BoxFit.contain,
+                      alignment: Alignment.center,
+                    ),
                   ),
                 ),
               ),
@@ -1921,11 +2027,6 @@ class _GameScreenState extends State<GameScreen> {
 
   int get _dailyPlayerMovesCompleted => (_dailyPlyIndex + 1) ~/ 2;
 
-  String? get _dailyExpectedMove => _gameMode == GameMode.daily &&
-          _dailyPlyIndex < _dailyChallenge.solution.length
-      ? _dailyChallenge.solution[_dailyPlyIndex]
-      : null;
-
   bool get _dailyPuzzleSolved =>
       _gameMode == GameMode.daily &&
       _dailyPlyIndex >= _dailyChallenge.solution.length;
@@ -2036,9 +2137,19 @@ class _GameScreenState extends State<GameScreen> {
       title: '$title - ${difficulty.label}',
       difficulty: difficulty,
       pattern: pattern,
-      setupMoves: const <String>[],
+      setupMoves: _dailySetupLine(difficulty, pattern),
       solution: _dailySolutionLine(difficulty, pattern),
     );
+  }
+
+  List<String> _dailySetupLine(
+    DailyChallengeDifficulty difficulty,
+    int pattern,
+  ) {
+    // Daily Checkmate starts from a composed late-game board, not a full
+    // opening. Setup moves are intentionally empty so the player sees only the
+    // puzzle position.
+    return const <String>[];
   }
 
   List<String> _dailySolutionLine(
@@ -2046,18 +2157,20 @@ class _GameScreenState extends State<GameScreen> {
     int pattern,
   ) {
     final List<List<String>> lines = <List<String>>[
-      <String>['c3d5', 'a8a7', 'h5f7', 'g8h8', 'f7f8'],
-      <String>['c3d5', 'a8a7', 'a1e1', 'a7a6', 'h5f7', 'g8h8', 'f7f8'],
+      // A late-game queen lift ending in Qxh7#. Black only has quiet pawn
+      // replies while the mating net is built.
+      <String>['a1a3', 'a7a6', 'a3h3', 'a6a5', 'h3h7'],
+      <String>['a1a2', 'a7a6', 'a2a3', 'a6a5', 'a3h3', 'b7b6', 'h3h7'],
       <String>[
-        'c3d5',
-        'a8a7',
-        'a1e1',
+        'a1a2',
         'a7a6',
-        'c4b3',
+        'a2a3',
         'a6a5',
-        'h5f7',
-        'g8h8',
-        'f7f8',
+        'a3h3',
+        'b7b6',
+        'h3h4',
+        'b6b5',
+        'h4h7',
       ],
     ];
     return switch (difficulty) {
@@ -2069,19 +2182,21 @@ class _GameScreenState extends State<GameScreen> {
 
   Map<String, ChessPiece> _dailyStartingPosition(DailyChallenge challenge) {
     return <String, ChessPiece>{
-      'g1': const ChessPiece('K', true),
-      'h5': const ChessPiece('Q', true),
-      'c3': const ChessPiece('N', true),
-      'c4': const ChessPiece('B', true),
-      'a1': const ChessPiece('R', true),
-      'b2': const ChessPiece('P', true),
-      'g2': const ChessPiece('P', true),
+      // White mating force.
+      'f6': const ChessPiece('K', true),
+      'a1': const ChessPiece('Q', true),
+      'd3': const ChessPiece('B', true),
       'h2': const ChessPiece('P', true),
-      'g8': const ChessPiece('K', false),
-      'a8': const ChessPiece('R', false),
-      'f7': const ChessPiece('P', false),
-      'g7': const ChessPiece('P', false),
+      'b4': const ChessPiece('P', true),
+      'g2': const ChessPiece('P', true),
+      // Black king is boxed by its own pawns; the final Qxh7# is protected
+      // by the bishop on d3.
+      'h8': const ChessPiece('K', false),
       'h7': const ChessPiece('P', false),
+      'g7': const ChessPiece('P', false),
+      'a7': const ChessPiece('P', false),
+      'b7': const ChessPiece('P', false),
+      'e6': const ChessPiece('P', false),
     };
   }
 
@@ -2160,15 +2275,6 @@ class _GameScreenState extends State<GameScreen> {
         final ChessPiece? piece = _pieces[square];
         if (piece == null) {
           _coachNote = 'Choose one of your coins first.';
-          unawaited(ChessSoundService.instance.error());
-          return;
-        }
-        final String? expectedMove = _dailyExpectedMove;
-        if (_gameMode == GameMode.daily &&
-            expectedMove != null &&
-            square != expectedMove.substring(0, 2)) {
-          _coachNote =
-              'Daily Checkmate is a tactical line. Find the forcing coin.';
           unawaited(ChessSoundService.instance.error());
           return;
         }
@@ -2286,19 +2392,27 @@ class _GameScreenState extends State<GameScreen> {
           if (_gameResultTitle == null) {
             _coachNote = '$moveFeedback $_coachNote';
           }
-          if (_dailyPuzzleSolved ||
-              (_gameMode == GameMode.daily &&
-                  _gameResultDetail == 'Checkmate')) {
-            _gameResultTitle = 'Challenge complete';
-            _gameResultDetail =
-                '${_dailyChallenge.playerMoveGoal}-move checkmate';
-            _resultVisible = true;
-            _dailyCompletedToday = true;
-            LocalGameArchive.markDailyChallengeComplete(_dailyChallenge.id);
-            _archiveFinishedGame();
-            unawaited(ChessSoundService.instance.checkmate());
-            _coachNote =
-                "Brilliant! Today's ${_dailyDifficulty.label.toLowerCase()} challenge is complete.";
+          if (_gameMode == GameMode.daily && _dailyPuzzleSolved) {
+            final bool opponentMated =
+                ChessRules.isKingInCheck(!piece.white, _pieces) &&
+                    !ChessRules.hasAnySafeMove(!piece.white, _pieces);
+            if (opponentMated) {
+              _gameResultTitle = 'Challenge complete';
+              _gameResultDetail =
+                  '${_dailyChallenge.playerMoveGoal}-move checkmate';
+              _resultVisible = true;
+              _dailyCompletedToday = true;
+              LocalGameArchive.markDailyChallengeComplete(_dailyChallenge.id);
+              _archiveFinishedGame();
+              unawaited(ChessSoundService.instance.checkmate());
+              _coachNote =
+                  "Brilliant! Today's ${_dailyDifficulty.label.toLowerCase()} challenge is complete.";
+            } else {
+              _coachNote =
+                  'Puzzle line reached, but this is not true checkmate. Please reset and retry.';
+              _gameResultTitle = null;
+              _gameResultDetail = null;
+            }
           }
         }
       }
