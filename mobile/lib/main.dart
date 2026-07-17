@@ -2311,7 +2311,7 @@ class _GameScreenState extends State<GameScreen> {
       _ => 'Moonlight Mate',
     };
     return DailyChallenge(
-      id: '$date-${difficulty.name}-p$pattern-lategame-v2',
+      id: '$date-${difficulty.name}-p$pattern-lategame-v3',
       title: '$title - ${difficulty.label}',
       difficulty: difficulty,
       pattern: pattern,
@@ -2360,8 +2360,10 @@ class _GameScreenState extends State<GameScreen> {
 
   Map<String, ChessPiece> _dailyStartingPosition(DailyChallenge challenge) {
     return <String, ChessPiece>{
-      // White mating force.
-      'f6': const ChessPiece('K', true),
+      // White mating force. Keep the king on f4 so the puzzle starts from a
+      // legal position: f6 is attacked by the black g7 pawn, which made the
+      // challenge feel locked because every normal move was rejected.
+      'f4': const ChessPiece('K', true),
       'a1': const ChessPiece('Q', true),
       'd3': const ChessPiece('B', true),
       'h2': const ChessPiece('P', true),
