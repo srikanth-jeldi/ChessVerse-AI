@@ -47,6 +47,43 @@ class LocalGameStats {
       gamesPlayed == 0 ? 0 : ((wins / gamesPlayed) * 100).round();
 }
 
+class RewardBadge {
+  const RewardBadge({
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.unlocked,
+  });
+
+  final String title;
+  final String description;
+  final String icon;
+  final bool unlocked;
+}
+
+class RewardSnapshot {
+  const RewardSnapshot({
+    required this.xp,
+    required this.coins,
+    required this.level,
+    required this.levelProgress,
+    required this.streak,
+    required this.badges,
+  });
+
+  final int xp;
+  final int coins;
+  final int level;
+  final double levelProgress;
+  final int streak;
+  final List<RewardBadge> badges;
+
+  int get unlockedBadges =>
+      badges.where((RewardBadge badge) => badge.unlocked).length;
+
+  int get nextLevelXp => level * 120;
+}
+
 class LocalGameArchive {
   LocalGameArchive._();
 
@@ -127,6 +164,58 @@ class LocalGameArchive {
       dailySolved: _dailySolved,
       puzzlesSolved: _puzzlesSolved,
       dailyStreak: _dailyStreak,
+    );
+  }
+
+  static RewardSnapshot rewards() {
+    final LocalGameStats localStats = stats();
+    final int xp = (localStats.gamesPlayed * 25) +
+        (localStats.wins * 45) +
+        (localStats.draws * 15) +
+        (localStats.dailySolved * 80) +
+        (localStats.puzzlesSolved * 35) +
+        (localStats.dailyStreak * 20);
+    final int level = (xp ~/ 120) + 1;
+    final int levelBase = (level - 1) * 120;
+    final double progress = ((xp - levelBase) / 120).clamp(0, 1).toDouble();
+    final int coins = (localStats.gamesPlayed * 8) +
+        (localStats.wins * 18) +
+        (localStats.dailySolved * 35) +
+        (localStats.puzzlesSolved * 12) +
+        (localStats.dailyStreak * 10);
+
+    return RewardSnapshot(
+      xp: xp,
+      coins: coins,
+      level: level,
+      levelProgress: progress,
+      streak: localStats.dailyStreak,
+      badges: <RewardBadge>[
+        RewardBadge(
+          title: 'First Move',
+          description: 'Finish your first ChessVerse match.',
+          icon: '♟',
+          unlocked: localStats.gamesPlayed >= 1,
+        ),
+        RewardBadge(
+          title: 'Tactical Spark',
+          description: 'Solve a daily checkmate.',
+          icon: '🔥',
+          unlocked: localStats.dailySolved >= 1,
+        ),
+        RewardBadge(
+          title: 'Winner Mindset',
+          description: 'Win three local/AI games.',
+          icon: '🏆',
+          unlocked: localStats.wins >= 3,
+        ),
+        RewardBadge(
+          title: 'Study Streak',
+          description: 'Build a 3-day ChessVerse streak.',
+          icon: '⚡',
+          unlocked: localStats.dailyStreak >= 3,
+        ),
+      ],
     );
   }
 }
