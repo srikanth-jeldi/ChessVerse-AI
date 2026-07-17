@@ -232,9 +232,34 @@ class BrandedSplash extends StatelessWidget {
           final bool wide = kIsWeb ||
               constraints.maxWidth >= 720 ||
               constraints.maxWidth <= 0;
-          final String asset = wide
-              ? 'assets/branding/splash_screen_wide.png'
-              : 'assets/branding/splash_screen_mobile.png';
+          const String asset =
+              'assets/branding/chessverse_king_dual_splash.jpg';
+          if (!wide) {
+            return Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                const Image(
+                  image: AssetImage(asset),
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  filterQuality: FilterQuality.high,
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        const Color(0xFF02070D).withValues(alpha: 0.22),
+                        Colors.transparent,
+                        const Color(0xFF02070D).withValues(alpha: 0.28),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
           if (!wide) {
             return Stack(
               fit: StackFit.expand,
@@ -379,6 +404,174 @@ class BrandedSplash extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _MobilePremiumSplash extends StatelessWidget {
+  const _MobilePremiumSplash();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(0, -0.28),
+          radius: 1.18,
+          colors: <Color>[
+            Color(0xFF0C5F5A),
+            Color(0xFF081B33),
+            Color(0xFF02070D),
+          ],
+          stops: <double>[0, 0.45, 1],
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          const _PremiumSplashBoardGlow(),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 30),
+              child: Column(
+                children: <Widget>[
+                  const Spacer(flex: 2),
+                  Container(
+                    width: 126,
+                    height: 126,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(34),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: <Color>[
+                          Color(0xFF0D1F37),
+                          Color(0xFF061018),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: const Color(0xFFE0B85E),
+                        width: 1.4,
+                      ),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color:
+                              const Color(0xFF63D2B8).withValues(alpha: 0.34),
+                          blurRadius: 52,
+                          spreadRadius: 10,
+                        ),
+                        BoxShadow(
+                          color:
+                              const Color(0xFFD6A84F).withValues(alpha: 0.18),
+                          blurRadius: 30,
+                          offset: const Offset(0, 14),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: Image.asset(
+                        'assets/branding/app_icon.png',
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.high,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  FittedBox(
+                    child: Text(
+                      'CHESSVERSE AI',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                            color: const Color(0xFFF8F2E4),
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2.2,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Think • Move • Master',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: const Color(0xFFE0B85E),
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.5,
+                        ),
+                  ),
+                  const SizedBox(height: 32),
+                  Container(
+                    height: 7,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(999),
+                      color: const Color(0xFF2B160B),
+                      border: Border.all(
+                        color: const Color(0xFF795022).withValues(alpha: 0.7),
+                      ),
+                    ),
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: 0.76,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(999),
+                          gradient: const LinearGradient(
+                            colors: <Color>[
+                              Color(0xFFE0B85E),
+                              Color(0xFF63D2B8),
+                              Color(0xFF7C4DFF),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Spacer(flex: 3),
+                  Text(
+                    'Powered by EpitomeHub',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: const Color(0xCCF8F2E4),
+                          letterSpacing: 0.8,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PremiumSplashBoardGlow extends StatelessWidget {
+  const _PremiumSplashBoardGlow();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Opacity(
+        opacity: 0.055,
+        child: GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 8,
+          ),
+          itemCount: 96,
+          itemBuilder: (BuildContext context, int index) {
+            final int row = index ~/ 8;
+            final int col = index % 8;
+            return ColoredBox(
+              color: (row + col).isEven
+                  ? const Color(0xFFDCC58A)
+                  : const Color(0xFF063B35),
+            );
+          },
+        ),
       ),
     );
   }
@@ -2140,7 +2333,7 @@ class _GameScreenState extends State<GameScreen> {
       _ => 'Moonlight Mate',
     };
     return DailyChallenge(
-      id: '$date-${difficulty.name}-p$pattern-lategame-v2',
+      id: '$date-${difficulty.name}-p$pattern-lategame-v3',
       title: '$title - ${difficulty.label}',
       difficulty: difficulty,
       pattern: pattern,
@@ -2189,8 +2382,10 @@ class _GameScreenState extends State<GameScreen> {
 
   Map<String, ChessPiece> _dailyStartingPosition(DailyChallenge challenge) {
     return <String, ChessPiece>{
-      // White mating force.
-      'f6': const ChessPiece('K', true),
+      // White mating force. Keep the king on f4 so the puzzle starts from a
+      // legal position: f6 is attacked by the black g7 pawn, which made the
+      // challenge feel locked because every normal move was rejected.
+      'f4': const ChessPiece('K', true),
       'a1': const ChessPiece('Q', true),
       'd3': const ChessPiece('B', true),
       'h2': const ChessPiece('P', true),
