@@ -2229,6 +2229,9 @@ class _GameScreenState extends State<GameScreen> {
       return 'review the board';
     }
     final String uci = _dailyChallenge.solution[_dailyPlyIndex];
+    if (uci.length < 4) {
+      return 'reset the puzzle';
+    }
     return '${uci.substring(0, 2)} → ${uci.substring(2, 4)}';
   }
 
@@ -2237,7 +2240,27 @@ class _GameScreenState extends State<GameScreen> {
         _dailyPlyIndex >= _dailyChallenge.solution.length) {
       return null;
     }
-    return _dailyChallenge.solution[_dailyPlyIndex];
+    final String expected = _dailyChallenge.solution[_dailyPlyIndex];
+    return expected.length >= 4 ? expected : null;
+  }
+
+  bool _isLegalMove(
+    String from,
+    String to, {
+    bool? whiteToMove,
+  }) {
+    final ChessPiece? piece = _pieces[from];
+    if (piece == null) {
+      return false;
+    }
+    if (whiteToMove != null && piece.white != whiteToMove) {
+      return false;
+    }
+    try {
+      return _legalTargetsFor(from).contains(to);
+    } catch (_) {
+      return false;
+    }
   }
 
   bool _selectDailyExpectedMove({String? note}) {
@@ -2252,16 +2275,14 @@ class _GameScreenState extends State<GameScreen> {
 
     final String from = expected.substring(0, 2);
     final String to = expected.substring(2, 4);
-    final ChessPiece? piece = _pieces[from];
     final bool sideToMoveWhite = _moves.length.isEven;
-    final bool expectedIsPlayable = piece != null &&
-        piece.white == sideToMoveWhite &&
-        _legalTargetsFor(from).contains(to);
+    final bool expectedIsPlayable =
+        _isLegalMove(from, to, whiteToMove: sideToMoveWhite);
 
     if (!expectedIsPlayable) {
       _selectedSquare = null;
       _coachNote =
-          'Daily puzzle state needs reset. Tap refresh to reload a legal late-game challenge.';
+          'Daily puzzle state refreshed. Tap reset once if this old web build was already open.';
       return false;
     }
 
@@ -2744,9 +2765,16 @@ class _GameScreenState extends State<GameScreen> {
       return;
     }
     final String uci = _dailyChallenge.solution[_dailyPlyIndex];
+    if (uci.length < 4) {
+      setState(() {
+        _aiThinking = false;
+        _coachNote = 'This daily puzzle could not continue. Reset and retry.';
+      });
+      return;
+    }
     final String from = uci.substring(0, 2);
     final String to = uci.substring(2, 4);
-    if (_pieces[from]?.white != false || !_legalTargetsFor(from).contains(to)) {
+    if (!_isLegalMove(from, to, whiteToMove: false)) {
       setState(() {
         _aiThinking = false;
         _coachNote = 'This daily puzzle could not continue. Reset and retry.';
@@ -2806,8 +2834,7 @@ class _GameScreenState extends State<GameScreen> {
         if (uci.length >= 4) {
           final String from = uci.substring(0, 2);
           final String to = uci.substring(2, 4);
-          if (_pieces[from]?.white == aiPlaysWhite &&
-              _legalTargetsFor(from).contains(to)) {
+          if (_isLegalMove(from, to, whiteToMove: aiPlaysWhite)) {
             engineMove = AiCandidate(from, to, 1000);
           }
         }
