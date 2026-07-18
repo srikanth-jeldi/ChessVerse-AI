@@ -359,9 +359,8 @@ class BrandedSplash extends StatelessWidget {
           final double maxHeroWidth = wide
               ? constraints.maxWidth.clamp(520.0, 980.0)
               : constraints.maxWidth * 0.96;
-          final double maxHeroHeight = wide
-              ? constraints.maxHeight * 0.9
-              : constraints.maxHeight * 0.86;
+          final double maxHeroHeight =
+              wide ? constraints.maxHeight * 0.9 : constraints.maxHeight * 0.86;
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
@@ -1409,8 +1408,10 @@ class _GameScreenState extends State<GameScreen> {
     if (_gameMode == GameMode.daily) {
       _applyDailyCompletionState();
       if (!_dailyCompletedToday) {
-        _coachNote =
-            'Daily Checkmate: ${_dailyChallenge.playerMoveGoal} winning moves. Best move: ${_dailyNextMoveLabel()}.';
+        _selectDailyExpectedMove(
+          note:
+              'Daily Checkmate: ${_dailyChallenge.playerMoveGoal} winning moves. Best move: ${_dailyNextMoveLabel()}.',
+        );
       }
     }
     if (_gameMode == GameMode.computer && !_humanPlaysWhite) {
@@ -2231,6 +2232,45 @@ class _GameScreenState extends State<GameScreen> {
     return '${uci.substring(0, 2)} → ${uci.substring(2, 4)}';
   }
 
+  String? _dailyExpectedMove() {
+    if (_gameMode != GameMode.daily ||
+        _dailyPlyIndex >= _dailyChallenge.solution.length) {
+      return null;
+    }
+    return _dailyChallenge.solution[_dailyPlyIndex];
+  }
+
+  bool _selectDailyExpectedMove({String? note}) {
+    final String? expected = _dailyExpectedMove();
+    if (expected == null) {
+      _selectedSquare = null;
+      if (note != null) {
+        _coachNote = note;
+      }
+      return false;
+    }
+
+    final String from = expected.substring(0, 2);
+    final String to = expected.substring(2, 4);
+    final ChessPiece? piece = _pieces[from];
+    final bool sideToMoveWhite = _moves.length.isEven;
+    final bool expectedIsPlayable = piece != null &&
+        piece.white == sideToMoveWhite &&
+        _legalTargetsFor(from).contains(to);
+
+    if (!expectedIsPlayable) {
+      _selectedSquare = null;
+      _coachNote =
+          'Daily puzzle state needs reset. Tap refresh to reload a legal late-game challenge.';
+      return false;
+    }
+
+    _selectedSquare = from;
+    _coachNote = note ??
+        'Daily best move: $from to $to. Tap the highlighted target to continue the forced mate.';
+    return true;
+  }
+
   String _moveFeedback({
     required ChessPiece piece,
     required String from,
@@ -2333,7 +2373,7 @@ class _GameScreenState extends State<GameScreen> {
       _ => 'Moonlight Mate',
     };
     return DailyChallenge(
-      id: '$date-${difficulty.name}-p$pattern-lategame-v3',
+      id: '$date-${difficulty.name}-p$pattern-lategame-v4',
       title: '$title - ${difficulty.label}',
       difficulty: difficulty,
       pattern: pattern,
@@ -2463,6 +2503,10 @@ class _GameScreenState extends State<GameScreen> {
     if (_gameResultTitle != null || _aiThinking) {
       return;
     }
+    if (_gameMode == GameMode.daily && _dailyPlyIndex.isOdd) {
+      _scheduleDailyReply();
+      return;
+    }
     String? promotionSquare;
     bool? promotionWhite;
     bool moveCommitted = false;
@@ -2516,12 +2560,20 @@ class _GameScreenState extends State<GameScreen> {
       final String from = _selectedSquare!;
       final PositionAnalysis preMoveAnalysis = _analyzePosition(whitesTurn);
       if (_gameMode == GameMode.daily) {
-        final String expected = _dailyChallenge.solution[_dailyPlyIndex];
+        final String? expected = _dailyExpectedMove();
+        if (expected == null) {
+          _coachNote =
+              "Today's Daily Checkmate is already complete. Reset tomorrow for a fresh puzzle.";
+          _selectedSquare = null;
+          return;
+        }
         if ('$from$square' != expected) {
           _dailyMistakes++;
+          final String expectedFrom = expected.substring(0, 2);
+          final String expectedTo = expected.substring(2, 4);
           _coachNote =
-              'Not the mating line. Best move: ${expected.substring(0, 2)} → ${expected.substring(2, 4)}.';
-          _selectedSquare = expected.substring(0, 2);
+              'Legal move, but not the forced mate. Best move: $expectedFrom to $expectedTo.';
+          _selectDailyExpectedMove(note: _coachNote);
           unawaited(ChessSoundService.instance.error());
           return;
         }
@@ -3189,6 +3241,12 @@ class _GameScreenState extends State<GameScreen> {
       _resultVisible = true;
       _resultSaved = false;
       _checkWarningActive = false;
+      if (_gameMode == GameMode.daily && !completedToday) {
+        _selectDailyExpectedMove(
+          note:
+              'Daily Checkmate: ${challenge.playerMoveGoal} winning moves. Best move: ${_dailyNextMoveLabel()}.',
+        );
+      }
     });
   }
 
@@ -5859,7 +5917,6 @@ class MoveHistorySheet extends StatelessWidget {
       },
     );
   }
-
 }
 
 class MoveQualityBadge extends StatelessWidget {
@@ -5893,9 +5950,7 @@ class MoveQualityBadge extends StatelessWidget {
 
 String moveCoachLabelForMove(String move) {
   final String clean = move.replaceAll(' e.p.', '').trim().toLowerCase();
-  if (clean.contains('o-o') ||
-      clean.contains('+') ||
-      clean.contains('check')) {
+  if (clean.contains('o-o') || clean.contains('+') || clean.contains('check')) {
     return 'Superb';
   }
   if (clean.contains('x')) {
