@@ -86,8 +86,19 @@ abstract final class AppConfig {
       throw StateError('WEB_BASE_URL must be an absolute URL.');
     }
 
-    if (kReleaseMode && apiUri.scheme != 'https') {
+    if (kReleaseMode &&
+        apiUri.scheme != 'https' &&
+        !_isLocalDevHost(apiUri.host)) {
       throw StateError('Release builds require an HTTPS API_BASE_URL.');
     }
+  }
+
+  static bool _isLocalDevHost(String host) {
+    final String normalized = host.toLowerCase();
+    return normalized == 'localhost' ||
+        normalized == '127.0.0.1' ||
+        normalized == '10.0.2.2' ||
+        normalized.startsWith('192.168.') ||
+        normalized.startsWith('10.');
   }
 }
