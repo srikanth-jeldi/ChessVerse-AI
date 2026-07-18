@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/layout/responsive_page.dart';
+import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_button.dart';
 import '../../../core/widgets/chessverse_card.dart';
@@ -38,6 +39,7 @@ class HomeDashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool wide = AppBreakpoints.isTabletOrLarger(context);
     final DailyChallengeUiState challenge = DailyChallengeUiState.sample;
+    final RewardSnapshot rewards = LocalGameArchive.rewards();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -46,6 +48,7 @@ class HomeDashboardScreen extends StatelessWidget {
             ? _WideHomeLayout(
                 playerName: playerName,
                 challenge: challenge,
+                rewards: rewards,
                 onPlayVsAi: onPlayVsAi,
                 onDailyChallenge: onDailyChallenge,
                 onLocalGame: onLocalGame,
@@ -59,6 +62,7 @@ class HomeDashboardScreen extends StatelessWidget {
             : _PhoneHomeLayout(
                 playerName: playerName,
                 challenge: challenge,
+                rewards: rewards,
                 onPlayVsAi: onPlayVsAi,
                 onDailyChallenge: onDailyChallenge,
                 onLocalGame: onLocalGame,
@@ -78,6 +82,7 @@ class _PhoneHomeLayout extends StatelessWidget {
   const _PhoneHomeLayout({
     required this.playerName,
     required this.challenge,
+    required this.rewards,
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onLocalGame,
@@ -91,6 +96,7 @@ class _PhoneHomeLayout extends StatelessWidget {
 
   final String playerName;
   final DailyChallengeUiState challenge;
+  final RewardSnapshot rewards;
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
@@ -112,6 +118,8 @@ class _PhoneHomeLayout extends StatelessWidget {
           onSettings: onSettings,
         ),
         const SizedBox(height: 20),
+        RewardProgressCard(rewards: rewards),
+        const SizedBox(height: 18),
         _HeroPlayCard(onPlayVsAi: onPlayVsAi),
         const SizedBox(height: 18),
         DailyChallengeLauncher(
@@ -140,6 +148,7 @@ class _WideHomeLayout extends StatelessWidget {
   const _WideHomeLayout({
     required this.playerName,
     required this.challenge,
+    required this.rewards,
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onLocalGame,
@@ -153,6 +162,7 @@ class _WideHomeLayout extends StatelessWidget {
 
   final String playerName;
   final DailyChallengeUiState challenge;
+  final RewardSnapshot rewards;
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
@@ -179,7 +189,13 @@ class _WideHomeLayout extends StatelessWidget {
           children: <Widget>[
             Expanded(
               flex: 6,
-              child: _HeroPlayCard(onPlayVsAi: onPlayVsAi),
+              child: Column(
+                children: <Widget>[
+                  RewardProgressCard(rewards: rewards),
+                  const SizedBox(height: 18),
+                  _HeroPlayCard(onPlayVsAi: onPlayVsAi),
+                ],
+              ),
             ),
             const SizedBox(width: 22),
             Expanded(
@@ -205,6 +221,129 @@ class _WideHomeLayout extends StatelessWidget {
           onSettings: onSettings,
         ),
       ],
+    );
+  }
+}
+
+class RewardProgressCard extends StatelessWidget {
+  const RewardProgressCard({required this.rewards, super.key});
+
+  final RewardSnapshot rewards;
+
+  @override
+  Widget build(BuildContext context) {
+    final int remainingXp = (rewards.nextLevelXp - rewards.xp)
+        .clamp(0, rewards.nextLevelXp)
+        .toInt();
+    return ChessVerseCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppColors.primaryGradient,
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: AppColors.accentGold.withValues(alpha: 0.22),
+                      blurRadius: 18,
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.military_tech_rounded),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'ChessVerse Progress',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      remainingXp == 0
+                          ? 'Level ${rewards.level} ready'
+                          : '$remainingXp XP to Level ${rewards.level + 1}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              _RewardMiniPill(
+                icon: Icons.paid_rounded,
+                label: '${rewards.coins}',
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              minHeight: 10,
+              value: rewards.levelProgress,
+              backgroundColor: const Color(0xFF222636),
+              color: AppColors.accentGold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              _RewardMiniPill(
+                icon: Icons.bolt_rounded,
+                label: 'Level ${rewards.level}',
+              ),
+              _RewardMiniPill(
+                icon: Icons.local_fire_department_rounded,
+                label: '${rewards.streak} day streak',
+              ),
+              _RewardMiniPill(
+                icon: Icons.workspace_premium_rounded,
+                label:
+                    '${rewards.unlockedBadges}/${rewards.badges.length} badges',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RewardMiniPill extends StatelessWidget {
+  const _RewardMiniPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xFF211D24),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.accentGold.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 16, color: AppColors.accentGold),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
     );
   }
 }
