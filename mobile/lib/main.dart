@@ -24,13 +24,11 @@ import 'features/tutorial/presentation/learn_chess_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setPreferredOrientations(
-    <DeviceOrientation>[
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ],
-  );
+  await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
   await LocalGameArchive.init();
   AppConfig.validate();
   runApp(const ChessVerseApp());
@@ -91,37 +89,37 @@ class _SplashGateState extends State<SplashGate> {
       switchOutCurve: Curves.easeInCubic,
       child: switch (_stage) {
         _RootStage.splash => const BrandedSplash(
-            key: ValueKey<String>('splash'),
-          ),
+          key: ValueKey<String>('splash'),
+        ),
         _RootStage.loading => const ChessVerseLoadingScreen(
-            key: ValueKey<String>('loading'),
-          ),
+          key: ValueKey<String>('loading'),
+        ),
         _RootStage.onboarding => OnboardingScreen(
-            key: const ValueKey<String>('onboarding'),
-            onComplete: () => setState(() => _stage = _RootStage.auth),
-          ),
+          key: const ValueKey<String>('onboarding'),
+          onComplete: () => setState(() => _stage = _RootStage.auth),
+        ),
         _RootStage.auth => AuthScreen(
-            key: const ValueKey<String>('auth'),
-            onAuthenticated: (ChessVerseAuthResult result) {
-              setState(() {
-                _playerName = result.playerName;
-                _stage = _RootStage.home;
-              });
-            },
-          ),
+          key: const ValueKey<String>('auth'),
+          onAuthenticated: (ChessVerseAuthResult result) {
+            setState(() {
+              _playerName = result.playerName;
+              _stage = _RootStage.home;
+            });
+          },
+        ),
         _RootStage.home => HomeDashboardScreen(
-            key: const ValueKey<String>('home'),
-            playerName: _playerName,
-            onPlayVsAi: () => _chooseSideAndOpen(context, GameMode.computer),
-            onDailyChallenge: () => _openGame(context, GameMode.daily),
-            onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
-            onAnalysis: () => _push(context, const AnalysisScreen()),
-            onPuzzles: () => _push(context, const PuzzlesScreen()),
-            onSavedGames: () => _push(context, const SavedGamesScreen()),
-            onLearnChess: () => _push(context, const LearnChessScreen()),
-            onProfile: () => _push(context, const ProfileScreen()),
-            onSettings: () => _push(context, const SettingsScreen()),
-          ),
+          key: const ValueKey<String>('home'),
+          playerName: _playerName,
+          onPlayVsAi: () => _chooseSideAndOpen(context, GameMode.computer),
+          onDailyChallenge: () => _openGame(context, GameMode.daily),
+          onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
+          onAnalysis: () => _push(context, const AnalysisScreen()),
+          onPuzzles: () => _push(context, const PuzzlesScreen()),
+          onSavedGames: () => _push(context, const SavedGamesScreen()),
+          onLearnChess: () => _push(context, const LearnChessScreen()),
+          onProfile: () => _push(context, const ProfileScreen()),
+          onSettings: () => _push(context, const SettingsScreen()),
+        ),
       },
     );
   }
@@ -129,58 +127,59 @@ class _SplashGateState extends State<SplashGate> {
   Future<void> _chooseSideAndOpen(BuildContext context, GameMode mode) async {
     final PlayerSideChoice? choice =
         await showModalBottomSheet<PlayerSideChoice>(
-      context: context,
-      showDragHandle: true,
-      backgroundColor: const Color(0xFF15161B),
-      builder: (BuildContext context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 22),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Choose your side',
-                  style: Theme.of(context).textTheme.headlineSmall,
+          context: context,
+          showDragHandle: true,
+          backgroundColor: const Color(0xFF15161B),
+          builder: (BuildContext context) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 22),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'Choose your side',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      mode == GameMode.local
+                          ? 'Player 1 side for this match.'
+                          : 'ChessVerse AI will take the opposite side.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: PlayerSideChoice.values.map((
+                        PlayerSideChoice side,
+                      ) {
+                        return ChoiceChip(
+                          selected: side == PlayerSideChoice.white,
+                          avatar: Icon(side.icon, size: 18),
+                          label: Text(side.label),
+                          onSelected: (_) => Navigator.of(context).pop(side),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () =>
+                            Navigator.of(context).pop(PlayerSideChoice.white),
+                        icon: const Icon(Icons.play_arrow_rounded),
+                        label: const Text('Start as White'),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  mode == GameMode.local
-                      ? 'Player 1 side for this match.'
-                      : 'ChessVerse AI will take the opposite side.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children:
-                      PlayerSideChoice.values.map((PlayerSideChoice side) {
-                    return ChoiceChip(
-                      selected: side == PlayerSideChoice.white,
-                      avatar: Icon(side.icon, size: 18),
-                      label: Text(side.label),
-                      onSelected: (_) => Navigator.of(context).pop(side),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () =>
-                        Navigator.of(context).pop(PlayerSideChoice.white),
-                    icon: const Icon(Icons.play_arrow_rounded),
-                    label: const Text('Start as White'),
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
-      },
-    );
     if (choice != null && context.mounted) {
       _openGame(context, mode, sideChoice: choice);
     }
@@ -204,21 +203,11 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   void _push(BuildContext context, Widget screen) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => screen,
-      ),
-    );
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 }
 
-enum _RootStage {
-  splash,
-  loading,
-  onboarding,
-  auth,
-  home,
-}
+enum _RootStage { splash, loading, onboarding, auth, home }
 
 class BrandedSplash extends StatelessWidget {
   const BrandedSplash({super.key});
@@ -229,7 +218,8 @@ class BrandedSplash extends StatelessWidget {
       backgroundColor: const Color(0xFF02070D),
       body: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          final bool wide = kIsWeb ||
+          final bool wide =
+              kIsWeb ||
               constraints.maxWidth >= 720 ||
               constraints.maxWidth <= 0;
           const String asset =
@@ -296,8 +286,9 @@ class BrandedSplash extends StatelessWidget {
                           height: 112,
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color:
-                                const Color(0xFF071018).withValues(alpha: 0.86),
+                            color: const Color(
+                              0xFF071018,
+                            ).withValues(alpha: 0.86),
                             borderRadius: BorderRadius.circular(30),
                             border: Border.all(
                               color: const Color(0xFFD6A84F),
@@ -305,8 +296,9 @@ class BrandedSplash extends StatelessWidget {
                             ),
                             boxShadow: <BoxShadow>[
                               BoxShadow(
-                                color: const Color(0xFF63D2B8)
-                                    .withValues(alpha: 0.35),
+                                color: const Color(
+                                  0xFF63D2B8,
+                                ).withValues(alpha: 0.35),
                                 blurRadius: 44,
                                 spreadRadius: 8,
                               ),
@@ -319,9 +311,7 @@ class BrandedSplash extends StatelessWidget {
                           child: Text(
                             'CHESSVERSE AI',
                             textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .displayMedium
+                            style: Theme.of(context).textTheme.displayMedium
                                 ?.copyWith(
                                   color: const Color(0xFFF8F2E4),
                                   fontWeight: FontWeight.w900,
@@ -333,21 +323,21 @@ class BrandedSplash extends StatelessWidget {
                         Text(
                           'Think  •  Move  •  Master',
                           textAlign: TextAlign.center,
-                          style:
-                              Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    color: const Color(0xFFE0C47C),
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 1.8,
-                                  ),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                color: const Color(0xFFE0C47C),
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.8,
+                              ),
                         ),
                         const Spacer(flex: 3),
                         Text(
                           'Powered by EpitomeHub',
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: const Color(0xCCF8F2E4),
-                                    letterSpacing: 0.8,
-                                  ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: const Color(0xCCF8F2E4),
+                                letterSpacing: 0.8,
+                              ),
                         ),
                       ],
                     ),
@@ -359,8 +349,9 @@ class BrandedSplash extends StatelessWidget {
           final double maxHeroWidth = wide
               ? constraints.maxWidth.clamp(520.0, 980.0)
               : constraints.maxWidth * 0.96;
-          final double maxHeroHeight =
-              wide ? constraints.maxHeight * 0.9 : constraints.maxHeight * 0.86;
+          final double maxHeroHeight = wide
+              ? constraints.maxHeight * 0.9
+              : constraints.maxHeight * 0.86;
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
@@ -445,10 +436,7 @@ class _MobilePremiumSplash extends StatelessWidget {
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: <Color>[
-                          Color(0xFF0D1F37),
-                          Color(0xFF061018),
-                        ],
+                        colors: <Color>[Color(0xFF0D1F37), Color(0xFF061018)],
                       ),
                       border: Border.all(
                         color: const Color(0xFFE0B85E),
@@ -456,14 +444,16 @@ class _MobilePremiumSplash extends StatelessWidget {
                       ),
                       boxShadow: <BoxShadow>[
                         BoxShadow(
-                          color:
-                              const Color(0xFF63D2B8).withValues(alpha: 0.34),
+                          color: const Color(
+                            0xFF63D2B8,
+                          ).withValues(alpha: 0.34),
                           blurRadius: 52,
                           spreadRadius: 10,
                         ),
                         BoxShadow(
-                          color:
-                              const Color(0xFFD6A84F).withValues(alpha: 0.18),
+                          color: const Color(
+                            0xFFD6A84F,
+                          ).withValues(alpha: 0.18),
                           blurRadius: 30,
                           offset: const Offset(0, 14),
                         ),
@@ -484,10 +474,10 @@ class _MobilePremiumSplash extends StatelessWidget {
                       'CHESSVERSE AI',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                            color: const Color(0xFFF8F2E4),
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2.2,
-                          ),
+                        color: const Color(0xFFF8F2E4),
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2.2,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -495,10 +485,10 @@ class _MobilePremiumSplash extends StatelessWidget {
                     'Think • Move • Master',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: const Color(0xFFE0B85E),
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.5,
-                        ),
+                      color: const Color(0xFFE0B85E),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.5,
+                    ),
                   ),
                   const SizedBox(height: 32),
                   Container(
@@ -532,9 +522,9 @@ class _MobilePremiumSplash extends StatelessWidget {
                   Text(
                     'Powered by EpitomeHub',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: const Color(0xCCF8F2E4),
-                          letterSpacing: 0.8,
-                        ),
+                      color: const Color(0xCCF8F2E4),
+                      letterSpacing: 0.8,
+                    ),
                   ),
                 ],
               ),
@@ -585,10 +575,12 @@ class ChessVerseLoadingScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF02070D),
       body: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          final bool wide = kIsWeb ||
+          final bool wide =
+              kIsWeb ||
               constraints.maxWidth >= 720 ||
               constraints.maxWidth <= 0;
-          final bool short = constraints.maxHeight > 0 &&
+          final bool short =
+              constraints.maxHeight > 0 &&
               constraints.maxHeight < (wide ? 420 : 620);
           final double logoSize = short ? 62 : (wide ? 126 : 106);
           return Stack(
@@ -622,18 +614,22 @@ class ChessVerseLoadingScreen extends StatelessWidget {
                             height: logoSize,
                             padding: EdgeInsets.all(short ? 8 : 14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0A111A)
-                                  .withValues(alpha: 0.82),
-                              borderRadius:
-                                  BorderRadius.circular(short ? 20 : 32),
+                              color: const Color(
+                                0xFF0A111A,
+                              ).withValues(alpha: 0.82),
+                              borderRadius: BorderRadius.circular(
+                                short ? 20 : 32,
+                              ),
                               border: Border.all(
-                                color: const Color(0xFFD6A84F)
-                                    .withValues(alpha: 0.7),
+                                color: const Color(
+                                  0xFFD6A84F,
+                                ).withValues(alpha: 0.7),
                               ),
                               boxShadow: <BoxShadow>[
                                 BoxShadow(
-                                  color: const Color(0xFF63D2B8)
-                                      .withValues(alpha: 0.28),
+                                  color: const Color(
+                                    0xFF63D2B8,
+                                  ).withValues(alpha: 0.28),
                                   blurRadius: short ? 22 : 42,
                                   offset: Offset(0, short ? 8 : 18),
                                 ),
@@ -645,9 +641,7 @@ class ChessVerseLoadingScreen extends StatelessWidget {
                           Text(
                             'CHESSVERSE AI',
                             textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineLarge
+                            style: Theme.of(context).textTheme.headlineLarge
                                 ?.copyWith(
                                   letterSpacing: 2,
                                   fontSize: short ? 20 : null,
@@ -658,9 +652,7 @@ class ChessVerseLoadingScreen extends StatelessWidget {
                           SizedBox(height: short ? 4 : 8),
                           Text(
                             'Think  -  Move  -  Master',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
+                            style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(
                                   color: const Color(0xFFE0C47C),
                                   fontSize: short ? 10 : null,
@@ -669,50 +661,33 @@ class ChessVerseLoadingScreen extends StatelessWidget {
                           ),
                           SizedBox(height: short ? 14 : 44),
                           Text(
-                            'LOADING...',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
+                            'Preparing your board',
+                            style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(
-                                  letterSpacing: 2,
+                                  letterSpacing: 0.4,
                                   fontSize: short ? 10 : null,
                                   fontWeight: FontWeight.w800,
                                 ),
                           ),
                           SizedBox(height: short ? 8 : 14),
-                          TweenAnimationBuilder<double>(
-                            tween: Tween<double>(begin: 0.08, end: 0.88),
-                            duration: const Duration(milliseconds: 1100),
-                            curve: Curves.easeOutCubic,
-                            builder: (
-                              BuildContext context,
-                              double value,
-                              Widget? child,
-                            ) {
-                              return Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF4A210C),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: const Color(0xFFE0C47C)
-                                        .withValues(alpha: 0.38),
-                                  ),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(999),
-                                  child: LinearProgressIndicator(
-                                    value: value,
-                                    minHeight: short ? 9 : 14,
-                                    backgroundColor: const Color(0xFF3B1C0F),
-                                    valueColor:
-                                        const AlwaysStoppedAnimation<Color>(
-                                      Color(0xFFE0C47C),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              minHeight: short ? 5 : 7,
+                              backgroundColor: const Color(
+                                0xFFE0C47C,
+                              ).withValues(alpha: 0.1),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                Color(0xFF63D2B8),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: short ? 8 : 14),
+                          Text(
+                            'Loading pieces, puzzles, and your profile',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: const Color(0xFFAAA69E)),
                           ),
                         ],
                       ),
@@ -806,24 +781,30 @@ enum PlayerSideChoice { white, random, black }
 
 extension PlayerSideChoiceDetails on PlayerSideChoice {
   String get label => switch (this) {
-        PlayerSideChoice.white => 'White',
-        PlayerSideChoice.random => 'Random',
-        PlayerSideChoice.black => 'Black',
-      };
+    PlayerSideChoice.white => 'White',
+    PlayerSideChoice.random => 'Random',
+    PlayerSideChoice.black => 'Black',
+  };
 
   IconData get icon => switch (this) {
-        PlayerSideChoice.white => Icons.circle_outlined,
-        PlayerSideChoice.random => Icons.shuffle_rounded,
-        PlayerSideChoice.black => Icons.circle,
-      };
+    PlayerSideChoice.white => Icons.circle_outlined,
+    PlayerSideChoice.random => Icons.shuffle_rounded,
+    PlayerSideChoice.black => Icons.circle,
+  };
 }
 
 extension DailyChallengeDifficultyDetails on DailyChallengeDifficulty {
   String get label => switch (this) {
-        DailyChallengeDifficulty.easy => 'Easy - 3-step finish',
-        DailyChallengeDifficulty.medium => 'Medium - 4-step finish',
-        DailyChallengeDifficulty.hard => 'Hard - 5-step finish',
-      };
+    DailyChallengeDifficulty.easy => 'Easy - mate in 4',
+    DailyChallengeDifficulty.medium => 'Medium - mate in 5',
+    DailyChallengeDifficulty.hard => 'Hard - mate in 7',
+  };
+
+  int get moveGoal => switch (this) {
+    DailyChallengeDifficulty.easy => 4,
+    DailyChallengeDifficulty.medium => 5,
+    DailyChallengeDifficulty.hard => 7,
+  };
 }
 
 class DailyChallenge {
@@ -843,7 +824,7 @@ class DailyChallenge {
   final List<String> setupMoves;
   final List<String> solution;
 
-  int get playerMoveGoal => (solution.length + 1) ~/ 2;
+  int get playerMoveGoal => difficulty.moveGoal;
 }
 
 class AiProfile {
@@ -1049,47 +1030,47 @@ class ChessRules {
     return switch (piece.code) {
       'P' => _pawnTargets(from, piece, pieces),
       'N' => _jumpTargets(from, piece, pieces, const <SquarePosition>[
-          SquarePosition(1, 2),
-          SquarePosition(2, 1),
-          SquarePosition(2, -1),
-          SquarePosition(1, -2),
-          SquarePosition(-1, -2),
-          SquarePosition(-2, -1),
-          SquarePosition(-2, 1),
-          SquarePosition(-1, 2),
-        ]),
+        SquarePosition(1, 2),
+        SquarePosition(2, 1),
+        SquarePosition(2, -1),
+        SquarePosition(1, -2),
+        SquarePosition(-1, -2),
+        SquarePosition(-2, -1),
+        SquarePosition(-2, 1),
+        SquarePosition(-1, 2),
+      ]),
       'B' => _rayTargets(from, piece, pieces, const <SquarePosition>[
-          SquarePosition(1, 1),
-          SquarePosition(1, -1),
-          SquarePosition(-1, 1),
-          SquarePosition(-1, -1),
-        ]),
+        SquarePosition(1, 1),
+        SquarePosition(1, -1),
+        SquarePosition(-1, 1),
+        SquarePosition(-1, -1),
+      ]),
       'R' => _rayTargets(from, piece, pieces, const <SquarePosition>[
-          SquarePosition(1, 0),
-          SquarePosition(-1, 0),
-          SquarePosition(0, 1),
-          SquarePosition(0, -1),
-        ]),
+        SquarePosition(1, 0),
+        SquarePosition(-1, 0),
+        SquarePosition(0, 1),
+        SquarePosition(0, -1),
+      ]),
       'Q' => _rayTargets(from, piece, pieces, const <SquarePosition>[
-          SquarePosition(1, 0),
-          SquarePosition(-1, 0),
-          SquarePosition(0, 1),
-          SquarePosition(0, -1),
-          SquarePosition(1, 1),
-          SquarePosition(1, -1),
-          SquarePosition(-1, 1),
-          SquarePosition(-1, -1),
-        ]),
+        SquarePosition(1, 0),
+        SquarePosition(-1, 0),
+        SquarePosition(0, 1),
+        SquarePosition(0, -1),
+        SquarePosition(1, 1),
+        SquarePosition(1, -1),
+        SquarePosition(-1, 1),
+        SquarePosition(-1, -1),
+      ]),
       'K' => _jumpTargets(from, piece, pieces, const <SquarePosition>[
-          SquarePosition(1, 0),
-          SquarePosition(-1, 0),
-          SquarePosition(0, 1),
-          SquarePosition(0, -1),
-          SquarePosition(1, 1),
-          SquarePosition(1, -1),
-          SquarePosition(-1, 1),
-          SquarePosition(-1, -1),
-        ]),
+        SquarePosition(1, 0),
+        SquarePosition(-1, 0),
+        SquarePosition(0, 1),
+        SquarePosition(0, -1),
+        SquarePosition(1, 1),
+        SquarePosition(1, -1),
+        SquarePosition(-1, 1),
+        SquarePosition(-1, -1),
+      ]),
       _ => <String>[],
     };
   }
@@ -1370,15 +1351,17 @@ class _GameScreenState extends State<GameScreen> {
     'h1': ChessPiece('R', true),
   };
 
-  late Map<String, ChessPiece> _pieces =
-      Map<String, ChessPiece>.from(_initialPieces);
+  late Map<String, ChessPiece> _pieces = Map<String, ChessPiece>.from(
+    _initialPieces,
+  );
 
   @override
   void initState() {
     super.initState();
     _dailyChallenge = _challengeForToday(_dailyDifficulty);
-    _dailyCompletedToday =
-        LocalGameArchive.isDailyChallengeComplete(_dailyChallenge.id);
+    _dailyCompletedToday = LocalGameArchive.isDailyChallengeComplete(
+      _dailyChallenge.id,
+    );
     _gameMode = widget.initialGameMode;
     _humanPlaysWhite = switch (widget.initialSideChoice) {
       PlayerSideChoice.white => true,
@@ -1392,12 +1375,13 @@ class _GameScreenState extends State<GameScreen> {
         ? _dailyStartingPosition(_dailyChallenge)
         : Map<String, ChessPiece>.from(_initialPieces);
     _signedIn = widget.initiallySignedIn;
-    final String playerName = widget.initialPlayerName != null &&
+    final String playerName =
+        widget.initialPlayerName != null &&
             widget.initialPlayerName!.trim().isNotEmpty
         ? widget.initialPlayerName!.trim()
         : widget.initiallySignedIn
-            ? 'Guest Player'
-            : 'Guest Player';
+        ? 'Guest Player'
+        : 'Guest Player';
     if (widget.initialPlayerName != null &&
         widget.initialPlayerName!.trim().isNotEmpty) {
       _whitePlayerName = playerName;
@@ -1408,10 +1392,8 @@ class _GameScreenState extends State<GameScreen> {
     if (_gameMode == GameMode.daily) {
       _applyDailyCompletionState();
       if (!_dailyCompletedToday) {
-        _selectDailyExpectedMove(
-          note:
-              'Daily Checkmate: ${_dailyChallenge.playerMoveGoal} winning moves. Best move: ${_dailyNextMoveLabel()}.',
-        );
+        _coachNote =
+            'Move any legal white coin. Checkmate in ${_dailyChallenge.playerMoveGoal} moves.';
       }
     }
     if (_gameMode == GameMode.computer && !_humanPlaysWhite) {
@@ -1455,8 +1437,9 @@ class _GameScreenState extends State<GameScreen> {
     final BoardPalette palette = boardPalettes[_skin]!;
     final bool sideToMoveWhite = _moves.length.isEven;
     final bool sideInCheck = ChessRules.isKingInCheck(sideToMoveWhite, _pieces);
-    final String? checkedKingSquare =
-        sideInCheck ? _kingSquare(sideToMoveWhite) : null;
+    final String? checkedKingSquare = sideInCheck
+        ? _kingSquare(sideToMoveWhite)
+        : null;
     final Set<String> legalTargets = !_showMoveHints || _selectedSquare == null
         ? <String>{}
         : _legalTargetsFor(_selectedSquare!).toSet();
@@ -1481,34 +1464,32 @@ class _GameScreenState extends State<GameScreen> {
             builder: (BuildContext context, BoxConstraints constraints) {
               final bool landscape =
                   constraints.maxWidth > constraints.maxHeight;
-              final bool wide = constraints.maxWidth >= 980 ||
+              final bool wide =
+                  constraints.maxWidth >= 980 ||
                   (landscape && constraints.maxWidth >= 700);
               const EdgeInsets pagePadding = EdgeInsets.zero;
               final double availableHeight =
                   constraints.maxHeight - pagePadding.vertical;
               final double mobileHeaderHeight = wide ? 0 : 58;
               final double widePanelWidth = _controlsExpanded
-                  ? math.min(
-                      340,
-                      math.max(320, constraints.maxWidth * 0.26),
-                    )
+                  ? math.min(340, math.max(320, constraints.maxWidth * 0.26))
                   : 84;
               const double portraitPanelMinimum = 190;
               final double boardDimension = math.min(
                 wide
                     ? constraints.maxWidth -
-                        pagePadding.horizontal -
-                        widePanelWidth -
-                        10
+                          pagePadding.horizontal -
+                          widePanelWidth -
+                          10
                     : constraints.maxWidth - pagePadding.horizontal,
                 math.max(
                   260,
                   wide
                       ? availableHeight
                       : availableHeight -
-                          mobileHeaderHeight -
-                          portraitPanelMinimum -
-                          18,
+                            mobileHeaderHeight -
+                            portraitPanelMinimum -
+                            18,
                 ),
               );
 
@@ -1520,8 +1501,9 @@ class _GameScreenState extends State<GameScreen> {
                 lastToSquare: _lastToSquare,
                 lastCaptureSquare: _lastCaptureSquare,
                 checkedKingSquare: checkedKingSquare,
-                decisiveSquare:
-                    _gameResultDetail == 'Checkmate' ? _lastToSquare : null,
+                decisiveSquare: _gameResultDetail == 'Checkmate'
+                    ? _lastToSquare
+                    : null,
                 flipped: _shouldFlipBoard(sideToMoveWhite),
                 showCoordinates: _showCoordinates,
                 palette: palette,
@@ -1529,7 +1511,8 @@ class _GameScreenState extends State<GameScreen> {
               );
 
               final Widget panel = GamePanel(
-                compact: !wide ||
+                compact:
+                    !wide ||
                     constraints.maxHeight < 620 ||
                     widePanelWidth < 340,
                 collapsible: true,
@@ -1602,10 +1585,7 @@ class _GameScreenState extends State<GameScreen> {
                           child: SizedBox(
                             width: boardDimension,
                             height: boardDimension,
-                            child: BoardStage(
-                              palette: palette,
-                              child: board,
-                            ),
+                            child: BoardStage(palette: palette, child: board),
                           ),
                         ),
                       ),
@@ -1635,10 +1615,7 @@ class _GameScreenState extends State<GameScreen> {
                           SizedBox(
                             width: boardDimension,
                             height: boardDimension,
-                            child: BoardStage(
-                              palette: palette,
-                              child: board,
-                            ),
+                            child: BoardStage(palette: palette, child: board),
                           ),
                           const SizedBox(height: 8),
                           Expanded(
@@ -1713,12 +1690,14 @@ class _GameScreenState extends State<GameScreen> {
                           child: Center(
                             child: DecoratedBox(
                               decoration: BoxDecoration(
-                                color: const Color(0xFF16171C)
-                                    .withValues(alpha: 0.92),
+                                color: const Color(
+                                  0xFF16171C,
+                                ).withValues(alpha: 0.92),
                                 borderRadius: BorderRadius.circular(999),
                                 border: Border.all(
-                                  color: const Color(0xFFD6A84F)
-                                      .withValues(alpha: 0.72),
+                                  color: const Color(
+                                    0xFFD6A84F,
+                                  ).withValues(alpha: 0.72),
                                 ),
                                 boxShadow: <BoxShadow>[
                                   BoxShadow(
@@ -1843,7 +1822,8 @@ class _GameScreenState extends State<GameScreen> {
 
   Future<void> _showPasswordResetDialog() async {
     final TextEditingController emailController = TextEditingController(
-        text: _authIdentity.contains('@') ? _authIdentity : '');
+      text: _authIdentity.contains('@') ? _authIdentity : '',
+    );
     final TextEditingController codeController = TextEditingController();
     final TextEditingController passwordController = TextEditingController();
 
@@ -1906,7 +1886,8 @@ class _GameScreenState extends State<GameScreen> {
                         'Password updated. Sign in with your new password.';
                   });
                 } else {
-                  final String baseMessage = response['message'] as String? ??
+                  final String baseMessage =
+                      response['message'] as String? ??
                       'If the account exists, a reset code was sent.';
                   final String? developmentCode =
                       response['developmentCode'] as String?;
@@ -1989,8 +1970,9 @@ class _GameScreenState extends State<GameScreen> {
               ),
               actions: <Widget>[
                 TextButton(
-                  onPressed:
-                      loading ? null : () => Navigator.of(dialogContext).pop(),
+                  onPressed: loading
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
                   child: const Text('Cancel'),
                 ),
                 FilledButton(
@@ -2044,26 +2026,25 @@ class _GameScreenState extends State<GameScreen> {
       _authMessage = _awaitingCode
           ? 'Verifying your code...'
           : _registerMode
-              ? 'Sending a secure verification code...'
-              : 'Signing you in...';
+          ? 'Sending a secure verification code...'
+          : 'Signing you in...';
     });
 
     try {
       if (_registerMode && !_awaitingCode) {
-        final Map<String, dynamic> response = await _authApi.post(
-          'register',
-          <String, String>{
-            'username': _authUsername,
-            'displayName': _authDisplayName,
-            'email': _authIdentity,
-            'password': _authPassword,
-          },
-        );
+        final Map<String, dynamic> response = await _authApi
+            .post('register', <String, String>{
+              'username': _authUsername,
+              'displayName': _authDisplayName,
+              'email': _authIdentity,
+              'password': _authPassword,
+            });
         if (!mounted) return;
         setState(() {
           _awaitingCode = true;
           _authHasError = false;
-          final String baseMessage = response['message'] as String? ??
+          final String baseMessage =
+              response['message'] as String? ??
               'Verification code sent. Check your inbox.';
           final String? developmentCode =
               response['developmentCode'] as String?;
@@ -2074,10 +2055,7 @@ class _GameScreenState extends State<GameScreen> {
       } else if (_awaitingCode) {
         final Map<String, dynamic> response = await _authApi.post(
           'verify-email',
-          <String, String>{
-            'email': _authIdentity,
-            'code': _authCode,
-          },
+          <String, String>{'email': _authIdentity, 'code': _authCode},
         );
         if (!mounted) return;
         await _completeLogin(response);
@@ -2112,8 +2090,9 @@ class _GameScreenState extends State<GameScreen> {
 
   Future<void> _completeLogin(Map<String, dynamic> response) async {
     final String token = response['token'] as String? ?? '';
-    final DateTime? expiresAt =
-        DateTime.tryParse(response['expiresAt'] as String? ?? '');
+    final DateTime? expiresAt = DateTime.tryParse(
+      response['expiresAt'] as String? ?? '',
+    );
     final Map<String, dynamic>? player =
         response['player'] as Map<String, dynamic>?;
     final String displayName =
@@ -2219,36 +2198,7 @@ class _GameScreenState extends State<GameScreen> {
 
   int get _dailyPlayerMovesCompleted => (_dailyPlyIndex + 1) ~/ 2;
 
-  bool get _dailyPuzzleSolved =>
-      _gameMode == GameMode.daily &&
-      _dailyPlyIndex >= _dailyChallenge.solution.length;
-
-  String _dailyNextMoveLabel() {
-    if (_gameMode != GameMode.daily ||
-        _dailyPlyIndex >= _dailyChallenge.solution.length) {
-      return 'review the board';
-    }
-    final String uci = _dailyChallenge.solution[_dailyPlyIndex];
-    if (uci.length < 4) {
-      return 'reset the puzzle';
-    }
-    return '${uci.substring(0, 2)} → ${uci.substring(2, 4)}';
-  }
-
-  String? _dailyExpectedMove() {
-    if (_gameMode != GameMode.daily ||
-        _dailyPlyIndex >= _dailyChallenge.solution.length) {
-      return null;
-    }
-    final String expected = _dailyChallenge.solution[_dailyPlyIndex];
-    return expected.length >= 4 ? expected : null;
-  }
-
-  bool _isLegalMove(
-    String from,
-    String to, {
-    bool? whiteToMove,
-  }) {
+  bool _isLegalMove(String from, String to, {bool? whiteToMove}) {
     final ChessPiece? piece = _pieces[from];
     if (piece == null) {
       return false;
@@ -2263,35 +2213,6 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  bool _selectDailyExpectedMove({String? note}) {
-    final String? expected = _dailyExpectedMove();
-    if (expected == null) {
-      _selectedSquare = null;
-      if (note != null) {
-        _coachNote = note;
-      }
-      return false;
-    }
-
-    final String from = expected.substring(0, 2);
-    final String to = expected.substring(2, 4);
-    final bool sideToMoveWhite = _moves.length.isEven;
-    final bool expectedIsPlayable =
-        _isLegalMove(from, to, whiteToMove: sideToMoveWhite);
-
-    if (!expectedIsPlayable) {
-      _selectedSquare = null;
-      _coachNote =
-          'Daily puzzle state refreshed. Tap reset once if this old web build was already open.';
-      return false;
-    }
-
-    _selectedSquare = from;
-    _coachNote = note ??
-        'Daily best move: $from to $to. Tap the highlighted target to continue the forced mate.';
-    return true;
-  }
-
   String _moveFeedback({
     required ChessPiece piece,
     required String from,
@@ -2301,7 +2222,8 @@ class _GameScreenState extends State<GameScreen> {
   }) {
     final bool givesCheck = ChessRules.isKingInCheck(!piece.white, _pieces);
     final SquarePosition target = ChessRules.positionOf(to);
-    final bool central = target.file >= 2 &&
+    final bool central =
+        target.file >= 2 &&
         target.file <= 5 &&
         target.rank >= 3 &&
         target.rank <= 6;
@@ -2379,9 +2301,7 @@ class _GameScreenState extends State<GameScreen> {
     return userWon ? 'You win' : 'ChessVerse AI wins';
   }
 
-  DailyChallenge _challengeForToday(
-    DailyChallengeDifficulty difficulty,
-  ) {
+  DailyChallenge _challengeForToday(DailyChallengeDifficulty difficulty) {
     final DateTime today = DateTime.now().toUtc();
     final DateTime dayKey = DateTime.utc(today.year, today.month, today.day);
     final int seed = dayKey.difference(DateTime.utc(2026)).inDays;
@@ -2394,7 +2314,7 @@ class _GameScreenState extends State<GameScreen> {
       _ => 'Moonlight Mate',
     };
     return DailyChallenge(
-      id: '$date-${difficulty.name}-p$pattern-lategame-v4',
+      id: '$date-${difficulty.name}-p$pattern-freeplay-v5',
       title: '$title - ${difficulty.label}',
       difficulty: difficulty,
       pattern: pattern,
@@ -2580,32 +2500,15 @@ class _GameScreenState extends State<GameScreen> {
 
       final String from = _selectedSquare!;
       final PositionAnalysis preMoveAnalysis = _analyzePosition(whitesTurn);
-      if (_gameMode == GameMode.daily) {
-        final String? expected = _dailyExpectedMove();
-        if (expected == null) {
-          _coachNote =
-              "Today's Daily Checkmate is already complete. Reset tomorrow for a fresh puzzle.";
-          _selectedSquare = null;
-          return;
-        }
-        if ('$from$square' != expected) {
-          _dailyMistakes++;
-          final String expectedFrom = expected.substring(0, 2);
-          final String expectedTo = expected.substring(2, 4);
-          _coachNote =
-              'Legal move, but not the forced mate. Best move: $expectedFrom to $expectedTo.';
-          _selectDailyExpectedMove(note: _coachNote);
-          unawaited(ChessSoundService.instance.error());
-          return;
-        }
-      }
       _saveSnapshot();
       _lastFromSquare = from;
       _lastToSquare = square;
       _lastCaptureSquare = null;
       final bool castleMove = _isCastleMove(from, square);
-      final String? enPassantCaptureSquare =
-          _enPassantCaptureSquare(from, square);
+      final String? enPassantCaptureSquare = _enPassantCaptureSquare(
+        from,
+        square,
+      );
       final ChessPiece? piece = _pieces.remove(from);
       if (piece != null) {
         final ChessPiece? captured = enPassantCaptureSquare == null
@@ -2627,10 +2530,10 @@ class _GameScreenState extends State<GameScreen> {
         final String move = castleMove
             ? (square.startsWith('g') ? 'O-O' : 'O-O-O')
             : enPassantCaptureSquare != null
-                ? '$from x $square e.p.'
-                : captured == null
-                    ? '$from$square'
-                    : '$from x $square';
+            ? '$from x $square e.p.'
+            : captured == null
+            ? '$from$square'
+            : '$from x $square';
         _moves.insert(0, move);
         unawaited(
           captured == null
@@ -2654,8 +2557,8 @@ class _GameScreenState extends State<GameScreen> {
         _coachNote = castleMove
             ? '${piece.white ? 'White' : 'Black'} castles ${square.startsWith('g') ? 'king side' : 'queen side'}.'
             : captured == null
-                ? '${piece.code} moves to $square.'
-                : '${piece.code} captures ${captured.code} on $square.';
+            ? '${piece.code} moves to $square.'
+            : '${piece.code} captures ${captured.code} on $square.';
         if (piece.code == 'P' &&
             ((piece.white && square.endsWith('8')) ||
                 (!piece.white && square.endsWith('1')))) {
@@ -2667,10 +2570,10 @@ class _GameScreenState extends State<GameScreen> {
           if (_gameResultTitle == null) {
             _coachNote = '$moveFeedback $_coachNote';
           }
-          if (_gameMode == GameMode.daily && _dailyPuzzleSolved) {
+          if (_gameMode == GameMode.daily) {
             final bool opponentMated =
                 ChessRules.isKingInCheck(!piece.white, _pieces) &&
-                    !ChessRules.hasAnySafeMove(!piece.white, _pieces);
+                !ChessRules.hasAnySafeMove(!piece.white, _pieces);
             if (opponentMated) {
               _gameResultTitle = 'Challenge complete';
               _gameResultDetail =
@@ -2682,11 +2585,14 @@ class _GameScreenState extends State<GameScreen> {
               unawaited(ChessSoundService.instance.checkmate());
               _coachNote =
                   "Brilliant! Today's ${_dailyDifficulty.label.toLowerCase()} challenge is complete.";
-            } else {
+            } else if (_dailyPlayerMovesCompleted >=
+                _dailyChallenge.playerMoveGoal) {
               _coachNote =
-                  'Puzzle line reached, but this is not true checkmate. Please reset and retry.';
-              _gameResultTitle = null;
-              _gameResultDetail = null;
+                  'Move limit reached without checkmate. Reset and try a new plan.';
+              _gameResultTitle = 'Challenge missed';
+              _gameResultDetail =
+                  'No checkmate within ${_dailyChallenge.playerMoveGoal} moves';
+              _resultVisible = true;
             }
           }
         }
@@ -2740,10 +2646,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _scheduleDailyReply() {
-    if (_dailyPlyIndex >= _dailyChallenge.solution.length ||
-        _dailyPlyIndex.isEven ||
-        _gameResultTitle != null ||
-        _aiThinking) {
+    if (_dailyPlyIndex.isEven || _gameResultTitle != null || _aiThinking) {
       return;
     }
     setState(() {
@@ -2751,36 +2654,56 @@ class _GameScreenState extends State<GameScreen> {
       _selectedSquare = null;
       _coachNote = 'Puzzle defense is replying...';
     });
-    Future<void>.delayed(
-      const Duration(milliseconds: 520),
-      _performDailyReply,
-    );
+    Future<void>.delayed(const Duration(milliseconds: 520), _performDailyReply);
   }
 
   void _performDailyReply() {
     if (!mounted ||
         _gameMode != GameMode.daily ||
         !_aiThinking ||
-        _dailyPlyIndex >= _dailyChallenge.solution.length) {
+        _dailyPlyIndex.isEven) {
       return;
     }
-    final String uci = _dailyChallenge.solution[_dailyPlyIndex];
-    if (uci.length < 4) {
+    final List<AiCandidate> replies = <AiCandidate>[];
+    for (final MapEntry<String, ChessPiece> entry in _pieces.entries) {
+      if (entry.value.white) {
+        continue;
+      }
+      for (final String target in _legalTargetsFor(entry.key)) {
+        final ChessPiece? captured = _pieces[target];
+        final double captureScore = captured == null
+            ? 0
+            : <String, double>{
+                    'P': 1,
+                    'N': 3.2,
+                    'B': 3.3,
+                    'R': 5,
+                    'Q': 9,
+                  }[captured.code] ??
+                  0;
+        replies.add(
+          AiCandidate(
+            entry.key,
+            target,
+            captureScore * 10 + _random.nextDouble(),
+          ),
+        );
+      }
+    }
+    if (replies.isEmpty) {
       setState(() {
         _aiThinking = false;
-        _coachNote = 'This daily puzzle could not continue. Reset and retry.';
+        _coachNote = _gameStateNote(
+          false,
+          fallback: 'Black has no legal reply.',
+        );
       });
       return;
     }
-    final String from = uci.substring(0, 2);
-    final String to = uci.substring(2, 4);
-    if (!_isLegalMove(from, to, whiteToMove: false)) {
-      setState(() {
-        _aiThinking = false;
-        _coachNote = 'This daily puzzle could not continue. Reset and retry.';
-      });
-      return;
-    }
+    replies.sort((AiCandidate a, AiCandidate b) => b.score.compareTo(a.score));
+    final AiCandidate reply = replies.first;
+    final String from = reply.from;
+    final String to = reply.to;
 
     setState(() {
       _saveSnapshot();
@@ -2807,7 +2730,7 @@ class _GameScreenState extends State<GameScreen> {
       _coachNote = _gameStateNote(
         true,
         fallback:
-            '${_dailyChallenge.playerMoveGoal - _dailyPlayerMovesCompleted} winning move(s) remain. Best move: ${_dailyNextMoveLabel()}.',
+            '${_dailyChallenge.playerMoveGoal - _dailyPlayerMovesCompleted} move(s) remain. Find checkmate.',
       );
     });
   }
@@ -2860,21 +2783,22 @@ class _GameScreenState extends State<GameScreen> {
       for (final String target in _legalTargetsFor(entry.key)) {
         final ChessPiece? captured = _pieces[target];
         final SquarePosition targetPosition = ChessRules.positionOf(target);
-        final double centerBonus = 3.5 -
+        final double centerBonus =
+            3.5 -
             (targetPosition.file - 3.5).abs() +
             3.5 -
             (targetPosition.rank - 4.5).abs();
         final double captureScore = captured == null
             ? 0
             : <String, double>{
-                  'P': 1,
-                  'N': 3.2,
-                  'B': 3.3,
-                  'R': 5,
-                  'Q': 9,
-                  'K': 100,
-                }[captured.code] ??
-                0;
+                    'P': 1,
+                    'N': 3.2,
+                    'B': 3.3,
+                    'R': 5,
+                    'Q': 9,
+                    'K': 100,
+                  }[captured.code] ??
+                  0;
         candidates.add(
           AiCandidate(
             entry.key,
@@ -2914,8 +2838,10 @@ class _GameScreenState extends State<GameScreen> {
       _lastToSquare = move.to;
       _lastCaptureSquare = null;
       final bool castleMove = _isCastleMove(move.from, move.to);
-      final String? enPassantCaptureSquare =
-          _enPassantCaptureSquare(move.from, move.to);
+      final String? enPassantCaptureSquare = _enPassantCaptureSquare(
+        move.from,
+        move.to,
+      );
       final ChessPiece piece = _pieces.remove(move.from)!;
       final ChessPiece? captured = enPassantCaptureSquare == null
           ? _pieces[move.to]
@@ -2938,8 +2864,8 @@ class _GameScreenState extends State<GameScreen> {
       final String notation = castleMove
           ? (move.to.startsWith('g') ? 'O-O' : 'O-O-O')
           : captured == null
-              ? '${move.from}${move.to}'
-              : '${move.from} x ${move.to}';
+          ? '${move.from}${move.to}'
+          : '${move.from} x ${move.to}';
       _moves.insert(0, notation);
       unawaited(
         captured == null
@@ -3043,8 +2969,10 @@ class _GameScreenState extends State<GameScreen> {
       return <String>[];
     }
 
-    final Set<String> targets =
-        ChessRules.safeLegalTargets(square, _pieces).toSet();
+    final Set<String> targets = ChessRules.safeLegalTargets(
+      square,
+      _pieces,
+    ).toSet();
     targets.addAll(_castlingTargets(square, piece));
     targets.addAll(_enPassantTargets(square, piece));
     return targets.toList();
@@ -3102,8 +3030,11 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     for (final String square in kingPath) {
-      final Map<String, ChessPiece> next =
-          ChessRules.applyMove(white ? 'e1' : 'e8', square, _pieces);
+      final Map<String, ChessPiece> next = ChessRules.applyMove(
+        white ? 'e1' : 'e8',
+        square,
+        _pieces,
+      );
       if (ChessRules.isKingInCheck(white, next)) {
         return false;
       }
@@ -3191,8 +3122,10 @@ class _GameScreenState extends State<GameScreen> {
       return null;
     }
 
-    final String captureSquare =
-        ChessRules.squareOf(toPosition.file, fromPosition.rank);
+    final String captureSquare = ChessRules.squareOf(
+      toPosition.file,
+      fromPosition.rank,
+    );
     final ChessPiece? captured = _pieces[captureSquare];
     if (captured == null ||
         captured.code != 'P' ||
@@ -3217,8 +3150,11 @@ class _GameScreenState extends State<GameScreen> {
       return null;
     }
 
-    final String cleaned =
-        move.replaceAll(' x ', '').replaceAll(' e.p.', '').split('=').first;
+    final String cleaned = move
+        .replaceAll(' x ', '')
+        .replaceAll(' e.p.', '')
+        .split('=')
+        .first;
     if (cleaned.length < 4) {
       return null;
     }
@@ -3227,8 +3163,9 @@ class _GameScreenState extends State<GameScreen> {
 
   void _reset() {
     final DailyChallenge challenge = _challengeForToday(_dailyDifficulty);
-    final bool completedToday =
-        LocalGameArchive.isDailyChallengeComplete(challenge.id);
+    final bool completedToday = LocalGameArchive.isDailyChallengeComplete(
+      challenge.id,
+    );
     if (_gameMode == GameMode.daily) {
       _humanPlaysWhite = true;
     }
@@ -3256,8 +3193,8 @@ class _GameScreenState extends State<GameScreen> {
       _aiThinking = false;
       _coachNote = _gameMode == GameMode.daily
           ? completedToday
-              ? "Today's Daily Checkmate is complete. A new challenge unlocks tomorrow."
-              : 'Daily Checkmate: ${challenge.playerMoveGoal} winning moves. Best move: ${challenge.solution.first.substring(0, 2)} → ${challenge.solution.first.substring(2, 4)}.'
+                ? "Today's Daily Checkmate is complete. A new challenge unlocks tomorrow."
+                : 'Move any legal white coin. Checkmate in ${challenge.playerMoveGoal} moves.'
           : 'Select a coin to see legal moves.';
       _gameResultTitle = completedToday && _gameMode == GameMode.daily
           ? 'Challenge complete'
@@ -3268,12 +3205,6 @@ class _GameScreenState extends State<GameScreen> {
       _resultVisible = true;
       _resultSaved = false;
       _checkWarningActive = false;
-      if (_gameMode == GameMode.daily && !completedToday) {
-        _selectDailyExpectedMove(
-          note:
-              'Daily Checkmate: ${challenge.playerMoveGoal} winning moves. Best move: ${_dailyNextMoveLabel()}.',
-        );
-      }
     });
   }
 
@@ -3422,9 +3353,9 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       final int steps =
           (_gameMode == GameMode.computer || _gameMode == GameMode.daily) &&
-                  _history.length >= 2
-              ? 2
-              : 1;
+              _history.length >= 2
+          ? 2
+          : 1;
       final GameSnapshot snapshot = _history[_history.length - steps];
       _history.removeRange(_history.length - steps, _history.length);
       _pieces = Map<String, ChessPiece>.from(snapshot.pieces);
@@ -3450,24 +3381,18 @@ class _GameScreenState extends State<GameScreen> {
       _gameResultTitle = null;
       _gameResultDetail = null;
       _resultVisible = true;
-      _checkWarningActive =
-          ChessRules.isKingInCheck(_moves.length.isEven, _pieces);
+      _checkWarningActive = ChessRules.isKingInCheck(
+        _moves.length.isEven,
+        _pieces,
+      );
       _coachNote = 'Move undone. ${snapshot.coachNote}';
     });
   }
 
   void _showHint() {
-    if (_gameMode == GameMode.daily &&
-        _dailyPlyIndex < _dailyChallenge.solution.length) {
-      final String expected = _dailyChallenge.solution[_dailyPlyIndex];
-      setState(() {
-        _selectedSquare = expected.substring(0, 2);
-        _coachNote =
-            'Daily best move: ${expected.substring(0, 2)} → ${expected.substring(2, 4)}. This keeps the forced checkmate line alive.';
-      });
-      return;
-    }
-    final bool whiteToMove = _moves.length.isEven;
+    final bool whiteToMove = _gameMode == GameMode.daily
+        ? true
+        : _moves.length.isEven;
     String? bestFrom;
     List<String> bestTargets = <String>[];
 
@@ -3487,8 +3412,11 @@ class _GameScreenState extends State<GameScreen> {
       if (bestFrom == null) {
         _coachNote = 'No legal moves found.';
       } else {
-        _coachNote =
-            'Coach hint: inspect $bestFrom. It has ${bestTargets.length} promising squares.';
+        final int remaining =
+            _dailyChallenge.playerMoveGoal - _dailyPlayerMovesCompleted;
+        _coachNote = _gameMode == GameMode.daily
+            ? 'Hint: inspect $bestFrom. ${bestTargets.length} legal option(s); $remaining move(s) remain.'
+            : 'Coach hint: inspect $bestFrom. It has ${bestTargets.length} promising squares.';
       }
     });
   }
@@ -3507,9 +3435,8 @@ class _GameScreenState extends State<GameScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (BuildContext context) => PositionAnalysisSheet(
-        analysis: analysis,
-      ),
+      builder: (BuildContext context) =>
+          PositionAnalysisSheet(analysis: analysis),
     );
   }
 
@@ -3550,21 +3477,21 @@ class _GameScreenState extends State<GameScreen> {
     final String quality = bestMove == null
         ? 'No move'
         : bestScore >= 14
-            ? 'Best move'
-            : bestScore >= 7
-                ? 'Good move'
-                : bestScore >= 3
-                    ? 'Ordinary move'
-                    : 'Quiet move';
+        ? 'Best move'
+        : bestScore >= 7
+        ? 'Good move'
+        : bestScore >= 3
+        ? 'Ordinary move'
+        : 'Quiet move';
     final String coachLine = bestMove == null
         ? 'No legal move is available in this position.'
         : bestScore >= 14
-            ? 'This move creates a strong tactical threat or wins material.'
-            : bestScore >= 7
-                ? 'This is a healthy move: it improves the position and keeps pressure.'
-                : bestScore >= 3
-                    ? 'Playable, but keep looking for forcing checks, captures, or threats.'
-                    : 'Safe but quiet. A sharper move may exist if you calculate forcing lines.';
+        ? 'This move creates a strong tactical threat or wins material.'
+        : bestScore >= 7
+        ? 'This is a healthy move: it improves the position and keeps pressure.'
+        : bestScore >= 3
+        ? 'Playable, but keep looking for forcing checks, captures, or threats.'
+        : 'Safe but quiet. A sharper move may exist if you calculate forcing lines.';
     return PositionAnalysis(
       side: whiteToMove ? 'White' : 'Black',
       evaluation: evaluation,
@@ -3578,11 +3505,7 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  double _analysisMoveScore(
-    String from,
-    String target,
-    ChessPiece piece,
-  ) {
+  double _analysisMoveScore(String from, String target, ChessPiece piece) {
     final ChessPiece? captured = _pieces[target];
     final SquarePosition position = ChessRules.positionOf(target);
     final double center =
@@ -3590,8 +3513,11 @@ class _GameScreenState extends State<GameScreen> {
     final double capture = captured == null
         ? 0
         : _pieceValue(captured.code) * 10 - _pieceValue(piece.code) * 0.2;
-    final Map<String, ChessPiece> next =
-        ChessRules.applyMove(from, target, _pieces);
+    final Map<String, ChessPiece> next = ChessRules.applyMove(
+      from,
+      target,
+      _pieces,
+    );
     final bool givesCheck = ChessRules.isKingInCheck(!piece.white, next);
     return capture + center + (givesCheck ? 6 : 0);
   }
@@ -3695,10 +3621,7 @@ class _GameScreenState extends State<GameScreen> {
     try {
       final AudioPlayer player = _warningPlayer ??= AudioPlayer();
       await player.stop();
-      await player.play(
-        AssetSource('audio/check-warning.wav'),
-        volume: 0.72,
-      );
+      await player.play(AssetSource('audio/check-warning.wav'), volume: 0.72);
     } catch (_) {
       // A muted device or browser policy should never interrupt the game.
     }
@@ -3774,11 +3697,7 @@ class ChessVerseMark extends StatelessWidget {
 }
 
 class BoardStage extends StatelessWidget {
-  const BoardStage({
-    required this.palette,
-    required this.child,
-    super.key,
-  });
+  const BoardStage({required this.palette, required this.child, super.key});
 
   final BoardPalette palette;
   final Widget child;
@@ -3845,10 +3764,7 @@ class BoardStage extends StatelessWidget {
                 ),
               ],
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(3),
-              child: child,
-            ),
+            child: Padding(padding: const EdgeInsets.all(3), child: child),
           ),
         ),
       ),
@@ -3973,21 +3889,18 @@ class ChessBoard extends StatelessWidget {
                     tween: Tween<double>(begin: 0, end: 1),
                     duration: const Duration(milliseconds: 560),
                     curve: Curves.easeOutCubic,
-                    builder: (
-                      BuildContext context,
-                      double progress,
-                      Widget? child,
-                    ) {
-                      return CustomPaint(
-                        painter: LastMoveTrailPainter(
-                          from: lastFromSquare!,
-                          to: lastToSquare!,
-                          flipped: flipped,
-                          progress: progress,
-                          accent: palette.accent,
-                        ),
-                      );
-                    },
+                    builder:
+                        (BuildContext context, double progress, Widget? child) {
+                          return CustomPaint(
+                            painter: LastMoveTrailPainter(
+                              from: lastFromSquare!,
+                              to: lastToSquare!,
+                              flipped: flipped,
+                              progress: progress,
+                              accent: palette.accent,
+                            ),
+                          );
+                        },
                   ),
                 ),
               ),
@@ -4047,12 +3960,7 @@ class LastMoveTrailPainter extends CustomPainter {
     final Offset control = mid + normal * bend;
     final Path trail = Path()
       ..moveTo(visualStart.dx, visualStart.dy)
-      ..quadraticBezierTo(
-        control.dx,
-        control.dy,
-        visualEnd.dx,
-        visualEnd.dy,
-      );
+      ..quadraticBezierTo(control.dx, control.dy, visualEnd.dx, visualEnd.dy);
     final Paint glow = Paint()
       ..color = accent.withValues(alpha: 0.34 * progress)
       ..strokeWidth = cell * 0.19
@@ -4155,29 +4063,28 @@ class BoardSquare extends StatelessWidget {
             base,
           )
         : decisiveMove
-            ? Color.alphaBlend(
-                palette.accent.withValues(alpha: 0.62),
-                base,
-              )
-            : lastCapture
-                ? Color.alphaBlend(
-                    const Color(0xFFE11D48).withValues(alpha: 0.62), base)
-                : selected
-                    ? Color.alphaBlend(
-                        palette.accent.withValues(alpha: 0.55), base)
-                    : lastMoveSquare
-                        ? Color.alphaBlend(
-                            const Color(0xFFFFFFFF).withValues(alpha: 0.26),
-                            base,
-                          )
-                        : base;
+        ? Color.alphaBlend(palette.accent.withValues(alpha: 0.62), base)
+        : lastCapture
+        ? Color.alphaBlend(
+            const Color(0xFFE11D48).withValues(alpha: 0.62),
+            base,
+          )
+        : selected
+        ? Color.alphaBlend(palette.accent.withValues(alpha: 0.55), base)
+        : lastMoveSquare
+        ? Color.alphaBlend(
+            const Color(0xFFFFFFFF).withValues(alpha: 0.26),
+            base,
+          )
+        : base;
 
     return InkWell(
       onTap: onTap,
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(
           begin: 0,
-          end: selected ||
+          end:
+              selected ||
                   legalTarget ||
                   lastCapture ||
                   checkedKing ||
@@ -4211,29 +4118,33 @@ class BoardSquare extends StatelessWidget {
               border: Border.all(
                 color: selected
                     ? const Color(0xFFF8E7B0)
-                    : (dark ? Colors.black : Colors.white)
-                        .withValues(alpha: 0.08),
+                    : (dark ? Colors.black : Colors.white).withValues(
+                        alpha: 0.08,
+                      ),
                 width: selected ? 3 : 1,
               ),
               boxShadow: <BoxShadow>[
                 if (legalTarget)
                   BoxShadow(
-                    color:
-                        const Color(0xFFBDE6FF).withValues(alpha: 0.72 * glow),
+                    color: const Color(
+                      0xFFBDE6FF,
+                    ).withValues(alpha: 0.72 * glow),
                     blurRadius: 22,
                     spreadRadius: 4,
                   ),
                 if (lastCapture || captureTarget)
                   BoxShadow(
-                    color:
-                        const Color(0xFFFF1744).withValues(alpha: 0.55 * glow),
+                    color: const Color(
+                      0xFFFF1744,
+                    ).withValues(alpha: 0.55 * glow),
                     blurRadius: 24,
                     spreadRadius: 3,
                   ),
                 if (checkedKing)
                   BoxShadow(
-                    color:
-                        const Color(0xFFFF1744).withValues(alpha: 0.9 * glow),
+                    color: const Color(
+                      0xFFFF1744,
+                    ).withValues(alpha: 0.9 * glow),
                     blurRadius: 28,
                     spreadRadius: 5,
                   ),
@@ -4334,8 +4245,9 @@ class BoardSquare extends StatelessWidget {
                       ),
                       boxShadow: <BoxShadow>[
                         BoxShadow(
-                          color:
-                              const Color(0xFFFF1744).withValues(alpha: 0.72),
+                          color: const Color(
+                            0xFFFF1744,
+                          ).withValues(alpha: 0.72),
                           blurRadius: 20,
                           spreadRadius: 3,
                         ),
@@ -4371,8 +4283,10 @@ class BoardSquare extends StatelessWidget {
                 switchOutCurve: Curves.easeIn,
                 transitionBuilder: (Widget child, Animation<double> animation) {
                   return ScaleTransition(
-                    scale:
-                        Tween<double>(begin: 0.82, end: 1).animate(animation),
+                    scale: Tween<double>(
+                      begin: 0.82,
+                      end: 1,
+                    ).animate(animation),
                     child: FadeTransition(opacity: animation, child: child),
                   );
                 },
@@ -4411,8 +4325,10 @@ class ChessCoin extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final double size =
-            math.min(constraints.maxWidth, constraints.maxHeight);
+        final double size = math.min(
+          constraints.maxWidth,
+          constraints.maxHeight,
+        );
         final double pieceSize = size * 0.94;
 
         return AnimatedScale(
@@ -4628,10 +4544,12 @@ class PieceSculpturePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final double w = size.width;
     final double h = size.height;
-    final Color body =
-        light ? const Color(0xFFF7E9C9) : const Color(0xFF252A32);
-    final Color edge =
-        light ? const Color(0xFFC09035) : const Color(0xFF68707D);
+    final Color body = light
+        ? const Color(0xFFF7E9C9)
+        : const Color(0xFF252A32);
+    final Color edge = light
+        ? const Color(0xFFC09035)
+        : const Color(0xFF68707D);
     final Paint shadow = Paint()
       ..color = Colors.black.withValues(alpha: 0.28)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
@@ -4859,8 +4777,8 @@ class GamePanel extends StatelessWidget {
                     ),
                     subtitle: Text(
                       moveCoachNoteForMove(move, whiteMove),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 3,
+                      overflow: TextOverflow.fade,
                     ),
                   );
                 },
@@ -4936,8 +4854,9 @@ class GamePanel extends StatelessWidget {
           if (collapsible)
             Semantics(
               button: true,
-              label:
-                  expanded ? 'Collapse game controls' : 'Expand game controls',
+              label: expanded
+                  ? 'Collapse game controls'
+                  : 'Expand game controls',
               child: InkWell(
                 key: const ValueKey<String>('game-controls-handle'),
                 onTap: onToggleExpanded,
@@ -4976,9 +4895,9 @@ class GamePanel extends StatelessWidget {
                   },
                   style: compact
                       ? Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                          )
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                        )
                       : Theme.of(context).textTheme.headlineMedium,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -5107,10 +5026,12 @@ class GamePanel extends StatelessWidget {
           Row(
             children: <Widget>[
               Expanded(
-                  child: MatchClock(label: whitePlayerName, value: whiteClock)),
+                child: MatchClock(label: whitePlayerName, value: whiteClock),
+              ),
               const SizedBox(width: 10),
               Expanded(
-                  child: MatchClock(label: blackPlayerName, value: blackClock)),
+                child: MatchClock(label: blackPlayerName, value: blackClock),
+              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -5137,9 +5058,9 @@ class GamePanel extends StatelessWidget {
                 .map(
                   (MapEntry<BoardSkin, BoardPalette> entry) =>
                       DropdownMenuItem<BoardSkin>(
-                    value: entry.key,
-                    child: BoardThemeMenuItem(palette: entry.value),
-                  ),
+                        value: entry.key,
+                        child: BoardThemeMenuItem(palette: entry.value),
+                      ),
                 )
                 .toList(),
             onChanged: (BoardSkin? selectedSkin) {
@@ -5308,10 +5229,7 @@ class _PanelActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: onPressed,
-      icon: IconTheme.merge(
-        data: const IconThemeData(size: 18),
-        child: icon,
-      ),
+      icon: IconTheme.merge(data: const IconThemeData(size: 18), child: icon),
       label: DefaultTextStyle.merge(
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -5369,72 +5287,82 @@ class GameModeLauncher extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: choices.map((choice) {
-        final bool active = selected == choice.mode;
-        return SizedBox(
-          width: compact ? 148 : 178,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () => onChanged(choice.mode),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
+      children: choices
+          .map((choice) {
+            final bool active = selected == choice.mode;
+            return SizedBox(
+              width: compact ? 148 : 178,
+              child: InkWell(
                 borderRadius: BorderRadius.circular(14),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: active
-                      ? const <Color>[Color(0xFF2B2140), Color(0xFF6D4FD8)]
-                      : <Color>[
-                          const Color(0xFF211D24),
-                          const Color(0xFF111C18).withValues(alpha: 0.92),
-                        ],
-                ),
-                border: Border.all(
-                  color: active
-                      ? const Color(0xFFE2B458)
-                      : const Color(0xFF7A6038).withValues(alpha: 0.55),
-                ),
-                boxShadow: <BoxShadow>[
-                  if (active)
-                    BoxShadow(
-                      color: const Color(0xFF6D4FD8).withValues(alpha: 0.28),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
+                onTap: () => onChanged(choice.mode),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: active
+                          ? const <Color>[Color(0xFF2B2140), Color(0xFF6D4FD8)]
+                          : <Color>[
+                              const Color(0xFF211D24),
+                              const Color(0xFF111C18).withValues(alpha: 0.92),
+                            ],
                     ),
-                ],
-              ),
-              child: Row(
-                children: <Widget>[
-                  Icon(choice.icon, color: const Color(0xFFE2B458), size: 22),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          choice.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          choice.subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
+                    border: Border.all(
+                      color: active
+                          ? const Color(0xFFE2B458)
+                          : const Color(0xFF7A6038).withValues(alpha: 0.55),
                     ),
+                    boxShadow: <BoxShadow>[
+                      if (active)
+                        BoxShadow(
+                          color: const Color(
+                            0xFF6D4FD8,
+                          ).withValues(alpha: 0.28),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                    ],
                   ),
-                ],
+                  child: Row(
+                    children: <Widget>[
+                      Icon(
+                        choice.icon,
+                        color: const Color(0xFFE2B458),
+                        size: 22,
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              choice.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              choice.subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
-        );
-      }).toList(growable: false),
+            );
+          })
+          .toList(growable: false),
     );
   }
 }
@@ -5468,19 +5396,21 @@ class DailyDifficultyChips extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: DailyChallengeDifficulty.values.map((difficulty) {
-        final bool active = selected == difficulty;
-        return ChoiceChip(
-          selected: active,
-          avatar: Icon(
-            Icons.emoji_events_outlined,
-            size: 18,
-            color: active ? Colors.black : const Color(0xFFE2B458),
-          ),
-          label: Text(difficulty.label),
-          onSelected: (_) => onChanged(difficulty),
-        );
-      }).toList(growable: false),
+      children: DailyChallengeDifficulty.values
+          .map((difficulty) {
+            final bool active = selected == difficulty;
+            return ChoiceChip(
+              selected: active,
+              avatar: Icon(
+                Icons.emoji_events_outlined,
+                size: 18,
+                color: active ? Colors.black : const Color(0xFFE2B458),
+              ),
+              label: Text(difficulty.label),
+              onSelected: (_) => onChanged(difficulty),
+            );
+          })
+          .toList(growable: false),
     );
   }
 }
@@ -5524,8 +5454,8 @@ class PositionAnalysisSheet extends StatelessWidget {
     final String evaluation = analysis.evaluation == 0
         ? 'Equal'
         : analysis.evaluation > 0
-            ? 'White +${analysis.evaluation.toStringAsFixed(1)}'
-            : 'Black +${analysis.evaluation.abs().toStringAsFixed(1)}';
+        ? 'White +${analysis.evaluation.toStringAsFixed(1)}'
+        : 'Black +${analysis.evaluation.abs().toStringAsFixed(1)}';
 
     return SafeArea(
       child: Align(
@@ -5795,9 +5725,7 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                           SelectableText(
                             roomCode,
                             textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineMedium
+                            style: Theme.of(context).textTheme.headlineMedium
                                 ?.copyWith(
                                   color: const Color(0xFFD6A84F),
                                   letterSpacing: 2,
@@ -5917,8 +5845,9 @@ class MoveHistorySheet extends StatelessWidget {
                                 backgroundColor: whiteMove
                                     ? const Color(0xFFE9D5B7)
                                     : const Color(0xFF242128),
-                                foregroundColor:
-                                    whiteMove ? Colors.black : Colors.white,
+                                foregroundColor: whiteMove
+                                    ? Colors.black
+                                    : Colors.white,
                                 child: Text('${index + 1}'),
                               ),
                               title: Row(
@@ -5984,9 +5913,12 @@ String moveCoachLabelForMove(String move) {
     return 'Good';
   }
   if (clean.length >= 4 &&
-      <String>{'d4', 'd5', 'e4', 'e5'}.contains(
-        clean.substring(clean.length - 2),
-      )) {
+      <String>{
+        'd4',
+        'd5',
+        'e4',
+        'e5',
+      }.contains(clean.substring(clean.length - 2))) {
     return 'Good';
   }
   return 'Average';
@@ -6013,9 +5945,12 @@ String moveCoachNoteForMove(String move, bool whiteMove) {
     return '$side good step: capture found. Before moving, compare checks and stronger captures.';
   }
   if (clean.length >= 4 &&
-      <String>{'d4', 'd5', 'e4', 'e5'}.contains(
-        clean.substring(clean.length - 2),
-      )) {
+      <String>{
+        'd4',
+        'd5',
+        'e4',
+        'e5',
+      }.contains(clean.substring(clean.length - 2))) {
     return '$side good step: central square controlled. Next develop with tempo.';
   }
   return '$side average step: playable. Best habit: check checks, captures, then threats.';
@@ -6232,9 +6167,13 @@ class AuthOverlay extends StatelessWidget {
                         SegmentedButton<bool>(
                           segments: const <ButtonSegment<bool>>[
                             ButtonSegment<bool>(
-                                value: true, label: Text('Register')),
+                              value: true,
+                              label: Text('Register'),
+                            ),
                             ButtonSegment<bool>(
-                                value: false, label: Text('Login')),
+                              value: false,
+                              label: Text('Login'),
+                            ),
                           ],
                           selected: <bool>{registerMode},
                           onSelectionChanged: (Set<bool> selected) {
@@ -6272,8 +6211,9 @@ class AuthOverlay extends StatelessWidget {
                               ? TextInputType.emailAddress
                               : TextInputType.text,
                           decoration: InputDecoration(
-                            labelText:
-                                registerMode ? 'Email' : 'User ID or email',
+                            labelText: registerMode
+                                ? 'Email'
+                                : 'User ID or email',
                             prefixIcon: const Icon(Icons.mail_outline_rounded),
                             border: const OutlineInputBorder(),
                           ),
@@ -6284,11 +6224,13 @@ class AuthOverlay extends StatelessWidget {
                           obscureText: true,
                           onSubmitted: (_) => onSubmit(),
                           decoration: InputDecoration(
-                            labelText:
-                                registerMode ? 'Create password' : 'Password',
+                            labelText: registerMode
+                                ? 'Create password'
+                                : 'Password',
                             prefixIcon: const Icon(Icons.lock_outline_rounded),
-                            helperText:
-                                registerMode ? 'At least 8 characters' : null,
+                            helperText: registerMode
+                                ? 'At least 8 characters'
+                                : null,
                             border: const OutlineInputBorder(),
                           ),
                         ),
@@ -6306,8 +6248,9 @@ class AuthOverlay extends StatelessWidget {
                         Center(
                           child: DecoratedBox(
                             decoration: BoxDecoration(
-                              color: const Color(0xFFD6A84F)
-                                  .withValues(alpha: 0.12),
+                              color: const Color(
+                                0xFFD6A84F,
+                              ).withValues(alpha: 0.12),
                               shape: BoxShape.circle,
                             ),
                             child: const Padding(
@@ -6342,11 +6285,13 @@ class AuthOverlay extends StatelessWidget {
                         const SizedBox(height: 14),
                         DecoratedBox(
                           decoration: BoxDecoration(
-                            color:
-                                const Color(0xFFEF5350).withValues(alpha: 0.12),
+                            color: const Color(
+                              0xFFEF5350,
+                            ).withValues(alpha: 0.12),
                             border: Border.all(
-                              color: const Color(0xFFEF5350)
-                                  .withValues(alpha: 0.65),
+                              color: const Color(
+                                0xFFEF5350,
+                              ).withValues(alpha: 0.65),
                             ),
                             borderRadius: BorderRadius.circular(6),
                           ),
@@ -6382,8 +6327,9 @@ class AuthOverlay extends StatelessWidget {
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : Icon(
                                 awaitingCode
@@ -6394,8 +6340,8 @@ class AuthOverlay extends StatelessWidget {
                           awaitingCode
                               ? 'Verify and Continue'
                               : registerMode
-                                  ? 'Send Code'
-                                  : 'Login',
+                              ? 'Send Code'
+                              : 'Login',
                         ),
                       ),
                       if (!awaitingCode) ...<Widget>[
@@ -6514,9 +6460,9 @@ class GameResultOverlay extends StatelessWidget {
                     scoreLabel,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          color: const Color(0xFFD6A84F),
-                          fontWeight: FontWeight.w900,
-                        ),
+                      color: const Color(0xFFD6A84F),
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(detail, textAlign: TextAlign.center),
@@ -6662,10 +6608,10 @@ class CaptureRow extends StatelessWidget {
                       ),
                     ]
                   : pieces
-                      .map(
-                        (ChessPiece piece) => MiniCapturedPiece(piece: piece),
-                      )
-                      .toList(),
+                        .map(
+                          (ChessPiece piece) => MiniCapturedPiece(piece: piece),
+                        )
+                        .toList(),
             ),
           ],
         ),
@@ -6727,8 +6673,9 @@ class PlayerAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String initial =
-        name.trim().isEmpty ? 'P' : name.trim().substring(0, 1).toUpperCase();
+    final String initial = name.trim().isEmpty
+        ? 'P'
+        : name.trim().substring(0, 1).toUpperCase();
     return Tooltip(
       message: 'Signed in as $name',
       child: DecoratedBox(
