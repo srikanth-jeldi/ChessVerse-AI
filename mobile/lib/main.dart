@@ -1478,6 +1478,8 @@ class _GameScreenState extends State<GameScreen> {
           ),
         ),
         child: SafeArea(
+          left: false,
+          right: false,
           child: LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
               final bool landscape =
@@ -1615,7 +1617,7 @@ class _GameScreenState extends State<GameScreen> {
                         ),
                         Positioned(
                           top: 0,
-                          right: 0,
+                          right: MediaQuery.viewPaddingOf(context).right,
                           bottom: 0,
                           child: SizedBox(
                             key: const ValueKey<String>(
@@ -2429,6 +2431,24 @@ class _GameScreenState extends State<GameScreen> {
     _coachNote = _dailyUnlockMessage();
   }
 
+  void _completeDailyChallenge() {
+    final bool firstCompletion = !_dailyCompletedToday;
+    if (firstCompletion) {
+      _dailyCompletedToday = true;
+      LocalGameArchive.markDailyChallengeComplete(_dailyChallenge.id);
+    }
+    _gameResultTitle = 'Challenge complete';
+    _gameResultDetail = _dailyUnlockMessage();
+    _resultVisible = true;
+    _coachNote =
+        "Brilliant! Today's ${_dailyDifficulty.label.toLowerCase()} challenge is complete. "
+        '${_dailyUnlockMessage()}';
+    if (firstCompletion) {
+      _archiveFinishedGame();
+      unawaited(ChessSoundService.instance.checkmate());
+    }
+  }
+
   String _dailyUnlockMessage() {
     final Duration remaining = LocalGameArchive.dailyChallengeRemaining;
     if (remaining == Duration.zero) {
@@ -2624,16 +2644,7 @@ class _GameScreenState extends State<GameScreen> {
                 ChessRules.isKingInCheck(!piece.white, _pieces) &&
                     !_hasAnyLegalMove(!piece.white);
             if (opponentMated) {
-              _gameResultTitle = 'Challenge complete';
-              _gameResultDetail =
-                  '${_dailyChallenge.playerMoveGoal}-move checkmate';
-              _resultVisible = true;
-              _dailyCompletedToday = true;
-              LocalGameArchive.markDailyChallengeComplete(_dailyChallenge.id);
-              _archiveFinishedGame();
-              unawaited(ChessSoundService.instance.checkmate());
-              _coachNote =
-                  "Brilliant! Today's ${_dailyDifficulty.label.toLowerCase()} challenge is complete.";
+              _completeDailyChallenge();
             } else if (_dailyPlayerMovesCompleted >=
                 _dailyChallenge.playerMoveGoal) {
               _coachNote =
@@ -3652,6 +3663,10 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     if (inCheck && !hasMove) {
+      if (_gameMode == GameMode.daily && !sideToMoveWhite) {
+        _completeDailyChallenge();
+        return 'Checkmate. Daily challenge complete.';
+      }
       _gameResultTitle = '${sideToMoveWhite ? 'Black' : 'White'} wins';
       _gameResultDetail = 'Checkmate';
       _resultVisible = true;
