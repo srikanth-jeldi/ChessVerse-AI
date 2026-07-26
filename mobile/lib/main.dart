@@ -24,11 +24,6 @@ import 'features/tutorial/presentation/learn_chess_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
-  ]);
   await LocalGameArchive.init();
   AppConfig.validate();
   runApp(const ChessVerseApp());
