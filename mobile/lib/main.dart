@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 
 import 'core/audio/chess_sound_service.dart';
 import 'core/config/app_config.dart';
+import 'core/layout/rotation_safe_frame.dart';
 import 'core/local_game_archive.dart';
 import 'features/auth/data/auth_api.dart';
 import 'features/auth/data/auth_session_store.dart';
@@ -1458,324 +1459,328 @@ class _GameScreenState extends State<GameScreen> {
         : _legalTargetsFor(_selectedSquare!).toSet();
 
     return Scaffold(
-      body: DecoratedBox(
-        decoration: BoxDecoration(
-          color: const Color(0xFF193128),
-          image: DecorationImage(
-            image: const AssetImage(
-              'assets/backgrounds/grandmaster-table-v1.webp',
-            ),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              const Color(0xFF10251E).withValues(alpha: 0.28),
-              BlendMode.multiply,
+      body: RotationSafeFrame(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xFF193128),
+            image: DecorationImage(
+              image: const AssetImage(
+                'assets/backgrounds/grandmaster-table-v1.webp',
+              ),
+              fit: BoxFit.cover,
+              colorFilter: ColorFilter.mode(
+                const Color(0xFF10251E).withValues(alpha: 0.28),
+                BlendMode.multiply,
+              ),
             ),
           ),
-        ),
-        child: SafeArea(
-          left: false,
-          right: false,
-          child: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              final bool landscape =
-                  constraints.maxWidth > constraints.maxHeight;
-              // Landscape phones have enough horizontal room for the original
-              // large-board + side-panel layout. Keeping them in the compact
-              // portrait column makes the board too small to play comfortably.
-              // Switch layout exactly once when orientation changes. A second
-              // width breakpoint during Android's rotation animation made the
-              // board briefly jump sideways before reaching its final place.
-              final bool wide = constraints.maxWidth >= 980 || landscape;
-              const EdgeInsets pagePadding = EdgeInsets.zero;
-              final double availableHeight =
-                  constraints.maxHeight - pagePadding.vertical;
-              final double mobileHeaderHeight = wide ? 0 : 58;
-              final double widePanelWidth = _controlsExpanded
-                  ? math.min(340, math.max(320, constraints.maxWidth * 0.26))
-                  : 84;
-              // Board geometry must not depend on whether the controls drawer
-              // is expanded. Reserve the drawer's full width at all times so
-              // opening it never shifts or resizes the board before rotation.
-              const double reservedWidePanelWidth = 340;
-              final double portraitPanelMinimum = landscape ? 72 : 190;
-              final double boardWidth = wide
-                  ? constraints.maxWidth -
-                      pagePadding.horizontal -
-                      reservedWidePanelWidth -
-                      10
-                  : constraints.maxWidth - pagePadding.horizontal;
-              final double boardHeight = wide
-                  ? availableHeight
-                  : availableHeight -
-                      mobileHeaderHeight -
-                      portraitPanelMinimum -
-                      18;
-              final double boardDimension =
-                  math.max(0, math.min(boardWidth, boardHeight));
+          child: SafeArea(
+            left: false,
+            right: false,
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final bool landscape =
+                    constraints.maxWidth > constraints.maxHeight;
+                // Landscape phones have enough horizontal room for the original
+                // large-board + side-panel layout. Keeping them in the compact
+                // portrait column makes the board too small to play comfortably.
+                // Switch layout exactly once when orientation changes. A second
+                // width breakpoint during Android's rotation animation made the
+                // board briefly jump sideways before reaching its final place.
+                final bool wide = constraints.maxWidth >= 980 || landscape;
+                const EdgeInsets pagePadding = EdgeInsets.zero;
+                final double availableHeight =
+                    constraints.maxHeight - pagePadding.vertical;
+                final double mobileHeaderHeight = wide ? 0 : 58;
+                final double widePanelWidth = _controlsExpanded
+                    ? math.min(340, math.max(320, constraints.maxWidth * 0.26))
+                    : 84;
+                // Board geometry must not depend on whether the controls drawer
+                // is expanded. Reserve the drawer's full width at all times so
+                // opening it never shifts or resizes the board before rotation.
+                const double reservedWidePanelWidth = 340;
+                final double portraitPanelMinimum = landscape ? 72 : 190;
+                final double boardWidth = wide
+                    ? constraints.maxWidth -
+                        pagePadding.horizontal -
+                        reservedWidePanelWidth -
+                        10
+                    : constraints.maxWidth - pagePadding.horizontal;
+                final double boardHeight = wide
+                    ? availableHeight
+                    : availableHeight -
+                        mobileHeaderHeight -
+                        portraitPanelMinimum -
+                        18;
+                final double boardDimension =
+                    math.max(0, math.min(boardWidth, boardHeight));
 
-              final Widget board = ChessBoard(
-                pieces: _pieces,
-                selectedSquare: _selectedSquare,
-                legalTargets: legalTargets,
-                lastFromSquare: _lastFromSquare,
-                lastToSquare: _lastToSquare,
-                lastCaptureSquare: _lastCaptureSquare,
-                lastMovedPiece: _lastMovedPiece,
-                lastCapturedPiece: _lastCapturedPiece,
-                moveSequence: _moves.length,
-                checkedKingSquare: checkedKingSquare,
-                decisiveSquare:
-                    _gameResultDetail == 'Checkmate' ? _lastToSquare : null,
-                flipped: _shouldFlipBoard(sideToMoveWhite),
-                showCoordinates: _showCoordinates,
-                palette: palette,
-                onSquareTap: _handleSquareTap,
-              );
+                final Widget board = ChessBoard(
+                  pieces: _pieces,
+                  selectedSquare: _selectedSquare,
+                  legalTargets: legalTargets,
+                  lastFromSquare: _lastFromSquare,
+                  lastToSquare: _lastToSquare,
+                  lastCaptureSquare: _lastCaptureSquare,
+                  lastMovedPiece: _lastMovedPiece,
+                  lastCapturedPiece: _lastCapturedPiece,
+                  moveSequence: _moves.length,
+                  checkedKingSquare: checkedKingSquare,
+                  decisiveSquare:
+                      _gameResultDetail == 'Checkmate' ? _lastToSquare : null,
+                  flipped: _shouldFlipBoard(sideToMoveWhite),
+                  showCoordinates: _showCoordinates,
+                  palette: palette,
+                  onSquareTap: _handleSquareTap,
+                );
 
-              final Widget panel = GamePanel(
-                compact: !wide ||
-                    constraints.maxHeight < 620 ||
-                    widePanelWidth < 340,
-                collapsible: true,
-                expanded: _controlsExpanded,
-                whitePlayerName: _whitePlayerName,
-                blackPlayerName: _blackPlayerName,
-                activeColor: _moves.length.isEven ? 'White' : 'Black',
-                gameMode: _gameMode,
-                aiLevel: _aiLevel.round(),
-                aiThinking: _aiThinking,
-                coachEnabled: _coachEnabled,
-                moves: _moves,
-                capturedWhite: _capturedWhite,
-                capturedBlack: _capturedBlack,
-                coachNote: _coachNote,
-                whiteClock: _formatClock(_whiteSeconds),
-                blackClock: _formatClock(_blackSeconds),
-                skin: _skin,
-                onSkinChanged: (BoardSkin skin) => setState(() => _skin = skin),
-                onGameModeChanged: _changeGameMode,
-                dailyDifficulty: _dailyDifficulty,
-                dailyProgress: _dailyPlayerMovesCompleted,
-                dailyGoal: _dailyChallenge.playerMoveGoal,
-                dailyMistakes: _dailyMistakes,
-                onDailyDifficultyChanged: _changeDailyDifficulty,
-                onAiLevelChanged: (double level) {
-                  setState(() => _aiLevel = level);
-                },
-                onCoachChanged: (bool value) {
-                  setState(() => _coachEnabled = value);
-                },
-                onNewGameRequested: _confirmNewGame,
-                onResign: _resignGame,
-                onOfferDraw: _offerDraw,
-                onMoveHistory: _showMoveHistory,
-                onUndo: _undo,
-                onHint: _showHint,
-                onAnalyze: _showAnalysis,
-                soundEnabled: _soundEnabled,
-                showCoordinates: _showCoordinates,
-                showMoveHints: _showMoveHints,
-                onSoundChanged: _setSoundEnabled,
-                onShowCoordinatesChanged: (bool value) {
-                  setState(() => _showCoordinates = value);
-                },
-                onShowMoveHintsChanged: (bool value) {
-                  setState(() => _showMoveHints = value);
-                },
-                onEditBlackPlayer: _editBlackPlayerName,
-                onToggleExpanded: () {
-                  setState(() => _controlsExpanded = !_controlsExpanded);
-                },
-                onLogout: _logout,
-                canUndo: _history.isNotEmpty,
-              );
+                final Widget panel = GamePanel(
+                  compact: !wide ||
+                      constraints.maxHeight < 620 ||
+                      widePanelWidth < 340,
+                  collapsible: true,
+                  expanded: _controlsExpanded,
+                  whitePlayerName: _whitePlayerName,
+                  blackPlayerName: _blackPlayerName,
+                  activeColor: _moves.length.isEven ? 'White' : 'Black',
+                  gameMode: _gameMode,
+                  aiLevel: _aiLevel.round(),
+                  aiThinking: _aiThinking,
+                  coachEnabled: _coachEnabled,
+                  moves: _moves,
+                  capturedWhite: _capturedWhite,
+                  capturedBlack: _capturedBlack,
+                  coachNote: _coachNote,
+                  whiteClock: _formatClock(_whiteSeconds),
+                  blackClock: _formatClock(_blackSeconds),
+                  skin: _skin,
+                  onSkinChanged: (BoardSkin skin) =>
+                      setState(() => _skin = skin),
+                  onGameModeChanged: _changeGameMode,
+                  dailyDifficulty: _dailyDifficulty,
+                  dailyProgress: _dailyPlayerMovesCompleted,
+                  dailyGoal: _dailyChallenge.playerMoveGoal,
+                  dailyMistakes: _dailyMistakes,
+                  onDailyDifficultyChanged: _changeDailyDifficulty,
+                  onAiLevelChanged: (double level) {
+                    setState(() => _aiLevel = level);
+                  },
+                  onCoachChanged: (bool value) {
+                    setState(() => _coachEnabled = value);
+                  },
+                  onNewGameRequested: _confirmNewGame,
+                  onResign: _resignGame,
+                  onOfferDraw: _offerDraw,
+                  onMoveHistory: _showMoveHistory,
+                  onUndo: _undo,
+                  onHint: _showHint,
+                  onAnalyze: _showAnalysis,
+                  soundEnabled: _soundEnabled,
+                  showCoordinates: _showCoordinates,
+                  showMoveHints: _showMoveHints,
+                  onSoundChanged: _setSoundEnabled,
+                  onShowCoordinatesChanged: (bool value) {
+                    setState(() => _showCoordinates = value);
+                  },
+                  onShowMoveHintsChanged: (bool value) {
+                    setState(() => _showMoveHints = value);
+                  },
+                  onEditBlackPlayer: _editBlackPlayerName,
+                  onToggleExpanded: () {
+                    setState(() => _controlsExpanded = !_controlsExpanded);
+                  },
+                  onLogout: _logout,
+                  canUndo: _history.isNotEmpty,
+                );
 
-              return Padding(
-                padding: pagePadding,
-                child: KeyedSubtree(
-                  key: ValueKey<String>(
-                    wide ? 'landscape-game-layout' : 'portrait-game-layout',
-                  ),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: <Widget>[
-                      if (wide) ...<Widget>[
-                        Positioned(
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          right: reservedWidePanelWidth +
-                              MediaQuery.viewPaddingOf(context).right +
-                              8,
-                          child: Align(
-                            alignment: Alignment.center,
-                            child: SizedBox(
-                              width: boardDimension,
-                              height: boardDimension,
-                              child: BoardStage(palette: palette, child: board),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 0,
-                          right: MediaQuery.viewPaddingOf(context).right,
-                          bottom: 0,
-                          child: SizedBox(
-                            key: const ValueKey<String>(
-                              'landscape-game-controls',
-                            ),
-                            width: widePanelWidth,
-                            child: panel,
-                          ),
-                        ),
-                      ] else
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            CompactHeader(
-                              playerName: _whitePlayerName,
-                              onReset: _confirmNewGame,
-                              onLogout: _logout,
-                            ),
-                            const SizedBox(height: 8),
-                            Center(
-                              child: SizedBox.square(
-                                dimension: boardDimension,
+                return Padding(
+                  padding: pagePadding,
+                  child: KeyedSubtree(
+                    key: ValueKey<String>(
+                      wide ? 'landscape-game-layout' : 'portrait-game-layout',
+                    ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: <Widget>[
+                        if (wide) ...<Widget>[
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            right: reservedWidePanelWidth +
+                                MediaQuery.viewPaddingOf(context).right +
+                                8,
+                            child: Align(
+                              alignment: Alignment.center,
+                              child: SizedBox(
+                                width: boardDimension,
+                                height: boardDimension,
                                 child:
                                     BoardStage(palette: palette, child: board),
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Expanded(
-                              key:
-                                  const ValueKey<String>('game-controls-panel'),
-                              child: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 260),
-                                child: SizedBox.expand(
-                                  key: ValueKey<bool>(_controlsExpanded),
-                                  child: panel,
+                          ),
+                          Positioned(
+                            top: 0,
+                            right: MediaQuery.viewPaddingOf(context).right,
+                            bottom: 0,
+                            child: SizedBox(
+                              key: const ValueKey<String>(
+                                'landscape-game-controls',
+                              ),
+                              width: widePanelWidth,
+                              child: panel,
+                            ),
+                          ),
+                        ] else
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              CompactHeader(
+                                playerName: _whitePlayerName,
+                                onReset: _confirmNewGame,
+                                onLogout: _logout,
+                              ),
+                              const SizedBox(height: 8),
+                              Center(
+                                child: SizedBox.square(
+                                  dimension: boardDimension,
+                                  child: BoardStage(
+                                      palette: palette, child: board),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      if (!_signedIn)
-                        Positioned.fill(
-                          child: AuthOverlay(
-                            registerMode: _registerMode,
-                            awaitingCode: _awaitingCode,
-                            message: _authMessage,
-                            hasError: _authHasError,
-                            onModeChanged: _setAuthMode,
-                            onUsernameChanged: (String value) {
-                              _authUsername = value.trim();
-                            },
-                            onDisplayNameChanged: (String value) {
-                              _authDisplayName = value.trim();
-                            },
-                            onIdentityChanged: (String value) {
-                              _authIdentity = value.trim();
-                            },
-                            onPasswordChanged: (String value) {
-                              _authPassword = value;
-                            },
-                            onCodeChanged: (String value) {
-                              _authCode = value.trim();
-                            },
-                            onSubmit: _submitAuth,
-                            onContinueDefault: _continueAsDefaultPlayer,
-                            onFacebookLogin: _showFacebookSetupMessage,
-                            onForgotPassword: _showPasswordResetDialog,
-                            onResendCode: _resendVerificationCode,
-                            onBackFromCode: () => setState(() {
-                              _awaitingCode = false;
-                              _authCode = '';
-                              _authMessage =
-                                  'Update your details or request a new code.';
-                            }),
-                            loading: _authLoading,
-                          ),
-                        ),
-                      if (_signedIn &&
-                          _gameResultTitle != null &&
-                          _resultVisible)
-                        Positioned.fill(
-                          child: GameResultOverlay(
-                            title: _resultDisplayTitle(),
-                            detail: _gameResultDetail ?? 'Game complete',
-                            scoreLabel: _resultScoreLabel(),
-                            onNewGame: _reset,
-                            onReview: () => setState(() {
-                              _resultVisible = false;
-                            }),
-                          ),
-                        ),
-                      if (_moveQualityText != null &&
-                          _gameMode == GameMode.computer &&
-                          _gameResultTitle == null)
-                        Positioned(
-                          left: wide ? 22 : 18,
-                          right: wide ? widePanelWidth + 30 : 18,
-                          bottom: 18,
-                          child: IgnorePointer(
-                            child: Center(
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFF16171C,
-                                  ).withValues(alpha: 0.92),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: const Color(
-                                      0xFFD6A84F,
-                                    ).withValues(alpha: 0.72),
+                              const SizedBox(height: 8),
+                              Expanded(
+                                key: const ValueKey<String>(
+                                    'game-controls-panel'),
+                                child: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 260),
+                                  child: SizedBox.expand(
+                                    key: ValueKey<bool>(_controlsExpanded),
+                                    child: panel,
                                   ),
-                                  boxShadow: <BoxShadow>[
-                                    BoxShadow(
-                                      color:
-                                          Colors.black.withValues(alpha: 0.32),
-                                      blurRadius: 24,
-                                      offset: const Offset(0, 12),
-                                    ),
-                                  ],
                                 ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 18,
-                                    vertical: 10,
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: <Widget>[
-                                      const Icon(
-                                        Icons.psychology_alt_rounded,
-                                        color: Color(0xFFD6A84F),
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Flexible(
-                                        child: Text(
-                                          _moveQualityText!,
-                                          maxLines: 3,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            color: Color(0xFFF6F1E8),
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
+                              ),
+                            ],
+                          ),
+                        if (!_signedIn)
+                          Positioned.fill(
+                            child: AuthOverlay(
+                              registerMode: _registerMode,
+                              awaitingCode: _awaitingCode,
+                              message: _authMessage,
+                              hasError: _authHasError,
+                              onModeChanged: _setAuthMode,
+                              onUsernameChanged: (String value) {
+                                _authUsername = value.trim();
+                              },
+                              onDisplayNameChanged: (String value) {
+                                _authDisplayName = value.trim();
+                              },
+                              onIdentityChanged: (String value) {
+                                _authIdentity = value.trim();
+                              },
+                              onPasswordChanged: (String value) {
+                                _authPassword = value;
+                              },
+                              onCodeChanged: (String value) {
+                                _authCode = value.trim();
+                              },
+                              onSubmit: _submitAuth,
+                              onContinueDefault: _continueAsDefaultPlayer,
+                              onFacebookLogin: _showFacebookSetupMessage,
+                              onForgotPassword: _showPasswordResetDialog,
+                              onResendCode: _resendVerificationCode,
+                              onBackFromCode: () => setState(() {
+                                _awaitingCode = false;
+                                _authCode = '';
+                                _authMessage =
+                                    'Update your details or request a new code.';
+                              }),
+                              loading: _authLoading,
+                            ),
+                          ),
+                        if (_signedIn &&
+                            _gameResultTitle != null &&
+                            _resultVisible)
+                          Positioned.fill(
+                            child: GameResultOverlay(
+                              title: _resultDisplayTitle(),
+                              detail: _gameResultDetail ?? 'Game complete',
+                              scoreLabel: _resultScoreLabel(),
+                              onNewGame: _reset,
+                              onReview: () => setState(() {
+                                _resultVisible = false;
+                              }),
+                            ),
+                          ),
+                        if (_moveQualityText != null &&
+                            _gameMode == GameMode.computer &&
+                            _gameResultTitle == null)
+                          Positioned(
+                            left: wide ? 22 : 18,
+                            right: wide ? widePanelWidth + 30 : 18,
+                            bottom: 18,
+                            child: IgnorePointer(
+                              child: Center(
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFF16171C,
+                                    ).withValues(alpha: 0.92),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: const Color(
+                                        0xFFD6A84F,
+                                      ).withValues(alpha: 0.72),
+                                    ),
+                                    boxShadow: <BoxShadow>[
+                                      BoxShadow(
+                                        color: Colors.black
+                                            .withValues(alpha: 0.32),
+                                        blurRadius: 24,
+                                        offset: const Offset(0, 12),
                                       ),
                                     ],
                                   ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                      vertical: 10,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: <Widget>[
+                                        const Icon(
+                                          Icons.psychology_alt_rounded,
+                                          color: Color(0xFFD6A84F),
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: Text(
+                                            _moveQualityText!,
+                                            maxLines: 3,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              color: Color(0xFFF6F1E8),
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),

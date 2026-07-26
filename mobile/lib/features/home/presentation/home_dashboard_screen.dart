@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/layout/responsive_page.dart';
+import '../../../core/layout/rotation_safe_frame.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_button.dart';
@@ -43,36 +44,38 @@ class HomeDashboardScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: ResponsivePage(
-        child: wide
-            ? _WideHomeLayout(
-                playerName: playerName,
-                challenge: challenge,
-                rewards: rewards,
-                onPlayVsAi: onPlayVsAi,
-                onDailyChallenge: onDailyChallenge,
-                onLocalGame: onLocalGame,
-                onAnalysis: onAnalysis,
-                onPuzzles: onPuzzles,
-                onSavedGames: onSavedGames,
-                onLearnChess: onLearnChess,
-                onProfile: onProfile,
-                onSettings: onSettings,
-              )
-            : _PhoneHomeLayout(
-                playerName: playerName,
-                challenge: challenge,
-                rewards: rewards,
-                onPlayVsAi: onPlayVsAi,
-                onDailyChallenge: onDailyChallenge,
-                onLocalGame: onLocalGame,
-                onAnalysis: onAnalysis,
-                onPuzzles: onPuzzles,
-                onSavedGames: onSavedGames,
-                onLearnChess: onLearnChess,
-                onProfile: onProfile,
-                onSettings: onSettings,
-              ),
+      body: RotationSafeFrame(
+        child: ResponsivePage(
+          child: wide
+              ? _WideHomeLayout(
+                  playerName: playerName,
+                  challenge: challenge,
+                  rewards: rewards,
+                  onPlayVsAi: onPlayVsAi,
+                  onDailyChallenge: onDailyChallenge,
+                  onLocalGame: onLocalGame,
+                  onAnalysis: onAnalysis,
+                  onPuzzles: onPuzzles,
+                  onSavedGames: onSavedGames,
+                  onLearnChess: onLearnChess,
+                  onProfile: onProfile,
+                  onSettings: onSettings,
+                )
+              : _PhoneHomeLayout(
+                  playerName: playerName,
+                  challenge: challenge,
+                  rewards: rewards,
+                  onPlayVsAi: onPlayVsAi,
+                  onDailyChallenge: onDailyChallenge,
+                  onLocalGame: onLocalGame,
+                  onAnalysis: onAnalysis,
+                  onPuzzles: onPuzzles,
+                  onSavedGames: onSavedGames,
+                  onLearnChess: onLearnChess,
+                  onProfile: onProfile,
+                  onSettings: onSettings,
+                ),
+        ),
       ),
     );
   }
