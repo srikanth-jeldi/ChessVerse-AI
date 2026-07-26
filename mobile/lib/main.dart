@@ -6869,17 +6869,20 @@ class MiniCapturedPiece extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: piece.white
-              ? const <Color>[Color(0xFFFFF6E1), Color(0xFFC99B49)]
-              : const <Color>[Color(0xFF41454D), Color(0xFF111319)],
+              ? const <Color>[Color(0xFF30343C), Color(0xFF080A0F)]
+              : const <Color>[Color(0xFFFFFFFF), Color(0xFFD8DCE3)],
         ),
         borderRadius: BorderRadius.circular(7),
         border: Border.all(
-          color: const Color(0xFFD6A84F).withValues(alpha: 0.9),
+          color:
+              piece.white ? const Color(0xFF8A909B) : const Color(0xFFFFFFFF),
         ),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.28),
-            blurRadius: 5,
+            color: piece.white
+                ? Colors.black.withValues(alpha: 0.45)
+                : Colors.white.withValues(alpha: 0.22),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
