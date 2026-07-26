@@ -1403,7 +1403,23 @@ class _GameScreenState extends State<GameScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleAiMove());
     }
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted || _moves.isEmpty || _gameResultTitle != null) {
+      if (!mounted) {
+        return;
+      }
+      if (_gameResultTitle != null) {
+        if (_gameMode == GameMode.daily &&
+            _gameResultTitle!.toLowerCase().contains('challenge complete')) {
+          final String unlockMessage = _dailyUnlockMessage();
+          if (_gameResultDetail != unlockMessage) {
+            setState(() {
+              _gameResultDetail = unlockMessage;
+              _coachNote = unlockMessage;
+            });
+          }
+        }
+        return;
+      }
+      if (_moves.isEmpty) {
         return;
       }
       setState(() {
@@ -1466,9 +1482,11 @@ class _GameScreenState extends State<GameScreen> {
             builder: (BuildContext context, BoxConstraints constraints) {
               final bool landscape =
                   constraints.maxWidth > constraints.maxHeight;
-              // A phone rotating to landscape must keep the board centered.
-              // The side-by-side desktop panel only fits comfortably at 980px+.
-              final bool wide = constraints.maxWidth >= 980;
+              // Landscape phones have enough horizontal room for the original
+              // large-board + side-panel layout. Keeping them in the compact
+              // portrait column makes the board too small to play comfortably.
+              final bool wide = constraints.maxWidth >= 980 ||
+                  (landscape && constraints.maxWidth >= 700);
               const EdgeInsets pagePadding = EdgeInsets.zero;
               final double availableHeight =
                   constraints.maxHeight - pagePadding.vertical;
@@ -2409,7 +2427,8 @@ class _GameScreenState extends State<GameScreen> {
     final int hours = remaining.inHours;
     final int minutes = remaining.inMinutes.remainder(60);
     return 'Daily Checkmate complete. Next challenge unlocks in '
-        '${hours}h ${minutes}m.';
+        '$hours ${hours == 1 ? 'hour' : 'hours'} '
+        '$minutes ${minutes == 1 ? 'minute' : 'minutes'}.';
   }
 
   Future<void> _editBlackPlayerName() async {
