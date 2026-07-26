@@ -1605,7 +1605,9 @@ class _GameScreenState extends State<GameScreen> {
                           left: 0,
                           top: 0,
                           bottom: 0,
-                          right: 0,
+                          right: widePanelWidth +
+                              MediaQuery.viewPaddingOf(context).right +
+                              8,
                           child: Align(
                             alignment: Alignment.center,
                             child: SizedBox(
