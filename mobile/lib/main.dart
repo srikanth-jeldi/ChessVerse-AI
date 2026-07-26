@@ -1483,7 +1483,7 @@ class _GameScreenState extends State<GameScreen> {
           child: LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
               final bool landscape =
-                  constraints.maxWidth > constraints.maxHeight;
+                  MediaQuery.orientationOf(context) == Orientation.landscape;
               // Landscape phones have enough horizontal room for the original
               // large-board + side-panel layout. Keeping them in the compact
               // portrait column makes the board too small to play comfortably.
@@ -1605,7 +1605,9 @@ class _GameScreenState extends State<GameScreen> {
                           left: 0,
                           top: 0,
                           bottom: 0,
-                          right: 0,
+                          right: widePanelWidth +
+                              MediaQuery.viewPaddingOf(context).right +
+                              8,
                           child: Align(
                             alignment: Alignment.center,
                             child: SizedBox(
