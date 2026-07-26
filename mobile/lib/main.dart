@@ -128,54 +128,74 @@ class _SplashGateState extends State<SplashGate> {
     final PlayerSideChoice? choice =
         await showModalBottomSheet<PlayerSideChoice>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: const Color(0xFF15161B),
       builder: (BuildContext context) {
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 22),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Choose your side',
-                  style: Theme.of(context).textTheme.headlineSmall,
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final bool shortLandscape =
+                  constraints.maxWidth > constraints.maxHeight &&
+                      constraints.maxHeight < 500;
+              return ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: constraints.maxHeight * 0.94,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  mode == GameMode.local
-                      ? 'Player 1 side for this match.'
-                      : 'ChessVerse AI will take the opposite side.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: PlayerSideChoice.values.map((
-                    PlayerSideChoice side,
-                  ) {
-                    return ChoiceChip(
-                      selected: side == PlayerSideChoice.white,
-                      avatar: Icon(side.icon, size: 18),
-                      label: Text(side.label),
-                      onSelected: (_) => Navigator.of(context).pop(side),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () =>
-                        Navigator.of(context).pop(PlayerSideChoice.white),
-                    icon: const Icon(Icons.play_arrow_rounded),
-                    label: const Text('Start as White'),
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    18,
+                    shortLandscape ? 0 : 8,
+                    18,
+                    shortLandscape ? 12 : 22,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Choose your side',
+                        style: shortLandscape
+                            ? Theme.of(context).textTheme.titleLarge
+                            : Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      SizedBox(height: shortLandscape ? 4 : 8),
+                      Text(
+                        mode == GameMode.local
+                            ? 'Player 1 side for this match.'
+                            : 'ChessVerse AI will take the opposite side.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      SizedBox(height: shortLandscape ? 10 : 16),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 8,
+                        children: PlayerSideChoice.values.map((
+                          PlayerSideChoice side,
+                        ) {
+                          return ChoiceChip(
+                            selected: side == PlayerSideChoice.white,
+                            avatar: Icon(side.icon, size: 18),
+                            label: Text(side.label),
+                            onSelected: (_) => Navigator.of(context).pop(side),
+                          );
+                        }).toList(),
+                      ),
+                      SizedBox(height: shortLandscape ? 10 : 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: () =>
+                              Navigator.of(context).pop(PlayerSideChoice.white),
+                          icon: const Icon(Icons.play_arrow_rounded),
+                          label: const Text('Start as White'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
         );
       },
@@ -5643,120 +5663,136 @@ class PositionAnalysisSheet extends StatelessWidget {
             : 'Black +${analysis.evaluation.abs().toStringAsFixed(1)}';
 
     return SafeArea(
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
-          child: DecoratedBox(
-            decoration: const BoxDecoration(
-              color: Color(0xFF17231F),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
-              border: Border.fromBorderSide(
-                BorderSide(color: Color(0xFF8B7147)),
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints viewport) {
+          final bool shortLandscape = viewport.maxWidth > viewport.maxHeight &&
+              viewport.maxHeight < 500;
+          return Align(
+            alignment: Alignment.bottomCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 560,
+                maxHeight: viewport.maxHeight * 0.98,
               ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF786B58),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: Color(0xFF17231F),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+                  border: Border.fromBorderSide(
+                    BorderSide(color: Color(0xFF8B7147)),
                   ),
-                  const SizedBox(height: 16),
-                  Row(
+                ),
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    shortLandscape ? 8 : 12,
+                    20,
+                    shortLandscape ? 10 : 24,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
-                      const Icon(
-                        Icons.analytics_rounded,
-                        color: Color(0xFFD6A84F),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'AI Agent Coach',
-                          style: Theme.of(context).textTheme.headlineSmall,
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF786B58),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
                       ),
-                      IconButton(
-                        tooltip: 'Close analysis',
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close_rounded),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  AnalysisMetric(
-                    icon: Icons.balance_rounded,
-                    label: 'Evaluation',
-                    value: evaluation,
-                  ),
-                  AnalysisMetric(
-                    icon: Icons.route_rounded,
-                    label: '${analysis.side} legal moves',
-                    value: '${analysis.legalMoves}',
-                  ),
-                  AnalysisMetric(
-                    icon: Icons.gps_fixed_rounded,
-                    label: 'Immediate captures',
-                    value: '${analysis.captures}',
-                  ),
-                  AnalysisMetric(
-                    icon: Icons.auto_graph_rounded,
-                    label: 'Move quality',
-                    value: analysis.quality,
-                  ),
-                  AnalysisMetric(
-                    icon: analysis.inCheck
-                        ? Icons.warning_amber_rounded
-                        : Icons.shield_outlined,
-                    label: 'King safety',
-                    value: analysis.inCheck ? 'In check' : 'Safe',
-                  ),
-                  const SizedBox(height: 12),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD6A84F).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(7),
-                      border: Border.all(
-                        color: const Color(0xFFD6A84F).withValues(alpha: 0.48),
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Row(
+                      SizedBox(height: shortLandscape ? 8 : 16),
+                      Row(
                         children: <Widget>[
                           const Icon(
-                            Icons.auto_awesome_rounded,
+                            Icons.analytics_rounded,
                             color: Color(0xFFD6A84F),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              analysis.bestMove == null
-                                  ? 'No legal move'
-                                  : 'Recommended: ${analysis.bestMove}\n${analysis.coachLine}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
+                              'AI Agent Coach',
+                              style: Theme.of(context).textTheme.headlineSmall,
                             ),
+                          ),
+                          IconButton(
+                            tooltip: 'Close analysis',
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(Icons.close_rounded),
                           ),
                         ],
                       ),
-                    ),
+                      SizedBox(height: shortLandscape ? 6 : 14),
+                      AnalysisMetric(
+                        icon: Icons.balance_rounded,
+                        label: 'Evaluation',
+                        value: evaluation,
+                      ),
+                      AnalysisMetric(
+                        icon: Icons.route_rounded,
+                        label: '${analysis.side} legal moves',
+                        value: '${analysis.legalMoves}',
+                      ),
+                      AnalysisMetric(
+                        icon: Icons.gps_fixed_rounded,
+                        label: 'Immediate captures',
+                        value: '${analysis.captures}',
+                      ),
+                      AnalysisMetric(
+                        icon: Icons.auto_graph_rounded,
+                        label: 'Move quality',
+                        value: analysis.quality,
+                      ),
+                      AnalysisMetric(
+                        icon: analysis.inCheck
+                            ? Icons.warning_amber_rounded
+                            : Icons.shield_outlined,
+                        label: 'King safety',
+                        value: analysis.inCheck ? 'In check' : 'Safe',
+                      ),
+                      SizedBox(height: shortLandscape ? 6 : 12),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color:
+                              const Color(0xFFD6A84F).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(7),
+                          border: Border.all(
+                            color:
+                                const Color(0xFFD6A84F).withValues(alpha: 0.48),
+                          ),
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(shortLandscape ? 10 : 14),
+                          child: Row(
+                            children: <Widget>[
+                              const Icon(
+                                Icons.auto_awesome_rounded,
+                                color: Color(0xFFD6A84F),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  analysis.bestMove == null
+                                      ? 'No legal move'
+                                      : 'Recommended: ${analysis.bestMove}\n${analysis.coachLine}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -6605,80 +6641,97 @@ class GameResultOverlay extends StatelessWidget {
     final bool draw = title.toLowerCase().contains('draw');
     return ColoredBox(
       color: Colors.black.withValues(alpha: 0.72),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: const Color(0xFF17181D),
-              border: Border.all(color: const Color(0xFFD6A84F)),
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: const Color(0xFFD6A84F).withValues(alpha: 0.25),
-                  blurRadius: 40,
+      child: SafeArea(
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints viewport) {
+            final bool shortLandscape =
+                viewport.maxWidth > viewport.maxHeight &&
+                    viewport.maxHeight < 500;
+            return Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 420,
+                  maxHeight: viewport.maxHeight - 12,
                 ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Icon(
-                    draw ? Icons.handshake_rounded : Icons.emoji_events_rounded,
-                    color: draw
-                        ? const Color(0xFFAAA69E)
-                        : const Color(0xFFD6A84F),
-                    size: 56,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    scoreLabel,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          color: const Color(0xFFD6A84F),
-                          fontWeight: FontWeight.w900,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(detail, textAlign: TextAlign.center),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Saved locally. Open Saved Games to review this match.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Color(0xFFAAA69E)),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: onReview,
-                          icon: const Icon(Icons.analytics_outlined),
-                          label: const Text('Review board'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: onNewGame,
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: const Text('New game'),
-                        ),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF17181D),
+                    border: Border.all(color: const Color(0xFFD6A84F)),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: const Color(0xFFD6A84F).withValues(alpha: 0.25),
+                        blurRadius: 40,
                       ),
                     ],
                   ),
-                ],
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(shortLandscape ? 16 : 28),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(
+                          draw
+                              ? Icons.handshake_rounded
+                              : Icons.emoji_events_rounded,
+                          color: draw
+                              ? const Color(0xFFAAA69E)
+                              : const Color(0xFFD6A84F),
+                          size: shortLandscape ? 38 : 56,
+                        ),
+                        SizedBox(height: shortLandscape ? 6 : 16),
+                        Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                        SizedBox(height: shortLandscape ? 3 : 8),
+                        Text(
+                          scoreLabel,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineLarge
+                              ?.copyWith(
+                                color: const Color(0xFFD6A84F),
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                        SizedBox(height: shortLandscape ? 3 : 8),
+                        Text(detail, textAlign: TextAlign.center),
+                        SizedBox(height: shortLandscape ? 3 : 8),
+                        const Text(
+                          'Saved locally. Open Saved Games to review this match.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Color(0xFFAAA69E)),
+                        ),
+                        SizedBox(height: shortLandscape ? 10 : 24),
+                        Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: onReview,
+                                icon: const Icon(Icons.analytics_outlined),
+                                label: const Text('Review board'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: FilledButton.icon(
+                                onPressed: onNewGame,
+                                icon: const Icon(Icons.refresh_rounded),
+                                label: const Text('New game'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
