@@ -1466,9 +1466,11 @@ class _GameScreenState extends State<GameScreen> {
             builder: (BuildContext context, BoxConstraints constraints) {
               final bool landscape =
                   constraints.maxWidth > constraints.maxHeight;
-              // A phone rotating to landscape must keep the board centered.
-              // The side-by-side desktop panel only fits comfortably at 980px+.
-              final bool wide = constraints.maxWidth >= 980;
+              // Landscape phones have enough horizontal room for the original
+              // large-board + side-panel layout. Keeping them in the compact
+              // portrait column makes the board too small to play comfortably.
+              final bool wide = constraints.maxWidth >= 980 ||
+                  (landscape && constraints.maxWidth >= 700);
               const EdgeInsets pagePadding = EdgeInsets.zero;
               final double availableHeight =
                   constraints.maxHeight - pagePadding.vertical;
