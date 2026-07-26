@@ -1485,8 +1485,10 @@ class _GameScreenState extends State<GameScreen> {
               // Landscape phones have enough horizontal room for the original
               // large-board + side-panel layout. Keeping them in the compact
               // portrait column makes the board too small to play comfortably.
-              final bool wide = constraints.maxWidth >= 980 ||
-                  (landscape && constraints.maxWidth >= 700);
+              // Switch layout exactly once when orientation changes. A second
+              // width breakpoint during Android's rotation animation made the
+              // board briefly jump sideways before reaching its final place.
+              final bool wide = constraints.maxWidth >= 980 || landscape;
               const EdgeInsets pagePadding = EdgeInsets.zero;
               final double availableHeight =
                   constraints.maxHeight - pagePadding.vertical;
@@ -1589,177 +1591,185 @@ class _GameScreenState extends State<GameScreen> {
 
               return Padding(
                 padding: pagePadding,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: <Widget>[
-                    if (wide) ...<Widget>[
-                      Positioned(
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        right: widePanelWidth + 8,
-                        child: Align(
-                          alignment: Alignment.center,
-                          child: SizedBox(
-                            width: boardDimension,
-                            height: boardDimension,
-                            child: BoardStage(palette: palette, child: board),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: AnimatedContainer(
-                          key: const ValueKey<String>(
-                            'landscape-game-controls',
-                          ),
-                          duration: const Duration(milliseconds: 320),
-                          curve: Curves.easeOutCubic,
-                          width: widePanelWidth,
-                          child: panel,
-                        ),
-                      ),
-                    ] else
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          CompactHeader(
-                            playerName: _whitePlayerName,
-                            onReset: _confirmNewGame,
-                            onLogout: _logout,
-                          ),
-                          const SizedBox(height: 8),
-                          Center(
-                            child: SizedBox.square(
-                              dimension: boardDimension,
+                child: KeyedSubtree(
+                  key: ValueKey<String>(
+                    wide ? 'landscape-game-layout' : 'portrait-game-layout',
+                  ),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: <Widget>[
+                      if (wide) ...<Widget>[
+                        Positioned(
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          right: widePanelWidth + 8,
+                          child: Align(
+                            alignment: Alignment.center,
+                            child: SizedBox(
+                              width: boardDimension,
+                              height: boardDimension,
                               child: BoardStage(palette: palette, child: board),
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Expanded(
-                            key: const ValueKey<String>('game-controls-panel'),
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 260),
-                              child: SizedBox.expand(
-                                key: ValueKey<bool>(_controlsExpanded),
-                                child: panel,
+                        ),
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: SizedBox(
+                            key: const ValueKey<String>(
+                              'landscape-game-controls',
+                            ),
+                            width: widePanelWidth,
+                            child: panel,
+                          ),
+                        ),
+                      ] else
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: <Widget>[
+                            CompactHeader(
+                              playerName: _whitePlayerName,
+                              onReset: _confirmNewGame,
+                              onLogout: _logout,
+                            ),
+                            const SizedBox(height: 8),
+                            Center(
+                              child: SizedBox.square(
+                                dimension: boardDimension,
+                                child:
+                                    BoardStage(palette: palette, child: board),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    if (!_signedIn)
-                      Positioned.fill(
-                        child: AuthOverlay(
-                          registerMode: _registerMode,
-                          awaitingCode: _awaitingCode,
-                          message: _authMessage,
-                          hasError: _authHasError,
-                          onModeChanged: _setAuthMode,
-                          onUsernameChanged: (String value) {
-                            _authUsername = value.trim();
-                          },
-                          onDisplayNameChanged: (String value) {
-                            _authDisplayName = value.trim();
-                          },
-                          onIdentityChanged: (String value) {
-                            _authIdentity = value.trim();
-                          },
-                          onPasswordChanged: (String value) {
-                            _authPassword = value;
-                          },
-                          onCodeChanged: (String value) {
-                            _authCode = value.trim();
-                          },
-                          onSubmit: _submitAuth,
-                          onContinueDefault: _continueAsDefaultPlayer,
-                          onFacebookLogin: _showFacebookSetupMessage,
-                          onForgotPassword: _showPasswordResetDialog,
-                          onResendCode: _resendVerificationCode,
-                          onBackFromCode: () => setState(() {
-                            _awaitingCode = false;
-                            _authCode = '';
-                            _authMessage =
-                                'Update your details or request a new code.';
-                          }),
-                          loading: _authLoading,
-                        ),
-                      ),
-                    if (_signedIn && _gameResultTitle != null && _resultVisible)
-                      Positioned.fill(
-                        child: GameResultOverlay(
-                          title: _resultDisplayTitle(),
-                          detail: _gameResultDetail ?? 'Game complete',
-                          scoreLabel: _resultScoreLabel(),
-                          onNewGame: _reset,
-                          onReview: () => setState(() {
-                            _resultVisible = false;
-                          }),
-                        ),
-                      ),
-                    if (_moveQualityText != null &&
-                        _gameMode == GameMode.computer &&
-                        _gameResultTitle == null)
-                      Positioned(
-                        left: wide ? 22 : 18,
-                        right: wide ? widePanelWidth + 30 : 18,
-                        bottom: 18,
-                        child: IgnorePointer(
-                          child: Center(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFF16171C,
-                                ).withValues(alpha: 0.92),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: const Color(
-                                    0xFFD6A84F,
-                                  ).withValues(alpha: 0.72),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              key:
+                                  const ValueKey<String>('game-controls-panel'),
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 260),
+                                child: SizedBox.expand(
+                                  key: ValueKey<bool>(_controlsExpanded),
+                                  child: panel,
                                 ),
-                                boxShadow: <BoxShadow>[
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.32),
-                                    blurRadius: 24,
-                                    offset: const Offset(0, 12),
-                                  ),
-                                ],
                               ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                  vertical: 10,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: <Widget>[
-                                    const Icon(
-                                      Icons.psychology_alt_rounded,
-                                      color: Color(0xFFD6A84F),
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Flexible(
-                                      child: Text(
-                                        _moveQualityText!,
-                                        maxLines: 3,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Color(0xFFF6F1E8),
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
+                            ),
+                          ],
+                        ),
+                      if (!_signedIn)
+                        Positioned.fill(
+                          child: AuthOverlay(
+                            registerMode: _registerMode,
+                            awaitingCode: _awaitingCode,
+                            message: _authMessage,
+                            hasError: _authHasError,
+                            onModeChanged: _setAuthMode,
+                            onUsernameChanged: (String value) {
+                              _authUsername = value.trim();
+                            },
+                            onDisplayNameChanged: (String value) {
+                              _authDisplayName = value.trim();
+                            },
+                            onIdentityChanged: (String value) {
+                              _authIdentity = value.trim();
+                            },
+                            onPasswordChanged: (String value) {
+                              _authPassword = value;
+                            },
+                            onCodeChanged: (String value) {
+                              _authCode = value.trim();
+                            },
+                            onSubmit: _submitAuth,
+                            onContinueDefault: _continueAsDefaultPlayer,
+                            onFacebookLogin: _showFacebookSetupMessage,
+                            onForgotPassword: _showPasswordResetDialog,
+                            onResendCode: _resendVerificationCode,
+                            onBackFromCode: () => setState(() {
+                              _awaitingCode = false;
+                              _authCode = '';
+                              _authMessage =
+                                  'Update your details or request a new code.';
+                            }),
+                            loading: _authLoading,
+                          ),
+                        ),
+                      if (_signedIn &&
+                          _gameResultTitle != null &&
+                          _resultVisible)
+                        Positioned.fill(
+                          child: GameResultOverlay(
+                            title: _resultDisplayTitle(),
+                            detail: _gameResultDetail ?? 'Game complete',
+                            scoreLabel: _resultScoreLabel(),
+                            onNewGame: _reset,
+                            onReview: () => setState(() {
+                              _resultVisible = false;
+                            }),
+                          ),
+                        ),
+                      if (_moveQualityText != null &&
+                          _gameMode == GameMode.computer &&
+                          _gameResultTitle == null)
+                        Positioned(
+                          left: wide ? 22 : 18,
+                          right: wide ? widePanelWidth + 30 : 18,
+                          bottom: 18,
+                          child: IgnorePointer(
+                            child: Center(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF16171C,
+                                  ).withValues(alpha: 0.92),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFFD6A84F,
+                                    ).withValues(alpha: 0.72),
+                                  ),
+                                  boxShadow: <BoxShadow>[
+                                    BoxShadow(
+                                      color:
+                                          Colors.black.withValues(alpha: 0.32),
+                                      blurRadius: 24,
+                                      offset: const Offset(0, 12),
                                     ),
                                   ],
                                 ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 10,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: <Widget>[
+                                      const Icon(
+                                        Icons.psychology_alt_rounded,
+                                        color: Color(0xFFD6A84F),
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Text(
+                                          _moveQualityText!,
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Color(0xFFF6F1E8),
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },
