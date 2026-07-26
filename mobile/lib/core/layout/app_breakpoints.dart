@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widgets.dart';
 
 enum AppDeviceClass {
@@ -28,7 +29,11 @@ class AppBreakpoints {
   }
 
   static AppDeviceClass deviceClassOf(BuildContext context) {
-    return deviceClassForWidth(MediaQuery.sizeOf(context).width);
+    final Size size = MediaQuery.sizeOf(context);
+    // A rotated phone must remain a phone. Using its landscape width promoted
+    // Samsung phones to the tablet layout and visibly stretched dashboard
+    // cards. Tablets retain a larger shortest side; web remains width-driven.
+    return deviceClassForWidth(kIsWeb ? size.width : size.shortestSide);
   }
 
   static bool isTabletOrLarger(BuildContext context) {
@@ -60,8 +65,10 @@ class AppBreakpoints {
     final double shortestSide = size.shortestSide;
     final double reservedHeight = size.height < size.width ? 160 : 280;
     final double heightBound = size.height - reservedHeight;
-    final double safeHeightBound = heightBound < 280 ? shortestSide : heightBound;
-    final double rawSize = shortestSide < safeHeightBound ? shortestSide : safeHeightBound;
+    final double safeHeightBound =
+        heightBound < 280 ? shortestSide : heightBound;
+    final double rawSize =
+        shortestSide < safeHeightBound ? shortestSide : safeHeightBound;
     return rawSize.clamp(280, 720).toDouble();
   }
 }
