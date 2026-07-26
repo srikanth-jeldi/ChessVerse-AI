@@ -89,37 +89,37 @@ class _SplashGateState extends State<SplashGate> {
       switchOutCurve: Curves.easeInCubic,
       child: switch (_stage) {
         _RootStage.splash => const BrandedSplash(
-          key: ValueKey<String>('splash'),
-        ),
+            key: ValueKey<String>('splash'),
+          ),
         _RootStage.loading => const ChessVerseLoadingScreen(
-          key: ValueKey<String>('loading'),
-        ),
+            key: ValueKey<String>('loading'),
+          ),
         _RootStage.onboarding => OnboardingScreen(
-          key: const ValueKey<String>('onboarding'),
-          onComplete: () => setState(() => _stage = _RootStage.auth),
-        ),
+            key: const ValueKey<String>('onboarding'),
+            onComplete: () => setState(() => _stage = _RootStage.auth),
+          ),
         _RootStage.auth => AuthScreen(
-          key: const ValueKey<String>('auth'),
-          onAuthenticated: (ChessVerseAuthResult result) {
-            setState(() {
-              _playerName = result.playerName;
-              _stage = _RootStage.home;
-            });
-          },
-        ),
+            key: const ValueKey<String>('auth'),
+            onAuthenticated: (ChessVerseAuthResult result) {
+              setState(() {
+                _playerName = result.playerName;
+                _stage = _RootStage.home;
+              });
+            },
+          ),
         _RootStage.home => HomeDashboardScreen(
-          key: const ValueKey<String>('home'),
-          playerName: _playerName,
-          onPlayVsAi: () => _chooseSideAndOpen(context, GameMode.computer),
-          onDailyChallenge: () => _openGame(context, GameMode.daily),
-          onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
-          onAnalysis: () => _push(context, const AnalysisScreen()),
-          onPuzzles: () => _push(context, const PuzzlesScreen()),
-          onSavedGames: () => _push(context, const SavedGamesScreen()),
-          onLearnChess: () => _push(context, const LearnChessScreen()),
-          onProfile: () => _push(context, const ProfileScreen()),
-          onSettings: () => _push(context, const SettingsScreen()),
-        ),
+            key: const ValueKey<String>('home'),
+            playerName: _playerName,
+            onPlayVsAi: () => _chooseSideAndOpen(context, GameMode.computer),
+            onDailyChallenge: () => _openGame(context, GameMode.daily),
+            onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
+            onAnalysis: () => _push(context, const AnalysisScreen()),
+            onPuzzles: () => _push(context, const PuzzlesScreen()),
+            onSavedGames: () => _push(context, const SavedGamesScreen()),
+            onLearnChess: () => _push(context, const LearnChessScreen()),
+            onProfile: () => _push(context, const ProfileScreen()),
+            onSettings: () => _push(context, const SettingsScreen()),
+          ),
       },
     );
   }
@@ -127,59 +127,59 @@ class _SplashGateState extends State<SplashGate> {
   Future<void> _chooseSideAndOpen(BuildContext context, GameMode mode) async {
     final PlayerSideChoice? choice =
         await showModalBottomSheet<PlayerSideChoice>(
-          context: context,
-          showDragHandle: true,
-          backgroundColor: const Color(0xFF15161B),
-          builder: (BuildContext context) {
-            return SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 8, 18, 22),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      'Choose your side',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      mode == GameMode.local
-                          ? 'Player 1 side for this match.'
-                          : 'ChessVerse AI will take the opposite side.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: PlayerSideChoice.values.map((
-                        PlayerSideChoice side,
-                      ) {
-                        return ChoiceChip(
-                          selected: side == PlayerSideChoice.white,
-                          avatar: Icon(side.icon, size: 18),
-                          label: Text(side.label),
-                          onSelected: (_) => Navigator.of(context).pop(side),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 18),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () =>
-                            Navigator.of(context).pop(PlayerSideChoice.white),
-                        icon: const Icon(Icons.play_arrow_rounded),
-                        label: const Text('Start as White'),
-                      ),
-                    ),
-                  ],
+      context: context,
+      showDragHandle: true,
+      backgroundColor: const Color(0xFF15161B),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Choose your side',
+                  style: Theme.of(context).textTheme.headlineSmall,
                 ),
-              ),
-            );
-          },
+                const SizedBox(height: 8),
+                Text(
+                  mode == GameMode.local
+                      ? 'Player 1 side for this match.'
+                      : 'ChessVerse AI will take the opposite side.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: PlayerSideChoice.values.map((
+                    PlayerSideChoice side,
+                  ) {
+                    return ChoiceChip(
+                      selected: side == PlayerSideChoice.white,
+                      avatar: Icon(side.icon, size: 18),
+                      label: Text(side.label),
+                      onSelected: (_) => Navigator.of(context).pop(side),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () =>
+                        Navigator.of(context).pop(PlayerSideChoice.white),
+                    icon: const Icon(Icons.play_arrow_rounded),
+                    label: const Text('Start as White'),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
+      },
+    );
     if (choice != null && context.mounted) {
       _openGame(context, mode, sideChoice: choice);
     }
@@ -218,126 +218,97 @@ class BrandedSplash extends StatelessWidget {
       backgroundColor: const Color(0xFF02070D),
       body: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          final bool wide =
-              kIsWeb ||
+          final bool wide = kIsWeb ||
               constraints.maxWidth >= 720 ||
               constraints.maxWidth <= 0;
-          const String asset =
+          const String wideAsset =
               'assets/branding/chessverse_king_dual_splash.jpg';
+          const String mobileAsset =
+              'assets/branding/splash_screen_mobile_v2.png';
           if (!wide) {
             return Stack(
               fit: StackFit.expand,
               children: <Widget>[
                 const Image(
-                  image: AssetImage(asset),
+                  image: AssetImage(mobileAsset),
                   fit: BoxFit.cover,
                   alignment: Alignment.center,
                   filterQuality: FilterQuality.high,
                 ),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: <Color>[
-                        const Color(0xFF02070D).withValues(alpha: 0.22),
-                        Colors.transparent,
-                        const Color(0xFF02070D).withValues(alpha: 0.28),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            );
-          }
-          if (!wide) {
-            return Stack(
-              fit: StackFit.expand,
-              children: <Widget>[
-                Image(
-                  image: AssetImage(asset),
-                  fit: BoxFit.cover,
-                  alignment: Alignment.center,
-                ),
-                const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: <Color>[
-                        Color(0xCC02070D),
-                        Color(0x66066C63),
-                        Color(0xDD02070D),
-                      ],
+                IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: <Color>[
+                          const Color(0xFF02070D).withValues(alpha: 0.04),
+                          Colors.transparent,
+                          const Color(0xFF02070D).withValues(alpha: 0.20),
+                          const Color(0xFF02070D).withValues(alpha: 0.96),
+                        ],
+                        stops: const <double>[0, 0.46, 0.70, 1],
+                      ),
                     ),
                   ),
                 ),
                 SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 28,
-                      vertical: 34,
-                    ),
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 34),
                     child: Column(
                       children: <Widget>[
-                        const Spacer(flex: 2),
-                        Container(
-                          width: 112,
-                          height: 112,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF071018,
-                            ).withValues(alpha: 0.86),
-                            borderRadius: BorderRadius.circular(30),
-                            border: Border.all(
-                              color: const Color(0xFFD6A84F),
-                              width: 1.4,
-                            ),
-                            boxShadow: <BoxShadow>[
-                              BoxShadow(
-                                color: const Color(
-                                  0xFF63D2B8,
-                                ).withValues(alpha: 0.35),
-                                blurRadius: 44,
-                                spreadRadius: 8,
-                              ),
+                        const Spacer(flex: 7),
+                        ShaderMask(
+                          shaderCallback: (Rect bounds) => const LinearGradient(
+                            colors: <Color>[
+                              Color(0xFFFFE2A0),
+                              Color(0xFFF8F4E8),
+                              Color(0xFF75C9FF),
                             ],
-                          ),
-                          child: Image.asset('assets/branding/app_icon.png'),
-                        ),
-                        const SizedBox(height: 28),
-                        FittedBox(
-                          child: Text(
+                          ).createShader(bounds),
+                          child: const Text(
                             'CHESSVERSE AI',
                             textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.displayMedium
-                                ?.copyWith(
-                                  color: const Color(0xFFF8F2E4),
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 2.4,
-                                ),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 34,
+                              height: 1,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 2.6,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Think  •  Move  •  Master',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(
-                                color: const Color(0xFFE0C47C),
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.8,
-                              ),
+                          'PLAY  •  LEARN  •  MASTER',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.72),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 2.2,
+                          ),
                         ),
-                        const Spacer(flex: 3),
+                        const SizedBox(height: 26),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(99),
+                          child: const SizedBox(
+                            width: 132,
+                            child: LinearProgressIndicator(
+                              minHeight: 3,
+                              backgroundColor: Color(0x332F8DFF),
+                              color: Color(0xFFFFCE6A),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
                         Text(
                           'Powered by EpitomeHub',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                color: const Color(0xCCF8F2E4),
-                                letterSpacing: 0.8,
-                              ),
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.56),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.6,
+                          ),
                         ),
                       ],
                     ),
@@ -349,16 +320,15 @@ class BrandedSplash extends StatelessWidget {
           final double maxHeroWidth = wide
               ? constraints.maxWidth.clamp(520.0, 980.0)
               : constraints.maxWidth * 0.96;
-          final double maxHeroHeight = wide
-              ? constraints.maxHeight * 0.9
-              : constraints.maxHeight * 0.86;
+          final double maxHeroHeight =
+              wide ? constraints.maxHeight * 0.9 : constraints.maxHeight * 0.86;
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
               ImageFiltered(
                 imageFilter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Image(
-                  image: AssetImage(asset),
+                child: const Image(
+                  image: AssetImage(wideAsset),
                   fit: BoxFit.cover,
                   alignment: Alignment.center,
                 ),
@@ -384,7 +354,7 @@ class BrandedSplash extends StatelessWidget {
                       maxHeight: maxHeroHeight,
                     ),
                     child: Image(
-                      image: AssetImage(asset),
+                      image: const AssetImage(wideAsset),
                       fit: BoxFit.contain,
                       alignment: Alignment.center,
                     ),
@@ -399,6 +369,9 @@ class BrandedSplash extends StatelessWidget {
   }
 }
 
+// Kept as a lightweight code-only fallback for devices that cannot decode the
+// high-resolution splash artwork.
+// ignore: unused_element
 class _MobilePremiumSplash extends StatelessWidget {
   const _MobilePremiumSplash();
 
@@ -474,10 +447,10 @@ class _MobilePremiumSplash extends StatelessWidget {
                       'CHESSVERSE AI',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        color: const Color(0xFFF8F2E4),
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2.2,
-                      ),
+                            color: const Color(0xFFF8F2E4),
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2.2,
+                          ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -485,10 +458,10 @@ class _MobilePremiumSplash extends StatelessWidget {
                     'Think • Move • Master',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: const Color(0xFFE0B85E),
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.5,
-                    ),
+                          color: const Color(0xFFE0B85E),
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.5,
+                        ),
                   ),
                   const SizedBox(height: 32),
                   Container(
@@ -522,9 +495,9 @@ class _MobilePremiumSplash extends StatelessWidget {
                   Text(
                     'Powered by EpitomeHub',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: const Color(0xCCF8F2E4),
-                      letterSpacing: 0.8,
-                    ),
+                          color: const Color(0xCCF8F2E4),
+                          letterSpacing: 0.8,
+                        ),
                   ),
                 ],
               ),
@@ -575,12 +548,10 @@ class ChessVerseLoadingScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF02070D),
       body: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          final bool wide =
-              kIsWeb ||
+          final bool wide = kIsWeb ||
               constraints.maxWidth >= 720 ||
               constraints.maxWidth <= 0;
-          final bool short =
-              constraints.maxHeight > 0 &&
+          final bool short = constraints.maxHeight > 0 &&
               constraints.maxHeight < (wide ? 420 : 620);
           final double logoSize = short ? 62 : (wide ? 126 : 106);
           return Stack(
@@ -641,7 +612,9 @@ class ChessVerseLoadingScreen extends StatelessWidget {
                           Text(
                             'CHESSVERSE AI',
                             textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.headlineLarge
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineLarge
                                 ?.copyWith(
                                   letterSpacing: 2,
                                   fontSize: short ? 20 : null,
@@ -652,7 +625,9 @@ class ChessVerseLoadingScreen extends StatelessWidget {
                           SizedBox(height: short ? 4 : 8),
                           Text(
                             'Think  -  Move  -  Master',
-                            style: Theme.of(context).textTheme.titleMedium
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
                                 ?.copyWith(
                                   color: const Color(0xFFE0C47C),
                                   fontSize: short ? 10 : null,
@@ -662,7 +637,9 @@ class ChessVerseLoadingScreen extends StatelessWidget {
                           SizedBox(height: short ? 14 : 44),
                           Text(
                             'Preparing your board',
-                            style: Theme.of(context).textTheme.titleMedium
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
                                 ?.copyWith(
                                   letterSpacing: 0.4,
                                   fontSize: short ? 10 : null,
@@ -686,7 +663,9 @@ class ChessVerseLoadingScreen extends StatelessWidget {
                           Text(
                             'Loading pieces, puzzles, and your profile',
                             textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodySmall
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
                                 ?.copyWith(color: const Color(0xFFAAA69E)),
                           ),
                         ],
@@ -781,30 +760,30 @@ enum PlayerSideChoice { white, random, black }
 
 extension PlayerSideChoiceDetails on PlayerSideChoice {
   String get label => switch (this) {
-    PlayerSideChoice.white => 'White',
-    PlayerSideChoice.random => 'Random',
-    PlayerSideChoice.black => 'Black',
-  };
+        PlayerSideChoice.white => 'White',
+        PlayerSideChoice.random => 'Random',
+        PlayerSideChoice.black => 'Black',
+      };
 
   IconData get icon => switch (this) {
-    PlayerSideChoice.white => Icons.circle_outlined,
-    PlayerSideChoice.random => Icons.shuffle_rounded,
-    PlayerSideChoice.black => Icons.circle,
-  };
+        PlayerSideChoice.white => Icons.circle_outlined,
+        PlayerSideChoice.random => Icons.shuffle_rounded,
+        PlayerSideChoice.black => Icons.circle,
+      };
 }
 
 extension DailyChallengeDifficultyDetails on DailyChallengeDifficulty {
   String get label => switch (this) {
-    DailyChallengeDifficulty.easy => 'Easy - mate in 4',
-    DailyChallengeDifficulty.medium => 'Medium - mate in 5',
-    DailyChallengeDifficulty.hard => 'Hard - mate in 7',
-  };
+        DailyChallengeDifficulty.easy => 'Easy - mate in 4',
+        DailyChallengeDifficulty.medium => 'Medium - mate in 5',
+        DailyChallengeDifficulty.hard => 'Hard - mate in 7',
+      };
 
   int get moveGoal => switch (this) {
-    DailyChallengeDifficulty.easy => 4,
-    DailyChallengeDifficulty.medium => 5,
-    DailyChallengeDifficulty.hard => 7,
-  };
+        DailyChallengeDifficulty.easy => 4,
+        DailyChallengeDifficulty.medium => 5,
+        DailyChallengeDifficulty.hard => 7,
+      };
 }
 
 class DailyChallenge {
@@ -1013,6 +992,9 @@ class ChessRules {
     }
 
     return pseudoLegalTargets(from, pieces).where((String target) {
+      if (pieces[target]?.code == 'K') {
+        return false;
+      }
       final Map<String, ChessPiece> next = applyMove(from, target, pieces);
       return !isKingInCheck(piece.white, next);
     }).toList();
@@ -1030,47 +1012,47 @@ class ChessRules {
     return switch (piece.code) {
       'P' => _pawnTargets(from, piece, pieces),
       'N' => _jumpTargets(from, piece, pieces, const <SquarePosition>[
-        SquarePosition(1, 2),
-        SquarePosition(2, 1),
-        SquarePosition(2, -1),
-        SquarePosition(1, -2),
-        SquarePosition(-1, -2),
-        SquarePosition(-2, -1),
-        SquarePosition(-2, 1),
-        SquarePosition(-1, 2),
-      ]),
+          SquarePosition(1, 2),
+          SquarePosition(2, 1),
+          SquarePosition(2, -1),
+          SquarePosition(1, -2),
+          SquarePosition(-1, -2),
+          SquarePosition(-2, -1),
+          SquarePosition(-2, 1),
+          SquarePosition(-1, 2),
+        ]),
       'B' => _rayTargets(from, piece, pieces, const <SquarePosition>[
-        SquarePosition(1, 1),
-        SquarePosition(1, -1),
-        SquarePosition(-1, 1),
-        SquarePosition(-1, -1),
-      ]),
+          SquarePosition(1, 1),
+          SquarePosition(1, -1),
+          SquarePosition(-1, 1),
+          SquarePosition(-1, -1),
+        ]),
       'R' => _rayTargets(from, piece, pieces, const <SquarePosition>[
-        SquarePosition(1, 0),
-        SquarePosition(-1, 0),
-        SquarePosition(0, 1),
-        SquarePosition(0, -1),
-      ]),
+          SquarePosition(1, 0),
+          SquarePosition(-1, 0),
+          SquarePosition(0, 1),
+          SquarePosition(0, -1),
+        ]),
       'Q' => _rayTargets(from, piece, pieces, const <SquarePosition>[
-        SquarePosition(1, 0),
-        SquarePosition(-1, 0),
-        SquarePosition(0, 1),
-        SquarePosition(0, -1),
-        SquarePosition(1, 1),
-        SquarePosition(1, -1),
-        SquarePosition(-1, 1),
-        SquarePosition(-1, -1),
-      ]),
+          SquarePosition(1, 0),
+          SquarePosition(-1, 0),
+          SquarePosition(0, 1),
+          SquarePosition(0, -1),
+          SquarePosition(1, 1),
+          SquarePosition(1, -1),
+          SquarePosition(-1, 1),
+          SquarePosition(-1, -1),
+        ]),
       'K' => _jumpTargets(from, piece, pieces, const <SquarePosition>[
-        SquarePosition(1, 0),
-        SquarePosition(-1, 0),
-        SquarePosition(0, 1),
-        SquarePosition(0, -1),
-        SquarePosition(1, 1),
-        SquarePosition(1, -1),
-        SquarePosition(-1, 1),
-        SquarePosition(-1, -1),
-      ]),
+          SquarePosition(1, 0),
+          SquarePosition(-1, 0),
+          SquarePosition(0, 1),
+          SquarePosition(0, -1),
+          SquarePosition(1, 1),
+          SquarePosition(1, -1),
+          SquarePosition(-1, 1),
+          SquarePosition(-1, -1),
+        ]),
       _ => <String>[],
     };
   }
@@ -1276,6 +1258,8 @@ class _GameScreenState extends State<GameScreen> {
   String? _lastFromSquare;
   String? _lastToSquare;
   String? _lastCaptureSquare;
+  ChessPiece? _lastMovedPiece;
+  ChessPiece? _lastCapturedPiece;
   String? _moveQualityText;
   String _coachNote = 'Select a coin to see legal moves.';
   BoardSkin _skin = BoardSkin.royalWalnut;
@@ -1375,13 +1359,12 @@ class _GameScreenState extends State<GameScreen> {
         ? _dailyStartingPosition(_dailyChallenge)
         : Map<String, ChessPiece>.from(_initialPieces);
     _signedIn = widget.initiallySignedIn;
-    final String playerName =
-        widget.initialPlayerName != null &&
+    final String playerName = widget.initialPlayerName != null &&
             widget.initialPlayerName!.trim().isNotEmpty
         ? widget.initialPlayerName!.trim()
         : widget.initiallySignedIn
-        ? 'Guest Player'
-        : 'Guest Player';
+            ? 'Guest Player'
+            : 'Guest Player';
     if (widget.initialPlayerName != null &&
         widget.initialPlayerName!.trim().isNotEmpty) {
       _whitePlayerName = playerName;
@@ -1437,9 +1420,8 @@ class _GameScreenState extends State<GameScreen> {
     final BoardPalette palette = boardPalettes[_skin]!;
     final bool sideToMoveWhite = _moves.length.isEven;
     final bool sideInCheck = ChessRules.isKingInCheck(sideToMoveWhite, _pieces);
-    final String? checkedKingSquare = sideInCheck
-        ? _kingSquare(sideToMoveWhite)
-        : null;
+    final String? checkedKingSquare =
+        sideInCheck ? _kingSquare(sideToMoveWhite) : null;
     final Set<String> legalTargets = !_showMoveHints || _selectedSquare == null
         ? <String>{}
         : _legalTargetsFor(_selectedSquare!).toSet();
@@ -1464,9 +1446,9 @@ class _GameScreenState extends State<GameScreen> {
             builder: (BuildContext context, BoxConstraints constraints) {
               final bool landscape =
                   constraints.maxWidth > constraints.maxHeight;
-              final bool wide =
-                  constraints.maxWidth >= 980 ||
-                  (landscape && constraints.maxWidth >= 700);
+              // A phone rotating to landscape must keep the board centered.
+              // The side-by-side desktop panel only fits comfortably at 980px+.
+              final bool wide = constraints.maxWidth >= 980;
               const EdgeInsets pagePadding = EdgeInsets.zero;
               final double availableHeight =
                   constraints.maxHeight - pagePadding.vertical;
@@ -1474,24 +1456,21 @@ class _GameScreenState extends State<GameScreen> {
               final double widePanelWidth = _controlsExpanded
                   ? math.min(340, math.max(320, constraints.maxWidth * 0.26))
                   : 84;
-              const double portraitPanelMinimum = 190;
-              final double boardDimension = math.min(
-                wide
-                    ? constraints.maxWidth -
-                          pagePadding.horizontal -
-                          widePanelWidth -
-                          10
-                    : constraints.maxWidth - pagePadding.horizontal,
-                math.max(
-                  260,
-                  wide
-                      ? availableHeight
-                      : availableHeight -
-                            mobileHeaderHeight -
-                            portraitPanelMinimum -
-                            18,
-                ),
-              );
+              final double portraitPanelMinimum = landscape ? 72 : 190;
+              final double boardWidth = wide
+                  ? constraints.maxWidth -
+                      pagePadding.horizontal -
+                      widePanelWidth -
+                      10
+                  : constraints.maxWidth - pagePadding.horizontal;
+              final double boardHeight = wide
+                  ? availableHeight
+                  : availableHeight -
+                      mobileHeaderHeight -
+                      portraitPanelMinimum -
+                      18;
+              final double boardDimension =
+                  math.max(0, math.min(boardWidth, boardHeight));
 
               final Widget board = ChessBoard(
                 pieces: _pieces,
@@ -1500,10 +1479,12 @@ class _GameScreenState extends State<GameScreen> {
                 lastFromSquare: _lastFromSquare,
                 lastToSquare: _lastToSquare,
                 lastCaptureSquare: _lastCaptureSquare,
+                lastMovedPiece: _lastMovedPiece,
+                lastCapturedPiece: _lastCapturedPiece,
+                moveSequence: _moves.length,
                 checkedKingSquare: checkedKingSquare,
-                decisiveSquare: _gameResultDetail == 'Checkmate'
-                    ? _lastToSquare
-                    : null,
+                decisiveSquare:
+                    _gameResultDetail == 'Checkmate' ? _lastToSquare : null,
                 flipped: _shouldFlipBoard(sideToMoveWhite),
                 showCoordinates: _showCoordinates,
                 palette: palette,
@@ -1511,8 +1492,7 @@ class _GameScreenState extends State<GameScreen> {
               );
 
               final Widget panel = GamePanel(
-                compact:
-                    !wide ||
+                compact: !wide ||
                     constraints.maxHeight < 620 ||
                     widePanelWidth < 340,
                 collapsible: true,
@@ -1605,6 +1585,7 @@ class _GameScreenState extends State<GameScreen> {
                       ),
                     ] else
                       Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
                           CompactHeader(
                             playerName: _whitePlayerName,
@@ -1612,10 +1593,11 @@ class _GameScreenState extends State<GameScreen> {
                             onLogout: _logout,
                           ),
                           const SizedBox(height: 8),
-                          SizedBox(
-                            width: boardDimension,
-                            height: boardDimension,
-                            child: BoardStage(palette: palette, child: board),
+                          Center(
+                            child: SizedBox.square(
+                              dimension: boardDimension,
+                              child: BoardStage(palette: palette, child: board),
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Expanded(
@@ -1886,8 +1868,7 @@ class _GameScreenState extends State<GameScreen> {
                         'Password updated. Sign in with your new password.';
                   });
                 } else {
-                  final String baseMessage =
-                      response['message'] as String? ??
+                  final String baseMessage = response['message'] as String? ??
                       'If the account exists, a reset code was sent.';
                   final String? developmentCode =
                       response['developmentCode'] as String?;
@@ -1970,9 +1951,8 @@ class _GameScreenState extends State<GameScreen> {
               ),
               actions: <Widget>[
                 TextButton(
-                  onPressed: loading
-                      ? null
-                      : () => Navigator.of(dialogContext).pop(),
+                  onPressed:
+                      loading ? null : () => Navigator.of(dialogContext).pop(),
                   child: const Text('Cancel'),
                 ),
                 FilledButton(
@@ -2026,25 +2006,24 @@ class _GameScreenState extends State<GameScreen> {
       _authMessage = _awaitingCode
           ? 'Verifying your code...'
           : _registerMode
-          ? 'Sending a secure verification code...'
-          : 'Signing you in...';
+              ? 'Sending a secure verification code...'
+              : 'Signing you in...';
     });
 
     try {
       if (_registerMode && !_awaitingCode) {
-        final Map<String, dynamic> response = await _authApi
-            .post('register', <String, String>{
-              'username': _authUsername,
-              'displayName': _authDisplayName,
-              'email': _authIdentity,
-              'password': _authPassword,
-            });
+        final Map<String, dynamic> response =
+            await _authApi.post('register', <String, String>{
+          'username': _authUsername,
+          'displayName': _authDisplayName,
+          'email': _authIdentity,
+          'password': _authPassword,
+        });
         if (!mounted) return;
         setState(() {
           _awaitingCode = true;
           _authHasError = false;
-          final String baseMessage =
-              response['message'] as String? ??
+          final String baseMessage = response['message'] as String? ??
               'Verification code sent. Check your inbox.';
           final String? developmentCode =
               response['developmentCode'] as String?;
@@ -2213,6 +2192,16 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
+  bool _hasAnyLegalMove(bool white) {
+    for (final MapEntry<String, ChessPiece> entry in _pieces.entries) {
+      if (entry.value.white == white &&
+          _legalTargetsFor(entry.key).isNotEmpty) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   String _moveFeedback({
     required ChessPiece piece,
     required String from,
@@ -2222,8 +2211,7 @@ class _GameScreenState extends State<GameScreen> {
   }) {
     final bool givesCheck = ChessRules.isKingInCheck(!piece.white, _pieces);
     final SquarePosition target = ChessRules.positionOf(to);
-    final bool central =
-        target.file >= 2 &&
+    final bool central = target.file >= 2 &&
         target.file <= 5 &&
         target.rank >= 3 &&
         target.rank <= 6;
@@ -2388,10 +2376,20 @@ class _GameScreenState extends State<GameScreen> {
       return;
     }
     _gameResultTitle = 'Challenge complete';
-    _gameResultDetail = 'Come back tomorrow for a new checkmate puzzle';
+    _gameResultDetail = _dailyUnlockMessage();
     _resultVisible = true;
-    _coachNote =
-        "Today's Daily Checkmate is complete. A new challenge unlocks tomorrow.";
+    _coachNote = _dailyUnlockMessage();
+  }
+
+  String _dailyUnlockMessage() {
+    final Duration remaining = LocalGameArchive.dailyChallengeRemaining;
+    if (remaining == Duration.zero) {
+      return 'A new Daily Checkmate is ready.';
+    }
+    final int hours = remaining.inHours;
+    final int minutes = remaining.inMinutes.remainder(60);
+    return 'Daily Checkmate complete. Next challenge unlocks in '
+        '${hours}h ${minutes}m.';
   }
 
   Future<void> _editBlackPlayerName() async {
@@ -2514,6 +2512,8 @@ class _GameScreenState extends State<GameScreen> {
         final ChessPiece? captured = enPassantCaptureSquare == null
             ? _pieces[square]
             : _pieces.remove(enPassantCaptureSquare);
+        _lastMovedPiece = piece;
+        _lastCapturedPiece = captured;
         if (captured != null) {
           if (captured.white) {
             _capturedWhite.add(captured);
@@ -2530,10 +2530,10 @@ class _GameScreenState extends State<GameScreen> {
         final String move = castleMove
             ? (square.startsWith('g') ? 'O-O' : 'O-O-O')
             : enPassantCaptureSquare != null
-            ? '$from x $square e.p.'
-            : captured == null
-            ? '$from$square'
-            : '$from x $square';
+                ? '$from x $square e.p.'
+                : captured == null
+                    ? '$from$square'
+                    : '$from x $square';
         _moves.insert(0, move);
         unawaited(
           captured == null
@@ -2557,8 +2557,8 @@ class _GameScreenState extends State<GameScreen> {
         _coachNote = castleMove
             ? '${piece.white ? 'White' : 'Black'} castles ${square.startsWith('g') ? 'king side' : 'queen side'}.'
             : captured == null
-            ? '${piece.code} moves to $square.'
-            : '${piece.code} captures ${captured.code} on $square.';
+                ? '${piece.code} moves to $square.'
+                : '${piece.code} captures ${captured.code} on $square.';
         if (piece.code == 'P' &&
             ((piece.white && square.endsWith('8')) ||
                 (!piece.white && square.endsWith('1')))) {
@@ -2573,7 +2573,7 @@ class _GameScreenState extends State<GameScreen> {
           if (_gameMode == GameMode.daily) {
             final bool opponentMated =
                 ChessRules.isKingInCheck(!piece.white, _pieces) &&
-                !ChessRules.hasAnySafeMove(!piece.white, _pieces);
+                    !_hasAnyLegalMove(!piece.white);
             if (opponentMated) {
               _gameResultTitle = 'Challenge complete';
               _gameResultDetail =
@@ -2674,13 +2674,13 @@ class _GameScreenState extends State<GameScreen> {
         final double captureScore = captured == null
             ? 0
             : <String, double>{
-                    'P': 1,
-                    'N': 3.2,
-                    'B': 3.3,
-                    'R': 5,
-                    'Q': 9,
-                  }[captured.code] ??
-                  0;
+                  'P': 1,
+                  'N': 3.2,
+                  'B': 3.3,
+                  'R': 5,
+                  'Q': 9,
+                }[captured.code] ??
+                0;
         replies.add(
           AiCandidate(
             entry.key,
@@ -2712,6 +2712,8 @@ class _GameScreenState extends State<GameScreen> {
       _lastCaptureSquare = null;
       final ChessPiece piece = _pieces.remove(from)!;
       final ChessPiece? captured = _pieces[to];
+      _lastMovedPiece = piece;
+      _lastCapturedPiece = captured;
       if (captured != null) {
         captured.white
             ? _capturedWhite.add(captured)
@@ -2783,22 +2785,21 @@ class _GameScreenState extends State<GameScreen> {
       for (final String target in _legalTargetsFor(entry.key)) {
         final ChessPiece? captured = _pieces[target];
         final SquarePosition targetPosition = ChessRules.positionOf(target);
-        final double centerBonus =
-            3.5 -
+        final double centerBonus = 3.5 -
             (targetPosition.file - 3.5).abs() +
             3.5 -
             (targetPosition.rank - 4.5).abs();
         final double captureScore = captured == null
             ? 0
             : <String, double>{
-                    'P': 1,
-                    'N': 3.2,
-                    'B': 3.3,
-                    'R': 5,
-                    'Q': 9,
-                    'K': 100,
-                  }[captured.code] ??
-                  0;
+                  'P': 1,
+                  'N': 3.2,
+                  'B': 3.3,
+                  'R': 5,
+                  'Q': 9,
+                  'K': 100,
+                }[captured.code] ??
+                0;
         candidates.add(
           AiCandidate(
             entry.key,
@@ -2846,6 +2847,8 @@ class _GameScreenState extends State<GameScreen> {
       final ChessPiece? captured = enPassantCaptureSquare == null
           ? _pieces[move.to]
           : _pieces.remove(enPassantCaptureSquare);
+      _lastMovedPiece = piece;
+      _lastCapturedPiece = captured;
       if (captured != null) {
         captured.white
             ? _capturedWhite.add(captured)
@@ -2864,8 +2867,8 @@ class _GameScreenState extends State<GameScreen> {
       final String notation = castleMove
           ? (move.to.startsWith('g') ? 'O-O' : 'O-O-O')
           : captured == null
-          ? '${move.from}${move.to}'
-          : '${move.from} x ${move.to}';
+              ? '${move.from}${move.to}'
+              : '${move.from} x ${move.to}';
       _moves.insert(0, notation);
       unawaited(
         captured == null
@@ -3150,11 +3153,8 @@ class _GameScreenState extends State<GameScreen> {
       return null;
     }
 
-    final String cleaned = move
-        .replaceAll(' x ', '')
-        .replaceAll(' e.p.', '')
-        .split('=')
-        .first;
+    final String cleaned =
+        move.replaceAll(' x ', '').replaceAll(' e.p.', '').split('=').first;
     if (cleaned.length < 4) {
       return null;
     }
@@ -3186,6 +3186,8 @@ class _GameScreenState extends State<GameScreen> {
       _lastFromSquare = null;
       _lastToSquare = null;
       _lastCaptureSquare = null;
+      _lastMovedPiece = null;
+      _lastCapturedPiece = null;
       _moveQualityText = null;
       _whiteSeconds = 10 * 60;
       _blackSeconds = 10 * 60;
@@ -3193,19 +3195,26 @@ class _GameScreenState extends State<GameScreen> {
       _aiThinking = false;
       _coachNote = _gameMode == GameMode.daily
           ? completedToday
-                ? "Today's Daily Checkmate is complete. A new challenge unlocks tomorrow."
-                : 'Move any legal white coin. Checkmate in ${challenge.playerMoveGoal} moves.'
+              ? _dailyUnlockMessage()
+              : 'Move any legal white coin. Checkmate in ${challenge.playerMoveGoal} moves.'
           : 'Select a coin to see legal moves.';
       _gameResultTitle = completedToday && _gameMode == GameMode.daily
           ? 'Challenge complete'
           : null;
       _gameResultDetail = completedToday && _gameMode == GameMode.daily
-          ? 'Come back tomorrow for a new checkmate puzzle'
+          ? _dailyUnlockMessage()
           : null;
       _resultVisible = true;
       _resultSaved = false;
       _checkWarningActive = false;
     });
+    if (_gameMode == GameMode.computer && !_humanPlaysWhite) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _scheduleAiMove();
+        }
+      });
+    }
   }
 
   Future<void> _confirmNewGame() async {
@@ -3353,9 +3362,9 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       final int steps =
           (_gameMode == GameMode.computer || _gameMode == GameMode.daily) &&
-              _history.length >= 2
-          ? 2
-          : 1;
+                  _history.length >= 2
+              ? 2
+              : 1;
       final GameSnapshot snapshot = _history[_history.length - steps];
       _history.removeRange(_history.length - steps, _history.length);
       _pieces = Map<String, ChessPiece>.from(snapshot.pieces);
@@ -3374,6 +3383,8 @@ class _GameScreenState extends State<GameScreen> {
       _lastFromSquare = snapshot.lastFromSquare;
       _lastToSquare = snapshot.lastToSquare;
       _lastCaptureSquare = snapshot.lastCaptureSquare;
+      _lastMovedPiece = null;
+      _lastCapturedPiece = null;
       _whiteSeconds = snapshot.whiteSeconds;
       _blackSeconds = snapshot.blackSeconds;
       _selectedSquare = null;
@@ -3390,9 +3401,8 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _showHint() {
-    final bool whiteToMove = _gameMode == GameMode.daily
-        ? true
-        : _moves.length.isEven;
+    final bool whiteToMove =
+        _gameMode == GameMode.daily ? true : _moves.length.isEven;
     String? bestFrom;
     List<String> bestTargets = <String>[];
 
@@ -3477,21 +3487,21 @@ class _GameScreenState extends State<GameScreen> {
     final String quality = bestMove == null
         ? 'No move'
         : bestScore >= 14
-        ? 'Best move'
-        : bestScore >= 7
-        ? 'Good move'
-        : bestScore >= 3
-        ? 'Ordinary move'
-        : 'Quiet move';
+            ? 'Best move'
+            : bestScore >= 7
+                ? 'Good move'
+                : bestScore >= 3
+                    ? 'Ordinary move'
+                    : 'Quiet move';
     final String coachLine = bestMove == null
         ? 'No legal move is available in this position.'
         : bestScore >= 14
-        ? 'This move creates a strong tactical threat or wins material.'
-        : bestScore >= 7
-        ? 'This is a healthy move: it improves the position and keeps pressure.'
-        : bestScore >= 3
-        ? 'Playable, but keep looking for forcing checks, captures, or threats.'
-        : 'Safe but quiet. A sharper move may exist if you calculate forcing lines.';
+            ? 'This move creates a strong tactical threat or wins material.'
+            : bestScore >= 7
+                ? 'This is a healthy move: it improves the position and keeps pressure.'
+                : bestScore >= 3
+                    ? 'Playable, but keep looking for forcing checks, captures, or threats.'
+                    : 'Safe but quiet. A sharper move may exist if you calculate forcing lines.';
     return PositionAnalysis(
       side: whiteToMove ? 'White' : 'Black',
       evaluation: evaluation,
@@ -3581,7 +3591,7 @@ class _GameScreenState extends State<GameScreen> {
 
   String _gameStateNote(bool sideToMoveWhite, {required String fallback}) {
     final bool inCheck = ChessRules.isKingInCheck(sideToMoveWhite, _pieces);
-    final bool hasMove = ChessRules.hasAnySafeMove(sideToMoveWhite, _pieces);
+    final bool hasMove = _hasAnyLegalMove(sideToMoveWhite);
     final String side = sideToMoveWhite ? 'White' : 'Black';
 
     if (inCheck && !_checkWarningActive) {
@@ -3748,7 +3758,7 @@ class BoardStage extends StatelessWidget {
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(9),
+          padding: const EdgeInsets.fromLTRB(9, 9, 9, 14),
           child: DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
@@ -3780,6 +3790,9 @@ class ChessBoard extends StatelessWidget {
     required this.lastFromSquare,
     required this.lastToSquare,
     required this.lastCaptureSquare,
+    this.lastMovedPiece,
+    this.lastCapturedPiece,
+    required this.moveSequence,
     required this.checkedKingSquare,
     required this.decisiveSquare,
     required this.flipped,
@@ -3795,6 +3808,9 @@ class ChessBoard extends StatelessWidget {
   final String? lastFromSquare;
   final String? lastToSquare;
   final String? lastCaptureSquare;
+  final ChessPiece? lastMovedPiece;
+  final ChessPiece? lastCapturedPiece;
+  final int moveSequence;
   final String? checkedKingSquare;
   final String? decisiveSquare;
   final bool flipped;
@@ -3891,16 +3907,35 @@ class ChessBoard extends StatelessWidget {
                     curve: Curves.easeOutCubic,
                     builder:
                         (BuildContext context, double progress, Widget? child) {
-                          return CustomPaint(
-                            painter: LastMoveTrailPainter(
-                              from: lastFromSquare!,
-                              to: lastToSquare!,
-                              flipped: flipped,
-                              progress: progress,
-                              accent: palette.accent,
-                            ),
-                          );
-                        },
+                      return CustomPaint(
+                        painter: LastMoveTrailPainter(
+                          from: lastFromSquare!,
+                          to: lastToSquare!,
+                          flipped: flipped,
+                          progress: progress,
+                          accent: palette.accent,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            if (lastFromSquare != null &&
+                lastToSquare != null &&
+                lastMovedPiece != null)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: MoveAndCaptureOverlay(
+                    key: ValueKey<String>(
+                      'move-overlay-$lastFromSquare-$lastToSquare-'
+                      '${lastMovedPiece!.white}-${lastMovedPiece!.code}-'
+                      '${lastCapturedPiece?.code}-$moveSequence',
+                    ),
+                    from: lastFromSquare!,
+                    to: lastToSquare!,
+                    flipped: flipped,
+                    movedPiece: lastMovedPiece!,
+                    capturedPiece: lastCapturedPiece,
                   ),
                 ),
               ),
@@ -4016,6 +4051,97 @@ class LastMoveTrailPainter extends CustomPainter {
   }
 }
 
+class MoveAndCaptureOverlay extends StatelessWidget {
+  const MoveAndCaptureOverlay({
+    required this.from,
+    required this.to,
+    required this.flipped,
+    required this.movedPiece,
+    this.capturedPiece,
+    super.key,
+  });
+
+  final String from;
+  final String to;
+  final bool flipped;
+  final ChessPiece movedPiece;
+  final ChessPiece? capturedPiece;
+
+  Offset _topLeft(String square, double cell) {
+    final int file = square.codeUnitAt(0) - 97;
+    final int rank = int.parse(square.substring(1));
+    final int col = flipped ? 7 - file : file;
+    final int row = flipped ? rank - 1 : 8 - rank;
+    return Offset(col * cell, row * cell);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double cell = constraints.maxWidth / 8;
+        final Offset start = _topLeft(from, cell);
+        final Offset target = _topLeft(to, cell);
+        return TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0, end: 1),
+          duration: Duration(milliseconds: capturedPiece == null ? 360 : 480),
+          curve: Curves.easeInOutCubic,
+          builder: (BuildContext context, double progress, Widget? child) {
+            final Offset travel = Offset.lerp(start, target, progress)!;
+            final double lift = -math.sin(math.pi * progress) * cell * 0.42;
+            final double hitDirection = target.dx >= start.dx ? 1 : -1;
+            // The victim stays at the target only until impact, then is
+            // knocked away quickly instead of lingering over the new board.
+            final double impactProgress =
+                ((progress - 0.54) / 0.46).clamp(0.0, 1.0);
+            return Stack(
+              clipBehavior: Clip.none,
+              children: <Widget>[
+                Positioned(
+                  left: travel.dx,
+                  top: travel.dy + lift,
+                  width: cell,
+                  height: cell,
+                  child: Transform.rotate(
+                    angle: math.sin(math.pi * progress) * 0.12,
+                    child: ChessCoin(
+                      piece: movedPiece,
+                      selected: false,
+                      accent: const Color(0xFFFFD166),
+                    ),
+                  ),
+                ),
+                if (capturedPiece != null)
+                  Positioned(
+                    left: target.dx,
+                    top: target.dy,
+                    width: cell,
+                    height: cell,
+                    child: Transform.translate(
+                      offset: Offset(
+                        hitDirection * cell * 0.88 * impactProgress,
+                        -math.sin(math.pi * impactProgress) * cell * 1.25 +
+                            cell * 0.95 * impactProgress * impactProgress,
+                      ),
+                      child: Transform.rotate(
+                        angle: hitDirection * impactProgress * math.pi * 1.65,
+                        child: ChessCoin(
+                          piece: capturedPiece!,
+                          selected: false,
+                          accent: const Color(0xFFFF3158),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
 class BoardSquare extends StatelessWidget {
   const BoardSquare({
     required this.square,
@@ -4063,28 +4189,28 @@ class BoardSquare extends StatelessWidget {
             base,
           )
         : decisiveMove
-        ? Color.alphaBlend(palette.accent.withValues(alpha: 0.62), base)
-        : lastCapture
-        ? Color.alphaBlend(
-            const Color(0xFFE11D48).withValues(alpha: 0.62),
-            base,
-          )
-        : selected
-        ? Color.alphaBlend(palette.accent.withValues(alpha: 0.55), base)
-        : lastMoveSquare
-        ? Color.alphaBlend(
-            const Color(0xFFFFFFFF).withValues(alpha: 0.26),
-            base,
-          )
-        : base;
+            ? Color.alphaBlend(palette.accent.withValues(alpha: 0.62), base)
+            : lastCapture
+                ? Color.alphaBlend(
+                    const Color(0xFFE11D48).withValues(alpha: 0.62),
+                    base,
+                  )
+                : selected
+                    ? Color.alphaBlend(
+                        palette.accent.withValues(alpha: 0.55), base)
+                    : lastMoveSquare
+                        ? Color.alphaBlend(
+                            const Color(0xFFFFFFFF).withValues(alpha: 0.26),
+                            base,
+                          )
+                        : base;
 
     return InkWell(
       onTap: onTap,
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(
           begin: 0,
-          end:
-              selected ||
+          end: selected ||
                   legalTarget ||
                   lastCapture ||
                   checkedKing ||
@@ -4277,36 +4403,97 @@ class BoardSquare extends StatelessWidget {
                 ),
               ),
             Center(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
-                switchInCurve: Curves.easeOutBack,
-                switchOutCurve: Curves.easeIn,
-                transitionBuilder: (Widget child, Animation<double> animation) {
-                  return ScaleTransition(
-                    scale: Tween<double>(
-                      begin: 0.82,
-                      end: 1,
-                    ).animate(animation),
-                    child: FadeTransition(opacity: animation, child: child),
-                  );
-                },
-                child: piece == null
-                    ? const SizedBox.shrink()
-                    : ChessCoin(
-                        key: ValueKey<String>(
-                          '$square-${piece!.white}-${piece!.code}',
-                        ),
-                        piece: piece!,
-                        selected: selected,
-                        accent: palette.accent,
+              child: piece == null
+                  ? const SizedBox.shrink()
+                  : ChessCoin(
+                      key: ValueKey<String>(
+                        '$square-${piece!.white}-${piece!.code}',
                       ),
-              ),
+                      piece: piece!,
+                      selected: selected,
+                      accent: palette.accent,
+                    ),
             ),
+            if (lastCapture)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CaptureBurst(
+                    key: ValueKey<String>(
+                      'capture-burst-$square-${piece?.white}-${piece?.code}',
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
+}
+
+class CaptureBurst extends StatelessWidget {
+  const CaptureBurst({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 720),
+      curve: Curves.easeOutCubic,
+      builder: (BuildContext context, double progress, Widget? child) {
+        return CustomPaint(painter: CaptureBurstPainter(progress));
+      },
+    );
+  }
+}
+
+class CaptureBurstPainter extends CustomPainter {
+  const CaptureBurstPainter(this.progress);
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Offset center = size.center(Offset.zero);
+    final double extent = math.min(size.width, size.height);
+    final double fade = (1 - progress).clamp(0, 1);
+    final Paint glow = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = extent * (0.08 - progress * 0.035)
+      ..color = const Color(0xFFFFD166).withValues(alpha: fade * 0.95)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    canvas.drawCircle(center, extent * (0.12 + progress * 0.38), glow);
+
+    final Paint slash = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = extent * 0.07
+      ..color = const Color(0xFFFF3158).withValues(alpha: fade * 0.9);
+    final double slashLength = extent * (0.18 + progress * 0.34);
+    canvas.drawLine(
+      center + Offset(-slashLength, slashLength) * 0.55,
+      center + Offset(slashLength, -slashLength) * 0.55,
+      slash,
+    );
+
+    final Paint particle = Paint()
+      ..color = const Color(0xFFFFE6A7).withValues(alpha: fade);
+    for (int index = 0; index < 10; index++) {
+      final double angle = (math.pi * 2 * index / 10) + 0.22;
+      final double distance = extent * (0.12 + progress * 0.52);
+      final Offset point =
+          center + Offset(math.cos(angle), math.sin(angle)) * distance;
+      canvas.drawCircle(
+        point,
+        extent * (0.018 + (index.isEven ? 0.012 : 0)),
+        particle,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(CaptureBurstPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 class ChessCoin extends StatelessWidget {
@@ -4331,128 +4518,133 @@ class ChessCoin extends StatelessWidget {
         );
         final double pieceSize = size * 0.94;
 
-        return AnimatedScale(
-          duration: const Duration(milliseconds: 180),
-          scale: selected ? 1.08 : 1,
+        return AnimatedRotation(
+          turns: selected ? -0.012 : 0,
+          duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutBack,
-          child: SizedBox(
-            width: pieceSize,
-            height: pieceSize,
-            child: Stack(
-              alignment: Alignment.center,
-              children: <Widget>[
-                Positioned(
-                  bottom: pieceSize * 0.08,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: <Color>[
-                          (piece.white
-                                  ? const Color(0xFFFFF0C8)
-                                  : const Color(0xFF5D6674))
-                              .withValues(alpha: 0.28),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                    child: SizedBox(
-                      width: pieceSize * 0.72,
-                      height: pieceSize * 0.34,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: pieceSize * 0.045,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(pieceSize),
-                      boxShadow: <BoxShadow>[
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.62),
-                          blurRadius: pieceSize * 0.09,
-                          spreadRadius: pieceSize * 0.025,
-                        ),
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.28),
-                          blurRadius: pieceSize * 0.16,
-                          offset: Offset(0, pieceSize * 0.08),
-                        ),
-                        if (selected)
-                          BoxShadow(
-                            color: accent.withValues(alpha: 0.68),
-                            blurRadius: pieceSize * 0.2,
-                            spreadRadius: pieceSize * 0.06,
-                          ),
-                      ],
-                    ),
-                    child: SizedBox(
-                      width: pieceSize * 0.54,
-                      height: pieceSize * 0.055,
-                    ),
-                  ),
-                ),
-                Transform.translate(
-                  offset: Offset(0, selected ? -pieceSize * 0.035 : 0),
-                  child: Image.asset(
-                    pieceAsset(piece),
-                    fit: BoxFit.contain,
-                    filterQuality: FilterQuality.high,
-                    semanticLabel:
-                        '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}',
-                  ),
-                ),
-                IgnorePointer(
-                  child: ShaderMask(
-                    blendMode: BlendMode.srcATop,
-                    shaderCallback: (Rect bounds) {
-                      return LinearGradient(
-                        begin: const Alignment(-0.85, -1),
-                        end: const Alignment(0.7, 0.9),
-                        colors: <Color>[
-                          Colors.white.withValues(alpha: 0.58),
-                          Colors.white.withValues(alpha: 0.06),
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.18),
-                        ],
-                        stops: const <double>[0, 0.24, 0.58, 1],
-                      ).createShader(bounds);
-                    },
-                    child: Opacity(
-                      opacity: piece.white ? 0.34 : 0.24,
-                      child: Image.asset(
-                        pieceAsset(piece),
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.high,
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: pieceSize * 0.11,
-                  left: pieceSize * 0.25,
-                  child: IgnorePointer(
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 220),
+            scale: selected ? 1.13 : 1,
+            curve: Curves.easeOutBack,
+            child: SizedBox(
+              width: pieceSize,
+              height: pieceSize,
+              child: Stack(
+                alignment: Alignment.center,
+                children: <Widget>[
+                  Positioned(
+                    bottom: pieceSize * 0.08,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(
-                          alpha: piece.white ? 0.2 : 0.12,
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: <Color>[
+                            (piece.white
+                                    ? const Color(0xFFFFF0C8)
+                                    : const Color(0xFF5D6674))
+                                .withValues(alpha: 0.28),
+                            Colors.transparent,
+                          ],
                         ),
+                      ),
+                      child: SizedBox(
+                        width: pieceSize * 0.72,
+                        height: pieceSize * 0.34,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: pieceSize * 0.045,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(pieceSize),
                         boxShadow: <BoxShadow>[
                           BoxShadow(
-                            color: Colors.white.withValues(alpha: 0.22),
+                            color: Colors.black.withValues(alpha: 0.62),
                             blurRadius: pieceSize * 0.09,
+                            spreadRadius: pieceSize * 0.025,
                           ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.28),
+                            blurRadius: pieceSize * 0.16,
+                            offset: Offset(0, pieceSize * 0.08),
+                          ),
+                          if (selected)
+                            BoxShadow(
+                              color: accent.withValues(alpha: 0.68),
+                              blurRadius: pieceSize * 0.2,
+                              spreadRadius: pieceSize * 0.06,
+                            ),
                         ],
                       ),
                       child: SizedBox(
-                        width: pieceSize * 0.13,
-                        height: pieceSize * 0.035,
+                        width: pieceSize * 0.54,
+                        height: pieceSize * 0.055,
                       ),
                     ),
                   ),
-                ),
-              ],
+                  Transform.translate(
+                    offset: Offset(0, selected ? -pieceSize * 0.035 : 0),
+                    child: Image.asset(
+                      pieceAsset(piece),
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
+                      semanticLabel:
+                          '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}',
+                    ),
+                  ),
+                  IgnorePointer(
+                    child: ShaderMask(
+                      blendMode: BlendMode.srcATop,
+                      shaderCallback: (Rect bounds) {
+                        return LinearGradient(
+                          begin: const Alignment(-0.85, -1),
+                          end: const Alignment(0.7, 0.9),
+                          colors: <Color>[
+                            Colors.white.withValues(alpha: 0.58),
+                            Colors.white.withValues(alpha: 0.06),
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.18),
+                          ],
+                          stops: const <double>[0, 0.24, 0.58, 1],
+                        ).createShader(bounds);
+                      },
+                      child: Opacity(
+                        opacity: piece.white ? 0.34 : 0.24,
+                        child: Image.asset(
+                          pieceAsset(piece),
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.high,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: pieceSize * 0.11,
+                    left: pieceSize * 0.25,
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(
+                            alpha: piece.white ? 0.2 : 0.12,
+                          ),
+                          borderRadius: BorderRadius.circular(pieceSize),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: Colors.white.withValues(alpha: 0.22),
+                              blurRadius: pieceSize * 0.09,
+                            ),
+                          ],
+                        ),
+                        child: SizedBox(
+                          width: pieceSize * 0.13,
+                          height: pieceSize * 0.035,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -4544,12 +4736,10 @@ class PieceSculpturePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final double w = size.width;
     final double h = size.height;
-    final Color body = light
-        ? const Color(0xFFF7E9C9)
-        : const Color(0xFF252A32);
-    final Color edge = light
-        ? const Color(0xFFC09035)
-        : const Color(0xFF68707D);
+    final Color body =
+        light ? const Color(0xFFF7E9C9) : const Color(0xFF252A32);
+    final Color edge =
+        light ? const Color(0xFFC09035) : const Color(0xFF68707D);
     final Paint shadow = Paint()
       ..color = Colors.black.withValues(alpha: 0.28)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
@@ -4854,9 +5044,8 @@ class GamePanel extends StatelessWidget {
           if (collapsible)
             Semantics(
               button: true,
-              label: expanded
-                  ? 'Collapse game controls'
-                  : 'Expand game controls',
+              label:
+                  expanded ? 'Collapse game controls' : 'Expand game controls',
               child: InkWell(
                 key: const ValueKey<String>('game-controls-handle'),
                 onTap: onToggleExpanded,
@@ -4895,9 +5084,9 @@ class GamePanel extends StatelessWidget {
                   },
                   style: compact
                       ? Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                        )
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          )
                       : Theme.of(context).textTheme.headlineMedium,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -5058,9 +5247,9 @@ class GamePanel extends StatelessWidget {
                 .map(
                   (MapEntry<BoardSkin, BoardPalette> entry) =>
                       DropdownMenuItem<BoardSkin>(
-                        value: entry.key,
-                        child: BoardThemeMenuItem(palette: entry.value),
-                      ),
+                    value: entry.key,
+                    child: BoardThemeMenuItem(palette: entry.value),
+                  ),
                 )
                 .toList(),
             onChanged: (BoardSkin? selectedSkin) {
@@ -5287,82 +5476,80 @@ class GameModeLauncher extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: choices
-          .map((choice) {
-            final bool active = selected == choice.mode;
-            return SizedBox(
-              width: compact ? 148 : 178,
-              child: InkWell(
+      children: choices.map((choice) {
+        final bool active = selected == choice.mode;
+        return SizedBox(
+          width: compact ? 148 : 178,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => onChanged(choice.mode),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
-                onTap: () => onChanged(choice.mode),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: active
-                          ? const <Color>[Color(0xFF2B2140), Color(0xFF6D4FD8)]
-                          : <Color>[
-                              const Color(0xFF211D24),
-                              const Color(0xFF111C18).withValues(alpha: 0.92),
-                            ],
-                    ),
-                    border: Border.all(
-                      color: active
-                          ? const Color(0xFFE2B458)
-                          : const Color(0xFF7A6038).withValues(alpha: 0.55),
-                    ),
-                    boxShadow: <BoxShadow>[
-                      if (active)
-                        BoxShadow(
-                          color: const Color(
-                            0xFF6D4FD8,
-                          ).withValues(alpha: 0.28),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                    ],
-                  ),
-                  child: Row(
-                    children: <Widget>[
-                      Icon(
-                        choice.icon,
-                        color: const Color(0xFFE2B458),
-                        size: 22,
-                      ),
-                      const SizedBox(width: 9),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              choice.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              choice.subtitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: active
+                      ? const <Color>[Color(0xFF2B2140), Color(0xFF6D4FD8)]
+                      : <Color>[
+                          const Color(0xFF211D24),
+                          const Color(0xFF111C18).withValues(alpha: 0.92),
+                        ],
                 ),
+                border: Border.all(
+                  color: active
+                      ? const Color(0xFFE2B458)
+                      : const Color(0xFF7A6038).withValues(alpha: 0.55),
+                ),
+                boxShadow: <BoxShadow>[
+                  if (active)
+                    BoxShadow(
+                      color: const Color(
+                        0xFF6D4FD8,
+                      ).withValues(alpha: 0.28),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                ],
               ),
-            );
-          })
-          .toList(growable: false),
+              child: Row(
+                children: <Widget>[
+                  Icon(
+                    choice.icon,
+                    color: const Color(0xFFE2B458),
+                    size: 22,
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          choice.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          choice.subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(growable: false),
     );
   }
 }
@@ -5396,21 +5583,19 @@ class DailyDifficultyChips extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: DailyChallengeDifficulty.values
-          .map((difficulty) {
-            final bool active = selected == difficulty;
-            return ChoiceChip(
-              selected: active,
-              avatar: Icon(
-                Icons.emoji_events_outlined,
-                size: 18,
-                color: active ? Colors.black : const Color(0xFFE2B458),
-              ),
-              label: Text(difficulty.label),
-              onSelected: (_) => onChanged(difficulty),
-            );
-          })
-          .toList(growable: false),
+      children: DailyChallengeDifficulty.values.map((difficulty) {
+        final bool active = selected == difficulty;
+        return ChoiceChip(
+          selected: active,
+          avatar: Icon(
+            Icons.emoji_events_outlined,
+            size: 18,
+            color: active ? Colors.black : const Color(0xFFE2B458),
+          ),
+          label: Text(difficulty.label),
+          onSelected: (_) => onChanged(difficulty),
+        );
+      }).toList(growable: false),
     );
   }
 }
@@ -5454,8 +5639,8 @@ class PositionAnalysisSheet extends StatelessWidget {
     final String evaluation = analysis.evaluation == 0
         ? 'Equal'
         : analysis.evaluation > 0
-        ? 'White +${analysis.evaluation.toStringAsFixed(1)}'
-        : 'Black +${analysis.evaluation.abs().toStringAsFixed(1)}';
+            ? 'White +${analysis.evaluation.toStringAsFixed(1)}'
+            : 'Black +${analysis.evaluation.abs().toStringAsFixed(1)}';
 
     return SafeArea(
       child: Align(
@@ -5725,7 +5910,9 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                           SelectableText(
                             roomCode,
                             textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.headlineMedium
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineMedium
                                 ?.copyWith(
                                   color: const Color(0xFFD6A84F),
                                   letterSpacing: 2,
@@ -5845,9 +6032,8 @@ class MoveHistorySheet extends StatelessWidget {
                                 backgroundColor: whiteMove
                                     ? const Color(0xFFE9D5B7)
                                     : const Color(0xFF242128),
-                                foregroundColor: whiteMove
-                                    ? Colors.black
-                                    : Colors.white,
+                                foregroundColor:
+                                    whiteMove ? Colors.black : Colors.white,
                                 child: Text('${index + 1}'),
                               ),
                               title: Row(
@@ -6211,9 +6397,8 @@ class AuthOverlay extends StatelessWidget {
                               ? TextInputType.emailAddress
                               : TextInputType.text,
                           decoration: InputDecoration(
-                            labelText: registerMode
-                                ? 'Email'
-                                : 'User ID or email',
+                            labelText:
+                                registerMode ? 'Email' : 'User ID or email',
                             prefixIcon: const Icon(Icons.mail_outline_rounded),
                             border: const OutlineInputBorder(),
                           ),
@@ -6224,13 +6409,11 @@ class AuthOverlay extends StatelessWidget {
                           obscureText: true,
                           onSubmitted: (_) => onSubmit(),
                           decoration: InputDecoration(
-                            labelText: registerMode
-                                ? 'Create password'
-                                : 'Password',
+                            labelText:
+                                registerMode ? 'Create password' : 'Password',
                             prefixIcon: const Icon(Icons.lock_outline_rounded),
-                            helperText: registerMode
-                                ? 'At least 8 characters'
-                                : null,
+                            helperText:
+                                registerMode ? 'At least 8 characters' : null,
                             border: const OutlineInputBorder(),
                           ),
                         ),
@@ -6340,8 +6523,8 @@ class AuthOverlay extends StatelessWidget {
                           awaitingCode
                               ? 'Verify and Continue'
                               : registerMode
-                              ? 'Send Code'
-                              : 'Login',
+                                  ? 'Send Code'
+                                  : 'Login',
                         ),
                       ),
                       if (!awaitingCode) ...<Widget>[
@@ -6460,9 +6643,9 @@ class GameResultOverlay extends StatelessWidget {
                     scoreLabel,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      color: const Color(0xFFD6A84F),
-                      fontWeight: FontWeight.w900,
-                    ),
+                          color: const Color(0xFFD6A84F),
+                          fontWeight: FontWeight.w900,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   Text(detail, textAlign: TextAlign.center),
@@ -6608,10 +6791,10 @@ class CaptureRow extends StatelessWidget {
                       ),
                     ]
                   : pieces
-                        .map(
-                          (ChessPiece piece) => MiniCapturedPiece(piece: piece),
-                        )
-                        .toList(),
+                      .map(
+                        (ChessPiece piece) => MiniCapturedPiece(piece: piece),
+                      )
+                      .toList(),
             ),
           ],
         ),
@@ -6673,9 +6856,8 @@ class PlayerAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String initial = name.trim().isEmpty
-        ? 'P'
-        : name.trim().substring(0, 1).toUpperCase();
+    final String initial =
+        name.trim().isEmpty ? 'P' : name.trim().substring(0, 1).toUpperCase();
     return Tooltip(
       message: 'Signed in as $name',
       child: DecoratedBox(
