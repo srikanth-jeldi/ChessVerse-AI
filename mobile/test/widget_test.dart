@@ -237,7 +237,16 @@ void main() {
     }
 
     tester.view.physicalSize = const Size(932, 430);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey<String>('landscape-game-layout')),
+      findsOneWidget,
+    );
+    final Rect landscapeBoard = tester.getRect(find.byType(ChessBoard));
+    final Rect landscapeControls = tester.getRect(
+      find.byKey(const ValueKey<String>('landscape-game-controls')),
+    );
+    expect(landscapeBoard.right, lessThanOrEqualTo(landscapeControls.left));
     for (final (String from, String to) in <(String, String)>[
       ('g1', 'f3'),
       ('b8', 'c6'),
@@ -248,6 +257,16 @@ void main() {
       await tester.pump(const Duration(milliseconds: 450));
       expect(tester.takeException(), isNull);
     }
+
+    tester.view.physicalSize = const Size(430, 932);
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey<String>('portrait-game-layout')),
+      findsOneWidget,
+    );
+    final Rect portraitBoard = tester.getRect(find.byType(ChessBoard));
+    expect(portraitBoard.center.dx, closeTo(215, 1));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('daily challenge follows the forced line and ends in checkmate', (
