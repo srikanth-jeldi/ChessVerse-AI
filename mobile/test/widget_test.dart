@@ -247,6 +247,13 @@ void main() {
       find.byKey(const ValueKey<String>('landscape-game-controls')),
     );
     expect(landscapeBoard.right, lessThanOrEqualTo(landscapeControls.left));
+    await tester.tap(
+      find.byKey(const ValueKey<String>('game-controls-handle')),
+    );
+    await tester.pump();
+    final Rect boardAfterControlsExpand =
+        tester.getRect(find.byType(ChessBoard));
+    expect(boardAfterControlsExpand, landscapeBoard);
     for (final (String from, String to) in <(String, String)>[
       ('g1', 'f3'),
       ('b8', 'c6'),

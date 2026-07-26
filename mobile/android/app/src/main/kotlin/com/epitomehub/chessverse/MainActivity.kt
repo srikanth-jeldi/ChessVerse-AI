@@ -8,7 +8,7 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.attributes = window.attributes.apply {
-            rotationAnimation = WindowManager.LayoutParams.ROTATION_ANIMATION_SEAMLESS
+            rotationAnimation = WindowManager.LayoutParams.ROTATION_ANIMATION_JUMPCUT
         }
     }
 }
