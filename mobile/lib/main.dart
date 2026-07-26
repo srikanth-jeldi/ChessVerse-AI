@@ -1262,7 +1262,7 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   static const AuthApi _authApi = AuthApi();
   static const AuthSessionStore _sessionStore = AuthSessionStore();
   static const EngineApi _engineApi = EngineApi();
@@ -1274,6 +1274,9 @@ class _GameScreenState extends State<GameScreen> {
   final List<GameSnapshot> _history = <GameSnapshot>[];
   Timer? _clockTimer;
   Timer? _moveQualityTimer;
+  Timer? _orientationSettleTimer;
+  Orientation? _stableOrientation;
+  bool _orientationSettling = false;
   String? _selectedSquare;
   String? _lastFromSquare;
   String? _lastToSquare;
@@ -1362,6 +1365,7 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _dailyChallenge = _challengeForToday(_dailyDifficulty);
     _dailyCompletedToday = LocalGameArchive.isDailyChallengeComplete(
       _dailyChallenge.id,
@@ -1441,9 +1445,39 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _stableOrientation ??= MediaQuery.orientationOf(context);
+  }
+
+  @override
+  void didChangeMetrics() {
+    _orientationSettleTimer?.cancel();
+    if (mounted && !_orientationSettling) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_orientationSettling) {
+          setState(() => _orientationSettling = true);
+        }
+      });
+    }
+    _orientationSettleTimer = Timer(const Duration(milliseconds: 450), () {
+      if (!mounted) {
+        return;
+      }
+      final Orientation settledOrientation = MediaQuery.orientationOf(context);
+      setState(() {
+        _stableOrientation = settledOrientation;
+        _orientationSettling = false;
+      });
+    });
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _clockTimer?.cancel();
     _moveQualityTimer?.cancel();
+    _orientationSettleTimer?.cancel();
     final AudioPlayer? warningPlayer = _warningPlayer;
     if (warningPlayer != null) {
       unawaited(warningPlayer.dispose());
@@ -1483,7 +1517,7 @@ class _GameScreenState extends State<GameScreen> {
           child: LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
               final bool landscape =
-                  MediaQuery.orientationOf(context) == Orientation.landscape;
+                  _stableOrientation == Orientation.landscape;
               // Landscape phones have enough horizontal room for the original
               // large-board + side-panel layout. Keeping them in the compact
               // portrait column makes the board too small to play comfortably.
@@ -1768,6 +1802,35 @@ class _GameScreenState extends State<GameScreen> {
                                     ],
                                   ),
                                 ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (_orientationSettling)
+                        Positioned.fill(
+                          child: ColoredBox(
+                            color: const Color(0xFF0B1814),
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  const Icon(
+                                    Icons.screen_rotation_rounded,
+                                    color: Color(0xFFD6A84F),
+                                    size: 34,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Adjusting board…',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          color: const Color(0xFFF6F1E8),
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
