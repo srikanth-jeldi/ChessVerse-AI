@@ -1603,7 +1603,7 @@ class _GameScreenState extends State<GameScreen> {
                           left: 0,
                           top: 0,
                           bottom: 0,
-                          right: widePanelWidth + 8,
+                          right: 0,
                           child: Align(
                             alignment: Alignment.center,
                             child: SizedBox(
