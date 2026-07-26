@@ -1493,11 +1493,15 @@ class _GameScreenState extends State<GameScreen> {
               final double widePanelWidth = _controlsExpanded
                   ? math.min(340, math.max(320, constraints.maxWidth * 0.26))
                   : 84;
+              // Board geometry must not depend on whether the controls drawer
+              // is expanded. Reserve the drawer's full width at all times so
+              // opening it never shifts or resizes the board before rotation.
+              const double reservedWidePanelWidth = 340;
               final double portraitPanelMinimum = landscape ? 72 : 190;
               final double boardWidth = wide
                   ? constraints.maxWidth -
                       pagePadding.horizontal -
-                      widePanelWidth -
+                      reservedWidePanelWidth -
                       10
                   : constraints.maxWidth - pagePadding.horizontal;
               final double boardHeight = wide
@@ -1600,7 +1604,7 @@ class _GameScreenState extends State<GameScreen> {
                           left: 0,
                           top: 0,
                           bottom: 0,
-                          right: widePanelWidth +
+                          right: reservedWidePanelWidth +
                               MediaQuery.viewPaddingOf(context).right +
                               8,
                           child: Align(
