@@ -90,8 +90,11 @@ class LocalGameArchive {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
   static const String _completedDailyKey =
       'chessverse_completed_daily_challenges';
+  static const String _lastDailyCompletionKey =
+      'chessverse_last_daily_completion_utc';
   static final List<SavedGameRecord> _games = <SavedGameRecord>[];
   static final Set<String> _completedDailyChallengeIds = <String>{};
+  static DateTime? _lastDailyCompletedAt;
   static int _dailySolved = 0;
   static int _puzzlesSolved = 0;
   static int _dailyStreak = 0;
@@ -101,15 +104,19 @@ class LocalGameArchive {
 
   static Future<void> init() async {
     final String? raw = await _storage.read(key: _completedDailyKey);
-    if (raw == null || raw.trim().isEmpty) {
-      return;
+    if (raw != null && raw.trim().isNotEmpty) {
+      _completedDailyChallengeIds.addAll(
+        raw
+            .split(',')
+            .map((String id) => id.trim())
+            .where((String id) => id.isNotEmpty),
+      );
     }
-    _completedDailyChallengeIds.addAll(
-      raw
-          .split(',')
-          .map((String id) => id.trim())
-          .where((String id) => id.isNotEmpty),
-    );
+    final String? completionRaw =
+        await _storage.read(key: _lastDailyCompletionKey);
+    _lastDailyCompletedAt = completionRaw == null
+        ? null
+        : DateTime.tryParse(completionRaw)?.toUtc();
   }
 
   static void addGame(SavedGameRecord record) {
@@ -120,7 +127,28 @@ class LocalGameArchive {
   }
 
   static bool isDailyChallengeComplete(String challengeId) {
-    return _completedDailyChallengeIds.contains(challengeId);
+    return isDailyChallengeLocked ||
+        _completedDailyChallengeIds.contains(challengeId);
+  }
+
+  static bool get isDailyChallengeLocked {
+    final DateTime? completedAt = _lastDailyCompletedAt;
+    if (completedAt == null) {
+      return false;
+    }
+    return DateTime.now().toUtc().difference(completedAt) <
+        const Duration(hours: 24);
+  }
+
+  static Duration get dailyChallengeRemaining {
+    final DateTime? completedAt = _lastDailyCompletedAt;
+    if (completedAt == null) {
+      return Duration.zero;
+    }
+    final Duration remaining = completedAt
+        .add(const Duration(hours: 24))
+        .difference(DateTime.now().toUtc());
+    return remaining.isNegative ? Duration.zero : remaining;
   }
 
   static void markDailyChallengeComplete(String challengeId) {
@@ -135,6 +163,13 @@ class LocalGameArchive {
         ),
       );
     }
+    _lastDailyCompletedAt = DateTime.now().toUtc();
+    unawaited(
+      _storage.write(
+        key: _lastDailyCompletionKey,
+        value: _lastDailyCompletedAt!.toIso8601String(),
+      ),
+    );
   }
 
   static void markPuzzleSolved() {

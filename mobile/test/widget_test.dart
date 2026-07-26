@@ -8,6 +8,28 @@ void main() {
     FlutterSecureStorage.setMockInitialValues(<String, String>{});
   });
 
+  test('king squares are attacked but can never be captured', () {
+    final Map<String, ChessPiece> pieces = <String, ChessPiece>{
+      'a1': const ChessPiece('K', true),
+      'e7': const ChessPiece('R', true),
+      'e8': const ChessPiece('K', false),
+    };
+
+    expect(ChessRules.attacksSquare('e7', 'e8', pieces), isTrue);
+    expect(ChessRules.safeLegalTargets('e7', pieces), isNot(contains('e8')));
+  });
+
+  test('a checked king with an escape is not checkmate', () {
+    final Map<String, ChessPiece> pieces = <String, ChessPiece>{
+      'e1': const ChessPiece('K', true),
+      'e8': const ChessPiece('R', false),
+      'a8': const ChessPiece('K', false),
+    };
+
+    expect(ChessRules.isKingInCheck(true, pieces), isTrue);
+    expect(ChessRules.hasAnySafeMove(true, pieces), isTrue);
+  });
+
   testWidgets('shows branded splash before onboarding and account access', (
     WidgetTester tester,
   ) async {
@@ -141,6 +163,91 @@ void main() {
 
     final GamePanel panel = tester.widget<GamePanel>(find.byType(GamePanel));
     expect(panel.moves, hasLength(2));
+  });
+
+  testWidgets('black player can move after starting a new game', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+          initialSideChoice: PlayerSideChoice.black,
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 900));
+
+    GamePanel panel = tester.widget<GamePanel>(find.byType(GamePanel));
+    expect(panel.moves, hasLength(1));
+
+    final Finder newGameButton = find.byTooltip('New game');
+    expect(newGameButton, findsOneWidget);
+    await tester.tap(newGameButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('New game'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 900));
+
+    panel = tester.widget<GamePanel>(find.byType(GamePanel));
+    expect(panel.moves, hasLength(1));
+
+    await tester.tap(find.byKey(const ValueKey<String>('square-e7')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey<String>('square-e5')));
+    await tester.pump(const Duration(milliseconds: 900));
+
+    panel = tester.widget<GamePanel>(find.byType(GamePanel));
+    expect(panel.moves, hasLength(3));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('phone board remains layout-stable across consecutive moves', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+          initialGameMode: GameMode.local,
+        ),
+      ),
+    );
+
+    for (final (String from, String to) in <(String, String)>[
+      ('e2', 'e4'),
+      ('d7', 'd5'),
+      ('e4', 'd5'),
+      ('g8', 'f6'),
+    ]) {
+      await tester.tap(find.byKey(ValueKey<String>('square-$from')));
+      await tester.pump();
+      await tester.tap(find.byKey(ValueKey<String>('square-$to')));
+      await tester.pump(const Duration(milliseconds: 450));
+      expect(tester.takeException(), isNull);
+    }
+
+    tester.view.physicalSize = const Size(932, 430);
+    await tester.pumpAndSettle();
+    for (final (String from, String to) in <(String, String)>[
+      ('g1', 'f3'),
+      ('b8', 'c6'),
+    ]) {
+      await tester.tap(find.byKey(ValueKey<String>('square-$from')));
+      await tester.pump();
+      await tester.tap(find.byKey(ValueKey<String>('square-$to')));
+      await tester.pump(const Duration(milliseconds: 450));
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('daily challenge follows the forced line and ends in checkmate', (
