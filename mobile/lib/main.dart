@@ -1403,7 +1403,23 @@ class _GameScreenState extends State<GameScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleAiMove());
     }
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted || _moves.isEmpty || _gameResultTitle != null) {
+      if (!mounted) {
+        return;
+      }
+      if (_gameResultTitle != null) {
+        if (_gameMode == GameMode.daily &&
+            _gameResultTitle!.toLowerCase().contains('challenge complete')) {
+          final String unlockMessage = _dailyUnlockMessage();
+          if (_gameResultDetail != unlockMessage) {
+            setState(() {
+              _gameResultDetail = unlockMessage;
+              _coachNote = unlockMessage;
+            });
+          }
+        }
+        return;
+      }
+      if (_moves.isEmpty) {
         return;
       }
       setState(() {
@@ -2411,7 +2427,8 @@ class _GameScreenState extends State<GameScreen> {
     final int hours = remaining.inHours;
     final int minutes = remaining.inMinutes.remainder(60);
     return 'Daily Checkmate complete. Next challenge unlocks in '
-        '${hours}h ${minutes}m.';
+        '$hours ${hours == 1 ? 'hour' : 'hours'} '
+        '$minutes ${minutes == 1 ? 'minute' : 'minutes'}.';
   }
 
   Future<void> _editBlackPlayerName() async {
