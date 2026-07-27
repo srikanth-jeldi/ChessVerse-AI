@@ -437,15 +437,30 @@ class _AuthScreenState extends State<AuthScreen> {
     final String token = data['token'] as String? ?? '';
     final DateTime? expiresAt =
         DateTime.tryParse(data['expiresAt'] as String? ?? '');
-    final Map<String, dynamic> player = data['player'] is Map<String, dynamic>
-        ? data['player'] as Map<String, dynamic>
-        : <String, dynamic>{};
-    final String name = player['displayName'] as String? ??
-        player['username'] as String? ??
-        'ChessVerse Player';
     if (token.isEmpty || expiresAt == null) {
       throw const AuthApiException('The server returned an invalid session.');
     }
+
+    Map<String, dynamic> player = _stringKeyedMap(data['player']);
+    try {
+      // Treat /me as the source of truth. Native Google Sign-In responses can
+      // arrive before all player fields have been materialised in the client.
+      final Map<String, dynamic> currentPlayer =
+          await _authApi.currentPlayer(token);
+      if (currentPlayer.isNotEmpty) {
+        player = currentPlayer;
+      }
+    } on AuthApiException {
+      // The authentication response is still a valid fallback when /me is
+      // temporarily unavailable.
+    }
+
+    final String? username = _nonBlankString(player['username']);
+    final String? email = _nonBlankString(player['email']);
+    final String name = _nonBlankString(player['displayName']) ??
+        username ??
+        email?.split('@').first ??
+        'ChessVerse Player';
     await _sessionStore.write(
       StoredAuthSession(
         token: token,
@@ -459,10 +474,24 @@ class _AuthScreenState extends State<AuthScreen> {
         playerName: name,
         isGuest: false,
         token: token,
-        username: player['username'] as String?,
-        email: player['email'] as String?,
+        username: username,
+        email: email,
       ),
     );
+  }
+
+  Map<String, dynamic> _stringKeyedMap(Object? value) {
+    if (value is! Map) return <String, dynamic>{};
+    return value.map(
+      (Object? key, Object? entry) =>
+          MapEntry<String, dynamic>(key.toString(), entry),
+    );
+  }
+
+  String? _nonBlankString(Object? value) {
+    if (value is! String) return null;
+    final String trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
   }
 
   Future<void> _submit() async {
