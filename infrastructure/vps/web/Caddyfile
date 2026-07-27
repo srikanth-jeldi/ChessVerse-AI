@@ -10,6 +10,9 @@
 	try_files {path} {path}.html /index.html
 	file_server
 
+	@app_shell path / /index.html /flutter_bootstrap.js /flutter_service_worker.js /version.json
+	header @app_shell Cache-Control "no-cache, no-store, must-revalidate"
+
 	header {
 		-Server
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
