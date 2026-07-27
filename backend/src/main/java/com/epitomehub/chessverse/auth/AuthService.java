@@ -257,7 +257,7 @@ class AuthService {
                     availableGoogleUsername(email),
                     displayName.substring(0, Math.min(displayName.length(), 80)),
                     email,
-                    passwordEncoder.encode(UUID.randomUUID() + "." + UUID.randomUUID()));
+                    passwordEncoder.encode(UUID.randomUUID().toString()));
         }
         player.verified = true;
         player.failedLoginAttempts = 0;
