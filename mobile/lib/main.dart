@@ -51,6 +51,8 @@ class SplashGate extends StatefulWidget {
 }
 
 class _SplashGateState extends State<SplashGate> {
+  static const AuthApi _authApi = AuthApi();
+  static const AuthSessionStore _sessionStore = AuthSessionStore();
   Timer? _timer;
   _RootStage _stage = _RootStage.splash;
   String _playerName = 'Guest Player';
@@ -64,13 +66,52 @@ class _SplashGateState extends State<SplashGate> {
     _timer = Timer(const Duration(milliseconds: 1300), () {
       if (mounted) {
         setState(() => _stage = _RootStage.loading);
-        _timer = Timer(const Duration(milliseconds: 1200), () {
-          if (mounted) {
-            setState(() => _stage = _RootStage.onboarding);
-          }
-        });
+        unawaited(_restoreSession());
       }
     });
+  }
+
+  Future<void> _restoreSession() async {
+    final StoredAuthSession? session = await _sessionStore.read();
+    if (session == null) {
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      if (mounted) setState(() => _stage = _RootStage.onboarding);
+      return;
+    }
+
+    String playerName = session.displayName;
+    String? username = session.username;
+    String? email = session.email;
+    try {
+      final Map<String, dynamic> player =
+          await _authApi.currentPlayer(session.token);
+      playerName = _profileValue(player['displayName']) ??
+          _profileValue(player['username']) ??
+          playerName;
+      username = _profileValue(player['username']) ?? username;
+      email = _profileValue(player['email']) ?? email;
+    } on AuthApiException catch (error) {
+      if (error.statusCode == 401 || error.statusCode == 403) {
+        await _sessionStore.clear();
+        if (mounted) setState(() => _stage = _RootStage.auth);
+        return;
+      }
+      // A valid unexpired local session keeps the user signed in while the
+      // network is temporarily unavailable.
+    }
+    if (!mounted) return;
+    setState(() {
+      _playerName = playerName;
+      _username = username;
+      _email = email;
+      _isGuest = false;
+      _stage = _RootStage.home;
+    });
+  }
+
+  String? _profileValue(Object? value) {
+    if (value is! String || value.trim().isEmpty) return null;
+    return value.trim();
   }
 
   @override
@@ -226,6 +267,9 @@ class _SplashGateState extends State<SplashGate> {
         useRemoteEngine: false,
         initialGameMode: mode,
         initialPlayerName: _playerName,
+        initialUsername: _username,
+        initialEmail: _email,
+        initiallyGuest: _isGuest,
         initialSideChoice: sideChoice,
       ),
     );
@@ -1257,6 +1301,9 @@ class GameScreen extends StatefulWidget {
     this.useRemoteEngine = true,
     this.initialGameMode = GameMode.computer,
     this.initialPlayerName,
+    this.initialUsername,
+    this.initialEmail,
+    this.initiallyGuest = true,
     this.initialSideChoice = PlayerSideChoice.white,
     super.key,
   });
@@ -1265,6 +1312,9 @@ class GameScreen extends StatefulWidget {
   final bool useRemoteEngine;
   final GameMode initialGameMode;
   final String? initialPlayerName;
+  final String? initialUsername;
+  final String? initialEmail;
+  final bool initiallyGuest;
   final PlayerSideChoice initialSideChoice;
 
   @override
@@ -1642,12 +1692,22 @@ class _GameScreenState extends State<GameScreen> {
                             child: panel,
                           ),
                         ),
+                        Positioned(
+                          left: 10,
+                          top: 10,
+                          child: _GameNavigationBar(
+                            onHome: () => Navigator.of(context).pop(),
+                            onProfile: _openProfile,
+                          ),
+                        ),
                       ] else
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
                             CompactHeader(
                               playerName: _whitePlayerName,
+                              onHome: () => Navigator.of(context).pop(),
+                              onProfile: _openProfile,
                               onReset: _confirmNewGame,
                               onLogout: _logout,
                             ),
@@ -1791,6 +1851,19 @@ class _GameScreenState extends State<GameScreen> {
               );
             },
           ),
+        ),
+      ),
+    );
+  }
+
+  void _openProfile() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ProfileScreen(
+          playerName: widget.initialPlayerName ?? _whitePlayerName,
+          username: widget.initialUsername,
+          email: widget.initialEmail,
+          isGuest: widget.initiallyGuest,
         ),
       ),
     );
@@ -3727,12 +3800,16 @@ class _GameScreenState extends State<GameScreen> {
 class CompactHeader extends StatelessWidget {
   const CompactHeader({
     required this.playerName,
+    required this.onHome,
+    required this.onProfile,
     required this.onReset,
     required this.onLogout,
     super.key,
   });
 
   final String playerName;
+  final VoidCallback onHome;
+  final VoidCallback onProfile;
   final VoidCallback onReset;
   final VoidCallback onLogout;
 
@@ -3750,6 +3827,16 @@ class CompactHeader extends StatelessWidget {
           ),
         ),
         IconButton(
+          tooltip: 'Home',
+          onPressed: onHome,
+          icon: const Icon(Icons.home_rounded),
+        ),
+        IconButton(
+          tooltip: 'Profile',
+          onPressed: onProfile,
+          icon: const Icon(Icons.person_rounded),
+        ),
+        IconButton(
           tooltip: 'Reset board',
           onPressed: onReset,
           icon: const Icon(Icons.refresh_rounded),
@@ -3760,6 +3847,42 @@ class CompactHeader extends StatelessWidget {
           icon: const Icon(Icons.logout_rounded),
         ),
       ],
+    );
+  }
+}
+
+class _GameNavigationBar extends StatelessWidget {
+  const _GameNavigationBar({
+    required this.onHome,
+    required this.onProfile,
+  });
+
+  final VoidCallback onHome;
+  final VoidCallback onProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFF0A1713).withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFB88A3D)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          IconButton(
+            tooltip: 'Home',
+            onPressed: onHome,
+            icon: const Icon(Icons.home_rounded),
+          ),
+          IconButton(
+            tooltip: 'Profile',
+            onPressed: onProfile,
+            icon: const Icon(Icons.person_rounded),
+          ),
+        ],
+      ),
     );
   }
 }

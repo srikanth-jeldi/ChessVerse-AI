@@ -5,11 +5,15 @@ class StoredAuthSession {
     required this.token,
     required this.expiresAt,
     required this.displayName,
+    this.username,
+    this.email,
   });
 
   final String token;
   final DateTime expiresAt;
   final String displayName;
+  final String? username;
+  final String? email;
 
   bool get isExpired => !expiresAt.isAfter(DateTime.now().toUtc());
 }
@@ -24,6 +28,8 @@ class AuthSessionStore {
   static const String _tokenKey = 'auth.token';
   static const String _expiryKey = 'auth.expiresAt';
   static const String _displayNameKey = 'auth.displayName';
+  static const String _usernameKey = 'auth.username';
+  static const String _emailKey = 'auth.email';
 
   Future<StoredAuthSession?> read() async {
     final Map<String, String> values = await _storage.readAll();
@@ -39,6 +45,8 @@ class AuthSessionStore {
       token: token,
       expiresAt: expiresAt.toUtc(),
       displayName: displayName,
+      username: values[_usernameKey],
+      email: values[_emailKey],
     );
     if (session.isExpired) {
       await clear();
@@ -55,6 +63,8 @@ class AuthSessionStore {
         value: session.expiresAt.toUtc().toIso8601String(),
       ),
       _storage.write(key: _displayNameKey, value: session.displayName),
+      _storage.write(key: _usernameKey, value: session.username),
+      _storage.write(key: _emailKey, value: session.email),
     ]);
   }
 
