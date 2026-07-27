@@ -45,6 +45,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _loginMode = true;
   bool _verificationMode = false;
   bool _loading = false;
+  bool _rememberMe = true;
   bool _googleInitialized = false;
   String? _message;
   String? _error;
@@ -219,12 +220,22 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                         ],
                         if (_loginMode && !_verificationMode)
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: _loading ? null : _forgotPassword,
-                              child: const Text('Forgot password?'),
-                            ),
+                          Row(
+                            children: <Widget>[
+                              Checkbox(
+                                value: _rememberMe,
+                                onChanged: _loading
+                                    ? null
+                                    : (bool? value) => setState(
+                                          () => _rememberMe = value ?? true,
+                                        ),
+                              ),
+                              const Expanded(child: Text('Remember me')),
+                              TextButton(
+                                onPressed: _loading ? null : _forgotPassword,
+                                child: const Text('Forgot password?'),
+                              ),
+                            ],
                           ),
                         if (_message != null) ...<Widget>[
                           const SizedBox(height: 12),
@@ -461,13 +472,19 @@ class _AuthScreenState extends State<AuthScreen> {
         username ??
         email?.split('@').first ??
         'ChessVerse Player';
-    await _sessionStore.write(
-      StoredAuthSession(
-        token: token,
-        expiresAt: expiresAt,
-        displayName: name,
-      ),
-    );
+    if (_rememberMe) {
+      await _sessionStore.write(
+        StoredAuthSession(
+          token: token,
+          expiresAt: expiresAt,
+          displayName: name,
+          username: username,
+          email: email,
+        ),
+      );
+    } else {
+      await _sessionStore.clear();
+    }
     if (!mounted) return;
     widget.onAuthenticated(
       ChessVerseAuthResult(
