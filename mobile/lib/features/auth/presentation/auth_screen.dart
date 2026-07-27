@@ -15,11 +15,15 @@ class ChessVerseAuthResult {
     required this.playerName,
     required this.isGuest,
     this.token,
+    this.username,
+    this.email,
   });
 
   final String playerName;
   final bool isGuest;
   final String? token;
+  final String? username;
+  final String? email;
 }
 
 class AuthScreen extends StatefulWidget {
@@ -451,7 +455,13 @@ class _AuthScreenState extends State<AuthScreen> {
     );
     if (!mounted) return;
     widget.onAuthenticated(
-      ChessVerseAuthResult(playerName: name, isGuest: false, token: token),
+      ChessVerseAuthResult(
+        playerName: name,
+        isGuest: false,
+        token: token,
+        username: player['username'] as String?,
+        email: player['email'] as String?,
+      ),
     );
   }
 

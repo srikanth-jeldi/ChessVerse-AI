@@ -7,7 +7,18 @@ import '../../../core/widgets/chessverse_button.dart';
 import '../../../core/widgets/chessverse_card.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({
+    this.playerName = 'Guest Player',
+    this.username,
+    this.email,
+    this.isGuest = true,
+    super.key,
+  });
+
+  final String playerName;
+  final String? username;
+  final String? email;
+  final bool isGuest;
 
   @override
   Widget build(BuildContext context) {
@@ -38,12 +49,20 @@ class ProfileScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
-                          'Guest Player',
+                          playerName,
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Preview account - local progress',
+                          isGuest
+                              ? 'Preview account - local progress'
+                              : [
+                                  if (username != null &&
+                                      username!.trim().isNotEmpty)
+                                    '@${username!.trim()}',
+                                  if (email != null && email!.trim().isNotEmpty)
+                                    email!.trim(),
+                                ].join('  •  '),
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ],
@@ -178,21 +197,44 @@ class ProfileScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 8),
                   Text(
-                    'You are using preview guest mode. Sign in integration can save games, streaks, analysis history, and cloud progress later.',
+                    isGuest
+                        ? 'You are using preview guest mode. Sign in to save games, streaks, analysis history, and cloud progress.'
+                        : 'Signed in securely. Your ChessVerse identity can be used for cloud progress and account features.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 16),
-                  ChessVerseButton(
-                    label: 'Sign in coming soon',
-                    icon: Icons.login_rounded,
-                    onPressed: () {},
-                  ),
+                  if (isGuest)
+                    ChessVerseButton(
+                      label: 'Guest account',
+                      icon: Icons.person_outline_rounded,
+                      onPressed: () {},
+                    )
+                  else
+                    const _SignedInBadge(),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SignedInBadge extends StatelessWidget {
+  const _SignedInBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        const Icon(Icons.verified_rounded, color: AppColors.success),
+        const SizedBox(width: 8),
+        Text(
+          'Verified ChessVerse account',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+      ],
     );
   }
 }

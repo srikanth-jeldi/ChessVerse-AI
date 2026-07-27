@@ -71,7 +71,12 @@ class AuthService {
 
         PlayerAccount player = players.findByEmailIgnoreCase(email).orElse(null);
         if (player != null && player.verified) {
-            throw new AuthException(HttpStatus.CONFLICT, "An account already exists for this email.");
+            if (oauthIdentities.existsByProviderAndPlayer_Id("google", player.id)) {
+                throw new AuthException(
+                        HttpStatus.CONFLICT,
+                        "This email already uses Google sign-in. Continue with Google, or use Forgot password to create a ChessVerse password.");
+            }
+            throw new AuthException(HttpStatus.CONFLICT, "An account already exists for this email. Open Login instead.");
         }
         PlayerAccount usernameOwner = players.findByUsernameIgnoreCase(username).orElse(null);
         if (usernameOwner != null && (player == null || !usernameOwner.id.equals(player.id))) {
