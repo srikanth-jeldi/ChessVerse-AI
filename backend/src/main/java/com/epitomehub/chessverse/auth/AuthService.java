@@ -26,6 +26,8 @@ class AuthService {
     private final EmailVerificationRepository verifications;
     private final PasswordResetRepository passwordResets;
     private final AuthSessionRepository sessions;
+    private final OAuthIdentityRepository oauthIdentities;
+    private final GoogleIdentityVerifier googleIdentityVerifier;
     private final OtpDelivery otpDelivery;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
     private final SecureRandom random = new SecureRandom();
@@ -40,6 +42,8 @@ class AuthService {
             EmailVerificationRepository verifications,
             PasswordResetRepository passwordResets,
             AuthSessionRepository sessions,
+            OAuthIdentityRepository oauthIdentities,
+            GoogleIdentityVerifier googleIdentityVerifier,
             OtpDelivery otpDelivery,
             @Value("${chessverse.auth.otp-expiry-minutes:10}") long otpExpiryMinutes,
             @Value("${chessverse.auth.session-expiry-days:30}") long sessionExpiryDays,
@@ -50,6 +54,8 @@ class AuthService {
         this.verifications = verifications;
         this.passwordResets = passwordResets;
         this.sessions = sessions;
+        this.oauthIdentities = oauthIdentities;
+        this.googleIdentityVerifier = googleIdentityVerifier;
         this.otpDelivery = otpDelivery;
         this.otpExpiry = Duration.ofMinutes(otpExpiryMinutes);
         this.sessionExpiry = Duration.ofDays(sessionExpiryDays);
@@ -232,6 +238,37 @@ class AuthService {
     }
 
     @Transactional
+    AuthResponse googleLogin(GoogleLoginRequest request) {
+        GoogleIdentityVerifier.VerifiedGoogleIdentity google =
+                googleIdentityVerifier.verify(request.idToken());
+        OAuthIdentity existingIdentity =
+                oauthIdentities.findByProviderAndSubject("google", google.subject()).orElse(null);
+        if (existingIdentity != null) {
+            return createSession(existingIdentity.player);
+        }
+
+        String email = normalizeEmail(google.email());
+        PlayerAccount player = players.findByEmailIgnoreCase(email).orElse(null);
+        if (player == null) {
+            String displayName = google.displayName() == null || google.displayName().isBlank()
+                    ? email.substring(0, email.indexOf('@'))
+                    : google.displayName().trim();
+            player = new PlayerAccount(
+                    availableGoogleUsername(email),
+                    displayName.substring(0, Math.min(displayName.length(), 80)),
+                    email,
+                    passwordEncoder.encode(UUID.randomUUID() + "." + UUID.randomUUID()));
+        }
+        player.verified = true;
+        player.failedLoginAttempts = 0;
+        player.lockedUntil = null;
+        player.updatedAt = Instant.now();
+        players.save(player);
+        oauthIdentities.save(new OAuthIdentity("google", google.subject(), player));
+        return createSession(player);
+    }
+
+    @Transactional
     PlayerResponse currentPlayer(String token) {
         String tokenHash = sha256(token);
         AuthSession session = sessions.findByTokenHash(tokenHash)
@@ -289,6 +326,21 @@ class AuthService {
 
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String availableGoogleUsername(String email) {
+        String base = email.substring(0, email.indexOf('@'))
+                .replaceAll("[^A-Za-z0-9_.-]", "_");
+        if (base.length() < 3) {
+            base = "player_" + base;
+        }
+        base = base.substring(0, Math.min(base.length(), 32));
+        String candidate = base;
+        int suffix = 1;
+        while (players.findByUsernameIgnoreCase(candidate).isPresent()) {
+            candidate = base + "_" + suffix++;
+        }
+        return candidate;
     }
 
     private String sha256(String value) {

@@ -40,6 +40,9 @@ final class AuthDtos {
             @NotBlank @Size(max = 72) String password) {
     }
 
+    record GoogleLoginRequest(@NotBlank String idToken) {
+    }
+
     record MessageResponse(String message, Instant expiresAt, String developmentCode) {
     }
 

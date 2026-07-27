@@ -18,12 +18,14 @@ abstract final class AppConfig {
 
   static const String googleWebClientId = String.fromEnvironment(
     'GOOGLE_WEB_CLIENT_ID',
-    defaultValue: 'replace-google-web-client-id.apps.googleusercontent.com',
+    defaultValue:
+        '350170750275-tehk29bqp3o0718sp45lrtd7c2tep9n4.apps.googleusercontent.com',
   );
 
   static const String googleAndroidClientId = String.fromEnvironment(
     'GOOGLE_ANDROID_CLIENT_ID',
-    defaultValue: 'replace-google-android-client-id.apps.googleusercontent.com',
+    defaultValue:
+        '350170750275-07a58sihomisudj55gmuemhlmae2mm94.apps.googleusercontent.com',
   );
 
   static const String googleIosClientId = String.fromEnvironment(
@@ -53,17 +55,17 @@ abstract final class AppConfig {
 
   static const String privacyPolicyUrl = String.fromEnvironment(
     'PRIVACY_POLICY_URL',
-    defaultValue: 'https://chessverse.example/privacy',
+    defaultValue: 'https://chessverseai.com/privacy',
   );
 
   static const String termsUrl = String.fromEnvironment(
     'TERMS_URL',
-    defaultValue: 'https://chessverse.example/terms',
+    defaultValue: 'https://chessverseai.com/terms',
   );
 
   static const String dataDeletionUrl = String.fromEnvironment(
     'DATA_DELETION_URL',
-    defaultValue: 'https://chessverse.example/data-deletion',
+    defaultValue: 'https://chessverseai.com/data-deletion',
   );
 
   static const bool arenaPreview = bool.fromEnvironment('ARENA_PREVIEW');
