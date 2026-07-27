@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:google_sign_in_web/web_only.dart' as google_web;
 
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
@@ -48,9 +51,20 @@ class _AuthScreenState extends State<AuthScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _verificationCodeController =
       TextEditingController();
+  StreamSubscription<GoogleSignInAuthenticationEvent>?
+      _googleAuthenticationSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    if (kIsWeb) {
+      unawaited(_initializeGoogleForWeb());
+    }
+  }
 
   @override
   void dispose() {
+    unawaited(_googleAuthenticationSubscription?.cancel());
     _userIdController.dispose();
     _displayNameController.dispose();
     _emailController.dispose();
@@ -252,11 +266,18 @@ class _AuthScreenState extends State<AuthScreen> {
                         Row(
                           children: <Widget>[
                             Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: _loading ? null : _signInWithGoogle,
-                                icon: const Icon(Icons.g_mobiledata_rounded),
-                                label: const Text('Google'),
-                              ),
+                              child: kIsWeb
+                                  ? Center(
+                                      child: google_web.renderButton(),
+                                    )
+                                  : OutlinedButton.icon(
+                                      onPressed:
+                                          _loading ? null : _signInWithGoogle,
+                                      icon: const Icon(
+                                        Icons.g_mobiledata_rounded,
+                                      ),
+                                      label: const Text('Google'),
+                                    ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -308,16 +329,39 @@ class _AuthScreenState extends State<AuthScreen> {
     });
   }
 
-  Future<void> _signInWithGoogle() async {
-    if (kIsWeb) {
-      setState(() {
-        _error =
-            'Google web sign-in is being finalized. Please use Android or email login for this test.';
-        _message = null;
-      });
-      return;
+  Future<void> _initializeGoogleForWeb() async {
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn.instance;
+      await googleSignIn.initialize(clientId: AppConfig.googleWebClientId);
+      _googleInitialized = true;
+      _googleAuthenticationSubscription =
+          googleSignIn.authenticationEvents.listen(
+        (GoogleSignInAuthenticationEvent event) {
+          if (event is GoogleSignInAuthenticationEventSignIn) {
+            unawaited(_authenticateGoogleAccount(event.user));
+          }
+        },
+        onError: (Object _) {
+          if (mounted) {
+            setState(() {
+              _loading = false;
+              _error = 'Google sign-in failed. Please try again.';
+              _message = null;
+            });
+          }
+        },
+      );
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _error = 'Google sign-in could not start. Please refresh and retry.';
+          _message = null;
+        });
+      }
     }
+  }
 
+  Future<void> _signInWithGoogle() async {
     setState(() {
       _loading = true;
       _error = null;
@@ -335,17 +379,7 @@ class _AuthScreenState extends State<AuthScreen> {
         _googleInitialized = true;
       }
       final GoogleSignInAccount account = await googleSignIn.authenticate();
-      final String? idToken = account.authentication.idToken;
-      if (idToken == null || idToken.isEmpty) {
-        throw const AuthApiException(
-          'Google did not return a secure ID token. Please try again.',
-        );
-      }
-      final Map<String, dynamic> data = await _authApi.post(
-        'google',
-        <String, String>{'idToken': idToken},
-      );
-      await _completeAuthentication(data);
+      await _authenticateGoogleAccount(account, manageLoading: false);
     } on GoogleSignInException catch (error) {
       if (error.code != GoogleSignInExceptionCode.canceled && mounted) {
         setState(() => _error = 'Google sign-in failed. Please try again.');
@@ -358,6 +392,40 @@ class _AuthScreenState extends State<AuthScreen> {
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _authenticateGoogleAccount(
+    GoogleSignInAccount account, {
+    bool manageLoading = true,
+  }) async {
+    if (manageLoading && mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+        _message = null;
+      });
+    }
+    try {
+      final String? idToken = account.authentication.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw const AuthApiException(
+          'Google did not return a secure ID token. Please try again.',
+        );
+      }
+      final Map<String, dynamic> data = await _authApi.post(
+        'google',
+        <String, String>{'idToken': idToken},
+      );
+      await _completeAuthentication(data);
+    } on AuthApiException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Google sign-in failed. Please try again.');
+      }
+    } finally {
+      if (manageLoading && mounted) setState(() => _loading = false);
     }
   }
 
