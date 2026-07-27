@@ -43,6 +43,11 @@ class AuthController {
         return authService.login(request);
     }
 
+    @PostMapping("/google")
+    AuthResponse googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+        return authService.googleLogin(request);
+    }
+
     @PostMapping("/password/forgot")
     @ResponseStatus(HttpStatus.ACCEPTED)
     MessageResponse forgotPassword(@Valid @RequestBody EmailRequest request) {

@@ -1,8 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/auth_api.dart';
+import '../data/auth_session_store.dart';
 
 class ChessVerseAuthResult {
   const ChessVerseAuthResult({
@@ -30,9 +33,11 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   static const AuthApi _authApi = AuthApi();
+  static const AuthSessionStore _sessionStore = AuthSessionStore();
 
   bool _loginMode = true;
   bool _loading = false;
+  bool _googleInitialized = false;
   String? _message;
   String? _error;
 
@@ -220,7 +225,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               child: OutlinedButton.icon(
                                 onPressed: _loading
                                     ? null
-                                    : () => _showSocialPlaceholder('Google'),
+                                    : _signInWithGoogle,
                                 icon: const Icon(Icons.g_mobiledata_rounded),
                                 label: const Text('Google'),
                               ),
@@ -275,6 +280,86 @@ class _AuthScreenState extends State<AuthScreen> {
     });
   }
 
+  Future<void> _signInWithGoogle() async {
+    if (kIsWeb) {
+      setState(() {
+        _error =
+            'Google web sign-in is being finalized. Please use Android or email login for this test.';
+        _message = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+      _message = null;
+    });
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn.instance;
+      if (!_googleInitialized) {
+        await googleSignIn.initialize(
+          clientId: defaultTargetPlatform == TargetPlatform.iOS
+              ? AppConfig.googleIosClientId
+              : null,
+          serverClientId: AppConfig.googleWebClientId,
+        );
+        _googleInitialized = true;
+      }
+      final GoogleSignInAccount account = await googleSignIn.authenticate();
+      final String? idToken = account.authentication.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw const AuthApiException(
+          'Google did not return a secure ID token. Please try again.',
+        );
+      }
+      final Map<String, dynamic> data = await _authApi.post(
+        'google',
+        <String, String>{'idToken': idToken},
+      );
+      await _completeAuthentication(data);
+    } on GoogleSignInException catch (error) {
+      if (error.code != GoogleSignInExceptionCode.canceled && mounted) {
+        setState(() => _error = 'Google sign-in failed. Please try again.');
+      }
+    } on AuthApiException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Google sign-in failed. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _completeAuthentication(Map<String, dynamic> data) async {
+    final String token = data['token'] as String? ?? '';
+    final DateTime? expiresAt =
+        DateTime.tryParse(data['expiresAt'] as String? ?? '');
+    final Map<String, dynamic> player =
+        data['player'] is Map<String, dynamic>
+            ? data['player'] as Map<String, dynamic>
+            : <String, dynamic>{};
+    final String name = player['displayName'] as String? ??
+        player['username'] as String? ??
+        'ChessVerse Player';
+    if (token.isEmpty || expiresAt == null) {
+      throw const AuthApiException('The server returned an invalid session.');
+    }
+    await _sessionStore.write(
+      StoredAuthSession(
+        token: token,
+        expiresAt: expiresAt,
+        displayName: name,
+      ),
+    );
+    if (!mounted) return;
+    widget.onAuthenticated(
+      ChessVerseAuthResult(playerName: name, isGuest: false, token: token),
+    );
+  }
+
   Future<void> _submit() async {
     setState(() {
       _loading = true;
@@ -290,13 +375,7 @@ class _AuthScreenState extends State<AuthScreen> {
             'password': _passwordController.text,
           },
         );
-        final String token = data['token'] as String? ?? '';
-        final String name = data['displayName'] as String? ??
-            data['userId'] as String? ??
-            'ChessVerse Player';
-        widget.onAuthenticated(
-          ChessVerseAuthResult(playerName: name, isGuest: false, token: token),
-        );
+        await _completeAuthentication(data);
       } else {
         final Map<String, dynamic> data = await _authApi.post(
           'register',

@@ -26,6 +26,8 @@ spring:
             required: true
 
 chessverse:
+  oauth:
+    google-web-client-id: ${GOOGLE_WEB_CLIENT_ID:}
   engine:
     stockfish-path: ${STOCKFISH_PATH:stockfish}
     response-timeout-seconds: ${STOCKFISH_TIMEOUT_SECONDS:5}
