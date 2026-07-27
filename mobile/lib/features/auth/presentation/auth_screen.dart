@@ -36,6 +36,7 @@ class _AuthScreenState extends State<AuthScreen> {
   static const AuthSessionStore _sessionStore = AuthSessionStore();
 
   bool _loginMode = true;
+  bool _verificationMode = false;
   bool _loading = false;
   bool _googleInitialized = false;
   String? _message;
@@ -45,6 +46,8 @@ class _AuthScreenState extends State<AuthScreen> {
   final TextEditingController _displayNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _verificationCodeController =
+      TextEditingController();
 
   @override
   void dispose() {
@@ -52,6 +55,7 @@ class _AuthScreenState extends State<AuthScreen> {
     _displayNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _verificationCodeController.dispose();
     super.dispose();
   }
 
@@ -113,7 +117,11 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                         const SizedBox(height: 28),
                         Text(
-                          _loginMode ? 'Welcome back' : 'Create ChessVerse ID',
+                          _verificationMode
+                              ? 'Verify your email'
+                              : _loginMode
+                                  ? 'Welcome back'
+                                  : 'Create ChessVerse ID',
                           style: Theme.of(context)
                               .textTheme
                               .headlineMedium
@@ -123,32 +131,46 @@ class _AuthScreenState extends State<AuthScreen> {
                               ),
                         ),
                         const SizedBox(height: 18),
-                        SegmentedButton<bool>(
-                          segments: const <ButtonSegment<bool>>[
-                            ButtonSegment<bool>(
-                              value: false,
-                              label: Text('Register'),
-                              icon: Icon(Icons.person_add_alt_rounded),
-                            ),
-                            ButtonSegment<bool>(
-                              value: true,
-                              label: Text('Login'),
-                              icon: Icon(Icons.check_rounded),
-                            ),
-                          ],
-                          selected: <bool>{_loginMode},
-                          onSelectionChanged: _loading
-                              ? null
-                              : (Set<bool> value) {
-                                  setState(() {
-                                    _loginMode = value.first;
-                                    _error = null;
-                                    _message = null;
-                                  });
-                                },
-                        ),
+                        if (!_verificationMode)
+                          SegmentedButton<bool>(
+                            segments: const <ButtonSegment<bool>>[
+                              ButtonSegment<bool>(
+                                value: false,
+                                label: Text('Register'),
+                                icon: Icon(Icons.person_add_alt_rounded),
+                              ),
+                              ButtonSegment<bool>(
+                                value: true,
+                                label: Text('Login'),
+                                icon: Icon(Icons.check_rounded),
+                              ),
+                            ],
+                            selected: <bool>{_loginMode},
+                            onSelectionChanged: _loading
+                                ? null
+                                : (Set<bool> value) {
+                                    setState(() {
+                                      _loginMode = value.first;
+                                      _error = null;
+                                      _message = null;
+                                    });
+                                  },
+                          ),
                         const SizedBox(height: 18),
-                        if (!_loginMode) ...<Widget>[
+                        if (_verificationMode) ...<Widget>[
+                          Text(
+                            'Enter the 6-digit code sent to ${_emailController.text.trim()}.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 12),
+                          _AuthField(
+                            controller: _verificationCodeController,
+                            label: 'Verification code',
+                            icon: Icons.verified_outlined,
+                            keyboardType: TextInputType.number,
+                            onSubmitted: (_) => _submit(),
+                          ),
+                        ] else if (!_loginMode) ...<Widget>[
                           _AuthField(
                             controller: _userIdController,
                             label: 'User ID',
@@ -162,21 +184,23 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                           const SizedBox(height: 12),
                         ],
-                        _AuthField(
-                          controller: _emailController,
-                          label: _loginMode ? 'User ID or email' : 'Email',
-                          icon: Icons.mail_outline_rounded,
-                          keyboardType: TextInputType.emailAddress,
-                        ),
-                        const SizedBox(height: 12),
-                        _AuthField(
-                          controller: _passwordController,
-                          label: _loginMode ? 'Password' : 'Create password',
-                          icon: Icons.lock_outline_rounded,
-                          obscureText: true,
-                          onSubmitted: (_) => _submit(),
-                        ),
-                        if (_loginMode)
+                        if (!_verificationMode) ...<Widget>[
+                          _AuthField(
+                            controller: _emailController,
+                            label: _loginMode ? 'User ID or email' : 'Email',
+                            icon: Icons.mail_outline_rounded,
+                            keyboardType: TextInputType.emailAddress,
+                          ),
+                          const SizedBox(height: 12),
+                          _AuthField(
+                            controller: _passwordController,
+                            label: _loginMode ? 'Password' : 'Create password',
+                            icon: Icons.lock_outline_rounded,
+                            obscureText: true,
+                            onSubmitted: (_) => _submit(),
+                          ),
+                        ],
+                        if (_loginMode && !_verificationMode)
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
@@ -203,7 +227,13 @@ class _AuthScreenState extends State<AuthScreen> {
                                       CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : const Icon(Icons.login_rounded),
-                          label: Text(_loginMode ? 'Login' : 'Send Code'),
+                          label: Text(
+                            _verificationMode
+                                ? 'Verify & Continue'
+                                : _loginMode
+                                    ? 'Login'
+                                    : 'Send Code',
+                          ),
                         ),
                         const SizedBox(height: 10),
                         OutlinedButton.icon(
@@ -223,9 +253,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           children: <Widget>[
                             Expanded(
                               child: OutlinedButton.icon(
-                                onPressed: _loading
-                                    ? null
-                                    : _signInWithGoogle,
+                                onPressed: _loading ? null : _signInWithGoogle,
                                 icon: const Icon(Icons.g_mobiledata_rounded),
                                 label: const Text('Google'),
                               ),
@@ -337,10 +365,9 @@ class _AuthScreenState extends State<AuthScreen> {
     final String token = data['token'] as String? ?? '';
     final DateTime? expiresAt =
         DateTime.tryParse(data['expiresAt'] as String? ?? '');
-    final Map<String, dynamic> player =
-        data['player'] is Map<String, dynamic>
-            ? data['player'] as Map<String, dynamic>
-            : <String, dynamic>{};
+    final Map<String, dynamic> player = data['player'] is Map<String, dynamic>
+        ? data['player'] as Map<String, dynamic>
+        : <String, dynamic>{};
     final String name = player['displayName'] as String? ??
         player['username'] as String? ??
         'ChessVerse Player';
@@ -367,7 +394,16 @@ class _AuthScreenState extends State<AuthScreen> {
       _message = null;
     });
     try {
-      if (_loginMode) {
+      if (_verificationMode) {
+        final Map<String, dynamic> data = await _authApi.post(
+          'verify-email',
+          <String, String>{
+            'email': _emailController.text.trim(),
+            'code': _verificationCodeController.text.trim(),
+          },
+        );
+        await _completeAuthentication(data);
+      } else if (_loginMode) {
         final Map<String, dynamic> data = await _authApi.post(
           'login',
           <String, String>{
@@ -380,7 +416,7 @@ class _AuthScreenState extends State<AuthScreen> {
         final Map<String, dynamic> data = await _authApi.post(
           'register',
           <String, String>{
-            'userId': _userIdController.text.trim(),
+            'username': _userIdController.text.trim(),
             'displayName': _displayNameController.text.trim(),
             'email': _emailController.text.trim(),
             'password': _passwordController.text,
@@ -389,7 +425,7 @@ class _AuthScreenState extends State<AuthScreen> {
         setState(() {
           _message = data['message'] as String? ??
               'Verification code sent. Check your email.';
-          _loginMode = true;
+          _verificationMode = true;
         });
       }
     } on AuthApiException catch (error) {
