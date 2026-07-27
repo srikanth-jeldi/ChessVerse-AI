@@ -12,3 +12,4 @@ RUN test -n "${API_BASE_URL}" \
 FROM caddy:2-alpine
 COPY infrastructure/vps/web/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /workspace/build/web /srv
+COPY infrastructure/vps/web/legal/ /srv/
