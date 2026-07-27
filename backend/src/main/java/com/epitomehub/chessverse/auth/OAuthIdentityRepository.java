@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 interface OAuthIdentityRepository extends JpaRepository<OAuthIdentity, UUID> {
     Optional<OAuthIdentity> findByProviderAndSubject(String provider, String subject);
+
+    boolean existsByProviderAndPlayer_Id(String provider, UUID playerId);
 }

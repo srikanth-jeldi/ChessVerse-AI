@@ -54,6 +54,9 @@ class _SplashGateState extends State<SplashGate> {
   Timer? _timer;
   _RootStage _stage = _RootStage.splash;
   String _playerName = 'Guest Player';
+  String? _username;
+  String? _email;
+  bool _isGuest = true;
 
   @override
   void initState() {
@@ -98,6 +101,9 @@ class _SplashGateState extends State<SplashGate> {
             onAuthenticated: (ChessVerseAuthResult result) {
               setState(() {
                 _playerName = result.playerName;
+                _username = result.username;
+                _email = result.email;
+                _isGuest = result.isGuest;
                 _stage = _RootStage.home;
               });
             },
@@ -112,7 +118,15 @@ class _SplashGateState extends State<SplashGate> {
             onPuzzles: () => _push(context, const PuzzlesScreen()),
             onSavedGames: () => _push(context, const SavedGamesScreen()),
             onLearnChess: () => _push(context, const LearnChessScreen()),
-            onProfile: () => _push(context, const ProfileScreen()),
+            onProfile: () => _push(
+              context,
+              ProfileScreen(
+                playerName: _playerName,
+                username: _username,
+                email: _email,
+                isGuest: _isGuest,
+              ),
+            ),
             onSettings: () => _push(context, const SettingsScreen()),
           ),
       },

@@ -44,7 +44,7 @@ class GoogleIdentityVerifier {
                     payload.getSubject(),
                     payload.getEmail(),
                     name instanceof String value ? value : null);
-        } catch (GeneralSecurityException | IOException exception) {
+        } catch (GeneralSecurityException | IOException | RuntimeException exception) {
             throw invalidToken();
         }
     }
