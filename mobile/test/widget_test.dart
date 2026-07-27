@@ -28,6 +28,22 @@ void main() {
 
     expect(ChessRules.isKingInCheck(true, pieces), isTrue);
     expect(ChessRules.hasAnySafeMove(true, pieces), isTrue);
+    expect(ChessRules.isCheckmate(true, pieces), isFalse);
+  });
+
+  test('shared rules identify a boxed back-rank checkmate', () {
+    final Map<String, ChessPiece> pieces = <String, ChessPiece>{
+      'f4': const ChessPiece('K', true),
+      'a8': const ChessPiece('Q', true),
+      'd3': const ChessPiece('B', true),
+      'h8': const ChessPiece('K', false),
+      'h7': const ChessPiece('P', false),
+      'g7': const ChessPiece('P', false),
+    };
+
+    expect(ChessRules.isKingInCheck(false, pieces), isTrue);
+    expect(ChessRules.hasAnySafeMove(false, pieces), isFalse);
+    expect(ChessRules.isCheckmate(false, pieces), isTrue);
   });
 
   testWidgets('shows branded splash before onboarding and account access', (

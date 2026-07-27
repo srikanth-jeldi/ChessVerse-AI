@@ -1140,6 +1140,14 @@ class ChessRules {
     return false;
   }
 
+  static bool isCheckmate(bool white, Map<String, ChessPiece> pieces) {
+    return isKingInCheck(white, pieces) && !hasAnySafeMove(white, pieces);
+  }
+
+  static bool isStalemate(bool white, Map<String, ChessPiece> pieces) {
+    return !isKingInCheck(white, pieces) && !hasAnySafeMove(white, pieces);
+  }
+
   static bool isKingInCheck(bool white, Map<String, ChessPiece> pieces) {
     String? kingSquare;
     for (final MapEntry<String, ChessPiece> entry in pieces.entries) {
@@ -2428,16 +2436,20 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   DailyChallenge _challengeForToday(DailyChallengeDifficulty difficulty) {
-    final DateTime today = DateTime.now().toUtc();
-    final DateTime dayKey = DateTime.utc(today.year, today.month, today.day);
-    final int seed = dayKey.difference(DateTime.utc(2026)).inDays;
-    final int pattern = seed % 3;
+    final DateTime today = DateTime.now();
+    final DateTime dayKey = DateTime(today.year, today.month, today.day);
+    final int seed = dayKey.difference(DateTime(2026)).inDays;
+    final int pattern = seed % 7;
     final String date =
         '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
     final String title = switch (pattern) {
       0 => 'Royal Net',
       1 => 'Back Rank Spark',
-      _ => 'Moonlight Mate',
+      2 => 'Moonlight Mate',
+      3 => 'Golden File',
+      4 => 'Corner Storm',
+      5 => 'Bishop Beacon',
+      _ => 'Queen Flight',
     };
     return DailyChallenge(
       id: '$date-${difficulty.name}-p$pattern-freeplay-v5',
@@ -2488,7 +2500,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Map<String, ChessPiece> _dailyStartingPosition(DailyChallenge challenge) {
-    return <String, ChessPiece>{
+    final Map<String, ChessPiece> base = <String, ChessPiece>{
       // White mating force. Keep the king on f4 so the puzzle starts from a
       // legal position: f6 is attacked by the black g7 pawn, which made the
       // challenge feel locked because every normal move was rejected.
@@ -2507,6 +2519,23 @@ class _GameScreenState extends State<GameScreen> {
       'b7': const ChessPiece('P', false),
       'e6': const ChessPiece('P', false),
     };
+    // Seven deterministic layouts make the board visibly different each day
+    // while preserving the verified mating line. Extra pawns are deliberately
+    // placed outside the queen route and the black king's escape squares.
+    const List<Map<String, bool>> dailyScenery = <Map<String, bool>>[
+      <String, bool>{'c2': true},
+      <String, bool>{'c2': true, 'd7': false},
+      <String, bool>{'e2': true, 'c7': false},
+      <String, bool>{'c3': true, 'f7': false},
+      <String, bool>{'d2': true, 'c6': false},
+      <String, bool>{'e3': true, 'd7': false},
+      <String, bool>{'c2': true, 'e7': false, 'f2': true},
+    ];
+    for (final MapEntry<String, bool> entry
+        in dailyScenery[challenge.pattern].entries) {
+      base[entry.key] = ChessPiece('P', entry.value);
+    }
+    return base;
   }
 
   void _applyDailyCompletionState() {
@@ -2693,9 +2722,10 @@ class _GameScreenState extends State<GameScreen> {
                     : '$from x $square';
         _moves.insert(0, move);
         unawaited(
-          captured == null
-              ? ChessSoundService.instance.move()
-              : ChessSoundService.instance.capture(),
+          ChessSoundService.instance.pieceMove(
+            piece.code,
+            capture: captured != null,
+          ),
         );
         if (_gameMode == GameMode.daily) {
           _dailyPlyIndex++;
@@ -2713,9 +2743,12 @@ class _GameScreenState extends State<GameScreen> {
         }
         _coachNote = castleMove
             ? '${piece.white ? 'White' : 'Black'} castles ${square.startsWith('g') ? 'king side' : 'queen side'}.'
-            : captured == null
-                ? '${piece.code} moves to $square.'
-                : '${piece.code} captures ${captured.code} on $square.';
+            : _coachMoveExplanation(
+                piece: piece,
+                from: from,
+                to: square,
+                captured: captured,
+              );
         if (piece.code == 'P' &&
             ((piece.white && square.endsWith('8')) ||
                 (!piece.white && square.endsWith('1')))) {
@@ -2871,9 +2904,10 @@ class _GameScreenState extends State<GameScreen> {
       _pieces[to] = piece;
       _moves.insert(0, captured == null ? '$from$to' : '$from x $to');
       unawaited(
-        captured == null
-            ? ChessSoundService.instance.move()
-            : ChessSoundService.instance.capture(),
+        ChessSoundService.instance.pieceMove(
+          piece.code,
+          capture: captured != null,
+        ),
       );
       _dailyPlyIndex++;
       _aiThinking = false;
@@ -3019,9 +3053,10 @@ class _GameScreenState extends State<GameScreen> {
               : '${move.from} x ${move.to}';
       _moves.insert(0, notation);
       unawaited(
-        captured == null
-            ? ChessSoundService.instance.move()
-            : ChessSoundService.instance.capture(),
+        ChessSoundService.instance.pieceMove(
+          piece.code,
+          capture: captured != null,
+        ),
       );
       final String action = captured == null
           ? '${piece.code} moves to ${move.to}.'
@@ -3739,7 +3774,8 @@ class _GameScreenState extends State<GameScreen> {
 
   String _gameStateNote(bool sideToMoveWhite, {required String fallback}) {
     final bool inCheck = ChessRules.isKingInCheck(sideToMoveWhite, _pieces);
-    final bool hasMove = _hasAnyLegalMove(sideToMoveWhite);
+    final bool checkmate = ChessRules.isCheckmate(sideToMoveWhite, _pieces);
+    final bool stalemate = ChessRules.isStalemate(sideToMoveWhite, _pieces);
     final String side = sideToMoveWhite ? 'White' : 'Black';
 
     if (inCheck && !_checkWarningActive) {
@@ -3750,7 +3786,7 @@ class _GameScreenState extends State<GameScreen> {
       _checkWarningActive = false;
     }
 
-    if (inCheck && !hasMove) {
+    if (checkmate) {
       if (_gameMode == GameMode.daily && !sideToMoveWhite) {
         _completeDailyChallenge();
         return 'Checkmate. Daily challenge complete.';
@@ -3762,7 +3798,7 @@ class _GameScreenState extends State<GameScreen> {
       unawaited(ChessSoundService.instance.checkmate());
       return 'Checkmate. $_gameResultTitle.';
     }
-    if (!inCheck && !hasMove) {
+    if (stalemate) {
       _gameResultTitle = 'Draw';
       _gameResultDetail = 'Stalemate';
       _resultVisible = true;
@@ -3775,6 +3811,58 @@ class _GameScreenState extends State<GameScreen> {
     }
     return fallback;
   }
+
+  String _coachMoveExplanation({
+    required ChessPiece piece,
+    required String from,
+    required String to,
+    required ChessPiece? captured,
+  }) {
+    final String pieceName = switch (piece.code) {
+      'P' => 'Pawn',
+      'N' => 'Knight',
+      'B' => 'Bishop',
+      'R' => 'Rook',
+      'Q' => 'Queen',
+      'K' => 'King',
+      _ => 'Piece',
+    };
+    final bool givesCheck = ChessRules.isKingInCheck(!piece.white, _pieces);
+    final SquarePosition target = ChessRules.positionOf(to);
+    final bool controlsCenter = target.file >= 2 &&
+        target.file <= 5 &&
+        target.rank >= 3 &&
+        target.rank <= 6;
+    final String action = captured == null
+        ? '$pieceName moved from $from to $to.'
+        : '$pieceName captured ${_pieceName(captured.code)} on $to.';
+    if (givesCheck && captured != null) {
+      return '$action Strong forcing move: it wins material and checks the king, so the opponent must respond to the check.';
+    }
+    if (givesCheck) {
+      return '$action This is a forcing check. Now calculate every legal king escape, capture, and blocking move.';
+    }
+    if (captured != null) {
+      return '$action Before the next move, compare the traded piece values and check whether the capturing piece is protected.';
+    }
+    if (piece.code == 'N' || piece.code == 'B') {
+      return '$action Good development: active minor pieces control more squares and help the king and center.';
+    }
+    if (controlsCenter) {
+      return '$action It improves central control, which gives your pieces more space and mobility.';
+    }
+    return '$action Ask three questions next: do I have a check, a capture, or a direct threat?';
+  }
+
+  String _pieceName(String code) => switch (code) {
+        'P' => 'a pawn',
+        'N' => 'a knight',
+        'B' => 'a bishop',
+        'R' => 'a rook',
+        'Q' => 'the queen',
+        'K' => 'the king',
+        _ => 'a piece',
+      };
 
   Future<void> _playCheckWarning() async {
     if (!ChessSoundService.instance.enabled) {

@@ -136,18 +136,20 @@ class LocalGameArchive {
     if (completedAt == null) {
       return false;
     }
-    return DateTime.now().toUtc().difference(completedAt) <
-        const Duration(hours: 24);
+    final DateTime now = DateTime.now();
+    final DateTime completedLocal = completedAt.toLocal();
+    return completedLocal.year == now.year &&
+        completedLocal.month == now.month &&
+        completedLocal.day == now.day;
   }
 
   static Duration get dailyChallengeRemaining {
-    final DateTime? completedAt = _lastDailyCompletedAt;
-    if (completedAt == null) {
+    if (!isDailyChallengeLocked) {
       return Duration.zero;
     }
-    final Duration remaining = completedAt
-        .add(const Duration(hours: 24))
-        .difference(DateTime.now().toUtc());
+    final DateTime now = DateTime.now();
+    final DateTime nextDay = DateTime(now.year, now.month, now.day + 1);
+    final Duration remaining = nextDay.difference(now);
     return remaining.isNegative ? Duration.zero : remaining;
   }
 

@@ -21,6 +21,7 @@ class ChessSoundService {
   static final ChessSoundService instance = ChessSoundService._();
 
   AudioPlayer? _movePlayer;
+  final Map<String, AudioPlayer> _piecePlayers = <String, AudioPlayer>{};
   AudioPlayer? _capturePlayer;
   AudioPlayer? _checkPlayer;
   AudioPlayer? _checkmatePlayer;
@@ -37,6 +38,32 @@ class ChessSoundService {
       _movePlayer ??= AudioPlayer(playerId: 'chessverse-move'),
       'audio/chess_move.wav',
       volume: 0.82,
+    );
+  }
+
+  Future<void> pieceMove(String pieceCode, {bool capture = false}) async {
+    if (!enabled) return;
+    if (capture) {
+      await this.capture();
+      await Future<void>.delayed(const Duration(milliseconds: 65));
+    }
+    final String normalized = pieceCode.toUpperCase();
+    final String name = switch (normalized) {
+      'P' => 'pawn',
+      'N' => 'knight',
+      'B' => 'bishop',
+      'R' => 'rook',
+      'Q' => 'queen',
+      'K' => 'king',
+      _ => 'move',
+    };
+    await _play(
+      _piecePlayers.putIfAbsent(
+        normalized,
+        () => AudioPlayer(playerId: 'chessverse-piece-$name'),
+      ),
+      name == 'move' ? 'audio/chess_move.wav' : 'audio/piece_$name.wav',
+      volume: capture ? 0.68 : 0.82,
     );
   }
 
@@ -114,6 +141,7 @@ class ChessSoundService {
   Future<void> dispose() async {
     await Future.wait(<Future<void>>[
       if (_movePlayer != null) _movePlayer!.dispose(),
+      ..._piecePlayers.values.map((AudioPlayer player) => player.dispose()),
       if (_capturePlayer != null) _capturePlayer!.dispose(),
       if (_checkPlayer != null) _checkPlayer!.dispose(),
       if (_checkmatePlayer != null) _checkmatePlayer!.dispose(),

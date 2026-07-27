@@ -12,6 +12,12 @@ these exact names:
 - `chess_draw.wav` - draw/game-over tone
 - `chess_tap.wav` - UI tap sound
 - `chess_error.wav` - invalid move/error sound
+- `piece_pawn.wav` - light pawn placement
+- `piece_knight.wav` - two-beat horse hoof
+- `piece_bishop.wav` - low elephant-like call
+- `piece_rook.wav` - solid wooden tower knock
+- `piece_queen.wav` - bright royal shimmer
+- `piece_king.wav` - short royal horn
 
 The app sound service ignores missing files so preview builds remain stable
 while final audio files are being replaced.
