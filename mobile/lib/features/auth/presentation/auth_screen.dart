@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:google_sign_in_web/web_only.dart' as google_web;
 
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/auth_api.dart';
 import '../data/auth_session_store.dart';
+import 'web_google_button.dart';
 
 class ChessVerseAuthResult {
   const ChessVerseAuthResult({
@@ -268,7 +268,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             Expanded(
                               child: kIsWeb
                                   ? Center(
-                                      child: google_web.renderButton(),
+                                      child: buildWebGoogleSignInButton(),
                                     )
                                   : OutlinedButton.icon(
                                       onPressed:
