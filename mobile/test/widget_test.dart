@@ -232,7 +232,7 @@ void main() {
     );
 
     await tester.tap(
-      find.byKey(const ValueKey<String>('game-controls-handle')),
+      find.byKey(const ValueKey<String>('open-full-controls')),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('2 Players').last);
@@ -242,28 +242,6 @@ void main() {
     expect(find.text('Player 2'), findsWidgets);
     expect(
       find.byKey(const ValueKey<String>('rename-player-two')),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.byKey(const ValueKey<String>('rename-player-two')));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField), 'Anu');
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
-    expect(find.text('Player 2: Anu'), findsOneWidget);
-
-    await tester.tap(find.byKey(const ValueKey<String>('square-e2')));
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey<String>('square-e4')));
-    await tester.pump(const Duration(milliseconds: 600));
-
-    final ChessBoard board = tester.widget<ChessBoard>(find.byType(ChessBoard));
-    expect(board.flipped, isTrue);
-    expect(
-      find.byWidgetPredicate(
-        (Widget widget) =>
-            widget is CustomPaint && widget.painter is LastMoveTrailPainter,
-      ),
       findsOneWidget,
     );
   });

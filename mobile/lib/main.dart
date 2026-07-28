@@ -1655,74 +1655,89 @@ class _GameScreenState extends State<GameScreen> {
                 onSquareTap: _handleSquareTap,
               );
 
-              final Widget panel = GamePanel(
-                compact: !wide ||
-                    constraints.maxHeight < 620 ||
-                    widePanelWidth < 340,
-                collapsible: true,
-                expanded: _controlsExpanded,
-                whitePlayerName: _whitePlayerName,
-                blackPlayerName: _blackPlayerName,
-                activeColor: _moves.length.isEven ? 'White' : 'Black',
-                gameMode: _gameMode,
-                aiLevel: _aiLevel.round(),
-                aiThinking: _aiThinking,
-                coachEnabled: _coachEnabled,
-                moves: _moves,
-                capturedWhite: _capturedWhite,
-                capturedBlack: _capturedBlack,
-                coachNote: _coachNote,
-                whiteClock: _formatClock(_whiteSeconds),
-                blackClock: _formatClock(_blackSeconds),
-                skin: _skin,
-                onSkinChanged: (BoardSkin skin) => setState(() => _skin = skin),
-                onGameModeChanged: _changeGameMode,
-                dailyDifficulty: _dailyDifficulty,
-                dailyProgress: _dailyPlayerMovesCompleted,
-                dailyGoal: _dailyChallenge.playerMoveGoal,
-                dailyMistakes: _dailyMistakes,
-                onDailyDifficultyChanged: _changeDailyDifficulty,
-                onAiLevelChanged: (double level) {
-                  setState(() => _aiLevel = level);
-                },
-                onCoachChanged: (bool value) {
-                  setState(() => _coachEnabled = value);
-                },
-                onNewGameRequested: _confirmNewGame,
-                onResign: _resignGame,
-                onOfferDraw: _offerDraw,
-                onMoveHistory: _showMoveHistory,
-                onUndo: _undo,
-                onHint: _showHint,
-                onAnalyze: _showAnalysis,
-                soundEnabled: _soundEnabled,
-                showCoordinates: _showCoordinates,
-                showMoveHints: _showMoveHints,
-                onSoundChanged: _setSoundEnabled,
-                onShowCoordinatesChanged: (bool value) {
-                  setState(() => _showCoordinates = value);
-                },
-                onShowMoveHintsChanged: (bool value) {
-                  setState(() => _showMoveHints = value);
-                },
-                onEditBlackPlayer: _editBlackPlayerName,
-                onToggleExpanded: () {
-                  setState(() => _controlsExpanded = !_controlsExpanded);
-                },
-                onLogout: _logout,
-                canUndo: _history.isNotEmpty,
-              );
+              Widget buildPanel({
+                ValueChanged<GameMode>? onModeChanged,
+              }) =>
+                  GamePanel(
+                    compact: !wide ||
+                        constraints.maxHeight < 620 ||
+                        widePanelWidth < 340,
+                    collapsible: true,
+                    expanded: _controlsExpanded,
+                    whitePlayerName: _whitePlayerName,
+                    blackPlayerName: _blackPlayerName,
+                    activeColor: _moves.length.isEven ? 'White' : 'Black',
+                    gameMode: _gameMode,
+                    aiLevel: _aiLevel.round(),
+                    aiThinking: _aiThinking,
+                    coachEnabled: _coachEnabled,
+                    moves: _moves,
+                    capturedWhite: _capturedWhite,
+                    capturedBlack: _capturedBlack,
+                    coachNote: _coachNote,
+                    whiteClock: _formatClock(_whiteSeconds),
+                    blackClock: _formatClock(_blackSeconds),
+                    skin: _skin,
+                    onSkinChanged: (BoardSkin skin) =>
+                        setState(() => _skin = skin),
+                    onGameModeChanged: onModeChanged ?? _changeGameMode,
+                    dailyDifficulty: _dailyDifficulty,
+                    dailyProgress: _dailyPlayerMovesCompleted,
+                    dailyGoal: _dailyChallenge.playerMoveGoal,
+                    dailyMistakes: _dailyMistakes,
+                    onDailyDifficultyChanged: _changeDailyDifficulty,
+                    onAiLevelChanged: (double level) {
+                      setState(() => _aiLevel = level);
+                    },
+                    onCoachChanged: (bool value) {
+                      setState(() => _coachEnabled = value);
+                    },
+                    onNewGameRequested: _confirmNewGame,
+                    onResign: _resignGame,
+                    onOfferDraw: _offerDraw,
+                    onMoveHistory: _showMoveHistory,
+                    onUndo: _undo,
+                    onHint: _showHint,
+                    onAnalyze: _showAnalysis,
+                    soundEnabled: _soundEnabled,
+                    showCoordinates: _showCoordinates,
+                    showMoveHints: _showMoveHints,
+                    onSoundChanged: _setSoundEnabled,
+                    onShowCoordinatesChanged: (bool value) {
+                      setState(() => _showCoordinates = value);
+                    },
+                    onShowMoveHintsChanged: (bool value) {
+                      setState(() => _showMoveHints = value);
+                    },
+                    onEditBlackPlayer: _editBlackPlayerName,
+                    onToggleExpanded: () {
+                      setState(() => _controlsExpanded = !_controlsExpanded);
+                    },
+                    onLogout: _logout,
+                    canUndo: _history.isNotEmpty,
+                  );
               void openFullControls() {
                 showModalBottomSheet<void>(
                   context: context,
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
-                  builder: (BuildContext sheetContext) => SafeArea(
-                    child: FractionallySizedBox(
-                      heightFactor: 0.92,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: panel,
+                  builder: (BuildContext sheetContext) => StatefulBuilder(
+                    builder: (
+                      BuildContext context,
+                      StateSetter setSheetState,
+                    ) =>
+                        SafeArea(
+                      child: FractionallySizedBox(
+                        heightFactor: 0.92,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: buildPanel(
+                            onModeChanged: (GameMode mode) {
+                              _changeGameMode(mode);
+                              setSheetState(() {});
+                            },
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -5972,6 +5987,7 @@ class _StudioCoachPanel extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       IconButton.filled(
+                        key: const ValueKey<String>('open-full-controls'),
                         tooltip: 'Game controls',
                         onPressed: onControls,
                         icon: const Icon(Icons.tune_rounded),
