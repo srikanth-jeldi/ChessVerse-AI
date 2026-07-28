@@ -1684,7 +1684,10 @@ class _GameScreenState extends State<GameScreen> {
                 aiThinking: _aiThinking,
                 coachEnabled: _coachEnabled,
                 coachNote: _coachNote,
-                moves: _moves,
+                lastMove: _moves.isEmpty ? null : _moves.first,
+                lastMoveOwner: _lastMovedPiece == null
+                    ? null
+                    : _moveOwnerLabel(_lastMovedPiece!),
                 dailyProgress: _dailyPlayerMovesCompleted,
                 dailyGoal: _dailyChallenge.playerMoveGoal,
                 canUndo: _history.isNotEmpty,
@@ -1719,6 +1722,7 @@ class _GameScreenState extends State<GameScreen> {
                                   soundEnabled: _soundEnabled,
                                   onSoundChanged: _setSoundEnabled,
                                   onHome: () => Navigator.of(context).pop(),
+                                  onDailyChallenge: _openDailyChallenge,
                                   onProfile: _openProfile,
                                 ),
                               ),
@@ -1778,6 +1782,7 @@ class _GameScreenState extends State<GameScreen> {
                             CompactHeader(
                               playerName: _whitePlayerName,
                               onHome: () => Navigator.of(context).pop(),
+                              onDailyChallenge: _openDailyChallenge,
                               onProfile: _openProfile,
                               onReset: _confirmNewGame,
                               onLogout: _logout,
@@ -1792,8 +1797,7 @@ class _GameScreenState extends State<GameScreen> {
                             ),
                             const SizedBox(height: 8),
                             Expanded(
-                              key:
-                                  const ValueKey<String>('mobile-ai-coach'),
+                              key: const ValueKey<String>('mobile-ai-coach'),
                               child: studioCoach,
                             ),
                           ],
@@ -2336,6 +2340,24 @@ class _GameScreenState extends State<GameScreen> {
       _applyPlayerSideNames(_playerDisplayName);
     });
     _reset();
+  }
+
+  void _openDailyChallenge() {
+    if (_gameMode == GameMode.daily) {
+      _confirmNewGame();
+      return;
+    }
+    _changeGameMode(GameMode.daily);
+  }
+
+  String _moveOwnerLabel(ChessPiece piece) {
+    if (_gameMode == GameMode.local) {
+      return piece.white ? 'White move' : 'Black move';
+    }
+    if (_gameMode == GameMode.daily) {
+      return piece.white ? 'Your move' : 'Puzzle reply';
+    }
+    return piece.white == _humanPlaysWhite ? 'Your move' : 'ChessVerse AI move';
   }
 
   String get _playerDisplayName {
@@ -3951,6 +3973,7 @@ class CompactHeader extends StatelessWidget {
   const CompactHeader({
     required this.playerName,
     required this.onHome,
+    required this.onDailyChallenge,
     required this.onProfile,
     required this.onReset,
     required this.onLogout,
@@ -3959,6 +3982,7 @@ class CompactHeader extends StatelessWidget {
 
   final String playerName;
   final VoidCallback onHome;
+  final VoidCallback onDailyChallenge;
   final VoidCallback onProfile;
   final VoidCallback onReset;
   final VoidCallback onLogout;
@@ -3980,6 +4004,11 @@ class CompactHeader extends StatelessWidget {
           tooltip: 'Home',
           onPressed: onHome,
           icon: const Icon(Icons.home_rounded),
+        ),
+        IconButton(
+          tooltip: 'Daily challenge',
+          onPressed: onDailyChallenge,
+          icon: const Icon(Icons.local_fire_department_rounded),
         ),
         IconButton(
           tooltip: 'Profile',
@@ -4427,24 +4456,27 @@ class MoveAndCaptureOverlay extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (capturedPiece != null)
+                if (capturedPiece != null && impactProgress < 0.999)
                   Positioned(
                     left: target.dx,
                     top: target.dy,
                     width: cell,
                     height: cell,
-                    child: Transform.translate(
-                      offset: Offset(
-                        hitDirection * cell * 0.88 * impactProgress,
-                        -math.sin(math.pi * impactProgress) * cell * 1.25 +
-                            cell * 0.95 * impactProgress * impactProgress,
-                      ),
-                      child: Transform.rotate(
-                        angle: hitDirection * impactProgress * math.pi * 1.65,
-                        child: ChessCoin(
-                          piece: capturedPiece!,
-                          selected: false,
-                          accent: const Color(0xFFFF3158),
+                    child: Opacity(
+                      opacity: (1 - impactProgress).clamp(0.0, 1.0),
+                      child: Transform.translate(
+                        offset: Offset(
+                          hitDirection * cell * 0.88 * impactProgress,
+                          -math.sin(math.pi * impactProgress) * cell * 1.25 +
+                              cell * 0.95 * impactProgress * impactProgress,
+                        ),
+                        child: Transform.rotate(
+                          angle: hitDirection * impactProgress * math.pi * 1.65,
+                          child: ChessCoin(
+                            piece: capturedPiece!,
+                            selected: false,
+                            accent: const Color(0xFFFF3158),
+                          ),
                         ),
                       ),
                     ),
@@ -5171,6 +5203,7 @@ class _GameStudioHeader extends StatelessWidget {
     required this.soundEnabled,
     required this.onSoundChanged,
     required this.onHome,
+    required this.onDailyChallenge,
     required this.onProfile,
   });
 
@@ -5179,6 +5212,7 @@ class _GameStudioHeader extends StatelessWidget {
   final bool soundEnabled;
   final ValueChanged<bool> onSoundChanged;
   final VoidCallback onHome;
+  final VoidCallback onDailyChallenge;
   final VoidCallback onProfile;
 
   @override
@@ -5231,31 +5265,46 @@ class _GameStudioHeader extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            const Icon(
-              Icons.calendar_month_rounded,
-              color: Color(0xFFF2C46D),
-              size: 28,
-            ),
-            const SizedBox(width: 12),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Color(0xFFF2C46D),
-                    fontFamily: 'serif',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
+            InkWell(
+              onTap: onDailyChallenge,
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                child: Row(
+                  children: <Widget>[
+                    const Icon(
+                      Icons.calendar_month_rounded,
+                      color: Color(0xFFF2C46D),
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: Color(0xFFF2C46D),
+                            fontFamily: 'serif',
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        if (!compact)
+                          const Text(
+                            'Tap for today\'s challenge',
+                            style: TextStyle(
+                              color: Color(0xFFC7C1B8),
+                              fontSize: 12,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
-                if (!compact)
-                  const Text(
-                    'Sharpen your mind. One move at a time.',
-                    style: TextStyle(color: Color(0xFFC7C1B8), fontSize: 12),
-                  ),
-              ],
+              ),
             ),
             const Spacer(),
             IconButton.outlined(
@@ -5432,7 +5481,8 @@ class _StudioCoachPanel extends StatelessWidget {
     required this.aiThinking,
     required this.coachEnabled,
     required this.coachNote,
-    required this.moves,
+    required this.lastMove,
+    required this.lastMoveOwner,
     required this.dailyProgress,
     required this.dailyGoal,
     required this.canUndo,
@@ -5448,7 +5498,8 @@ class _StudioCoachPanel extends StatelessWidget {
   final bool aiThinking;
   final bool coachEnabled;
   final String coachNote;
-  final List<String> moves;
+  final String? lastMove;
+  final String? lastMoveOwner;
   final int dailyProgress;
   final int dailyGoal;
   final bool canUndo;
@@ -5472,10 +5523,9 @@ class _StudioCoachPanel extends StatelessWidget {
       GameMode.local => 'Outplay your opponent',
       GameMode.online => 'Online mode coming soon',
     };
-    final String lastMove = moves.isEmpty ? 'Choose a piece' : moves.first;
     final int progress = gameMode == GameMode.daily
         ? dailyProgress.clamp(0, dailyGoal)
-        : math.min(moves.length, 3);
+        : (lastMove == null ? 0 : 1);
     final int goalSteps = gameMode == GameMode.daily ? dailyGoal : 3;
 
     return LayoutBuilder(
@@ -5554,12 +5604,16 @@ class _StudioCoachPanel extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: compact ? 7 : 10),
-                  const _CoachInsightCard(
+                  _CoachInsightCard(
                     icon: Icons.help_outline_rounded,
-                    accent: Color(0xFF9C6CFF),
+                    accent: const Color(0xFF9C6CFF),
                     child: Text(
-                      'Why this move?',
-                      style: TextStyle(
+                      coachEnabled
+                          ? coachNote
+                          : 'Enable Coach in Game controls for a position-specific explanation.',
+                      maxLines: compact ? 2 : 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
                       ),
@@ -5572,7 +5626,9 @@ class _StudioCoachPanel extends StatelessWidget {
                     child: Text(
                       aiThinking
                           ? 'ChessVerse AI is calculating…'
-                          : 'Your move: $lastMove',
+                          : lastMove == null
+                              ? 'Select a piece to begin'
+                              : '${lastMoveOwner ?? 'Last move'}: $lastMove',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
