@@ -46,6 +46,19 @@ void main() {
     expect(ChessRules.isCheckmate(false, pieces), isTrue);
   });
 
+  test('shared rules distinguish stalemate from checkmate', () {
+    final Map<String, ChessPiece> pieces = <String, ChessPiece>{
+      'c6': const ChessPiece('K', true),
+      'b6': const ChessPiece('Q', true),
+      'a8': const ChessPiece('K', false),
+    };
+
+    expect(ChessRules.isKingInCheck(false, pieces), isFalse);
+    expect(ChessRules.hasAnySafeMove(false, pieces), isFalse);
+    expect(ChessRules.isStalemate(false, pieces), isTrue);
+    expect(ChessRules.isCheckmate(false, pieces), isFalse);
+  });
+
   testWidgets('shows branded splash before onboarding and account access', (
     WidgetTester tester,
   ) async {

@@ -8,7 +8,9 @@ import '../../../core/widgets/chessverse_card.dart';
 import '../../legal/presentation/legal_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, required this.onLogout});
+
+  final Future<void> Function() onLogout;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -20,6 +22,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _coachEnabled = true;
   bool _animationsEnabled = true;
   bool _coordinatesEnabled = true;
+  bool _loggingOut = false;
 
   @override
   Widget build(BuildContext context) {
@@ -133,10 +136,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 18),
             ChessVerseButton(
-              label: 'Logout preview',
+              label: _loggingOut ? 'Signing out...' : 'Logout',
               icon: Icons.logout_rounded,
-              onPressed: () => _showMessage(
-                  context, 'Logout will be connected to real auth later.'),
+              onPressed: _loggingOut ? null : () => _confirmLogout(context),
             ),
           ],
         ),
@@ -144,9 +146,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+  Future<void> _confirmLogout(BuildContext context) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: const Text('Log out of ChessVerse?'),
+        content: const Text(
+          'Your saved account progress will remain available when you sign in again.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            icon: const Icon(Icons.logout_rounded),
+            label: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _loggingOut = true);
+    await widget.onLogout();
+    if (mounted) {
+      setState(() => _loggingOut = false);
+    }
   }
 
   void _openLegal(BuildContext context, LegalPageType type) {

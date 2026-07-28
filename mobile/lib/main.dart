@@ -168,7 +168,10 @@ class _SplashGateState extends State<SplashGate> {
                 isGuest: _isGuest,
               ),
             ),
-            onSettings: () => _push(context, const SettingsScreen()),
+            onSettings: () => _push(
+              context,
+              SettingsScreen(onLogout: () => _logout(context)),
+            ),
           ),
       },
     );
@@ -271,8 +274,36 @@ class _SplashGateState extends State<SplashGate> {
         initialEmail: _email,
         initiallyGuest: _isGuest,
         initialSideChoice: sideChoice,
+        onLogout: () => _logout(context),
       ),
     );
+  }
+
+  Future<void> _logout(BuildContext currentRouteContext) async {
+    const AuthSessionStore sessionStore = AuthSessionStore();
+    const AuthApi authApi = AuthApi();
+    final StoredAuthSession? session = await sessionStore.read();
+    if (session != null) {
+      try {
+        await authApi.logout(session.token);
+      } on AuthApiException {
+        // A local logout must still succeed if the remote session expired.
+      }
+    }
+    await sessionStore.clear();
+    if (!mounted) return;
+
+    if (currentRouteContext.mounted &&
+        Navigator.of(currentRouteContext).canPop()) {
+      Navigator.of(currentRouteContext).pop();
+    }
+    setState(() {
+      _playerName = 'ChessVerse Player';
+      _username = null;
+      _email = null;
+      _isGuest = true;
+      _stage = _RootStage.auth;
+    });
   }
 
   void _push(BuildContext context, Widget screen) {
@@ -1313,6 +1344,7 @@ class GameScreen extends StatefulWidget {
     this.initialEmail,
     this.initiallyGuest = true,
     this.initialSideChoice = PlayerSideChoice.white,
+    this.onLogout,
     super.key,
   });
 
@@ -1324,6 +1356,7 @@ class GameScreen extends StatefulWidget {
   final String? initialEmail;
   final bool initiallyGuest;
   final PlayerSideChoice initialSideChoice;
+  final Future<void> Function()? onLogout;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -2308,6 +2341,12 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _logout() async {
+    final Future<void> Function()? onLogout = widget.onLogout;
+    if (onLogout != null) {
+      await onLogout();
+      return;
+    }
+
     final String? token = _authToken;
     if (token != null) {
       await _authApi.logout(token);
@@ -2425,6 +2464,16 @@ class _GameScreenState extends State<GameScreen> {
       }
     }
     return false;
+  }
+
+  bool _isCheckmateFor(bool white) {
+    return ChessRules.isKingInCheck(white, _pieces) &&
+        !_hasAnyLegalMove(white);
+  }
+
+  bool _isStalemateFor(bool white) {
+    return !ChessRules.isKingInCheck(white, _pieces) &&
+        !_hasAnyLegalMove(white);
   }
 
   String _moveFeedback({
@@ -2843,9 +2892,7 @@ class _GameScreenState extends State<GameScreen> {
             _coachNote = '$moveFeedback $_coachNote';
           }
           if (_gameMode == GameMode.daily) {
-            final bool opponentMated =
-                ChessRules.isKingInCheck(!piece.white, _pieces) &&
-                    !_hasAnyLegalMove(!piece.white);
+            final bool opponentMated = _isCheckmateFor(!piece.white);
             if (opponentMated) {
               _completeDailyChallenge();
             } else if (_dailyPlayerMovesCompleted >=
@@ -3080,7 +3127,7 @@ class _GameScreenState extends State<GameScreen> {
       setState(() {
         _aiThinking = false;
         _coachNote = _gameStateNote(
-          false,
+          aiPlaysWhite,
           fallback: 'ChessVerse AI has no legal move.',
         );
       });
@@ -3858,8 +3905,11 @@ class _GameScreenState extends State<GameScreen> {
 
   String _gameStateNote(bool sideToMoveWhite, {required String fallback}) {
     final bool inCheck = ChessRules.isKingInCheck(sideToMoveWhite, _pieces);
-    final bool checkmate = ChessRules.isCheckmate(sideToMoveWhite, _pieces);
-    final bool stalemate = ChessRules.isStalemate(sideToMoveWhite, _pieces);
+    // Terminal results must use the exact same legal-move source as the board.
+    // This includes castling and en passant, which the stateless ChessRules
+    // helpers cannot infer without this game's move history.
+    final bool checkmate = _isCheckmateFor(sideToMoveWhite);
+    final bool stalemate = _isStalemateFor(sideToMoveWhite);
     final String side = sideToMoveWhite ? 'White' : 'Black';
 
     if (inCheck && !_checkWarningActive) {
