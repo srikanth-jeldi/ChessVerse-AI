@@ -243,7 +243,7 @@ void main() {
 
   testWidgets('screen gallery - settings', (WidgetTester tester) async {
     await _setPhone(tester);
-    await tester.pumpWidget(_app(const SettingsScreen()));
+    await tester.pumpWidget(_app(SettingsScreen(onLogout: () async {})));
     await tester.pumpAndSettle();
     await expectLater(
       find.byType(SettingsScreen),
