@@ -4202,7 +4202,7 @@ class BoardStage extends StatelessWidget {
   }
 }
 
-class ChessBoard extends StatelessWidget {
+class ChessBoard extends StatefulWidget {
   const ChessBoard({
     required this.pieces,
     required this.selectedSquare,
@@ -4239,7 +4239,86 @@ class ChessBoard extends StatelessWidget {
   final ValueChanged<String> onSquareTap;
 
   @override
+  State<ChessBoard> createState() => _ChessBoardState();
+}
+
+class _ChessBoardState extends State<ChessBoard> {
+  Timer? _animationTimer;
+  String? _activeMoveToken;
+
+  String? _moveToken(ChessBoard board) {
+    final ChessPiece? moved = board.lastMovedPiece;
+    if (board.lastFromSquare == null ||
+        board.lastToSquare == null ||
+        moved == null) {
+      return null;
+    }
+    final ChessPiece? captured = board.lastCapturedPiece;
+    return '${board.moveSequence}:${board.lastFromSquare}:'
+        '${board.lastToSquare}:${moved.white}:${moved.code}:'
+        '${captured?.white}:${captured?.code}';
+  }
+
+  void _stopAnimation() {
+    _animationTimer?.cancel();
+    _animationTimer = null;
+    _activeMoveToken = null;
+  }
+
+  void _startAnimation(String token) {
+    _animationTimer?.cancel();
+    setState(() => _activeMoveToken = token);
+    _animationTimer = Timer(
+      Duration(
+        milliseconds: widget.lastCapturedPiece == null ? 400 : 520,
+      ),
+      () {
+        if (!mounted || _activeMoveToken != token) {
+          return;
+        }
+        setState(() => _activeMoveToken = null);
+      },
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant ChessBoard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final String? oldToken = _moveToken(oldWidget);
+    final String? newToken = _moveToken(widget);
+    if (newToken == null) {
+      _stopAnimation();
+    } else if (newToken != oldToken) {
+      _startAnimation(newToken);
+    }
+  }
+
+  @override
+  void dispose() {
+    _animationTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final Map<String, ChessPiece> pieces = widget.pieces;
+    final String? selectedSquare = widget.selectedSquare;
+    final Set<String> legalTargets = widget.legalTargets;
+    final String? lastFromSquare = widget.lastFromSquare;
+    final String? lastToSquare = widget.lastToSquare;
+    final String? lastCaptureSquare = widget.lastCaptureSquare;
+    final ChessPiece? lastMovedPiece = widget.lastMovedPiece;
+    final ChessPiece? lastCapturedPiece = widget.lastCapturedPiece;
+    final int moveSequence = widget.moveSequence;
+    final String? checkedKingSquare = widget.checkedKingSquare;
+    final String? decisiveSquare = widget.decisiveSquare;
+    final bool flipped = widget.flipped;
+    final bool showCoordinates = widget.showCoordinates;
+    final BoardPalette palette = widget.palette;
+    final ValueChanged<String> onSquareTap = widget.onSquareTap;
+    final bool moveAnimating =
+        _activeMoveToken != null && _activeMoveToken == _moveToken(widget);
+
     return AspectRatio(
       aspectRatio: 1,
       child: ClipRRect(
@@ -4260,7 +4339,10 @@ class ChessBoard extends StatelessWidget {
                 final String square = '${String.fromCharCode(97 + file)}$rank';
                 final bool dark = (row + col).isOdd;
                 final bool selected = square == selectedSquare;
-                final ChessPiece? piece = pieces[square];
+                final ChessPiece? piece =
+                    moveAnimating && square == lastToSquare
+                        ? null
+                        : pieces[square];
                 final bool legalTarget = legalTargets.contains(square);
                 final bool captureTarget =
                     legalTarget && piece != null && square != selectedSquare;
@@ -4329,8 +4411,8 @@ class ChessBoard extends StatelessWidget {
                         (BuildContext context, double progress, Widget? child) {
                       return CustomPaint(
                         painter: LastMoveTrailPainter(
-                          from: lastFromSquare!,
-                          to: lastToSquare!,
+                          from: lastFromSquare,
+                          to: lastToSquare,
                           flipped: flipped,
                           progress: progress,
                           accent: palette.accent,
@@ -4340,7 +4422,8 @@ class ChessBoard extends StatelessWidget {
                   ),
                 ),
               ),
-            if (lastFromSquare != null &&
+            if (moveAnimating &&
+                lastFromSquare != null &&
                 lastToSquare != null &&
                 lastMovedPiece != null)
               Positioned.fill(
@@ -4348,13 +4431,13 @@ class ChessBoard extends StatelessWidget {
                   child: MoveAndCaptureOverlay(
                     key: ValueKey<String>(
                       'move-overlay-$lastFromSquare-$lastToSquare-'
-                      '${lastMovedPiece!.white}-${lastMovedPiece!.code}-'
+                      '${lastMovedPiece.white}-${lastMovedPiece.code}-'
                       '${lastCapturedPiece?.code}-$moveSequence',
                     ),
-                    from: lastFromSquare!,
-                    to: lastToSquare!,
+                    from: lastFromSquare,
+                    to: lastToSquare,
                     flipped: flipped,
-                    movedPiece: lastMovedPiece!,
+                    movedPiece: lastMovedPiece,
                     capturedPiece: lastCapturedPiece,
                   ),
                 ),
@@ -4518,6 +4601,9 @@ class MoveAndCaptureOverlay extends StatelessWidget {
               clipBehavior: Clip.none,
               children: <Widget>[
                 Positioned(
+                  key: ValueKey<String>(
+                    'moving-piece-${movedPiece.white}-${movedPiece.code}',
+                  ),
                   left: travel.dx,
                   top: travel.dy + lift,
                   width: cell,
@@ -4533,6 +4619,10 @@ class MoveAndCaptureOverlay extends StatelessWidget {
                 ),
                 if (capturedPiece != null && impactProgress < 0.999)
                   Positioned(
+                    key: ValueKey<String>(
+                      'captured-piece-${capturedPiece!.white}-'
+                      '${capturedPiece!.code}',
+                    ),
                     left: target.dx,
                     top: target.dy,
                     width: cell,
