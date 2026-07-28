@@ -49,6 +49,9 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _googleInitialized = false;
   String? _message;
   String? _error;
+  DateTime? _verificationExpiresAt;
+  DateTime? _resendAvailableAt;
+  Timer? _verificationTimer;
 
   final TextEditingController _userIdController = TextEditingController();
   final TextEditingController _displayNameController = TextEditingController();
@@ -62,13 +65,26 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   void initState() {
     super.initState();
+    unawaited(_restoreRememberMePreference());
     if (kIsWeb) {
       unawaited(_initializeGoogleForWeb());
     }
   }
 
+  Future<void> _restoreRememberMePreference() async {
+    final bool rememberMe = await _sessionStore.rememberMeEnabled();
+    if (mounted) setState(() => _rememberMe = rememberMe);
+  }
+
+  Future<void> _setRememberMe(bool value) async {
+    setState(() => _rememberMe = value);
+    await _sessionStore.setRememberMe(value);
+    if (!value) await _sessionStore.clearSession();
+  }
+
   @override
   void dispose() {
+    _verificationTimer?.cancel();
     unawaited(_googleAuthenticationSubscription?.cancel());
     _userIdController.dispose();
     _displayNameController.dispose();
@@ -187,7 +203,25 @@ class _AuthScreenState extends State<AuthScreen> {
                             label: 'Verification code',
                             icon: Icons.verified_outlined,
                             keyboardType: TextInputType.number,
+                            maxLength: 6,
                             onSubmitted: (_) => _submit(),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: <Widget>[
+                              Expanded(
+                                child: Text(
+                                  _verificationStatusText,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: _loading || !_canResendVerification
+                                    ? null
+                                    : _resendVerificationCode,
+                                child: const Text('Resend code'),
+                              ),
+                            ],
                           ),
                         ] else if (!_loginMode) ...<Widget>[
                           _AuthField(
@@ -226,8 +260,8 @@ class _AuthScreenState extends State<AuthScreen> {
                                 value: _rememberMe,
                                 onChanged: _loading
                                     ? null
-                                    : (bool? value) => setState(
-                                          () => _rememberMe = value ?? true,
+                                    : (bool? value) => unawaited(
+                                          _setRememberMe(value ?? true),
                                         ),
                               ),
                               const Expanded(child: Text('Remember me')),
@@ -483,7 +517,8 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
       );
     } else {
-      await _sessionStore.clear();
+      await _sessionStore.setRememberMe(false);
+      await _sessionStore.clearSession();
     }
     if (!mounted) return;
     widget.onAuthenticated(
@@ -512,6 +547,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _submit() async {
+    if (!_validateCurrentForm()) return;
     setState(() {
       _loading = true;
       _error = null;
@@ -550,6 +586,7 @@ class _AuthScreenState extends State<AuthScreen> {
           _message = data['message'] as String? ??
               'Verification code sent. Check your email.';
           _verificationMode = true;
+          _applyVerificationTiming(data);
         });
       }
     } on AuthApiException catch (error) {
@@ -563,10 +600,110 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  Future<void> _forgotPassword() async {
-    if (_emailController.text.trim().isEmpty) {
+  bool _validateCurrentForm() {
+    if (_verificationMode) {
+      if (!RegExp(r'^\d{6}$')
+          .hasMatch(_verificationCodeController.text.trim())) {
+        setState(() => _error = 'Enter the complete 6-digit code.');
+        return false;
+      }
+      return true;
+    }
+    if (_loginMode) {
+      if (_emailController.text.trim().isEmpty ||
+          _passwordController.text.isEmpty) {
+        setState(() => _error = 'Enter your user ID/email and password.');
+        return false;
+      }
+      return true;
+    }
+
+    final String username = _userIdController.text.trim();
+    final String displayName = _displayNameController.text.trim();
+    final String email = _emailController.text.trim();
+    final String password = _passwordController.text;
+    if (!RegExp(r'^[A-Za-z0-9_.-]{3,40}$').hasMatch(username)) {
+      setState(() => _error =
+          'User ID must be 3–40 characters using letters, numbers, dot, dash or underscore.');
+      return false;
+    }
+    if (displayName.length < 2) {
       setState(
-          () => _error = 'Enter your email first, then tap Forgot password.');
+          () => _error = 'Player name must contain at least 2 characters.');
+      return false;
+    }
+    if (!email.contains('@') || !email.contains('.')) {
+      setState(() => _error = 'Enter a valid email address.');
+      return false;
+    }
+    if (password.length < 8 || password.length > 72) {
+      setState(() => _error = 'Password must contain 8–72 characters.');
+      return false;
+    }
+    return true;
+  }
+
+  void _applyVerificationTiming(Map<String, dynamic> data) {
+    _verificationExpiresAt =
+        DateTime.tryParse(data['expiresAt'] as String? ?? '')?.toLocal();
+    _resendAvailableAt = DateTime.now().add(const Duration(seconds: 60));
+    _verificationTimer?.cancel();
+    _verificationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  bool get _canResendVerification {
+    final DateTime? availableAt = _resendAvailableAt;
+    return availableAt == null || !DateTime.now().isBefore(availableAt);
+  }
+
+  String get _verificationStatusText {
+    final DateTime now = DateTime.now();
+    final DateTime? resendAt = _resendAvailableAt;
+    if (resendAt != null && now.isBefore(resendAt)) {
+      return 'Resend available in ${resendAt.difference(now).inSeconds + 1}s';
+    }
+    final DateTime? expiresAt = _verificationExpiresAt;
+    if (expiresAt == null) return 'Code expires in 10 minutes.';
+    final Duration remaining = expiresAt.difference(now);
+    if (remaining.isNegative) return 'Code expired. Request a new code.';
+    final int minutes = remaining.inMinutes;
+    final int seconds = remaining.inSeconds.remainder(60);
+    return 'Code expires in $minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _resendVerificationCode() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+      _message = null;
+    });
+    try {
+      final Map<String, dynamic> data = await _authApi.post(
+        'resend-verification',
+        <String, String>{'email': _emailController.text.trim()},
+      );
+      if (!mounted) return;
+      setState(() {
+        _verificationCodeController.clear();
+        _message = data['message'] as String? ?? 'A new code was sent.';
+        _applyVerificationTiming(data);
+      });
+    } on AuthApiException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _forgotPassword() async {
+    final String email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(
+        () => _error =
+            'Enter your registered email first, then tap Forgot password.',
+      );
       return;
     }
     setState(() {
@@ -576,17 +713,149 @@ class _AuthScreenState extends State<AuthScreen> {
     });
     try {
       await _authApi.post(
-        'forgot-password',
-        <String, String>{'email': _emailController.text.trim()},
+        'password/forgot',
+        <String, String>{'email': email},
       );
-      setState(() =>
-          _message = 'If that account exists, a reset code has been sent.');
+      if (!mounted) return;
+      setState(
+        () => _message = 'If that account exists, a reset code has been sent.',
+      );
+      await _showPasswordResetDialog(email);
     } on AuthApiException catch (error) {
-      setState(() => _error = error.message);
+      if (mounted) setState(() => _error = error.message);
     } finally {
       if (mounted) {
         setState(() => _loading = false);
       }
+    }
+  }
+
+  Future<void> _showPasswordResetDialog(String email) async {
+    final TextEditingController codeController = TextEditingController();
+    final TextEditingController newPasswordController = TextEditingController();
+    String? dialogError;
+    bool submitting = false;
+
+    final bool? passwordUpdated = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) => StatefulBuilder(
+        builder: (BuildContext context, StateSetter setDialogState) =>
+            AlertDialog(
+          title: const Text('Reset password'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Text('Enter the 6-digit reset code sent to $email.'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: codeController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  decoration: const InputDecoration(
+                    labelText: 'Reset code',
+                    prefixIcon: Icon(Icons.pin_outlined),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: newPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'New password',
+                    helperText: 'Use at least 8 characters.',
+                    prefixIcon: Icon(Icons.lock_reset_rounded),
+                  ),
+                ),
+                if (dialogError != null) ...<Widget>[
+                  const SizedBox(height: 12),
+                  Text(
+                    dialogError!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: submitting
+                  ? null
+                  : () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      final String code = codeController.text.trim();
+                      final String newPassword = newPasswordController.text;
+                      if (!RegExp(r'^\d{6}$').hasMatch(code)) {
+                        setDialogState(
+                          () =>
+                              dialogError = 'Enter the complete 6-digit code.',
+                        );
+                        return;
+                      }
+                      if (newPassword.length < 8) {
+                        setDialogState(
+                          () => dialogError =
+                              'New password must contain at least 8 characters.',
+                        );
+                        return;
+                      }
+                      setDialogState(() {
+                        submitting = true;
+                        dialogError = null;
+                      });
+                      try {
+                        await _authApi.post(
+                          'password/reset',
+                          <String, String>{
+                            'email': email,
+                            'code': code,
+                            'newPassword': newPassword,
+                          },
+                        );
+                        if (dialogContext.mounted) {
+                          Navigator.of(dialogContext).pop(true);
+                        }
+                      } on AuthApiException catch (error) {
+                        if (dialogContext.mounted) {
+                          setDialogState(() {
+                            submitting = false;
+                            dialogError = error.message;
+                          });
+                        }
+                      }
+                    },
+              child: submitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Update password'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    codeController.dispose();
+    newPasswordController.dispose();
+    if (passwordUpdated == true && mounted) {
+      _passwordController.clear();
+      setState(() {
+        _message = 'Password updated. Sign in with your new password.';
+        _error = null;
+      });
     }
   }
 }
@@ -599,6 +868,7 @@ class _AuthField extends StatelessWidget {
     this.keyboardType,
     this.obscureText = false,
     this.onSubmitted,
+    this.maxLength,
   });
 
   final TextEditingController controller;
@@ -607,6 +877,7 @@ class _AuthField extends StatelessWidget {
   final TextInputType? keyboardType;
   final bool obscureText;
   final ValueChanged<String>? onSubmitted;
+  final int? maxLength;
 
   @override
   Widget build(BuildContext context) {
@@ -615,6 +886,7 @@ class _AuthField extends StatelessWidget {
       keyboardType: keyboardType,
       obscureText: obscureText,
       onSubmitted: onSubmitted,
+      maxLength: maxLength,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),
