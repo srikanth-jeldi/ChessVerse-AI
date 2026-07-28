@@ -116,7 +116,7 @@ class PreviewShell extends StatelessWidget {
   }
 
   void _openSettings(BuildContext context) {
-    _push(context, const SettingsScreen());
+    _push(context, SettingsScreen(onLogout: () async {}));
   }
 
   void _push(BuildContext context, Widget screen) {
@@ -164,7 +164,7 @@ class _PreviewGameLauncherState extends State<_PreviewGameLauncher> {
   void _openSettings(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => const SettingsScreen(),
+        builder: (_) => SettingsScreen(onLogout: () async {}),
       ),
     );
   }

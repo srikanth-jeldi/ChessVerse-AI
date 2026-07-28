@@ -860,6 +860,16 @@ enum GameMode { computer, daily, local, online }
 
 enum DailyChallengeDifficulty { easy, medium, hard }
 
+String dailyChallengeDateKey(DateTime date) {
+  return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
+}
+
+int dailyChallengePatternForDate(DateTime date) {
+  final DateTime day = DateTime(date.year, date.month, date.day);
+  return day.difference(DateTime(2026)).inDays % 7;
+}
+
 enum PlayerSideChoice { white, random, black }
 
 extension PlayerSideChoiceDetails on PlayerSideChoice {
@@ -878,15 +888,15 @@ extension PlayerSideChoiceDetails on PlayerSideChoice {
 
 extension DailyChallengeDifficultyDetails on DailyChallengeDifficulty {
   String get label => switch (this) {
-        DailyChallengeDifficulty.easy => 'Easy - mate in 4',
-        DailyChallengeDifficulty.medium => 'Medium - mate in 5',
-        DailyChallengeDifficulty.hard => 'Hard - mate in 7',
+        DailyChallengeDifficulty.easy => 'Easy - mate in 3',
+        DailyChallengeDifficulty.medium => 'Medium - mate in 4',
+        DailyChallengeDifficulty.hard => 'Hard - mate in 5',
       };
 
   int get moveGoal => switch (this) {
-        DailyChallengeDifficulty.easy => 4,
-        DailyChallengeDifficulty.medium => 5,
-        DailyChallengeDifficulty.hard => 7,
+        DailyChallengeDifficulty.easy => 3,
+        DailyChallengeDifficulty.medium => 4,
+        DailyChallengeDifficulty.hard => 5,
       };
 }
 
@@ -1881,6 +1891,9 @@ class _GameScreenState extends State<GameScreen> {
                             detail: _gameResultDetail ?? 'Game complete',
                             scoreLabel: _resultScoreLabel(),
                             onNewGame: _reset,
+                            onDismiss: () => setState(() {
+                              _resultVisible = false;
+                            }),
                             onReview: () => setState(() {
                               _resultVisible = false;
                             }),
@@ -2467,8 +2480,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   bool _isCheckmateFor(bool white) {
-    return ChessRules.isKingInCheck(white, _pieces) &&
-        !_hasAnyLegalMove(white);
+    return ChessRules.isKingInCheck(white, _pieces) && !_hasAnyLegalMove(white);
   }
 
   bool _isStalemateFor(bool white) {
@@ -2568,11 +2580,8 @@ class _GameScreenState extends State<GameScreen> {
 
   DailyChallenge _challengeForToday(DailyChallengeDifficulty difficulty) {
     final DateTime today = DateTime.now();
-    final DateTime dayKey = DateTime(today.year, today.month, today.day);
-    final int seed = dayKey.difference(DateTime(2026)).inDays;
-    final int pattern = seed % 7;
-    final String date =
-        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    final int pattern = dailyChallengePatternForDate(today);
+    final String date = dailyChallengeDateKey(today);
     final String title = switch (pattern) {
       0 => 'Royal Net',
       1 => 'Back Rank Spark',
@@ -2637,12 +2646,13 @@ class _GameScreenState extends State<GameScreen> {
       // challenge feel locked because every normal move was rejected.
       'f4': const ChessPiece('K', true),
       'a1': const ChessPiece('Q', true),
-      'd3': const ChessPiece('B', true),
+      'c2': const ChessPiece('B', true),
       'h2': const ChessPiece('P', true),
       'b4': const ChessPiece('P', true),
       'g2': const ChessPiece('P', true),
       // Black king is boxed by its own pawns; the final Qxh7# is protected
-      // by the bishop on d3.
+      // by the bishop on c2. Keeping d3 empty also leaves the queen's
+      // a3-to-h3 forcing route unobstructed.
       'h8': const ChessPiece('K', false),
       'h7': const ChessPiece('P', false),
       'g7': const ChessPiece('P', false),
@@ -2654,13 +2664,13 @@ class _GameScreenState extends State<GameScreen> {
     // while preserving the verified mating line. Extra pawns are deliberately
     // placed outside the queen route and the black king's escape squares.
     const List<Map<String, bool>> dailyScenery = <Map<String, bool>>[
-      <String, bool>{'c2': true},
-      <String, bool>{'c2': true, 'd7': false},
+      <String, bool>{'d2': true},
+      <String, bool>{'f2': true, 'd7': false},
       <String, bool>{'e2': true, 'c7': false},
-      <String, bool>{'c3': true, 'f7': false},
+      <String, bool>{'f2': true, 'f7': false},
       <String, bool>{'d2': true, 'c6': false},
-      <String, bool>{'e3': true, 'd7': false},
-      <String, bool>{'c2': true, 'e7': false, 'f2': true},
+      <String, bool>{'e2': true, 'd7': false},
+      <String, bool>{'d2': true, 'e7': false, 'f2': true},
     ];
     for (final MapEntry<String, bool> entry
         in dailyScenery[challenge.pattern].entries) {
@@ -2704,9 +2714,11 @@ class _GameScreenState extends State<GameScreen> {
     }
     final int hours = remaining.inHours;
     final int minutes = remaining.inMinutes.remainder(60);
+    final int seconds = remaining.inSeconds.remainder(60);
     return 'Daily Checkmate complete. Next challenge unlocks in '
         '$hours ${hours == 1 ? 'hour' : 'hours'} '
-        '$minutes ${minutes == 1 ? 'minute' : 'minutes'}.';
+        '$minutes ${minutes == 1 ? 'minute' : 'minutes'} '
+        '$seconds ${seconds == 1 ? 'second' : 'seconds'}.';
   }
 
   Future<void> _editBlackPlayerName() async {
@@ -3013,7 +3025,20 @@ class _GameScreenState extends State<GameScreen> {
       return;
     }
     replies.sort((AiCandidate a, AiCandidate b) => b.score.compareTo(a.score));
-    final AiCandidate reply = replies.first;
+    AiCandidate reply = replies.first;
+    if (_dailyPlyIndex < _dailyChallenge.solution.length) {
+      final String plannedMove = _dailyChallenge.solution[_dailyPlyIndex];
+      if (plannedMove.length >= 4) {
+        final String plannedFrom = plannedMove.substring(0, 2);
+        final String plannedTo = plannedMove.substring(2, 4);
+        for (final AiCandidate candidate in replies) {
+          if (candidate.from == plannedFrom && candidate.to == plannedTo) {
+            reply = candidate;
+            break;
+          }
+        }
+      }
+    }
     final String from = reply.from;
     final String to = reply.to;
 
@@ -7650,6 +7675,7 @@ class GameResultOverlay extends StatelessWidget {
     required this.detail,
     required this.scoreLabel,
     required this.onNewGame,
+    required this.onDismiss,
     required this.onReview,
     super.key,
   });
@@ -7658,12 +7684,15 @@ class GameResultOverlay extends StatelessWidget {
   final String detail;
   final String scoreLabel;
   final VoidCallback onNewGame;
+  final VoidCallback onDismiss;
   final VoidCallback onReview;
 
   @override
   Widget build(BuildContext context) {
     final bool draw = title.toLowerCase().contains('draw');
     final bool missed = title.toLowerCase().contains('challenge missed');
+    final bool dailyComplete =
+        title.toLowerCase().contains('challenge complete');
     return ColoredBox(
       color: Colors.black.withValues(alpha: 0.72),
       child: SafeArea(
@@ -7751,9 +7780,20 @@ class GameResultOverlay extends StatelessWidget {
                             const SizedBox(width: 10),
                             Expanded(
                               child: FilledButton.icon(
-                                onPressed: onNewGame,
-                                icon: const Icon(Icons.refresh_rounded),
-                                label: Text(missed ? 'Try again' : 'New game'),
+                                onPressed:
+                                    dailyComplete ? onDismiss : onNewGame,
+                                icon: Icon(
+                                  dailyComplete
+                                      ? Icons.schedule_rounded
+                                      : Icons.refresh_rounded,
+                                ),
+                                label: Text(
+                                  dailyComplete
+                                      ? 'Done'
+                                      : missed
+                                          ? 'Try again'
+                                          : 'New game',
+                                ),
                               ),
                             ),
                           ],
@@ -7828,7 +7868,7 @@ class CapturedMaterial extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Text('Captured', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Row(
           children: <Widget>[
             Expanded(
