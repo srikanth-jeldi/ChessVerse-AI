@@ -168,7 +168,10 @@ class _SplashGateState extends State<SplashGate> {
                 isGuest: _isGuest,
               ),
             ),
-            onSettings: () => _push(context, const SettingsScreen()),
+            onSettings: () => _push(
+              context,
+              SettingsScreen(onLogout: () => _logout(context)),
+            ),
           ),
       },
     );
@@ -271,12 +274,12 @@ class _SplashGateState extends State<SplashGate> {
         initialEmail: _email,
         initiallyGuest: _isGuest,
         initialSideChoice: sideChoice,
-        onLogout: () => _logoutFromGame(context),
+        onLogout: () => _logout(context),
       ),
     );
   }
 
-  Future<void> _logoutFromGame(BuildContext gameContext) async {
+  Future<void> _logout(BuildContext currentRouteContext) async {
     const AuthSessionStore sessionStore = AuthSessionStore();
     const AuthApi authApi = AuthApi();
     final StoredAuthSession? session = await sessionStore.read();
@@ -290,8 +293,9 @@ class _SplashGateState extends State<SplashGate> {
     await sessionStore.clear();
     if (!mounted) return;
 
-    if (gameContext.mounted && Navigator.of(gameContext).canPop()) {
-      Navigator.of(gameContext).pop();
+    if (currentRouteContext.mounted &&
+        Navigator.of(currentRouteContext).canPop()) {
+      Navigator.of(currentRouteContext).pop();
     }
     setState(() {
       _playerName = 'ChessVerse Player';
