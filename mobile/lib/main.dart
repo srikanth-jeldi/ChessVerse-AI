@@ -1561,23 +1561,23 @@ class _GameScreenState extends State<GameScreen> {
               const EdgeInsets pagePadding = EdgeInsets.zero;
               final double availableHeight =
                   constraints.maxHeight - pagePadding.vertical;
+              final bool roomyLandscape = wide && constraints.maxHeight >= 690;
               final double mobileHeaderHeight = wide ? 0 : 58;
-              final double widePanelWidth = _controlsExpanded
-                  ? math.min(340, math.max(320, constraints.maxWidth * 0.26))
-                  : 84;
-              // Board geometry must not depend on whether the controls drawer
-              // is expanded. Reserve the drawer's full width at all times so
-              // opening it never shifts or resizes the board before rotation.
-              const double reservedWidePanelWidth = 340;
+              final double widePanelWidth = math.min(
+                460,
+                math.max(330, constraints.maxWidth * 0.34),
+              );
+              final double wideHeaderHeight = roomyLandscape ? 78 : 54;
+              final double wideDockHeight = roomyLandscape ? 126 : 0;
               final double portraitPanelMinimum = landscape ? 72 : 190;
               final double boardWidth = wide
                   ? constraints.maxWidth -
                       pagePadding.horizontal -
-                      reservedWidePanelWidth -
-                      10
+                      widePanelWidth -
+                      30
                   : constraints.maxWidth - pagePadding.horizontal;
               final double boardHeight = wide
-                  ? availableHeight
+                  ? availableHeight - wideHeaderHeight - wideDockHeight - 18
                   : availableHeight -
                       mobileHeaderHeight -
                       portraitPanelMinimum -
@@ -1671,44 +1671,74 @@ class _GameScreenState extends State<GameScreen> {
                   child: Stack(
                     fit: StackFit.expand,
                     children: <Widget>[
-                      if (wide) ...<Widget>[
-                        Positioned(
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          right: reservedWidePanelWidth +
-                              MediaQuery.viewPaddingOf(context).right +
-                              8,
-                          child: Align(
-                            alignment: Alignment.center,
-                            child: SizedBox(
-                              width: boardDimension,
-                              height: boardDimension,
-                              child: BoardStage(palette: palette, child: board),
-                            ),
+                      if (wide)
+                        Padding(
+                          padding: EdgeInsets.only(
+                            right: MediaQuery.viewPaddingOf(context).right,
                           ),
-                        ),
-                        Positioned(
-                          top: 0,
-                          right: MediaQuery.viewPaddingOf(context).right,
-                          bottom: 0,
-                          child: SizedBox(
-                            key: const ValueKey<String>(
-                              'landscape-game-controls',
-                            ),
-                            width: widePanelWidth,
-                            child: panel,
+                          child: Column(
+                            children: <Widget>[
+                              SizedBox(
+                                height: wideHeaderHeight,
+                                child: _GameStudioHeader(
+                                  gameMode: _gameMode,
+                                  playerName: _whitePlayerName,
+                                  soundEnabled: _soundEnabled,
+                                  onSoundChanged: _setSoundEnabled,
+                                  onHome: () => Navigator.of(context).pop(),
+                                  onProfile: _openProfile,
+                                ),
+                              ),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    18,
+                                    8,
+                                    18,
+                                    8,
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: <Widget>[
+                                      Expanded(
+                                        child: Align(
+                                          alignment: Alignment.center,
+                                          child: SizedBox.square(
+                                            dimension: boardDimension,
+                                            child: BoardStage(
+                                              palette: palette,
+                                              child: board,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 18),
+                                      SizedBox(
+                                        key: const ValueKey<String>(
+                                          'landscape-game-controls',
+                                        ),
+                                        width: widePanelWidth,
+                                        child: panel,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              if (roomyLandscape)
+                                SizedBox(
+                                  height: wideDockHeight,
+                                  child: _GameStudioDock(
+                                    moves: _moves,
+                                    capturedWhite: _capturedWhite,
+                                    capturedBlack: _capturedBlack,
+                                    onMoveHistory: _showMoveHistory,
+                                  ),
+                                ),
+                            ],
                           ),
-                        ),
-                        Positioned(
-                          left: 10,
-                          top: 10,
-                          child: _GameNavigationBar(
-                            onHome: () => Navigator.of(context).pop(),
-                            onProfile: _openProfile,
-                          ),
-                        ),
-                      ] else
+                        )
+                      else
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
@@ -3944,42 +3974,6 @@ class CompactHeader extends StatelessWidget {
   }
 }
 
-class _GameNavigationBar extends StatelessWidget {
-  const _GameNavigationBar({
-    required this.onHome,
-    required this.onProfile,
-  });
-
-  final VoidCallback onHome;
-  final VoidCallback onProfile;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A1713).withValues(alpha: 0.88),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFB88A3D)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          IconButton(
-            tooltip: 'Home',
-            onPressed: onHome,
-            icon: const Icon(Icons.home_rounded),
-          ),
-          IconButton(
-            tooltip: 'Profile',
-            onPressed: onProfile,
-            icon: const Icon(Icons.person_rounded),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class ChessVerseMark extends StatelessWidget {
   const ChessVerseMark({this.size = 38, super.key});
 
@@ -5139,6 +5133,267 @@ class PromotionChoice extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _GameStudioHeader extends StatelessWidget {
+  const _GameStudioHeader({
+    required this.gameMode,
+    required this.playerName,
+    required this.soundEnabled,
+    required this.onSoundChanged,
+    required this.onHome,
+    required this.onProfile,
+  });
+
+  final GameMode gameMode;
+  final String playerName;
+  final bool soundEnabled;
+  final ValueChanged<bool> onSoundChanged;
+  final VoidCallback onHome;
+  final VoidCallback onProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool compact = MediaQuery.sizeOf(context).width < 1050;
+    final String title = switch (gameMode) {
+      GameMode.daily => 'Daily Challenge',
+      GameMode.computer => 'AI Training',
+      GameMode.local => 'Local Match',
+      GameMode.online => 'Online Battle',
+    };
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFF071425).withValues(alpha: 0.96),
+        border: const Border(
+          bottom: BorderSide(color: Color(0xFFB47A2B)),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 22),
+        child: Row(
+          children: <Widget>[
+            InkWell(
+              onTap: onHome,
+              borderRadius: BorderRadius.circular(14),
+              child: Row(
+                children: <Widget>[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      'assets/branding/app_icon.png',
+                      width: 46,
+                      height: 46,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  if (!compact) ...<Widget>[
+                    const SizedBox(width: 12),
+                    const Text(
+                      'ChessVerse',
+                      style: TextStyle(
+                        color: Color(0xFFF2C46D),
+                        fontFamily: 'serif',
+                        fontSize: 25,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const Spacer(),
+            const Icon(
+              Icons.calendar_month_rounded,
+              color: Color(0xFFF2C46D),
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Color(0xFFF2C46D),
+                    fontFamily: 'serif',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                if (!compact)
+                  const Text(
+                    'Sharpen your mind. One move at a time.',
+                    style: TextStyle(color: Color(0xFFC7C1B8), fontSize: 12),
+                  ),
+              ],
+            ),
+            const Spacer(),
+            IconButton.outlined(
+              tooltip: soundEnabled ? 'Mute sounds' : 'Enable sounds',
+              onPressed: () => onSoundChanged(!soundEnabled),
+              icon: Icon(
+                soundEnabled
+                    ? Icons.volume_up_rounded
+                    : Icons.volume_off_rounded,
+              ),
+            ),
+            const SizedBox(width: 14),
+            if (compact)
+              IconButton.outlined(
+                tooltip: 'Profile',
+                onPressed: onProfile,
+                icon: const Icon(Icons.person_rounded),
+              )
+            else
+              OutlinedButton.icon(
+                onPressed: onProfile,
+                icon: const CircleAvatar(
+                  radius: 15,
+                  backgroundColor: Color(0xFF63D2B8),
+                  child: Icon(Icons.person_rounded, size: 19),
+                ),
+                label: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 150),
+                  child: Text(
+                    playerName,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GameStudioDock extends StatelessWidget {
+  const _GameStudioDock({
+    required this.moves,
+    required this.capturedWhite,
+    required this.capturedBlack,
+    required this.onMoveHistory,
+  });
+
+  final List<String> moves;
+  final List<ChessPiece> capturedWhite;
+  final List<ChessPiece> capturedBlack;
+  final VoidCallback onMoveHistory;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<String> recentMoves = moves.take(8).toList().reversed.toList();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 4, 18, 14),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: _StudioDockCard(
+              child: InkWell(
+                onTap: onMoveHistory,
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      const Row(
+                        children: <Widget>[
+                          Icon(Icons.format_list_bulleted_rounded, size: 18),
+                          SizedBox(width: 8),
+                          Text(
+                            'Move history',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: recentMoves.isEmpty
+                            ? const Text(
+                                'Your moves will appear here.',
+                                style: TextStyle(color: Color(0xFF9FA8B8)),
+                              )
+                            : ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: recentMoves.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 8),
+                                itemBuilder: (_, int index) => Container(
+                                  alignment: Alignment.center,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: index == recentMoves.length - 1
+                                        ? const Color(0xFF63D2B8)
+                                        : const Color(0xFF111C30),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: const Color(0xFF33415B),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    recentMoves[index],
+                                    style: TextStyle(
+                                      color: index == recentMoves.length - 1
+                                          ? const Color(0xFF061421)
+                                          : Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            flex: 2,
+            child: _StudioDockCard(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: CapturedMaterial(
+                  capturedWhite: capturedWhite,
+                  capturedBlack: capturedBlack,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StudioDockCard extends StatelessWidget {
+  const _StudioDockCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFF071425).withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF9D6B2A)),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.34),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: child,
     );
   }
 }
