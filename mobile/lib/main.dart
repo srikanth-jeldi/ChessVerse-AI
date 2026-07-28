@@ -18,6 +18,7 @@ import 'features/analysis/presentation/analysis_screen.dart';
 import 'features/home/presentation/home_dashboard_screen.dart';
 import 'features/library/presentation/reference_screens.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
+import 'features/online/data/online_match_api.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/tutorial/presentation/learn_chess_screen.dart';
@@ -1376,6 +1377,7 @@ class _GameScreenState extends State<GameScreen> {
   static const AuthApi _authApi = AuthApi();
   static const AuthSessionStore _sessionStore = AuthSessionStore();
   static const EngineApi _engineApi = EngineApi();
+  static const OnlineMatchApi _onlineApi = OnlineMatchApi();
   final math.Random _random = math.Random();
   AudioPlayer? _warningPlayer;
   final List<String> _moves = <String>[];
@@ -1384,6 +1386,9 @@ class _GameScreenState extends State<GameScreen> {
   final List<GameSnapshot> _history = <GameSnapshot>[];
   Timer? _clockTimer;
   Timer? _moveQualityTimer;
+  Timer? _onlinePollTimer;
+  OnlineMatchDto? _onlineMatch;
+  bool _onlineSubmitting = false;
   String? _selectedSquare;
   String? _lastFromSquare;
   String? _lastToSquare;
@@ -1556,6 +1561,7 @@ class _GameScreenState extends State<GameScreen> {
   void dispose() {
     _clockTimer?.cancel();
     _moveQualityTimer?.cancel();
+    _onlinePollTimer?.cancel();
     final AudioPlayer? warningPlayer = _warningPlayer;
     if (warningPlayer != null) {
       unawaited(warningPlayer.dispose());
@@ -2384,6 +2390,8 @@ class _GameScreenState extends State<GameScreen> {
       _showOnlineMatchmakingInfo();
       return;
     }
+    _onlinePollTimer?.cancel();
+    _onlineMatch = null;
     setState(() {
       _gameMode = mode;
       if (_gameMode == GameMode.daily) {
@@ -2428,7 +2436,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   bool _shouldFlipBoard(bool sideToMoveWhite) {
-    if (_gameMode == GameMode.computer) {
+    if (_gameMode == GameMode.computer || _gameMode == GameMode.online) {
       return !_humanPlaysWhite;
     }
     if (_gameMode == GameMode.local) {
@@ -2761,6 +2769,21 @@ class _GameScreenState extends State<GameScreen> {
     if (_gameResultTitle != null || _aiThinking) {
       return;
     }
+    final OnlineMatchDto? onlineMatch = _onlineMatch;
+    if (_gameMode == GameMode.online) {
+      if (onlineMatch == null || !onlineMatch.isActive) {
+        setState(() => _coachNote = 'Waiting for an online opponent.');
+        return;
+      }
+      if (_onlineSubmitting) {
+        return;
+      }
+      if (onlineMatch.activeColor.toLowerCase() !=
+          onlineMatch.yourColor.toLowerCase()) {
+        setState(() => _coachNote = _onlineStatusText(onlineMatch));
+        return;
+      }
+    }
     if (_gameMode == GameMode.daily && _dailyPlyIndex.isOdd) {
       _scheduleDailyReply();
       return;
@@ -2768,9 +2791,15 @@ class _GameScreenState extends State<GameScreen> {
     String? promotionSquare;
     bool? promotionWhite;
     bool moveCommitted = false;
+    String? onlineUci;
+    int? onlineExpectedPly;
 
     setState(() {
       final bool whitesTurn = _moves.length.isEven;
+      if (_gameMode == GameMode.online && whitesTurn != _humanPlaysWhite) {
+        _coachNote = 'Waiting for your opponent to move.';
+        return;
+      }
       if (_gameMode == GameMode.computer && whitesTurn != _humanPlaysWhite) {
         _coachNote = 'ChessVerse AI is calculating its reply.';
         return;
@@ -2854,6 +2883,16 @@ class _GameScreenState extends State<GameScreen> {
                     ? '$from$square'
                     : '$from x $square';
         _moves.insert(0, move);
+        if (_gameMode == GameMode.online) {
+          final bool promotes = piece.code == 'P' &&
+              ((piece.white && square.endsWith('8')) ||
+                  (!piece.white && square.endsWith('1')));
+          onlineUci = '$from$square${promotes ? 'q' : ''}';
+          onlineExpectedPly = onlineMatch?.plyCount;
+          if (promotes) {
+            _pieces[square] = ChessPiece('Q', piece.white);
+          }
+        }
         unawaited(
           ChessSoundService.instance.pieceMove(
             piece.code,
@@ -2883,7 +2922,8 @@ class _GameScreenState extends State<GameScreen> {
                 to: square,
                 captured: captured,
               );
-        if (piece.code == 'P' &&
+        if (_gameMode != GameMode.online &&
+            piece.code == 'P' &&
             ((piece.white && square.endsWith('8')) ||
                 (!piece.white && square.endsWith('1')))) {
           promotionSquare = square;
@@ -2925,7 +2965,13 @@ class _GameScreenState extends State<GameScreen> {
       if (_moveQualityText != null) {
         _scheduleMoveQualityDismiss();
       }
-      _scheduleAiMove();
+      if (_gameMode == GameMode.online &&
+          onlineUci != null &&
+          onlineExpectedPly != null) {
+        unawaited(_submitOnlineMove(onlineUci!, onlineExpectedPly!));
+      } else {
+        _scheduleAiMove();
+      }
     }
   }
 
@@ -3493,6 +3539,10 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _reset() {
+    if (_gameMode == GameMode.online && _onlineMatch != null) {
+      unawaited(_refreshOnlineMatch());
+      return;
+    }
     final DailyChallenge challenge = _challengeForToday(_dailyDifficulty);
     final bool completedToday = LocalGameArchive.isDailyChallengeComplete(
       challenge.id,
@@ -3879,12 +3929,188 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _showOnlineMatchmakingInfo() async {
-    await showModalBottomSheet<void>(
+    String? token = _authToken;
+    token ??= (await _sessionStore.read())?.token;
+    if (!mounted) return;
+    if (token == null || token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sign in to play online and reconnect matches.'),
+        ),
+      );
+      return;
+    }
+    final OnlineMatchDto? match = await showModalBottomSheet<OnlineMatchDto>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (BuildContext context) => const OnlineMatchmakingSheet(),
+      builder: (BuildContext context) => OnlineMatchmakingSheet(
+        api: _onlineApi,
+        token: token!,
+      ),
     );
+    if (match != null && mounted) {
+      _beginOnlineMatch(match, token);
+    }
+  }
+
+  void _beginOnlineMatch(OnlineMatchDto match, String token) {
+    _onlinePollTimer?.cancel();
+    setState(() {
+      _authToken = token;
+      _onlineMatch = match;
+      _gameMode = GameMode.online;
+      _humanPlaysWhite = match.yourColor.toLowerCase() == 'white';
+      _whitePlayerName = match.whitePlayerName ?? 'White player';
+      _blackPlayerName = match.blackPlayerName ?? 'Black player';
+      _coachNote = _onlineStatusText(match);
+    });
+    _rebuildFromOnline(match);
+    _onlinePollTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => unawaited(_refreshOnlineMatch()),
+    );
+  }
+
+  String _onlineStatusText(OnlineMatchDto match) {
+    if (!match.isActive) {
+      return 'Room ${match.roomCode}: waiting for your opponent.';
+    }
+    final bool yourTurn =
+        match.activeColor.toLowerCase() == match.yourColor.toLowerCase();
+    return yourTurn
+        ? 'Your turn (${match.yourColor}).'
+        : 'Waiting for ${match.activeColor} to move.';
+  }
+
+  Future<void> _refreshOnlineMatch() async {
+    final OnlineMatchDto? current = _onlineMatch;
+    final String? token = _authToken;
+    if (current == null || token == null || _onlineSubmitting) return;
+    try {
+      final OnlineMatchDto latest =
+          await _onlineApi.getMatch(token, current.id);
+      if (!mounted) return;
+      _rebuildFromOnline(latest);
+    } on OnlineMatchException catch (error) {
+      if (!mounted) return;
+      setState(() => _coachNote = 'Reconnect pending: ${error.message}');
+    }
+  }
+
+  void _rebuildFromOnline(OnlineMatchDto match) {
+    final OnlineMatchDto? previous = _onlineMatch;
+    if (previous != null &&
+        previous.id == match.id &&
+        previous.plyCount == match.plyCount &&
+        previous.status == match.status &&
+        previous.activeColor == match.activeColor &&
+        previous.whitePlayerName == match.whitePlayerName &&
+        previous.blackPlayerName == match.blackPlayerName) {
+      setState(() {
+        _onlineMatch = match;
+        _coachNote = _onlineStatusText(match);
+      });
+      return;
+    }
+    final Map<String, ChessPiece> board =
+        Map<String, ChessPiece>.from(_initialPieces);
+    final List<String> history = <String>[];
+    final List<ChessPiece> capturedWhite = <ChessPiece>[];
+    final List<ChessPiece> capturedBlack = <ChessPiece>[];
+    for (final OnlineMoveDto remoteMove in match.moves) {
+      final String uci = remoteMove.uci.toLowerCase();
+      if (uci.length < 4) continue;
+      final String from = uci.substring(0, 2);
+      final String to = uci.substring(2, 4);
+      ChessPiece? piece = board.remove(from);
+      if (piece == null) continue;
+      ChessPiece? captured = board.remove(to);
+      if (piece.code == 'P' && captured == null && from[0] != to[0]) {
+        final String enPassantSquare = '${to[0]}${from[1]}';
+        captured = board.remove(enPassantSquare);
+      }
+      if (captured != null) {
+        (captured.white ? capturedWhite : capturedBlack).add(captured);
+      }
+      if (piece.code == 'K' &&
+          (from.codeUnitAt(0) - to.codeUnitAt(0)).abs() == 2) {
+        final bool kingSide = to.startsWith('g');
+        final String rookFrom = '${kingSide ? 'h' : 'a'}${from[1]}';
+        final String rookTo = '${kingSide ? 'f' : 'd'}${from[1]}';
+        final ChessPiece? rook = board.remove(rookFrom);
+        if (rook != null) board[rookTo] = rook;
+      }
+      if (uci.length >= 5) {
+        piece = ChessPiece(uci[4].toUpperCase(), piece.white);
+      }
+      board[to] = piece;
+      history.insert(
+        0,
+        captured == null ? '$from$to' : '$from x $to',
+      );
+    }
+    setState(() {
+      _onlineMatch = match;
+      _pieces = board;
+      _moves
+        ..clear()
+        ..addAll(history);
+      _capturedWhite
+        ..clear()
+        ..addAll(capturedWhite);
+      _capturedBlack
+        ..clear()
+        ..addAll(capturedBlack);
+      _whitePlayerName = match.whitePlayerName ?? 'White player';
+      _blackPlayerName = match.blackPlayerName ?? 'Black player';
+      _coachNote = _onlineStatusText(match);
+      _selectedSquare = null;
+    });
+    if (match.status == 'ACTIVE' && match.moves.isNotEmpty) {
+      final bool sideToMoveWhite = match.activeColor == 'WHITE';
+      final String stateNote = _gameStateNote(
+        sideToMoveWhite,
+        fallback: _onlineStatusText(match),
+      );
+      if (_resultVisible) {
+        _onlinePollTimer?.cancel();
+      }
+      if (mounted) {
+        setState(() => _coachNote = stateNote);
+      }
+    }
+  }
+
+  Future<void> _submitOnlineMove(String uci, int expectedPly) async {
+    final OnlineMatchDto? current = _onlineMatch;
+    final String? token = _authToken;
+    if (current == null || token == null || _onlineSubmitting) return;
+    setState(() {
+      _onlineSubmitting = true;
+      _coachNote = 'Sending $uci to your opponent...';
+    });
+    try {
+      final OnlineMatchDto latest = await _onlineApi.submitMove(
+        token,
+        current.id,
+        uci: uci,
+        expectedPly: expectedPly,
+      );
+      if (!mounted) return;
+      _rebuildFromOnline(latest);
+    } on OnlineMatchException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _onlineSubmitting = false;
+        _coachNote = 'Move not accepted: ${error.message}';
+      });
+      await _refreshOnlineMatch();
+    } finally {
+      if (mounted) {
+        setState(() => _onlineSubmitting = false);
+      }
+    }
   }
 
   Future<void> _showPromotionPicker(String square, bool white) async {
@@ -5682,7 +5908,7 @@ class _StudioCoachPanel extends StatelessWidget {
       GameMode.daily => 'Checkmate in $dailyGoal',
       GameMode.computer => 'Find the strongest move',
       GameMode.local => 'Outplay your opponent',
-      GameMode.online => 'Online mode coming soon',
+      GameMode.online => 'Play a live opponent',
     };
     final int progress = gameMode == GameMode.daily
         ? dailyProgress.clamp(0, dailyGoal)
@@ -6624,7 +6850,7 @@ class GameModeLauncher extends StatelessWidget {
         mode: GameMode.online,
         icon: Icons.public_rounded,
         title: 'Online',
-        subtitle: 'Coming soon',
+        subtitle: 'Matchmaking & reconnect',
       ),
     ];
 
@@ -6961,12 +7187,79 @@ class AnalysisMetric extends StatelessWidget {
   }
 }
 
-class OnlineMatchmakingSheet extends StatelessWidget {
-  const OnlineMatchmakingSheet({super.key});
+class OnlineMatchmakingSheet extends StatefulWidget {
+  const OnlineMatchmakingSheet({
+    required this.api,
+    required this.token,
+    super.key,
+  });
+
+  final OnlineMatchApi api;
+  final String token;
+
+  @override
+  State<OnlineMatchmakingSheet> createState() => _OnlineMatchmakingSheetState();
+}
+
+class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
+  final TextEditingController _roomController = TextEditingController();
+  Timer? _pollTimer;
+  OnlineMatchDto? _match;
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    _roomController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _run(Future<OnlineMatchDto> Function() operation) async {
+    if (_loading) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final OnlineMatchDto match = await operation();
+      if (!mounted) return;
+      _accept(match);
+    } on OnlineMatchException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _accept(OnlineMatchDto match) {
+    if (match.isActive) {
+      Navigator.of(context).pop(match);
+      return;
+    }
+    setState(() => _match = match);
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => unawaited(_poll()),
+    );
+  }
+
+  Future<void> _poll() async {
+    final OnlineMatchDto? current = _match;
+    if (current == null) return;
+    try {
+      final OnlineMatchDto latest =
+          await widget.api.getMatch(widget.token, current.id);
+      if (!mounted) return;
+      _accept(latest);
+    } on OnlineMatchException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    const String roomCode = 'CV-7429';
     final Size size = MediaQuery.sizeOf(context);
     final bool landscape = size.width > size.height;
     final double maxWidth = landscape ? 760 : 560;
@@ -7018,8 +7311,15 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Choose Play with Friend using a room code, or Random Match to pair with another online player after VPS/WebSocket deployment.',
+                    'Create a private room, join a friend, find a random rival, or reconnect an unfinished match.',
                   ),
+                  if (_error != null) ...<Widget>[
+                    const SizedBox(height: 12),
+                    Text(
+                      _error!,
+                      style: const TextStyle(color: Color(0xFFFF6B6B)),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   DecoratedBox(
                     decoration: BoxDecoration(
@@ -7047,7 +7347,13 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                                   style: Theme.of(context).textTheme.titleLarge,
                                 ),
                               ),
-                              const Chip(label: Text('Coming soon')),
+                              if (_loading)
+                                const SizedBox.square(
+                                  dimension: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -7056,7 +7362,12 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                           ),
                           const SizedBox(height: 10),
                           FilledButton.icon(
-                            onPressed: () {},
+                            onPressed: _loading
+                                ? null
+                                : () => _run(
+                                      () =>
+                                          widget.api.randomMatch(widget.token),
+                                    ),
                             icon: const Icon(Icons.bolt_rounded),
                             label: const Text('Find random player'),
                           ),
@@ -7078,39 +7389,51 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                         children: <Widget>[
                           const Text('Play with Friend - invite room code'),
                           const SizedBox(height: 8),
-                          SelectableText(
-                            roomCode,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineMedium
-                                ?.copyWith(
-                                  color: const Color(0xFFD6A84F),
-                                  letterSpacing: 2,
-                                  fontSize: landscape ? 30 : null,
-                                ),
-                          ),
-                          const SizedBox(height: 10),
-                          FilledButton.icon(
-                            onPressed: () {
-                              Clipboard.setData(
-                                const ClipboardData(text: roomCode),
-                              );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Invite code copied'),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.copy_rounded),
-                            label: const Text('Copy invite code'),
-                          ),
+                          if (_match == null)
+                            const Text(
+                              'Create a room below, then share its code.',
+                            )
+                          else ...<Widget>[
+                            SelectableText(
+                              _match!.roomCode,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(
+                                    color: const Color(0xFFD6A84F),
+                                    letterSpacing: 2,
+                                    fontSize: landscape ? 30 : null,
+                                  ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Waiting for opponent… this screen reconnects automatically.',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 10),
+                            FilledButton.icon(
+                              onPressed: () {
+                                Clipboard.setData(
+                                  ClipboardData(text: _match!.roomCode),
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Invite code copied'),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.copy_rounded),
+                              label: const Text('Copy invite code'),
+                            ),
+                          ],
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 14),
                   TextField(
+                    controller: _roomController,
                     decoration: const InputDecoration(
                       labelText: 'Join code',
                       prefixIcon: Icon(Icons.login_rounded),
@@ -7124,20 +7447,41 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                     runSpacing: 10,
                     children: <Widget>[
                       OutlinedButton.icon(
-                        onPressed: () {},
+                        onPressed: _loading
+                            ? null
+                            : () => _run(
+                                  () => widget.api.createRoom(widget.token),
+                                ),
                         icon: const Icon(Icons.group_add_rounded),
                         label: const Text('Create room'),
                       ),
                       FilledButton.icon(
-                        onPressed: () {},
+                        onPressed:
+                            _loading || _roomController.text.trim().isEmpty
+                                ? null
+                                : () => _run(
+                                      () => widget.api.joinRoom(
+                                        widget.token,
+                                        _roomController.text,
+                                      ),
+                                    ),
                         icon: const Icon(Icons.sports_esports_rounded),
-                        label: const Text('Join mock'),
+                        label: const Text('Join room'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _loading
+                            ? null
+                            : () => _run(
+                                  () => widget.api.reconnect(widget.token),
+                                ),
+                        icon: const Icon(Icons.sync_rounded),
+                        label: const Text('Reconnect'),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Waiting screen, room code, and invite flow are local UI only until backend is live.',
+                    'Moves are validated by the ChessVerse server. Active matches restore after an app restart.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Color(0xFFAAA69E), fontSize: 12),
                   ),
