@@ -1661,6 +1661,39 @@ class _GameScreenState extends State<GameScreen> {
                 onLogout: _logout,
                 canUndo: _history.isNotEmpty,
               );
+              void openFullControls() {
+                showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (BuildContext sheetContext) => SafeArea(
+                    child: FractionallySizedBox(
+                      heightFactor: 0.92,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: panel,
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              final Widget studioCoach = _StudioCoachPanel(
+                gameMode: _gameMode,
+                activeColor: _moves.length.isEven ? 'White' : 'Black',
+                aiThinking: _aiThinking,
+                coachEnabled: _coachEnabled,
+                coachNote: _coachNote,
+                moves: _moves,
+                dailyProgress: _dailyPlayerMovesCompleted,
+                dailyGoal: _dailyChallenge.playerMoveGoal,
+                canUndo: _history.isNotEmpty,
+                onHint: _showHint,
+                onAnalyze: _showAnalysis,
+                onTryAgain: _confirmNewGame,
+                onUndo: _undo,
+                onControls: openFullControls,
+              );
 
               return Padding(
                 padding: pagePadding,
@@ -1716,10 +1749,10 @@ class _GameScreenState extends State<GameScreen> {
                                       const SizedBox(width: 18),
                                       SizedBox(
                                         key: const ValueKey<String>(
-                                          'landscape-game-controls',
+                                          'landscape-ai-coach',
                                         ),
                                         width: widePanelWidth,
-                                        child: panel,
+                                        child: studioCoach,
                                       ),
                                     ],
                                   ),
@@ -1760,14 +1793,8 @@ class _GameScreenState extends State<GameScreen> {
                             const SizedBox(height: 8),
                             Expanded(
                               key:
-                                  const ValueKey<String>('game-controls-panel'),
-                              child: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 260),
-                                child: SizedBox.expand(
-                                  key: ValueKey<bool>(_controlsExpanded),
-                                  child: panel,
-                                ),
-                              ),
+                                  const ValueKey<String>('mobile-ai-coach'),
+                              child: studioCoach,
                             ),
                           ],
                         ),
@@ -5394,6 +5421,367 @@ class _StudioDockCard extends StatelessWidget {
         ],
       ),
       child: child,
+    );
+  }
+}
+
+class _StudioCoachPanel extends StatelessWidget {
+  const _StudioCoachPanel({
+    required this.gameMode,
+    required this.activeColor,
+    required this.aiThinking,
+    required this.coachEnabled,
+    required this.coachNote,
+    required this.moves,
+    required this.dailyProgress,
+    required this.dailyGoal,
+    required this.canUndo,
+    required this.onHint,
+    required this.onAnalyze,
+    required this.onTryAgain,
+    required this.onUndo,
+    required this.onControls,
+  });
+
+  final GameMode gameMode;
+  final String activeColor;
+  final bool aiThinking;
+  final bool coachEnabled;
+  final String coachNote;
+  final List<String> moves;
+  final int dailyProgress;
+  final int dailyGoal;
+  final bool canUndo;
+  final VoidCallback onHint;
+  final VoidCallback onAnalyze;
+  final VoidCallback onTryAgain;
+  final VoidCallback onUndo;
+  final VoidCallback onControls;
+
+  @override
+  Widget build(BuildContext context) {
+    final String modeLabel = switch (gameMode) {
+      GameMode.daily => 'DAILY CHALLENGE',
+      GameMode.computer => 'AI TRAINING',
+      GameMode.local => 'LOCAL MATCH',
+      GameMode.online => 'ONLINE BATTLE',
+    };
+    final String goal = switch (gameMode) {
+      GameMode.daily => 'Checkmate in $dailyGoal',
+      GameMode.computer => 'Find the strongest move',
+      GameMode.local => 'Outplay your opponent',
+      GameMode.online => 'Online mode coming soon',
+    };
+    final String lastMove = moves.isEmpty ? 'Choose a piece' : moves.first;
+    final int progress = gameMode == GameMode.daily
+        ? dailyProgress.clamp(0, dailyGoal)
+        : math.min(moves.length, 3);
+    final int goalSteps = gameMode == GameMode.daily ? dailyGoal : 3;
+
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool compact = constraints.maxHeight < 560;
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xFF061527).withValues(alpha: 0.97),
+            borderRadius: BorderRadius.circular(compact ? 14 : 22),
+            border: Border.all(color: const Color(0xFFB47A2B)),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.38),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: Padding(
+              padding: EdgeInsets.all(compact ? 12 : 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              'AI Coach ✦',
+                              style: TextStyle(
+                                color: const Color(0xFF63D2B8),
+                                fontFamily: 'serif',
+                                fontSize: compact ? 23 : 30,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              modeLabel,
+                              style: const TextStyle(
+                                color: Color(0xFFE2B458),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton.outlined(
+                        tooltip: 'Undo move',
+                        onPressed: canUndo ? onUndo : null,
+                        icon: const Icon(Icons.undo_rounded),
+                      ),
+                      const SizedBox(width: 6),
+                      IconButton.filled(
+                        tooltip: 'Game controls',
+                        onPressed: onControls,
+                        icon: const Icon(Icons.tune_rounded),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: compact ? 8 : 14),
+                  _CoachInsightCard(
+                    icon: Icons.track_changes_rounded,
+                    accent: const Color(0xFF63D2B8),
+                    child: Text(
+                      'Goal: $goal',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: compact ? 7 : 10),
+                  const _CoachInsightCard(
+                    icon: Icons.help_outline_rounded,
+                    accent: Color(0xFF9C6CFF),
+                    child: Text(
+                      'Why this move?',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: compact ? 7 : 10),
+                  _CoachInsightCard(
+                    icon: Icons.workspace_premium_rounded,
+                    accent: const Color(0xFF63D2B8),
+                    child: Text(
+                      aiThinking
+                          ? 'ChessVerse AI is calculating…'
+                          : 'Your move: $lastMove',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF63D2B8),
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: compact ? 7 : 10),
+                  Expanded(
+                    child: _CoachInsightCard(
+                      icon: Icons.chat_bubble_rounded,
+                      accent: const Color(0xFF63D2B8),
+                      alignStart: true,
+                      child: SingleChildScrollView(
+                        child: Text(
+                          coachEnabled
+                              ? coachNote
+                              : 'Turn Coach on from Game controls to receive move-by-move explanations.',
+                          style: TextStyle(
+                            color: const Color(0xFFF2EDE4),
+                            fontFamily: 'serif',
+                            fontSize: compact ? 14 : 16,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (!compact) ...<Widget>[
+                    const SizedBox(height: 10),
+                    _CoachProgress(
+                      progress: progress,
+                      goal: goalSteps,
+                    ),
+                    const SizedBox(height: 10),
+                    _CoachEvaluation(activeColor: activeColor),
+                  ],
+                  SizedBox(height: compact ? 8 : 12),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: onHint,
+                          icon: const Icon(Icons.lightbulb_outline_rounded),
+                          label: const Text('Hint'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: onAnalyze,
+                          icon: const Icon(Icons.visibility_outlined),
+                          label: const Text('Threat'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: onTryAgain,
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('Try again'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CoachInsightCard extends StatelessWidget {
+  const _CoachInsightCard({
+    required this.icon,
+    required this.accent,
+    required this.child,
+    this.alignStart = false,
+  });
+
+  final IconData icon;
+  final Color accent;
+  final Widget child;
+  final bool alignStart;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B1D31),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF8C622D)),
+      ),
+      child: Row(
+        crossAxisAlignment:
+            alignStart ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        children: <Widget>[
+          Icon(icon, color: accent, size: 25),
+          const SizedBox(width: 12),
+          Expanded(child: child),
+        ],
+      ),
+    );
+  }
+}
+
+class _CoachProgress extends StatelessWidget {
+  const _CoachProgress({required this.progress, required this.goal});
+
+  final int progress;
+  final int goal;
+
+  @override
+  Widget build(BuildContext context) {
+    final int safeGoal = math.max(goal, 1);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B1D31),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF8C622D)),
+      ),
+      child: Row(
+        children: <Widget>[
+          const Text(
+            'Step progress',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: LinearProgressIndicator(
+                minHeight: 8,
+                value: progress / safeGoal,
+                backgroundColor: const Color(0xFF27344A),
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(Color(0xFF63D2B8)),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            '$progress/$safeGoal',
+            style: const TextStyle(
+              color: Color(0xFF63D2B8),
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CoachEvaluation extends StatelessWidget {
+  const _CoachEvaluation({required this.activeColor});
+
+  final String activeColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B1D31),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF8C622D)),
+      ),
+      child: Row(
+        children: <Widget>[
+          const Text(
+            'Evaluation',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              height: 9,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: const LinearGradient(
+                  colors: <Color>[
+                    Color(0xFF202B3D),
+                    Color(0xFF3D4B62),
+                    Color(0xFF63D2B8),
+                    Color(0xFF202B3D),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            '$activeColor to move',
+            style: const TextStyle(
+              color: Color(0xFF63D2B8),
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
