@@ -271,8 +271,35 @@ class _SplashGateState extends State<SplashGate> {
         initialEmail: _email,
         initiallyGuest: _isGuest,
         initialSideChoice: sideChoice,
+        onLogout: () => _logoutFromGame(context),
       ),
     );
+  }
+
+  Future<void> _logoutFromGame(BuildContext gameContext) async {
+    const AuthSessionStore sessionStore = AuthSessionStore();
+    const AuthApi authApi = AuthApi();
+    final StoredAuthSession? session = await sessionStore.read();
+    if (session != null) {
+      try {
+        await authApi.logout(session.token);
+      } on AuthApiException {
+        // A local logout must still succeed if the remote session expired.
+      }
+    }
+    await sessionStore.clear();
+    if (!mounted) return;
+
+    if (gameContext.mounted && Navigator.of(gameContext).canPop()) {
+      Navigator.of(gameContext).pop();
+    }
+    setState(() {
+      _playerName = 'ChessVerse Player';
+      _username = null;
+      _email = null;
+      _isGuest = true;
+      _stage = _RootStage.auth;
+    });
   }
 
   void _push(BuildContext context, Widget screen) {
@@ -1313,6 +1340,7 @@ class GameScreen extends StatefulWidget {
     this.initialEmail,
     this.initiallyGuest = true,
     this.initialSideChoice = PlayerSideChoice.white,
+    this.onLogout,
     super.key,
   });
 
@@ -1324,6 +1352,7 @@ class GameScreen extends StatefulWidget {
   final String? initialEmail;
   final bool initiallyGuest;
   final PlayerSideChoice initialSideChoice;
+  final Future<void> Function()? onLogout;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -2308,6 +2337,12 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _logout() async {
+    final Future<void> Function()? onLogout = widget.onLogout;
+    if (onLogout != null) {
+      await onLogout();
+      return;
+    }
+
     final String? token = _authToken;
     if (token != null) {
       await _authApi.logout(token);
