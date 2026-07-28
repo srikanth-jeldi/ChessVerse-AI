@@ -2466,6 +2466,16 @@ class _GameScreenState extends State<GameScreen> {
     return false;
   }
 
+  bool _isCheckmateFor(bool white) {
+    return ChessRules.isKingInCheck(white, _pieces) &&
+        !_hasAnyLegalMove(white);
+  }
+
+  bool _isStalemateFor(bool white) {
+    return !ChessRules.isKingInCheck(white, _pieces) &&
+        !_hasAnyLegalMove(white);
+  }
+
   String _moveFeedback({
     required ChessPiece piece,
     required String from,
@@ -2882,9 +2892,7 @@ class _GameScreenState extends State<GameScreen> {
             _coachNote = '$moveFeedback $_coachNote';
           }
           if (_gameMode == GameMode.daily) {
-            final bool opponentMated =
-                ChessRules.isKingInCheck(!piece.white, _pieces) &&
-                    !_hasAnyLegalMove(!piece.white);
+            final bool opponentMated = _isCheckmateFor(!piece.white);
             if (opponentMated) {
               _completeDailyChallenge();
             } else if (_dailyPlayerMovesCompleted >=
@@ -3119,7 +3127,7 @@ class _GameScreenState extends State<GameScreen> {
       setState(() {
         _aiThinking = false;
         _coachNote = _gameStateNote(
-          false,
+          aiPlaysWhite,
           fallback: 'ChessVerse AI has no legal move.',
         );
       });
@@ -3897,8 +3905,11 @@ class _GameScreenState extends State<GameScreen> {
 
   String _gameStateNote(bool sideToMoveWhite, {required String fallback}) {
     final bool inCheck = ChessRules.isKingInCheck(sideToMoveWhite, _pieces);
-    final bool checkmate = ChessRules.isCheckmate(sideToMoveWhite, _pieces);
-    final bool stalemate = ChessRules.isStalemate(sideToMoveWhite, _pieces);
+    // Terminal results must use the exact same legal-move source as the board.
+    // This includes castling and en passant, which the stateless ChessRules
+    // helpers cannot infer without this game's move history.
+    final bool checkmate = _isCheckmateFor(sideToMoveWhite);
+    final bool stalemate = _isStalemateFor(sideToMoveWhite);
     final String side = sideToMoveWhite ? 'White' : 'Black';
 
     if (inCheck && !_checkWarningActive) {
