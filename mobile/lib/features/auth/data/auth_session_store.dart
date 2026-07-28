@@ -30,9 +30,14 @@ class AuthSessionStore {
   static const String _displayNameKey = 'auth.displayName';
   static const String _usernameKey = 'auth.username';
   static const String _emailKey = 'auth.email';
+  static const String _rememberMeKey = 'auth.rememberMe';
 
   Future<StoredAuthSession?> read() async {
     final Map<String, String> values = await _storage.readAll();
+    if (values[_rememberMeKey] == 'false') {
+      await clearSession();
+      return null;
+    }
     final String? token = values[_tokenKey];
     final DateTime? expiresAt = DateTime.tryParse(values[_expiryKey] ?? '');
     final String? displayName = values[_displayNameKey];
@@ -55,9 +60,19 @@ class AuthSessionStore {
     return session;
   }
 
+  Future<bool> rememberMeEnabled() async {
+    return await _storage.read(key: _rememberMeKey) != 'false';
+  }
+
+  Future<void> setRememberMe(bool value) {
+    return _storage.write(key: _rememberMeKey, value: value.toString());
+  }
+
   Future<void> write(StoredAuthSession session) async {
+    await setRememberMe(true);
+    // Write the token last. A partially written session is therefore never
+    // treated as authenticated after an abrupt process termination.
     await Future.wait(<Future<void>>[
-      _storage.write(key: _tokenKey, value: session.token),
       _storage.write(
         key: _expiryKey,
         value: session.expiresAt.toUtc().toIso8601String(),
@@ -66,7 +81,18 @@ class AuthSessionStore {
       _storage.write(key: _usernameKey, value: session.username),
       _storage.write(key: _emailKey, value: session.email),
     ]);
+    await _storage.write(key: _tokenKey, value: session.token);
   }
 
-  Future<void> clear() => _storage.deleteAll();
+  Future<void> clearSession() async {
+    await Future.wait(<Future<void>>[
+      _storage.delete(key: _tokenKey),
+      _storage.delete(key: _expiryKey),
+      _storage.delete(key: _displayNameKey),
+      _storage.delete(key: _usernameKey),
+      _storage.delete(key: _emailKey),
+    ]);
+  }
+
+  Future<void> clear() => clearSession();
 }
