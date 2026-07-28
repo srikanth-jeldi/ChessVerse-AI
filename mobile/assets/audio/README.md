@@ -17,7 +17,9 @@ ChessVerse uses separate sounds for every piece and game event.
   <https://commons.wikimedia.org/wiki/File:Elephant_voice_-_trumpeting.ogg>
 - `piece_rook.wav` - solid wooden tower knock
 - `piece_queen.wav` - bright royal shimmer
-- `piece_king.wav` - short royal horn
+- `piece_king.ogg` - United States Marine Band "Attention" bugle call;
+  public-domain U.S. military recording
+  <https://commons.wikimedia.org/wiki/File:Attention_(United_States_Marine_Band_version).ogg>
 
 The app sound service ignores missing or unsupported files so audio never
 blocks gameplay.

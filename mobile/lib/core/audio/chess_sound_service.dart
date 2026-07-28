@@ -32,6 +32,18 @@ class ChessSoundService {
 
   bool enabled = true;
 
+  static const Map<String, String> pieceAssetPaths = <String, String>{
+    'P': 'audio/piece_pawn.wav',
+    'N': 'audio/piece_knight.ogg',
+    'B': 'audio/piece_bishop.ogg',
+    'R': 'audio/piece_rook.wav',
+    'Q': 'audio/piece_queen.wav',
+    'K': 'audio/piece_king.ogg',
+  };
+
+  static String assetForPiece(String pieceCode) =>
+      pieceAssetPaths[pieceCode.toUpperCase()] ?? 'audio/chess_move.wav';
+
   Future<void> move() {
     if (!enabled) return Future<void>.value();
     return _play(
@@ -43,10 +55,6 @@ class ChessSoundService {
 
   Future<void> pieceMove(String pieceCode, {bool capture = false}) async {
     if (!enabled) return;
-    if (capture) {
-      await this.capture();
-      await Future<void>.delayed(const Duration(milliseconds: 65));
-    }
     final String normalized = pieceCode.toUpperCase();
     final String name = switch (normalized) {
       'P' => 'pawn',
@@ -62,14 +70,15 @@ class ChessSoundService {
         normalized,
         () => AudioPlayer(playerId: 'chessverse-piece-$name'),
       ),
-      switch (name) {
-        'knight' => 'audio/piece_knight.ogg',
-        'bishop' => 'audio/piece_bishop.ogg',
-        'move' => 'audio/chess_move.wav',
-        _ => 'audio/piece_$name.wav',
-      },
-      volume: capture ? 0.68 : 0.82,
+      assetForPiece(normalized),
+      volume: 0.88,
     );
+    if (capture) {
+      // Let the piece keep its identity (especially the horse/elephant cues)
+      // before the impact sound is layered on top.
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      await this.capture();
+    }
   }
 
   Future<void> capture() {
@@ -81,8 +90,11 @@ class ChessSoundService {
     );
   }
 
-  Future<void> check() {
+  Future<void> check() async {
     if (!enabled) return Future<void>.value();
+    // A move/capture cue may have just started. A short gap keeps the check
+    // alert crisp instead of masking the selected piece sound.
+    await Future<void>.delayed(const Duration(milliseconds: 280));
     return _play(
       _checkPlayer ??= AudioPlayer(playerId: 'chessverse-check'),
       'audio/chess_check.wav',
@@ -90,21 +102,20 @@ class ChessSoundService {
     );
   }
 
-  Future<void> checkmate() {
+  Future<void> checkmate() async {
     if (!enabled) return Future<void>.value();
-    return _play(
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    await _play(
       _checkmatePlayer ??= AudioPlayer(playerId: 'chessverse-checkmate'),
       'audio/chess_checkmate_dark.wav',
       volume: 1.0,
-    ).then((_) {
-      return Future<void>.delayed(const Duration(milliseconds: 180), () {
-        return _play(
-          _victoryPlayer ??= AudioPlayer(playerId: 'chessverse-victory'),
-          'audio/chess_victory.wav',
-          volume: 0.92,
-        );
-      });
-    });
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 520));
+    await _play(
+      _victoryPlayer ??= AudioPlayer(playerId: 'chessverse-victory'),
+      'audio/chess_victory.wav',
+      volume: 0.92,
+    );
   }
 
   Future<void> victory() {

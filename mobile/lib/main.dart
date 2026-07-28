@@ -1390,6 +1390,8 @@ class _GameScreenState extends State<GameScreen> {
   String? _lastCaptureSquare;
   ChessPiece? _lastMovedPiece;
   ChessPiece? _lastCapturedPiece;
+  String? _lastPlayerMove;
+  String? _lastPlayerCoachNote;
   String? _moveQualityText;
   String _coachNote = 'Select a coin to see legal moves.';
   BoardSkin _skin = BoardSkin.royalWalnut;
@@ -1726,11 +1728,9 @@ class _GameScreenState extends State<GameScreen> {
                 activeColor: _moves.length.isEven ? 'White' : 'Black',
                 aiThinking: _aiThinking,
                 coachEnabled: _coachEnabled,
-                coachNote: _coachNote,
-                lastMove: _moves.isEmpty ? null : _moves.first,
-                lastMoveOwner: _lastMovedPiece == null
-                    ? null
-                    : _moveOwnerLabel(_lastMovedPiece!),
+                coachNote: _lastPlayerCoachNote ?? _coachNote,
+                lastMove: _lastPlayerMove,
+                lastMoveOwner: _lastPlayerMove == null ? null : 'Your move',
                 dailyProgress: _dailyPlayerMovesCompleted,
                 dailyGoal: _dailyChallenge.playerMoveGoal,
                 canUndo: _history.isNotEmpty,
@@ -2402,16 +2402,6 @@ class _GameScreenState extends State<GameScreen> {
     _changeGameMode(GameMode.daily);
   }
 
-  String _moveOwnerLabel(ChessPiece piece) {
-    if (_gameMode == GameMode.local) {
-      return piece.white ? 'White move' : 'Black move';
-    }
-    if (_gameMode == GameMode.daily) {
-      return piece.white ? 'Your move' : 'Puzzle reply';
-    }
-    return piece.white == _humanPlaysWhite ? 'Your move' : 'ChessVerse AI move';
-  }
-
   String get _playerDisplayName {
     final String trimmed = widget.initialPlayerName?.trim() ?? '';
     if (trimmed.isNotEmpty) {
@@ -2884,6 +2874,7 @@ class _GameScreenState extends State<GameScreen> {
           _moveQualityText =
               '$moveFeedback ${_moveSuggestionText(preMoveAnalysis, from, square)}';
         }
+        _lastPlayerMove = move;
         _coachNote = castleMove
             ? '${piece.white ? 'White' : 'Black'} castles ${square.startsWith('g') ? 'king side' : 'queen side'}.'
             : _coachMoveExplanation(
@@ -2903,6 +2894,7 @@ class _GameScreenState extends State<GameScreen> {
           if (_gameResultTitle == null) {
             _coachNote = '$moveFeedback $_coachNote';
           }
+          _lastPlayerCoachNote = _coachNote;
           if (_gameMode == GameMode.daily) {
             final bool opponentMated = _isCheckmateFor(!piece.white);
             if (opponentMated) {
@@ -3527,6 +3519,8 @@ class _GameScreenState extends State<GameScreen> {
       _lastCaptureSquare = null;
       _lastMovedPiece = null;
       _lastCapturedPiece = null;
+      _lastPlayerMove = null;
+      _lastPlayerCoachNote = null;
       _moveQualityText = null;
       _whiteSeconds = 10 * 60;
       _blackSeconds = 10 * 60;
@@ -3724,6 +3718,8 @@ class _GameScreenState extends State<GameScreen> {
       _lastCaptureSquare = snapshot.lastCaptureSquare;
       _lastMovedPiece = null;
       _lastCapturedPiece = null;
+      _lastPlayerMove = null;
+      _lastPlayerCoachNote = null;
       _whiteSeconds = snapshot.whiteSeconds;
       _blackSeconds = snapshot.blackSeconds;
       _selectedSquare = null;
