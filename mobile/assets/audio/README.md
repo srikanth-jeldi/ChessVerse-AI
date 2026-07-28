@@ -1,8 +1,6 @@
 # ChessVerse sound assets
 
-MVP placeholder WAV files are included so the app can ship with working sound
-hooks today. Replace them with premium/licensed production audio later using
-these exact names:
+ChessVerse uses separate sounds for every piece and game event.
 
 - `chess_move.wav` - wooden chess move sound
 - `chess_capture.wav` - stronger capture sound
@@ -13,11 +11,13 @@ these exact names:
 - `chess_tap.wav` - UI tap sound
 - `chess_error.wav` - invalid move/error sound
 - `piece_pawn.wav` - light pawn placement
-- `piece_knight.wav` - two-beat horse hoof
-- `piece_bishop.wav` - low elephant-like call
+- `piece_knight.ogg` - real horse neigh; public-domain recording
+  <https://commons.wikimedia.org/wiki/File:Wiehern.ogg>
+- `piece_bishop.ogg` - real elephant trumpet; CC0 recording
+  <https://commons.wikimedia.org/wiki/File:Elephant_voice_-_trumpeting.ogg>
 - `piece_rook.wav` - solid wooden tower knock
 - `piece_queen.wav` - bright royal shimmer
 - `piece_king.wav` - short royal horn
 
-The app sound service ignores missing files so preview builds remain stable
-while final audio files are being replaced.
+The app sound service ignores missing or unsupported files so audio never
+blocks gameplay.

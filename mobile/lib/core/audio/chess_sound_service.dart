@@ -62,7 +62,12 @@ class ChessSoundService {
         normalized,
         () => AudioPlayer(playerId: 'chessverse-piece-$name'),
       ),
-      name == 'move' ? 'audio/chess_move.wav' : 'audio/piece_$name.wav',
+      switch (name) {
+        'knight' => 'audio/piece_knight.ogg',
+        'bishop' => 'audio/piece_bishop.ogg',
+        'move' => 'audio/chess_move.wav',
+        _ => 'audio/piece_$name.wav',
+      },
       volume: capture ? 0.68 : 0.82,
     );
   }
