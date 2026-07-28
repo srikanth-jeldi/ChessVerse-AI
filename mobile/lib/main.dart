@@ -2409,6 +2409,9 @@ class _GameScreenState extends State<GameScreen> {
     if (lowerTitle.contains('challenge complete')) {
       return '1 - 0';
     }
+    if (lowerTitle.contains('challenge missed')) {
+      return 'Not solved';
+    }
     final bool whiteWon = lowerTitle.startsWith('white');
     final bool blackWon = lowerTitle.startsWith('black');
     if (!whiteWon && !blackWon) {
@@ -2769,10 +2772,12 @@ class _GameScreenState extends State<GameScreen> {
             } else if (_dailyPlayerMovesCompleted >=
                 _dailyChallenge.playerMoveGoal) {
               _coachNote =
-                  'Move limit reached without checkmate. Reset and try a new plan.';
+                  'The move limit ended before checkmate. This is not a loss. '
+                  'Review the board, find the forcing checks first, then try again.';
               _gameResultTitle = 'Challenge missed';
               _gameResultDetail =
-                  'No checkmate within ${_dailyChallenge.playerMoveGoal} moves';
+                  'No checkmate within ${_dailyChallenge.playerMoveGoal} moves. '
+                  'Your daily attempt is still available.';
               _resultVisible = true;
             }
           }
@@ -6909,6 +6914,7 @@ class GameResultOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool draw = title.toLowerCase().contains('draw');
+    final bool missed = title.toLowerCase().contains('challenge missed');
     return ColoredBox(
       color: Colors.black.withValues(alpha: 0.72),
       child: SafeArea(
@@ -6943,10 +6949,14 @@ class GameResultOverlay extends StatelessWidget {
                         Icon(
                           draw
                               ? Icons.handshake_rounded
-                              : Icons.emoji_events_rounded,
+                              : missed
+                                  ? Icons.flag_outlined
+                                  : Icons.emoji_events_rounded,
                           color: draw
                               ? const Color(0xFFAAA69E)
-                              : const Color(0xFFD6A84F),
+                              : missed
+                                  ? const Color(0xFF68D2BE)
+                                  : const Color(0xFFD6A84F),
                           size: shortLandscape ? 38 : 56,
                         ),
                         SizedBox(height: shortLandscape ? 6 : 16),
@@ -6963,17 +6973,21 @@ class GameResultOverlay extends StatelessWidget {
                               .textTheme
                               .headlineLarge
                               ?.copyWith(
-                                color: const Color(0xFFD6A84F),
+                                color: missed
+                                    ? const Color(0xFF68D2BE)
+                                    : const Color(0xFFD6A84F),
                                 fontWeight: FontWeight.w900,
                               ),
                         ),
                         SizedBox(height: shortLandscape ? 3 : 8),
                         Text(detail, textAlign: TextAlign.center),
                         SizedBox(height: shortLandscape ? 3 : 8),
-                        const Text(
-                          'Saved locally. Open Saved Games to review this match.',
+                        Text(
+                          missed
+                              ? 'This attempt is not counted as a loss. Review the position and retry today.'
+                              : 'Saved locally. Open Saved Games to review this match.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Color(0xFFAAA69E)),
+                          style: const TextStyle(color: Color(0xFFAAA69E)),
                         ),
                         SizedBox(height: shortLandscape ? 10 : 24),
                         Row(
@@ -6990,7 +7004,7 @@ class GameResultOverlay extends StatelessWidget {
                               child: FilledButton.icon(
                                 onPressed: onNewGame,
                                 icon: const Icon(Icons.refresh_rounded),
-                                label: const Text('New game'),
+                                label: Text(missed ? 'Try again' : 'New game'),
                               ),
                             ),
                           ],

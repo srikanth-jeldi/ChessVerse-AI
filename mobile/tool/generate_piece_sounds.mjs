@@ -32,19 +32,74 @@ const tone = (frequency, time) => Math.sin(2 * Math.PI * frequency * time);
 const decay = (time, speed) => Math.exp(-time * speed);
 const pulse = (time, at, width) =>
   time < at ? 0 : Math.exp(-(time - at) * width);
+const noise = (index) => {
+  const value = Math.sin(index * 12.9898 + 78.233) * 43758.5453;
+  return (value - Math.floor(value)) * 2 - 1;
+};
 
-writeWav('piece_pawn.wav', 0.16, (t) =>
-  0.45 * tone(185 - t * 240, t) * decay(t, 26));
-writeWav('piece_knight.wav', 0.34, (t) =>
-  0.36 * tone(105, t) * (pulse(t, 0, 23) + pulse(t, 0.13, 25)));
-writeWav('piece_bishop.wav', 0.46, (t) =>
-  (0.24 * tone(155 - t * 55, t) + 0.12 * tone(310 - t * 90, t)) *
-  decay(t, 5));
-writeWav('piece_rook.wav', 0.28, (t) =>
-  (0.38 * tone(92, t) + 0.16 * tone(184, t)) * decay(t, 15));
-writeWav('piece_queen.wav', 0.52, (t) =>
-  (0.20 * tone(440 + t * 180, t) + 0.14 * tone(660 + t * 110, t)) *
-  decay(t, 4.5));
-writeWav('piece_king.wav', 0.62, (t) =>
-  (0.24 * tone(130, t) + 0.18 * tone(195, t) + 0.10 * tone(260, t)) *
-  decay(t, 3.8));
+// Pawn: one short wooden chess-piece click.
+writeWav('piece_pawn.wav', 0.12, (t, i) =>
+  (0.42 * noise(i) + 0.28 * tone(220, t)) * decay(t, 42));
+
+// Knight / horse: two hoof beats followed by a rising neigh.
+writeWav('piece_knight.wav', 0.82, (t, i) => {
+  const hoof =
+    (0.42 * noise(i) + 0.25 * tone(92, t)) *
+    (pulse(t, 0, 50) + pulse(t, 0.16, 55));
+  const neighTime = Math.max(0, t - 0.27);
+  const neighFrequency = 430 + 220 * Math.sin(neighTime * 11) + neighTime * 270;
+  const neigh =
+    t < 0.27
+      ? 0
+      : 0.30 *
+        Math.sin(2 * Math.PI * neighFrequency * neighTime) *
+        decay(neighTime, 2.4);
+  return hoof + neigh;
+});
+
+// Bishop / elephant: unmistakable low-to-high trumpet call.
+writeWav('piece_bishop.wav', 0.95, (t) => {
+  const frequency = 115 + 390 * Math.pow(t / 0.95, 0.72);
+  const vibrato = 1 + 0.045 * Math.sin(2 * Math.PI * 7 * t);
+  return (
+    (0.34 * tone(frequency * vibrato, t) +
+      0.13 * tone(frequency * 2.02, t)) *
+    Math.sin(Math.PI * Math.min(1, t / 0.95)) *
+    decay(t, 0.65)
+  );
+});
+
+// Rook: deep stone-tower thud with a short crumble.
+writeWav('piece_rook.wav', 0.48, (t, i) =>
+  (0.48 * tone(58, t) + 0.22 * tone(116, t) + 0.16 * noise(i)) *
+  decay(t, 10));
+
+// Queen: bright four-note royal harp arpeggio.
+writeWav('piece_queen.wav', 0.88, (t) => {
+  const notes = [523.25, 659.25, 783.99, 1046.5];
+  return notes.reduce((sum, frequency, index) => {
+    const start = index * 0.12;
+    if (t < start) return sum;
+    return sum + 0.16 * tone(frequency, t - start) * decay(t - start, 4.5);
+  }, 0);
+});
+
+// King: short three-note brass fanfare.
+writeWav('piece_king.wav', 1.05, (t) => {
+  const notes = [
+    [0, 196],
+    [0.26, 246.94],
+    [0.52, 293.66],
+  ];
+  return notes.reduce((sum, [start, frequency]) => {
+    if (t < start) return sum;
+    const local = t - start;
+    return (
+      sum +
+      (0.22 * tone(frequency, local) +
+        0.10 * tone(frequency * 2, local) +
+        0.06 * tone(frequency * 3, local)) *
+        decay(local, 2.2)
+    );
+  }, 0);
+});
