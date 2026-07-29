@@ -869,7 +869,61 @@ String dailyChallengeDateKey(DateTime date) {
 
 int dailyChallengePatternForDate(DateTime date) {
   final DateTime day = DateTime(date.year, date.month, date.day);
-  return day.difference(DateTime(2026)).inDays % 7;
+  final int rawPattern = day.difference(DateTime(2026)).inDays % 7;
+  return rawPattern < 0 ? rawPattern + 7 : rawPattern;
+}
+
+const List<String> dailyChallengeQueenFiles = <String>[
+  'a',
+  'b',
+  'c',
+  'd',
+  'e',
+  'f',
+  'g',
+];
+
+String dailyChallengeQueenFileForPattern(int pattern) {
+  final int normalized = ((pattern % dailyChallengeQueenFiles.length) +
+          dailyChallengeQueenFiles.length) %
+      dailyChallengeQueenFiles.length;
+  return dailyChallengeQueenFiles[normalized];
+}
+
+List<String> dailyChallengeSolutionFor(
+  DailyChallengeDifficulty difficulty,
+  int pattern,
+) {
+  final String file = dailyChallengeQueenFileForPattern(pattern);
+  return switch (difficulty) {
+    DailyChallengeDifficulty.easy => <String>[
+        '${file}1${file}3',
+        'a7a6',
+        '${file}3h3',
+        'a6a5',
+        'h3h7',
+      ],
+    DailyChallengeDifficulty.medium => <String>[
+        '${file}1${file}2',
+        'a7a6',
+        '${file}2${file}3',
+        'a6a5',
+        '${file}3h3',
+        'b7b6',
+        'h3h7',
+      ],
+    DailyChallengeDifficulty.hard => <String>[
+        '${file}1${file}2',
+        'a7a6',
+        '${file}2${file}3',
+        'a6a5',
+        '${file}3h3',
+        'b7b6',
+        'h3h4',
+        'b6b5',
+        'h4h7',
+      ],
+  };
 }
 
 enum PlayerSideChoice { white, random, black }
@@ -2613,7 +2667,7 @@ class _GameScreenState extends State<GameScreen> {
       _ => 'Queen Flight',
     };
     return DailyChallenge(
-      id: '$date-${difficulty.name}-p$pattern-freeplay-v5',
+      id: '$date-${difficulty.name}-p$pattern-freeplay-v6',
       title: '$title - ${difficulty.label}',
       difficulty: difficulty,
       pattern: pattern,
@@ -2636,41 +2690,27 @@ class _GameScreenState extends State<GameScreen> {
     DailyChallengeDifficulty difficulty,
     int pattern,
   ) {
-    final List<List<String>> lines = <List<String>>[
-      // A late-game queen lift ending in Qxh7#. Black only has quiet pawn
-      // replies while the mating net is built.
-      <String>['a1a3', 'a7a6', 'a3h3', 'a6a5', 'h3h7'],
-      <String>['a1a2', 'a7a6', 'a2a3', 'a6a5', 'a3h3', 'b7b6', 'h3h7'],
-      <String>[
-        'a1a2',
-        'a7a6',
-        'a2a3',
-        'a6a5',
-        'a3h3',
-        'b7b6',
-        'h3h4',
-        'b6b5',
-        'h4h7',
-      ],
-    ];
-    return switch (difficulty) {
-      DailyChallengeDifficulty.easy => lines[0],
-      DailyChallengeDifficulty.medium => lines[1],
-      DailyChallengeDifficulty.hard => lines[2],
-    };
+    return dailyChallengeSolutionFor(difficulty, pattern);
   }
 
   Map<String, ChessPiece> _dailyStartingPosition(DailyChallenge challenge) {
+    final String queenFile =
+        dailyChallengeQueenFileForPattern(challenge.pattern);
     final Map<String, ChessPiece> base = <String, ChessPiece>{
       // White mating force. Keep the king on f4 so the puzzle starts from a
       // legal position: f6 is attacked by the black g7 pawn, which made the
       // challenge feel locked because every normal move was rejected.
       'f4': const ChessPiece('K', true),
-      'a1': const ChessPiece('Q', true),
-      'c2': const ChessPiece('B', true),
+      '${queenFile}1': const ChessPiece('Q', true),
+      // c2 protects h7. When today's queen starts on the c-file, b1 supplies
+      // the same diagonal support without blocking the queen lift.
+      if (queenFile == 'c')
+        'b1': const ChessPiece('B', true)
+      else
+        'c2': const ChessPiece('B', true),
       'h2': const ChessPiece('P', true),
       'b4': const ChessPiece('P', true),
-      'g2': const ChessPiece('P', true),
+      if (queenFile != 'g') 'g2': const ChessPiece('P', true),
       // Black king is boxed by its own pawns; the final Qxh7# is protected
       // by the bishop on c2. Keeping d3 empty also leaves the queen's
       // a3-to-h3 forcing route unobstructed.
@@ -2697,6 +2737,9 @@ class _GameScreenState extends State<GameScreen> {
         in dailyScenery[challenge.pattern].entries) {
       base[entry.key] = ChessPiece('P', entry.value);
     }
+    // Decorative pieces must never occupy today's queen travel squares.
+    base.remove('${queenFile}2');
+    base.remove('${queenFile}3');
     return base;
   }
 
