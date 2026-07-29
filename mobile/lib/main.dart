@@ -869,9 +869,14 @@ String dailyChallengeDateKey(DateTime date) {
 
 int dailyChallengePatternForDate(DateTime date) {
   final DateTime day = DateTime(date.year, date.month, date.day);
-  final int rawPattern = day.difference(DateTime(2026)).inDays % 7;
-  return rawPattern < 0 ? rawPattern + 7 : rawPattern;
+  final int rawPattern =
+      day.difference(DateTime(2026)).inDays % dailyChallengeRotationLength;
+  return rawPattern < 0
+      ? rawPattern + dailyChallengeRotationLength
+      : rawPattern;
 }
+
+const int dailyChallengeRotationLength = 49;
 
 const List<String> dailyChallengeQueenFiles = <String>[
   'a',
@@ -2657,7 +2662,7 @@ class _GameScreenState extends State<GameScreen> {
     final DateTime today = DateTime.now();
     final int pattern = dailyChallengePatternForDate(today);
     final String date = dailyChallengeDateKey(today);
-    final String title = switch (pattern) {
+    final String title = switch (pattern % dailyChallengeQueenFiles.length) {
       0 => 'Royal Net',
       1 => 'Back Rank Spark',
       2 => 'Moonlight Mate',
@@ -2667,7 +2672,7 @@ class _GameScreenState extends State<GameScreen> {
       _ => 'Queen Flight',
     };
     return DailyChallenge(
-      id: '$date-${difficulty.name}-p$pattern-freeplay-v6',
+      id: '$date-${difficulty.name}-p$pattern-freeplay-v7',
       title: '$title - ${difficulty.label}',
       difficulty: difficulty,
       pattern: pattern,
@@ -2721,9 +2726,8 @@ class _GameScreenState extends State<GameScreen> {
       'b7': const ChessPiece('P', false),
       'e6': const ChessPiece('P', false),
     };
-    // Seven deterministic layouts make the board visibly different each day
-    // while preserving the verified mating line. Extra pawns are deliberately
-    // placed outside the queen route and the black king's escape squares.
+    // Seven queen files crossed with seven scenery layouts create 49 visibly
+    // different daily boards before the deterministic sequence repeats.
     const List<Map<String, bool>> dailyScenery = <Map<String, bool>>[
       <String, bool>{'d2': true},
       <String, bool>{'f2': true, 'd7': false},
@@ -2733,8 +2737,11 @@ class _GameScreenState extends State<GameScreen> {
       <String, bool>{'e2': true, 'd7': false},
       <String, bool>{'d2': true, 'e7': false, 'f2': true},
     ];
+    final int sceneryIndex =
+        (challenge.pattern ~/ dailyChallengeQueenFiles.length) %
+            dailyScenery.length;
     for (final MapEntry<String, bool> entry
-        in dailyScenery[challenge.pattern].entries) {
+        in dailyScenery[sceneryIndex].entries) {
       base[entry.key] = ChessPiece('P', entry.value);
     }
     // Decorative pieces must never occupy today's queen travel squares.
@@ -4280,25 +4287,39 @@ class _GameScreenState extends State<GameScreen> {
         target.file <= 5 &&
         target.rank >= 3 &&
         target.rank <= 6;
+    final String sourceSquare = from.toLowerCase();
+    final String targetSquare = to.toLowerCase();
     final String action = captured == null
-        ? '$pieceName moved from $from to $to.'
-        : '$pieceName captured ${_pieceName(captured.code)} on $to.';
+        ? '$pieceName moved from $sourceSquare to $targetSquare.'
+        : '$pieceName captured ${_pieceName(captured.code)} on $targetSquare.';
+    final String piecePurpose = switch (piece.code) {
+      'P' => controlsCenter
+          ? 'The pawn claims central space and opens lines for your pieces.'
+          : 'The pawn changes the structure; check the squares it now protects.',
+      'N' =>
+        'The knight attacks in an L-shape; inspect its new forks and protected squares.',
+      'B' => 'The bishop opens a diagonal; trace it until the first blocker.',
+      'R' =>
+        'The rook works on ranks and files; look for an open file or king pressure.',
+      'Q' =>
+        'The queen creates threats in several directions; verify it cannot be chased.',
+      'K' =>
+        'The king move changes king safety; recheck every enemy check on the new square.',
+      _ => 'Compare the checks, captures, and threats created by the move.',
+    };
     if (givesCheck && captured != null) {
-      return '$action Strong forcing move: it wins material and checks the king, so the opponent must respond to the check.';
+      return '$action Strong forcing move: it wins material and checks the king, so the opponent must respond to the check. $piecePurpose';
     }
     if (givesCheck) {
-      return '$action This is a forcing check. Now calculate every legal king escape, capture, and blocking move.';
+      return '$action This is a forcing check. Now calculate every legal king escape, capture, and blocking move. $piecePurpose';
     }
     if (captured != null) {
-      return '$action Before the next move, compare the traded piece values and check whether the capturing piece is protected.';
-    }
-    if (piece.code == 'N' || piece.code == 'B') {
-      return '$action Good development: active minor pieces control more squares and help the king and center.';
+      return '$action Before the next move, compare the traded piece values and check whether the capturing piece is protected. $piecePurpose';
     }
     if (controlsCenter) {
-      return '$action It improves central control, which gives your pieces more space and mobility.';
+      return '$action $piecePurpose Central control gives your pieces more space and mobility.';
     }
-    return '$action Ask three questions next: do I have a check, a capture, or a direct threat?';
+    return '$action $piecePurpose Next, look for a check, capture, or direct threat.';
   }
 
   String _pieceName(String code) => switch (code) {
@@ -4875,7 +4896,7 @@ class MoveAndCaptureOverlay extends StatelessWidget {
         final Offset target = _topLeft(to, cell);
         return TweenAnimationBuilder<double>(
           tween: Tween<double>(begin: 0, end: 1),
-          duration: Duration(milliseconds: capturedPiece == null ? 360 : 480),
+          duration: Duration(milliseconds: capturedPiece == null ? 360 : 430),
           curve: Curves.easeInOutCubic,
           builder: (BuildContext context, double progress, Widget? child) {
             final Offset travel = Offset.lerp(start, target, progress)!;
@@ -4884,7 +4905,7 @@ class MoveAndCaptureOverlay extends StatelessWidget {
             // The victim stays at the target only until impact, then is
             // knocked away quickly instead of lingering over the new board.
             final double impactProgress =
-                ((progress - 0.54) / 0.46).clamp(0.0, 1.0);
+                ((progress - 0.30) / 0.70).clamp(0.0, 1.0);
             return Stack(
               clipBehavior: Clip.none,
               children: <Widget>[
