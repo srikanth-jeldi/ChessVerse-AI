@@ -4,7 +4,6 @@ import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/layout/responsive_page.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/chessverse_button.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../../daily_challenge/domain/daily_challenge_models.dart';
 import '../../daily_challenge/widgets/daily_challenge_launcher.dart';
@@ -124,17 +123,7 @@ class _PhoneHomeLayout extends StatelessWidget {
           onSettings: onSettings,
         ),
         const SizedBox(height: 20),
-        RewardProgressCard(rewards: rewards),
-        const SizedBox(height: 18),
-        _HeroPlayCard(onPlayVsAi: onPlayVsAi),
-        const SizedBox(height: 18),
-        DailyChallengeLauncher(
-          challenge: challenge,
-          onStart: onDailyChallenge,
-          onViewDetails: onDailyChallenge,
-        ),
-        const SizedBox(height: 18),
-        _QuickActionsGrid(
+        _GameModeHub(
           onPlayVsAi: onPlayVsAi,
           onDailyChallenge: onDailyChallenge,
           onLocalGame: onLocalGame,
@@ -145,6 +134,14 @@ class _PhoneHomeLayout extends StatelessWidget {
           onLearnChess: onLearnChess,
           onProfile: onProfile,
           onSettings: onSettings,
+        ),
+        const SizedBox(height: 18),
+        RewardProgressCard(rewards: rewards),
+        const SizedBox(height: 18),
+        DailyChallengeLauncher(
+          challenge: challenge,
+          onStart: onDailyChallenge,
+          onViewDetails: onDailyChallenge,
         ),
       ],
     );
@@ -193,18 +190,25 @@ class _WideHomeLayout extends StatelessWidget {
           onSettings: onSettings,
         ),
         const SizedBox(height: 24),
+        _GameModeHub(
+          onPlayVsAi: onPlayVsAi,
+          onDailyChallenge: onDailyChallenge,
+          onLocalGame: onLocalGame,
+          onOnlineGame: onOnlineGame,
+          onAnalysis: onAnalysis,
+          onPuzzles: onPuzzles,
+          onSavedGames: onSavedGames,
+          onLearnChess: onLearnChess,
+          onProfile: onProfile,
+          onSettings: onSettings,
+        ),
+        const SizedBox(height: 22),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Expanded(
               flex: 6,
-              child: Column(
-                children: <Widget>[
-                  RewardProgressCard(rewards: rewards),
-                  const SizedBox(height: 18),
-                  _HeroPlayCard(onPlayVsAi: onPlayVsAi),
-                ],
-              ),
+              child: RewardProgressCard(rewards: rewards),
             ),
             const SizedBox(width: 22),
             Expanded(
@@ -216,19 +220,6 @@ class _WideHomeLayout extends StatelessWidget {
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 18),
-        _QuickActionsGrid(
-          onPlayVsAi: onPlayVsAi,
-          onDailyChallenge: onDailyChallenge,
-          onLocalGame: onLocalGame,
-          onOnlineGame: onOnlineGame,
-          onAnalysis: onAnalysis,
-          onPuzzles: onPuzzles,
-          onSavedGames: onSavedGames,
-          onLearnChess: onLearnChess,
-          onProfile: onProfile,
-          onSettings: onSettings,
         ),
       ],
     );
@@ -409,51 +400,8 @@ class _HomeHeader extends StatelessWidget {
   }
 }
 
-class _HeroPlayCard extends StatelessWidget {
-  const _HeroPlayCard({required this.onPlayVsAi});
-
-  final VoidCallback onPlayVsAi;
-
-  @override
-  Widget build(BuildContext context) {
-    return ChessVerseCard(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: const Icon(Icons.psychology_alt_rounded, size: 30),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            'Train with ChessVerse AI',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Play against adaptive AI levels, get hints, review mistakes, and improve every session.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 18),
-          ChessVerseButton(
-            label: 'Play vs AI',
-            icon: Icons.play_arrow_rounded,
-            onPressed: onPlayVsAi,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickActionsGrid extends StatelessWidget {
-  const _QuickActionsGrid({
+class _GameModeHub extends StatelessWidget {
+  const _GameModeHub({
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onLocalGame,
@@ -479,82 +427,121 @@ class _QuickActionsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool wide = AppBreakpoints.isTabletOrLarger(context);
-    return GridView.count(
-      crossAxisCount: wide ? 4 : 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: wide ? 1.45 : 1.02,
-      children: <Widget>[
-        _ActionTile(
-          icon: Icons.smart_toy_rounded,
-          title: 'AI Game',
-          subtitle: '10 levels',
-          onTap: onPlayVsAi,
-        ),
-        _ActionTile(
-          icon: Icons.emoji_events_rounded,
-          title: 'Daily',
-          subtitle: 'Checkmate',
-          onTap: onDailyChallenge,
-        ),
-        _ActionTile(
-          icon: Icons.people_alt_rounded,
-          title: 'Local',
-          subtitle: '2 players',
-          onTap: onLocalGame,
-        ),
-        _ActionTile(
-          icon: Icons.public_rounded,
-          title: 'Online',
-          subtitle: 'Play a friend',
-          onTap: onOnlineGame,
-        ),
-        _ActionTile(
-          icon: Icons.analytics_rounded,
-          title: 'Analysis',
-          subtitle: 'Review',
-          onTap: onAnalysis,
-        ),
-        _ActionTile(
-          icon: Icons.extension_rounded,
-          title: 'Puzzles',
-          subtitle: 'Tactics',
-          onTap: onPuzzles,
-        ),
-        _ActionTile(
-          icon: Icons.bookmark_rounded,
-          title: 'Saved',
-          subtitle: 'Games',
-          onTap: onSavedGames,
-        ),
-        _ActionTile(
-          icon: Icons.school_rounded,
-          title: 'Learn',
-          subtitle: 'Coach tips',
-          onTap: onLearnChess,
-        ),
-        _ActionTile(
-          icon: Icons.person_rounded,
-          title: 'Profile',
-          subtitle: 'Stats',
-          onTap: onProfile,
-        ),
-        _ActionTile(
-          icon: Icons.settings_rounded,
-          title: 'Settings',
-          subtitle: 'Prefs',
-          onTap: onSettings,
-        ),
-      ],
+    final List<_GameMode> primaryModes = <_GameMode>[
+      _GameMode(
+        icon: Icons.public_rounded,
+        title: 'Play Online',
+        subtitle: 'Match with players',
+        onTap: onOnlineGame,
+      ),
+      _GameMode(
+        icon: Icons.smart_toy_rounded,
+        title: 'Play with Computer',
+        subtitle: '10 adaptive AI levels',
+        onTap: onPlayVsAi,
+      ),
+      _GameMode(
+        icon: Icons.people_alt_rounded,
+        title: 'Play with Friends',
+        subtitle: 'Pass & Play',
+        onTap: onLocalGame,
+      ),
+      _GameMode(
+        icon: Icons.local_fire_department_rounded,
+        title: 'Daily Challenge',
+        subtitle: 'A new puzzle every day',
+        onTap: onDailyChallenge,
+      ),
+      _GameMode(
+        icon: Icons.extension_rounded,
+        title: 'Chess Puzzles',
+        subtitle: 'Sharpen your tactics',
+        onTap: onPuzzles,
+      ),
+      _GameMode(
+        icon: Icons.leaderboard_rounded,
+        title: 'Rankings',
+        subtitle: 'Profile & progress',
+        onTap: onProfile,
+      ),
+      _GameMode(
+        icon: Icons.settings_rounded,
+        title: 'Settings',
+        subtitle: 'Sound, board & account',
+        onTap: onSettings,
+      ),
+    ];
+    final List<_GameMode> extraModes = <_GameMode>[
+      _GameMode(
+        icon: Icons.analytics_rounded,
+        title: 'Analysis',
+        subtitle: 'Review your games',
+        onTap: onAnalysis,
+      ),
+      _GameMode(
+        icon: Icons.bookmark_rounded,
+        title: 'Saved Games',
+        subtitle: 'Continue and review',
+        onTap: onSavedGames,
+      ),
+      _GameMode(
+        icon: Icons.school_rounded,
+        title: 'Learn Chess',
+        subtitle: 'Coach lessons',
+        onTap: onLearnChess,
+      ),
+    ];
+
+    return ChessVerseCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(17),
+                ),
+                child: const Icon(Icons.sports_esports_rounded, size: 28),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'Choose your game',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Pick a mode and start playing.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _ModeGrid(modes: primaryModes, featured: true),
+          const SizedBox(height: 18),
+          Text('More ChessVerse',
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 10),
+          _ModeGrid(modes: extraModes),
+        ],
+      ),
     );
   }
 }
 
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({
+class _GameMode {
+  const _GameMode({
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -565,36 +552,117 @@ class _ActionTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+}
+
+class _ModeGrid extends StatelessWidget {
+  const _ModeGrid({required this.modes, this.featured = false});
+
+  final List<_GameMode> modes;
+  final bool featured;
 
   @override
   Widget build(BuildContext context) {
-    return ChessVerseCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: <Widget>[
-          Icon(icon, color: AppColors.accentGold),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium,
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final int columns = constraints.maxWidth >= 1000
+            ? 4
+            : constraints.maxWidth >= 680
+                ? 3
+                : 2;
+        final double tileWidth =
+            (constraints.maxWidth - ((columns - 1) * 12)) / columns;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: modes
+              .map(
+                (_GameMode mode) => SizedBox(
+                  width: tileWidth,
+                  child: _GameModeTile(mode: mode, featured: featured),
+                ),
+              )
+              .toList(),
+        );
+      },
+    );
+  }
+}
+
+class _GameModeTile extends StatelessWidget {
+  const _GameModeTile({required this.mode, required this.featured});
+
+  final _GameMode mode;
+  final bool featured;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: '${mode.title}. ${mode.subtitle}',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: mode.onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 126),
+            child: Ink(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: featured
+                    ? LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: <Color>[
+                          AppColors.primary.withValues(alpha: 0.82),
+                          AppColors.primaryDark.withValues(alpha: 0.62),
+                        ],
+                      )
+                    : null,
+                color: featured
+                    ? null
+                    : AppColors.surfaceLight.withValues(alpha: 0.78),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: featured
+                      ? AppColors.accentGold.withValues(alpha: 0.72)
+                      : AppColors.border,
+                ),
               ),
-              const SizedBox(height: 3),
-              Text(
-                subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Icon(mode.icon, color: AppColors.accentGold, size: 27),
+                      const Spacer(),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    mode.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    mode.subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
