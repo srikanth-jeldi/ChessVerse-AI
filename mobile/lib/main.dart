@@ -156,6 +156,7 @@ class _SplashGateState extends State<SplashGate> {
             onPlayVsAi: () => _chooseSideAndOpen(context, GameMode.computer),
             onDailyChallenge: () => _openGame(context, GameMode.daily),
             onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
+            onOnlineGame: () => _openGame(context, GameMode.online),
             onAnalysis: () => _push(context, const AnalysisScreen()),
             onPuzzles: () => _push(context, const PuzzlesScreen()),
             onSavedGames: () => _push(context, const SavedGamesScreen()),
@@ -1518,6 +1519,13 @@ class _GameScreenState extends State<GameScreen> {
     }
     if (_gameMode == GameMode.computer && !_humanPlaysWhite) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleAiMove());
+    }
+    if (_gameMode == GameMode.online) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          unawaited(_showOnlineMatchmakingInfo());
+        }
+      });
     }
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) {
@@ -7450,6 +7458,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                   const SizedBox(height: 14),
                   TextField(
                     controller: _roomController,
+                    onChanged: (_) => setState(() {}),
                     decoration: const InputDecoration(
                       labelText: 'Join code',
                       prefixIcon: Icon(Icons.login_rounded),

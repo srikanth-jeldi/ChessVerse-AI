@@ -41,8 +41,14 @@ class OnlineMatchService {
 
     @Transactional
     MatchResponse randomMatch(AuthenticatedPlayer player) {
+        OnlineMatch ownWaiting = matches
+                .findFirstByStatusAndWhitePlayerIdOrderByUpdatedAtDesc("WAITING", player.id())
+                .orElse(null);
+        if (ownWaiting != null) {
+            return response(ownWaiting, player.id());
+        }
         OnlineMatch waiting = matches
-                .findFirstByStatusAndWhitePlayerIdNotOrderByCreatedAtAsc("WAITING", player.id())
+                .findFirstByStatusAndWhitePlayerIdNotOrderByUpdatedAtDesc("WAITING", player.id())
                 .orElse(null);
         if (waiting == null) {
             return createRoom(player);
@@ -145,4 +151,3 @@ class OnlineMatchService {
         return code;
     }
 }
-

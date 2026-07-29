@@ -8,10 +8,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 interface OnlineMatchRepository extends JpaRepository<OnlineMatch, UUID> {
     Optional<OnlineMatch> findByRoomCodeIgnoreCase(String roomCode);
 
-    Optional<OnlineMatch> findFirstByStatusAndWhitePlayerIdNotOrderByCreatedAtAsc(
+    Optional<OnlineMatch> findFirstByStatusAndWhitePlayerIdOrderByUpdatedAtDesc(
+            String status, UUID playerId);
+
+    Optional<OnlineMatch> findFirstByStatusAndWhitePlayerIdNotOrderByUpdatedAtDesc(
             String status, UUID playerId);
 
     List<OnlineMatch> findTop10ByWhitePlayerIdOrBlackPlayerIdOrderByUpdatedAtDesc(
             UUID whitePlayerId, UUID blackPlayerId);
 }
-

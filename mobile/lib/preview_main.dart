@@ -90,6 +90,7 @@ class PreviewShell extends StatelessWidget {
       onPlayVsAi: () => _openGame(context, game.GameMode.computer),
       onDailyChallenge: () => _openGame(context, game.GameMode.daily),
       onLocalGame: () => _openGame(context, game.GameMode.local),
+      onOnlineGame: () => _openGame(context, game.GameMode.online),
       onAnalysis: () => _openAnalysis(context),
       onPuzzles: () => _push(context, const PuzzlesScreen()),
       onSavedGames: () => _push(context, const SavedGamesScreen()),
