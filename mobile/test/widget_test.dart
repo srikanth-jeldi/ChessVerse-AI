@@ -387,6 +387,23 @@ void main() {
     );
 
     expect(patterns.toSet(), hasLength(7));
+    final List<String> queenFiles =
+        patterns.map(dailyChallengeQueenFileForPattern).toList(growable: false);
+    final List<List<String>> solutions = patterns
+        .map(
+          (int pattern) => dailyChallengeSolutionFor(
+            DailyChallengeDifficulty.medium,
+            pattern,
+          ),
+        )
+        .toList(growable: false);
+    expect(queenFiles.toSet(), hasLength(7));
+    expect(solutions.map((List<String> line) => line.join(',')).toSet(),
+        hasLength(7));
+    for (int index = 0; index < patterns.length; index++) {
+      expect(
+          solutions[index].first, '${queenFiles[index]}1${queenFiles[index]}2');
+    }
     expect(
       dailyChallengePatternForDate(firstDay.add(const Duration(days: 7))),
       patterns.first,
@@ -418,12 +435,22 @@ void main() {
     expect(find.text('Daily Challenge'), findsOneWidget);
     expect(find.text('0/4'), findsOneWidget);
 
-    final List<(String, String)> playerMoves = <(String, String)>[
-      ('a1', 'a2'),
-      ('a2', 'a3'),
-      ('a3', 'h3'),
-      ('h3', 'h7'),
-    ];
+    final int todayPattern = dailyChallengePatternForDate(DateTime.now());
+    final List<String> forcedLine = dailyChallengeSolutionFor(
+      DailyChallengeDifficulty.medium,
+      todayPattern,
+    );
+    final List<(String, String)> playerMoves = forcedLine
+        .asMap()
+        .entries
+        .where((MapEntry<int, String> entry) => entry.key.isEven)
+        .map(
+          (MapEntry<int, String> entry) => (
+            entry.value.substring(0, 2),
+            entry.value.substring(2, 4),
+          ),
+        )
+        .toList(growable: false);
     for (int index = 0; index < playerMoves.length; index++) {
       final (String from, String to) = playerMoves[index];
       await tester.tap(find.byKey(ValueKey<String>('square-$from')));
