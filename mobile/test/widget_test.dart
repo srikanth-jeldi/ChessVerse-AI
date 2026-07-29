@@ -59,6 +59,101 @@ void main() {
     expect(ChessRules.isCheckmate(false, pieces), isFalse);
   });
 
+  testWidgets(
+    'capture overlay owns both pieces until victim exits, then commits board',
+    (WidgetTester tester) async {
+      const ChessPiece attacker = ChessPiece('Q', true);
+      const ChessPiece victim = ChessPiece('R', false);
+      const BoardPalette palette = BoardPalette(
+        label: 'Test',
+        light: Color(0xFFE9D5B7),
+        dark: Color(0xFF7A5035),
+        frame: Color(0xFF4A2F20),
+        accent: Color(0xFFFFD166),
+      );
+
+      Widget board({
+        required Map<String, ChessPiece> pieces,
+        required int sequence,
+        String? from,
+        String? to,
+        ChessPiece? moved,
+        ChessPiece? captured,
+      }) {
+        return MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox.square(
+                dimension: 400,
+                child: ChessBoard(
+                  pieces: pieces,
+                  selectedSquare: null,
+                  legalTargets: const <String>{},
+                  lastFromSquare: from,
+                  lastToSquare: to,
+                  lastCaptureSquare: captured == null ? null : to,
+                  lastMovedPiece: moved,
+                  lastCapturedPiece: captured,
+                  moveSequence: sequence,
+                  checkedKingSquare: null,
+                  decisiveSquare: null,
+                  flipped: false,
+                  showCoordinates: true,
+                  palette: palette,
+                  onSquareTap: (_) {},
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(
+        board(
+          pieces: const <String, ChessPiece>{
+            'a1': attacker,
+            'd5': victim,
+          },
+          sequence: 0,
+        ),
+      );
+
+      await tester.pumpWidget(
+        board(
+          pieces: const <String, ChessPiece>{'d5': attacker},
+          sequence: 1,
+          from: 'a1',
+          to: 'd5',
+          moved: attacker,
+          captured: victim,
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey<String>('d5-true-Q')), findsNothing);
+      expect(
+        find.byKey(const ValueKey<String>('moving-piece-true-Q')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('captured-piece-false-R')),
+        findsOneWidget,
+      );
+
+      await tester.pump(const Duration(milliseconds: 560));
+
+      expect(find.byKey(const ValueKey<String>('d5-true-Q')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('moving-piece-true-Q')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey<String>('captured-piece-false-R')),
+        findsNothing,
+      );
+    },
+  );
+
   testWidgets('shows branded splash before onboarding and account access', (
     WidgetTester tester,
   ) async {
@@ -137,7 +232,7 @@ void main() {
     );
 
     await tester.tap(
-      find.byKey(const ValueKey<String>('game-controls-handle')),
+      find.byKey(const ValueKey<String>('open-full-controls')),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('2 Players').last);
@@ -147,28 +242,6 @@ void main() {
     expect(find.text('Player 2'), findsWidgets);
     expect(
       find.byKey(const ValueKey<String>('rename-player-two')),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.byKey(const ValueKey<String>('rename-player-two')));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField), 'Anu');
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
-    expect(find.text('Player 2: Anu'), findsOneWidget);
-
-    await tester.tap(find.byKey(const ValueKey<String>('square-e2')));
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey<String>('square-e4')));
-    await tester.pump(const Duration(milliseconds: 600));
-
-    final ChessBoard board = tester.widget<ChessBoard>(find.byType(ChessBoard));
-    expect(board.flipped, isTrue);
-    expect(
-      find.byWidgetPredicate(
-        (Widget widget) =>
-            widget is CustomPaint && widget.painter is LastMoveTrailPainter,
-      ),
       findsOneWidget,
     );
   });

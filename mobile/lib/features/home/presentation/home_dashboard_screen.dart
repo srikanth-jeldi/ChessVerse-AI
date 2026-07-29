@@ -15,6 +15,7 @@ class HomeDashboardScreen extends StatelessWidget {
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onLocalGame,
+    required this.onOnlineGame,
     required this.onAnalysis,
     required this.onPuzzles,
     required this.onSavedGames,
@@ -28,6 +29,7 @@ class HomeDashboardScreen extends StatelessWidget {
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
+  final VoidCallback onOnlineGame;
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
   final VoidCallback onSavedGames;
@@ -52,6 +54,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 onPlayVsAi: onPlayVsAi,
                 onDailyChallenge: onDailyChallenge,
                 onLocalGame: onLocalGame,
+                onOnlineGame: onOnlineGame,
                 onAnalysis: onAnalysis,
                 onPuzzles: onPuzzles,
                 onSavedGames: onSavedGames,
@@ -66,6 +69,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 onPlayVsAi: onPlayVsAi,
                 onDailyChallenge: onDailyChallenge,
                 onLocalGame: onLocalGame,
+                onOnlineGame: onOnlineGame,
                 onAnalysis: onAnalysis,
                 onPuzzles: onPuzzles,
                 onSavedGames: onSavedGames,
@@ -86,6 +90,7 @@ class _PhoneHomeLayout extends StatelessWidget {
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onLocalGame,
+    required this.onOnlineGame,
     required this.onAnalysis,
     required this.onPuzzles,
     required this.onSavedGames,
@@ -100,6 +105,7 @@ class _PhoneHomeLayout extends StatelessWidget {
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
+  final VoidCallback onOnlineGame;
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
   final VoidCallback onSavedGames;
@@ -132,6 +138,7 @@ class _PhoneHomeLayout extends StatelessWidget {
           onPlayVsAi: onPlayVsAi,
           onDailyChallenge: onDailyChallenge,
           onLocalGame: onLocalGame,
+          onOnlineGame: onOnlineGame,
           onAnalysis: onAnalysis,
           onPuzzles: onPuzzles,
           onSavedGames: onSavedGames,
@@ -152,6 +159,7 @@ class _WideHomeLayout extends StatelessWidget {
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onLocalGame,
+    required this.onOnlineGame,
     required this.onAnalysis,
     required this.onPuzzles,
     required this.onSavedGames,
@@ -166,6 +174,7 @@ class _WideHomeLayout extends StatelessWidget {
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
+  final VoidCallback onOnlineGame;
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
   final VoidCallback onSavedGames;
@@ -213,6 +222,7 @@ class _WideHomeLayout extends StatelessWidget {
           onPlayVsAi: onPlayVsAi,
           onDailyChallenge: onDailyChallenge,
           onLocalGame: onLocalGame,
+          onOnlineGame: onOnlineGame,
           onAnalysis: onAnalysis,
           onPuzzles: onPuzzles,
           onSavedGames: onSavedGames,
@@ -447,6 +457,7 @@ class _QuickActionsGrid extends StatelessWidget {
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onLocalGame,
+    required this.onOnlineGame,
     required this.onAnalysis,
     required this.onPuzzles,
     required this.onSavedGames,
@@ -458,6 +469,7 @@ class _QuickActionsGrid extends StatelessWidget {
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
+  final VoidCallback onOnlineGame;
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
   final VoidCallback onSavedGames;
@@ -493,6 +505,12 @@ class _QuickActionsGrid extends StatelessWidget {
           title: 'Local',
           subtitle: '2 players',
           onTap: onLocalGame,
+        ),
+        _ActionTile(
+          icon: Icons.public_rounded,
+          title: 'Online',
+          subtitle: 'Play a friend',
+          onTap: onOnlineGame,
         ),
         _ActionTile(
           icon: Icons.analytics_rounded,

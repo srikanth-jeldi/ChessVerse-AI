@@ -18,6 +18,7 @@ import 'features/analysis/presentation/analysis_screen.dart';
 import 'features/home/presentation/home_dashboard_screen.dart';
 import 'features/library/presentation/reference_screens.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
+import 'features/online/data/online_match_api.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/tutorial/presentation/learn_chess_screen.dart';
@@ -155,6 +156,7 @@ class _SplashGateState extends State<SplashGate> {
             onPlayVsAi: () => _chooseSideAndOpen(context, GameMode.computer),
             onDailyChallenge: () => _openGame(context, GameMode.daily),
             onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
+            onOnlineGame: () => _openGame(context, GameMode.online),
             onAnalysis: () => _push(context, const AnalysisScreen()),
             onPuzzles: () => _push(context, const PuzzlesScreen()),
             onSavedGames: () => _push(context, const SavedGamesScreen()),
@@ -1376,6 +1378,7 @@ class _GameScreenState extends State<GameScreen> {
   static const AuthApi _authApi = AuthApi();
   static const AuthSessionStore _sessionStore = AuthSessionStore();
   static const EngineApi _engineApi = EngineApi();
+  static const OnlineMatchApi _onlineApi = OnlineMatchApi();
   final math.Random _random = math.Random();
   AudioPlayer? _warningPlayer;
   final List<String> _moves = <String>[];
@@ -1384,12 +1387,17 @@ class _GameScreenState extends State<GameScreen> {
   final List<GameSnapshot> _history = <GameSnapshot>[];
   Timer? _clockTimer;
   Timer? _moveQualityTimer;
+  Timer? _onlinePollTimer;
+  OnlineMatchDto? _onlineMatch;
+  bool _onlineSubmitting = false;
   String? _selectedSquare;
   String? _lastFromSquare;
   String? _lastToSquare;
   String? _lastCaptureSquare;
   ChessPiece? _lastMovedPiece;
   ChessPiece? _lastCapturedPiece;
+  String? _lastPlayerMove;
+  String? _lastPlayerCoachNote;
   String? _moveQualityText;
   String _coachNote = 'Select a coin to see legal moves.';
   BoardSkin _skin = BoardSkin.royalWalnut;
@@ -1512,6 +1520,13 @@ class _GameScreenState extends State<GameScreen> {
     if (_gameMode == GameMode.computer && !_humanPlaysWhite) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleAiMove());
     }
+    if (_gameMode == GameMode.online) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          unawaited(_showOnlineMatchmakingInfo());
+        }
+      });
+    }
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) {
         return;
@@ -1554,6 +1569,7 @@ class _GameScreenState extends State<GameScreen> {
   void dispose() {
     _clockTimer?.cancel();
     _moveQualityTimer?.cancel();
+    _onlinePollTimer?.cancel();
     final AudioPlayer? warningPlayer = _warningPlayer;
     if (warningPlayer != null) {
       unawaited(warningPlayer.dispose());
@@ -1647,74 +1663,89 @@ class _GameScreenState extends State<GameScreen> {
                 onSquareTap: _handleSquareTap,
               );
 
-              final Widget panel = GamePanel(
-                compact: !wide ||
-                    constraints.maxHeight < 620 ||
-                    widePanelWidth < 340,
-                collapsible: true,
-                expanded: _controlsExpanded,
-                whitePlayerName: _whitePlayerName,
-                blackPlayerName: _blackPlayerName,
-                activeColor: _moves.length.isEven ? 'White' : 'Black',
-                gameMode: _gameMode,
-                aiLevel: _aiLevel.round(),
-                aiThinking: _aiThinking,
-                coachEnabled: _coachEnabled,
-                moves: _moves,
-                capturedWhite: _capturedWhite,
-                capturedBlack: _capturedBlack,
-                coachNote: _coachNote,
-                whiteClock: _formatClock(_whiteSeconds),
-                blackClock: _formatClock(_blackSeconds),
-                skin: _skin,
-                onSkinChanged: (BoardSkin skin) => setState(() => _skin = skin),
-                onGameModeChanged: _changeGameMode,
-                dailyDifficulty: _dailyDifficulty,
-                dailyProgress: _dailyPlayerMovesCompleted,
-                dailyGoal: _dailyChallenge.playerMoveGoal,
-                dailyMistakes: _dailyMistakes,
-                onDailyDifficultyChanged: _changeDailyDifficulty,
-                onAiLevelChanged: (double level) {
-                  setState(() => _aiLevel = level);
-                },
-                onCoachChanged: (bool value) {
-                  setState(() => _coachEnabled = value);
-                },
-                onNewGameRequested: _confirmNewGame,
-                onResign: _resignGame,
-                onOfferDraw: _offerDraw,
-                onMoveHistory: _showMoveHistory,
-                onUndo: _undo,
-                onHint: _showHint,
-                onAnalyze: _showAnalysis,
-                soundEnabled: _soundEnabled,
-                showCoordinates: _showCoordinates,
-                showMoveHints: _showMoveHints,
-                onSoundChanged: _setSoundEnabled,
-                onShowCoordinatesChanged: (bool value) {
-                  setState(() => _showCoordinates = value);
-                },
-                onShowMoveHintsChanged: (bool value) {
-                  setState(() => _showMoveHints = value);
-                },
-                onEditBlackPlayer: _editBlackPlayerName,
-                onToggleExpanded: () {
-                  setState(() => _controlsExpanded = !_controlsExpanded);
-                },
-                onLogout: _logout,
-                canUndo: _history.isNotEmpty,
-              );
+              Widget buildPanel({
+                ValueChanged<GameMode>? onModeChanged,
+              }) =>
+                  GamePanel(
+                    compact: !wide ||
+                        constraints.maxHeight < 620 ||
+                        widePanelWidth < 340,
+                    collapsible: true,
+                    expanded: _controlsExpanded,
+                    whitePlayerName: _whitePlayerName,
+                    blackPlayerName: _blackPlayerName,
+                    activeColor: _moves.length.isEven ? 'White' : 'Black',
+                    gameMode: _gameMode,
+                    aiLevel: _aiLevel.round(),
+                    aiThinking: _aiThinking,
+                    coachEnabled: _coachEnabled,
+                    moves: _moves,
+                    capturedWhite: _capturedWhite,
+                    capturedBlack: _capturedBlack,
+                    coachNote: _coachNote,
+                    whiteClock: _formatClock(_whiteSeconds),
+                    blackClock: _formatClock(_blackSeconds),
+                    skin: _skin,
+                    onSkinChanged: (BoardSkin skin) =>
+                        setState(() => _skin = skin),
+                    onGameModeChanged: onModeChanged ?? _changeGameMode,
+                    dailyDifficulty: _dailyDifficulty,
+                    dailyProgress: _dailyPlayerMovesCompleted,
+                    dailyGoal: _dailyChallenge.playerMoveGoal,
+                    dailyMistakes: _dailyMistakes,
+                    onDailyDifficultyChanged: _changeDailyDifficulty,
+                    onAiLevelChanged: (double level) {
+                      setState(() => _aiLevel = level);
+                    },
+                    onCoachChanged: (bool value) {
+                      setState(() => _coachEnabled = value);
+                    },
+                    onNewGameRequested: _confirmNewGame,
+                    onResign: _resignGame,
+                    onOfferDraw: _offerDraw,
+                    onMoveHistory: _showMoveHistory,
+                    onUndo: _undo,
+                    onHint: _showHint,
+                    onAnalyze: _showAnalysis,
+                    soundEnabled: _soundEnabled,
+                    showCoordinates: _showCoordinates,
+                    showMoveHints: _showMoveHints,
+                    onSoundChanged: _setSoundEnabled,
+                    onShowCoordinatesChanged: (bool value) {
+                      setState(() => _showCoordinates = value);
+                    },
+                    onShowMoveHintsChanged: (bool value) {
+                      setState(() => _showMoveHints = value);
+                    },
+                    onEditBlackPlayer: _editBlackPlayerName,
+                    onToggleExpanded: () {
+                      setState(() => _controlsExpanded = !_controlsExpanded);
+                    },
+                    onLogout: _logout,
+                    canUndo: _history.isNotEmpty,
+                  );
               void openFullControls() {
                 showModalBottomSheet<void>(
                   context: context,
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
-                  builder: (BuildContext sheetContext) => SafeArea(
-                    child: FractionallySizedBox(
-                      heightFactor: 0.92,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: panel,
+                  builder: (BuildContext sheetContext) => StatefulBuilder(
+                    builder: (
+                      BuildContext context,
+                      StateSetter setSheetState,
+                    ) =>
+                        SafeArea(
+                      child: FractionallySizedBox(
+                        heightFactor: 0.92,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: buildPanel(
+                            onModeChanged: (GameMode mode) {
+                              _changeGameMode(mode);
+                              setSheetState(() {});
+                            },
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -1726,11 +1757,9 @@ class _GameScreenState extends State<GameScreen> {
                 activeColor: _moves.length.isEven ? 'White' : 'Black',
                 aiThinking: _aiThinking,
                 coachEnabled: _coachEnabled,
-                coachNote: _coachNote,
-                lastMove: _moves.isEmpty ? null : _moves.first,
-                lastMoveOwner: _lastMovedPiece == null
-                    ? null
-                    : _moveOwnerLabel(_lastMovedPiece!),
+                coachNote: _lastPlayerCoachNote ?? _coachNote,
+                lastMove: _lastPlayerMove,
+                lastMoveOwner: _lastPlayerMove == null ? null : 'Your move',
                 dailyProgress: _dailyPlayerMovesCompleted,
                 dailyGoal: _dailyChallenge.playerMoveGoal,
                 canUndo: _history.isNotEmpty,
@@ -2384,6 +2413,8 @@ class _GameScreenState extends State<GameScreen> {
       _showOnlineMatchmakingInfo();
       return;
     }
+    _onlinePollTimer?.cancel();
+    _onlineMatch = null;
     setState(() {
       _gameMode = mode;
       if (_gameMode == GameMode.daily) {
@@ -2400,16 +2431,6 @@ class _GameScreenState extends State<GameScreen> {
       return;
     }
     _changeGameMode(GameMode.daily);
-  }
-
-  String _moveOwnerLabel(ChessPiece piece) {
-    if (_gameMode == GameMode.local) {
-      return piece.white ? 'White move' : 'Black move';
-    }
-    if (_gameMode == GameMode.daily) {
-      return piece.white ? 'Your move' : 'Puzzle reply';
-    }
-    return piece.white == _humanPlaysWhite ? 'Your move' : 'ChessVerse AI move';
   }
 
   String get _playerDisplayName {
@@ -2438,7 +2459,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   bool _shouldFlipBoard(bool sideToMoveWhite) {
-    if (_gameMode == GameMode.computer) {
+    if (_gameMode == GameMode.computer || _gameMode == GameMode.online) {
       return !_humanPlaysWhite;
     }
     if (_gameMode == GameMode.local) {
@@ -2771,6 +2792,21 @@ class _GameScreenState extends State<GameScreen> {
     if (_gameResultTitle != null || _aiThinking) {
       return;
     }
+    final OnlineMatchDto? onlineMatch = _onlineMatch;
+    if (_gameMode == GameMode.online) {
+      if (onlineMatch == null || !onlineMatch.isActive) {
+        setState(() => _coachNote = 'Waiting for an online opponent.');
+        return;
+      }
+      if (_onlineSubmitting) {
+        return;
+      }
+      if (onlineMatch.activeColor.toLowerCase() !=
+          onlineMatch.yourColor.toLowerCase()) {
+        setState(() => _coachNote = _onlineStatusText(onlineMatch));
+        return;
+      }
+    }
     if (_gameMode == GameMode.daily && _dailyPlyIndex.isOdd) {
       _scheduleDailyReply();
       return;
@@ -2778,9 +2814,15 @@ class _GameScreenState extends State<GameScreen> {
     String? promotionSquare;
     bool? promotionWhite;
     bool moveCommitted = false;
+    String? onlineUci;
+    int? onlineExpectedPly;
 
     setState(() {
       final bool whitesTurn = _moves.length.isEven;
+      if (_gameMode == GameMode.online && whitesTurn != _humanPlaysWhite) {
+        _coachNote = 'Waiting for your opponent to move.';
+        return;
+      }
       if (_gameMode == GameMode.computer && whitesTurn != _humanPlaysWhite) {
         _coachNote = 'ChessVerse AI is calculating its reply.';
         return;
@@ -2864,6 +2906,16 @@ class _GameScreenState extends State<GameScreen> {
                     ? '$from$square'
                     : '$from x $square';
         _moves.insert(0, move);
+        if (_gameMode == GameMode.online) {
+          final bool promotes = piece.code == 'P' &&
+              ((piece.white && square.endsWith('8')) ||
+                  (!piece.white && square.endsWith('1')));
+          onlineUci = '$from$square${promotes ? 'q' : ''}';
+          onlineExpectedPly = onlineMatch?.plyCount;
+          if (promotes) {
+            _pieces[square] = ChessPiece('Q', piece.white);
+          }
+        }
         unawaited(
           ChessSoundService.instance.pieceMove(
             piece.code,
@@ -2884,6 +2936,7 @@ class _GameScreenState extends State<GameScreen> {
           _moveQualityText =
               '$moveFeedback ${_moveSuggestionText(preMoveAnalysis, from, square)}';
         }
+        _lastPlayerMove = move;
         _coachNote = castleMove
             ? '${piece.white ? 'White' : 'Black'} castles ${square.startsWith('g') ? 'king side' : 'queen side'}.'
             : _coachMoveExplanation(
@@ -2892,7 +2945,8 @@ class _GameScreenState extends State<GameScreen> {
                 to: square,
                 captured: captured,
               );
-        if (piece.code == 'P' &&
+        if (_gameMode != GameMode.online &&
+            piece.code == 'P' &&
             ((piece.white && square.endsWith('8')) ||
                 (!piece.white && square.endsWith('1')))) {
           promotionSquare = square;
@@ -2903,6 +2957,7 @@ class _GameScreenState extends State<GameScreen> {
           if (_gameResultTitle == null) {
             _coachNote = '$moveFeedback $_coachNote';
           }
+          _lastPlayerCoachNote = _coachNote;
           if (_gameMode == GameMode.daily) {
             final bool opponentMated = _isCheckmateFor(!piece.white);
             if (opponentMated) {
@@ -2933,7 +2988,13 @@ class _GameScreenState extends State<GameScreen> {
       if (_moveQualityText != null) {
         _scheduleMoveQualityDismiss();
       }
-      _scheduleAiMove();
+      if (_gameMode == GameMode.online &&
+          onlineUci != null &&
+          onlineExpectedPly != null) {
+        unawaited(_submitOnlineMove(onlineUci!, onlineExpectedPly!));
+      } else {
+        _scheduleAiMove();
+      }
     }
   }
 
@@ -3501,6 +3562,10 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _reset() {
+    if (_gameMode == GameMode.online && _onlineMatch != null) {
+      unawaited(_refreshOnlineMatch());
+      return;
+    }
     final DailyChallenge challenge = _challengeForToday(_dailyDifficulty);
     final bool completedToday = LocalGameArchive.isDailyChallengeComplete(
       challenge.id,
@@ -3527,6 +3592,8 @@ class _GameScreenState extends State<GameScreen> {
       _lastCaptureSquare = null;
       _lastMovedPiece = null;
       _lastCapturedPiece = null;
+      _lastPlayerMove = null;
+      _lastPlayerCoachNote = null;
       _moveQualityText = null;
       _whiteSeconds = 10 * 60;
       _blackSeconds = 10 * 60;
@@ -3724,6 +3791,8 @@ class _GameScreenState extends State<GameScreen> {
       _lastCaptureSquare = snapshot.lastCaptureSquare;
       _lastMovedPiece = null;
       _lastCapturedPiece = null;
+      _lastPlayerMove = null;
+      _lastPlayerCoachNote = null;
       _whiteSeconds = snapshot.whiteSeconds;
       _blackSeconds = snapshot.blackSeconds;
       _selectedSquare = null;
@@ -3883,12 +3952,188 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _showOnlineMatchmakingInfo() async {
-    await showModalBottomSheet<void>(
+    String? token = _authToken;
+    token ??= (await _sessionStore.read())?.token;
+    if (!mounted) return;
+    if (token == null || token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sign in to play online and reconnect matches.'),
+        ),
+      );
+      return;
+    }
+    final OnlineMatchDto? match = await showModalBottomSheet<OnlineMatchDto>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (BuildContext context) => const OnlineMatchmakingSheet(),
+      builder: (BuildContext context) => OnlineMatchmakingSheet(
+        api: _onlineApi,
+        token: token!,
+      ),
     );
+    if (match != null && mounted) {
+      _beginOnlineMatch(match, token);
+    }
+  }
+
+  void _beginOnlineMatch(OnlineMatchDto match, String token) {
+    _onlinePollTimer?.cancel();
+    setState(() {
+      _authToken = token;
+      _onlineMatch = match;
+      _gameMode = GameMode.online;
+      _humanPlaysWhite = match.yourColor.toLowerCase() == 'white';
+      _whitePlayerName = match.whitePlayerName ?? 'White player';
+      _blackPlayerName = match.blackPlayerName ?? 'Black player';
+      _coachNote = _onlineStatusText(match);
+    });
+    _rebuildFromOnline(match);
+    _onlinePollTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => unawaited(_refreshOnlineMatch()),
+    );
+  }
+
+  String _onlineStatusText(OnlineMatchDto match) {
+    if (!match.isActive) {
+      return 'Room ${match.roomCode}: waiting for your opponent.';
+    }
+    final bool yourTurn =
+        match.activeColor.toLowerCase() == match.yourColor.toLowerCase();
+    return yourTurn
+        ? 'Your turn (${match.yourColor}).'
+        : 'Waiting for ${match.activeColor} to move.';
+  }
+
+  Future<void> _refreshOnlineMatch() async {
+    final OnlineMatchDto? current = _onlineMatch;
+    final String? token = _authToken;
+    if (current == null || token == null || _onlineSubmitting) return;
+    try {
+      final OnlineMatchDto latest =
+          await _onlineApi.getMatch(token, current.id);
+      if (!mounted) return;
+      _rebuildFromOnline(latest);
+    } on OnlineMatchException catch (error) {
+      if (!mounted) return;
+      setState(() => _coachNote = 'Reconnect pending: ${error.message}');
+    }
+  }
+
+  void _rebuildFromOnline(OnlineMatchDto match) {
+    final OnlineMatchDto? previous = _onlineMatch;
+    if (previous != null &&
+        previous.id == match.id &&
+        previous.plyCount == match.plyCount &&
+        previous.status == match.status &&
+        previous.activeColor == match.activeColor &&
+        previous.whitePlayerName == match.whitePlayerName &&
+        previous.blackPlayerName == match.blackPlayerName) {
+      setState(() {
+        _onlineMatch = match;
+        _coachNote = _onlineStatusText(match);
+      });
+      return;
+    }
+    final Map<String, ChessPiece> board =
+        Map<String, ChessPiece>.from(_initialPieces);
+    final List<String> history = <String>[];
+    final List<ChessPiece> capturedWhite = <ChessPiece>[];
+    final List<ChessPiece> capturedBlack = <ChessPiece>[];
+    for (final OnlineMoveDto remoteMove in match.moves) {
+      final String uci = remoteMove.uci.toLowerCase();
+      if (uci.length < 4) continue;
+      final String from = uci.substring(0, 2);
+      final String to = uci.substring(2, 4);
+      ChessPiece? piece = board.remove(from);
+      if (piece == null) continue;
+      ChessPiece? captured = board.remove(to);
+      if (piece.code == 'P' && captured == null && from[0] != to[0]) {
+        final String enPassantSquare = '${to[0]}${from[1]}';
+        captured = board.remove(enPassantSquare);
+      }
+      if (captured != null) {
+        (captured.white ? capturedWhite : capturedBlack).add(captured);
+      }
+      if (piece.code == 'K' &&
+          (from.codeUnitAt(0) - to.codeUnitAt(0)).abs() == 2) {
+        final bool kingSide = to.startsWith('g');
+        final String rookFrom = '${kingSide ? 'h' : 'a'}${from[1]}';
+        final String rookTo = '${kingSide ? 'f' : 'd'}${from[1]}';
+        final ChessPiece? rook = board.remove(rookFrom);
+        if (rook != null) board[rookTo] = rook;
+      }
+      if (uci.length >= 5) {
+        piece = ChessPiece(uci[4].toUpperCase(), piece.white);
+      }
+      board[to] = piece;
+      history.insert(
+        0,
+        captured == null ? '$from$to' : '$from x $to',
+      );
+    }
+    setState(() {
+      _onlineMatch = match;
+      _pieces = board;
+      _moves
+        ..clear()
+        ..addAll(history);
+      _capturedWhite
+        ..clear()
+        ..addAll(capturedWhite);
+      _capturedBlack
+        ..clear()
+        ..addAll(capturedBlack);
+      _whitePlayerName = match.whitePlayerName ?? 'White player';
+      _blackPlayerName = match.blackPlayerName ?? 'Black player';
+      _coachNote = _onlineStatusText(match);
+      _selectedSquare = null;
+    });
+    if (match.status == 'ACTIVE' && match.moves.isNotEmpty) {
+      final bool sideToMoveWhite = match.activeColor == 'WHITE';
+      final String stateNote = _gameStateNote(
+        sideToMoveWhite,
+        fallback: _onlineStatusText(match),
+      );
+      if (_resultVisible) {
+        _onlinePollTimer?.cancel();
+      }
+      if (mounted) {
+        setState(() => _coachNote = stateNote);
+      }
+    }
+  }
+
+  Future<void> _submitOnlineMove(String uci, int expectedPly) async {
+    final OnlineMatchDto? current = _onlineMatch;
+    final String? token = _authToken;
+    if (current == null || token == null || _onlineSubmitting) return;
+    setState(() {
+      _onlineSubmitting = true;
+      _coachNote = 'Sending $uci to your opponent...';
+    });
+    try {
+      final OnlineMatchDto latest = await _onlineApi.submitMove(
+        token,
+        current.id,
+        uci: uci,
+        expectedPly: expectedPly,
+      );
+      if (!mounted) return;
+      _rebuildFromOnline(latest);
+    } on OnlineMatchException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _onlineSubmitting = false;
+        _coachNote = 'Move not accepted: ${error.message}';
+      });
+      await _refreshOnlineMatch();
+    } finally {
+      if (mounted) {
+        setState(() => _onlineSubmitting = false);
+      }
+    }
   }
 
   Future<void> _showPromotionPicker(String square, bool white) async {
@@ -4202,7 +4447,7 @@ class BoardStage extends StatelessWidget {
   }
 }
 
-class ChessBoard extends StatelessWidget {
+class ChessBoard extends StatefulWidget {
   const ChessBoard({
     required this.pieces,
     required this.selectedSquare,
@@ -4239,7 +4484,86 @@ class ChessBoard extends StatelessWidget {
   final ValueChanged<String> onSquareTap;
 
   @override
+  State<ChessBoard> createState() => _ChessBoardState();
+}
+
+class _ChessBoardState extends State<ChessBoard> {
+  Timer? _animationTimer;
+  String? _activeMoveToken;
+
+  String? _moveToken(ChessBoard board) {
+    final ChessPiece? moved = board.lastMovedPiece;
+    if (board.lastFromSquare == null ||
+        board.lastToSquare == null ||
+        moved == null) {
+      return null;
+    }
+    final ChessPiece? captured = board.lastCapturedPiece;
+    return '${board.moveSequence}:${board.lastFromSquare}:'
+        '${board.lastToSquare}:${moved.white}:${moved.code}:'
+        '${captured?.white}:${captured?.code}';
+  }
+
+  void _stopAnimation() {
+    _animationTimer?.cancel();
+    _animationTimer = null;
+    _activeMoveToken = null;
+  }
+
+  void _startAnimation(String token) {
+    _animationTimer?.cancel();
+    setState(() => _activeMoveToken = token);
+    _animationTimer = Timer(
+      Duration(
+        milliseconds: widget.lastCapturedPiece == null ? 400 : 520,
+      ),
+      () {
+        if (!mounted || _activeMoveToken != token) {
+          return;
+        }
+        setState(() => _activeMoveToken = null);
+      },
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant ChessBoard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final String? oldToken = _moveToken(oldWidget);
+    final String? newToken = _moveToken(widget);
+    if (newToken == null) {
+      _stopAnimation();
+    } else if (newToken != oldToken) {
+      _startAnimation(newToken);
+    }
+  }
+
+  @override
+  void dispose() {
+    _animationTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final Map<String, ChessPiece> pieces = widget.pieces;
+    final String? selectedSquare = widget.selectedSquare;
+    final Set<String> legalTargets = widget.legalTargets;
+    final String? lastFromSquare = widget.lastFromSquare;
+    final String? lastToSquare = widget.lastToSquare;
+    final String? lastCaptureSquare = widget.lastCaptureSquare;
+    final ChessPiece? lastMovedPiece = widget.lastMovedPiece;
+    final ChessPiece? lastCapturedPiece = widget.lastCapturedPiece;
+    final int moveSequence = widget.moveSequence;
+    final String? checkedKingSquare = widget.checkedKingSquare;
+    final String? decisiveSquare = widget.decisiveSquare;
+    final bool flipped = widget.flipped;
+    final bool showCoordinates = widget.showCoordinates;
+    final BoardPalette palette = widget.palette;
+    final ValueChanged<String> onSquareTap = widget.onSquareTap;
+    final bool moveAnimating =
+        _activeMoveToken != null && _activeMoveToken == _moveToken(widget);
+
     return AspectRatio(
       aspectRatio: 1,
       child: ClipRRect(
@@ -4260,7 +4584,10 @@ class ChessBoard extends StatelessWidget {
                 final String square = '${String.fromCharCode(97 + file)}$rank';
                 final bool dark = (row + col).isOdd;
                 final bool selected = square == selectedSquare;
-                final ChessPiece? piece = pieces[square];
+                final ChessPiece? piece =
+                    moveAnimating && square == lastToSquare
+                        ? null
+                        : pieces[square];
                 final bool legalTarget = legalTargets.contains(square);
                 final bool captureTarget =
                     legalTarget && piece != null && square != selectedSquare;
@@ -4329,8 +4656,8 @@ class ChessBoard extends StatelessWidget {
                         (BuildContext context, double progress, Widget? child) {
                       return CustomPaint(
                         painter: LastMoveTrailPainter(
-                          from: lastFromSquare!,
-                          to: lastToSquare!,
+                          from: lastFromSquare,
+                          to: lastToSquare,
                           flipped: flipped,
                           progress: progress,
                           accent: palette.accent,
@@ -4340,7 +4667,8 @@ class ChessBoard extends StatelessWidget {
                   ),
                 ),
               ),
-            if (lastFromSquare != null &&
+            if (moveAnimating &&
+                lastFromSquare != null &&
                 lastToSquare != null &&
                 lastMovedPiece != null)
               Positioned.fill(
@@ -4348,13 +4676,13 @@ class ChessBoard extends StatelessWidget {
                   child: MoveAndCaptureOverlay(
                     key: ValueKey<String>(
                       'move-overlay-$lastFromSquare-$lastToSquare-'
-                      '${lastMovedPiece!.white}-${lastMovedPiece!.code}-'
+                      '${lastMovedPiece.white}-${lastMovedPiece.code}-'
                       '${lastCapturedPiece?.code}-$moveSequence',
                     ),
-                    from: lastFromSquare!,
-                    to: lastToSquare!,
+                    from: lastFromSquare,
+                    to: lastToSquare,
                     flipped: flipped,
-                    movedPiece: lastMovedPiece!,
+                    movedPiece: lastMovedPiece,
                     capturedPiece: lastCapturedPiece,
                   ),
                 ),
@@ -4518,6 +4846,9 @@ class MoveAndCaptureOverlay extends StatelessWidget {
               clipBehavior: Clip.none,
               children: <Widget>[
                 Positioned(
+                  key: ValueKey<String>(
+                    'moving-piece-${movedPiece.white}-${movedPiece.code}',
+                  ),
                   left: travel.dx,
                   top: travel.dy + lift,
                   width: cell,
@@ -4533,6 +4864,10 @@ class MoveAndCaptureOverlay extends StatelessWidget {
                 ),
                 if (capturedPiece != null && impactProgress < 0.999)
                   Positioned(
+                    key: ValueKey<String>(
+                      'captured-piece-${capturedPiece!.white}-'
+                      '${capturedPiece!.code}',
+                    ),
                     left: target.dx,
                     top: target.dy,
                     width: cell,
@@ -5596,7 +5931,7 @@ class _StudioCoachPanel extends StatelessWidget {
       GameMode.daily => 'Checkmate in $dailyGoal',
       GameMode.computer => 'Find the strongest move',
       GameMode.local => 'Outplay your opponent',
-      GameMode.online => 'Online mode coming soon',
+      GameMode.online => 'Play a live opponent',
     };
     final int progress = gameMode == GameMode.daily
         ? dailyProgress.clamp(0, dailyGoal)
@@ -5660,6 +5995,7 @@ class _StudioCoachPanel extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       IconButton.filled(
+                        key: const ValueKey<String>('open-full-controls'),
                         tooltip: 'Game controls',
                         onPressed: onControls,
                         icon: const Icon(Icons.tune_rounded),
@@ -6538,7 +6874,7 @@ class GameModeLauncher extends StatelessWidget {
         mode: GameMode.online,
         icon: Icons.public_rounded,
         title: 'Online',
-        subtitle: 'Coming soon',
+        subtitle: 'Matchmaking & reconnect',
       ),
     ];
 
@@ -6875,12 +7211,79 @@ class AnalysisMetric extends StatelessWidget {
   }
 }
 
-class OnlineMatchmakingSheet extends StatelessWidget {
-  const OnlineMatchmakingSheet({super.key});
+class OnlineMatchmakingSheet extends StatefulWidget {
+  const OnlineMatchmakingSheet({
+    required this.api,
+    required this.token,
+    super.key,
+  });
+
+  final OnlineMatchApi api;
+  final String token;
+
+  @override
+  State<OnlineMatchmakingSheet> createState() => _OnlineMatchmakingSheetState();
+}
+
+class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
+  final TextEditingController _roomController = TextEditingController();
+  Timer? _pollTimer;
+  OnlineMatchDto? _match;
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    _roomController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _run(Future<OnlineMatchDto> Function() operation) async {
+    if (_loading) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final OnlineMatchDto match = await operation();
+      if (!mounted) return;
+      _accept(match);
+    } on OnlineMatchException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _accept(OnlineMatchDto match) {
+    if (match.isActive) {
+      Navigator.of(context).pop(match);
+      return;
+    }
+    setState(() => _match = match);
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => unawaited(_poll()),
+    );
+  }
+
+  Future<void> _poll() async {
+    final OnlineMatchDto? current = _match;
+    if (current == null) return;
+    try {
+      final OnlineMatchDto latest =
+          await widget.api.getMatch(widget.token, current.id);
+      if (!mounted) return;
+      _accept(latest);
+    } on OnlineMatchException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    const String roomCode = 'CV-7429';
     final Size size = MediaQuery.sizeOf(context);
     final bool landscape = size.width > size.height;
     final double maxWidth = landscape ? 760 : 560;
@@ -6932,8 +7335,15 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Choose Play with Friend using a room code, or Random Match to pair with another online player after VPS/WebSocket deployment.',
+                    'Create a private room, join a friend, find a random rival, or reconnect an unfinished match.',
                   ),
+                  if (_error != null) ...<Widget>[
+                    const SizedBox(height: 12),
+                    Text(
+                      _error!,
+                      style: const TextStyle(color: Color(0xFFFF6B6B)),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   DecoratedBox(
                     decoration: BoxDecoration(
@@ -6961,7 +7371,13 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                                   style: Theme.of(context).textTheme.titleLarge,
                                 ),
                               ),
-                              const Chip(label: Text('Coming soon')),
+                              if (_loading)
+                                const SizedBox.square(
+                                  dimension: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -6970,7 +7386,12 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                           ),
                           const SizedBox(height: 10),
                           FilledButton.icon(
-                            onPressed: () {},
+                            onPressed: _loading
+                                ? null
+                                : () => _run(
+                                      () =>
+                                          widget.api.randomMatch(widget.token),
+                                    ),
                             icon: const Icon(Icons.bolt_rounded),
                             label: const Text('Find random player'),
                           ),
@@ -6992,39 +7413,52 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                         children: <Widget>[
                           const Text('Play with Friend - invite room code'),
                           const SizedBox(height: 8),
-                          SelectableText(
-                            roomCode,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineMedium
-                                ?.copyWith(
-                                  color: const Color(0xFFD6A84F),
-                                  letterSpacing: 2,
-                                  fontSize: landscape ? 30 : null,
-                                ),
-                          ),
-                          const SizedBox(height: 10),
-                          FilledButton.icon(
-                            onPressed: () {
-                              Clipboard.setData(
-                                const ClipboardData(text: roomCode),
-                              );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Invite code copied'),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.copy_rounded),
-                            label: const Text('Copy invite code'),
-                          ),
+                          if (_match == null)
+                            const Text(
+                              'Create a room below, then share its code.',
+                            )
+                          else ...<Widget>[
+                            SelectableText(
+                              _match!.roomCode,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(
+                                    color: const Color(0xFFD6A84F),
+                                    letterSpacing: 2,
+                                    fontSize: landscape ? 30 : null,
+                                  ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Waiting for opponent… this screen reconnects automatically.',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 10),
+                            FilledButton.icon(
+                              onPressed: () {
+                                Clipboard.setData(
+                                  ClipboardData(text: _match!.roomCode),
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Invite code copied'),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.copy_rounded),
+                              label: const Text('Copy invite code'),
+                            ),
+                          ],
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 14),
                   TextField(
+                    controller: _roomController,
+                    onChanged: (_) => setState(() {}),
                     decoration: const InputDecoration(
                       labelText: 'Join code',
                       prefixIcon: Icon(Icons.login_rounded),
@@ -7038,20 +7472,41 @@ class OnlineMatchmakingSheet extends StatelessWidget {
                     runSpacing: 10,
                     children: <Widget>[
                       OutlinedButton.icon(
-                        onPressed: () {},
+                        onPressed: _loading
+                            ? null
+                            : () => _run(
+                                  () => widget.api.createRoom(widget.token),
+                                ),
                         icon: const Icon(Icons.group_add_rounded),
                         label: const Text('Create room'),
                       ),
                       FilledButton.icon(
-                        onPressed: () {},
+                        onPressed:
+                            _loading || _roomController.text.trim().isEmpty
+                                ? null
+                                : () => _run(
+                                      () => widget.api.joinRoom(
+                                        widget.token,
+                                        _roomController.text,
+                                      ),
+                                    ),
                         icon: const Icon(Icons.sports_esports_rounded),
-                        label: const Text('Join mock'),
+                        label: const Text('Join room'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _loading
+                            ? null
+                            : () => _run(
+                                  () => widget.api.reconnect(widget.token),
+                                ),
+                        icon: const Icon(Icons.sync_rounded),
+                        label: const Text('Reconnect'),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Waiting screen, room code, and invite flow are local UI only until backend is live.',
+                    'Moves are validated by the ChessVerse server. Active matches restore after an app restart.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Color(0xFFAAA69E), fontSize: 12),
                   ),
