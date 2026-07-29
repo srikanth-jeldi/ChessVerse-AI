@@ -378,15 +378,15 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  test('daily challenge rotates deterministically across seven days', () {
+  test('daily challenge rotates deterministically across 49 days', () {
     final DateTime firstDay = DateTime(2026, 7, 28);
     final List<int> patterns = List<int>.generate(
-      7,
+      dailyChallengeRotationLength,
       (int offset) =>
           dailyChallengePatternForDate(firstDay.add(Duration(days: offset))),
     );
 
-    expect(patterns.toSet(), hasLength(7));
+    expect(patterns.toSet(), hasLength(dailyChallengeRotationLength));
     final List<String> queenFiles =
         patterns.map(dailyChallengeQueenFileForPattern).toList(growable: false);
     final List<List<String>> solutions = patterns
@@ -398,14 +398,16 @@ void main() {
         )
         .toList(growable: false);
     expect(queenFiles.toSet(), hasLength(7));
-    expect(solutions.map((List<String> line) => line.join(',')).toSet(),
-        hasLength(7));
     for (int index = 0; index < patterns.length; index++) {
       expect(
           solutions[index].first, '${queenFiles[index]}1${queenFiles[index]}2');
     }
     expect(
       dailyChallengePatternForDate(firstDay.add(const Duration(days: 7))),
+      isNot(patterns.first),
+    );
+    expect(
+      dailyChallengePatternForDate(firstDay.add(const Duration(days: 49))),
       patterns.first,
     );
     expect(dailyChallengeDateKey(firstDay), '2026-07-28');

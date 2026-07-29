@@ -34,11 +34,11 @@ class ChessSoundService {
 
   static const Map<String, String> pieceAssetPaths = <String, String>{
     'P': 'audio/piece_pawn.wav',
-    'N': 'audio/piece_knight.ogg',
-    'B': 'audio/piece_bishop.ogg',
+    'N': 'audio/piece_knight.wav',
+    'B': 'audio/piece_bishop.wav',
     'R': 'audio/piece_rook.wav',
     'Q': 'audio/piece_queen.wav',
-    'K': 'audio/piece_king.ogg',
+    'K': 'audio/piece_king.wav',
   };
 
   static String assetForPiece(String pieceCode) =>
