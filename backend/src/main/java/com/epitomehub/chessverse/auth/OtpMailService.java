@@ -25,15 +25,15 @@ class OtpMailService implements OtpDelivery {
     public void sendVerificationCode(String email, String displayName, String code) {
         sendCode(
                 email,
-                "Your ChessVerse verification code",
+                "Your ChessVerseAI verification code",
                 """
                 Hello %s,
 
-                Your ChessVerse verification code is: %s
+                Your ChessVerseAI verification code is: %s
 
                 It expires in 10 minutes. If you did not request this code, ignore this email.
 
-                ChessVerse AI
+                ChessVerseAI
                 """.formatted(displayName, code));
     }
 
@@ -41,15 +41,15 @@ class OtpMailService implements OtpDelivery {
     public void sendPasswordResetCode(String email, String displayName, String code) {
         sendCode(
                 email,
-                "Reset your ChessVerse password",
+                "Reset your ChessVerseAI password",
                 """
                 Hello %s,
 
-                Your ChessVerse password reset code is: %s
+                Your ChessVerseAI password reset code is: %s
 
                 It expires in 10 minutes. If you did not request a reset, ignore this email.
 
-                ChessVerse AI
+                ChessVerseAI
                 """.formatted(displayName, code));
     }
 

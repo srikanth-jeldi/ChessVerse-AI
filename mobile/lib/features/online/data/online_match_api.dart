@@ -2,25 +2,23 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../../core/config/app_config.dart';
+import 'online_socket_connector.dart';
 
 class OnlineMoveDto {
-  const OnlineMoveDto({
-    required this.ply,
-    required this.uci,
-    required this.playerId,
-  });
+  const OnlineMoveDto({required this.ply, required this.uci});
 
   final int ply;
   final String uci;
-  final String playerId;
 
-  factory OnlineMoveDto.fromJson(Map<String, dynamic> json) => OnlineMoveDto(
-        ply: (json['ply'] as num).toInt(),
-        uci: json['uci'] as String,
-        playerId: json['playerId'] as String,
-      );
+  factory OnlineMoveDto.fromJson(Map<String, dynamic> json) {
+    return OnlineMoveDto(
+      ply: (json['ply'] as num?)?.toInt() ?? 0,
+      uci: (json['uci'] as String? ?? '').toLowerCase(),
+    );
+  }
 }
 
 class OnlineMatchDto {
@@ -30,10 +28,24 @@ class OnlineMatchDto {
     required this.status,
     required this.yourColor,
     required this.activeColor,
-    required this.plyCount,
     required this.whitePlayerName,
     required this.blackPlayerName,
+    this.whitePlayerPhotoUrl,
+    this.blackPlayerPhotoUrl,
+    required this.fen,
     required this.moves,
+    this.whiteTimeMs = 600000,
+    this.blackTimeMs = 600000,
+    this.serverNow,
+    this.turnStartedAt,
+    this.result,
+    this.resultReason,
+    this.drawOfferedByColor,
+    this.rematchRequestedByYou = false,
+    this.rematchMatchId,
+    this.ratingBefore,
+    this.ratingAfter,
+    this.updatedAt,
   });
 
   final String id;
@@ -41,60 +53,86 @@ class OnlineMatchDto {
   final String status;
   final String yourColor;
   final String activeColor;
-  final int plyCount;
   final String? whitePlayerName;
   final String? blackPlayerName;
+  final String? whitePlayerPhotoUrl;
+  final String? blackPlayerPhotoUrl;
+  final String fen;
   final List<OnlineMoveDto> moves;
+  final int whiteTimeMs;
+  final int blackTimeMs;
+  final DateTime? serverNow;
+  final DateTime? turnStartedAt;
+  final String? result;
+  final String? resultReason;
+  final String? drawOfferedByColor;
+  final bool rematchRequestedByYou;
+  final String? rematchMatchId;
+  final int? ratingBefore;
+  final int? ratingAfter;
+  final DateTime? updatedAt;
 
-  bool get isActive => status.toLowerCase() == 'active';
-  bool get isWaiting => status.toLowerCase() == 'waiting';
+  bool get isActive => status == 'ACTIVE';
+  int get plyCount => moves.length;
+  bool get whiteToMove => activeColor == 'WHITE';
+  bool get isYourTurn => isActive && activeColor == yourColor;
 
   factory OnlineMatchDto.fromJson(Map<String, dynamic> json) {
-    final List<dynamic> rawMoves =
-        json['moves'] as List<dynamic>? ?? const <dynamic>[];
     return OnlineMatchDto(
-      id: json['id'] as String,
-      roomCode: json['roomCode'] as String,
-      status: json['status'] as String,
-      yourColor: json['yourColor'] as String,
-      activeColor: json['activeColor'] as String,
-      plyCount: (json['plyCount'] as num).toInt(),
+      id: json['id'] as String? ?? '',
+      roomCode: json['roomCode'] as String? ?? '',
+      status: (json['status'] as String? ?? 'WAITING').toUpperCase(),
+      yourColor: (json['yourColor'] as String? ?? 'white').toUpperCase(),
+      activeColor: (json['activeColor'] as String? ?? 'white').toUpperCase(),
       whitePlayerName: json['whitePlayerName'] as String?,
       blackPlayerName: json['blackPlayerName'] as String?,
-      moves: rawMoves
-          .map(
-            (dynamic item) =>
-                OnlineMoveDto.fromJson(item as Map<String, dynamic>),
-          )
-          .toList(growable: false)
-        ..sort((OnlineMoveDto a, OnlineMoveDto b) => a.ply.compareTo(b.ply)),
+      whitePlayerPhotoUrl: json['whitePlayerPhotoUrl'] as String?,
+      blackPlayerPhotoUrl: json['blackPlayerPhotoUrl'] as String?,
+      fen: json['fen'] as String? ?? '',
+      moves: (json['moves'] as List<dynamic>? ?? <dynamic>[])
+          .whereType<Map<String, dynamic>>()
+          .map(OnlineMoveDto.fromJson)
+          .toList(growable: false),
+      whiteTimeMs: (json['whiteTimeMs'] as num?)?.toInt() ?? 600000,
+      blackTimeMs: (json['blackTimeMs'] as num?)?.toInt() ?? 600000,
+      serverNow: DateTime.tryParse(json['serverNow'] as String? ?? ''),
+      turnStartedAt: DateTime.tryParse(json['turnStartedAt'] as String? ?? ''),
+      result: json['result'] as String?,
+      resultReason: json['resultReason'] as String?,
+      drawOfferedByColor: json['drawOfferedByColor'] as String?,
+      rematchRequestedByYou: json['rematchRequestedByYou'] as bool? ?? false,
+      rematchMatchId: json['rematchMatchId'] as String?,
+      ratingBefore: (json['ratingBefore'] as num?)?.toInt(),
+      ratingAfter: (json['ratingAfter'] as num?)?.toInt(),
+      updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? ''),
     );
   }
 }
 
 class OnlineMatchApi {
-  const OnlineMatchApi({http.Client? client}) : _client = client;
-
-  final http.Client? _client;
-
-  Future<OnlineMatchDto> createRoom(String token) =>
-      _request('POST', '/api/online/rooms', token);
-
-  Future<OnlineMatchDto> joinRoom(String token, String roomCode) => _request(
-        'POST',
-        '/api/online/rooms/join',
-        token,
-        body: <String, dynamic>{'roomCode': roomCode.trim().toUpperCase()},
-      );
+  const OnlineMatchApi();
 
   Future<OnlineMatchDto> randomMatch(String token) =>
-      _request('POST', '/api/online/matchmaking/random', token);
+      _request(token, 'POST', '/api/v1/online/queue');
+
+  Future<OnlineMatchDto> createRoom(String token) =>
+      _request(token, 'POST', '/api/v1/online/rooms');
+
+  Future<OnlineMatchDto> joinRoom(String token, String roomCode) => _request(
+        token,
+        'POST',
+        '/api/v1/online/rooms/join',
+        body: <String, Object?>{'roomCode': roomCode.trim().toUpperCase()},
+      );
 
   Future<OnlineMatchDto> reconnect(String token) =>
-      _request('GET', '/api/online/reconnect', token);
+      _request(token, 'GET', '/api/v1/online/matches/current');
 
   Future<OnlineMatchDto> getMatch(String token, String matchId) =>
-      _request('GET', '/api/online/matches/$matchId', token);
+      _request(token, 'GET', '/api/v1/online/matches/$matchId');
+
+  Future<OnlineMatchDto> cancelWaiting(String token, String matchId) =>
+      _request(token, 'DELETE', '/api/v1/online/matches/$matchId/waiting');
 
   Future<OnlineMatchDto> submitMove(
     String token,
@@ -103,65 +141,118 @@ class OnlineMatchApi {
     required int expectedPly,
   }) =>
       _request(
-        'POST',
-        '/api/online/matches/$matchId/moves',
         token,
-        body: <String, dynamic>{'uci': uci, 'expectedPly': expectedPly},
+        'POST',
+        '/api/v1/online/matches/$matchId/moves',
+        body: <String, Object?>{
+          'uci': uci.toLowerCase(),
+          'expectedPly': expectedPly,
+        },
       );
 
+  Future<OnlineMatchDto> resign(String token, String matchId) =>
+      _request(token, 'POST', '/api/v1/online/matches/$matchId/resign');
+
+  Future<OnlineMatchDto> offerDraw(String token, String matchId) =>
+      _request(token, 'POST', '/api/v1/online/matches/$matchId/draw');
+
+  Future<OnlineMatchDto> respondDraw(
+    String token,
+    String matchId, {
+    required bool accept,
+  }) =>
+      _request(
+        token,
+        'POST',
+        '/api/v1/online/matches/$matchId/draw/respond',
+        body: <String, Object?>{'accept': accept},
+      );
+
+  Future<OnlineMatchDto> requestRematch(String token, String matchId) =>
+      _request(token, 'POST', '/api/v1/online/matches/$matchId/rematch');
+
+  Future<List<OnlineMatchDto>> history(String token) async {
+    final Object? decoded =
+        await _requestJson(token, 'GET', '/api/v1/online/matches/history');
+    return (decoded as List<dynamic>? ?? <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .map(OnlineMatchDto.fromJson)
+        .toList(growable: false);
+  }
+
+  WebSocketChannel openMatchChannel(String token, String matchId) {
+    final Uri api = Uri.parse(AppConfig.apiBaseUrl);
+    final Uri socketUri = api.replace(
+      scheme: api.scheme == 'https' ? 'wss' : 'ws',
+      path: '/ws/matches/$matchId',
+      query: null,
+      fragment: null,
+    );
+    return connectOnlineSocket(socketUri, token);
+  }
+
   Future<OnlineMatchDto> _request(
+    String token,
     String method,
-    String path,
-    String token, {
-    Map<String, dynamic>? body,
+    String path, {
+    Map<String, Object?>? body,
   }) async {
-    final http.Client client = _client ?? http.Client();
+    final Object? decoded = await _requestJson(token, method, path, body: body);
+    final Map<String, dynamic> json =
+        decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    return OnlineMatchDto.fromJson(json);
+  }
+
+  Future<Object?> _requestJson(
+    String token,
+    String method,
+    String path, {
+    Map<String, Object?>? body,
+  }) async {
+    final Uri uri = Uri.parse('${AppConfig.apiBaseUrl}$path');
+    final Map<String, String> headers = <String, String>{
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
     try {
-      final Uri uri = Uri.parse('${AppConfig.apiBaseUrl}$path');
-      final Map<String, String> headers = <String, String>{
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      };
-      final http.Response response = await (method == 'GET'
-              ? client.get(uri, headers: headers)
-              : client.post(
-                  uri,
-                  headers: headers,
-                  body: body == null ? null : jsonEncode(body),
-                ))
-          .timeout(const Duration(seconds: 15));
-      final dynamic decoded =
-          response.body.isEmpty ? null : jsonDecode(response.body);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        final String message = decoded is Map<String, dynamic>
-            ? (decoded['message'] ??
-                    decoded['error'] ??
-                    'Online request failed')
-                .toString()
-            : 'Online request failed (${response.statusCode})';
-        throw OnlineMatchException(message);
+      final http.Response response = await switch (method) {
+        'GET' => http.get(uri, headers: headers),
+        'DELETE' => http.delete(uri, headers: headers),
+        _ => http.post(
+            uri,
+            headers: headers,
+            body: body == null ? null : jsonEncode(body),
+          ),
       }
-      return OnlineMatchDto.fromJson(decoded as Map<String, dynamic>);
+          .timeout(const Duration(seconds: 15));
+      final Object? decoded =
+          response.body.isEmpty ? null : jsonDecode(response.body);
+      final Map<String, dynamic> json =
+          decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw OnlineMatchException(
+          json['message'] as String? ?? 'Online play request failed.',
+          statusCode: response.statusCode,
+        );
+      }
+      return decoded;
+    } on OnlineMatchException {
+      rethrow;
     } on TimeoutException {
       throw const OnlineMatchException(
-        'The server took too long to respond. Please try again.',
+        'The ChessVerseAI server took too long to respond.',
       );
-    } on FormatException {
-      throw const OnlineMatchException('The server returned an invalid reply.');
-    } finally {
-      if (_client == null) {
-        client.close();
-      }
+    } catch (_) {
+      throw const OnlineMatchException(
+        'Cannot reach the ChessVerseAI online server. Check your connection.',
+      );
     }
   }
 }
 
 class OnlineMatchException implements Exception {
-  const OnlineMatchException(this.message);
+  const OnlineMatchException(this.message, {this.statusCode});
 
   final String message;
-
-  @override
-  String toString() => message;
+  final int? statusCode;
 }

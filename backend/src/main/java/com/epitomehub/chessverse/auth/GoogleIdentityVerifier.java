@@ -40,10 +40,12 @@ class GoogleIdentityVerifier {
                 throw invalidToken();
             }
             Object name = payload.get("name");
+            Object picture = payload.get("picture");
             return new VerifiedGoogleIdentity(
                     payload.getSubject(),
                     payload.getEmail(),
-                    name instanceof String value ? value : null);
+                    name instanceof String value ? value : null,
+                    picture instanceof String value ? value : null);
         } catch (GeneralSecurityException | IOException | RuntimeException exception) {
             throw invalidToken();
         }
@@ -53,6 +55,10 @@ class GoogleIdentityVerifier {
         return new AuthException(HttpStatus.UNAUTHORIZED, "Google sign-in could not be verified.");
     }
 
-    record VerifiedGoogleIdentity(String subject, String email, String displayName) {
+    record VerifiedGoogleIdentity(
+            String subject,
+            String email,
+            String displayName,
+            String photoUrl) {
     }
 }

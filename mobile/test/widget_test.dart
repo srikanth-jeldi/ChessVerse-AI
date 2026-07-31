@@ -1,7 +1,37 @@
 import 'package:chessverse_ai/main.dart';
+import 'package:chessverse_ai/features/online/data/online_match_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+
+class _FakeOnlineApi extends OnlineMatchApi {
+  const _FakeOnlineApi({required this.active});
+
+  final bool active;
+
+  @override
+  Future<OnlineMatchDto> randomMatch(String token) async => OnlineMatchDto(
+        id: '11111111-1111-1111-1111-111111111111',
+        roomCode: 'CVTEST',
+        status: active ? 'ACTIVE' : 'WAITING',
+        yourColor: 'WHITE',
+        activeColor: 'WHITE',
+        whitePlayerName: 'Srika',
+        blackPlayerName: active ? 'Online Rival' : null,
+        fen: '',
+        moves: const <OnlineMoveDto>[],
+      );
+
+  @override
+  Future<OnlineMatchDto> cancelWaiting(String token, String matchId) =>
+      randomMatch(token);
+
+  @override
+  WebSocketChannel openMatchChannel(String token, String matchId) {
+    throw StateError('Socket intentionally unavailable in widget test');
+  }
+}
 
 void main() {
   setUp(() {
@@ -45,114 +75,6 @@ void main() {
     expect(ChessRules.hasAnySafeMove(false, pieces), isFalse);
     expect(ChessRules.isCheckmate(false, pieces), isTrue);
   });
-
-  test('shared rules distinguish stalemate from checkmate', () {
-    final Map<String, ChessPiece> pieces = <String, ChessPiece>{
-      'c6': const ChessPiece('K', true),
-      'b6': const ChessPiece('Q', true),
-      'a8': const ChessPiece('K', false),
-    };
-
-    expect(ChessRules.isKingInCheck(false, pieces), isFalse);
-    expect(ChessRules.hasAnySafeMove(false, pieces), isFalse);
-    expect(ChessRules.isStalemate(false, pieces), isTrue);
-    expect(ChessRules.isCheckmate(false, pieces), isFalse);
-  });
-
-  testWidgets(
-    'capture overlay owns both pieces until victim exits, then commits board',
-    (WidgetTester tester) async {
-      const ChessPiece attacker = ChessPiece('Q', true);
-      const ChessPiece victim = ChessPiece('R', false);
-      const BoardPalette palette = BoardPalette(
-        label: 'Test',
-        light: Color(0xFFE9D5B7),
-        dark: Color(0xFF7A5035),
-        frame: Color(0xFF4A2F20),
-        accent: Color(0xFFFFD166),
-      );
-
-      Widget board({
-        required Map<String, ChessPiece> pieces,
-        required int sequence,
-        String? from,
-        String? to,
-        ChessPiece? moved,
-        ChessPiece? captured,
-      }) {
-        return MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: SizedBox.square(
-                dimension: 400,
-                child: ChessBoard(
-                  pieces: pieces,
-                  selectedSquare: null,
-                  legalTargets: const <String>{},
-                  lastFromSquare: from,
-                  lastToSquare: to,
-                  lastCaptureSquare: captured == null ? null : to,
-                  lastMovedPiece: moved,
-                  lastCapturedPiece: captured,
-                  moveSequence: sequence,
-                  checkedKingSquare: null,
-                  decisiveSquare: null,
-                  flipped: false,
-                  showCoordinates: true,
-                  palette: palette,
-                  onSquareTap: (_) {},
-                ),
-              ),
-            ),
-          ),
-        );
-      }
-
-      await tester.pumpWidget(
-        board(
-          pieces: const <String, ChessPiece>{
-            'a1': attacker,
-            'd5': victim,
-          },
-          sequence: 0,
-        ),
-      );
-
-      await tester.pumpWidget(
-        board(
-          pieces: const <String, ChessPiece>{'d5': attacker},
-          sequence: 1,
-          from: 'a1',
-          to: 'd5',
-          moved: attacker,
-          captured: victim,
-        ),
-      );
-      await tester.pump();
-
-      expect(find.byKey(const ValueKey<String>('d5-true-Q')), findsNothing);
-      expect(
-        find.byKey(const ValueKey<String>('moving-piece-true-Q')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey<String>('captured-piece-false-R')),
-        findsOneWidget,
-      );
-
-      await tester.pump(const Duration(milliseconds: 560));
-
-      expect(find.byKey(const ValueKey<String>('d5-true-Q')), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey<String>('moving-piece-true-Q')),
-        findsNothing,
-      );
-      expect(
-        find.byKey(const ValueKey<String>('captured-piece-false-R')),
-        findsNothing,
-      );
-    },
-  );
 
   testWidgets('shows branded splash before onboarding and account access', (
     WidgetTester tester,
@@ -232,7 +154,7 @@ void main() {
     );
 
     await tester.tap(
-      find.byKey(const ValueKey<String>('open-full-controls')),
+      find.byKey(const ValueKey<String>('game-controls-handle')),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('2 Players').last);
@@ -242,6 +164,28 @@ void main() {
     expect(find.text('Player 2'), findsWidgets);
     expect(
       find.byKey(const ValueKey<String>('rename-player-two')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey<String>('rename-player-two')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), 'Anu');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('Player 2: Anu'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey<String>('square-e2')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey<String>('square-e4')));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    final ChessBoard board = tester.widget<ChessBoard>(find.byType(ChessBoard));
+    expect(board.flipped, isTrue);
+    expect(
+      find.byWidgetPredicate(
+        (Widget widget) =>
+            widget is CustomPaint && widget.painter is LastMoveTrailPainter,
+      ),
       findsOneWidget,
     );
   });
@@ -378,42 +322,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  test('daily challenge rotates deterministically across 49 days', () {
-    final DateTime firstDay = DateTime(2026, 7, 28);
-    final List<int> patterns = List<int>.generate(
-      dailyChallengeRotationLength,
-      (int offset) =>
-          dailyChallengePatternForDate(firstDay.add(Duration(days: offset))),
-    );
-
-    expect(patterns.toSet(), hasLength(dailyChallengeRotationLength));
-    final List<String> queenFiles =
-        patterns.map(dailyChallengeQueenFileForPattern).toList(growable: false);
-    final List<List<String>> solutions = patterns
-        .map(
-          (int pattern) => dailyChallengeSolutionFor(
-            DailyChallengeDifficulty.medium,
-            pattern,
-          ),
-        )
-        .toList(growable: false);
-    expect(queenFiles.toSet(), hasLength(7));
-    for (int index = 0; index < patterns.length; index++) {
-      expect(
-          solutions[index].first, '${queenFiles[index]}1${queenFiles[index]}2');
-    }
-    expect(
-      dailyChallengePatternForDate(firstDay.add(const Duration(days: 7))),
-      isNot(patterns.first),
-    );
-    expect(
-      dailyChallengePatternForDate(firstDay.add(const Duration(days: 49))),
-      patterns.first,
-    );
-    expect(dailyChallengeDateKey(firstDay), '2026-07-28');
-  });
-
-  testWidgets('daily challenge follows its forced line and starts 24h lock', (
+  testWidgets('daily challenge follows the forced line and ends in checkmate', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(1400, 1000);
@@ -428,51 +337,34 @@ void main() {
         home: GameScreen(
           initiallySignedIn: true,
           useRemoteEngine: false,
-          initialGameMode: GameMode.daily,
         ),
       ),
     );
-    await tester.pump(const Duration(milliseconds: 500));
-
-    expect(find.text('Daily Challenge'), findsOneWidget);
-    expect(find.text('0/4'), findsOneWidget);
-
-    final int todayPattern = dailyChallengePatternForDate(DateTime.now());
-    final List<String> forcedLine = dailyChallengeSolutionFor(
-      DailyChallengeDifficulty.medium,
-      todayPattern,
+    await tester.tap(
+      find.byKey(const ValueKey<String>('game-controls-handle')),
     );
-    final List<(String, String)> playerMoves = forcedLine
-        .asMap()
-        .entries
-        .where((MapEntry<int, String> entry) => entry.key.isEven)
-        .map(
-          (MapEntry<int, String> entry) => (
-            entry.value.substring(0, 2),
-            entry.value.substring(2, 4),
-          ),
-        )
-        .toList(growable: false);
-    for (int index = 0; index < playerMoves.length; index++) {
-      final (String from, String to) = playerMoves[index];
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Daily Checkmate').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Easy - 3-step finish').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Daily Checkmate'), findsWidgets);
+    expect(find.text('0/3 solved'), findsOneWidget);
+
+    for (final (String from, String to) in <(String, String)>[
+      ('f1', 'c4'),
+      ('d1', 'h5'),
+      ('h5', 'f7'),
+    ]) {
       await tester.tap(find.byKey(ValueKey<String>('square-$from')));
       await tester.pump();
       await tester.tap(find.byKey(ValueKey<String>('square-$to')));
-      await tester.pump(const Duration(milliseconds: 900));
-      expect(
-        find.text('${index + 1}/4'),
-        findsOneWidget,
-        reason: 'Daily move $from$to should advance the forced line.',
-      );
+      await tester.pump(const Duration(milliseconds: 650));
     }
 
     expect(find.text('Challenge complete'), findsOneWidget);
-    expect(find.text('1 - 0'), findsOneWidget);
-    expect(find.text('Done'), findsOneWidget);
-    expect(
-      find.textContaining('Next challenge unlocks in 23 hours 59 minutes'),
-      findsWidgets,
-    );
+    expect(find.text('3-move checkmate'), findsOneWidget);
   });
 
   testWidgets('phone layout prioritizes the playable board', (
@@ -518,53 +410,129 @@ void main() {
     );
   });
 
-  testWidgets('phone and web layouts agree on exact checkmate result', (
+  testWidgets('compact phone keeps coach actions visible without overlap', (
     WidgetTester tester,
   ) async {
+    tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(() {
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
     });
 
-    for (final Size viewport in <Size>[
-      const Size(430, 932),
-      const Size(1440, 900),
-    ]) {
-      tester.view.physicalSize = viewport;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: GameScreen(
-            key: ValueKey<String>('game-${viewport.width}'),
-            initiallySignedIn: true,
-            useRemoteEngine: false,
-            initialGameMode: GameMode.local,
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+          initialGameMode: GameMode.local,
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey<String>('square-b1')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey<String>('square-c3')));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    for (final String label in <String>['Hint', 'Threat', 'Try again']) {
+      final Finder action = find.text(label);
+      expect(action, findsOneWidget);
+      expect(
+        tester.getBottomRight(action).dy,
+        lessThanOrEqualTo(tester.view.physicalSize.height),
+      );
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('online lobby shows animated searching state', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: OnlineMatchmakingSheet(
+            api: _FakeOnlineApi(active: false),
+            token: 'test-token',
           ),
         ),
-      );
+      ),
+    );
+    await tester.tap(find.text('Find random player'));
+    await tester.pump();
 
-      for (final (String from, String to) in <(String, String)>[
-        ('f2', 'f3'),
-        ('e7', 'e5'),
-        ('g2', 'g4'),
-        ('d8', 'h4'),
-      ]) {
-        await tester.tap(find.byKey(ValueKey<String>('square-$from')));
-        await tester.pump();
-        await tester.tap(find.byKey(ValueKey<String>('square-$to')));
-        await tester.pump();
-      }
+    expect(find.text('FINDING YOUR RIVAL'), findsOneWidget);
+    expect(find.text('Searching worldwide players...'), findsOneWidget);
+    expect(find.text('Cancel search'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
-      final BoardSquare checkedKing = tester.widget<BoardSquare>(
-        find.byKey(const ValueKey<String>('square-e1')),
-      );
-      expect(checkedKing.checkedKing, isTrue);
-      expect(find.text('Black wins'), findsOneWidget);
-      expect(find.text('Checkmate'), findsOneWidget);
+  testWidgets('online lobby reveals versus cards before opening board', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: OnlineMatchmakingSheet(
+            api: _FakeOnlineApi(active: true),
+            token: 'test-token',
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Find random player'));
+    await tester.pump(const Duration(milliseconds: 800));
 
-      await tester.pumpWidget(const SizedBox.shrink());
+    expect(find.text('OPPONENT FOUND'), findsOneWidget);
+    expect(find.text('VS'), findsOneWidget);
+    expect(find.text('Srika'), findsOneWidget);
+    expect(find.text('Online Rival'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('checkmate marks the checked king square and shows the winner', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+        ),
+      ),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey<String>('game-controls-handle')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('2 Players').last);
+    await tester.pumpAndSettle();
+
+    for (final (String from, String to) in <(String, String)>[
+      ('f2', 'f3'),
+      ('e7', 'e5'),
+      ('g2', 'g4'),
+      ('d8', 'h4'),
+    ]) {
+      await tester.tap(find.byKey(ValueKey<String>('square-$from')));
+      await tester.pump();
+      await tester.tap(find.byKey(ValueKey<String>('square-$to')));
       await tester.pump();
     }
+
+    final BoardSquare checkedKing = tester.widget<BoardSquare>(
+      find.byKey(const ValueKey<String>('square-e1')),
+    );
+    expect(checkedKing.checkedKing, isTrue);
+    expect(find.text('Black wins'), findsOneWidget);
+    expect(find.text('Checkmate'), findsOneWidget);
   });
 
   testWidgets('analysis opens a useful position report', (

@@ -74,7 +74,7 @@ class AuthService {
             if (oauthIdentities.existsByProviderAndPlayer_Id("google", player.id)) {
                 throw new AuthException(
                         HttpStatus.CONFLICT,
-                        "This email already uses Google sign-in. Continue with Google, or use Forgot password to create a ChessVerse password.");
+                        "This email already uses Google sign-in. Continue with Google, or use Forgot password to create a ChessVerseAI password.");
             }
             throw new AuthException(HttpStatus.CONFLICT, "An account already exists for this email. Open Login instead.");
         }
@@ -249,6 +249,9 @@ class AuthService {
         OAuthIdentity existingIdentity =
                 oauthIdentities.findByProviderAndSubject("google", google.subject()).orElse(null);
         if (existingIdentity != null) {
+            existingIdentity.player.photoUrl = google.photoUrl();
+            existingIdentity.player.updatedAt = Instant.now();
+            players.save(existingIdentity.player);
             return createSession(existingIdentity.player);
         }
 
@@ -267,6 +270,7 @@ class AuthService {
         player.verified = true;
         player.failedLoginAttempts = 0;
         player.lockedUntil = null;
+        player.photoUrl = google.photoUrl();
         player.updatedAt = Instant.now();
         players.save(player);
         oauthIdentities.save(new OAuthIdentity("google", google.subject(), player));

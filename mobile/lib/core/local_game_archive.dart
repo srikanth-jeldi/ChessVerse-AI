@@ -93,12 +93,23 @@ class LocalGameArchive {
       'chessverse_completed_daily_challenges';
   static const String _lastDailyCompletionKey =
       'chessverse_last_daily_completion_utc';
+  static const String _completedPuzzlesKey =
+      'chessverse_completed_independent_puzzles';
+  static const String _profileCountryKey = 'chessverse_profile_country';
+  static const String _profileLevelKey = 'chessverse_profile_level';
+  static const String _profileAvatarKey = 'chessverse_profile_avatar';
+  static const String _profileUsernameKey = 'chessverse_profile_username';
   static final List<SavedGameRecord> _games = <SavedGameRecord>[];
   static final Set<String> _completedDailyChallengeIds = <String>{};
+  static final Set<String> _completedPuzzleIds = <String>{};
   static DateTime? _lastDailyCompletedAt;
   static int _dailySolved = 0;
   static int _puzzlesSolved = 0;
   static int _dailyStreak = 0;
+  static String _profileCountry = 'India';
+  static String? _profileUsername;
+  static int _profileLevel = 0;
+  static int _profileAvatar = 0;
 
   static List<SavedGameRecord> get games =>
       List<SavedGameRecord>.unmodifiable(_games);
@@ -118,6 +129,23 @@ class LocalGameArchive {
     _lastDailyCompletedAt = completionRaw == null
         ? null
         : DateTime.tryParse(completionRaw)?.toUtc();
+    final String? puzzlesRaw = await _storage.read(key: _completedPuzzlesKey);
+    if (puzzlesRaw != null && puzzlesRaw.trim().isNotEmpty) {
+      _completedPuzzleIds.addAll(
+        puzzlesRaw
+            .split(',')
+            .map((String id) => id.trim())
+            .where((String id) => id.isNotEmpty),
+      );
+      _puzzlesSolved = _completedPuzzleIds.length;
+    }
+    _profileCountry =
+        await _storage.read(key: _profileCountryKey) ?? _profileCountry;
+    _profileUsername = await _storage.read(key: _profileUsernameKey);
+    _profileLevel =
+        int.tryParse(await _storage.read(key: _profileLevelKey) ?? '') ?? 0;
+    _profileAvatar =
+        int.tryParse(await _storage.read(key: _profileAvatarKey) ?? '') ?? 0;
   }
 
   static void addGame(SavedGameRecord record) {
@@ -162,7 +190,6 @@ class LocalGameArchive {
   static void markDailyChallengeComplete(String challengeId) {
     if (_completedDailyChallengeIds.add(challengeId)) {
       _dailySolved++;
-      _puzzlesSolved++;
       _dailyStreak = _dailyStreak == 0 ? 1 : _dailyStreak + 1;
       unawaited(
         _storage.write(
@@ -180,8 +207,55 @@ class LocalGameArchive {
     );
   }
 
-  static void markPuzzleSolved() {
-    _puzzlesSolved++;
+  static Set<String> get completedPuzzleIds =>
+      Set<String>.unmodifiable(_completedPuzzleIds);
+
+  static String get profileCountry => _profileCountry;
+  static String? get profileUsername => _profileUsername;
+  static int get profileLevel => _profileLevel.clamp(0, 4);
+  static int get profileAvatar => _profileAvatar.clamp(0, 5);
+
+  static void savePlayerProfile({
+    required String username,
+    required String country,
+    required int level,
+    required int avatar,
+  }) {
+    _profileUsername = username.trim();
+    _profileCountry = country;
+    _profileLevel = level.clamp(0, 4);
+    _profileAvatar = avatar.clamp(0, 5);
+    unawaited(
+      Future.wait(<Future<void>>[
+        _storage.write(key: _profileUsernameKey, value: _profileUsername),
+        _storage.write(key: _profileCountryKey, value: _profileCountry),
+        _storage.write(key: _profileLevelKey, value: '$_profileLevel'),
+        _storage.write(key: _profileAvatarKey, value: '$_profileAvatar'),
+      ]),
+    );
+  }
+
+  static bool isPuzzleComplete(String puzzleId) {
+    return _completedPuzzleIds.contains(puzzleId);
+  }
+
+  static int puzzleSolvedCount(String difficulty) {
+    return _completedPuzzleIds
+        .where((String id) => id.startsWith('$difficulty-'))
+        .length;
+  }
+
+  static void markPuzzleSolved(String puzzleId) {
+    if (!_completedPuzzleIds.add(puzzleId)) {
+      return;
+    }
+    _puzzlesSolved = _completedPuzzleIds.length;
+    unawaited(
+      _storage.write(
+        key: _completedPuzzlesKey,
+        value: _completedPuzzleIds.join(','),
+      ),
+    );
   }
 
   static LocalGameStats stats() {
@@ -236,7 +310,7 @@ class LocalGameArchive {
       badges: <RewardBadge>[
         RewardBadge(
           title: 'First Move',
-          description: 'Finish your first ChessVerse match.',
+          description: 'Finish your first ChessVerseAI match.',
           icon: '♟',
           unlocked: localStats.gamesPlayed >= 1,
         ),
@@ -254,7 +328,7 @@ class LocalGameArchive {
         ),
         RewardBadge(
           title: 'Study Streak',
-          description: 'Build a 3-day ChessVerse streak.',
+          description: 'Build a 3-day ChessVerseAI streak.',
           icon: '⚡',
           unlocked: localStats.dailyStreak >= 3,
         ),

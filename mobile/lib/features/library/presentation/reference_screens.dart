@@ -3,39 +3,20 @@ import 'package:flutter/material.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
+import '../../puzzles/presentation/puzzle_academy_screen.dart';
 
 class PuzzlesScreen extends StatelessWidget {
-  const PuzzlesScreen({super.key});
+  const PuzzlesScreen({this.onStartPuzzle = _ignorePuzzleLaunch, super.key});
+
+  final PuzzleLauncher onStartPuzzle;
 
   @override
   Widget build(BuildContext context) {
-    final LocalGameStats stats = LocalGameArchive.stats();
-    return _ReferenceScaffold(
-      title: 'Puzzles',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          const _FeatureHero(
-            icon: Icons.extension_rounded,
-            title: 'Daily Puzzle',
-            subtitle: 'Late-game mate challenge with local streak tracking',
-            action: 'Solve',
-          ),
-          const SizedBox(height: 18),
-          const _SectionTitle('Puzzle Categories'),
-          _ProgressTile(label: 'Easy', value: '${stats.puzzlesSolved}/150', color: AppColors.success),
-          const _ProgressTile(label: 'Medium', value: '0/150', color: AppColors.accentGold),
-          const _ProgressTile(label: 'Hard', value: '0/150', color: AppColors.warning),
-          const SizedBox(height: 18),
-          _PuzzleResultCard(
-            streak: stats.dailyStreak,
-            solved: stats.dailySolved,
-          ),
-        ],
-      ),
-    );
+    return PuzzleAcademyScreen(onStartPuzzle: onStartPuzzle);
   }
 }
+
+Future<void> _ignorePuzzleLaunch(String _) async {}
 
 class SavedGamesScreen extends StatelessWidget {
   const SavedGamesScreen({super.key});
@@ -210,6 +191,7 @@ class _ReferenceScaffold extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _FeatureHero extends StatelessWidget {
   const _FeatureHero({
     required this.icon,
@@ -255,6 +237,7 @@ class _FeatureHero extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.text);
   final String text;
@@ -267,8 +250,10 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _ProgressTile extends StatelessWidget {
-  const _ProgressTile({required this.label, required this.value, required this.color});
+  const _ProgressTile(
+      {required this.label, required this.value, required this.color});
   final String label;
   final String value;
   final Color color;
@@ -366,7 +351,9 @@ class _SegmentTabs extends StatelessWidget {
                 margin: const EdgeInsets.symmetric(horizontal: 3),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: label == labels.first ? AppColors.primary : AppColors.surfaceLight,
+                  color: label == labels.first
+                      ? AppColors.primary
+                      : AppColors.surfaceLight,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(label, textAlign: TextAlign.center),
@@ -378,6 +365,7 @@ class _SegmentTabs extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _PuzzleResultCard extends StatelessWidget {
   const _PuzzleResultCard({required this.streak, required this.solved});
 
@@ -389,7 +377,8 @@ class _PuzzleResultCard extends StatelessWidget {
     return _MenuSurface(
       child: Row(
         children: <Widget>[
-          const Icon(Icons.local_fire_department_rounded, color: AppColors.accentGold),
+          const Icon(Icons.local_fire_department_rounded,
+              color: AppColors.accentGold),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -398,7 +387,8 @@ class _PuzzleResultCard extends StatelessWidget {
                   : 'Puzzle result saved. Daily streak: $streak',
             ),
           ),
-          Text('$solved solved', style: const TextStyle(color: AppColors.success)),
+          Text('$solved solved',
+              style: const TextStyle(color: AppColors.success)),
         ],
       ),
     );
@@ -453,7 +443,8 @@ class _SavedGameTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(game.mode, style: Theme.of(context).textTheme.titleMedium),
-                Text('${game.result} - ${game.detail}', style: TextStyle(color: resultColor)),
+                Text('${game.result} - ${game.detail}',
+                    style: TextStyle(color: resultColor)),
                 Text(
                   '${game.summary} - ${game.moves.length} moves',
                   style: Theme.of(context).textTheme.bodySmall,
@@ -468,7 +459,8 @@ class _SavedGameTile extends StatelessWidget {
                 showModalBottomSheet<void>(
                   context: context,
                   backgroundColor: Colors.transparent,
-                  builder: (BuildContext context) => _SavedGameReviewSheet(game: game),
+                  builder: (BuildContext context) =>
+                      _SavedGameReviewSheet(game: game),
                 );
               },
               icon: const Icon(Icons.chevron_right_rounded),
@@ -499,7 +491,8 @@ class _SavedGameReviewSheet extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              Text('Review saved game', style: Theme.of(context).textTheme.headlineSmall),
+              Text('Review saved game',
+                  style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 8),
               Text('${game.mode} - ${game.result}'),
               const SizedBox(height: 12),

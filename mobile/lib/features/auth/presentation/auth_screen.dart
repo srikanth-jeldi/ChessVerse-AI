@@ -17,6 +17,7 @@ class ChessVerseAuthResult {
     this.token,
     this.username,
     this.email,
+    this.photoUrl,
   });
 
   final String playerName;
@@ -24,6 +25,7 @@ class ChessVerseAuthResult {
   final String? token;
   final String? username;
   final String? email;
+  final String? photoUrl;
 }
 
 class AuthScreen extends StatefulWidget {
@@ -138,7 +140,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             const SizedBox(width: 14),
                             Expanded(
                               child: Text(
-                                'CHESSVERSE',
+                                'CHESSVERSEAI',
                                 style: Theme.of(context)
                                     .textTheme
                                     .titleLarge
@@ -156,7 +158,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               ? 'Verify your email'
                               : _loginMode
                                   ? 'Welcome back'
-                                  : 'Create ChessVerse ID',
+                                  : 'Create ChessVerseAI ID',
                           style: Theme.of(context)
                               .textTheme
                               .headlineMedium
@@ -466,7 +468,7 @@ class _AuthScreenState extends State<AuthScreen> {
         'google',
         <String, String>{'idToken': idToken},
       );
-      await _completeAuthentication(data);
+      await _completeAuthentication(data, photoUrl: account.photoUrl);
     } on AuthApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
@@ -478,7 +480,10 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  Future<void> _completeAuthentication(Map<String, dynamic> data) async {
+  Future<void> _completeAuthentication(
+    Map<String, dynamic> data, {
+    String? photoUrl,
+  }) async {
     final String token = data['token'] as String? ?? '';
     final DateTime? expiresAt =
         DateTime.tryParse(data['expiresAt'] as String? ?? '');
@@ -505,7 +510,7 @@ class _AuthScreenState extends State<AuthScreen> {
     final String name = _nonBlankString(player['displayName']) ??
         username ??
         email?.split('@').first ??
-        'ChessVerse Player';
+        'ChessVerseAI Player';
     if (_rememberMe) {
       await _sessionStore.write(
         StoredAuthSession(
@@ -514,6 +519,7 @@ class _AuthScreenState extends State<AuthScreen> {
           displayName: name,
           username: username,
           email: email,
+          photoUrl: photoUrl,
         ),
       );
     } else {
@@ -528,6 +534,7 @@ class _AuthScreenState extends State<AuthScreen> {
         token: token,
         username: username,
         email: email,
+        photoUrl: photoUrl,
       ),
     );
   }

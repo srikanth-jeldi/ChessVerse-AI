@@ -3,6 +3,7 @@ package com.epitomehub.chessverse.api;
 import com.epitomehub.chessverse.auth.AuthException;
 import com.epitomehub.chessverse.engine.EngineException;
 import com.epitomehub.chessverse.game.GameNotFoundException;
+import com.epitomehub.chessverse.online.OnlineMatchException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.Map;
@@ -37,6 +38,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(GameNotFoundException.class)
     public ResponseEntity<Map<String, Object>> notFound(GameNotFoundException ex, HttpServletRequest request) {
         return error(HttpStatus.NOT_FOUND, ex.getMessage(), request.getRequestURI());
+    }
+
+    @ExceptionHandler(OnlineMatchException.class)
+    public ResponseEntity<Map<String, Object>> online(OnlineMatchException ex, HttpServletRequest request) {
+        return error(ex.status(), ex.getMessage(), request.getRequestURI());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -1,0 +1,12 @@
+{
+  "engine": "Stockfish",
+  "depth": 16,
+  "total": 150,
+  "passed": 150,
+  "tierCounts": {
+    "easy": 50,
+    "medium": 50,
+    "hard": 50
+  },
+  "failures": []
+}

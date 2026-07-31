@@ -19,7 +19,7 @@ class LegalScreen extends StatelessWidget {
         ? const <_LegalSection>[
             _LegalSection(
               'Data we collect',
-              'ChessVerse stores account details, guest/local stats, saved games, puzzle progress, device/session metadata, and support information needed to run the service.',
+              'ChessVerseAI stores account details, guest/local stats, saved games, puzzle progress, device/session metadata, and support information needed to run the service.',
             ),
             _LegalSection(
               'How we use data',
@@ -36,8 +36,8 @@ class LegalScreen extends StatelessWidget {
           ]
         : const <_LegalSection>[
             _LegalSection(
-              'Using ChessVerse',
-              'ChessVerse is a chess training and game app. Do not misuse online modes, automate abuse, impersonate players, or attack the service.',
+              'Using ChessVerseAI',
+              'ChessVerseAI is a chess training and game app. Do not misuse online modes, automate abuse, impersonate players, or attack the service.',
             ),
             _LegalSection(
               'Accounts',
@@ -62,7 +62,7 @@ class LegalScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              privacy ? 'ChessVerse Privacy Policy' : 'ChessVerse Terms',
+              privacy ? 'ChessVerseAI Privacy Policy' : 'ChessVerseAI Terms',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 8),

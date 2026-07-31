@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -6,8 +7,10 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'core/audio/chess_sound_service.dart';
+import 'core/app_preferences.dart';
 import 'core/config/app_config.dart';
 import 'core/local_game_archive.dart';
 import 'features/auth/data/auth_api.dart';
@@ -19,7 +22,10 @@ import 'features/home/presentation/home_dashboard_screen.dart';
 import 'features/library/presentation/reference_screens.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/online/data/online_match_api.dart';
+import 'features/online/presentation/match_history_screen.dart';
+import 'features/leaderboard/presentation/leaderboard_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
+import 'features/puzzles/domain/puzzle_catalog.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/tutorial/presentation/learn_chess_screen.dart';
 
@@ -36,7 +42,7 @@ class ChessVerseApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ChessVerse AI',
+      title: 'ChessVerseAI',
       debugShowCheckedModeBanner: false,
       theme: ChessVerseTheme.dark(),
       home: const SplashGate(),
@@ -59,6 +65,7 @@ class _SplashGateState extends State<SplashGate> {
   String _playerName = 'Guest Player';
   String? _username;
   String? _email;
+  String? _photoUrl;
   bool _isGuest = true;
 
   @override
@@ -83,6 +90,7 @@ class _SplashGateState extends State<SplashGate> {
     String playerName = session.displayName;
     String? username = session.username;
     String? email = session.email;
+    final String? photoUrl = session.photoUrl;
     try {
       final Map<String, dynamic> player =
           await _authApi.currentPlayer(session.token);
@@ -105,6 +113,7 @@ class _SplashGateState extends State<SplashGate> {
       _playerName = playerName;
       _username = username;
       _email = email;
+      _photoUrl = photoUrl;
       _isGuest = false;
       _stage = _RootStage.home;
     });
@@ -145,6 +154,7 @@ class _SplashGateState extends State<SplashGate> {
                 _playerName = result.playerName;
                 _username = result.username;
                 _email = result.email;
+                _photoUrl = result.photoUrl;
                 _isGuest = result.isGuest;
                 _stage = _RootStage.home;
               });
@@ -153,13 +163,24 @@ class _SplashGateState extends State<SplashGate> {
         _RootStage.home => HomeDashboardScreen(
             key: const ValueKey<String>('home'),
             playerName: _playerName,
+            profilePhotoUrl: _photoUrl,
             onPlayVsAi: () => _chooseSideAndOpen(context, GameMode.computer),
             onDailyChallenge: () => _openGame(context, GameMode.daily),
             onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
             onOnlineGame: () => _openGame(context, GameMode.online),
             onAnalysis: () => _push(context, const AnalysisScreen()),
-            onPuzzles: () => _push(context, const PuzzlesScreen()),
-            onSavedGames: () => _push(context, const SavedGamesScreen()),
+            onPuzzles: () => _push(
+              context,
+              PuzzlesScreen(
+                onStartPuzzle: (String puzzleId) => _openGame(
+                  context,
+                  GameMode.puzzle,
+                  puzzleId: puzzleId,
+                ),
+              ),
+            ),
+            onSavedGames: () => _push(context, const MatchHistoryScreen()),
+            onRankings: () => _push(context, const LeaderboardScreen()),
             onLearnChess: () => _push(context, const LearnChessScreen()),
             onProfile: () => _push(
               context,
@@ -167,7 +188,12 @@ class _SplashGateState extends State<SplashGate> {
                 playerName: _playerName,
                 username: _username,
                 email: _email,
+                profilePhotoUrl: _photoUrl,
                 isGuest: _isGuest,
+                onUsernameChanged: (String value) {
+                  if (!mounted) return;
+                  setState(() => _username = value);
+                },
               ),
             ),
             onSettings: () => _push(
@@ -218,7 +244,7 @@ class _SplashGateState extends State<SplashGate> {
                       Text(
                         mode == GameMode.local
                             ? 'Player 1 side for this match.'
-                            : 'ChessVerse AI will take the opposite side.',
+                            : 'ChessVerseAI will take the opposite side.',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       SizedBox(height: shortLandscape ? 10 : 16),
@@ -260,12 +286,14 @@ class _SplashGateState extends State<SplashGate> {
     }
   }
 
-  void _openGame(
+  Future<void> _openGame(
     BuildContext context,
     GameMode mode, {
     PlayerSideChoice sideChoice = PlayerSideChoice.white,
+    DailyChallengeDifficulty? dailyDifficulty,
+    String? puzzleId,
   }) {
-    _push(
+    return _push(
       context,
       GameScreen(
         initiallySignedIn: true,
@@ -274,8 +302,11 @@ class _SplashGateState extends State<SplashGate> {
         initialPlayerName: _playerName,
         initialUsername: _username,
         initialEmail: _email,
+        initialProfilePhotoUrl: _photoUrl,
         initiallyGuest: _isGuest,
         initialSideChoice: sideChoice,
+        initialDailyDifficulty: dailyDifficulty,
+        initialPuzzleId: puzzleId,
         onLogout: () => _logout(context),
       ),
     );
@@ -300,7 +331,7 @@ class _SplashGateState extends State<SplashGate> {
       Navigator.of(currentRouteContext).pop();
     }
     setState(() {
-      _playerName = 'ChessVerse Player';
+      _playerName = 'ChessVerseAI Player';
       _username = null;
       _email = null;
       _isGuest = true;
@@ -308,8 +339,10 @@ class _SplashGateState extends State<SplashGate> {
     });
   }
 
-  void _push(BuildContext context, Widget screen) {
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+  Future<void> _push(BuildContext context, Widget screen) {
+    return Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 }
 
@@ -373,7 +406,7 @@ class BrandedSplash extends StatelessWidget {
                             ],
                           ).createShader(bounds),
                           child: const Text(
-                            'CHESSVERSE AI',
+                            'CHESSVERSEAI',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.white,
@@ -550,7 +583,7 @@ class _MobilePremiumSplash extends StatelessWidget {
                   const SizedBox(height: 30),
                   FittedBox(
                     child: Text(
-                      'CHESSVERSE AI',
+                      'CHESSVERSEAI',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
                             color: const Color(0xFFF8F2E4),
@@ -716,7 +749,7 @@ class ChessVerseLoadingScreen extends StatelessWidget {
                           ),
                           SizedBox(height: short ? 10 : 26),
                           Text(
-                            'CHESSVERSE AI',
+                            'CHESSVERSEAI',
                             textAlign: TextAlign.center,
                             style: Theme.of(context)
                                 .textTheme
@@ -858,7 +891,7 @@ class ChessVerseTheme {
 
 enum BoardSkin { royalWalnut, jadeGlass, tournament, marble, sapphire }
 
-enum GameMode { computer, daily, local, online }
+enum GameMode { computer, daily, puzzle, local, online }
 
 enum DailyChallengeDifficulty { easy, medium, hard }
 
@@ -969,6 +1002,8 @@ class DailyChallenge {
     required this.pattern,
     required this.setupMoves,
     required this.solution,
+    this.initialFen,
+    this.forcedPlayerMoves,
   });
 
   final String id;
@@ -977,8 +1012,10 @@ class DailyChallenge {
   final int pattern;
   final List<String> setupMoves;
   final List<String> solution;
+  final String? initialFen;
+  final int? forcedPlayerMoves;
 
-  int get playerMoveGoal => difficulty.moveGoal;
+  int get playerMoveGoal => forcedPlayerMoves ?? difficulty.moveGoal;
 }
 
 class AiProfile {
@@ -1413,8 +1450,11 @@ class GameScreen extends StatefulWidget {
     this.initialPlayerName,
     this.initialUsername,
     this.initialEmail,
+    this.initialProfilePhotoUrl,
     this.initiallyGuest = true,
     this.initialSideChoice = PlayerSideChoice.white,
+    this.initialDailyDifficulty,
+    this.initialPuzzleId,
     this.onLogout,
     super.key,
   });
@@ -1425,19 +1465,23 @@ class GameScreen extends StatefulWidget {
   final String? initialPlayerName;
   final String? initialUsername;
   final String? initialEmail;
+  final String? initialProfilePhotoUrl;
   final bool initiallyGuest;
   final PlayerSideChoice initialSideChoice;
+  final DailyChallengeDifficulty? initialDailyDifficulty;
+  final String? initialPuzzleId;
   final Future<void> Function()? onLogout;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   static const AuthApi _authApi = AuthApi();
   static const AuthSessionStore _sessionStore = AuthSessionStore();
   static const EngineApi _engineApi = EngineApi();
   static const OnlineMatchApi _onlineApi = OnlineMatchApi();
+  static const AppPreferences _preferences = AppPreferences();
   final math.Random _random = math.Random();
   AudioPlayer? _warningPlayer;
   final List<String> _moves = <String>[];
@@ -1447,7 +1491,15 @@ class _GameScreenState extends State<GameScreen> {
   Timer? _clockTimer;
   Timer? _moveQualityTimer;
   Timer? _onlinePollTimer;
+  WebSocketChannel? _onlineChannel;
+  StreamSubscription<dynamic>? _onlineSocketSubscription;
+  Timer? _onlineSocketReconnectTimer;
   OnlineMatchDto? _onlineMatch;
+  String? _handledDrawOfferKey;
+  String? _archivedOnlineMatchId;
+  String? _joiningRematchId;
+  int _onlineConnectedPlayers = 0;
+  bool _onlineSocketConnected = false;
   bool _onlineSubmitting = false;
   String? _selectedSquare;
   String? _lastFromSquare;
@@ -1481,7 +1533,9 @@ class _GameScreenState extends State<GameScreen> {
   String _authMessage =
       'Create an account to save games, ratings and coach history.';
   String _whitePlayerName = 'Guest Player';
-  String _blackPlayerName = 'ChessVerse AI';
+  String _blackPlayerName = 'ChessVerseAI';
+  String? _whitePlayerPhotoUrl;
+  String? _blackPlayerPhotoUrl;
   String? _gameResultTitle;
   String? _gameResultDetail;
   bool _resultVisible = true;
@@ -1496,6 +1550,10 @@ class _GameScreenState extends State<GameScreen> {
   bool _dailyCompletedToday = false;
   int _dailyPlyIndex = 0;
   int _dailyMistakes = 0;
+  late ChessPuzzle _activePuzzle;
+
+  bool get _isTacticsMode =>
+      _gameMode == GameMode.daily || _gameMode == GameMode.puzzle;
 
   static const Map<String, ChessPiece> _initialPieces = <String, ChessPiece>{
     'a8': ChessPiece('R', false),
@@ -1539,7 +1597,21 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
-    _dailyChallenge = _challengeForToday(_dailyDifficulty);
+    unawaited(_loadGamePreferences());
+    WidgetsBinding.instance.addObserver(this);
+    _dailyDifficulty =
+        widget.initialDailyDifficulty ?? DailyChallengeDifficulty.medium;
+    _activePuzzle = PuzzleCatalog.byId(widget.initialPuzzleId ?? 'medium-001');
+    if (widget.initialPuzzleId != null) {
+      _dailyDifficulty = switch (_activePuzzle.difficulty) {
+        PuzzleDifficulty.easy => DailyChallengeDifficulty.easy,
+        PuzzleDifficulty.medium => DailyChallengeDifficulty.medium,
+        PuzzleDifficulty.hard => DailyChallengeDifficulty.hard,
+      };
+    }
+    _dailyChallenge = widget.initialGameMode == GameMode.puzzle
+        ? _challengeForPuzzle(_activePuzzle)
+        : _challengeForToday(_dailyDifficulty);
     _dailyCompletedToday = LocalGameArchive.isDailyChallengeComplete(
       _dailyChallenge.id,
     );
@@ -1549,10 +1621,10 @@ class _GameScreenState extends State<GameScreen> {
       PlayerSideChoice.black => false,
       PlayerSideChoice.random => _random.nextBool(),
     };
-    if (_gameMode == GameMode.daily) {
+    if (_isTacticsMode) {
       _humanPlaysWhite = true;
     }
-    _pieces = _gameMode == GameMode.daily
+    _pieces = _isTacticsMode
         ? _dailyStartingPosition(_dailyChallenge)
         : Map<String, ChessPiece>.from(_initialPieces);
     _signedIn = widget.initiallySignedIn;
@@ -1568,6 +1640,7 @@ class _GameScreenState extends State<GameScreen> {
     } else if (widget.initiallySignedIn) {
       _whitePlayerName = 'Guest Player';
     }
+    _whitePlayerPhotoUrl = widget.initialProfilePhotoUrl;
     _applyPlayerSideNames(playerName);
     if (_gameMode == GameMode.daily) {
       _applyDailyCompletionState();
@@ -1575,6 +1648,10 @@ class _GameScreenState extends State<GameScreen> {
         _coachNote =
             'Move any legal white coin. Checkmate in ${_dailyChallenge.playerMoveGoal} moves.';
       }
+    }
+    if (_gameMode == GameMode.puzzle) {
+      _coachNote =
+          '${_activePuzzle.title}: checkmate in ${_dailyChallenge.playerMoveGoal} moves.';
     }
     if (_gameMode == GameMode.computer && !_humanPlaysWhite) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleAiMove());
@@ -1603,16 +1680,25 @@ class _GameScreenState extends State<GameScreen> {
         }
         return;
       }
-      if (_moves.isEmpty) {
-        return;
-      }
       setState(() {
+        final OnlineMatchDto? online = _onlineMatch;
+        if (_gameMode == GameMode.online) {
+          if (online == null || !online.isActive) return;
+          if (online.whiteToMove) {
+            _whiteSeconds = math.max(0, _whiteSeconds - 1);
+          } else {
+            _blackSeconds = math.max(0, _blackSeconds - 1);
+          }
+          return;
+        }
+        if (_moves.isEmpty) return;
         if (_moves.length.isEven) {
           _whiteSeconds = math.max(0, _whiteSeconds - 1);
         } else {
           _blackSeconds = math.max(0, _blackSeconds - 1);
         }
-        if (_whiteSeconds == 0 || _blackSeconds == 0) {
+        if (_gameMode != GameMode.online &&
+            (_whiteSeconds == 0 || _blackSeconds == 0)) {
           _gameResultTitle = _whiteSeconds == 0 ? 'Black wins' : 'White wins';
           _gameResultDetail = 'Victory on time';
           _resultVisible = true;
@@ -1624,11 +1710,41 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
+  Future<void> _loadGamePreferences() async {
+    final List<Object> values = await Future.wait<Object>(<Future<Object>>[
+      _preferences.readBool('sound', fallback: true),
+      _preferences.readBool('hints', fallback: true),
+      _preferences.readBool('coach', fallback: true),
+      _preferences.readBool('coordinates', fallback: true),
+      _preferences.readString('boardTheme', fallback: 'Royal Walnut'),
+    ]);
+    if (!mounted) return;
+    final String boardTheme = values[4] as String;
+    setState(() {
+      _soundEnabled = values[0] as bool;
+      _showMoveHints = values[1] as bool;
+      _coachEnabled = values[2] as bool;
+      _showCoordinates = values[3] as bool;
+      _skin = switch (boardTheme) {
+        'Jade Glass' => BoardSkin.jadeGlass,
+        'Tournament' => BoardSkin.tournament,
+        'Marble' => BoardSkin.marble,
+        'Sapphire' => BoardSkin.sapphire,
+        _ => BoardSkin.royalWalnut,
+      };
+    });
+    ChessSoundService.instance.enabled = _soundEnabled;
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _clockTimer?.cancel();
     _moveQualityTimer?.cancel();
     _onlinePollTimer?.cancel();
+    unawaited(_onlineSocketSubscription?.cancel());
+    unawaited(_onlineChannel?.sink.close());
+    _onlineSocketReconnectTimer?.cancel();
     final AudioPlayer? warningPlayer = _warningPlayer;
     if (warningPlayer != null) {
       unawaited(warningPlayer.dispose());
@@ -1637,9 +1753,22 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        _gameMode == GameMode.online &&
+        _onlineMatch != null &&
+        _authToken != null) {
+      _resumeOnlineSession();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final BoardPalette palette = boardPalettes[_skin]!;
-    final bool sideToMoveWhite = _moves.length.isEven;
+    final bool sideToMoveWhite =
+        _gameMode == GameMode.online && _onlineMatch != null
+            ? _onlineMatch!.whiteToMove
+            : _moves.length.isEven;
     final bool sideInCheck = ChessRules.isKingInCheck(sideToMoveWhite, _pieces);
     final String? checkedKingSquare =
         sideInCheck ? _kingSquare(sideToMoveWhite) : null;
@@ -1688,6 +1817,9 @@ class _GameScreenState extends State<GameScreen> {
               final double wideHeaderHeight = roomyLandscape ? 78 : 54;
               final double wideDockHeight = roomyLandscape ? 126 : 0;
               final double portraitPanelMinimum = landscape ? 72 : 190;
+              final bool showOnlineArena =
+                  _gameMode == GameMode.online && _onlineMatch != null;
+              final double arenaRailsHeight = showOnlineArena ? 136 : 0;
               final double boardWidth = wide
                   ? constraints.maxWidth -
                       pagePadding.horizontal -
@@ -1695,10 +1827,15 @@ class _GameScreenState extends State<GameScreen> {
                       30
                   : constraints.maxWidth - pagePadding.horizontal;
               final double boardHeight = wide
-                  ? availableHeight - wideHeaderHeight - wideDockHeight - 18
+                  ? availableHeight -
+                      wideHeaderHeight -
+                      wideDockHeight -
+                      arenaRailsHeight -
+                      18
                   : availableHeight -
                       mobileHeaderHeight -
                       portraitPanelMinimum -
+                      arenaRailsHeight -
                       18;
               final double boardDimension =
                   math.max(0, math.min(boardWidth, boardHeight));
@@ -1721,6 +1858,23 @@ class _GameScreenState extends State<GameScreen> {
                 palette: palette,
                 onSquareTap: _handleSquareTap,
               );
+              final Widget arenaBoard = showOnlineArena
+                  ? _OnlineArenaBoard(
+                      board: BoardStage(palette: palette, child: board),
+                      flipped: _shouldFlipBoard(sideToMoveWhite),
+                      whiteName: _whitePlayerName,
+                      blackName: _blackPlayerName,
+                      whitePhotoUrl: _whitePlayerPhotoUrl,
+                      blackPhotoUrl: _blackPlayerPhotoUrl,
+                      whiteClock: _formatClock(_whiteSeconds),
+                      blackClock: _formatClock(_blackSeconds),
+                      activeColor:
+                          _onlineMatch?.activeColor.toLowerCase() ?? 'white',
+                      matchActive: _onlineMatch?.isActive ?? false,
+                      socketConnected: _onlineSocketConnected,
+                      connectedPlayers: _onlineConnectedPlayers,
+                    )
+                  : BoardStage(palette: palette, child: board);
 
               Widget buildPanel({
                 ValueChanged<GameMode>? onModeChanged,
@@ -1733,7 +1887,10 @@ class _GameScreenState extends State<GameScreen> {
                     expanded: _controlsExpanded,
                     whitePlayerName: _whitePlayerName,
                     blackPlayerName: _blackPlayerName,
-                    activeColor: _moves.length.isEven ? 'White' : 'Black',
+                    activeColor:
+                        _gameMode == GameMode.online && _onlineMatch != null
+                            ? (_onlineMatch!.whiteToMove ? 'White' : 'Black')
+                            : (_moves.length.isEven ? 'White' : 'Black'),
                     gameMode: _gameMode,
                     aiLevel: _aiLevel.round(),
                     aiThinking: _aiThinking,
@@ -1781,7 +1938,8 @@ class _GameScreenState extends State<GameScreen> {
                       setState(() => _controlsExpanded = !_controlsExpanded);
                     },
                     onLogout: _logout,
-                    canUndo: _history.isNotEmpty,
+                    canUndo:
+                        _gameMode != GameMode.online && _history.isNotEmpty,
                   );
               void openFullControls() {
                 showModalBottomSheet<void>(
@@ -1813,7 +1971,10 @@ class _GameScreenState extends State<GameScreen> {
 
               final Widget studioCoach = _StudioCoachPanel(
                 gameMode: _gameMode,
-                activeColor: _moves.length.isEven ? 'White' : 'Black',
+                activeColor:
+                    _gameMode == GameMode.online && _onlineMatch != null
+                        ? (_onlineMatch!.whiteToMove ? 'White' : 'Black')
+                        : (_moves.length.isEven ? 'White' : 'Black'),
                 aiThinking: _aiThinking,
                 coachEnabled: _coachEnabled,
                 coachNote: _lastPlayerCoachNote ?? _coachNote,
@@ -1821,12 +1982,20 @@ class _GameScreenState extends State<GameScreen> {
                 lastMoveOwner: _lastPlayerMove == null ? null : 'Your move',
                 dailyProgress: _dailyPlayerMovesCompleted,
                 dailyGoal: _dailyChallenge.playerMoveGoal,
-                canUndo: _history.isNotEmpty,
+                canUndo: _gameMode != GameMode.online && _history.isNotEmpty,
                 onHint: _showHint,
                 onAnalyze: _showAnalysis,
-                onTryAgain: _confirmNewGame,
+                onTryAgain: _gameMode == GameMode.online
+                    ? () => unawaited(
+                          _refreshOnlineMatch(forceBoardReplay: true),
+                        )
+                    : _confirmNewGame,
                 onUndo: _undo,
                 onControls: openFullControls,
+                puzzleComplete: _gameMode == GameMode.puzzle &&
+                    _gameResultTitle == 'Puzzle complete',
+                onNextPuzzle: _startNextPuzzle,
+                onBackToAcademy: () => Navigator.of(context).pop(),
               );
 
               return Padding(
@@ -1872,12 +2041,11 @@ class _GameScreenState extends State<GameScreen> {
                                       Expanded(
                                         child: Align(
                                           alignment: Alignment.center,
-                                          child: SizedBox.square(
-                                            dimension: boardDimension,
-                                            child: BoardStage(
-                                              palette: palette,
-                                              child: board,
-                                            ),
+                                          child: SizedBox(
+                                            width: boardDimension,
+                                            height: boardDimension +
+                                                arenaRailsHeight,
+                                            child: arenaBoard,
                                           ),
                                         ),
                                       ),
@@ -1920,10 +2088,10 @@ class _GameScreenState extends State<GameScreen> {
                             ),
                             const SizedBox(height: 8),
                             Center(
-                              child: SizedBox.square(
-                                dimension: boardDimension,
-                                child:
-                                    BoardStage(palette: palette, child: board),
+                              child: SizedBox(
+                                width: boardDimension,
+                                height: boardDimension + arenaRailsHeight,
+                                child: arenaBoard,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -1978,7 +2146,17 @@ class _GameScreenState extends State<GameScreen> {
                             title: _resultDisplayTitle(),
                             detail: _gameResultDetail ?? 'Game complete',
                             scoreLabel: _resultScoreLabel(),
-                            onNewGame: _reset,
+                            onNewGame: _gameMode == GameMode.online
+                                ? _startFreshOnlineGame
+                                : _gameMode == GameMode.puzzle
+                                    ? _startNextPuzzle
+                                    : _reset,
+                            newGameLabel: _gameMode == GameMode.puzzle
+                                ? 'Next puzzle'
+                                : null,
+                            onRematch: _gameMode == GameMode.online
+                                ? _requestOnlineRematch
+                                : null,
                             onDismiss: () => setState(() {
                               _resultVisible = false;
                             }),
@@ -2101,7 +2279,7 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       _authHasError = false;
       _authMessage = AppConfig.usesDummySocialConfig
-          ? 'Google, Apple, Facebook, and VPS placeholders are wired. Replace dummy IDs/tokens in CI/VPS before store release. ChessVerse login and Guest Player work now.'
+          ? 'Google, Apple, Facebook, and VPS placeholders are wired. Replace dummy IDs/tokens in CI/VPS before store release. ChessVerseAI login and Guest Player work now.'
           : 'Social login config is present. Backend OAuth callback endpoints must be enabled on the live VPS before store release.';
     });
   }
@@ -2476,7 +2654,7 @@ class _GameScreenState extends State<GameScreen> {
     _onlineMatch = null;
     setState(() {
       _gameMode = mode;
-      if (_gameMode == GameMode.daily) {
+      if (_isTacticsMode) {
         _humanPlaysWhite = true;
       }
       _applyPlayerSideNames(_playerDisplayName);
@@ -2503,9 +2681,10 @@ class _GameScreenState extends State<GameScreen> {
   void _applyPlayerSideNames(String playerName) {
     switch (_gameMode) {
       case GameMode.computer:
-        _whitePlayerName = _humanPlaysWhite ? playerName : 'ChessVerse AI';
-        _blackPlayerName = _humanPlaysWhite ? 'ChessVerse AI' : playerName;
+        _whitePlayerName = _humanPlaysWhite ? playerName : 'ChessVerseAI';
+        _blackPlayerName = _humanPlaysWhite ? 'ChessVerseAI' : playerName;
       case GameMode.daily:
+      case GameMode.puzzle:
         _whitePlayerName = 'Guest Player';
         _blackPlayerName = 'Puzzle Defense';
       case GameMode.local:
@@ -2655,7 +2834,7 @@ class _GameScreenState extends State<GameScreen> {
       return title;
     }
     final bool userWon = _humanPlaysWhite ? whiteWon : blackWon;
-    return userWon ? 'You win' : 'ChessVerse AI wins';
+    return userWon ? 'You win' : 'ChessVerseAI wins';
   }
 
   DailyChallenge _challengeForToday(DailyChallengeDifficulty difficulty) {
@@ -2681,6 +2860,24 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
+  DailyChallenge _challengeForPuzzle(ChessPuzzle puzzle) {
+    final DailyChallengeDifficulty difficulty = switch (puzzle.difficulty) {
+      PuzzleDifficulty.easy => DailyChallengeDifficulty.easy,
+      PuzzleDifficulty.medium => DailyChallengeDifficulty.medium,
+      PuzzleDifficulty.hard => DailyChallengeDifficulty.hard,
+    };
+    return DailyChallenge(
+      id: puzzle.id,
+      title: puzzle.title,
+      difficulty: difficulty,
+      pattern: puzzle.number - 1,
+      setupMoves: const <String>[],
+      solution: puzzle.solution,
+      initialFen: puzzle.fen,
+      forcedPlayerMoves: puzzle.playerMoveGoal,
+    );
+  }
+
   List<String> _dailySetupLine(
     DailyChallengeDifficulty difficulty,
     int pattern,
@@ -2699,6 +2896,9 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Map<String, ChessPiece> _dailyStartingPosition(DailyChallenge challenge) {
+    if (_gameMode == GameMode.puzzle && challenge.initialFen != null) {
+      return _piecesFromFen(challenge.initialFen!);
+    }
     final String queenFile =
         dailyChallengeQueenFileForPattern(challenge.pattern);
     final Map<String, ChessPiece> base = <String, ChessPiece>{
@@ -2726,28 +2926,61 @@ class _GameScreenState extends State<GameScreen> {
       'b7': const ChessPiece('P', false),
       'e6': const ChessPiece('P', false),
     };
-    // Seven queen files crossed with seven scenery layouts create 49 visibly
-    // different daily boards before the deterministic sequence repeats.
-    const List<Map<String, bool>> dailyScenery = <Map<String, bool>>[
-      <String, bool>{'d2': true},
-      <String, bool>{'f2': true, 'd7': false},
-      <String, bool>{'e2': true, 'c7': false},
-      <String, bool>{'f2': true, 'f7': false},
-      <String, bool>{'d2': true, 'c6': false},
-      <String, bool>{'e2': true, 'd7': false},
-      <String, bool>{'d2': true, 'e7': false, 'f2': true},
-    ];
-    final int sceneryIndex =
-        (challenge.pattern ~/ dailyChallengeQueenFiles.length) %
-            dailyScenery.length;
-    for (final MapEntry<String, bool> entry
-        in dailyScenery[sceneryIndex].entries) {
-      base[entry.key] = ChessPiece('P', entry.value);
+    if (_gameMode != GameMode.puzzle) {
+      // Daily challenge keeps its 49-day visual rotation.
+      const List<Map<String, bool>> dailyScenery = <Map<String, bool>>[
+        <String, bool>{'d2': true},
+        <String, bool>{'f2': true, 'd7': false},
+        <String, bool>{'e2': true, 'c7': false},
+        <String, bool>{'f2': true, 'f7': false},
+        <String, bool>{'d2': true, 'c6': false},
+        <String, bool>{'e2': true, 'd7': false},
+        <String, bool>{'d2': true, 'e7': false, 'f2': true},
+      ];
+      final int sceneryIndex =
+          (challenge.pattern ~/ dailyChallengeQueenFiles.length) %
+              dailyScenery.length;
+      for (final MapEntry<String, bool> entry
+          in dailyScenery[sceneryIndex].entries) {
+        base[entry.key] = ChessPiece('P', entry.value);
+      }
     }
     // Decorative pieces must never occupy today's queen travel squares.
     base.remove('${queenFile}2');
     base.remove('${queenFile}3');
     return base;
+  }
+
+  Map<String, ChessPiece> _piecesFromFen(String fen) {
+    final String board = fen.trim().split(RegExp(r'\s+')).first;
+    final List<String> ranks = board.split('/');
+    if (ranks.length != 8) {
+      throw StateError('Invalid curated puzzle FEN: $fen');
+    }
+    final Map<String, ChessPiece> pieces = <String, ChessPiece>{};
+    const String files = 'abcdefgh';
+    for (int rankIndex = 0; rankIndex < 8; rankIndex++) {
+      int fileIndex = 0;
+      for (final int rune in ranks[rankIndex].runes) {
+        final String token = String.fromCharCode(rune);
+        final int? empty = int.tryParse(token);
+        if (empty != null) {
+          fileIndex += empty;
+          continue;
+        }
+        if (fileIndex >= 8 || !'prnbqkPRNBQK'.contains(token)) {
+          throw StateError('Invalid curated puzzle FEN: $fen');
+        }
+        final bool white = token == token.toUpperCase();
+        pieces['${files[fileIndex]}${8 - rankIndex}'] =
+            ChessPiece(token.toUpperCase(), white);
+        fileIndex++;
+      }
+      if (fileIndex != 8) {
+        throw StateError('Invalid curated puzzle FEN: $fen');
+      }
+    }
+    return pieces;
   }
 
   void _applyDailyCompletionState() {
@@ -2772,6 +3005,24 @@ class _GameScreenState extends State<GameScreen> {
     _coachNote =
         "Brilliant! Today's ${_dailyDifficulty.label.toLowerCase()} challenge is complete. "
         '${_dailyUnlockMessage()}';
+    if (firstCompletion) {
+      _archiveFinishedGame();
+      unawaited(ChessSoundService.instance.checkmate());
+    }
+  }
+
+  void _completePuzzle() {
+    final bool firstCompletion =
+        !LocalGameArchive.isPuzzleComplete(_activePuzzle.id);
+    if (firstCompletion) {
+      LocalGameArchive.markPuzzleSolved(_activePuzzle.id);
+    }
+    _gameResultTitle = 'Puzzle complete';
+    _gameResultDetail =
+        '${_activePuzzle.title} solved. Continue with the next puzzle anytime.';
+    _resultVisible = true;
+    _coachNote =
+        'Brilliant! ${_activePuzzle.title} complete — no daily waiting limit.';
     if (firstCompletion) {
       _archiveFinishedGame();
       unawaited(ChessSoundService.instance.checkmate());
@@ -2851,13 +3102,12 @@ class _GameScreenState extends State<GameScreen> {
       if (_onlineSubmitting) {
         return;
       }
-      if (onlineMatch.activeColor.toLowerCase() !=
-          onlineMatch.yourColor.toLowerCase()) {
+      if (!onlineMatch.isYourTurn) {
         setState(() => _coachNote = _onlineStatusText(onlineMatch));
         return;
       }
     }
-    if (_gameMode == GameMode.daily && _dailyPlyIndex.isOdd) {
+    if (_isTacticsMode && _dailyPlyIndex.isOdd) {
       _scheduleDailyReply();
       return;
     }
@@ -2868,13 +3118,16 @@ class _GameScreenState extends State<GameScreen> {
     int? onlineExpectedPly;
 
     setState(() {
-      final bool whitesTurn = _moves.length.isEven;
+      final bool whitesTurn =
+          _gameMode == GameMode.online && onlineMatch != null
+              ? onlineMatch.whiteToMove
+              : _moves.length.isEven;
       if (_gameMode == GameMode.online && whitesTurn != _humanPlaysWhite) {
         _coachNote = 'Waiting for your opponent to move.';
         return;
       }
       if (_gameMode == GameMode.computer && whitesTurn != _humanPlaysWhite) {
-        _coachNote = 'ChessVerse AI is calculating its reply.';
+        _coachNote = 'ChessVerseAI is calculating its reply.';
         return;
       }
       if (_selectedSquare == null) {
@@ -2918,6 +3171,19 @@ class _GameScreenState extends State<GameScreen> {
       }
 
       final String from = _selectedSquare!;
+      if (_gameMode == GameMode.puzzle &&
+          _dailyPlyIndex < _dailyChallenge.solution.length) {
+        final String expected =
+            _dailyChallenge.solution[_dailyPlyIndex].toLowerCase();
+        if (!expected.startsWith('$from$square')) {
+          _dailyMistakes++;
+          _coachNote =
+              'Legal move, but it misses the forced line. Try another move.';
+          _selectedSquare = null;
+          unawaited(ChessSoundService.instance.error());
+          return;
+        }
+      }
       final PositionAnalysis preMoveAnalysis = _analyzePosition(whitesTurn);
       _saveSnapshot();
       _lastFromSquare = from;
@@ -2972,7 +3238,7 @@ class _GameScreenState extends State<GameScreen> {
             capture: captured != null,
           ),
         );
-        if (_gameMode == GameMode.daily) {
+        if (_isTacticsMode) {
           _dailyPlyIndex++;
         }
         final String moveFeedback = _moveFeedback(
@@ -3008,10 +3274,14 @@ class _GameScreenState extends State<GameScreen> {
             _coachNote = '$moveFeedback $_coachNote';
           }
           _lastPlayerCoachNote = _coachNote;
-          if (_gameMode == GameMode.daily) {
+          if (_isTacticsMode) {
             final bool opponentMated = _isCheckmateFor(!piece.white);
             if (opponentMated) {
-              _completeDailyChallenge();
+              if (_gameMode == GameMode.daily) {
+                _completeDailyChallenge();
+              } else {
+                _completePuzzle();
+              }
             } else if (_dailyPlayerMovesCompleted >=
                 _dailyChallenge.playerMoveGoal) {
               _coachNote =
@@ -3020,7 +3290,7 @@ class _GameScreenState extends State<GameScreen> {
               _gameResultTitle = 'Challenge missed';
               _gameResultDetail =
                   'No checkmate within ${_dailyChallenge.playerMoveGoal} moves. '
-                  'Your daily attempt is still available.';
+                  '${_gameMode == GameMode.daily ? 'Your daily attempt is still available.' : 'Try this puzzle again whenever you are ready.'}';
               _resultVisible = true;
             }
           }
@@ -3058,7 +3328,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _scheduleAiMove() {
-    if (_gameMode == GameMode.daily) {
+    if (_isTacticsMode) {
       _scheduleDailyReply();
       return;
     }
@@ -3093,10 +3363,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _performDailyReply() {
-    if (!mounted ||
-        _gameMode != GameMode.daily ||
-        !_aiThinking ||
-        _dailyPlyIndex.isEven) {
+    if (!mounted || !_isTacticsMode || !_aiThinking || _dailyPlyIndex.isEven) {
       return;
     }
     final List<AiCandidate> replies = <AiCandidate>[];
@@ -3264,7 +3531,7 @@ class _GameScreenState extends State<GameScreen> {
         _aiThinking = false;
         _coachNote = _gameStateNote(
           aiPlaysWhite,
-          fallback: 'ChessVerse AI has no legal move.',
+          fallback: 'ChessVerseAI has no legal move.',
         );
       });
       return;
@@ -3613,17 +3880,19 @@ class _GameScreenState extends State<GameScreen> {
 
   void _reset() {
     if (_gameMode == GameMode.online && _onlineMatch != null) {
-      unawaited(_refreshOnlineMatch());
+      unawaited(_refreshOnlineMatch(forceBoardReplay: true));
       return;
     }
-    final DailyChallenge challenge = _challengeForToday(_dailyDifficulty);
+    final DailyChallenge challenge = _gameMode == GameMode.puzzle
+        ? _challengeForPuzzle(_activePuzzle)
+        : _challengeForToday(_dailyDifficulty);
     final bool completedToday = LocalGameArchive.isDailyChallengeComplete(
       challenge.id,
     );
-    if (_gameMode == GameMode.daily) {
+    if (_isTacticsMode) {
       _humanPlaysWhite = true;
     }
-    final Map<String, ChessPiece> resetPieces = _gameMode == GameMode.daily
+    final Map<String, ChessPiece> resetPieces = _isTacticsMode
         ? _dailyStartingPosition(challenge)
         : Map<String, ChessPiece>.from(_initialPieces);
     setState(() {
@@ -3653,7 +3922,9 @@ class _GameScreenState extends State<GameScreen> {
           ? completedToday
               ? _dailyUnlockMessage()
               : 'Move any legal white coin. Checkmate in ${challenge.playerMoveGoal} moves.'
-          : 'Select a coin to see legal moves.';
+          : _gameMode == GameMode.puzzle
+              ? '${_activePuzzle.title}: checkmate in ${challenge.playerMoveGoal} moves.'
+              : 'Select a coin to see legal moves.';
       _gameResultTitle = completedToday && _gameMode == GameMode.daily
           ? 'Challenge complete'
           : null;
@@ -3673,7 +3944,23 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
+  void _startNextPuzzle() {
+    final ChessPuzzle? next = PuzzleCatalog.nextAfter(_activePuzzle.id);
+    _activePuzzle =
+        next ?? PuzzleCatalog.forDifficulty(_activePuzzle.difficulty).first;
+    _dailyDifficulty = switch (_activePuzzle.difficulty) {
+      PuzzleDifficulty.easy => DailyChallengeDifficulty.easy,
+      PuzzleDifficulty.medium => DailyChallengeDifficulty.medium,
+      PuzzleDifficulty.hard => DailyChallengeDifficulty.hard,
+    };
+    _reset();
+  }
+
   Future<void> _confirmNewGame() async {
+    if (_gameMode == GameMode.online && _onlineMatch?.status == 'FINISHED') {
+      await _startFreshOnlineGame();
+      return;
+    }
     if (_moves.isEmpty && _gameResultTitle == null) {
       _reset();
       return;
@@ -3711,6 +3998,10 @@ class _GameScreenState extends State<GameScreen> {
     if (_gameResultTitle != null) {
       return;
     }
+    if (_gameMode == GameMode.online) {
+      unawaited(_resignOnlineGame());
+      return;
+    }
     final bool whiteToMove = _moves.length.isEven;
     setState(() {
       _gameResultTitle = whiteToMove ? 'Black wins' : 'White wins';
@@ -3725,6 +4016,10 @@ class _GameScreenState extends State<GameScreen> {
 
   Future<void> _offerDraw() async {
     if (_gameResultTitle != null) {
+      return;
+    }
+    if (_gameMode == GameMode.online) {
+      await _offerOnlineDraw();
       return;
     }
     final bool? accepted = await showDialog<bool>(
@@ -3768,6 +4063,7 @@ class _GameScreenState extends State<GameScreen> {
         mode: switch (_gameMode) {
           GameMode.computer => 'Play vs AI',
           GameMode.daily => 'Daily Checkmate',
+          GameMode.puzzle => 'Puzzle Academy',
           GameMode.local => '2 Players',
           GameMode.online => 'Online',
         },
@@ -3791,6 +4087,9 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _saveSnapshot() {
+    if (_gameMode == GameMode.online) {
+      return;
+    }
     _history.add(
       GameSnapshot(
         pieces: Map<String, ChessPiece>.from(_pieces),
@@ -3811,23 +4110,31 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _undo() {
+    if (_gameMode == GameMode.online) {
+      setState(() {
+        _selectedSquare = null;
+        _coachNote =
+            'Online moves are final. Syncing the authoritative match...';
+      });
+      unawaited(_refreshOnlineMatch(forceBoardReplay: true));
+      return;
+    }
     if (_history.isEmpty) {
       return;
     }
 
     setState(() {
-      final int steps =
-          (_gameMode == GameMode.computer || _gameMode == GameMode.daily) &&
-                  _history.length >= 2
-              ? 2
-              : 1;
+      final int steps = (_gameMode == GameMode.computer || _isTacticsMode) &&
+              _history.length >= 2
+          ? 2
+          : 1;
       final GameSnapshot snapshot = _history[_history.length - steps];
       _history.removeRange(_history.length - steps, _history.length);
       _pieces = Map<String, ChessPiece>.from(snapshot.pieces);
       _moves
         ..clear()
         ..addAll(snapshot.moves);
-      if (_gameMode == GameMode.daily) {
+      if (_isTacticsMode) {
         _dailyPlyIndex = _moves.length;
       }
       _capturedWhite
@@ -3859,8 +4166,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _showHint() {
-    final bool whiteToMove =
-        _gameMode == GameMode.daily ? true : _moves.length.isEven;
+    final bool whiteToMove = _isTacticsMode ? true : _moves.length.isEven;
     String? bestFrom;
     List<String> bestTargets = <String>[];
 
@@ -3882,7 +4188,7 @@ class _GameScreenState extends State<GameScreen> {
       } else {
         final int remaining =
             _dailyChallenge.playerMoveGoal - _dailyPlayerMovesCompleted;
-        _coachNote = _gameMode == GameMode.daily
+        _coachNote = _isTacticsMode
             ? 'Hint: inspect $bestFrom. ${bestTargets.length} legal option(s); $remaining move(s) remain.'
             : 'Coach hint: inspect $bestFrom. It has ${bestTargets.length} promising squares.';
       }
@@ -4013,22 +4319,42 @@ class _GameScreenState extends State<GameScreen> {
       );
       return;
     }
-    final OnlineMatchDto? match = await showModalBottomSheet<OnlineMatchDto>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (BuildContext context) => OnlineMatchmakingSheet(
-        api: _onlineApi,
-        token: token!,
+    final OnlineMatchDto? match =
+        await Navigator.of(context).push<OnlineMatchDto>(
+      MaterialPageRoute<OnlineMatchDto>(
+        fullscreenDialog: true,
+        builder: (BuildContext context) => Scaffold(
+          backgroundColor: const Color(0xFF06131F),
+          body: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[Color(0xFF0A2231), Color(0xFF040B13)],
+              ),
+            ),
+            child: OnlineMatchmakingSheet(
+              api: _onlineApi,
+              token: token!,
+            ),
+          ),
+        ),
       ),
     );
     if (match != null && mounted) {
       _beginOnlineMatch(match, token);
+    } else if (mounted &&
+        _gameMode == GameMode.online &&
+        _onlineMatch == null) {
+      Navigator.of(context).maybePop();
     }
   }
 
   void _beginOnlineMatch(OnlineMatchDto match, String token) {
+    final bool newMatch = _onlineMatch?.id != match.id;
     _onlinePollTimer?.cancel();
+    unawaited(_onlineSocketSubscription?.cancel());
+    unawaited(_onlineChannel?.sink.close());
     setState(() {
       _authToken = token;
       _onlineMatch = match;
@@ -4036,18 +4362,82 @@ class _GameScreenState extends State<GameScreen> {
       _humanPlaysWhite = match.yourColor.toLowerCase() == 'white';
       _whitePlayerName = match.whitePlayerName ?? 'White player';
       _blackPlayerName = match.blackPlayerName ?? 'Black player';
+      _whitePlayerPhotoUrl = match.whitePlayerPhotoUrl ??
+          (_humanPlaysWhite ? widget.initialProfilePhotoUrl : null);
+      _blackPlayerPhotoUrl = match.blackPlayerPhotoUrl ??
+          (!_humanPlaysWhite ? widget.initialProfilePhotoUrl : null);
       _coachNote = _onlineStatusText(match);
+      if (newMatch) {
+        _gameResultTitle = null;
+        _gameResultDetail = null;
+        _resultVisible = false;
+        _resultSaved = false;
+        _selectedSquare = null;
+        _lastFromSquare = null;
+        _lastToSquare = null;
+        _lastCaptureSquare = null;
+        _handledDrawOfferKey = null;
+        _onlineConnectedPlayers = 0;
+        _onlineSocketConnected = false;
+      }
     });
-    _rebuildFromOnline(match);
+    // A restored/reconnected match must always replay its authoritative move
+    // list. `_onlineMatch` was just assigned above, so the normal same-board
+    // fast path would otherwise leave a fresh local board at the start
+    // position while showing the server's clocks and turn.
+    _rebuildFromOnline(match, forceBoardReplay: true);
     _onlinePollTimer = Timer.periodic(
       const Duration(seconds: 2),
       (_) => unawaited(_refreshOnlineMatch()),
     );
+    _connectOnlineSocket(token, match.id);
+  }
+
+  void _connectOnlineSocket(String token, String matchId) {
+    _onlineSocketReconnectTimer?.cancel();
+    try {
+      final WebSocketChannel channel =
+          _onlineApi.openMatchChannel(token, matchId);
+      _onlineChannel = channel;
+      _onlineSocketSubscription = channel.stream.listen(
+        (dynamic event) {
+          _handleOnlineSocketEvent(event);
+          unawaited(_refreshOnlineMatch());
+        },
+        onError: (_) => _scheduleOnlineSocketReconnect(token, matchId),
+        onDone: () => _scheduleOnlineSocketReconnect(token, matchId),
+        cancelOnError: true,
+      );
+    } on Object {
+      _scheduleOnlineSocketReconnect(token, matchId);
+    }
+  }
+
+  void _scheduleOnlineSocketReconnect(String token, String matchId) {
+    if (!mounted || _onlineMatch?.id != matchId) return;
+    setState(() => _onlineSocketConnected = false);
+    _onlineSocketReconnectTimer?.cancel();
+    _onlineSocketReconnectTimer = Timer(
+      const Duration(seconds: 3),
+      () => _connectOnlineSocket(token, matchId),
+    );
   }
 
   String _onlineStatusText(OnlineMatchDto match) {
+    if (match.status == 'FINISHED') {
+      return _onlineResultDetail(match);
+    }
     if (!match.isActive) {
       return 'Room ${match.roomCode}: waiting for your opponent.';
+    }
+    if (_onlineConnectedPlayers == 1) {
+      return 'Opponent connection lost. Waiting for reconnect...';
+    }
+    if (match.drawOfferedByColor != null) {
+      final bool yours = match.drawOfferedByColor!.toLowerCase() ==
+          match.yourColor.toLowerCase();
+      if (yours) return 'Draw offer sent. Waiting for your opponent.';
+      return 'Your opponent offered a draw.';
     }
     final bool yourTurn =
         match.activeColor.toLowerCase() == match.yourColor.toLowerCase();
@@ -4056,7 +4446,9 @@ class _GameScreenState extends State<GameScreen> {
         : 'Waiting for ${match.activeColor} to move.';
   }
 
-  Future<void> _refreshOnlineMatch() async {
+  Future<void> _refreshOnlineMatch({
+    bool forceBoardReplay = false,
+  }) async {
     final OnlineMatchDto? current = _onlineMatch;
     final String? token = _authToken;
     if (current == null || token == null || _onlineSubmitting) return;
@@ -4064,26 +4456,35 @@ class _GameScreenState extends State<GameScreen> {
       final OnlineMatchDto latest =
           await _onlineApi.getMatch(token, current.id);
       if (!mounted) return;
-      _rebuildFromOnline(latest);
+      _rebuildFromOnline(
+        latest,
+        forceBoardReplay: forceBoardReplay,
+      );
     } on OnlineMatchException catch (error) {
       if (!mounted) return;
       setState(() => _coachNote = 'Reconnect pending: ${error.message}');
     }
   }
 
-  void _rebuildFromOnline(OnlineMatchDto match) {
+  void _rebuildFromOnline(
+    OnlineMatchDto match, {
+    bool forceBoardReplay = false,
+  }) {
     final OnlineMatchDto? previous = _onlineMatch;
-    if (previous != null &&
+    final bool sameBoard = !forceBoardReplay &&
+        previous != null &&
         previous.id == match.id &&
         previous.plyCount == match.plyCount &&
-        previous.status == match.status &&
-        previous.activeColor == match.activeColor &&
         previous.whitePlayerName == match.whitePlayerName &&
-        previous.blackPlayerName == match.blackPlayerName) {
+        previous.blackPlayerName == match.blackPlayerName;
+    if (sameBoard) {
       setState(() {
         _onlineMatch = match;
+        _whiteSeconds = (match.whiteTimeMs / 1000).ceil();
+        _blackSeconds = (match.blackTimeMs / 1000).ceil();
         _coachNote = _onlineStatusText(match);
       });
+      _applyOnlineLifecycle(match);
       return;
     }
     final Map<String, ChessPiece> board =
@@ -4135,24 +4536,82 @@ class _GameScreenState extends State<GameScreen> {
       _capturedBlack
         ..clear()
         ..addAll(capturedBlack);
+      _history.clear();
       _whitePlayerName = match.whitePlayerName ?? 'White player';
       _blackPlayerName = match.blackPlayerName ?? 'Black player';
+      _whitePlayerPhotoUrl = match.whitePlayerPhotoUrl ??
+          (_humanPlaysWhite ? widget.initialProfilePhotoUrl : null);
+      _blackPlayerPhotoUrl = match.blackPlayerPhotoUrl ??
+          (!_humanPlaysWhite ? widget.initialProfilePhotoUrl : null);
+      _whiteSeconds = (match.whiteTimeMs / 1000).ceil();
+      _blackSeconds = (match.blackTimeMs / 1000).ceil();
       _coachNote = _onlineStatusText(match);
       _selectedSquare = null;
+      if (match.moves.isEmpty) {
+        _lastFromSquare = null;
+        _lastToSquare = null;
+        _lastCaptureSquare = null;
+      } else {
+        final String lastUci = match.moves.last.uci.toLowerCase();
+        _lastFromSquare = lastUci.length >= 4 ? lastUci.substring(0, 2) : null;
+        _lastToSquare = lastUci.length >= 4 ? lastUci.substring(2, 4) : null;
+        _lastCaptureSquare = null;
+      }
     });
+    _applyOnlineLifecycle(match);
     if (match.status == 'ACTIVE' && match.moves.isNotEmpty) {
-      final bool sideToMoveWhite = match.activeColor == 'WHITE';
+      final bool sideToMoveWhite = match.whiteToMove;
       final String stateNote = _gameStateNote(
         sideToMoveWhite,
         fallback: _onlineStatusText(match),
       );
-      if (_resultVisible) {
-        _onlinePollTimer?.cancel();
-      }
       if (mounted) {
         setState(() => _coachNote = stateNote);
       }
     }
+  }
+
+  void _resumeOnlineSession() {
+    final OnlineMatchDto? match = _onlineMatch;
+    final String? token = _authToken;
+    if (match == null || token == null) return;
+    _onlineSubmitting = false;
+    _onlineSocketReconnectTimer?.cancel();
+    unawaited(_onlineSocketSubscription?.cancel());
+    unawaited(_onlineChannel?.sink.close());
+    _onlinePollTimer?.cancel();
+    _onlinePollTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => unawaited(_refreshOnlineMatch()),
+    );
+    unawaited(_refreshOnlineMatch(forceBoardReplay: true));
+    _connectOnlineSocket(token, match.id);
+  }
+
+  Future<void> _startFreshOnlineGame() async {
+    _onlinePollTimer?.cancel();
+    _onlineSocketReconnectTimer?.cancel();
+    await _onlineSocketSubscription?.cancel();
+    await _onlineChannel?.sink.close();
+    if (!mounted) return;
+    setState(() {
+      _onlineMatch = null;
+      _onlineSubmitting = false;
+      _onlineConnectedPlayers = 0;
+      _onlineSocketConnected = false;
+      _selectedSquare = null;
+      _lastFromSquare = null;
+      _lastToSquare = null;
+      _lastCaptureSquare = null;
+      _gameResultTitle = null;
+      _gameResultDetail = null;
+      _resultVisible = false;
+      _resultSaved = false;
+      _handledDrawOfferKey = null;
+      _joiningRematchId = null;
+      _coachNote = 'Choose how you want to start your next online match.';
+    });
+    await _showOnlineMatchmakingInfo();
   }
 
   Future<void> _submitOnlineMove(String uci, int expectedPly) async {
@@ -4178,12 +4637,211 @@ class _GameScreenState extends State<GameScreen> {
         _onlineSubmitting = false;
         _coachNote = 'Move not accepted: ${error.message}';
       });
-      await _refreshOnlineMatch();
+      await _refreshOnlineMatch(forceBoardReplay: true);
     } finally {
       if (mounted) {
         setState(() => _onlineSubmitting = false);
       }
     }
+  }
+
+  void _handleOnlineSocketEvent(dynamic event) {
+    if (event is! String) return;
+    try {
+      final Object? decoded = jsonDecode(event);
+      if (decoded is! Map<String, dynamic>) {
+        return;
+      }
+      if (mounted && !_onlineSocketConnected) {
+        setState(() => _onlineSocketConnected = true);
+      }
+      if (decoded['type'] != 'presence.updated') return;
+      final int connected = (decoded['connectedPlayers'] as num?)?.toInt() ?? 0;
+      if (!mounted) return;
+      setState(() {
+        _onlineConnectedPlayers = connected;
+        _onlineSocketConnected = true;
+        if (_onlineMatch?.isActive == true && connected < 2) {
+          _coachNote = 'Opponent connection lost. Waiting for reconnect...';
+        }
+      });
+    } on FormatException {
+      // Ignore non-JSON socket frames; polling remains the source of truth.
+    }
+  }
+
+  Future<void> _resignOnlineGame() async {
+    final OnlineMatchDto? match = _onlineMatch;
+    final String? token = _authToken;
+    if (match == null || token == null || !match.isActive) return;
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Resign online match?'),
+        content: const Text('Your opponent will win this match.'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep playing'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Resign'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      _rebuildFromOnline(await _onlineApi.resign(token, match.id));
+    } on OnlineMatchException catch (error) {
+      if (mounted) setState(() => _coachNote = error.message);
+    }
+  }
+
+  Future<void> _offerOnlineDraw() async {
+    final OnlineMatchDto? match = _onlineMatch;
+    final String? token = _authToken;
+    if (match == null || token == null || !match.isActive) return;
+    try {
+      _rebuildFromOnline(await _onlineApi.offerDraw(token, match.id));
+    } on OnlineMatchException catch (error) {
+      if (mounted) setState(() => _coachNote = error.message);
+    }
+  }
+
+  Future<void> _respondOnlineDraw(bool accept) async {
+    final OnlineMatchDto? match = _onlineMatch;
+    final String? token = _authToken;
+    if (match == null || token == null) return;
+    try {
+      _rebuildFromOnline(
+        await _onlineApi.respondDraw(token, match.id, accept: accept),
+      );
+    } on OnlineMatchException catch (error) {
+      if (mounted) setState(() => _coachNote = error.message);
+    }
+  }
+
+  Future<void> _requestOnlineRematch() async {
+    final OnlineMatchDto? match = _onlineMatch;
+    final String? token = _authToken;
+    if (match == null || token == null || match.status != 'FINISHED') return;
+    setState(() {
+      _resultVisible = false;
+      _coachNote = 'Rematch requested. Waiting for your opponent...';
+    });
+    try {
+      final OnlineMatchDto next =
+          await _onlineApi.requestRematch(token, match.id);
+      if (!mounted) return;
+      if (next.id != match.id) {
+        _beginOnlineMatch(next, token);
+      } else {
+        _rebuildFromOnline(next);
+      }
+    } on OnlineMatchException catch (error) {
+      if (mounted) setState(() => _coachNote = error.message);
+    }
+  }
+
+  void _applyOnlineLifecycle(OnlineMatchDto match) {
+    final String? rematchId = match.rematchMatchId;
+    if (rematchId != null &&
+        rematchId != match.id &&
+        _joiningRematchId != rematchId) {
+      _joiningRematchId = rematchId;
+      final String? token = _authToken;
+      if (token != null) {
+        unawaited(_joinCreatedRematch(token, rematchId));
+      }
+      return;
+    }
+    if (match.status == 'FINISHED') {
+      final String result = match.result ?? '1/2-1/2';
+      final bool userWhite = match.yourColor.toLowerCase() == 'white';
+      final bool userWon =
+          (result == '1-0' && userWhite) || (result == '0-1' && !userWhite);
+      final bool draw = result == '1/2-1/2';
+      setState(() {
+        _gameResultTitle = draw
+            ? 'Draw'
+            : userWon
+                ? 'You win'
+                : 'Opponent wins';
+        _gameResultDetail = _onlineResultDetail(match);
+        _resultVisible = true;
+        _coachNote = _onlineResultDetail(match);
+      });
+      if (_archivedOnlineMatchId != match.id) {
+        _archivedOnlineMatchId = match.id;
+        _archiveFinishedGame();
+      }
+      return;
+    }
+    final String? offeredBy = match.drawOfferedByColor;
+    if (offeredBy == null ||
+        offeredBy.toLowerCase() == match.yourColor.toLowerCase()) {
+      return;
+    }
+    final String key = '${match.id}:$offeredBy:${match.plyCount}';
+    if (_handledDrawOfferKey == key) return;
+    _handledDrawOfferKey = key;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || _onlineMatch?.id != match.id) return;
+      final bool? accept = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) => AlertDialog(
+          title: const Text('Draw offer'),
+          content: const Text('Your opponent is offering a draw.'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Decline'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Accept draw'),
+            ),
+          ],
+        ),
+      );
+      if (accept != null) await _respondOnlineDraw(accept);
+    });
+  }
+
+  Future<void> _joinCreatedRematch(String token, String rematchId) async {
+    try {
+      final OnlineMatchDto rematch =
+          await _onlineApi.getMatch(token, rematchId);
+      if (!mounted || _joiningRematchId != rematchId) return;
+      _joiningRematchId = null;
+      _beginOnlineMatch(rematch, token);
+    } on OnlineMatchException catch (error) {
+      if (!mounted) return;
+      _joiningRematchId = null;
+      setState(
+          () => _coachNote = 'Rematch reconnect pending: ${error.message}');
+    }
+  }
+
+  String _onlineResultDetail(OnlineMatchDto match) {
+    final String reason = switch (match.resultReason) {
+      'CHECKMATE' => 'Checkmate',
+      'RESIGNATION' => 'Match ended by resignation',
+      'TIMEOUT' => 'Match ended on time',
+      'STALEMATE' => 'Stalemate',
+      'DRAW_AGREEMENT' => 'Draw agreed',
+      _ => 'Online match complete',
+    };
+    final int? ratingDelta =
+        match.ratingBefore == null || match.ratingAfter == null
+            ? null
+            : match.ratingAfter! - match.ratingBefore!;
+    final String ratingText = ratingDelta == null
+        ? ''
+        : ' • ELO ${ratingDelta >= 0 ? '+' : ''}$ratingDelta';
+    return '${match.result ?? ''} • $reason$ratingText';
   }
 
   Future<void> _showPromotionPicker(String square, bool white) async {
@@ -4241,9 +4899,13 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     if (checkmate) {
-      if (_gameMode == GameMode.daily && !sideToMoveWhite) {
-        _completeDailyChallenge();
-        return 'Checkmate. Daily challenge complete.';
+      if (_isTacticsMode && !sideToMoveWhite) {
+        if (_gameMode == GameMode.daily) {
+          _completeDailyChallenge();
+          return 'Checkmate. Daily challenge complete.';
+        }
+        _completePuzzle();
+        return 'Checkmate. Puzzle complete.';
       }
       _gameResultTitle = '${sideToMoveWhite ? 'Black' : 'White'} wins';
       _gameResultDetail = 'Checkmate';
@@ -4379,7 +5041,7 @@ class CompactHeader extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            'ChessVerse AI  |  $playerName',
+            'ChessVerseAI  |  $playerName',
             style: Theme.of(context).textTheme.titleLarge,
             overflow: TextOverflow.ellipsis,
           ),
@@ -4429,7 +5091,7 @@ class ChessVerseMark extends StatelessWidget {
         height: size,
         fit: BoxFit.cover,
         filterQuality: FilterQuality.medium,
-        semanticLabel: 'ChessVerse logo',
+        semanticLabel: 'ChessVerseAI logo',
       ),
     );
   }
@@ -5694,6 +6356,7 @@ class _GameStudioHeader extends StatelessWidget {
     final bool compact = MediaQuery.sizeOf(context).width < 1050;
     final String title = switch (gameMode) {
       GameMode.daily => 'Daily Challenge',
+      GameMode.puzzle => 'Puzzle Academy',
       GameMode.computer => 'AI Training',
       GameMode.local => 'Local Match',
       GameMode.online => 'Online Battle',
@@ -5726,7 +6389,7 @@ class _GameStudioHeader extends StatelessWidget {
                   if (!compact) ...<Widget>[
                     const SizedBox(width: 12),
                     const Text(
-                      'ChessVerse',
+                      'ChessVerseAI',
                       style: TextStyle(
                         color: Color(0xFFF2C46D),
                         fontFamily: 'serif',
@@ -5965,6 +6628,9 @@ class _StudioCoachPanel extends StatelessWidget {
     required this.onTryAgain,
     required this.onUndo,
     required this.onControls,
+    required this.puzzleComplete,
+    required this.onNextPuzzle,
+    required this.onBackToAcademy,
   });
 
   final GameMode gameMode;
@@ -5982,25 +6648,34 @@ class _StudioCoachPanel extends StatelessWidget {
   final VoidCallback onTryAgain;
   final VoidCallback onUndo;
   final VoidCallback onControls;
+  final bool puzzleComplete;
+  final VoidCallback onNextPuzzle;
+  final VoidCallback onBackToAcademy;
 
   @override
   Widget build(BuildContext context) {
     final String modeLabel = switch (gameMode) {
       GameMode.daily => 'DAILY CHALLENGE',
+      GameMode.puzzle => 'PUZZLE TRAINING',
       GameMode.computer => 'AI TRAINING',
       GameMode.local => 'LOCAL MATCH',
       GameMode.online => 'ONLINE BATTLE',
     };
     final String goal = switch (gameMode) {
       GameMode.daily => 'Checkmate in $dailyGoal',
+      GameMode.puzzle => 'Checkmate in $dailyGoal',
       GameMode.computer => 'Find the strongest move',
       GameMode.local => 'Outplay your opponent',
       GameMode.online => 'Play a live opponent',
     };
-    final int progress = gameMode == GameMode.daily
-        ? dailyProgress.clamp(0, dailyGoal)
-        : (lastMove == null ? 0 : 1);
-    final int goalSteps = gameMode == GameMode.daily ? dailyGoal : 3;
+    final int progress =
+        (gameMode == GameMode.daily || gameMode == GameMode.puzzle)
+            ? dailyProgress.clamp(0, dailyGoal)
+            : (lastMove == null ? 0 : 1);
+    final int goalSteps =
+        (gameMode == GameMode.daily || gameMode == GameMode.puzzle)
+            ? dailyGoal
+            : 3;
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
@@ -6025,8 +6700,29 @@ class _StudioCoachPanel extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  Row(
-                    children: <Widget>[
+                  if (puzzleComplete)
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: onBackToAcademy,
+                            icon: const Icon(Icons.school_rounded),
+                            label: const Text('Puzzle Academy'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: onNextPuzzle,
+                            icon: const Icon(Icons.arrow_forward_rounded),
+                            label: const Text('Next puzzle'),
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Row(
+                      children: <Widget>[
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -6053,7 +6749,9 @@ class _StudioCoachPanel extends StatelessWidget {
                         ),
                       ),
                       IconButton.outlined(
-                        tooltip: 'Undo move',
+                        tooltip: gameMode == GameMode.online
+                            ? 'Undo is unavailable in online games'
+                            : 'Undo move',
                         onPressed: canUndo ? onUndo : null,
                         icon: const Icon(Icons.undo_rounded),
                       ),
@@ -6064,8 +6762,8 @@ class _StudioCoachPanel extends StatelessWidget {
                         onPressed: onControls,
                         icon: const Icon(Icons.tune_rounded),
                       ),
-                    ],
-                  ),
+                      ],
+                    ),
                   SizedBox(height: compact ? 8 : 14),
                   _CoachInsightCard(
                     icon: Icons.track_changes_rounded,
@@ -6100,7 +6798,7 @@ class _StudioCoachPanel extends StatelessWidget {
                     accent: const Color(0xFF63D2B8),
                     child: Text(
                       aiThinking
-                          ? 'ChessVerse AI is calculating…'
+                          ? 'ChessVerseAI is calculating…'
                           : lastMove == null
                               ? 'Select a piece to begin'
                               : '${lastMoveOwner ?? 'Last move'}: $lastMove',
@@ -6165,8 +6863,14 @@ class _StudioCoachPanel extends StatelessWidget {
                       Expanded(
                         child: FilledButton.icon(
                           onPressed: onTryAgain,
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: const Text('Try again'),
+                          icon: Icon(
+                            gameMode == GameMode.online
+                                ? Icons.sync_rounded
+                                : Icons.refresh_rounded,
+                          ),
+                          label: Text(
+                            gameMode == GameMode.online ? 'Sync' : 'Try again',
+                          ),
                         ),
                       ),
                     ],
@@ -6312,6 +7016,267 @@ class _CoachEvaluation extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _OnlineConnectionBanner extends StatelessWidget {
+  const _OnlineConnectionBanner({
+    required this.reconnecting,
+    required this.opponentAway,
+  });
+
+  final bool reconnecting;
+  final bool opponentAway;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool healthy = !reconnecting && !opponentAway;
+    final Color color =
+        healthy ? const Color(0xFF63D2B8) : const Color(0xFFE5B856);
+    final String label = reconnecting
+        ? 'Reconnecting to match…'
+        : opponentAway
+            ? 'Opponent offline — waiting for reconnect'
+            : 'Both players online';
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.7)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          if (reconnecting)
+            SizedBox.square(
+              dimension: 12,
+              child: CircularProgressIndicator(strokeWidth: 1.7, color: color),
+            )
+          else
+            Icon(Icons.circle, size: 10, color: color),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OnlineArenaBoard extends StatelessWidget {
+  const _OnlineArenaBoard({
+    required this.board,
+    required this.flipped,
+    required this.whiteName,
+    required this.blackName,
+    required this.whitePhotoUrl,
+    required this.blackPhotoUrl,
+    required this.whiteClock,
+    required this.blackClock,
+    required this.activeColor,
+    required this.matchActive,
+    required this.socketConnected,
+    required this.connectedPlayers,
+  });
+
+  final Widget board;
+  final bool flipped;
+  final String whiteName;
+  final String blackName;
+  final String? whitePhotoUrl;
+  final String? blackPhotoUrl;
+  final String whiteClock;
+  final String blackClock;
+  final String activeColor;
+  final bool matchActive;
+  final bool socketConnected;
+  final int connectedPlayers;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget white = _OnlinePlayerRail(
+      name: whiteName,
+      photoUrl: whitePhotoUrl,
+      clock: whiteClock,
+      active: matchActive && activeColor == 'white',
+      pieceColor: Colors.white,
+    );
+    final Widget black = _OnlinePlayerRail(
+      name: blackName,
+      photoUrl: blackPhotoUrl,
+      clock: blackClock,
+      active: matchActive && activeColor == 'black',
+      pieceColor: const Color(0xFF171717),
+    );
+    return Column(
+      children: <Widget>[
+        SizedBox(
+          height: 28,
+          child: Center(
+            child: _OnlineConnectionBanner(
+              reconnecting: !socketConnected,
+              opponentAway: socketConnected && connectedPlayers < 2,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        SizedBox(height: 48, child: flipped ? white : black),
+        const SizedBox(height: 4),
+        Expanded(child: board),
+        const SizedBox(height: 4),
+        SizedBox(height: 48, child: flipped ? black : white),
+      ],
+    );
+  }
+}
+
+class _OnlinePlayerRail extends StatelessWidget {
+  const _OnlinePlayerRail({
+    required this.name,
+    required this.photoUrl,
+    required this.clock,
+    required this.active,
+    required this.pieceColor,
+  });
+
+  final String name;
+  final String? photoUrl;
+  final String clock;
+  final bool active;
+  final Color pieceColor;
+
+  String get initials {
+    final List<String> words = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((String word) => word.isNotEmpty)
+        .toList();
+    if (words.isEmpty) return 'CV';
+    return words.take(2).map((String word) => word[0].toUpperCase()).join();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String? usablePhoto = photoUrl != null && photoUrl!.trim().isNotEmpty
+        ? photoUrl!.trim()
+        : null;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: active ? const Color(0xFF173A35) : const Color(0xFF111C1F),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: active ? const Color(0xFF63D2B8) : const Color(0xFF755A32),
+          width: active ? 1.6 : 1,
+        ),
+        boxShadow: active
+            ? <BoxShadow>[
+                BoxShadow(
+                  color: const Color(0xFF63D2B8).withValues(alpha: 0.18),
+                  blurRadius: 12,
+                ),
+              ]
+            : null,
+      ),
+      child: Row(
+        children: <Widget>[
+          ClipOval(
+            child: SizedBox.square(
+              dimension: 34,
+              child: usablePhoto == null
+                  ? _AvatarInitials(initials: initials)
+                  : Image.network(
+                      usablePhoto,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _AvatarInitials(initials: initials),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              color: pieceColor,
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFB9914E)),
+            ),
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFFF4ECDD),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: active ? const Color(0xFF63D2B8) : const Color(0xFF24272A),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              clock,
+              style: TextStyle(
+                color: active ? const Color(0xFF071A17) : Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                fontFeatures: const <ui.FontFeature>[
+                  ui.FontFeature.tabularFigures(),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AvatarInitials extends StatelessWidget {
+  const _AvatarInitials({required this.initials});
+
+  final String initials;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: <Color>[Color(0xFF1F7E72), Color(0xFF493481)],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          initials,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
       ),
     );
   }
@@ -6548,6 +7513,7 @@ class GamePanel extends StatelessWidget {
                   switch (gameMode) {
                     GameMode.computer => 'Solo Challenge',
                     GameMode.daily => 'Daily Checkmate',
+                    GameMode.puzzle => 'Puzzle Training',
                     GameMode.local => 'Pass & Play',
                     GameMode.online => 'Online Battle',
                   },
@@ -6600,7 +7566,7 @@ class GamePanel extends StatelessWidget {
                       : Icons.speed_rounded,
                   label: aiThinking ? 'Thinking' : aiProfile.name,
                 ),
-              if (gameMode == GameMode.daily)
+              if (gameMode == GameMode.daily || gameMode == GameMode.puzzle)
                 StatusPill(
                   icon: Icons.local_fire_department_rounded,
                   label: '$dailyProgress/$dailyGoal solved',
@@ -6920,7 +7886,7 @@ class GameModeLauncher extends StatelessWidget {
         mode: GameMode.computer,
         icon: Icons.smart_toy_rounded,
         title: 'Play vs AI',
-        subtitle: 'Challenge ChessVerse',
+        subtitle: 'Challenge ChessVerseAI',
       ),
       const _GameModeChoice(
         mode: GameMode.daily,
@@ -7292,21 +8258,46 @@ class OnlineMatchmakingSheet extends StatefulWidget {
 class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
   final TextEditingController _roomController = TextEditingController();
   Timer? _pollTimer;
+  Timer? _elapsedTimer;
+  Timer? _foundTimer;
+  Timer? _socketReconnectTimer;
+  WebSocketChannel? _channel;
+  StreamSubscription<dynamic>? _socketSubscription;
   OnlineMatchDto? _match;
+  OnlineMatchDto? _foundMatch;
   bool _loading = false;
+  bool _randomSearch = false;
+  int _elapsedSeconds = 0;
   String? _error;
 
   @override
   void dispose() {
+    final OnlineMatchDto? waiting = _match;
+    if (waiting != null && !waiting.isActive) {
+      unawaited(
+        widget.api
+            .cancelWaiting(widget.token, waiting.id)
+            .catchError((Object _) => waiting),
+      );
+    }
     _pollTimer?.cancel();
+    _elapsedTimer?.cancel();
+    _foundTimer?.cancel();
+    _socketReconnectTimer?.cancel();
+    unawaited(_socketSubscription?.cancel());
+    unawaited(_channel?.sink.close());
     _roomController.dispose();
     super.dispose();
   }
 
-  Future<void> _run(Future<OnlineMatchDto> Function() operation) async {
+  Future<void> _run(
+    Future<OnlineMatchDto> Function() operation, {
+    bool randomSearch = false,
+  }) async {
     if (_loading) return;
     setState(() {
       _loading = true;
+      _randomSearch = randomSearch;
       _error = null;
     });
     try {
@@ -7322,14 +8313,70 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
 
   void _accept(OnlineMatchDto match) {
     if (match.isActive) {
-      Navigator.of(context).pop(match);
+      if (_foundMatch != null) return;
+      _pollTimer?.cancel();
+      _elapsedTimer?.cancel();
+      unawaited(_socketSubscription?.cancel());
+      unawaited(_channel?.sink.close());
+      _socketReconnectTimer?.cancel();
+      setState(() {
+        _foundMatch = match;
+        _match = match;
+      });
+      _foundTimer = Timer(const Duration(milliseconds: 1800), () {
+        if (mounted) Navigator.of(context).pop(match);
+      });
       return;
     }
-    setState(() => _match = match);
+    final bool sameWaitingMatch = _match?.id == match.id;
+    setState(() {
+      _match = match;
+      if (!sameWaitingMatch) {
+        _elapsedSeconds = 0;
+      }
+    });
+    // A poll only refreshes the waiting-match snapshot. Restarting these
+    // resources on every two-second poll prevents the one-second elapsed
+    // clock from advancing normally and repeatedly tears down a healthy
+    // WebSocket connection.
+    if (sameWaitingMatch) return;
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(
       const Duration(seconds: 2),
       (_) => unawaited(_poll()),
+    );
+    _elapsedTimer?.cancel();
+    _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _elapsedSeconds++);
+    });
+    _openSocket(match);
+  }
+
+  void _openSocket(OnlineMatchDto match) {
+    _socketReconnectTimer?.cancel();
+    unawaited(_socketSubscription?.cancel());
+    unawaited(_channel?.sink.close());
+    try {
+      final WebSocketChannel channel =
+          widget.api.openMatchChannel(widget.token, match.id);
+      _channel = channel;
+      _socketSubscription = channel.stream.listen(
+        (_) => unawaited(_poll()),
+        onError: (_) => _scheduleSocketReconnect(match),
+        onDone: () => _scheduleSocketReconnect(match),
+        cancelOnError: true,
+      );
+    } on Object {
+      _scheduleSocketReconnect(match);
+    }
+  }
+
+  void _scheduleSocketReconnect(OnlineMatchDto match) {
+    if (!mounted || _match?.id != match.id || _foundMatch != null) return;
+    _socketReconnectTimer?.cancel();
+    _socketReconnectTimer = Timer(
+      const Duration(seconds: 3),
+      () => _openSocket(match),
     );
   }
 
@@ -7346,12 +8393,64 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     }
   }
 
+  Future<void> _cancelWaiting() async {
+    final OnlineMatchDto? waiting = _match;
+    _pollTimer?.cancel();
+    _elapsedTimer?.cancel();
+    unawaited(_socketSubscription?.cancel());
+    unawaited(_channel?.sink.close());
+    _socketReconnectTimer?.cancel();
+    if (waiting != null) {
+      try {
+        await widget.api.cancelWaiting(widget.token, waiting.id);
+      } on OnlineMatchException {
+        // Closing the lobby remains responsive if connectivity disappeared.
+      }
+    }
+    if (mounted) Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final Size size = MediaQuery.sizeOf(context);
     final bool landscape = size.width > size.height;
     final double maxWidth = landscape ? 760 : 560;
     final double maxHeight = size.height * (landscape ? 0.82 : 0.9);
+    final OnlineMatchDto? found = _foundMatch;
+
+    if (found != null) {
+      return SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: _OpponentFoundView(match: found),
+          ),
+        ),
+      );
+    }
+
+    final OnlineMatchDto? waiting = _match;
+    if (waiting != null && !waiting.isActive) {
+      return SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: math.min(maxWidth, 460)),
+            child: _MatchSearchingView(
+              randomSearch: _randomSearch,
+              roomCode: waiting.roomCode,
+              elapsedSeconds: _elapsedSeconds,
+              onCopyCode: () {
+                Clipboard.setData(ClipboardData(text: waiting.roomCode));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Invite code copied')),
+                );
+              },
+              onCancel: () => unawaited(_cancelWaiting()),
+            ),
+          ),
+        ),
+      );
+    }
 
     return SafeArea(
       child: Align(
@@ -7446,7 +8545,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                           ),
                           const SizedBox(height: 8),
                           const Text(
-                            'Auto-match with any available ChessVerse player worldwide.',
+                            'Auto-match with any available ChessVerseAI player worldwide.',
                           ),
                           const SizedBox(height: 10),
                           FilledButton.icon(
@@ -7455,6 +8554,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                 : () => _run(
                                       () =>
                                           widget.api.randomMatch(widget.token),
+                                      randomSearch: true,
                                     ),
                             icon: const Icon(Icons.bolt_rounded),
                             label: const Text('Find random player'),
@@ -7570,7 +8670,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Moves are validated by the ChessVerse server. Active matches restore after an app restart.',
+                    'Moves are validated by the ChessVerseAI server. Active matches restore after an app restart.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Color(0xFFAAA69E), fontSize: 12),
                   ),
@@ -7580,6 +8680,364 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MatchSearchingView extends StatefulWidget {
+  const _MatchSearchingView({
+    required this.randomSearch,
+    required this.roomCode,
+    required this.elapsedSeconds,
+    required this.onCopyCode,
+    required this.onCancel,
+  });
+
+  final bool randomSearch;
+  final String roomCode;
+  final int elapsedSeconds;
+  final VoidCallback onCopyCode;
+  final VoidCallback onCancel;
+
+  @override
+  State<_MatchSearchingView> createState() => _MatchSearchingViewState();
+}
+
+class _MatchSearchingViewState extends State<_MatchSearchingView>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String timer =
+        '${(widget.elapsedSeconds ~/ 60).toString().padLeft(2, '0')}:'
+        '${(widget.elapsedSeconds % 60).toString().padLeft(2, '0')}';
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        margin: const EdgeInsets.all(18),
+        padding: const EdgeInsets.fromLTRB(24, 30, 24, 22),
+        decoration: BoxDecoration(
+          color: const Color(0xFF071A2C),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: const Color(0xFFD7A84E), width: 1.3),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: const Color(0xFF63D2B8).withValues(alpha: 0.22),
+              blurRadius: 38,
+              spreadRadius: 5,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const Text(
+              'FINDING YOUR RIVAL',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFFE5B856),
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.5,
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(height: 26),
+            AnimatedBuilder(
+              animation: _pulse,
+              builder: (BuildContext context, Widget? child) {
+                final double value = Curves.easeInOut.transform(_pulse.value);
+                return SizedBox.square(
+                  dimension: 150,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: <Widget>[
+                      Container(
+                        width: 92 + value * 48,
+                        height: 92 + value * 48,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(
+                              0xFF63D2B8,
+                            ).withValues(alpha: 0.12 + value * 0.28),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      Transform.rotate(
+                        angle: value * math.pi * 0.32,
+                        child: Container(
+                          width: 104,
+                          height: 104,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: SweepGradient(
+                              colors: <Color>[
+                                Color(0x0063D2B8),
+                                Color(0xFF63D2B8),
+                                Color(0x0063D2B8),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        width: 78,
+                        height: 78,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF10283A),
+                          border: Border.all(color: const Color(0xFF63D2B8)),
+                        ),
+                        child: const Icon(
+                          Icons.public_rounded,
+                          size: 42,
+                          color: Color(0xFF63D2B8),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            Text(
+              widget.randomSearch
+                  ? 'Searching worldwide players...'
+                  : 'Waiting for your friend...',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              timer,
+              style: const TextStyle(
+                color: Color(0xFF63D2B8),
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                fontFeatures: <ui.FontFeature>[ui.FontFeature.tabularFigures()],
+              ),
+            ),
+            const SizedBox(height: 18),
+            if (!widget.randomSearch) ...<Widget>[
+              const Text(
+                'SHARE ROOM CODE',
+                style: TextStyle(
+                  color: Color(0xFFAAA69E),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                widget.roomCode,
+                style: const TextStyle(
+                  color: Color(0xFFE5B856),
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 4,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: widget.onCopyCode,
+                icon: const Icon(Icons.copy_rounded),
+                label: const Text('Copy code'),
+              ),
+              const SizedBox(height: 8),
+            ],
+            const Text(
+              'Keep this screen open. Your match starts automatically.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Color(0xFFAAA69E), fontSize: 12),
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: widget.onCancel,
+              icon: const Icon(Icons.close_rounded),
+              label: const Text('Cancel search'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OpponentFoundView extends StatelessWidget {
+  const _OpponentFoundView({required this.match});
+
+  final OnlineMatchDto match;
+
+  @override
+  Widget build(BuildContext context) {
+    final String you = match.yourColor == 'WHITE'
+        ? (match.whitePlayerName ?? 'You')
+        : (match.blackPlayerName ?? 'You');
+    final String rival = match.yourColor == 'WHITE'
+        ? (match.blackPlayerName ?? 'Online Rival')
+        : (match.whitePlayerName ?? 'Online Rival');
+    return Material(
+      color: Colors.transparent,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 700),
+        curve: Curves.easeOutBack,
+        builder: (BuildContext context, double value, Widget? child) {
+          return Opacity(
+            opacity: value.clamp(0, 1),
+            child: Transform.scale(
+              scale: 0.86 + value * 0.14,
+              child: Container(
+                margin: const EdgeInsets.all(18),
+                padding: const EdgeInsets.fromLTRB(18, 28, 18, 24),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[Color(0xFF123A42), Color(0xFF071A2C)],
+                  ),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(
+                    color: const Color(0xFFE5B856),
+                    width: 1.5,
+                  ),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: const Color(
+                        0xFFE5B856,
+                      ).withValues(alpha: 0.24),
+                      blurRadius: 46,
+                      spreadRadius: 6,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: Color(0xFF63D2B8),
+                      size: 42,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'OPPONENT FOUND',
+                      style: TextStyle(
+                        color: Color(0xFF63D2B8),
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: _VersusPlayerCard(
+                            name: you,
+                            color: const Color(0xFF3D9FFF),
+                            label: 'YOU',
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Transform.scale(
+                            scale: value,
+                            child: const Text(
+                              'VS',
+                              style: TextStyle(
+                                color: Color(0xFFE5B856),
+                                fontSize: 30,
+                                fontWeight: FontWeight.w900,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: _VersusPlayerCard(
+                            name: rival,
+                            color: const Color(0xFFFF5577),
+                            label: 'RIVAL',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    const LinearProgressIndicator(
+                      minHeight: 5,
+                      color: Color(0xFF63D2B8),
+                      backgroundColor: Color(0xFF163344),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Preparing the board...',
+                      style: TextStyle(color: Color(0xFFD7D4CC)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _VersusPlayerCard extends StatelessWidget {
+  const _VersusPlayerCard({
+    required this.name,
+    required this.color,
+    required this.label,
+  });
+
+  final String name;
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        Container(
+          width: 76,
+          height: 76,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color, width: 2),
+          ),
+          child: Icon(Icons.person_rounded, color: color, size: 48),
+        ),
+        const SizedBox(height: 9),
+        Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.1,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -7936,14 +9394,16 @@ class AuthOverlay extends StatelessWidget {
                           const ChessVerseMark(size: 34),
                           const SizedBox(width: 8),
                           Text(
-                            'CHESSVERSE',
+                            'CHESSVERSEAI',
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                         ],
                       ),
                       const SizedBox(height: 14),
                       Text(
-                        registerMode ? 'Create ChessVerse ID' : 'Welcome back',
+                        registerMode
+                            ? 'Create ChessVerseAI ID'
+                            : 'Welcome back',
                         style: Theme.of(context).textTheme.headlineMedium,
                       ),
                       const SizedBox(height: 8),
@@ -8168,7 +9628,7 @@ class AuthOverlay extends StatelessWidget {
                       if (!awaitingCode) ...<Widget>[
                         const SizedBox(height: 14),
                         const Text(
-                          'Use a verified ChessVerse account to save games, ratings and coach history. Guest Player is local-only for quick testing.',
+                          'Use a verified ChessVerseAI account to save games, ratings and coach history. Guest Player is local-only for quick testing.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Color(0xFFAAA69E),
@@ -8194,6 +9654,8 @@ class GameResultOverlay extends StatelessWidget {
     required this.detail,
     required this.scoreLabel,
     required this.onNewGame,
+    this.newGameLabel,
+    this.onRematch,
     required this.onDismiss,
     required this.onReview,
     super.key,
@@ -8203,6 +9665,8 @@ class GameResultOverlay extends StatelessWidget {
   final String detail;
   final String scoreLabel;
   final VoidCallback onNewGame;
+  final String? newGameLabel;
+  final VoidCallback? onRematch;
   final VoidCallback onDismiss;
   final VoidCallback onReview;
 
@@ -8298,25 +9762,42 @@ class GameResultOverlay extends StatelessWidget {
                             ),
                             const SizedBox(width: 10),
                             Expanded(
-                              child: FilledButton.icon(
-                                onPressed:
-                                    dailyComplete ? onDismiss : onNewGame,
-                                icon: Icon(
-                                  dailyComplete
-                                      ? Icons.schedule_rounded
-                                      : Icons.refresh_rounded,
-                                ),
-                                label: Text(
-                                  dailyComplete
-                                      ? 'Done'
-                                      : missed
-                                          ? 'Try again'
-                                          : 'New game',
-                                ),
-                              ),
+                              child: (onRematch == null)
+                                  ? FilledButton.icon(
+                                      onPressed:
+                                          dailyComplete ? onDismiss : onNewGame,
+                                      icon: Icon(
+                                        dailyComplete
+                                            ? Icons.schedule_rounded
+                                            : Icons.refresh_rounded,
+                                      ),
+                                      label: Text(
+                                        dailyComplete
+                                            ? 'Done'
+                                            : missed
+                                                ? 'Try again'
+                                                : newGameLabel ?? 'New game',
+                                      ),
+                                    )
+                                  : OutlinedButton.icon(
+                                      onPressed: onRematch,
+                                      icon: const Icon(Icons.sync_rounded),
+                                      label: const Text('Rematch'),
+                                    ),
                             ),
                           ],
                         ),
+                        if (onRematch != null) ...<Widget>[
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: onNewGame,
+                              icon: const Icon(Icons.add_rounded),
+                              label: const Text('New opponent'),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

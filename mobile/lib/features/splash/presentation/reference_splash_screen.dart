@@ -62,7 +62,8 @@ class _ReferenceSplashScreenState extends State<ReferenceSplashScreen>
             child: AnimatedBuilder(
               animation: _controller,
               builder: (BuildContext context, Widget? child) {
-                final double fade = Curves.easeOutCubic.transform(_controller.value);
+                final double fade =
+                    Curves.easeOutCubic.transform(_controller.value);
                 final double scale = 0.94 + (0.06 * fade);
                 return Opacity(
                   opacity: fade,
@@ -86,7 +87,7 @@ class _ReferenceSplashScreenState extends State<ReferenceSplashScreen>
                     ),
                     const SizedBox(height: 18),
                     Text(
-                      'CHESSVERSE AI',
+                      'CHESSVERSEAI',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: const Color(0xFFF8F1E6),
@@ -121,7 +122,8 @@ class _ReferenceSplashScreenState extends State<ReferenceSplashScreen>
                         width: 76,
                         height: 4,
                         child: DecoratedBox(
-                          decoration: const BoxDecoration(color: Color(0xFF1C2736)),
+                          decoration:
+                              const BoxDecoration(color: Color(0xFF1C2736)),
                           child: Align(
                             alignment: Alignment.centerLeft,
                             child: AnimatedBuilder(
@@ -231,8 +233,10 @@ class _ReferenceBoardPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     const int rows = 4;
     const int cols = 8;
-    final Paint dark = Paint()..color = const Color(0xFF21160D).withValues(alpha: 0.78);
-    final Paint light = Paint()..color = const Color(0xFFD6A84F).withValues(alpha: 0.22);
+    final Paint dark = Paint()
+      ..color = const Color(0xFF21160D).withValues(alpha: 0.78);
+    final Paint light = Paint()
+      ..color = const Color(0xFFD6A84F).withValues(alpha: 0.22);
     for (int r = 0; r < rows; r++) {
       final double topT = r / rows;
       final double bottomT = (r + 1) / rows;
@@ -246,7 +250,8 @@ class _ReferenceBoardPainter extends CustomPainter {
         final Path square = Path()
           ..moveTo(topLeft + (topRight - topLeft) * c / cols, topY)
           ..lineTo(topLeft + (topRight - topLeft) * (c + 1) / cols, topY)
-          ..lineTo(bottomLeft + (bottomRight - bottomLeft) * (c + 1) / cols, bottomY)
+          ..lineTo(
+              bottomLeft + (bottomRight - bottomLeft) * (c + 1) / cols, bottomY)
           ..lineTo(bottomLeft + (bottomRight - bottomLeft) * c / cols, bottomY)
           ..close();
         canvas.drawPath(square, (r + c).isEven ? light : dark);

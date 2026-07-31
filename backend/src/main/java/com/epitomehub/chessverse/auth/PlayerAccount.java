@@ -25,6 +25,9 @@ class PlayerAccount {
     @Column(unique = true, length = 20)
     String phone;
 
+    @Column(name = "photo_url", length = 1024)
+    String photoUrl;
+
     @Column(name = "password_hash", nullable = false, length = 100)
     String passwordHash;
 

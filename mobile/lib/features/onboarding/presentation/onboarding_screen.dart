@@ -20,7 +20,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   static const List<_OnboardingPageData> _pages = <_OnboardingPageData>[
     _OnboardingPageData(
-      title: 'Welcome to ChessVerse AI',
+      title: 'Welcome to ChessVerseAI',
       subtitle: 'Your intelligent chess companion.',
       body:
           'Play, learn and improve with AI coaching, puzzles and rich game analysis.',
