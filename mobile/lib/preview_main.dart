@@ -32,7 +32,7 @@ class ChessVersePreviewApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ChessVerse AI Preview',
+      title: 'ChessVerseAI Preview',
       debugShowCheckedModeBanner: false,
       theme: game.ChessVerseTheme.dark(),
       home: const PreviewSplashGate(),
@@ -146,6 +146,7 @@ class _PreviewGameLauncherState extends State<_PreviewGameLauncher> {
       final String message = switch (widget.mode) {
         game.GameMode.computer => 'Use the Play vs AI card.',
         game.GameMode.daily => 'Use the Daily Checkmate card.',
+        game.GameMode.puzzle => 'Use the Puzzle Academy card.',
         game.GameMode.local => 'Use the 2 Players card.',
         game.GameMode.online => 'Online mode is not enabled yet.',
       };

@@ -1,7 +1,37 @@
 import 'package:chessverse_ai/main.dart';
+import 'package:chessverse_ai/features/online/data/online_match_api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+
+class _FakeOnlineApi extends OnlineMatchApi {
+  const _FakeOnlineApi({required this.active});
+
+  final bool active;
+
+  @override
+  Future<OnlineMatchDto> randomMatch(String token) async => OnlineMatchDto(
+        id: '11111111-1111-1111-1111-111111111111',
+        roomCode: 'CVTEST',
+        status: active ? 'ACTIVE' : 'WAITING',
+        yourColor: 'WHITE',
+        activeColor: 'WHITE',
+        whitePlayerName: 'Srika',
+        blackPlayerName: active ? 'Online Rival' : null,
+        fen: '',
+        moves: const <OnlineMoveDto>[],
+      );
+
+  @override
+  Future<OnlineMatchDto> cancelWaiting(String token, String matchId) =>
+      randomMatch(token);
+
+  @override
+  WebSocketChannel openMatchChannel(String token, String matchId) {
+    throw StateError('Socket intentionally unavailable in widget test');
+  }
+}
 
 void main() {
   setUp(() {
@@ -378,6 +408,93 @@ void main() {
       tester.getBottomRight(panelFinder).dy,
       closeTo(tester.view.physicalSize.height, 1),
     );
+  });
+
+  testWidgets('compact phone keeps coach actions visible without overlap', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+          initialGameMode: GameMode.local,
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey<String>('square-b1')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey<String>('square-c3')));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    for (final String label in <String>['Hint', 'Threat', 'Try again']) {
+      final Finder action = find.text(label);
+      expect(action, findsOneWidget);
+      expect(
+        tester.getBottomRight(action).dy,
+        lessThanOrEqualTo(tester.view.physicalSize.height),
+      );
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('online lobby shows animated searching state', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: OnlineMatchmakingSheet(
+            api: _FakeOnlineApi(active: false),
+            token: 'test-token',
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Find random player'));
+    await tester.pump();
+
+    expect(find.text('FINDING YOUR RIVAL'), findsOneWidget);
+    expect(find.text('Searching worldwide players...'), findsOneWidget);
+    expect(find.text('Cancel search'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('online lobby reveals versus cards before opening board', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: OnlineMatchmakingSheet(
+            api: _FakeOnlineApi(active: true),
+            token: 'test-token',
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Find random player'));
+    await tester.pump(const Duration(milliseconds: 800));
+
+    expect(find.text('OPPONENT FOUND'), findsOneWidget);
+    expect(find.text('VS'), findsOneWidget);
+    expect(find.text('Srika'), findsOneWidget);
+    expect(find.text('Online Rival'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('checkmate marks the checked king square and shows the winner', (

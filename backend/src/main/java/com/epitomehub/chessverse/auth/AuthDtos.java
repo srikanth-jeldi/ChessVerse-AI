@@ -53,13 +53,15 @@ final class AuthDtos {
             UUID id,
             String username,
             String displayName,
-            String email) {
+            String email,
+            String photoUrl) {
         static PlayerResponse from(PlayerAccount player) {
             return new PlayerResponse(
                     player.id,
                     player.username,
                     player.displayName,
-                    player.email);
+                    player.email,
+                    player.photoUrl);
         }
     }
 }

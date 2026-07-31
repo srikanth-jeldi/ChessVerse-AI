@@ -69,7 +69,7 @@ class AuthApi {
   }
 
   static const String _connectionMessage =
-      'Cannot reach ChessVerse. Check your connection and try again.';
+      'Cannot reach ChessVerseAI. Check your connection and try again.';
 }
 
 class AuthApiException implements Exception {

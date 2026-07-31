@@ -48,7 +48,7 @@ class LearnChessScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
-                          'ChessVerse Coach',
+                          'ChessVerseAI Coach',
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
                         const SizedBox(height: 8),

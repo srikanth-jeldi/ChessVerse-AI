@@ -77,12 +77,14 @@ class _PremiumSplashScreenState extends State<PremiumSplashScreen>
                           ),
                           boxShadow: <BoxShadow>[
                             BoxShadow(
-                              color: const Color(0xFFD6A84F).withValues(alpha: 0.22),
+                              color: const Color(0xFFD6A84F)
+                                  .withValues(alpha: 0.22),
                               blurRadius: 36,
                               spreadRadius: 4,
                             ),
                             BoxShadow(
-                              color: const Color(0xFF7C4DFF).withValues(alpha: 0.2),
+                              color: const Color(0xFF7C4DFF)
+                                  .withValues(alpha: 0.2),
                               blurRadius: 44,
                               spreadRadius: 2,
                             ),
@@ -98,8 +100,11 @@ class _PremiumSplashScreenState extends State<PremiumSplashScreen>
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'ChessVerse AI',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        'ChessVerseAI',
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineMedium
+                            ?.copyWith(
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.5,
                             ),

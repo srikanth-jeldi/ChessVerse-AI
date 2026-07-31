@@ -27,7 +27,7 @@ class GoldSplashApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ChessVerse AI',
+      title: 'ChessVerseAI',
       debugShowCheckedModeBanner: false,
       theme: game.ChessVerseTheme.dark(),
       home: const GoldSplashGate(),

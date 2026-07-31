@@ -7,6 +7,7 @@ class StoredAuthSession {
     required this.displayName,
     this.username,
     this.email,
+    this.photoUrl,
   });
 
   final String token;
@@ -14,6 +15,7 @@ class StoredAuthSession {
   final String displayName;
   final String? username;
   final String? email;
+  final String? photoUrl;
 
   bool get isExpired => !expiresAt.isAfter(DateTime.now().toUtc());
 }
@@ -30,6 +32,7 @@ class AuthSessionStore {
   static const String _displayNameKey = 'auth.displayName';
   static const String _usernameKey = 'auth.username';
   static const String _emailKey = 'auth.email';
+  static const String _photoUrlKey = 'auth.photoUrl';
   static const String _rememberMeKey = 'auth.rememberMe';
 
   Future<StoredAuthSession?> read() async {
@@ -52,6 +55,7 @@ class AuthSessionStore {
       displayName: displayName,
       username: values[_usernameKey],
       email: values[_emailKey],
+      photoUrl: values[_photoUrlKey],
     );
     if (session.isExpired) {
       await clear();
@@ -80,6 +84,7 @@ class AuthSessionStore {
       _storage.write(key: _displayNameKey, value: session.displayName),
       _storage.write(key: _usernameKey, value: session.username),
       _storage.write(key: _emailKey, value: session.email),
+      _storage.write(key: _photoUrlKey, value: session.photoUrl),
     ]);
     await _storage.write(key: _tokenKey, value: session.token);
   }
@@ -91,6 +96,7 @@ class AuthSessionStore {
       _storage.delete(key: _displayNameKey),
       _storage.delete(key: _usernameKey),
       _storage.delete(key: _emailKey),
+      _storage.delete(key: _photoUrlKey),
     ]);
   }
 

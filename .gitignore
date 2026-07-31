@@ -21,6 +21,24 @@ coverage/
 node_modules/
 dist/
 
+# Local development, review, and deployment workspaces.
+.codex-video-review/
+.deploy/
+.tool-home/
+.video-tools/
+mobile/.tool-home/
+patchbase/
+patchwork/
+release/
+mobile/test/failures/
+
+# Local release artifacts and scratch patches.
+*.apk
+*.aab
+*.idsig
+*.patch
+*.zip
+
 # Mobile signing material must never be committed.
 mobile/android/key.properties
 mobile/android/keystore/
