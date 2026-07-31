@@ -99,6 +99,7 @@ class LocalGameArchive {
   static const String _profileLevelKey = 'chessverse_profile_level';
   static const String _profileAvatarKey = 'chessverse_profile_avatar';
   static const String _profileUsernameKey = 'chessverse_profile_username';
+  static const String _profileUpdatedAtKey = 'chessverse_profile_updated_at';
   static final List<SavedGameRecord> _games = <SavedGameRecord>[];
   static final Set<String> _completedDailyChallengeIds = <String>{};
   static final Set<String> _completedPuzzleIds = <String>{};
@@ -110,6 +111,9 @@ class LocalGameArchive {
   static String? _profileUsername;
   static int _profileLevel = 0;
   static int _profileAvatar = 0;
+  static DateTime? _profileUpdatedAt;
+  static Future<void> Function()? onCloudRelevantChange;
+  static bool _mergingCloud = false;
 
   static List<SavedGameRecord> get games =>
       List<SavedGameRecord>.unmodifiable(_games);
@@ -123,6 +127,7 @@ class LocalGameArchive {
             .map((String id) => id.trim())
             .where((String id) => id.isNotEmpty),
       );
+      _dailySolved = _completedDailyChallengeIds.length;
     }
     final String? completionRaw =
         await _storage.read(key: _lastDailyCompletionKey);
@@ -146,6 +151,9 @@ class LocalGameArchive {
         int.tryParse(await _storage.read(key: _profileLevelKey) ?? '') ?? 0;
     _profileAvatar =
         int.tryParse(await _storage.read(key: _profileAvatarKey) ?? '') ?? 0;
+    _profileUpdatedAt = DateTime.tryParse(
+      await _storage.read(key: _profileUpdatedAtKey) ?? '',
+    )?.toUtc();
   }
 
   static void addGame(SavedGameRecord record) {
@@ -205,6 +213,7 @@ class LocalGameArchive {
         value: _lastDailyCompletedAt!.toIso8601String(),
       ),
     );
+    _notifyCloudChange();
   }
 
   static Set<String> get completedPuzzleIds =>
@@ -225,14 +234,20 @@ class LocalGameArchive {
     _profileCountry = country;
     _profileLevel = level.clamp(0, 4);
     _profileAvatar = avatar.clamp(0, 5);
+    _profileUpdatedAt = DateTime.now().toUtc();
     unawaited(
       Future.wait(<Future<void>>[
         _storage.write(key: _profileUsernameKey, value: _profileUsername),
         _storage.write(key: _profileCountryKey, value: _profileCountry),
         _storage.write(key: _profileLevelKey, value: '$_profileLevel'),
         _storage.write(key: _profileAvatarKey, value: '$_profileAvatar'),
+        _storage.write(
+          key: _profileUpdatedAtKey,
+          value: _profileUpdatedAt!.toIso8601String(),
+        ),
       ]),
     );
+    _notifyCloudChange();
   }
 
   static bool isPuzzleComplete(String puzzleId) {
@@ -256,6 +271,104 @@ class LocalGameArchive {
         value: _completedPuzzleIds.join(','),
       ),
     );
+    _notifyCloudChange();
+  }
+
+  static Map<String, dynamic> cloudSnapshot() => <String, dynamic>{
+        'profileUsername': _profileUsername,
+        'country': _profileCountry,
+        'chessLevel': _profileLevel,
+        'avatar': _profileAvatar,
+        'profileUpdatedAt': _profileUpdatedAt?.toIso8601String(),
+        'dailyStreak': _dailyStreak,
+        'lastDailyCompletedAt': _lastDailyCompletedAt?.toIso8601String(),
+        'completedPuzzleIds': _completedPuzzleIds.toList()..sort(),
+        'completedDailyChallengeIds': _completedDailyChallengeIds.toList()
+          ..sort(),
+      };
+
+  static Future<void> mergeCloudSnapshot(Map<String, dynamic> cloud) async {
+    _mergingCloud = true;
+    try {
+      final Iterable<dynamic> puzzles =
+          cloud['completedPuzzleIds'] as Iterable<dynamic>? ??
+              const <dynamic>[];
+      final Iterable<dynamic> daily =
+          cloud['completedDailyChallengeIds'] as Iterable<dynamic>? ??
+              const <dynamic>[];
+      _completedPuzzleIds.addAll(puzzles.whereType<String>());
+      _completedDailyChallengeIds.addAll(daily.whereType<String>());
+      _puzzlesSolved = _completedPuzzleIds.length;
+      _dailySolved = _completedDailyChallengeIds.length;
+      _dailyStreak = mathMax(
+        _dailyStreak,
+        (cloud['dailyStreak'] as num?)?.toInt() ?? 0,
+      );
+      final DateTime? remoteDaily = DateTime.tryParse(
+        cloud['lastDailyCompletedAt'] as String? ?? '',
+      )?.toUtc();
+      if (remoteDaily != null &&
+          (_lastDailyCompletedAt == null ||
+              remoteDaily.isAfter(_lastDailyCompletedAt!))) {
+        _lastDailyCompletedAt = remoteDaily;
+      }
+      final DateTime? remoteProfileUpdatedAt = DateTime.tryParse(
+        cloud['profileUpdatedAt'] as String? ?? '',
+      )?.toUtc();
+      if (remoteProfileUpdatedAt != null &&
+          (_profileUpdatedAt == null ||
+              remoteProfileUpdatedAt.isAfter(_profileUpdatedAt!))) {
+        final String? remoteUsername = cloud['profileUsername'] as String?;
+        if (remoteUsername != null && remoteUsername.trim().isNotEmpty) {
+          _profileUsername = remoteUsername.trim();
+        }
+        final String? remoteCountry = cloud['country'] as String?;
+        if (remoteCountry != null && remoteCountry.trim().isNotEmpty) {
+          _profileCountry = remoteCountry.trim();
+        }
+        _profileLevel =
+            ((cloud['chessLevel'] as num?)?.toInt() ?? _profileLevel)
+                .clamp(0, 4);
+        _profileAvatar =
+            ((cloud['avatar'] as num?)?.toInt() ?? _profileAvatar).clamp(0, 5);
+        _profileUpdatedAt = remoteProfileUpdatedAt;
+      }
+      await Future.wait(<Future<void>>[
+        _storage.write(
+          key: _completedPuzzlesKey,
+          value: _completedPuzzleIds.join(','),
+        ),
+        _storage.write(
+          key: _completedDailyKey,
+          value: _completedDailyChallengeIds.join(','),
+        ),
+        if (_lastDailyCompletedAt != null)
+          _storage.write(
+            key: _lastDailyCompletionKey,
+            value: _lastDailyCompletedAt!.toIso8601String(),
+          ),
+        if (_profileUsername != null)
+          _storage.write(key: _profileUsernameKey, value: _profileUsername),
+        _storage.write(key: _profileCountryKey, value: _profileCountry),
+        _storage.write(key: _profileLevelKey, value: '$_profileLevel'),
+        _storage.write(key: _profileAvatarKey, value: '$_profileAvatar'),
+        if (_profileUpdatedAt != null)
+          _storage.write(
+            key: _profileUpdatedAtKey,
+            value: _profileUpdatedAt!.toIso8601String(),
+          ),
+      ]);
+    } finally {
+      _mergingCloud = false;
+    }
+  }
+
+  static int mathMax(int left, int right) => left > right ? left : right;
+
+  static void _notifyCloudChange() {
+    if (_mergingCloud) return;
+    final Future<void> Function()? callback = onCloudRelevantChange;
+    if (callback != null) unawaited(callback());
   }
 
   static LocalGameStats stats() {

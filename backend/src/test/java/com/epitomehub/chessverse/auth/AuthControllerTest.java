@@ -125,6 +125,58 @@ class AuthControllerTest {
     }
 
     @Test
+    void cloudProgressMergeUnionsPuzzleAndDailyProgressAcrossDevices() throws Exception {
+        MvcResult guestLogin = mockMvc.perform(post("/api/auth/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"installationId\":\"35e69b70-f69a-4b78-84b6-6dc337e7905f\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String token = objectMapper.readTree(guestLogin.getResponse().getContentAsString())
+                .path("token").asText();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/progress")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "profileUsername":"cloud_player",
+                                  "country":"India",
+                                  "chessLevel":2,
+                                  "avatar":3,
+                                  "profileUpdatedAt":"2026-07-30T09:00:00Z",
+                                  "dailyStreak":4,
+                                  "lastDailyCompletedAt":"2026-07-30T10:00:00Z",
+                                  "completedPuzzleIds":["easy-1"],
+                                  "completedDailyChallengeIds":["daily-2026-07-30"]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completedPuzzleIds[0]").value("easy-1"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/progress")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "profileUsername":"cloud_player",
+                                  "country":"India",
+                                  "chessLevel":2,
+                                  "avatar":3,
+                                  "profileUpdatedAt":"2026-07-29T09:00:00Z",
+                                  "dailyStreak":2,
+                                  "lastDailyCompletedAt":"2026-07-29T10:00:00Z",
+                                  "completedPuzzleIds":["medium-2"],
+                                  "completedDailyChallengeIds":["daily-2026-07-29"]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dailyStreak").value(4))
+                .andExpect(jsonPath("$.completedPuzzleIds.length()").value(2))
+                .andExpect(jsonPath("$.completedDailyChallengeIds.length()").value(2))
+                .andExpect(jsonPath("$.lastDailyCompletedAt").value("2026-07-30T10:00:00Z"));
+    }
+
+    @Test
     void verifiedSessionCanBeRestoredAndLoggedOut() throws Exception {
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

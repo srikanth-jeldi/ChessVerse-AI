@@ -26,6 +26,7 @@ import 'features/online/presentation/match_history_screen.dart';
 import 'features/leaderboard/presentation/leaderboard_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/puzzles/domain/puzzle_catalog.dart';
+import 'features/progress/data/cloud_progress_api.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/tutorial/presentation/learn_chess_screen.dart';
 
@@ -60,6 +61,7 @@ class SplashGate extends StatefulWidget {
 class _SplashGateState extends State<SplashGate> {
   static const AuthApi _authApi = AuthApi();
   static const AuthSessionStore _sessionStore = AuthSessionStore();
+  static const CloudProgressApi _cloudProgressApi = CloudProgressApi();
   Timer? _timer;
   _RootStage _stage = _RootStage.splash;
   String _playerName = 'Guest Player';
@@ -67,6 +69,8 @@ class _SplashGateState extends State<SplashGate> {
   String? _email;
   String? _photoUrl;
   bool _isGuest = true;
+  bool _cloudSyncInFlight = false;
+  bool _cloudSyncQueued = false;
 
   @override
   void initState() {
@@ -110,6 +114,9 @@ class _SplashGateState extends State<SplashGate> {
       // A valid unexpired local session keeps the user signed in while the
       // network is temporarily unavailable.
     }
+    if (!mounted) return;
+    _enableCloudSync(session.token);
+    await _syncCloudProgress(session.token);
     if (!mounted) return;
     setState(() {
       _playerName = playerName;
@@ -160,6 +167,10 @@ class _SplashGateState extends State<SplashGate> {
                 _isGuest = result.isGuest;
                 _stage = _RootStage.home;
               });
+              if (result.token != null) {
+                _enableCloudSync(result.token!);
+                unawaited(_syncCloudProgress(result.token!));
+              }
             },
           ),
         _RootStage.home => HomeDashboardScreen(
@@ -328,6 +339,7 @@ class _SplashGateState extends State<SplashGate> {
       }
     }
     await sessionStore.clear();
+    LocalGameArchive.onCloudRelevantChange = null;
     if (!mounted) return;
 
     if (currentRouteContext.mounted &&
@@ -361,6 +373,10 @@ class _SplashGateState extends State<SplashGate> {
               _photoUrl = result.photoUrl;
               _isGuest = result.isGuest;
             });
+            if (result.token != null) {
+              _enableCloudSync(result.token!);
+              unawaited(_syncCloudProgress(result.token!));
+            }
             Navigator.of(upgradeContext).pop();
             ScaffoldMessenger.of(currentRouteContext).showSnackBar(
               const SnackBar(
@@ -377,6 +393,33 @@ class _SplashGateState extends State<SplashGate> {
     return Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => screen));
+  }
+
+  void _enableCloudSync(String token) {
+    LocalGameArchive.onCloudRelevantChange = () => _syncCloudProgress(token);
+  }
+
+  Future<void> _syncCloudProgress(String token) async {
+    if (_cloudSyncInFlight) {
+      _cloudSyncQueued = true;
+      return;
+    }
+    _cloudSyncInFlight = true;
+    try {
+      final Map<String, dynamic> merged = await _cloudProgressApi.merge(
+        token,
+        LocalGameArchive.cloudSnapshot(),
+      );
+      await LocalGameArchive.mergeCloudSnapshot(merged);
+    } on CloudProgressException {
+      // Local progress stays authoritative until the next successful sync.
+    } finally {
+      _cloudSyncInFlight = false;
+      if (_cloudSyncQueued) {
+        _cloudSyncQueued = false;
+        unawaited(_syncCloudProgress(token));
+      }
+    }
   }
 }
 
