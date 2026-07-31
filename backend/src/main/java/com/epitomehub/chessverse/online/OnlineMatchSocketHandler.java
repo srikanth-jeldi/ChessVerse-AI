@@ -58,8 +58,13 @@ public class OnlineMatchSocketHandler extends TextWebSocketHandler {
         for (WebSocketSession session : Set.copyOf(sessions)) {
             if (!session.isOpen()) continue;
             try {
-                session.sendMessage(event);
-            } catch (IOException ignored) {
+                // Match updates, presence changes and controller responses may
+                // publish from different request threads. A standard Spring
+                // WebSocketSession permits only one send at a time.
+                synchronized (session) {
+                    if (session.isOpen()) session.sendMessage(event);
+                }
+            } catch (IOException | IllegalStateException ignored) {
                 try {
                     session.close(CloseStatus.SERVER_ERROR);
                 } catch (IOException ignoredAgain) {

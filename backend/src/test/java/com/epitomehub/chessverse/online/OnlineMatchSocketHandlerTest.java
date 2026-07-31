@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.when;
 
 import java.util.Map;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.CloseStatus;
 
 class OnlineMatchSocketHandlerTest {
     @Test
@@ -33,6 +35,23 @@ class OnlineMatchSocketHandlerTest {
                 .anyMatch(message -> message.getPayload().contains(matchId.toString())));
         assertTrue(blackMessage.getAllValues().stream()
                 .anyMatch(message -> message.getPayload().contains("match.updated")));
+    }
+
+    @Test
+    void disconnectBroadcastsOpponentAwayPresence() throws Exception {
+        UUID matchId = UUID.randomUUID();
+        WebSocketSession white = session(matchId);
+        WebSocketSession black = session(matchId);
+        OnlineMatchSocketHandler handler = new OnlineMatchSocketHandler();
+        handler.afterConnectionEstablished(white);
+        handler.afterConnectionEstablished(black);
+        clearInvocations(white, black);
+
+        handler.afterConnectionClosed(black, CloseStatus.NORMAL);
+
+        ArgumentCaptor<TextMessage> message = ArgumentCaptor.forClass(TextMessage.class);
+        verify(white).sendMessage(message.capture());
+        assertTrue(message.getValue().getPayload().contains("\"connectedPlayers\":1"));
     }
 
     private WebSocketSession session(UUID matchId) {

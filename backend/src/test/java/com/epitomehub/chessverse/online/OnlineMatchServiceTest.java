@@ -187,6 +187,19 @@ class OnlineMatchServiceTest {
     }
 
     @Test
+    void pendingOpponentDrawOfferCannotBeOverwritten() {
+        OnlineMatch match = activeMatch();
+        when(repository.lockById(match.id)).thenReturn(Optional.of(match));
+
+        service.offerDraw(white, match.id);
+        OnlineMatchException error =
+                assertThrows(OnlineMatchException.class, () -> service.offerDraw(black, match.id));
+
+        assertEquals(HttpStatus.CONFLICT, error.status());
+        assertEquals(white.id(), match.drawOfferedBy);
+    }
+
+    @Test
     void secondRematchRequestCreatesColorSwappedMatch() {
         OnlineMatch match = activeMatch();
         match.status = OnlineMatchStatus.FINISHED;

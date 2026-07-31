@@ -197,8 +197,11 @@ public class OnlineMatchService {
         if (match.status != OnlineMatchStatus.ACTIVE) {
             return OnlineDtos.MatchDto.from(matches.save(match), player.id());
         }
-        if (player.id().equals(match.drawOfferedBy)) {
-            throw new OnlineMatchException(HttpStatus.CONFLICT, "Your draw offer is already pending.");
+        if (match.drawOfferedBy != null) {
+            String message = player.id().equals(match.drawOfferedBy)
+                    ? "Your draw offer is already pending."
+                    : "Answer your opponent's draw offer before making another offer.";
+            throw new OnlineMatchException(HttpStatus.CONFLICT, message);
         }
         match.drawOfferedBy = player.id();
         match.updatedAt = Instant.now();
