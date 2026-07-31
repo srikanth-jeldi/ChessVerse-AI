@@ -48,4 +48,12 @@ interface OnlineMatchRepository extends JpaRepository<OnlineMatch, UUID> {
             limit 50
             """)
     List<OnlineMatch> findRecentForPlayer(@Param("playerId") UUID playerId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select match from OnlineMatch match
+            where match.status = 'ACTIVE'
+              and (match.whiteDisconnectedAt <= :cutoff or match.blackDisconnectedAt <= :cutoff)
+            """)
+    List<OnlineMatch> lockExpiredDisconnects(@Param("cutoff") Instant cutoff);
 }

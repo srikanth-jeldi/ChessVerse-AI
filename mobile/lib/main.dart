@@ -4513,6 +4513,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (!match.isActive) {
       return 'Room ${match.roomCode}: waiting for your opponent.';
     }
+    if (match.opponentDisconnected) {
+      return 'Opponent left. You win in ${match.disconnectSecondsRemaining}s if they do not reconnect.';
+    }
     if (_onlineConnectedPlayers == 1) {
       return 'Opponent connection lost. Waiting for reconnect...';
     }
@@ -4846,6 +4849,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       final bool userWon =
           (result == '1-0' && userWhite) || (result == '0-1' && !userWhite);
       final bool draw = result == '1/2-1/2';
+      final bool firstPresentation = _archivedOnlineMatchId != match.id;
       setState(() {
         _gameResultTitle = draw
             ? 'Draw'
@@ -4853,7 +4857,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 ? 'You win'
                 : 'Opponent wins';
         _gameResultDetail = _onlineResultDetail(match);
-        _resultVisible = true;
+        if (firstPresentation) _resultVisible = true;
         _coachNote = _onlineResultDetail(match);
       });
       if (_archivedOnlineMatchId != match.id) {
@@ -4915,6 +4919,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       'TIMEOUT' => 'Match ended on time',
       'STALEMATE' => 'Stalemate',
       'DRAW_AGREEMENT' => 'Draw agreed',
+      'OPPONENT_LEFT' => 'Opponent left the match',
+      'BOTH_DISCONNECTED' => 'Both players disconnected',
       _ => 'Online match complete',
     };
     final int? ratingDelta =
