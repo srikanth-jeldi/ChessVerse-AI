@@ -31,10 +31,12 @@ class ChessVerseAuthResult {
 class AuthScreen extends StatefulWidget {
   const AuthScreen({
     required this.onAuthenticated,
+    this.guestUpgradeToken,
     super.key,
   });
 
   final ValueChanged<ChessVerseAuthResult> onAuthenticated;
+  final String? guestUpgradeToken;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -154,11 +156,13 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                         const SizedBox(height: 28),
                         Text(
-                          _verificationMode
-                              ? 'Verify your email'
-                              : _loginMode
-                                  ? 'Welcome back'
-                                  : 'Create ChessVerseAI ID',
+                          widget.guestUpgradeToken != null
+                              ? 'Secure your progress'
+                              : _verificationMode
+                                  ? 'Verify your email'
+                                  : _loginMode
+                                      ? 'Welcome back'
+                                      : 'Create ChessVerseAI ID',
                           style: Theme.of(context)
                               .textTheme
                               .headlineMedium
@@ -168,7 +172,8 @@ class _AuthScreenState extends State<AuthScreen> {
                               ),
                         ),
                         const SizedBox(height: 18),
-                        if (!_verificationMode)
+                        if (!_verificationMode &&
+                            widget.guestUpgradeToken == null)
                           SegmentedButton<bool>(
                             segments: const <ButtonSegment<bool>>[
                               ButtonSegment<bool>(
@@ -194,7 +199,13 @@ class _AuthScreenState extends State<AuthScreen> {
                                   },
                           ),
                         const SizedBox(height: 18),
-                        if (_verificationMode) ...<Widget>[
+                        if (widget.guestUpgradeToken != null) ...<Widget>[
+                          const Text(
+                            'Link Google to keep this guest profile, rating and match history across devices. Your existing progress will not be deleted.',
+                            style: TextStyle(
+                                color: AppColors.textSecondary, height: 1.45),
+                          ),
+                        ] else if (_verificationMode) ...<Widget>[
                           Text(
                             'Enter the 6-digit code sent to ${_emailController.text.trim()}.',
                             style: Theme.of(context).textTheme.bodyMedium,
@@ -239,7 +250,8 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                           const SizedBox(height: 12),
                         ],
-                        if (!_verificationMode) ...<Widget>[
+                        if (!_verificationMode &&
+                            widget.guestUpgradeToken == null) ...<Widget>[
                           _AuthField(
                             controller: _emailController,
                             label: _loginMode ? 'User ID or email' : 'Email',
@@ -255,7 +267,9 @@ class _AuthScreenState extends State<AuthScreen> {
                             onSubmitted: (_) => _submit(),
                           ),
                         ],
-                        if (_loginMode && !_verificationMode)
+                        if (_loginMode &&
+                            !_verificationMode &&
+                            widget.guestUpgradeToken == null)
                           Row(
                             children: <Widget>[
                               Checkbox(
@@ -282,37 +296,33 @@ class _AuthScreenState extends State<AuthScreen> {
                           _Notice(message: _error!, isError: true),
                         ],
                         const SizedBox(height: 18),
-                        FilledButton.icon(
-                          onPressed: _loading ? null : _submit,
-                          icon: _loading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.login_rounded),
-                          label: Text(
-                            _verificationMode
-                                ? 'Verify & Continue'
-                                : _loginMode
-                                    ? 'Login'
-                                    : 'Send Code',
+                        if (widget.guestUpgradeToken == null)
+                          FilledButton.icon(
+                            onPressed: _loading ? null : _submit,
+                            icon: _loading
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.login_rounded),
+                            label: Text(
+                              _verificationMode
+                                  ? 'Verify & Continue'
+                                  : _loginMode
+                                      ? 'Login'
+                                      : 'Send Code',
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        OutlinedButton.icon(
-                          onPressed: _loading
-                              ? null
-                              : () => widget.onAuthenticated(
-                                    const ChessVerseAuthResult(
-                                      playerName: 'Guest Player',
-                                      isGuest: true,
-                                    ),
-                                  ),
-                          icon: const Icon(Icons.person_pin_circle_outlined),
-                          label: const Text('Continue as Guest Player'),
-                        ),
+                        if (widget.guestUpgradeToken == null)
+                          const SizedBox(height: 10),
+                        if (widget.guestUpgradeToken == null)
+                          OutlinedButton.icon(
+                            onPressed: _loading ? null : _continueAsGuest,
+                            icon: const Icon(Icons.person_pin_circle_outlined),
+                            label: const Text('Continue as Guest Player'),
+                          ),
                         const SizedBox(height: 10),
                         Row(
                           children: <Widget>[
@@ -327,32 +337,39 @@ class _AuthScreenState extends State<AuthScreen> {
                                       icon: const Icon(
                                         Icons.g_mobiledata_rounded,
                                       ),
-                                      label: const Text('Google'),
+                                      label: Text(
+                                          widget.guestUpgradeToken == null
+                                              ? 'Google'
+                                              : 'SECURE WITH GOOGLE'),
                                     ),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: _loading
-                                    ? null
-                                    : () => _showSocialPlaceholder('Apple'),
-                                icon: const Icon(Icons.apple_rounded),
-                                label: const Text('Apple'),
+                            if (widget.guestUpgradeToken == null)
+                              const SizedBox(width: 10),
+                            if (widget.guestUpgradeToken == null)
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: _loading
+                                      ? null
+                                      : () => _showSocialPlaceholder('Apple'),
+                                  icon: const Icon(Icons.apple_rounded),
+                                  label: const Text('Apple'),
+                                ),
                               ),
-                            ),
                           ],
                         ),
-                        const SizedBox(height: 10),
-                        OutlinedButton.icon(
-                          onPressed: _loading
-                              ? null
-                              : () => _showSocialPlaceholder('Facebook'),
-                          icon: const Icon(Icons.facebook_rounded),
-                          label: const Text('Facebook Login'),
-                        ),
+                        if (widget.guestUpgradeToken == null)
+                          const SizedBox(height: 10),
+                        if (widget.guestUpgradeToken == null)
+                          OutlinedButton.icon(
+                            onPressed: _loading
+                                ? null
+                                : () => _showSocialPlaceholder('Facebook'),
+                            icon: const Icon(Icons.facebook_rounded),
+                            label: const Text('Facebook Login'),
+                          ),
                         const SizedBox(height: 16),
                         Text(
-                          'Use a verified account to save games, ratings and coach history. Guest Player is local-only for quick testing.',
+                          'Guest players receive a secure numbered identity for online games, ratings and history. Add Google or email later for account recovery.',
                           textAlign: TextAlign.center,
                           style:
                               Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -464,10 +481,10 @@ class _AuthScreenState extends State<AuthScreen> {
           'Google did not return a secure ID token. Please try again.',
         );
       }
-      final Map<String, dynamic> data = await _authApi.post(
-        'google',
-        <String, String>{'idToken': idToken},
-      );
+      final String? upgradeToken = widget.guestUpgradeToken;
+      final Map<String, dynamic> data = upgradeToken == null
+          ? await _authApi.post('google', <String, String>{'idToken': idToken})
+          : await _authApi.upgradeGuestWithGoogle(upgradeToken, idToken);
       await _completeAuthentication(data, photoUrl: account.photoUrl);
     } on AuthApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
@@ -483,6 +500,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _completeAuthentication(
     Map<String, dynamic> data, {
     String? photoUrl,
+    bool? guestOverride,
   }) async {
     final String token = data['token'] as String? ?? '';
     final DateTime? expiresAt =
@@ -507,11 +525,12 @@ class _AuthScreenState extends State<AuthScreen> {
 
     final String? username = _nonBlankString(player['username']);
     final String? email = _nonBlankString(player['email']);
+    final bool isGuest = guestOverride ?? player['guest'] == true;
     final String name = _nonBlankString(player['displayName']) ??
         username ??
         email?.split('@').first ??
         'ChessVerseAI Player';
-    if (_rememberMe) {
+    if (_rememberMe || isGuest) {
       await _sessionStore.write(
         StoredAuthSession(
           token: token,
@@ -520,6 +539,7 @@ class _AuthScreenState extends State<AuthScreen> {
           username: username,
           email: email,
           photoUrl: photoUrl,
+          isGuest: isGuest,
         ),
       );
     } else {
@@ -530,13 +550,37 @@ class _AuthScreenState extends State<AuthScreen> {
     widget.onAuthenticated(
       ChessVerseAuthResult(
         playerName: name,
-        isGuest: false,
+        isGuest: isGuest,
         token: token,
         username: username,
         email: email,
         photoUrl: photoUrl,
       ),
     );
+  }
+
+  Future<void> _continueAsGuest() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final String installationId = await _sessionStore.installationId();
+      final Map<String, dynamic> data = await _authApi.post(
+        'guest',
+        <String, String>{'installationId': installationId},
+      );
+      await _completeAuthentication(data);
+    } on AuthApiException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(
+            () => _error = 'Guest identity could not be created. Try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Map<String, dynamic> _stringKeyedMap(Object? value) {

@@ -27,8 +27,10 @@ public class LeaderboardController {
     LeaderboardDtos.LeaderboardDto leaderboard(
             @RequestHeader("Authorization") String authorization,
             @RequestParam(defaultValue = "global") String scope,
-            @RequestParam(required = false) String country) {
-        return ratings.leaderboard(player(authorization), scope, country);
+            @RequestParam(required = false) String country,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return ratings.leaderboard(player(authorization), scope, country, page, size);
     }
 
     @GetMapping("/me")

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.PageImpl;
 import org.junit.jupiter.api.Test;
 
 class OnlineRatingServiceTest {
@@ -71,5 +72,24 @@ class OnlineRatingServiceTest {
         assertEquals(1200, black.rating);
         assertEquals(1, white.draws);
         assertEquals(1, black.draws);
+    }
+
+    @Test
+    void leaderboardExcludesUnplayedProfilesAndReportsPagination() {
+        OnlinePlayerRatingRepository repository = mock(OnlinePlayerRatingRepository.class);
+        OnlineRatingService service = new OnlineRatingService(repository);
+        UUID playerId = UUID.randomUUID();
+        OnlinePlayerRating player = new OnlinePlayerRating(playerId, "Player");
+        when(repository.lockByPlayerId(playerId)).thenReturn(Optional.of(player));
+        when(repository.global(any())).thenReturn(new PageImpl<>(java.util.List.of()));
+
+        LeaderboardDtos.LeaderboardDto board = service.leaderboard(
+                new com.epitomehub.chessverse.auth.AuthenticatedPlayer(
+                        playerId, "player", "Player", null),
+                "global", null, 0, 50);
+
+        assertEquals(0, board.totalPlayers());
+        assertEquals(0, board.you().globalRank());
+        assertEquals(0, board.entries().size());
     }
 }

@@ -48,6 +48,18 @@ class AuthController {
         return authService.googleLogin(request);
     }
 
+    @PostMapping("/google/upgrade")
+    AuthResponse upgradeGuestWithGoogle(
+            @RequestHeader(name = "Authorization", required = false) String authorization,
+            @Valid @RequestBody GoogleLoginRequest request) {
+        return authService.upgradeGuestWithGoogle(bearerToken(authorization), request);
+    }
+
+    @PostMapping("/guest")
+    AuthResponse guestLogin(@Valid @RequestBody GuestLoginRequest request) {
+        return authService.guestLogin(request);
+    }
+
     @PostMapping("/password/forgot")
     @ResponseStatus(HttpStatus.ACCEPTED)
     MessageResponse forgotPassword(@Valid @RequestBody EmailRequest request) {

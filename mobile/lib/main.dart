@@ -26,6 +26,7 @@ import 'features/online/presentation/match_history_screen.dart';
 import 'features/leaderboard/presentation/leaderboard_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/puzzles/domain/puzzle_catalog.dart';
+import 'features/progress/data/cloud_progress_api.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/tutorial/presentation/learn_chess_screen.dart';
 
@@ -60,6 +61,7 @@ class SplashGate extends StatefulWidget {
 class _SplashGateState extends State<SplashGate> {
   static const AuthApi _authApi = AuthApi();
   static const AuthSessionStore _sessionStore = AuthSessionStore();
+  static const CloudProgressApi _cloudProgressApi = CloudProgressApi();
   Timer? _timer;
   _RootStage _stage = _RootStage.splash;
   String _playerName = 'Guest Player';
@@ -67,6 +69,8 @@ class _SplashGateState extends State<SplashGate> {
   String? _email;
   String? _photoUrl;
   bool _isGuest = true;
+  bool _cloudSyncInFlight = false;
+  bool _cloudSyncQueued = false;
 
   @override
   void initState() {
@@ -91,6 +95,7 @@ class _SplashGateState extends State<SplashGate> {
     String? username = session.username;
     String? email = session.email;
     final String? photoUrl = session.photoUrl;
+    bool isGuest = session.isGuest;
     try {
       final Map<String, dynamic> player =
           await _authApi.currentPlayer(session.token);
@@ -99,6 +104,7 @@ class _SplashGateState extends State<SplashGate> {
           playerName;
       username = _profileValue(player['username']) ?? username;
       email = _profileValue(player['email']) ?? email;
+      isGuest = player['guest'] as bool? ?? isGuest;
     } on AuthApiException catch (error) {
       if (error.statusCode == 401 || error.statusCode == 403) {
         await _sessionStore.clear();
@@ -109,12 +115,15 @@ class _SplashGateState extends State<SplashGate> {
       // network is temporarily unavailable.
     }
     if (!mounted) return;
+    _enableCloudSync(session.token);
+    await _syncCloudProgress(session.token);
+    if (!mounted) return;
     setState(() {
       _playerName = playerName;
       _username = username;
       _email = email;
       _photoUrl = photoUrl;
-      _isGuest = false;
+      _isGuest = isGuest;
       _stage = _RootStage.home;
     });
   }
@@ -158,6 +167,10 @@ class _SplashGateState extends State<SplashGate> {
                 _isGuest = result.isGuest;
                 _stage = _RootStage.home;
               });
+              if (result.token != null) {
+                _enableCloudSync(result.token!);
+                unawaited(_syncCloudProgress(result.token!));
+              }
             },
           ),
         _RootStage.home => HomeDashboardScreen(
@@ -190,6 +203,8 @@ class _SplashGateState extends State<SplashGate> {
                 email: _email,
                 profilePhotoUrl: _photoUrl,
                 isGuest: _isGuest,
+                onSecureProgress:
+                    _isGuest ? () => _secureGuestProgress(context) : null,
                 onUsernameChanged: (String value) {
                   if (!mounted) return;
                   setState(() => _username = value);
@@ -324,6 +339,7 @@ class _SplashGateState extends State<SplashGate> {
       }
     }
     await sessionStore.clear();
+    LocalGameArchive.onCloudRelevantChange = null;
     if (!mounted) return;
 
     if (currentRouteContext.mounted &&
@@ -339,10 +355,71 @@ class _SplashGateState extends State<SplashGate> {
     });
   }
 
+  Future<void> _secureGuestProgress(BuildContext currentRouteContext) async {
+    final StoredAuthSession? session = await _sessionStore.read();
+    if (session == null || !session.isGuest || !currentRouteContext.mounted) {
+      return;
+    }
+    await Navigator.of(currentRouteContext).push(
+      MaterialPageRoute<void>(
+        builder: (BuildContext upgradeContext) => AuthScreen(
+          guestUpgradeToken: session.token,
+          onAuthenticated: (ChessVerseAuthResult result) {
+            if (!mounted) return;
+            setState(() {
+              _playerName = result.playerName;
+              _username = result.username;
+              _email = result.email;
+              _photoUrl = result.photoUrl;
+              _isGuest = result.isGuest;
+            });
+            if (result.token != null) {
+              _enableCloudSync(result.token!);
+              unawaited(_syncCloudProgress(result.token!));
+            }
+            Navigator.of(upgradeContext).pop();
+            ScaffoldMessenger.of(currentRouteContext).showSnackBar(
+              const SnackBar(
+                content: Text('Progress secured with Google successfully.'),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   Future<void> _push(BuildContext context, Widget screen) {
     return Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => screen));
+  }
+
+  void _enableCloudSync(String token) {
+    LocalGameArchive.onCloudRelevantChange = () => _syncCloudProgress(token);
+  }
+
+  Future<void> _syncCloudProgress(String token) async {
+    if (_cloudSyncInFlight) {
+      _cloudSyncQueued = true;
+      return;
+    }
+    _cloudSyncInFlight = true;
+    try {
+      final Map<String, dynamic> merged = await _cloudProgressApi.merge(
+        token,
+        LocalGameArchive.cloudSnapshot(),
+      );
+      await LocalGameArchive.mergeCloudSnapshot(merged);
+    } on CloudProgressException {
+      // Local progress stays authoritative until the next successful sync.
+    } finally {
+      _cloudSyncInFlight = false;
+      if (_cloudSyncQueued) {
+        _cloudSyncQueued = false;
+        unawaited(_syncCloudProgress(token));
+      }
+    }
   }
 }
 
@@ -6723,45 +6800,45 @@ class _StudioCoachPanel extends StatelessWidget {
                   else
                     Row(
                       children: <Widget>[
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              'AI Coach ✦',
-                              style: TextStyle(
-                                color: const Color(0xFF63D2B8),
-                                fontFamily: 'serif',
-                                fontSize: compact ? 23 : 30,
-                                fontWeight: FontWeight.w800,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                'AI Coach ✦',
+                                style: TextStyle(
+                                  color: const Color(0xFF63D2B8),
+                                  fontFamily: 'serif',
+                                  fontSize: compact ? 23 : 30,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
-                            ),
-                            Text(
-                              modeLabel,
-                              style: const TextStyle(
-                                color: Color(0xFFE2B458),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.2,
+                              Text(
+                                modeLabel,
+                                style: const TextStyle(
+                                  color: Color(0xFFE2B458),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.2,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      IconButton.outlined(
-                        tooltip: gameMode == GameMode.online
-                            ? 'Undo is unavailable in online games'
-                            : 'Undo move',
-                        onPressed: canUndo ? onUndo : null,
-                        icon: const Icon(Icons.undo_rounded),
-                      ),
-                      const SizedBox(width: 6),
-                      IconButton.filled(
-                        key: const ValueKey<String>('open-full-controls'),
-                        tooltip: 'Game controls',
-                        onPressed: onControls,
-                        icon: const Icon(Icons.tune_rounded),
-                      ),
+                        IconButton.outlined(
+                          tooltip: gameMode == GameMode.online
+                              ? 'Undo is unavailable in online games'
+                              : 'Undo move',
+                          onPressed: canUndo ? onUndo : null,
+                          icon: const Icon(Icons.undo_rounded),
+                        ),
+                        const SizedBox(width: 6),
+                        IconButton.filled(
+                          key: const ValueKey<String>('open-full-controls'),
+                          tooltip: 'Game controls',
+                          onPressed: onControls,
+                          icon: const Icon(Icons.tune_rounded),
+                        ),
                       ],
                     ),
                   SizedBox(height: compact ? 8 : 14),

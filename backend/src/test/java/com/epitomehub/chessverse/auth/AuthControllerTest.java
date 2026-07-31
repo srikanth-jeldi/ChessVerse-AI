@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.when;
 
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -30,6 +32,9 @@ class AuthControllerTest {
 
     @Autowired
     TestOtpDelivery otpDelivery;
+
+    @MockitoBean
+    GoogleIdentityVerifier googleIdentityVerifier;
 
     @Test
     void registrationCreatesPendingAccountAndSendsOtp() throws Exception {
@@ -61,6 +66,114 @@ class AuthControllerTest {
                                 """))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Invalid user id or password."));
+    }
+
+    @Test
+    void guestInstallationRestoresSameNumberedPlayerAndSession() throws Exception {
+        String request = "{\"installationId\":\"550e8400-e29b-41d4-a716-446655440000\"}";
+        MvcResult first = mockMvc.perform(post("/api/auth/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.player.guest").value(true))
+                .andExpect(jsonPath("$.player.username").value(org.hamcrest.Matchers.matchesPattern("guest_[0-9]{6}")))
+                .andReturn();
+        String firstPlayerId = objectMapper.readTree(first.getResponse().getContentAsString())
+                .path("player").path("id").asText();
+
+        mockMvc.perform(post("/api/auth/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.player.id").value(firstPlayerId));
+    }
+
+    @Test
+    void guestUpgradeKeepsPlayerIdAndMakesInstallationPermanent() throws Exception {
+        String request = "{\"installationId\":\"9b2b103d-8d66-4bf5-9e91-ef5578f20c0a\"}";
+        MvcResult guestLogin = mockMvc.perform(post("/api/auth/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andReturn();
+        var guestJson = objectMapper.readTree(guestLogin.getResponse().getContentAsString());
+        String playerId = guestJson.path("player").path("id").asText();
+        String guestToken = guestJson.path("token").asText();
+        when(googleIdentityVerifier.verify("verified-google-token"))
+                .thenReturn(new GoogleIdentityVerifier.VerifiedGoogleIdentity(
+                        "google-subject-upgrade",
+                        "permanent@example.com",
+                        "Permanent Player",
+                        "https://example.com/avatar.png"));
+
+        mockMvc.perform(post("/api/auth/google/upgrade")
+                        .header("Authorization", "Bearer " + guestToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"idToken\":\"verified-google-token\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.player.id").value(playerId))
+                .andExpect(jsonPath("$.player.guest").value(false))
+                .andExpect(jsonPath("$.player.email").value("permanent@example.com"))
+                .andExpect(jsonPath("$.player.displayName").value("Permanent Player"));
+
+        mockMvc.perform(post("/api/auth/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.player.id").value(playerId))
+                .andExpect(jsonPath("$.player.guest").value(false));
+    }
+
+    @Test
+    void cloudProgressMergeUnionsPuzzleAndDailyProgressAcrossDevices() throws Exception {
+        MvcResult guestLogin = mockMvc.perform(post("/api/auth/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"installationId\":\"35e69b70-f69a-4b78-84b6-6dc337e7905f\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String token = objectMapper.readTree(guestLogin.getResponse().getContentAsString())
+                .path("token").asText();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/progress")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "profileUsername":"cloud_player",
+                                  "country":"India",
+                                  "chessLevel":2,
+                                  "avatar":3,
+                                  "profileUpdatedAt":"2026-07-30T09:00:00Z",
+                                  "dailyStreak":4,
+                                  "lastDailyCompletedAt":"2026-07-30T10:00:00Z",
+                                  "completedPuzzleIds":["easy-1"],
+                                  "completedDailyChallengeIds":["daily-2026-07-30"]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completedPuzzleIds[0]").value("easy-1"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/progress")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "profileUsername":"cloud_player",
+                                  "country":"India",
+                                  "chessLevel":2,
+                                  "avatar":3,
+                                  "profileUpdatedAt":"2026-07-29T09:00:00Z",
+                                  "dailyStreak":2,
+                                  "lastDailyCompletedAt":"2026-07-29T10:00:00Z",
+                                  "completedPuzzleIds":["medium-2"],
+                                  "completedDailyChallengeIds":["daily-2026-07-29"]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dailyStreak").value(4))
+                .andExpect(jsonPath("$.completedPuzzleIds.length()").value(2))
+                .andExpect(jsonPath("$.completedDailyChallengeIds.length()").value(2))
+                .andExpect(jsonPath("$.lastDailyCompletedAt").value("2026-07-30T10:00:00Z"));
     }
 
     @Test

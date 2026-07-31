@@ -93,12 +93,20 @@ class LeaderboardDto {
     required this.scope,
     required this.country,
     required this.you,
+    required this.page,
+    required this.pageSize,
+    required this.totalPlayers,
+    required this.hasNext,
     required this.entries,
   });
 
   final String scope;
   final String? country;
   final PlayerRatingDto you;
+  final int page;
+  final int pageSize;
+  final int totalPlayers;
+  final bool hasNext;
   final List<LeaderboardEntryDto> entries;
 
   factory LeaderboardDto.fromJson(Map<String, dynamic> json) => LeaderboardDto(
@@ -107,6 +115,10 @@ class LeaderboardDto {
         you: PlayerRatingDto.fromJson(
           json['you'] as Map<String, dynamic>? ?? <String, dynamic>{},
         ),
+        page: (json['page'] as num?)?.toInt() ?? 0,
+        pageSize: (json['pageSize'] as num?)?.toInt() ?? 50,
+        totalPlayers: (json['totalPlayers'] as num?)?.toInt() ?? 0,
+        hasNext: json['hasNext'] as bool? ?? false,
         entries: (json['entries'] as List<dynamic>? ?? <dynamic>[])
             .whereType<Map<String, dynamic>>()
             .map(LeaderboardEntryDto.fromJson)
@@ -122,7 +134,11 @@ class LeaderboardApi {
     required String scope,
     String? country,
   }) async {
-    final Map<String, String> query = <String, String>{'scope': scope};
+    final Map<String, String> query = <String, String>{
+      'scope': scope,
+      'page': '0',
+      'size': '50',
+    };
     if (country != null && country.isNotEmpty) query['country'] = country;
     final Uri uri = Uri.parse('${AppConfig.apiBaseUrl}/api/v1/leaderboard')
         .replace(queryParameters: query);

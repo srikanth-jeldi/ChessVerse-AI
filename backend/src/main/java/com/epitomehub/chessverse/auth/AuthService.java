@@ -27,6 +27,7 @@ class AuthService {
     private final PasswordResetRepository passwordResets;
     private final AuthSessionRepository sessions;
     private final OAuthIdentityRepository oauthIdentities;
+    private final GuestInstallationRepository guestInstallations;
     private final GoogleIdentityVerifier googleIdentityVerifier;
     private final OtpDelivery otpDelivery;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
@@ -43,6 +44,7 @@ class AuthService {
             PasswordResetRepository passwordResets,
             AuthSessionRepository sessions,
             OAuthIdentityRepository oauthIdentities,
+            GuestInstallationRepository guestInstallations,
             GoogleIdentityVerifier googleIdentityVerifier,
             OtpDelivery otpDelivery,
             @Value("${chessverse.auth.otp-expiry-minutes:10}") long otpExpiryMinutes,
@@ -55,6 +57,7 @@ class AuthService {
         this.passwordResets = passwordResets;
         this.sessions = sessions;
         this.oauthIdentities = oauthIdentities;
+        this.guestInstallations = guestInstallations;
         this.googleIdentityVerifier = googleIdentityVerifier;
         this.otpDelivery = otpDelivery;
         this.otpExpiry = Duration.ofMinutes(otpExpiryMinutes);
@@ -278,15 +281,82 @@ class AuthService {
     }
 
     @Transactional
-    PlayerResponse currentPlayer(String token) {
-        String tokenHash = sha256(token);
-        AuthSession session = sessions.findByTokenHash(tokenHash)
-                .orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED, "Your session is invalid."));
-        if (session.expiresAt.isBefore(Instant.now())) {
-            sessions.delete(session);
-            throw new AuthException(HttpStatus.UNAUTHORIZED, "Your session has expired.");
+    AuthResponse upgradeGuestWithGoogle(String token, GoogleLoginRequest request) {
+        AuthSession session = requireSession(token);
+        PlayerAccount guest = session.player;
+        if (!guest.guestAccount) {
+            throw new AuthException(HttpStatus.CONFLICT, "This ChessVerseAI account is already secured.");
         }
-        return PlayerResponse.from(session.player);
+
+        GoogleIdentityVerifier.VerifiedGoogleIdentity google =
+                googleIdentityVerifier.verify(request.idToken());
+        OAuthIdentity identity =
+                oauthIdentities.findByProviderAndSubject("google", google.subject()).orElse(null);
+        if (identity != null && !identity.player.id.equals(guest.id)) {
+            throw new AuthException(
+                    HttpStatus.CONFLICT,
+                    "That Google account already has ChessVerseAI progress. Sign in with Google to use it; your guest progress remains safe on this device.");
+        }
+
+        String email = normalizeEmail(google.email());
+        PlayerAccount emailOwner = players.findByEmailIgnoreCase(email).orElse(null);
+        if (emailOwner != null && !emailOwner.id.equals(guest.id)) {
+            throw new AuthException(
+                    HttpStatus.CONFLICT,
+                    "That email already has a ChessVerseAI account. Sign in to that account; your guest progress remains safe on this device.");
+        }
+
+        String displayName = google.displayName() == null || google.displayName().isBlank()
+                ? email.substring(0, email.indexOf('@'))
+                : google.displayName().trim();
+        guest.username = availableGoogleUsername(email);
+        guest.displayName = displayName.substring(0, Math.min(displayName.length(), 80));
+        guest.email = email;
+        guest.photoUrl = google.photoUrl();
+        guest.guestAccount = false;
+        guest.verified = true;
+        guest.failedLoginAttempts = 0;
+        guest.lockedUntil = null;
+        guest.updatedAt = Instant.now();
+        players.save(guest);
+        if (identity == null) {
+            oauthIdentities.save(new OAuthIdentity("google", google.subject(), guest));
+        }
+        sessions.deleteByPlayerId(guest.id);
+        return createSession(guest);
+    }
+
+    @Transactional
+    AuthResponse guestLogin(GuestLoginRequest request) {
+        String installationHash = sha256(
+                UUID.fromString(request.installationId()).toString().toLowerCase(Locale.ROOT));
+        GuestInstallation installation = guestInstallations
+                .findWithPlayerByInstallationHash(installationHash)
+                .orElse(null);
+        PlayerAccount player;
+        if (installation == null) {
+            String number = availableGuestNumber();
+            player = new PlayerAccount(
+                    "guest_" + number,
+                    "Guest " + number,
+                    null,
+                    passwordEncoder.encode(UUID.randomUUID().toString()));
+            player.verified = true;
+            player.guestAccount = true;
+            players.save(player);
+            installation = new GuestInstallation(installationHash, player);
+        } else {
+            player = installation.player;
+            installation.lastSeenAt = Instant.now();
+        }
+        guestInstallations.save(installation);
+        sessions.deleteByPlayerId(player.id);
+        return createSession(player);
+    }
+
+    @Transactional
+    PlayerResponse currentPlayer(String token) {
+        return PlayerResponse.from(requireSession(token).player);
     }
 
     @Transactional
@@ -350,6 +420,26 @@ class AuthService {
             candidate = base + "_" + suffix++;
         }
         return candidate;
+    }
+
+    private AuthSession requireSession(String token) {
+        AuthSession session = sessions.findByTokenHash(sha256(token))
+                .orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED, "Your session is invalid."));
+        if (session.expiresAt.isBefore(Instant.now())) {
+            sessions.delete(session);
+            throw new AuthException(HttpStatus.UNAUTHORIZED, "Your session has expired.");
+        }
+        return session;
+    }
+
+    private String availableGuestNumber() {
+        for (int attempt = 0; attempt < 100; attempt++) {
+            String number = "%06d".formatted(random.nextInt(1_000_000));
+            if (players.findByUsernameIgnoreCase("guest_" + number).isEmpty()) {
+                return number;
+            }
+        }
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 10);
     }
 
     private String sha256(String value) {

@@ -43,6 +43,12 @@ final class AuthDtos {
     record GoogleLoginRequest(@NotBlank String idToken) {
     }
 
+    record GuestLoginRequest(
+            @NotBlank
+            @Pattern(regexp = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$")
+            String installationId) {
+    }
+
     record MessageResponse(String message, Instant expiresAt, String developmentCode) {
     }
 
@@ -54,14 +60,16 @@ final class AuthDtos {
             String username,
             String displayName,
             String email,
-            String photoUrl) {
+            String photoUrl,
+            boolean guest) {
         static PlayerResponse from(PlayerAccount player) {
             return new PlayerResponse(
                     player.id,
                     player.username,
                     player.displayName,
                     player.email,
-                    player.photoUrl);
+                    player.photoUrl,
+                    player.guestAccount);
         }
     }
 }
