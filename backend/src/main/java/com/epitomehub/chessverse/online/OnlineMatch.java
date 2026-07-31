@@ -78,6 +78,12 @@ class OnlineMatch {
     @Column(name = "turn_started_at")
     Instant turnStartedAt;
 
+    @Column(name = "white_disconnected_at")
+    Instant whiteDisconnectedAt;
+
+    @Column(name = "black_disconnected_at")
+    Instant blackDisconnectedAt;
+
     @Column(length = 16)
     String result;
 

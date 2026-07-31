@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 import com.epitomehub.chessverse.auth.AuthenticatedPlayer;
 import java.util.Optional;
@@ -187,6 +188,19 @@ class OnlineMatchServiceTest {
     }
 
     @Test
+    void pendingOpponentDrawOfferCannotBeOverwritten() {
+        OnlineMatch match = activeMatch();
+        when(repository.lockById(match.id)).thenReturn(Optional.of(match));
+
+        service.offerDraw(white, match.id);
+        OnlineMatchException error =
+                assertThrows(OnlineMatchException.class, () -> service.offerDraw(black, match.id));
+
+        assertEquals(HttpStatus.CONFLICT, error.status());
+        assertEquals(white.id(), match.drawOfferedBy);
+    }
+
+    @Test
     void secondRematchRequestCreatesColorSwappedMatch() {
         OnlineMatch match = activeMatch();
         match.status = OnlineMatchStatus.FINISHED;
@@ -214,6 +228,32 @@ class OnlineMatchServiceTest {
         assertEquals(OnlineMatchStatus.FINISHED, result.status());
         assertEquals("0-1", result.result());
         assertEquals("TIMEOUT", result.resultReason());
+    }
+
+    @Test
+    void reconnectWithinGraceClearsDisconnectDeadline() {
+        OnlineMatch match = activeMatch();
+        match.blackDisconnectedAt = java.time.Instant.now();
+        when(repository.lockById(match.id)).thenReturn(Optional.of(match));
+
+        service.markConnected(match.id, black.id());
+
+        assertNull(match.blackDisconnectedAt);
+    }
+
+    @Test
+    void expiredDisconnectedPlayerLosesMatch() {
+        OnlineMatch match = activeMatch();
+        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(16);
+        when(repository.lockExpiredDisconnects(any())).thenReturn(java.util.List.of(match));
+
+        java.util.List<UUID> finished = service.finishExpiredDisconnects();
+
+        assertEquals(java.util.List.of(match.id), finished);
+        assertEquals(OnlineMatchStatus.FINISHED, match.status);
+        assertEquals("1-0", match.result);
+        assertEquals("OPPONENT_LEFT", match.resultReason);
+        verify(ratings).settle(match);
     }
 
     private OnlineMatch waitingMatch() {

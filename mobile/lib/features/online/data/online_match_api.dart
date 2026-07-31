@@ -38,6 +38,8 @@ class OnlineMatchDto {
     this.blackTimeMs = 600000,
     this.serverNow,
     this.turnStartedAt,
+    this.disconnectedColor,
+    this.disconnectDeadline,
     this.result,
     this.resultReason,
     this.drawOfferedByColor,
@@ -63,6 +65,8 @@ class OnlineMatchDto {
   final int blackTimeMs;
   final DateTime? serverNow;
   final DateTime? turnStartedAt;
+  final String? disconnectedColor;
+  final DateTime? disconnectDeadline;
   final String? result;
   final String? resultReason;
   final String? drawOfferedByColor;
@@ -76,6 +80,17 @@ class OnlineMatchDto {
   int get plyCount => moves.length;
   bool get whiteToMove => activeColor == 'WHITE';
   bool get isYourTurn => isActive && activeColor == yourColor;
+  bool get opponentDisconnected =>
+      disconnectedColor != null &&
+      disconnectedColor!.toUpperCase() != yourColor.toUpperCase();
+
+  int get disconnectSecondsRemaining {
+    final DateTime? deadline = disconnectDeadline;
+    final DateTime reference = serverNow ?? DateTime.now().toUtc();
+    if (deadline == null) return 0;
+    return ((deadline.difference(reference).inMilliseconds + 999) ~/ 1000)
+        .clamp(0, 15);
+  }
 
   factory OnlineMatchDto.fromJson(Map<String, dynamic> json) {
     return OnlineMatchDto(
@@ -97,6 +112,9 @@ class OnlineMatchDto {
       blackTimeMs: (json['blackTimeMs'] as num?)?.toInt() ?? 600000,
       serverNow: DateTime.tryParse(json['serverNow'] as String? ?? ''),
       turnStartedAt: DateTime.tryParse(json['turnStartedAt'] as String? ?? ''),
+      disconnectedColor: json['disconnectedColor'] as String?,
+      disconnectDeadline:
+          DateTime.tryParse(json['disconnectDeadline'] as String? ?? ''),
       result: json['result'] as String?,
       resultReason: json['resultReason'] as String?,
       drawOfferedByColor: json['drawOfferedByColor'] as String?,

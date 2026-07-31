@@ -43,6 +43,8 @@ final class OnlineDtos {
             long blackTimeMs,
             Instant serverNow,
             Instant turnStartedAt,
+            String disconnectedColor,
+            Instant disconnectDeadline,
             String result,
             String resultReason,
             String drawOfferedByColor,
@@ -72,6 +74,8 @@ final class OnlineDtos {
                     match.blackTimeMs,
                     Instant.now(),
                     match.turnStartedAt,
+                    disconnectedColor(match),
+                    disconnectDeadline(match),
                     match.result,
                     match.resultReason,
                     colorOf(match, match.drawOfferedBy),
@@ -87,6 +91,19 @@ final class OnlineDtos {
         private static String colorOf(OnlineMatch match, UUID playerId) {
             if (playerId == null) return null;
             return match.whitePlayerId.equals(playerId) ? "white" : "black";
+        }
+
+        private static String disconnectedColor(OnlineMatch match) {
+            if (match.whiteDisconnectedAt != null) return "white";
+            if (match.blackDisconnectedAt != null) return "black";
+            return null;
+        }
+
+        private static Instant disconnectDeadline(OnlineMatch match) {
+            Instant disconnectedAt = match.whiteDisconnectedAt != null
+                    ? match.whiteDisconnectedAt : match.blackDisconnectedAt;
+            return disconnectedAt == null
+                    ? null : disconnectedAt.plus(OnlineMatchService.DISCONNECT_GRACE);
         }
     }
 }

@@ -13,23 +13,37 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 @Component
 public class OnlineMatchSocketHandler extends TextWebSocketHandler {
     private final ConcurrentHashMap<UUID, Set<WebSocketSession>> subscribers = new ConcurrentHashMap<>();
+    private final OnlineMatchService matches;
+
+    public OnlineMatchSocketHandler(OnlineMatchService matches) {
+        this.matches = matches;
+    }
+
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         UUID matchId = (UUID) session.getAttributes().get("matchId");
+        UUID playerId = (UUID) session.getAttributes().get("playerId");
         subscribers.computeIfAbsent(matchId, ignored -> ConcurrentHashMap.newKeySet()).add(session);
+        matches.markConnected(matchId, playerId);
         publishPresence(matchId);
+        publish(matchId);
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         UUID matchId = (UUID) session.getAttributes().get("matchId");
+        UUID playerId = (UUID) session.getAttributes().get("playerId");
         Set<WebSocketSession> sessions = subscribers.get(matchId);
         if (sessions != null) {
             sessions.remove(session);
+            boolean playerStillConnected = sessions.stream().anyMatch(candidate ->
+                    playerId.equals(candidate.getAttributes().get("playerId")) && candidate.isOpen());
+            if (!playerStillConnected) matches.markDisconnected(matchId, playerId);
             if (sessions.isEmpty()) {
                 subscribers.remove(matchId);
             } else {
                 publishPresence(matchId);
+                publish(matchId);
             }
         }
     }
@@ -58,8 +72,13 @@ public class OnlineMatchSocketHandler extends TextWebSocketHandler {
         for (WebSocketSession session : Set.copyOf(sessions)) {
             if (!session.isOpen()) continue;
             try {
-                session.sendMessage(event);
-            } catch (IOException ignored) {
+                // Match updates, presence changes and controller responses may
+                // publish from different request threads. A standard Spring
+                // WebSocketSession permits only one send at a time.
+                synchronized (session) {
+                    if (session.isOpen()) session.sendMessage(event);
+                }
+            } catch (IOException | IllegalStateException ignored) {
                 try {
                     session.close(CloseStatus.SERVER_ERROR);
                 } catch (IOException ignoredAgain) {

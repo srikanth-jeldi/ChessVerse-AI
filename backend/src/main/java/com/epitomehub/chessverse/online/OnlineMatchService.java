@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class OnlineMatchService {
     private static final char[] CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".toCharArray();
     private static final Duration RANDOM_QUEUE_LEASE = Duration.ofSeconds(8);
+    static final Duration DISCONNECT_GRACE = Duration.ofSeconds(15);
 
     private final OnlineMatchRepository matches;
     private final OnlineRatingService ratings;
@@ -197,8 +198,11 @@ public class OnlineMatchService {
         if (match.status != OnlineMatchStatus.ACTIVE) {
             return OnlineDtos.MatchDto.from(matches.save(match), player.id());
         }
-        if (player.id().equals(match.drawOfferedBy)) {
-            throw new OnlineMatchException(HttpStatus.CONFLICT, "Your draw offer is already pending.");
+        if (match.drawOfferedBy != null) {
+            String message = player.id().equals(match.drawOfferedBy)
+                    ? "Your draw offer is already pending."
+                    : "Answer your opponent's draw offer before making another offer.";
+            throw new OnlineMatchException(HttpStatus.CONFLICT, message);
         }
         match.drawOfferedBy = player.id();
         match.updatedAt = Instant.now();
@@ -268,6 +272,61 @@ public class OnlineMatchService {
     @Transactional(readOnly = true)
     public boolean isParticipant(UUID playerId, UUID matchId) {
         return matches.findById(matchId).map(match -> match.contains(playerId)).orElse(false);
+    }
+
+    @Transactional
+    public void markConnected(UUID matchId, UUID playerId) {
+        OnlineMatch match = requireParticipant(playerId, matchId);
+        if (match.status != OnlineMatchStatus.ACTIVE) return;
+        if (match.whitePlayerId.equals(playerId)) {
+            match.whiteDisconnectedAt = null;
+        } else {
+            match.blackDisconnectedAt = null;
+        }
+        match.updatedAt = Instant.now();
+        matches.save(match);
+    }
+
+    @Transactional
+    public void markDisconnected(UUID matchId, UUID playerId) {
+        OnlineMatch match = requireParticipant(playerId, matchId);
+        if (match.status != OnlineMatchStatus.ACTIVE) return;
+        Instant now = Instant.now();
+        reconcileClock(match, now);
+        if (match.status != OnlineMatchStatus.ACTIVE) {
+            matches.save(match);
+            return;
+        }
+        if (match.whitePlayerId.equals(playerId)) {
+            if (match.whiteDisconnectedAt == null) match.whiteDisconnectedAt = now;
+        } else if (match.blackDisconnectedAt == null) {
+            match.blackDisconnectedAt = now;
+        }
+        match.updatedAt = now;
+        matches.save(match);
+    }
+
+    @Transactional
+    public List<UUID> finishExpiredDisconnects() {
+        Instant now = Instant.now();
+        List<OnlineMatch> expired = matches.lockExpiredDisconnects(now.minus(DISCONNECT_GRACE));
+        for (OnlineMatch match : expired) {
+            reconcileClock(match, now);
+            if (match.status != OnlineMatchStatus.ACTIVE) continue;
+            boolean whiteExpired = match.whiteDisconnectedAt != null
+                    && !match.whiteDisconnectedAt.plus(DISCONNECT_GRACE).isAfter(now);
+            boolean blackExpired = match.blackDisconnectedAt != null
+                    && !match.blackDisconnectedAt.plus(DISCONNECT_GRACE).isAfter(now);
+            if (whiteExpired && blackExpired) {
+                finish(match, "1/2-1/2", "BOTH_DISCONNECTED");
+            } else if (whiteExpired) {
+                finish(match, "0-1", "OPPONENT_LEFT");
+            } else if (blackExpired) {
+                finish(match, "1-0", "OPPONENT_LEFT");
+            }
+            matches.save(match);
+        }
+        return expired.stream().map(match -> match.id).toList();
     }
 
     private com.github.bhlangonijr.chesslib.Piece promotion(char code, Side side) {
@@ -362,6 +421,8 @@ public class OnlineMatchService {
         match.resultReason = reason;
         match.drawOfferedBy = null;
         match.turnStartedAt = null;
+        match.whiteDisconnectedAt = null;
+        match.blackDisconnectedAt = null;
         match.updatedAt = Instant.now();
         ratings.settle(match);
     }
