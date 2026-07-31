@@ -1886,13 +1886,19 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               final double availableHeight =
                   constraints.maxHeight - pagePadding.vertical;
               final bool roomyLandscape = wide && constraints.maxHeight >= 690;
+              // A regular laptop viewport does not have enough vertical room
+              // for the online player rails, a useful board, and the 126px
+              // history dock at the same time. Keep the dock for genuinely
+              // tall desktop windows; move history remains available from the
+              // controls on shorter web screens.
+              final bool showWideDock = wide && constraints.maxHeight >= 900;
               final double mobileHeaderHeight = wide ? 0 : 58;
               final double widePanelWidth = math.min(
                 460,
                 math.max(330, constraints.maxWidth * 0.34),
               );
               final double wideHeaderHeight = roomyLandscape ? 78 : 54;
-              final double wideDockHeight = roomyLandscape ? 126 : 0;
+              final double wideDockHeight = showWideDock ? 126 : 0;
               final double portraitPanelMinimum = landscape ? 72 : 190;
               final bool showOnlineArena =
                   _gameMode == GameMode.online && _onlineMatch != null;
@@ -2138,7 +2144,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                   ),
                                 ),
                               ),
-                              if (roomyLandscape)
+                              if (showWideDock)
                                 SizedBox(
                                   height: wideDockHeight,
                                   child: _GameStudioDock(
