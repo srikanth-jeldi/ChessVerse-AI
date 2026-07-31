@@ -1841,6 +1841,25 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    // Online matchmaking is opened immediately after this route is created.
+    // Do not build the local chess position underneath it: on slower phones
+    // and during the route transition that board used to flash behind the
+    // Online/Friends screen for a frame.
+    if (_gameMode == GameMode.online && _onlineMatch == null) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF06131F),
+        body: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[Color(0xFF0A2231), Color(0xFF040B13)],
+            ),
+          ),
+          child: SizedBox.expand(),
+        ),
+      );
+    }
     final BoardPalette palette = boardPalettes[_skin]!;
     final bool sideToMoveWhite =
         _gameMode == GameMode.online && _onlineMatch != null
@@ -3197,6 +3216,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     String? promotionSquare;
     bool? promotionWhite;
     bool moveCommitted = false;
+    bool puzzleWrongMove = false;
     String? onlineUci;
     int? onlineExpectedPly;
 
@@ -3260,11 +3280,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             _dailyChallenge.solution[_dailyPlyIndex].toLowerCase();
         if (!expected.startsWith('$from$square')) {
           _dailyMistakes++;
-          _coachNote =
-              'Legal move, but it misses the forced line. Try another move.';
-          _selectedSquare = null;
-          unawaited(ChessSoundService.instance.error());
-          return;
+          // Let every chess-legal move appear on the board. A puzzle still
+          // has a forcing solution, but silently refusing all other pieces
+          // makes the board feel locked. The position is paused after an
+          // incorrect move so the player can inspect it and tap Try again.
+          puzzleWrongMove = true;
         }
       }
       final PositionAnalysis preMoveAnalysis = _analyzePosition(whitesTurn);
@@ -3321,7 +3341,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             capture: captured != null,
           ),
         );
-        if (_isTacticsMode) {
+        if (_isTacticsMode && !puzzleWrongMove) {
           _dailyPlyIndex++;
         }
         final String moveFeedback = _moveFeedback(
@@ -3357,7 +3377,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             _coachNote = '$moveFeedback $_coachNote';
           }
           _lastPlayerCoachNote = _coachNote;
-          if (_isTacticsMode) {
+          if (_gameMode == GameMode.puzzle && puzzleWrongMove) {
+            _gameResultTitle = 'Incorrect puzzle move';
+            _gameResultDetail =
+                'That move is legal chess, but it does not solve this position. '
+                'Review the board, then tap Try again.';
+            _resultVisible = false;
+            _coachNote =
+                'Legal move played, but the puzzle has a stronger forcing line. '
+                'Tap Try again to restore the starting position.';
+            _lastPlayerCoachNote = _coachNote;
+            unawaited(ChessSoundService.instance.error());
+          } else if (_isTacticsMode) {
             final bool opponentMated = _isCheckmateFor(!piece.white);
             if (opponentMated) {
               if (_gameMode == GameMode.daily) {
@@ -3395,7 +3426,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           onlineUci != null &&
           onlineExpectedPly != null) {
         unawaited(_submitOnlineMove(onlineUci!, onlineExpectedPly!));
-      } else {
+      } else if (!puzzleWrongMove) {
         _scheduleAiMove();
       }
     }
