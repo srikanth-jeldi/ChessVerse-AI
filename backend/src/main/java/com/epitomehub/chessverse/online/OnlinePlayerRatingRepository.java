@@ -1,9 +1,9 @@
 package com.epitomehub.chessverse.online;
 
 import jakarta.persistence.LockModeType;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -30,18 +30,20 @@ interface OnlinePlayerRatingRepository extends JpaRepository<OnlinePlayerRating,
 
     @Query("""
             select rating from OnlinePlayerRating rating
+            where rating.gamesPlayed > 0
             order by rating.rating desc, rating.wins desc, rating.gamesPlayed desc, rating.playerId
             """)
-    List<OnlinePlayerRating> global(Pageable pageable);
+    Page<OnlinePlayerRating> global(Pageable pageable);
 
     @Query("""
             select rating from OnlinePlayerRating rating
-            where lower(rating.country) = lower(:country)
+            where rating.gamesPlayed > 0 and lower(rating.country) = lower(:country)
             order by rating.rating desc, rating.wins desc, rating.gamesPlayed desc, rating.playerId
             """)
-    List<OnlinePlayerRating> byCountry(@Param("country") String country, Pageable pageable);
+    Page<OnlinePlayerRating> byCountry(@Param("country") String country, Pageable pageable);
 
-    long countByRatingGreaterThan(int rating);
+    long countByGamesPlayedGreaterThanAndRatingGreaterThan(int gamesPlayed, int rating);
 
-    long countByCountryIgnoreCaseAndRatingGreaterThan(String country, int rating);
+    long countByCountryIgnoreCaseAndGamesPlayedGreaterThanAndRatingGreaterThan(
+            String country, int gamesPlayed, int rating);
 }

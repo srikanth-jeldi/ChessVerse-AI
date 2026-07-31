@@ -43,6 +43,10 @@ final class LeaderboardDtos {
             String scope,
             String country,
             PlayerRatingDto you,
+            int page,
+            int pageSize,
+            long totalPlayers,
+            boolean hasNext,
             List<LeaderboardEntryDto> entries) {
     }
 }

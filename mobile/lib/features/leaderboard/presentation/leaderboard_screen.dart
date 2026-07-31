@@ -102,6 +102,16 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                       _switchScope(value.first),
                 ),
                 const SizedBox(height: 14),
+                Text(
+                  board.totalPlayers == 0
+                      ? 'No ranked players yet'
+                      : 'Top ${board.entries.length} of ${board.totalPlayers} ranked players',
+                  style: const TextStyle(
+                    color: Color(0xFF8197A4),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
                 if (board.entries.isEmpty)
                   const _EmptyBoard()
                 else
@@ -152,8 +162,10 @@ class _RatingHero extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: <Widget>[
-                _Metric('GLOBAL', '#${player.globalRank}'),
-                _Metric(player.country.toUpperCase(), '#${player.countryRank}'),
+                _Metric('GLOBAL',
+                    player.globalRank == 0 ? '—' : '#${player.globalRank}'),
+                _Metric(player.country.toUpperCase(),
+                    player.countryRank == 0 ? '—' : '#${player.countryRank}'),
                 _Metric('PEAK', '${player.peakRating}'),
               ],
             ),

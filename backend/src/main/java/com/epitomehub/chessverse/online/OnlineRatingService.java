@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class OnlineRatingService {
     private static final int K_FACTOR = 32;
-    private static final int LEADERBOARD_LIMIT = 100;
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final OnlinePlayerRatingRepository ratings;
 
@@ -74,26 +75,32 @@ public class OnlineRatingService {
 
     @Transactional
     public LeaderboardDtos.LeaderboardDto leaderboard(
-            AuthenticatedPlayer player, String rawScope, String requestedCountry) {
+            AuthenticatedPlayer player, String rawScope, String requestedCountry,
+            int requestedPage, int requestedSize) {
         OnlinePlayerRating you =
                 lockOrCreate(new PlayerSeed(player.id(), player.displayName()));
         String scope = "country".equalsIgnoreCase(rawScope) ? "country" : "global";
         String country = requestedCountry == null || requestedCountry.isBlank()
                 ? you.country
                 : normalizeCountry(requestedCountry);
-        List<OnlinePlayerRating> rows = scope.equals("country")
-                ? ratings.byCountry(country, PageRequest.of(0, LEADERBOARD_LIMIT))
-                : ratings.global(PageRequest.of(0, LEADERBOARD_LIMIT));
+        int pageNumber = Math.max(0, requestedPage);
+        int pageSize = Math.max(1, Math.min(MAX_PAGE_SIZE, requestedSize));
+        Page<OnlinePlayerRating> result = scope.equals("country")
+                ? ratings.byCountry(country, PageRequest.of(pageNumber, pageSize))
+                : ratings.global(PageRequest.of(pageNumber, pageSize));
+        List<OnlinePlayerRating> rows = result.getContent();
         List<LeaderboardDtos.LeaderboardEntryDto> entries = new ArrayList<>();
         for (int index = 0; index < rows.size(); index++) {
             OnlinePlayerRating row = rows.get(index);
             entries.add(new LeaderboardDtos.LeaderboardEntryDto(
-                    index + 1L, row.playerId, row.displayName, row.country, row.rating,
+                    (long) pageNumber * pageSize + index + 1L,
+                    row.playerId, row.displayName, row.country, row.rating,
                     row.gamesPlayed, row.wins, row.draws, row.losses,
                     row.playerId.equals(player.id())));
         }
         return new LeaderboardDtos.LeaderboardDto(
-                scope, scope.equals("country") ? country : null, profileDto(you), entries);
+                scope, scope.equals("country") ? country : null, profileDto(you),
+                pageNumber, pageSize, result.getTotalElements(), result.hasNext(), entries);
     }
 
     private OnlinePlayerRating lockOrCreate(PlayerSeed seed) {
@@ -119,12 +126,16 @@ public class OnlineRatingService {
     }
 
     private LeaderboardDtos.PlayerRatingDto profileDto(OnlinePlayerRating rating) {
+        long globalRank = rating.gamesPlayed == 0 ? 0
+                : ratings.countByGamesPlayedGreaterThanAndRatingGreaterThan(
+                        0, rating.rating) + 1;
+        long countryRank = rating.gamesPlayed == 0 ? 0
+                : ratings.countByCountryIgnoreCaseAndGamesPlayedGreaterThanAndRatingGreaterThan(
+                        rating.country, 0, rating.rating) + 1;
         return new LeaderboardDtos.PlayerRatingDto(
                 rating.playerId, rating.displayName, rating.country, rating.rating,
                 rating.peakRating, rating.gamesPlayed, rating.wins, rating.draws, rating.losses,
-                ratings.countByRatingGreaterThan(rating.rating) + 1,
-                ratings.countByCountryIgnoreCaseAndRatingGreaterThan(
-                        rating.country, rating.rating) + 1);
+                globalRank, countryRank);
     }
 
     private String normalizeCountry(String rawCountry) {
