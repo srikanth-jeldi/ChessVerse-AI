@@ -1,4 +1,5 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:uuid/uuid.dart';
 
 class StoredAuthSession {
   const StoredAuthSession({
@@ -8,6 +9,7 @@ class StoredAuthSession {
     this.username,
     this.email,
     this.photoUrl,
+    this.isGuest = false,
   });
 
   final String token;
@@ -16,6 +18,7 @@ class StoredAuthSession {
   final String? username;
   final String? email;
   final String? photoUrl;
+  final bool isGuest;
 
   bool get isExpired => !expiresAt.isAfter(DateTime.now().toUtc());
 }
@@ -34,6 +37,8 @@ class AuthSessionStore {
   static const String _emailKey = 'auth.email';
   static const String _photoUrlKey = 'auth.photoUrl';
   static const String _rememberMeKey = 'auth.rememberMe';
+  static const String _isGuestKey = 'auth.isGuest';
+  static const String _installationIdKey = 'device.installationId';
 
   Future<StoredAuthSession?> read() async {
     final Map<String, String> values = await _storage.readAll();
@@ -56,6 +61,7 @@ class AuthSessionStore {
       username: values[_usernameKey],
       email: values[_emailKey],
       photoUrl: values[_photoUrlKey],
+      isGuest: values[_isGuestKey] == 'true',
     );
     if (session.isExpired) {
       await clear();
@@ -85,6 +91,7 @@ class AuthSessionStore {
       _storage.write(key: _usernameKey, value: session.username),
       _storage.write(key: _emailKey, value: session.email),
       _storage.write(key: _photoUrlKey, value: session.photoUrl),
+      _storage.write(key: _isGuestKey, value: session.isGuest.toString()),
     ]);
     await _storage.write(key: _tokenKey, value: session.token);
   }
@@ -97,7 +104,16 @@ class AuthSessionStore {
       _storage.delete(key: _usernameKey),
       _storage.delete(key: _emailKey),
       _storage.delete(key: _photoUrlKey),
+      _storage.delete(key: _isGuestKey),
     ]);
+  }
+
+  Future<String> installationId() async {
+    final String? existing = await _storage.read(key: _installationIdKey);
+    if (existing != null && existing.isNotEmpty) return existing;
+    final String created = const Uuid().v4();
+    await _storage.write(key: _installationIdKey, value: created);
+    return created;
   }
 
   Future<void> clear() => clearSession();

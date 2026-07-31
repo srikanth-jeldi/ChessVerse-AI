@@ -147,7 +147,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   : Icons.verified_rounded,
               child: Text(
                 widget.isGuest
-                    ? 'Guest progress is stored securely on this device.'
+                    ? 'Guest identity and online progress sync securely from this device.'
                     : '${widget.email ?? 'Verified ChessVerseAI player'}\nYour identity and training progress are ready across ChessVerseAI.',
                 style: const TextStyle(
                   color: Color(0xFFA9BBC4),
@@ -282,7 +282,7 @@ class _ProfileHero extends StatelessWidget {
           Row(
             children: <Widget>[
               _HeroMetric(
-                  label: 'STATUS', value: isGuest ? 'LOCAL' : 'VERIFIED'),
+                  label: 'STATUS', value: isGuest ? 'GUEST ONLINE' : 'VERIFIED'),
               const _Divider(),
               _HeroMetric(label: 'CHESS LEVEL', value: '${_elo(level)} ELO'),
               const _Divider(),

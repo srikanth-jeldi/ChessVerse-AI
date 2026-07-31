@@ -91,6 +91,7 @@ class _SplashGateState extends State<SplashGate> {
     String? username = session.username;
     String? email = session.email;
     final String? photoUrl = session.photoUrl;
+    bool isGuest = session.isGuest;
     try {
       final Map<String, dynamic> player =
           await _authApi.currentPlayer(session.token);
@@ -99,6 +100,7 @@ class _SplashGateState extends State<SplashGate> {
           playerName;
       username = _profileValue(player['username']) ?? username;
       email = _profileValue(player['email']) ?? email;
+      isGuest = player['guest'] as bool? ?? isGuest;
     } on AuthApiException catch (error) {
       if (error.statusCode == 401 || error.statusCode == 403) {
         await _sessionStore.clear();
@@ -114,7 +116,7 @@ class _SplashGateState extends State<SplashGate> {
       _username = username;
       _email = email;
       _photoUrl = photoUrl;
-      _isGuest = false;
+      _isGuest = isGuest;
       _stage = _RootStage.home;
     });
   }

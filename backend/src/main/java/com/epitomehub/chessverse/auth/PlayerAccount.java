@@ -31,6 +31,9 @@ class PlayerAccount {
     @Column(name = "password_hash", nullable = false, length = 100)
     String passwordHash;
 
+    @Column(name = "guest_account", nullable = false)
+    boolean guestAccount;
+
     @Column(nullable = false)
     boolean verified;
 

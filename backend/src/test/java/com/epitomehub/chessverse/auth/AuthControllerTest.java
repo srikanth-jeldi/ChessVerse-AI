@@ -64,6 +64,26 @@ class AuthControllerTest {
     }
 
     @Test
+    void guestInstallationRestoresSameNumberedPlayerAndSession() throws Exception {
+        String request = "{\"installationId\":\"550e8400-e29b-41d4-a716-446655440000\"}";
+        MvcResult first = mockMvc.perform(post("/api/auth/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.player.guest").value(true))
+                .andExpect(jsonPath("$.player.username").value(org.hamcrest.Matchers.matchesPattern("guest_[0-9]{6}")))
+                .andReturn();
+        String firstPlayerId = objectMapper.readTree(first.getResponse().getContentAsString())
+                .path("player").path("id").asText();
+
+        mockMvc.perform(post("/api/auth/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.player.id").value(firstPlayerId));
+    }
+
+    @Test
     void verifiedSessionCanBeRestoredAndLoggedOut() throws Exception {
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

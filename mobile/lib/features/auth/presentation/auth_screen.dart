@@ -302,14 +302,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                         const SizedBox(height: 10),
                         OutlinedButton.icon(
-                          onPressed: _loading
-                              ? null
-                              : () => widget.onAuthenticated(
-                                    const ChessVerseAuthResult(
-                                      playerName: 'Guest Player',
-                                      isGuest: true,
-                                    ),
-                                  ),
+                          onPressed: _loading ? null : _continueAsGuest,
                           icon: const Icon(Icons.person_pin_circle_outlined),
                           label: const Text('Continue as Guest Player'),
                         ),
@@ -352,7 +345,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Use a verified account to save games, ratings and coach history. Guest Player is local-only for quick testing.',
+                          'Guest players receive a secure numbered identity for online games, ratings and history. Add Google or email later for account recovery.',
                           textAlign: TextAlign.center,
                           style:
                               Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -483,6 +476,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _completeAuthentication(
     Map<String, dynamic> data, {
     String? photoUrl,
+    bool? guestOverride,
   }) async {
     final String token = data['token'] as String? ?? '';
     final DateTime? expiresAt =
@@ -507,11 +501,12 @@ class _AuthScreenState extends State<AuthScreen> {
 
     final String? username = _nonBlankString(player['username']);
     final String? email = _nonBlankString(player['email']);
+    final bool isGuest = guestOverride ?? player['guest'] == true;
     final String name = _nonBlankString(player['displayName']) ??
         username ??
         email?.split('@').first ??
         'ChessVerseAI Player';
-    if (_rememberMe) {
+    if (_rememberMe || isGuest) {
       await _sessionStore.write(
         StoredAuthSession(
           token: token,
@@ -520,6 +515,7 @@ class _AuthScreenState extends State<AuthScreen> {
           username: username,
           email: email,
           photoUrl: photoUrl,
+          isGuest: isGuest,
         ),
       );
     } else {
@@ -530,13 +526,36 @@ class _AuthScreenState extends State<AuthScreen> {
     widget.onAuthenticated(
       ChessVerseAuthResult(
         playerName: name,
-        isGuest: false,
+        isGuest: isGuest,
         token: token,
         username: username,
         email: email,
         photoUrl: photoUrl,
       ),
     );
+  }
+
+  Future<void> _continueAsGuest() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final String installationId = await _sessionStore.installationId();
+      final Map<String, dynamic> data = await _authApi.post(
+        'guest',
+        <String, String>{'installationId': installationId},
+      );
+      await _completeAuthentication(data, guestOverride: true);
+    } on AuthApiException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Guest identity could not be created. Try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Map<String, dynamic> _stringKeyedMap(Object? value) {

@@ -94,7 +94,7 @@ void main() {
 
     expect(find.text('Welcome back'), findsOneWidget);
     expect(find.text('Continue as Guest Player'), findsOneWidget);
-    expect(find.textContaining('Guest Player is local-only'), findsOneWidget);
+    expect(find.textContaining('secure numbered identity'), findsOneWidget);
   });
 
   testWidgets('registration and login actions remain available', (

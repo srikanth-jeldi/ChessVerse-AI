@@ -27,6 +27,7 @@ class AuthService {
     private final PasswordResetRepository passwordResets;
     private final AuthSessionRepository sessions;
     private final OAuthIdentityRepository oauthIdentities;
+    private final GuestInstallationRepository guestInstallations;
     private final GoogleIdentityVerifier googleIdentityVerifier;
     private final OtpDelivery otpDelivery;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
@@ -43,6 +44,7 @@ class AuthService {
             PasswordResetRepository passwordResets,
             AuthSessionRepository sessions,
             OAuthIdentityRepository oauthIdentities,
+            GuestInstallationRepository guestInstallations,
             GoogleIdentityVerifier googleIdentityVerifier,
             OtpDelivery otpDelivery,
             @Value("${chessverse.auth.otp-expiry-minutes:10}") long otpExpiryMinutes,
@@ -55,6 +57,7 @@ class AuthService {
         this.passwordResets = passwordResets;
         this.sessions = sessions;
         this.oauthIdentities = oauthIdentities;
+        this.guestInstallations = guestInstallations;
         this.googleIdentityVerifier = googleIdentityVerifier;
         this.otpDelivery = otpDelivery;
         this.otpExpiry = Duration.ofMinutes(otpExpiryMinutes);
@@ -278,6 +281,34 @@ class AuthService {
     }
 
     @Transactional
+    AuthResponse guestLogin(GuestLoginRequest request) {
+        String installationHash = sha256(
+                UUID.fromString(request.installationId()).toString().toLowerCase(Locale.ROOT));
+        GuestInstallation installation = guestInstallations
+                .findWithPlayerByInstallationHash(installationHash)
+                .orElse(null);
+        PlayerAccount player;
+        if (installation == null) {
+            String number = availableGuestNumber();
+            player = new PlayerAccount(
+                    "guest_" + number,
+                    "Guest " + number,
+                    null,
+                    passwordEncoder.encode(UUID.randomUUID().toString()));
+            player.verified = true;
+            player.guestAccount = true;
+            players.save(player);
+            installation = new GuestInstallation(installationHash, player);
+        } else {
+            player = installation.player;
+            installation.lastSeenAt = Instant.now();
+        }
+        guestInstallations.save(installation);
+        sessions.deleteByPlayerId(player.id);
+        return createSession(player);
+    }
+
+    @Transactional
     PlayerResponse currentPlayer(String token) {
         String tokenHash = sha256(token);
         AuthSession session = sessions.findByTokenHash(tokenHash)
@@ -350,6 +381,16 @@ class AuthService {
             candidate = base + "_" + suffix++;
         }
         return candidate;
+    }
+
+    private String availableGuestNumber() {
+        for (int attempt = 0; attempt < 100; attempt++) {
+            String number = "%06d".formatted(random.nextInt(1_000_000));
+            if (players.findByUsernameIgnoreCase("guest_" + number).isEmpty()) {
+                return number;
+            }
+        }
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 10);
     }
 
     private String sha256(String value) {

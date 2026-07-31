@@ -41,7 +41,7 @@ class LegalScreen extends StatelessWidget {
             ),
             _LegalSection(
               'Accounts',
-              'You are responsible for your account credentials. Guest mode is local-only and may not sync progress.',
+              'Guest mode uses an app-generated installation identifier to sync online progress. Clearing app data or reinstalling may make that guest account unrecoverable unless it is upgraded to a verified account.',
             ),
             _LegalSection(
               'Fair play',
