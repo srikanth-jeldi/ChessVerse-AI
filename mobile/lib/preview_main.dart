@@ -90,6 +90,7 @@ class PreviewShell extends StatelessWidget {
       onPlayVsAi: () => _openGame(context, game.GameMode.computer),
       onDailyChallenge: () => _openGame(context, game.GameMode.daily),
       onLocalGame: () => _openGame(context, game.GameMode.local),
+      onOnlineGame: () => _openGame(context, game.GameMode.online),
       onAnalysis: () => _openAnalysis(context),
       onPuzzles: () => _push(context, const PuzzlesScreen()),
       onSavedGames: () => _push(context, const SavedGamesScreen()),
@@ -116,7 +117,7 @@ class PreviewShell extends StatelessWidget {
   }
 
   void _openSettings(BuildContext context) {
-    _push(context, const SettingsScreen());
+    _push(context, SettingsScreen(onLogout: () async {}));
   }
 
   void _push(BuildContext context, Widget screen) {
@@ -165,7 +166,7 @@ class _PreviewGameLauncherState extends State<_PreviewGameLauncher> {
   void _openSettings(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => const SettingsScreen(),
+        builder: (_) => SettingsScreen(onLogout: () async {}),
       ),
     );
   }

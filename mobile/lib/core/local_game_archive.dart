@@ -87,6 +87,7 @@ class RewardSnapshot {
 class LocalGameArchive {
   LocalGameArchive._();
 
+  static const Duration dailyChallengeLockDuration = Duration(hours: 24);
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
   static const String _completedDailyKey =
       'chessverse_completed_daily_challenges';
@@ -160,24 +161,29 @@ class LocalGameArchive {
   }
 
   static bool get isDailyChallengeLocked {
+    return isDailyChallengeLockedAt(DateTime.now());
+  }
+
+  static bool isDailyChallengeLockedAt(DateTime now) {
     final DateTime? completedAt = _lastDailyCompletedAt;
     if (completedAt == null) {
       return false;
     }
-    final DateTime now = DateTime.now();
-    final DateTime completedLocal = completedAt.toLocal();
-    return completedLocal.year == now.year &&
-        completedLocal.month == now.month &&
-        completedLocal.day == now.day;
+    final Duration elapsed = now.toUtc().difference(completedAt);
+    return !elapsed.isNegative && elapsed < dailyChallengeLockDuration;
   }
 
   static Duration get dailyChallengeRemaining {
-    if (!isDailyChallengeLocked) {
+    return dailyChallengeRemainingAt(DateTime.now());
+  }
+
+  static Duration dailyChallengeRemainingAt(DateTime now) {
+    final DateTime? completedAt = _lastDailyCompletedAt;
+    if (completedAt == null) {
       return Duration.zero;
     }
-    final DateTime now = DateTime.now();
-    final DateTime nextDay = DateTime(now.year, now.month, now.day + 1);
-    final Duration remaining = nextDay.difference(now);
+    final Duration remaining =
+        completedAt.add(dailyChallengeLockDuration).difference(now.toUtc());
     return remaining.isNegative ? Duration.zero : remaining;
   }
 
