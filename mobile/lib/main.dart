@@ -192,6 +192,8 @@ class _SplashGateState extends State<SplashGate> {
                 email: _email,
                 profilePhotoUrl: _photoUrl,
                 isGuest: _isGuest,
+                onSecureProgress:
+                    _isGuest ? () => _secureGuestProgress(context) : null,
                 onUsernameChanged: (String value) {
                   if (!mounted) return;
                   setState(() => _username = value);
@@ -339,6 +341,36 @@ class _SplashGateState extends State<SplashGate> {
       _isGuest = true;
       _stage = _RootStage.auth;
     });
+  }
+
+  Future<void> _secureGuestProgress(BuildContext currentRouteContext) async {
+    final StoredAuthSession? session = await _sessionStore.read();
+    if (session == null || !session.isGuest || !currentRouteContext.mounted) {
+      return;
+    }
+    await Navigator.of(currentRouteContext).push(
+      MaterialPageRoute<void>(
+        builder: (BuildContext upgradeContext) => AuthScreen(
+          guestUpgradeToken: session.token,
+          onAuthenticated: (ChessVerseAuthResult result) {
+            if (!mounted) return;
+            setState(() {
+              _playerName = result.playerName;
+              _username = result.username;
+              _email = result.email;
+              _photoUrl = result.photoUrl;
+              _isGuest = result.isGuest;
+            });
+            Navigator.of(upgradeContext).pop();
+            ScaffoldMessenger.of(currentRouteContext).showSnackBar(
+              const SnackBar(
+                content: Text('Progress secured with Google successfully.'),
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _push(BuildContext context, Widget screen) {
@@ -6725,45 +6757,45 @@ class _StudioCoachPanel extends StatelessWidget {
                   else
                     Row(
                       children: <Widget>[
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              'AI Coach ✦',
-                              style: TextStyle(
-                                color: const Color(0xFF63D2B8),
-                                fontFamily: 'serif',
-                                fontSize: compact ? 23 : 30,
-                                fontWeight: FontWeight.w800,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                'AI Coach ✦',
+                                style: TextStyle(
+                                  color: const Color(0xFF63D2B8),
+                                  fontFamily: 'serif',
+                                  fontSize: compact ? 23 : 30,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
-                            ),
-                            Text(
-                              modeLabel,
-                              style: const TextStyle(
-                                color: Color(0xFFE2B458),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.2,
+                              Text(
+                                modeLabel,
+                                style: const TextStyle(
+                                  color: Color(0xFFE2B458),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.2,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      IconButton.outlined(
-                        tooltip: gameMode == GameMode.online
-                            ? 'Undo is unavailable in online games'
-                            : 'Undo move',
-                        onPressed: canUndo ? onUndo : null,
-                        icon: const Icon(Icons.undo_rounded),
-                      ),
-                      const SizedBox(width: 6),
-                      IconButton.filled(
-                        key: const ValueKey<String>('open-full-controls'),
-                        tooltip: 'Game controls',
-                        onPressed: onControls,
-                        icon: const Icon(Icons.tune_rounded),
-                      ),
+                        IconButton.outlined(
+                          tooltip: gameMode == GameMode.online
+                              ? 'Undo is unavailable in online games'
+                              : 'Undo move',
+                          onPressed: canUndo ? onUndo : null,
+                          icon: const Icon(Icons.undo_rounded),
+                        ),
+                        const SizedBox(width: 6),
+                        IconButton.filled(
+                          key: const ValueKey<String>('open-full-controls'),
+                          tooltip: 'Game controls',
+                          onPressed: onControls,
+                          icon: const Icon(Icons.tune_rounded),
+                        ),
                       ],
                     ),
                   SizedBox(height: compact ? 8 : 14),

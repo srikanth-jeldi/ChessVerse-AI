@@ -11,6 +11,7 @@ class ProfileScreen extends StatefulWidget {
     this.profilePhotoUrl,
     this.isGuest = true,
     this.onUsernameChanged,
+    this.onSecureProgress,
     super.key,
   });
 
@@ -20,6 +21,7 @@ class ProfileScreen extends StatefulWidget {
   final String? profilePhotoUrl;
   final bool isGuest;
   final ValueChanged<String>? onUsernameChanged;
+  final Future<void> Function()? onSecureProgress;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -145,14 +147,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: widget.isGuest
                   ? Icons.person_outline_rounded
                   : Icons.verified_rounded,
-              child: Text(
-                widget.isGuest
-                    ? 'Guest identity and online progress sync securely from this device.'
-                    : '${widget.email ?? 'Verified ChessVerseAI player'}\nYour identity and training progress are ready across ChessVerseAI.',
-                style: const TextStyle(
-                  color: Color(0xFFA9BBC4),
-                  height: 1.45,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Text(
+                    widget.isGuest
+                        ? 'Guest identity and online progress are safe on this device. Secure with Google to restore them after reinstalling or changing devices.'
+                        : '${widget.email ?? 'Verified ChessVerseAI player'}\nYour identity and training progress are ready across ChessVerseAI.',
+                    style:
+                        const TextStyle(color: Color(0xFFA9BBC4), height: 1.45),
+                  ),
+                  if (widget.isGuest &&
+                      widget.onSecureProgress != null) ...<Widget>[
+                    const SizedBox(height: 14),
+                    FilledButton.icon(
+                      key: const ValueKey<String>('secure-guest-progress'),
+                      onPressed: () => widget.onSecureProgress!.call(),
+                      icon: const Icon(Icons.g_mobiledata_rounded),
+                      label: const Text('SECURE PROGRESS WITH GOOGLE'),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],
@@ -282,7 +297,8 @@ class _ProfileHero extends StatelessWidget {
           Row(
             children: <Widget>[
               _HeroMetric(
-                  label: 'STATUS', value: isGuest ? 'GUEST ONLINE' : 'VERIFIED'),
+                  label: 'STATUS',
+                  value: isGuest ? 'GUEST ONLINE' : 'VERIFIED'),
               const _Divider(),
               _HeroMetric(label: 'CHESS LEVEL', value: '${_elo(level)} ELO'),
               const _Divider(),

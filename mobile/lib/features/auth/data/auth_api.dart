@@ -43,6 +43,30 @@ class AuthApi {
     return _decode(response);
   }
 
+  Future<Map<String, dynamic>> upgradeGuestWithGoogle(
+    String token,
+    String idToken,
+  ) async {
+    final http.Response response;
+    try {
+      response = await http
+          .post(
+            Uri.parse('${AppConfig.apiBaseUrl}/api/auth/google/upgrade'),
+            headers: <String, String>{
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(<String, String>{'idToken': idToken}),
+          )
+          .timeout(const Duration(seconds: 15));
+    } on TimeoutException {
+      throw const AuthApiException('The server took too long to respond.');
+    } catch (_) {
+      throw const AuthApiException(_connectionMessage);
+    }
+    return _decode(response);
+  }
+
   Future<void> logout(String token) async {
     try {
       await http.post(

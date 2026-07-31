@@ -281,6 +281,52 @@ class AuthService {
     }
 
     @Transactional
+    AuthResponse upgradeGuestWithGoogle(String token, GoogleLoginRequest request) {
+        AuthSession session = requireSession(token);
+        PlayerAccount guest = session.player;
+        if (!guest.guestAccount) {
+            throw new AuthException(HttpStatus.CONFLICT, "This ChessVerseAI account is already secured.");
+        }
+
+        GoogleIdentityVerifier.VerifiedGoogleIdentity google =
+                googleIdentityVerifier.verify(request.idToken());
+        OAuthIdentity identity =
+                oauthIdentities.findByProviderAndSubject("google", google.subject()).orElse(null);
+        if (identity != null && !identity.player.id.equals(guest.id)) {
+            throw new AuthException(
+                    HttpStatus.CONFLICT,
+                    "That Google account already has ChessVerseAI progress. Sign in with Google to use it; your guest progress remains safe on this device.");
+        }
+
+        String email = normalizeEmail(google.email());
+        PlayerAccount emailOwner = players.findByEmailIgnoreCase(email).orElse(null);
+        if (emailOwner != null && !emailOwner.id.equals(guest.id)) {
+            throw new AuthException(
+                    HttpStatus.CONFLICT,
+                    "That email already has a ChessVerseAI account. Sign in to that account; your guest progress remains safe on this device.");
+        }
+
+        String displayName = google.displayName() == null || google.displayName().isBlank()
+                ? email.substring(0, email.indexOf('@'))
+                : google.displayName().trim();
+        guest.username = availableGoogleUsername(email);
+        guest.displayName = displayName.substring(0, Math.min(displayName.length(), 80));
+        guest.email = email;
+        guest.photoUrl = google.photoUrl();
+        guest.guestAccount = false;
+        guest.verified = true;
+        guest.failedLoginAttempts = 0;
+        guest.lockedUntil = null;
+        guest.updatedAt = Instant.now();
+        players.save(guest);
+        if (identity == null) {
+            oauthIdentities.save(new OAuthIdentity("google", google.subject(), guest));
+        }
+        sessions.deleteByPlayerId(guest.id);
+        return createSession(guest);
+    }
+
+    @Transactional
     AuthResponse guestLogin(GuestLoginRequest request) {
         String installationHash = sha256(
                 UUID.fromString(request.installationId()).toString().toLowerCase(Locale.ROOT));
@@ -310,14 +356,7 @@ class AuthService {
 
     @Transactional
     PlayerResponse currentPlayer(String token) {
-        String tokenHash = sha256(token);
-        AuthSession session = sessions.findByTokenHash(tokenHash)
-                .orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED, "Your session is invalid."));
-        if (session.expiresAt.isBefore(Instant.now())) {
-            sessions.delete(session);
-            throw new AuthException(HttpStatus.UNAUTHORIZED, "Your session has expired.");
-        }
-        return PlayerResponse.from(session.player);
+        return PlayerResponse.from(requireSession(token).player);
     }
 
     @Transactional
@@ -381,6 +420,16 @@ class AuthService {
             candidate = base + "_" + suffix++;
         }
         return candidate;
+    }
+
+    private AuthSession requireSession(String token) {
+        AuthSession session = sessions.findByTokenHash(sha256(token))
+                .orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED, "Your session is invalid."));
+        if (session.expiresAt.isBefore(Instant.now())) {
+            sessions.delete(session);
+            throw new AuthException(HttpStatus.UNAUTHORIZED, "Your session has expired.");
+        }
+        return session;
     }
 
     private String availableGuestNumber() {

@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.when;
 
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -30,6 +32,9 @@ class AuthControllerTest {
 
     @Autowired
     TestOtpDelivery otpDelivery;
+
+    @MockitoBean
+    GoogleIdentityVerifier googleIdentityVerifier;
 
     @Test
     void registrationCreatesPendingAccountAndSendsOtp() throws Exception {
@@ -81,6 +86,42 @@ class AuthControllerTest {
                         .content(request))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.player.id").value(firstPlayerId));
+    }
+
+    @Test
+    void guestUpgradeKeepsPlayerIdAndMakesInstallationPermanent() throws Exception {
+        String request = "{\"installationId\":\"9b2b103d-8d66-4bf5-9e91-ef5578f20c0a\"}";
+        MvcResult guestLogin = mockMvc.perform(post("/api/auth/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andReturn();
+        var guestJson = objectMapper.readTree(guestLogin.getResponse().getContentAsString());
+        String playerId = guestJson.path("player").path("id").asText();
+        String guestToken = guestJson.path("token").asText();
+        when(googleIdentityVerifier.verify("verified-google-token"))
+                .thenReturn(new GoogleIdentityVerifier.VerifiedGoogleIdentity(
+                        "google-subject-upgrade",
+                        "permanent@example.com",
+                        "Permanent Player",
+                        "https://example.com/avatar.png"));
+
+        mockMvc.perform(post("/api/auth/google/upgrade")
+                        .header("Authorization", "Bearer " + guestToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"idToken\":\"verified-google-token\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.player.id").value(playerId))
+                .andExpect(jsonPath("$.player.guest").value(false))
+                .andExpect(jsonPath("$.player.email").value("permanent@example.com"))
+                .andExpect(jsonPath("$.player.displayName").value("Permanent Player"));
+
+        mockMvc.perform(post("/api/auth/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.player.id").value(playerId))
+                .andExpect(jsonPath("$.player.guest").value(false));
     }
 
     @Test
