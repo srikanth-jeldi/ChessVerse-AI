@@ -49,6 +49,8 @@ class HomeDashboardScreen extends StatelessWidget {
             child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
                 final bool wide = constraints.maxWidth >= 720;
+                final bool desktopViewport =
+                    wide && constraints.maxHeight >= 600;
                 final Widget content = Center(
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
@@ -98,6 +100,21 @@ class HomeDashboardScreen extends StatelessWidget {
                         alignment: Alignment.center,
                         child: SizedBox(
                           width: constraints.maxWidth - 30,
+                          child: content,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                if (desktopViewport) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 14, 28, 20),
+                    child: SizedBox.expand(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.center,
+                        child: SizedBox(
+                          width: constraints.maxWidth - 56,
                           child: content,
                         ),
                       ),
@@ -247,6 +264,7 @@ class _TopBar extends StatelessWidget {
                   child: Image.network(
                     profilePhotoUrl!,
                     fit: BoxFit.cover,
+                    webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
                     errorBuilder: (_, __, ___) => const Icon(
                       Icons.emoji_events_rounded,
                       color: Colors.white,
@@ -340,20 +358,26 @@ class _BrandHero extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 13),
-        ShaderMask(
-          shaderCallback: (Rect bounds) => const LinearGradient(
-            colors: <Color>[Colors.white, Color(0xFF9DD9FF)],
-          ).createShader(bounds),
-          child: const Text(
-            'CHESSVERSEAI',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 34,
-              height: 1,
-              letterSpacing: 1.6,
-              fontWeight: FontWeight.w900,
-            ),
+        const Text.rich(
+          TextSpan(
+            children: <InlineSpan>[
+              TextSpan(
+                text: 'CHESSVERSE',
+                style: TextStyle(color: Color(0xFFDDF2FF)),
+              ),
+              TextSpan(
+                text: 'AI',
+                style: TextStyle(color: AppColors.accentGold),
+              ),
+            ],
+          ),
+          semanticsLabel: 'ChessVerseAI',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 34,
+            height: 1,
+            letterSpacing: 1.6,
+            fontWeight: FontWeight.w900,
           ),
         ),
         const SizedBox(height: 6),

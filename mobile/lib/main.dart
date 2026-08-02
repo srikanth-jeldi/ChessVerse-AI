@@ -94,7 +94,7 @@ class _SplashGateState extends State<SplashGate> {
     String playerName = session.displayName;
     String? username = session.username;
     String? email = session.email;
-    final String? photoUrl = session.photoUrl;
+    String? photoUrl = session.photoUrl;
     bool isGuest = session.isGuest;
     try {
       final Map<String, dynamic> player =
@@ -104,6 +104,7 @@ class _SplashGateState extends State<SplashGate> {
           playerName;
       username = _profileValue(player['username']) ?? username;
       email = _profileValue(player['email']) ?? email;
+      photoUrl = _profileValue(player['photoUrl']) ?? photoUrl;
       isGuest = player['guest'] as bool? ?? isGuest;
     } on AuthApiException catch (error) {
       if (error.statusCode == 401 || error.statusCode == 403) {
@@ -600,46 +601,27 @@ class BrandedSplash extends StatelessWidget {
               ],
             );
           }
-          final double maxHeroWidth = wide
-              ? constraints.maxWidth.clamp(520.0, 980.0)
-              : constraints.maxWidth * 0.96;
-          final double maxHeroHeight =
-              wide ? constraints.maxHeight * 0.9 : constraints.maxHeight * 0.86;
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
-              ImageFiltered(
-                imageFilter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: const Image(
-                  image: AssetImage(wideAsset),
-                  fit: BoxFit.cover,
-                  alignment: Alignment.center,
-                ),
+              const Image(
+                image: AssetImage(wideAsset),
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+                filterQuality: FilterQuality.high,
               ),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment(0, -0.08),
-                    radius: 0.9,
-                    colors: <Color>[
-                      Color(0x66066C63),
-                      Color(0xD902070D),
-                      Color(0xFF02070D),
-                    ],
-                  ),
-                ),
-              ),
-              SafeArea(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: maxHeroWidth,
-                      maxHeight: maxHeroHeight,
-                    ),
-                    child: Image(
-                      image: const AssetImage(wideAsset),
-                      fit: BoxFit.contain,
-                      alignment: Alignment.center,
+              IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        Color(0x1202070D),
+                        Colors.transparent,
+                        Color(0x2602070D),
+                      ],
+                      stops: <double>[0, 0.62, 1],
                     ),
                   ),
                 ),
@@ -2064,99 +2046,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     )
                   : BoardStage(palette: palette, child: board);
 
-              Widget buildPanel({
-                ValueChanged<GameMode>? onModeChanged,
-              }) =>
-                  GamePanel(
-                    compact: !wide ||
-                        constraints.maxHeight < 620 ||
-                        widePanelWidth < 340,
-                    collapsible: true,
-                    expanded: _controlsExpanded,
-                    whitePlayerName: _whitePlayerName,
-                    blackPlayerName: _blackPlayerName,
-                    activeColor:
-                        _gameMode == GameMode.online && _onlineMatch != null
-                            ? (_onlineMatch!.whiteToMove ? 'White' : 'Black')
-                            : (_moves.length.isEven ? 'White' : 'Black'),
-                    gameMode: _gameMode,
-                    aiLevel: _aiLevel.round(),
-                    aiThinking: _aiThinking,
-                    coachEnabled: _coachEnabled,
-                    moves: _moves,
-                    capturedWhite: _capturedWhite,
-                    capturedBlack: _capturedBlack,
-                    coachNote: _coachNote,
-                    whiteClock: _formatClock(_whiteSeconds),
-                    blackClock: _formatClock(_blackSeconds),
-                    skin: _skin,
-                    onSkinChanged: (BoardSkin skin) =>
-                        setState(() => _skin = skin),
-                    onGameModeChanged: onModeChanged ?? _changeGameMode,
-                    dailyDifficulty: _dailyDifficulty,
-                    dailyProgress: _dailyPlayerMovesCompleted,
-                    dailyGoal: _dailyChallenge.playerMoveGoal,
-                    dailyMistakes: _dailyMistakes,
-                    onDailyDifficultyChanged: _changeDailyDifficulty,
-                    onAiLevelChanged: (double level) {
-                      setState(() => _aiLevel = level);
-                    },
-                    onCoachChanged: (bool value) {
-                      setState(() => _coachEnabled = value);
-                    },
-                    onNewGameRequested: _confirmNewGame,
-                    onResign: _resignGame,
-                    onOfferDraw: _offerDraw,
-                    onMoveHistory: _showMoveHistory,
-                    onUndo: _undo,
-                    onHint: _showHint,
-                    onAnalyze: _showAnalysis,
-                    soundEnabled: _soundEnabled,
-                    showCoordinates: _showCoordinates,
-                    showMoveHints: _showMoveHints,
-                    onSoundChanged: _setSoundEnabled,
-                    onShowCoordinatesChanged: (bool value) {
-                      setState(() => _showCoordinates = value);
-                    },
-                    onShowMoveHintsChanged: (bool value) {
-                      setState(() => _showMoveHints = value);
-                    },
-                    onEditBlackPlayer: _editBlackPlayerName,
-                    onToggleExpanded: () {
-                      setState(() => _controlsExpanded = !_controlsExpanded);
-                    },
-                    onLogout: _logout,
-                    canUndo:
-                        _gameMode != GameMode.online && _history.isNotEmpty,
-                  );
-              void openFullControls() {
-                showModalBottomSheet<void>(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (BuildContext sheetContext) => StatefulBuilder(
-                    builder: (
-                      BuildContext context,
-                      StateSetter setSheetState,
-                    ) =>
-                        SafeArea(
-                      child: FractionallySizedBox(
-                        heightFactor: 0.92,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: buildPanel(
-                            onModeChanged: (GameMode mode) {
-                              _changeGameMode(mode);
-                              setSheetState(() {});
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }
-
               final Widget studioCoach = _StudioCoachPanel(
                 gameMode: _gameMode,
                 activeColor:
@@ -2179,7 +2068,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                         )
                     : _confirmNewGame,
                 onUndo: _undo,
-                onControls: openFullControls,
                 puzzleComplete: _gameMode == GameMode.puzzle &&
                     _gameResultTitle == 'Puzzle complete',
                 onNextPuzzle: _startNextPuzzle,
@@ -2267,9 +2155,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
                             CompactHeader(
-                              playerName: _whitePlayerName,
                               onHome: () => Navigator.of(context).pop(),
-                              onDailyChallenge: _openDailyChallenge,
                               onProfile: _openProfile,
                               onReset: _confirmNewGame,
                               onLogout: _logout,
@@ -5243,18 +5129,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
 class CompactHeader extends StatelessWidget {
   const CompactHeader({
-    required this.playerName,
     required this.onHome,
-    required this.onDailyChallenge,
     required this.onProfile,
     required this.onReset,
     required this.onLogout,
     super.key,
   });
 
-  final String playerName;
   final VoidCallback onHome;
-  final VoidCallback onDailyChallenge;
   final VoidCallback onProfile;
   final VoidCallback onReset;
   final VoidCallback onLogout;
@@ -5266,9 +5148,21 @@ class CompactHeader extends StatelessWidget {
         const ChessVerseMark(size: 36),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(
-            'ChessVerseAI  |  $playerName',
-            style: Theme.of(context).textTheme.titleLarge,
+          child: Text.rich(
+            const TextSpan(
+              children: <InlineSpan>[
+                TextSpan(text: 'ChessVerse'),
+                TextSpan(
+                  text: 'AI',
+                  style: TextStyle(color: Color(0xFFEABF61)),
+                ),
+              ],
+            ),
+            semanticsLabel: 'ChessVerseAI',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -5276,11 +5170,6 @@ class CompactHeader extends StatelessWidget {
           tooltip: 'Home',
           onPressed: onHome,
           icon: const Icon(Icons.home_rounded),
-        ),
-        IconButton(
-          tooltip: 'Daily challenge',
-          onPressed: onDailyChallenge,
-          icon: const Icon(Icons.local_fire_department_rounded),
         ),
         IconButton(
           tooltip: 'Profile',
@@ -6853,7 +6742,6 @@ class _StudioCoachPanel extends StatelessWidget {
     required this.onAnalyze,
     required this.onTryAgain,
     required this.onUndo,
-    required this.onControls,
     required this.puzzleComplete,
     required this.onNextPuzzle,
     required this.onBackToAcademy,
@@ -6873,7 +6761,6 @@ class _StudioCoachPanel extends StatelessWidget {
   final VoidCallback onAnalyze;
   final VoidCallback onTryAgain;
   final VoidCallback onUndo;
-  final VoidCallback onControls;
   final bool puzzleComplete;
   final VoidCallback onNextPuzzle;
   final VoidCallback onBackToAcademy;
@@ -6981,13 +6868,6 @@ class _StudioCoachPanel extends StatelessWidget {
                           onPressed: canUndo ? onUndo : null,
                           icon: const Icon(Icons.undo_rounded),
                         ),
-                        const SizedBox(width: 6),
-                        IconButton.filled(
-                          key: const ValueKey<String>('open-full-controls'),
-                          tooltip: 'Game controls',
-                          onPressed: onControls,
-                          icon: const Icon(Icons.tune_rounded),
-                        ),
                       ],
                     ),
                   SizedBox(height: compact ? 8 : 14),
@@ -7002,62 +6882,68 @@ class _StudioCoachPanel extends StatelessWidget {
                       ),
                     ),
                   ),
-                  SizedBox(height: compact ? 7 : 10),
-                  _CoachInsightCard(
-                    icon: Icons.help_outline_rounded,
-                    accent: const Color(0xFF9C6CFF),
-                    child: Text(
-                      coachEnabled
-                          ? coachNote
-                          : 'Enable Coach in Game controls for a position-specific explanation.',
-                      maxLines: compact ? 2 : 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: compact ? 7 : 10),
-                  _CoachInsightCard(
-                    icon: Icons.workspace_premium_rounded,
-                    accent: const Color(0xFF63D2B8),
-                    child: Text(
-                      aiThinking
-                          ? 'ChessVerseAI is calculating…'
-                          : lastMove == null
-                              ? 'Select a piece to begin'
-                              : '${lastMoveOwner ?? 'Last move'}: $lastMove',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF63D2B8),
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: compact ? 7 : 10),
-                  Expanded(
-                    child: _CoachInsightCard(
-                      icon: Icons.chat_bubble_rounded,
-                      accent: const Color(0xFF63D2B8),
-                      alignStart: true,
-                      child: SingleChildScrollView(
+                  if (!compact) ...<Widget>[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 74,
+                      child: _CoachInsightCard(
+                        icon: Icons.help_outline_rounded,
+                        accent: const Color(0xFF9C6CFF),
                         child: Text(
                           coachEnabled
                               ? coachNote
-                              : 'Turn Coach on from Game controls to receive move-by-move explanations.',
-                          style: TextStyle(
-                            color: const Color(0xFFF2EDE4),
-                            fontFamily: 'serif',
-                            fontSize: compact ? 14 : 16,
-                            height: 1.35,
+                              : 'Enable Coach for a position-specific explanation.',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            height: 1.2,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
                     ),
-                  ),
+                    SizedBox(height: compact ? 7 : 10),
+                    _CoachInsightCard(
+                      icon: Icons.workspace_premium_rounded,
+                      accent: const Color(0xFF63D2B8),
+                      child: Text(
+                        aiThinking
+                            ? 'ChessVerseAI is calculating…'
+                            : lastMove == null
+                                ? 'Select a piece to begin'
+                                : '${lastMoveOwner ?? 'Last move'}: $lastMove',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF63D2B8),
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: _CoachInsightCard(
+                        icon: Icons.chat_bubble_rounded,
+                        accent: const Color(0xFF63D2B8),
+                        alignStart: true,
+                        child: SingleChildScrollView(
+                          child: Text(
+                            coachEnabled
+                                ? coachNote
+                                : 'Turn Coach on from Game controls to receive move-by-move explanations.',
+                            style: TextStyle(
+                              color: const Color(0xFFF2EDE4),
+                              fontFamily: 'serif',
+                              fontSize: compact ? 14 : 16,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                   if (!compact) ...<Widget>[
                     const SizedBox(height: 10),
                     _CoachProgress(
@@ -7073,7 +6959,7 @@ class _StudioCoachPanel extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: onHint,
-                          icon: const Icon(Icons.lightbulb_outline_rounded),
+                          icon: const Icon(Icons.tips_and_updates_outlined),
                           label: const Text('Hint'),
                         ),
                       ),

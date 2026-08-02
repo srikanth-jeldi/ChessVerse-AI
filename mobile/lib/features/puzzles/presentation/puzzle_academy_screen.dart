@@ -141,8 +141,11 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
               slivers: <Widget>[
                 SliverAppBar(
                   pinned: true,
-                  backgroundColor: const Color(0xEE071522),
+                  backgroundColor: const Color(0xFF071522),
                   surfaceTintColor: Colors.transparent,
+                  elevation: 4,
+                  scrolledUnderElevation: 4,
+                  shadowColor: Colors.black87,
                   title: const Text(
                     'PUZZLE ACADEMY',
                     style: TextStyle(
