@@ -63,6 +63,7 @@ class _SplashGateState extends State<SplashGate> {
   static const AuthSessionStore _sessionStore = AuthSessionStore();
   static const CloudProgressApi _cloudProgressApi = CloudProgressApi();
   Timer? _timer;
+  bool _splashArtworkLoadingStarted = false;
   _RootStage _stage = _RootStage.splash;
   String _playerName = 'Guest Player';
   String? _username;
@@ -75,6 +76,27 @@ class _SplashGateState extends State<SplashGate> {
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_splashArtworkLoadingStarted) return;
+    _splashArtworkLoadingStarted = true;
+    final double width = MediaQuery.sizeOf(context).width;
+    final String artwork = width >= 720
+        ? 'assets/branding/chessverse_king_dual_splash.jpg'
+        : 'assets/branding/splash_screen_mobile_v2.jpg';
+    unawaited(_preloadSplashAndStartTimer(artwork));
+  }
+
+  Future<void> _preloadSplashAndStartTimer(String artwork) async {
+    try {
+      await precacheImage(AssetImage(artwork), context);
+    } catch (_) {
+      // Continue with the code-rendered branding if an image decoder fails.
+    }
+    if (!mounted) return;
     _timer = Timer(const Duration(milliseconds: 2200), () {
       if (mounted) {
         setState(() => _stage = _RootStage.loading);
