@@ -1652,6 +1652,7 @@ class GameScreen extends StatefulWidget {
     this.initialPuzzleId,
     this.initialOnlineMatch,
     this.initialAuthToken,
+    this.onlineApi,
     this.onLogout,
     super.key,
   });
@@ -1669,6 +1670,7 @@ class GameScreen extends StatefulWidget {
   final String? initialPuzzleId;
   final OnlineMatchDto? initialOnlineMatch;
   final String? initialAuthToken;
+  final OnlineMatchApi? onlineApi;
   final Future<void> Function()? onLogout;
 
   @override
@@ -1679,7 +1681,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   static const AuthApi _authApi = AuthApi();
   static const AuthSessionStore _sessionStore = AuthSessionStore();
   static const EngineApi _engineApi = EngineApi();
-  static const OnlineMatchApi _onlineApi = OnlineMatchApi();
+  OnlineMatchApi get _onlineApi => widget.onlineApi ?? const OnlineMatchApi();
   static const AppPreferences _preferences = AppPreferences();
   final math.Random _random = math.Random();
   AudioPlayer? _warningPlayer;
@@ -4668,6 +4670,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final List<String> history = <String>[];
     final List<ChessPiece> capturedWhite = <ChessPiece>[];
     final List<ChessPiece> capturedBlack = <ChessPiece>[];
+    ChessPiece? replayLastMovedPiece;
+    ChessPiece? replayLastCapturedPiece;
+    String? replayLastCaptureSquare;
     for (final OnlineMoveDto remoteMove in match.moves) {
       final String uci = remoteMove.uci.toLowerCase();
       if (uci.length < 4) continue;
@@ -4695,6 +4700,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         piece = ChessPiece(uci[4].toUpperCase(), piece.white);
       }
       board[to] = piece;
+      replayLastMovedPiece = piece;
+      replayLastCapturedPiece = captured;
+      replayLastCaptureSquare = captured == null ? null : to;
       history.insert(
         0,
         captured == null ? '$from$to' : '$from x $to',
@@ -4727,11 +4735,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _lastFromSquare = null;
         _lastToSquare = null;
         _lastCaptureSquare = null;
+        _lastMovedPiece = null;
+        _lastCapturedPiece = null;
       } else {
         final String lastUci = match.moves.last.uci.toLowerCase();
         _lastFromSquare = lastUci.length >= 4 ? lastUci.substring(0, 2) : null;
         _lastToSquare = lastUci.length >= 4 ? lastUci.substring(2, 4) : null;
-        _lastCaptureSquare = null;
+        _lastCaptureSquare = replayLastCaptureSquare;
+        _lastMovedPiece = replayLastMovedPiece;
+        _lastCapturedPiece = replayLastCapturedPiece;
       }
     });
     _applyOnlineLifecycle(match);
