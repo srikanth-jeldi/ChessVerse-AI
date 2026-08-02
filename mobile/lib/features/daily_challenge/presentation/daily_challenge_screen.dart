@@ -34,21 +34,32 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     final bool wide = AppBreakpoints.isTabletOrLarger(context);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('Daily Challenge'),
         actions: <Widget>[
           IconButton(
-            onPressed: () => setState(() => _showResultPreview = !_showResultPreview),
+            onPressed: () =>
+                setState(() => _showResultPreview = !_showResultPreview),
             icon: Icon(
-              _showResultPreview ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+              _showResultPreview
+                  ? Icons.visibility_off_rounded
+                  : Icons.visibility_rounded,
             ),
             tooltip: 'Toggle result preview',
           ),
         ],
       ),
       body: ResponsivePage(
-        child: wide ? _WideLayout(challenge: _challenge, onDifficultyChanged: _changeDifficulty, onResultToggle: _toggleResult) : _PhoneLayout(challenge: _challenge, onDifficultyChanged: _changeDifficulty, onResultToggle: _toggleResult),
+        child: wide
+            ? _WideLayout(
+                challenge: _challenge,
+                onDifficultyChanged: _changeDifficulty,
+                onResultToggle: _toggleResult)
+            : _PhoneLayout(
+                challenge: _challenge,
+                onDifficultyChanged: _changeDifficulty,
+                onResultToggle: _toggleResult),
       ),
     );
   }
@@ -87,7 +98,8 @@ class _PhoneLayout extends StatelessWidget {
           onViewDetails: onResultToggle,
         ),
         const SizedBox(height: 20),
-        Text('Choose difficulty', style: Theme.of(context).textTheme.titleLarge),
+        Text('Choose difficulty',
+            style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
         DailyChallengeDifficultySelector(
           selected: challenge.difficulty,
@@ -142,7 +154,8 @@ class _WideLayout extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text('Choose difficulty', style: Theme.of(context).textTheme.titleLarge),
+                    Text('Choose difficulty',
+                        style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 12),
                     DailyChallengeDifficultySelector(
                       selected: challenge.difficulty,
@@ -189,7 +202,8 @@ class _RulesCard extends StatelessWidget {
                   color: AppColors.info.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.lightbulb_rounded, color: AppColors.info),
+                child:
+                    const Icon(Icons.lightbulb_rounded, color: AppColors.info),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -203,7 +217,9 @@ class _RulesCard extends StatelessWidget {
           const SizedBox(height: 14),
           _RuleLine(text: 'Solve one tactical puzzle every day.'),
           _RuleLine(text: 'Only forcing moves keep the challenge alive.'),
-          _RuleLine(text: 'Complete ${challenge.moveGoal} moves to protect your streak.'),
+          _RuleLine(
+              text:
+                  'Complete ${challenge.moveGoal} moves to protect your streak.'),
           const SizedBox(height: 12),
           Text(
             'Next integration step: connect this UI to the existing DailyChallenge game mode in main.dart without changing board logic.',
@@ -227,7 +243,8 @@ class _RuleLine extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.success),
+          const Icon(Icons.check_circle_rounded,
+              size: 18, color: AppColors.success),
           const SizedBox(width: 8),
           Expanded(
             child: Text(text, style: Theme.of(context).textTheme.bodyMedium),

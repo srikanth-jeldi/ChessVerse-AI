@@ -50,10 +50,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF030A12),
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('RANKINGS'),
-        backgroundColor: const Color(0xFF071522),
+        backgroundColor: const Color(0xD9071827),
       ),
       body: FutureBuilder<LeaderboardDto>(
         future: _leaderboard,

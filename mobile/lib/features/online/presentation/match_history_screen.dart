@@ -31,10 +31,10 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF030A12),
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('MATCH HISTORY'),
-        backgroundColor: const Color(0xFF071522),
+        backgroundColor: const Color(0xD9071827),
       ),
       body: RefreshIndicator(
         onRefresh: _refresh,
@@ -314,10 +314,10 @@ class _OnlineMatchReplayScreenState extends State<OnlineMatchReplayScreen> {
     final _MatchPresentation presentation = _MatchPresentation(match);
     final bool flipped = match.yourColor.toLowerCase() == 'black';
     return Scaffold(
-      backgroundColor: const Color(0xFF030A12),
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('GAME REPLAY'),
-        backgroundColor: const Color(0xFF071522),
+        backgroundColor: const Color(0xD9071827),
       ),
       body: SafeArea(
         child: LayoutBuilder(

@@ -45,133 +45,120 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final LocalGameStats stats = LocalGameArchive.stats();
     final RewardSnapshot rewards = LocalGameArchive.rewards();
     return Scaffold(
-      backgroundColor: const Color(0xFF030A12),
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('PLAYER PROFILE'),
         centerTitle: false,
-        backgroundColor: const Color(0xFF071522),
+        backgroundColor: const Color(0xD9071827),
       ),
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: <Color>[
-              Color(0xFF0C2834),
-              Color(0xFF071522),
-              Color(0xFF030A12),
-            ],
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 36),
+        children: <Widget>[
+          _ProfileHero(
+            playerName: widget.playerName,
+            username: _username,
+            country: LocalGameArchive.profileCountry,
+            level: LocalGameArchive.profileLevel,
+            avatar: LocalGameArchive.profileAvatar,
+            profilePhotoUrl: widget.profilePhotoUrl,
+            isGuest: widget.isGuest,
+            onEdit: _editProfile,
           ),
-        ),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 36),
-          children: <Widget>[
-            _ProfileHero(
-              playerName: widget.playerName,
-              username: _username,
-              country: LocalGameArchive.profileCountry,
-              level: LocalGameArchive.profileLevel,
-              avatar: LocalGameArchive.profileAvatar,
-              profilePhotoUrl: widget.profilePhotoUrl,
-              isGuest: widget.isGuest,
-              onEdit: _editProfile,
+          const SizedBox(height: 18),
+          _SectionCard(
+            title: 'PLAYER PROGRESS',
+            icon: Icons.military_tech_rounded,
+            trailing: _Pill(
+              icon: Icons.paid_rounded,
+              label: '${rewards.coins} coins',
             ),
-            const SizedBox(height: 18),
-            _SectionCard(
-              title: 'PLAYER PROGRESS',
-              icon: Icons.military_tech_rounded,
-              trailing: _Pill(
-                icon: Icons.paid_rounded,
-                label: '${rewards.coins} coins',
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    'Level ${rewards.level}  •  ${rewards.xp} XP',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(99),
-                    child: LinearProgressIndicator(
-                      minHeight: 10,
-                      value: rewards.levelProgress,
-                      color: AppColors.accentGold,
-                      backgroundColor: const Color(0xFF263645),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: <Widget>[
-                      _Pill(
-                        icon: Icons.local_fire_department_rounded,
-                        label: '${rewards.streak} day streak',
-                      ),
-                      _Pill(
-                        icon: Icons.workspace_premium_rounded,
-                        label:
-                            '${rewards.unlockedBadges}/${rewards.badges.length} badges',
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-            const _SectionLabel('CAREER STATS'),
-            const SizedBox(height: 10),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: MediaQuery.sizeOf(context).width >= 700 ? 4 : 2,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 1.55,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                _Stat('Games', '${stats.gamesPlayed}', Icons.sports_esports),
-                _Stat('Wins', '${stats.wins}', Icons.emoji_events_rounded),
-                _Stat('Win rate', '${stats.winRate}%', Icons.insights_rounded),
-                _Stat('Puzzles', '${stats.puzzlesSolved}', Icons.extension),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _SectionCard(
-              title: 'ACCOUNT',
-              icon: widget.isGuest
-                  ? Icons.person_outline_rounded
-                  : Icons.verified_rounded,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  Text(
-                    widget.isGuest
-                        ? 'Guest identity and online progress are safe on this device. Secure with Google to restore them after reinstalling or changing devices.'
-                        : '${widget.email ?? 'Verified ChessVerseAI player'}\nYour identity and training progress are ready across ChessVerseAI.',
-                    style:
-                        const TextStyle(color: Color(0xFFA9BBC4), height: 1.45),
+                Text(
+                  'Level ${rewards.level}  •  ${rewards.xp} XP',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
                   ),
-                  if (widget.isGuest &&
-                      widget.onSecureProgress != null) ...<Widget>[
-                    const SizedBox(height: 14),
-                    FilledButton.icon(
-                      key: const ValueKey<String>('secure-guest-progress'),
-                      onPressed: () => widget.onSecureProgress!.call(),
-                      icon: const Icon(Icons.g_mobiledata_rounded),
-                      label: const Text('SECURE PROGRESS WITH GOOGLE'),
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    minHeight: 10,
+                    value: rewards.levelProgress,
+                    color: AppColors.accentGold,
+                    backgroundColor: const Color(0xFF263645),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: <Widget>[
+                    _Pill(
+                      icon: Icons.local_fire_department_rounded,
+                      label: '${rewards.streak} day streak',
+                    ),
+                    _Pill(
+                      icon: Icons.workspace_premium_rounded,
+                      label:
+                          '${rewards.unlockedBadges}/${rewards.badges.length} badges',
                     ),
                   ],
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 18),
+          const _SectionLabel('CAREER STATS'),
+          const SizedBox(height: 10),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: MediaQuery.sizeOf(context).width >= 700 ? 4 : 2,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 1.55,
+            children: <Widget>[
+              _Stat('Games', '${stats.gamesPlayed}', Icons.sports_esports),
+              _Stat('Wins', '${stats.wins}', Icons.emoji_events_rounded),
+              _Stat('Win rate', '${stats.winRate}%', Icons.insights_rounded),
+              _Stat('Puzzles', '${stats.puzzlesSolved}', Icons.extension),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _SectionCard(
+            title: 'ACCOUNT',
+            icon: widget.isGuest
+                ? Icons.person_outline_rounded
+                : Icons.verified_rounded,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Text(
+                  widget.isGuest
+                      ? 'Guest identity and online progress are safe on this device. Secure with Google to restore them after reinstalling or changing devices.'
+                      : '${widget.email ?? 'Verified ChessVerseAI player'}\nYour identity and training progress are ready across ChessVerseAI.',
+                  style:
+                      const TextStyle(color: Color(0xFFA9BBC4), height: 1.45),
+                ),
+                if (widget.isGuest &&
+                    widget.onSecureProgress != null) ...<Widget>[
+                  const SizedBox(height: 14),
+                  FilledButton.icon(
+                    key: const ValueKey<String>('secure-guest-progress'),
+                    onPressed: () => widget.onSecureProgress!.call(),
+                    icon: const Icon(Icons.g_mobiledata_rounded),
+                    label: const Text('SECURE PROGRESS WITH GOOGLE'),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

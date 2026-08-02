@@ -54,7 +54,7 @@ class LegalScreen extends StatelessWidget {
           ];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar:
           AppBar(title: Text(privacy ? 'Privacy Policy' : 'Terms of Service')),
       body: ResponsivePage(

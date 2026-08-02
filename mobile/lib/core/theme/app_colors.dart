@@ -37,7 +37,7 @@ class AppColors {
   );
 
   static const LinearGradient backgroundGradient = LinearGradient(
-    colors: <Color>[backgroundDeep, background, Color(0xFF081329)],
+    colors: <Color>[Colors.transparent, Colors.transparent],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
