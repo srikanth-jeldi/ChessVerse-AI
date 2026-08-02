@@ -19,6 +19,10 @@ void main() {
         'drawOfferedByColor': null,
         'rematchRequestedByYou': true,
         'rematchMatchId': 'match-2',
+        'createdAt': '2026-07-30T09:40:00Z',
+        'startedAt': '2026-07-30T09:42:00Z',
+        'finishedAt': '2026-07-30T10:00:00Z',
+        'durationSeconds': 1080,
         'updatedAt': '2026-07-30T10:00:01Z',
         'moves': <Map<String, dynamic>>[
           <String, dynamic>{'ply': 1, 'uci': 'E2E4'},
@@ -34,6 +38,9 @@ void main() {
     expect(match.resultReason, 'RESIGNATION');
     expect(match.rematchRequestedByYou, isTrue);
     expect(match.rematchMatchId, 'match-2');
+    expect(match.startedAt, DateTime.utc(2026, 7, 30, 9, 42));
+    expect(match.finishedAt, DateTime.utc(2026, 7, 30, 10));
+    expect(match.durationSeconds, 1080);
     expect(match.moves.single.uci, 'e2e4');
     expect(match.whiteToMove, isTrue);
     expect(match.isYourTurn, isFalse);

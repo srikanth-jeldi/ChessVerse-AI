@@ -3,6 +3,7 @@ package com.epitomehub.chessverse.online;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -45,6 +46,7 @@ class OnlineMatchServiceTest {
         assertEquals(OnlineMatchStatus.ACTIVE, result.status());
         assertEquals("black", result.yourColor());
         assertEquals("Black Player", result.blackPlayerName());
+        assertNotNull(result.startedAt());
     }
 
     @Test
@@ -160,6 +162,8 @@ class OnlineMatchServiceTest {
         assertEquals(OnlineMatchStatus.FINISHED, result.status());
         assertEquals("0-1", result.result());
         assertEquals("RESIGNATION", result.resultReason());
+        assertNotNull(result.finishedAt());
+        assertNotNull(result.durationSeconds());
     }
 
     @Test
@@ -271,7 +275,8 @@ class OnlineMatchServiceTest {
         match.blackPlayerId = black.id();
         match.blackPlayerName = black.displayName();
         match.status = OnlineMatchStatus.ACTIVE;
-        match.turnStartedAt = java.time.Instant.now();
+        match.startedAt = java.time.Instant.now();
+        match.turnStartedAt = match.startedAt;
         return match;
     }
 }

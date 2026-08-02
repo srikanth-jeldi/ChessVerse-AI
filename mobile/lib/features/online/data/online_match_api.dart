@@ -47,6 +47,10 @@ class OnlineMatchDto {
     this.rematchMatchId,
     this.ratingBefore,
     this.ratingAfter,
+    this.createdAt,
+    this.startedAt,
+    this.finishedAt,
+    this.durationSeconds,
     this.updatedAt,
   });
 
@@ -74,6 +78,10 @@ class OnlineMatchDto {
   final String? rematchMatchId;
   final int? ratingBefore;
   final int? ratingAfter;
+  final DateTime? createdAt;
+  final DateTime? startedAt;
+  final DateTime? finishedAt;
+  final int? durationSeconds;
   final DateTime? updatedAt;
 
   bool get isActive => status == 'ACTIVE';
@@ -122,6 +130,10 @@ class OnlineMatchDto {
       rematchMatchId: json['rematchMatchId'] as String?,
       ratingBefore: (json['ratingBefore'] as num?)?.toInt(),
       ratingAfter: (json['ratingAfter'] as num?)?.toInt(),
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? ''),
+      startedAt: DateTime.tryParse(json['startedAt'] as String? ?? ''),
+      finishedAt: DateTime.tryParse(json['finishedAt'] as String? ?? ''),
+      durationSeconds: (json['durationSeconds'] as num?)?.toInt(),
       updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? ''),
     );
   }

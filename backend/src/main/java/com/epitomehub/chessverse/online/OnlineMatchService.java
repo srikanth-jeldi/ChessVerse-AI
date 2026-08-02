@@ -165,16 +165,11 @@ public class OnlineMatchService {
         match.turnStartedAt = match.updatedAt;
         match.drawOfferedBy = null;
         if (board.isMated() || board.isStaleMate() || board.isDraw()) {
-            match.status = OnlineMatchStatus.FINISHED;
-            match.turnStartedAt = null;
             if (board.isMated()) {
-                match.result = playerColor.equals("white") ? "1-0" : "0-1";
-                match.resultReason = "CHECKMATE";
+                finish(match, playerColor.equals("white") ? "1-0" : "0-1", "CHECKMATE");
             } else {
-                match.result = "1/2-1/2";
-                match.resultReason = board.isStaleMate() ? "STALEMATE" : "DRAW";
+                finish(match, "1/2-1/2", board.isStaleMate() ? "STALEMATE" : "DRAW");
             }
-            ratings.settle(match);
         }
         return OnlineDtos.MatchDto.from(matches.save(match), player.id());
     }
@@ -260,7 +255,8 @@ public class OnlineMatchService {
         rematch.blackPlayerName = previous.whitePlayerName;
         rematch.blackPlayerPhotoUrl = previous.whitePlayerPhotoUrl;
         rematch.status = OnlineMatchStatus.ACTIVE;
-        rematch.turnStartedAt = Instant.now();
+        rematch.startedAt = Instant.now();
+        rematch.turnStartedAt = rematch.startedAt;
         rematch.updatedAt = rematch.turnStartedAt;
         rematch = matches.save(rematch);
         previous.rematchMatchId = rematch.id;
@@ -384,6 +380,7 @@ public class OnlineMatchService {
         match.blackPlayerPhotoUrl = player.photoUrl();
         match.status = OnlineMatchStatus.ACTIVE;
         match.updatedAt = Instant.now();
+        match.startedAt = match.updatedAt;
         match.turnStartedAt = match.updatedAt;
     }
 
@@ -423,7 +420,8 @@ public class OnlineMatchService {
         match.turnStartedAt = null;
         match.whiteDisconnectedAt = null;
         match.blackDisconnectedAt = null;
-        match.updatedAt = Instant.now();
+        match.finishedAt = Instant.now();
+        match.updatedAt = match.finishedAt;
         ratings.settle(match);
     }
 }

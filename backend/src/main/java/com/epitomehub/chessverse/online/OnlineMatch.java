@@ -66,6 +66,12 @@ class OnlineMatch {
     @Column(name = "created_at", nullable = false)
     Instant createdAt;
 
+    @Column(name = "started_at")
+    Instant startedAt;
+
+    @Column(name = "finished_at")
+    Instant finishedAt;
+
     @Column(name = "updated_at", nullable = false)
     Instant updatedAt;
 

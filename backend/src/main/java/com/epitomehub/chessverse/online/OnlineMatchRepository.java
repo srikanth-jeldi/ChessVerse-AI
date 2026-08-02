@@ -43,8 +43,8 @@ interface OnlineMatchRepository extends JpaRepository<OnlineMatch, UUID> {
     @Query("""
             select match from OnlineMatch match
             where (match.whitePlayerId = :playerId or match.blackPlayerId = :playerId)
-              and match.status in ('FINISHED', 'CANCELLED')
-            order by match.updatedAt desc
+              and match.status = 'FINISHED'
+            order by match.finishedAt desc, match.updatedAt desc
             limit 50
             """)
     List<OnlineMatch> findRecentForPlayer(@Param("playerId") UUID playerId);
