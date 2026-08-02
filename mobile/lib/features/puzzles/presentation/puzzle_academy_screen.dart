@@ -132,16 +132,15 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
   Widget build(BuildContext context) {
     final LocalGameStats stats = LocalGameArchive.stats();
     return Scaffold(
-      backgroundColor: const Color(0xFF030A12),
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: <Widget>[
-          const Positioned.fill(child: _PuzzleBackdrop()),
           SafeArea(
             child: CustomScrollView(
               slivers: <Widget>[
                 SliverAppBar(
                   pinned: true,
-                  backgroundColor: const Color(0xFF071522),
+                  backgroundColor: const Color(0xD9071827),
                   surfaceTintColor: Colors.transparent,
                   elevation: 4,
                   scrolledUnderElevation: 4,
@@ -237,40 +236,6 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _PuzzleBackdrop extends StatelessWidget {
-  const _PuzzleBackdrop();
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[
-            Color(0xFF0B2432),
-            Color(0xFF071522),
-            Color(0xFF030A12),
-          ],
-        ),
-      ),
-      child: Opacity(
-        opacity: 0.035,
-        child: GridView.builder(
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 8,
-          ),
-          itemBuilder: (BuildContext context, int index) => ColoredBox(
-            color: index.isEven ? Colors.white : Colors.black,
-          ),
-          itemCount: 64,
-        ),
       ),
     );
   }

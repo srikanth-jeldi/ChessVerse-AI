@@ -13,6 +13,7 @@ import 'core/audio/chess_sound_service.dart';
 import 'core/app_preferences.dart';
 import 'core/config/app_config.dart';
 import 'core/local_game_archive.dart';
+import 'core/widgets/chessverse_app_backdrop.dart';
 import 'features/auth/data/auth_api.dart';
 import 'features/auth/data/auth_session_store.dart';
 import 'features/auth/presentation/auth_screen.dart';
@@ -46,6 +47,11 @@ class ChessVerseApp extends StatelessWidget {
       title: 'ChessVerseAI',
       debugShowCheckedModeBanner: false,
       theme: ChessVerseTheme.dark(),
+      builder: (BuildContext context, Widget? child) {
+        return ChessVerseAppBackdrop(
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: const SplashGate(),
     );
   }
@@ -1020,7 +1026,12 @@ class ChessVerseTheme {
         surface: Color(0xFF1A1B20),
         onSurface: Color(0xFFF6F1E8),
       ),
-      scaffoldBackgroundColor: ink,
+      scaffoldBackgroundColor: Colors.transparent,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xD9071827),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+      ),
       fontFamily: 'Roboto',
       textTheme: const TextTheme(
         headlineMedium: TextStyle(

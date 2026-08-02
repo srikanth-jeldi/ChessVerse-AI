@@ -11,7 +11,7 @@ class AnalysisScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('Analysis')),
       body: ResponsivePage(
         child: Column(
@@ -44,7 +44,8 @@ class AnalysisScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            Text('Coming analysis tools', style: Theme.of(context).textTheme.titleLarge),
+            Text('Coming analysis tools',
+                style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             const _AnalysisFeatureCard(
               icon: Icons.timeline_rounded,

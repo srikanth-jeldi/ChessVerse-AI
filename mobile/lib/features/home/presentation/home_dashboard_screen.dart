@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -41,196 +39,91 @@ class HomeDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF06131F),
-      body: Stack(
-        children: <Widget>[
-          const Positioned.fill(child: _HubBackground()),
-          SafeArea(
-            child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-                final bool wide = constraints.maxWidth >= 720;
-                final bool desktopViewport =
-                    wide && constraints.maxHeight >= 600;
-                final Widget content = Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: 920,
-                      minWidth: wide ? 0 : constraints.maxWidth - 30,
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final bool wide = constraints.maxWidth >= 720;
+            final bool desktopViewport = wide && constraints.maxHeight >= 600;
+            final Widget content = Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 920,
+                  minWidth: wide ? 0 : constraints.maxWidth - 30,
+                ),
+                child: Column(
+                  children: <Widget>[
+                    _TopBar(
+                      playerName: playerName,
+                      profilePhotoUrl: profilePhotoUrl,
+                      onProfile: onProfile,
+                      onSettings: onSettings,
                     ),
-                    child: Column(
-                      children: <Widget>[
-                        _TopBar(
-                          playerName: playerName,
-                          profilePhotoUrl: profilePhotoUrl,
-                          onProfile: onProfile,
-                          onSettings: onSettings,
-                        ),
-                        SizedBox(height: wide ? 26 : 18),
-                        const _BrandHero(),
-                        SizedBox(height: wide ? 30 : 22),
-                        const _LiveStats(),
-                        const SizedBox(height: 18),
-                        _GameModeGrid(
-                          wide: wide,
-                          onOnline: onOnlineGame,
-                          onComputer: onPlayVsAi,
-                          onFriends: onOnlineGame,
-                          onPuzzles: onPuzzles,
-                          onRankings: onRankings,
-                          onSettings: onSettings,
-                        ),
-                        const SizedBox(height: 14),
-                        _MoreActions(
-                          onDaily: onDailyChallenge,
-                          onLocal: onLocalGame,
-                          onAnalysis: onAnalysis,
-                          onSaved: onSavedGames,
-                          onLearn: onLearnChess,
-                        ),
-                      ],
+                    SizedBox(height: wide ? 26 : 18),
+                    const _BrandHero(),
+                    SizedBox(height: wide ? 30 : 22),
+                    const _LiveStats(),
+                    const SizedBox(height: 18),
+                    _GameModeGrid(
+                      wide: wide,
+                      onOnline: onOnlineGame,
+                      onComputer: onPlayVsAi,
+                      onFriends: onOnlineGame,
+                      onPuzzles: onPuzzles,
+                      onRankings: onRankings,
+                      onSettings: onSettings,
+                    ),
+                    const SizedBox(height: 14),
+                    _MoreActions(
+                      onDaily: onDailyChallenge,
+                      onLocal: onLocalGame,
+                      onAnalysis: onAnalysis,
+                      onSaved: onSavedGames,
+                      onLearn: onLearnChess,
+                    ),
+                  ],
+                ),
+              ),
+            );
+            if (!wide) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(15, 10, 15, 10),
+                child: SizedBox.expand(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.center,
+                    child: SizedBox(
+                      width: constraints.maxWidth - 30,
+                      child: content,
                     ),
                   ),
-                );
-                if (!wide) {
-                  return Padding(
-                    padding: const EdgeInsets.fromLTRB(15, 10, 15, 10),
-                    child: SizedBox.expand(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.center,
-                        child: SizedBox(
-                          width: constraints.maxWidth - 30,
-                          child: content,
-                        ),
-                      ),
+                ),
+              );
+            }
+            if (desktopViewport) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(28, 14, 28, 20),
+                child: SizedBox.expand(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.center,
+                    child: SizedBox(
+                      width: constraints.maxWidth - 56,
+                      child: content,
                     ),
-                  );
-                }
-                if (desktopViewport) {
-                  return Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 14, 28, 20),
-                    child: SizedBox.expand(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.center,
-                        child: SizedBox(
-                          width: constraints.maxWidth - 56,
-                          child: content,
-                        ),
-                      ),
-                    ),
-                  );
-                }
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(28, 14, 28, 28),
-                  child: content,
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HubBackground extends StatelessWidget {
-  const _HubBackground();
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[
-            Color(0xFF071827),
-            Color(0xFF092236),
-            Color(0xFF040B13),
-          ],
+                  ),
+                ),
+              );
+            }
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(28, 14, 28, 28),
+              child: content,
+            );
+          },
         ),
       ),
-      child: Stack(
-        children: <Widget>[
-          Positioned(
-            top: -90,
-            left: -70,
-            child: _GlowOrb(
-              size: 270,
-              color: const Color(0xFF63D2B8).withValues(alpha: 0.16),
-            ),
-          ),
-          Positioned(
-            right: -100,
-            top: 250,
-            child: _GlowOrb(
-              size: 310,
-              color: AppColors.accentGold.withValues(alpha: 0.13),
-            ),
-          ),
-          const Positioned.fill(
-            child: IgnorePointer(
-              child: CustomPaint(painter: _BoardWatermarkPainter()),
-            ),
-          ),
-        ],
-      ),
     );
   }
-}
-
-class _GlowOrb extends StatelessWidget {
-  const _GlowOrb({required this.size, required this.color});
-
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: <BoxShadow>[
-          BoxShadow(color: color, blurRadius: size * 0.42, spreadRadius: 12),
-        ],
-      ),
-    );
-  }
-}
-
-class _BoardWatermarkPainter extends CustomPainter {
-  const _BoardWatermarkPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double boardSize = math.min(size.width * 0.84, 520);
-    final double square = boardSize / 8;
-    final Offset origin = Offset(
-      (size.width - boardSize) / 2,
-      math.max(130, size.height * 0.16),
-    );
-    final Paint light = Paint()..color = Colors.white.withValues(alpha: 0.018);
-    final Paint dark = Paint()..color = Colors.black.withValues(alpha: 0.045);
-    for (int rank = 0; rank < 8; rank++) {
-      for (int file = 0; file < 8; file++) {
-        canvas.drawRect(
-          Rect.fromLTWH(
-            origin.dx + file * square,
-            origin.dy + rank * square,
-            square,
-            square,
-          ),
-          (rank + file).isEven ? light : dark,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _TopBar extends StatelessWidget {

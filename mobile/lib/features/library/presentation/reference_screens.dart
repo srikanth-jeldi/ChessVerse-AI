@@ -177,7 +177,7 @@ class _ReferenceScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: Text(title)),
       body: DecoratedBox(
         decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),

@@ -12,10 +12,10 @@ class LearnChessScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool wide = AppBreakpoints.isTabletOrLarger(context);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('Learn Chess'),
-        backgroundColor: AppColors.background,
+        backgroundColor: const Color(0xD9071827),
       ),
       body: ResponsivePage(
         child: Column(
