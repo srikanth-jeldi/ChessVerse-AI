@@ -2990,7 +2990,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   String _resultScoreLabel() {
     if (_gameMode == GameMode.online) {
-      final String authoritative = _onlineMatch?.scoreLabel ?? '';
+      final String authoritative = _onlineMatch?.perspectiveScoreLabel ?? '';
       if (authoritative.isNotEmpty) return authoritative;
     }
     final String lowerTitle = (_gameResultTitle ?? '').toLowerCase();

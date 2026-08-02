@@ -94,6 +94,17 @@ class OnlineMatchDto {
         '1/2-1/2' => '1/2 - 1/2',
         _ => '',
       };
+  String get perspectiveScoreLabel {
+    if (result == '1/2-1/2') return '1/2 - 1/2';
+    final bool userIsWhite = yourColor.toUpperCase() == 'WHITE';
+    final bool userWon =
+        (result == '1-0' && userIsWhite) || (result == '0-1' && !userIsWhite);
+    if (result == '1-0' || result == '0-1') {
+      return userWon ? '1 - 0' : '0 - 1';
+    }
+    return '';
+  }
+
   bool get opponentDisconnected =>
       disconnectedColor != null &&
       disconnectedColor!.toUpperCase() != yourColor.toUpperCase();

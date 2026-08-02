@@ -49,50 +49,62 @@ class HomeDashboardScreen extends StatelessWidget {
             child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
                 final bool wide = constraints.maxWidth >= 720;
-                return SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    wide ? 28 : 15,
-                    14,
-                    wide ? 28 : 15,
-                    28,
-                  ),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 920),
-                      child: Column(
-                        children: <Widget>[
-                          _TopBar(
-                            playerName: playerName,
-                            profilePhotoUrl: profilePhotoUrl,
-                            onProfile: onProfile,
-                            onSettings: onSettings,
-                          ),
-                          SizedBox(height: wide ? 26 : 18),
-                          const _BrandHero(),
-                          SizedBox(height: wide ? 30 : 22),
-                          const _LiveStats(),
-                          const SizedBox(height: 18),
-                          _GameModeGrid(
-                            wide: wide,
-                            onOnline: onOnlineGame,
-                            onComputer: onPlayVsAi,
-                            onFriends: onOnlineGame,
-                            onPuzzles: onPuzzles,
-                            onRankings: onRankings,
-                            onSettings: onSettings,
-                          ),
-                          const SizedBox(height: 14),
-                          _MoreActions(
-                            onDaily: onDailyChallenge,
-                            onLocal: onLocalGame,
-                            onAnalysis: onAnalysis,
-                            onSaved: onSavedGames,
-                            onLearn: onLearnChess,
-                          ),
-                        ],
-                      ),
+                final Widget content = Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: 920,
+                      minWidth: wide ? 0 : constraints.maxWidth - 30,
+                    ),
+                    child: Column(
+                      children: <Widget>[
+                        _TopBar(
+                          playerName: playerName,
+                          profilePhotoUrl: profilePhotoUrl,
+                          onProfile: onProfile,
+                          onSettings: onSettings,
+                        ),
+                        SizedBox(height: wide ? 26 : 18),
+                        const _BrandHero(),
+                        SizedBox(height: wide ? 30 : 22),
+                        const _LiveStats(),
+                        const SizedBox(height: 18),
+                        _GameModeGrid(
+                          wide: wide,
+                          onOnline: onOnlineGame,
+                          onComputer: onPlayVsAi,
+                          onFriends: onOnlineGame,
+                          onPuzzles: onPuzzles,
+                          onRankings: onRankings,
+                          onSettings: onSettings,
+                        ),
+                        const SizedBox(height: 14),
+                        _MoreActions(
+                          onDaily: onDailyChallenge,
+                          onLocal: onLocalGame,
+                          onAnalysis: onAnalysis,
+                          onSaved: onSavedGames,
+                          onLearn: onLearnChess,
+                        ),
+                      ],
                     ),
                   ),
+                );
+                if (!wide) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(15, 10, 15, 10),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.topCenter,
+                      child: SizedBox(
+                        width: constraints.maxWidth - 30,
+                        child: content,
+                      ),
+                    ),
+                  );
+                }
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(28, 14, 28, 28),
+                  child: content,
                 );
               },
             ),

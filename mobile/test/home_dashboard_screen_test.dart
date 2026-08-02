@@ -70,6 +70,7 @@ void main() {
 
     expect(find.text('Play Online'), findsOneWidget);
     expect(find.text('Play with Friends'), findsOneWidget);
+    expect(find.text('Learn'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
