@@ -6,10 +6,18 @@ abstract final class AppConfig {
     defaultValue: 'local',
   );
 
-  static const String apiBaseUrl = String.fromEnvironment(
+  static const String _configuredApiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://127.0.0.1:8080',
+    defaultValue: '',
   );
+
+  /// Release artifacts must never silently call the phone's own localhost.
+  /// CI can still override this value for staging with API_BASE_URL.
+  static String get apiBaseUrl => _configuredApiBaseUrl.isNotEmpty
+      ? _configuredApiBaseUrl
+      : kReleaseMode
+          ? 'https://api.chessverseai.com'
+          : 'http://127.0.0.1:8080';
 
   static const String webBaseUrl = String.fromEnvironment(
     'WEB_BASE_URL',
