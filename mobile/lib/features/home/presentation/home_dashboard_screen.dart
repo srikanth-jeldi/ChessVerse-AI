@@ -92,12 +92,14 @@ class HomeDashboardScreen extends StatelessWidget {
                 if (!wide) {
                   return Padding(
                     padding: const EdgeInsets.fromLTRB(15, 10, 15, 10),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.topCenter,
-                      child: SizedBox(
-                        width: constraints.maxWidth - 30,
-                        child: content,
+                    child: SizedBox.expand(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.center,
+                        child: SizedBox(
+                          width: constraints.maxWidth - 30,
+                          child: content,
+                        ),
                       ),
                     ),
                   );
