@@ -502,9 +502,11 @@ class BrandedSplash extends StatelessWidget {
       backgroundColor: const Color(0xFF02070D),
       body: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          final bool wide = kIsWeb ||
-              constraints.maxWidth >= 720 ||
-              constraints.maxWidth <= 0;
+          // Choose artwork from the actual viewport, not the platform. A
+          // portrait browser/PWA is still a mobile-sized surface; forcing the
+          // 16:9 web artwork there crops the title and footer off-screen.
+          final bool wide =
+              constraints.maxWidth >= 720 || constraints.maxWidth <= 0;
           const String wideAsset =
               'assets/branding/chessverse_king_dual_splash.jpg';
           const String mobileAsset =
