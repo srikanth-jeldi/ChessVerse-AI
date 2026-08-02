@@ -36,6 +36,7 @@ void main() {
     expect(match.blackTimeMs, 3400);
     expect(match.result, '0-1');
     expect(match.resultReason, 'RESIGNATION');
+    expect(match.scoreLabel, '0 - 1');
     expect(match.rematchRequestedByYou, isTrue);
     expect(match.rematchMatchId, 'match-2');
     expect(match.startedAt, DateTime.utc(2026, 7, 30, 9, 42));
@@ -63,6 +64,7 @@ void main() {
     expect(match.blackTimeMs, 600000);
     expect(match.rematchRequestedByYou, isFalse);
     expect(match.result, isNull);
+    expect(match.scoreLabel, isEmpty);
   });
 
   test('black turn is derived from authoritative activeColor, not ply parity',

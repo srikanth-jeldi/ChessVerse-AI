@@ -1,6 +1,7 @@
 package com.epitomehub.chessverse.online;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.atLeastOnce;
@@ -70,10 +71,13 @@ class OnlineMatchSocketHandlerTest {
         handler.afterConnectionEstablished(abandoned);
         UUID playerId = (UUID) abandoned.getAttributes().get("playerId");
 
-        handler.pruneStaleSessions(
-                Instant.now().plus(OnlineMatchSocketHandler.PRESENCE_LEASE).plusSeconds(1));
+        Instant detectedAt =
+                Instant.now().plus(OnlineMatchSocketHandler.PRESENCE_LEASE).plusSeconds(1);
+        handler.pruneStaleSessions(detectedAt);
 
-        verify(matches).markDisconnected(eq(matchId), eq(playerId), any());
+        ArgumentCaptor<Instant> disconnectedAt = ArgumentCaptor.forClass(Instant.class);
+        verify(matches).markDisconnected(eq(matchId), eq(playerId), disconnectedAt.capture());
+        assertFalse(disconnectedAt.getValue().isBefore(detectedAt));
         verify(abandoned).close(CloseStatus.SESSION_NOT_RELIABLE);
     }
 

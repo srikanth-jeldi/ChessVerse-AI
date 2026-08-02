@@ -116,8 +116,6 @@ class _SplashGateState extends State<SplashGate> {
     }
     if (!mounted) return;
     _enableCloudSync(session.token);
-    await _syncCloudProgress(session.token);
-    if (!mounted) return;
     setState(() {
       _playerName = playerName;
       _username = username;
@@ -126,6 +124,30 @@ class _SplashGateState extends State<SplashGate> {
       _isGuest = isGuest;
       _stage = _RootStage.home;
     });
+    // Do not make active-match recovery wait for profile/progress sync. A
+    // killed mobile process has a short server grace window and must reopen
+    // its authoritative match as soon as the authenticated home route exists.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_restoreActiveOnlineMatch(session.token));
+    });
+    unawaited(_syncCloudProgress(session.token));
+  }
+
+  Future<void> _restoreActiveOnlineMatch(String token) async {
+    try {
+      final OnlineMatchDto match =
+          await const OnlineMatchApi().reconnect(token);
+      if (!mounted || _stage != _RootStage.home || !match.isActive) return;
+      await _openGame(
+        context,
+        GameMode.online,
+        initialOnlineMatch: match,
+        initialAuthToken: token,
+      );
+    } on OnlineMatchException {
+      // No active match (or temporary connectivity loss) is a normal startup
+      // state. The home screen remains usable and manual reconnect still works.
+    }
   }
 
   String? _profileValue(Object? value) {
@@ -2967,6 +2989,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   String _resultScoreLabel() {
+    if (_gameMode == GameMode.online) {
+      final String authoritative = _onlineMatch?.scoreLabel ?? '';
+      if (authoritative.isNotEmpty) return authoritative;
+    }
     final String lowerTitle = (_gameResultTitle ?? '').toLowerCase();
     if (lowerTitle.contains('draw')) {
       return '1/2 - 1/2';

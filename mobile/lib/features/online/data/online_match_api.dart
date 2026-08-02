@@ -88,6 +88,12 @@ class OnlineMatchDto {
   int get plyCount => moves.length;
   bool get whiteToMove => activeColor == 'WHITE';
   bool get isYourTurn => isActive && activeColor == yourColor;
+  String get scoreLabel => switch (result) {
+        '1-0' => '1 - 0',
+        '0-1' => '0 - 1',
+        '1/2-1/2' => '1/2 - 1/2',
+        _ => '',
+      };
   bool get opponentDisconnected =>
       disconnectedColor != null &&
       disconnectedColor!.toUpperCase() != yourColor.toUpperCase();

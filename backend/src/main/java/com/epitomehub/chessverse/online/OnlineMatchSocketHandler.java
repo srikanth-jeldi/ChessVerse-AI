@@ -45,15 +45,18 @@ public class OnlineMatchSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         UUID matchId = (UUID) session.getAttributes().get("matchId");
         UUID playerId = (UUID) session.getAttributes().get("playerId");
-        Instant disconnectedAt = lastSeen.remove(session);
+        lastSeen.remove(session);
         Set<WebSocketSession> sessions = subscribers.get(matchId);
         if (sessions != null) {
             sessions.remove(session);
             boolean playerStillConnected = sessions.stream().anyMatch(candidate ->
                     playerId.equals(candidate.getAttributes().get("playerId")) && candidate.isOpen());
             if (!playerStillConnected) {
-                matches.markDisconnected(matchId, playerId,
-                        disconnectedAt == null ? Instant.now() : disconnectedAt);
+                // Start the full abandonment grace period when the server
+                // detects the disconnect. The last heartbeat can be several
+                // seconds old and must not silently shorten the reconnect
+                // window for a killed/backgrounded mobile process.
+                matches.markDisconnected(matchId, playerId, Instant.now());
             }
             if (sessions.isEmpty()) {
                 subscribers.remove(matchId);
@@ -81,8 +84,10 @@ public class OnlineMatchSocketHandler extends TextWebSocketHandler {
                         playerId.equals(candidate.getAttributes().get("playerId"))
                                 && isFresh(candidate, now));
                 if (!playerStillConnected) {
-                    matches.markDisconnected(matchId, playerId,
-                            heartbeat == null ? now : heartbeat);
+                    // The lease expiry is the detection point. Starting the
+                    // grace period at the old heartbeat made users lose while
+                    // a cold app launch was still reconnecting.
+                    matches.markDisconnected(matchId, playerId, now);
                 }
                 try {
                     if (session.isOpen()) session.close(CloseStatus.SESSION_NOT_RELIABLE);
