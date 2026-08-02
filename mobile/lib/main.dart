@@ -8456,6 +8456,7 @@ class OnlineMatchmakingSheet extends StatefulWidget {
 }
 
 class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
+  static const int _randomSearchLimitSeconds = 20;
   final TextEditingController _roomController = TextEditingController();
   Timer? _pollTimer;
   Timer? _elapsedTimer;
@@ -8547,9 +8548,38 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     );
     _elapsedTimer?.cancel();
     _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _elapsedSeconds++);
+      if (!mounted) return;
+      setState(() => _elapsedSeconds++);
+      if (_randomSearch && _elapsedSeconds >= _randomSearchLimitSeconds) {
+        unawaited(_expireRandomSearch(match));
+      }
     });
     _openSocket(match);
+  }
+
+  Future<void> _expireRandomSearch(OnlineMatchDto waiting) async {
+    if (!_randomSearch || _match?.id != waiting.id || _foundMatch != null) {
+      return;
+    }
+    _pollTimer?.cancel();
+    _elapsedTimer?.cancel();
+    _socketReconnectTimer?.cancel();
+    await _socketSubscription?.cancel();
+    await _channel?.sink.close();
+    try {
+      await widget.api.cancelWaiting(widget.token, waiting.id);
+    } on OnlineMatchException {
+      // The lobby may already have expired server-side.
+    }
+    if (!mounted || _match?.id != waiting.id || _foundMatch != null) return;
+    setState(() {
+      _match = null;
+      _randomSearch = false;
+      _loading = false;
+      _elapsedSeconds = 0;
+      _error =
+          'No active rival found in 20 seconds. Try again or play ChessVerseAI.';
+    });
   }
 
   void _openSocket(OnlineMatchDto match) {
