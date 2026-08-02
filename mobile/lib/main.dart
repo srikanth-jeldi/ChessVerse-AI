@@ -5226,6 +5226,12 @@ class CompactHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: <Widget>[
+        IconButton(
+          key: const ValueKey<String>('mobile-back-to-home'),
+          tooltip: 'Back to Home',
+          onPressed: onHome,
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
         const ChessVerseMark(size: 36),
         const SizedBox(width: 8),
         Expanded(
@@ -5246,11 +5252,6 @@ class CompactHeader extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-        ),
-        IconButton(
-          tooltip: 'Home',
-          onPressed: onHome,
-          icon: const Icon(Icons.home_rounded),
         ),
         IconButton(
           tooltip: 'Profile',
@@ -6568,34 +6569,45 @@ class _GameStudioHeader extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 22),
         child: Row(
           children: <Widget>[
-            InkWell(
-              onTap: onHome,
-              borderRadius: BorderRadius.circular(14),
-              child: Row(
-                children: <Widget>[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      'assets/branding/app_icon.png',
-                      width: 46,
-                      height: 46,
-                      fit: BoxFit.cover,
+            if (compact)
+              IconButton.outlined(
+                key: const ValueKey<String>('desktop-back-to-home'),
+                tooltip: 'Back to Home',
+                onPressed: onHome,
+                icon: const Icon(Icons.arrow_back_rounded),
+              )
+            else
+              OutlinedButton.icon(
+                key: const ValueKey<String>('desktop-back-to-home'),
+                onPressed: onHome,
+                icon: const Icon(Icons.arrow_back_rounded),
+                label: const Text('Back to Home'),
+              ),
+            SizedBox(width: compact ? 10 : 16),
+            Row(
+              children: <Widget>[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    'assets/branding/app_icon.png',
+                    width: 46,
+                    height: 46,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                if (!compact) ...<Widget>[
+                  const SizedBox(width: 12),
+                  const Text(
+                    'ChessVerseAI',
+                    style: TextStyle(
+                      color: Color(0xFFF2C46D),
+                      fontFamily: 'serif',
+                      fontSize: 25,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  if (!compact) ...<Widget>[
-                    const SizedBox(width: 12),
-                    const Text(
-                      'ChessVerseAI',
-                      style: TextStyle(
-                        color: Color(0xFFF2C46D),
-                        fontFamily: 'serif',
-                        fontSize: 25,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
                 ],
-              ),
+              ],
             ),
             const Spacer(),
             InkWell(

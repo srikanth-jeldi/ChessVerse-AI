@@ -156,7 +156,6 @@ void main() {
         ),
       ),
     );
-
     await tester.tap(
       find.byKey(const ValueKey<String>('game-controls-handle')),
     );
@@ -296,6 +295,41 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('game header exposes responsive Back to Home navigation', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+          initialGameMode: GameMode.local,
+        ),
+      ),
+    );
+    expect(
+      find.byKey(const ValueKey<String>('desktop-back-to-home')),
+      findsOneWidget,
+    );
+    expect(find.text('Back to Home'), findsOneWidget);
+
+    tester.view.physicalSize = const Size(430, 932);
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey<String>('mobile-back-to-home')),
+      findsOneWidget,
+    );
+    expect(find.byTooltip('Back to Home'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('phone board remains layout-stable across consecutive moves', (
     WidgetTester tester,
   ) async {
@@ -315,7 +349,6 @@ void main() {
         ),
       ),
     );
-
     for (final (String from, String to) in <(String, String)>[
       ('e2', 'e4'),
       ('d7', 'd5'),
