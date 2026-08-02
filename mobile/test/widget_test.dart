@@ -215,6 +215,49 @@ void main() {
     expect(panel.moves, hasLength(2));
   });
 
+  testWidgets('online replay animates the authoritative latest piece', (
+    WidgetTester tester,
+  ) async {
+    const OnlineMatchDto match = OnlineMatchDto(
+      id: '22222222-2222-2222-2222-222222222222',
+      roomCode: 'CVSYNC',
+      status: 'ACTIVE',
+      yourColor: 'WHITE',
+      activeColor: 'WHITE',
+      whitePlayerName: 'White player',
+      blackPlayerName: 'Black player',
+      fen: '',
+      moves: <OnlineMoveDto>[
+        OnlineMoveDto(ply: 0, uci: 'b1c3'),
+        OnlineMoveDto(ply: 1, uci: 'd7d5'),
+      ],
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+          initialGameMode: GameMode.online,
+          initialOnlineMatch: match,
+          initialAuthToken: 'test-token',
+          onlineApi: _FakeOnlineApi(active: true),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+
+    final ChessBoard board = tester.widget<ChessBoard>(find.byType(ChessBoard));
+    expect(board.lastMovedPiece?.white, isFalse);
+    expect(board.lastMovedPiece?.code, 'P');
+    expect(board.lastFromSquare, 'd7');
+    expect(board.lastToSquare, 'd5');
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('black player can move after starting a new game', (
     WidgetTester tester,
   ) async {
