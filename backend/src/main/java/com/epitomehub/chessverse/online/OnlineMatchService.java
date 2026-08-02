@@ -285,6 +285,11 @@ public class OnlineMatchService {
 
     @Transactional
     public void markDisconnected(UUID matchId, UUID playerId) {
+        markDisconnected(matchId, playerId, Instant.now());
+    }
+
+    @Transactional
+    public void markDisconnected(UUID matchId, UUID playerId, Instant disconnectedAt) {
         OnlineMatch match = requireParticipant(playerId, matchId);
         if (match.status != OnlineMatchStatus.ACTIVE) return;
         Instant now = Instant.now();
@@ -294,9 +299,9 @@ public class OnlineMatchService {
             return;
         }
         if (match.whitePlayerId.equals(playerId)) {
-            if (match.whiteDisconnectedAt == null) match.whiteDisconnectedAt = now;
+            if (match.whiteDisconnectedAt == null) match.whiteDisconnectedAt = disconnectedAt;
         } else if (match.blackDisconnectedAt == null) {
-            match.blackDisconnectedAt = now;
+            match.blackDisconnectedAt = disconnectedAt;
         }
         match.updatedAt = now;
         matches.save(match);

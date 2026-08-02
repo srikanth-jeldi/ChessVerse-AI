@@ -6,9 +6,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import java.util.Map;
+import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -56,7 +58,23 @@ class OnlineMatchSocketHandlerTest {
         verify(white, atLeastOnce()).sendMessage(message.capture());
         assertTrue(message.getAllValues().stream()
                 .anyMatch(value -> value.getPayload().contains("\"connectedPlayers\":1")));
-        verify(matches).markDisconnected(eq(matchId), eq(blackPlayerId));
+        verify(matches).markDisconnected(eq(matchId), eq(blackPlayerId), any());
+    }
+
+    @Test
+    void heartbeatLeaseExpiresKilledClientWithoutCloseFrame() throws Exception {
+        UUID matchId = UUID.randomUUID();
+        WebSocketSession abandoned = session(matchId);
+        OnlineMatchService matches = mock(OnlineMatchService.class);
+        OnlineMatchSocketHandler handler = new OnlineMatchSocketHandler(matches);
+        handler.afterConnectionEstablished(abandoned);
+        UUID playerId = (UUID) abandoned.getAttributes().get("playerId");
+
+        handler.pruneStaleSessions(
+                Instant.now().plus(OnlineMatchSocketHandler.PRESENCE_LEASE).plusSeconds(1));
+
+        verify(matches).markDisconnected(eq(matchId), eq(playerId), any());
+        verify(abandoned).close(CloseStatus.SESSION_NOT_RELIABLE);
     }
 
     private WebSocketSession session(UUID matchId) {

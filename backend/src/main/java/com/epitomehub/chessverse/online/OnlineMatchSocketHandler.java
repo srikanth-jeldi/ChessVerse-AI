@@ -1,6 +1,8 @@
 package com.epitomehub.chessverse.online;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,7 +14,9 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 @Component
 public class OnlineMatchSocketHandler extends TextWebSocketHandler {
+    static final Duration PRESENCE_LEASE = Duration.ofSeconds(5);
     private final ConcurrentHashMap<UUID, Set<WebSocketSession>> subscribers = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<WebSocketSession, Instant> lastSeen = new ConcurrentHashMap<>();
     private final OnlineMatchService matches;
 
     public OnlineMatchSocketHandler(OnlineMatchService matches) {
@@ -24,21 +28,33 @@ public class OnlineMatchSocketHandler extends TextWebSocketHandler {
         UUID matchId = (UUID) session.getAttributes().get("matchId");
         UUID playerId = (UUID) session.getAttributes().get("playerId");
         subscribers.computeIfAbsent(matchId, ignored -> ConcurrentHashMap.newKeySet()).add(session);
+        lastSeen.put(session, Instant.now());
         matches.markConnected(matchId, playerId);
         publishPresence(matchId);
         publish(matchId);
     }
 
     @Override
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+        // Application heartbeats make presence deterministic even when a
+        // browser tab or mobile process is killed without a TCP close frame.
+        lastSeen.put(session, Instant.now());
+    }
+
+    @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         UUID matchId = (UUID) session.getAttributes().get("matchId");
         UUID playerId = (UUID) session.getAttributes().get("playerId");
+        Instant disconnectedAt = lastSeen.remove(session);
         Set<WebSocketSession> sessions = subscribers.get(matchId);
         if (sessions != null) {
             sessions.remove(session);
             boolean playerStillConnected = sessions.stream().anyMatch(candidate ->
                     playerId.equals(candidate.getAttributes().get("playerId")) && candidate.isOpen());
-            if (!playerStillConnected) matches.markDisconnected(matchId, playerId);
+            if (!playerStillConnected) {
+                matches.markDisconnected(matchId, playerId,
+                        disconnectedAt == null ? Instant.now() : disconnectedAt);
+            }
             if (sessions.isEmpty()) {
                 subscribers.remove(matchId);
             } else {
@@ -48,6 +64,46 @@ public class OnlineMatchSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    void pruneStaleSessions(Instant now) {
+        Instant cutoff = now.minus(PRESENCE_LEASE);
+        for (var entry : subscribers.entrySet()) {
+            UUID matchId = entry.getKey();
+            Set<WebSocketSession> sessions = entry.getValue();
+            boolean changed = false;
+            for (WebSocketSession session : Set.copyOf(sessions)) {
+                Instant heartbeat = lastSeen.get(session);
+                if (session.isOpen() && heartbeat != null && heartbeat.isAfter(cutoff)) continue;
+                UUID playerId = (UUID) session.getAttributes().get("playerId");
+                sessions.remove(session);
+                lastSeen.remove(session);
+                changed = true;
+                boolean playerStillConnected = sessions.stream().anyMatch(candidate ->
+                        playerId.equals(candidate.getAttributes().get("playerId"))
+                                && isFresh(candidate, now));
+                if (!playerStillConnected) {
+                    matches.markDisconnected(matchId, playerId,
+                            heartbeat == null ? now : heartbeat);
+                }
+                try {
+                    if (session.isOpen()) session.close(CloseStatus.SESSION_NOT_RELIABLE);
+                } catch (IOException ignored) {
+                    // The stale session is already removed from presence.
+                }
+            }
+            if (sessions.isEmpty()) subscribers.remove(matchId, sessions);
+            if (changed) {
+                publishPresence(matchId);
+                publish(matchId);
+            }
+        }
+    }
+
+    private boolean isFresh(WebSocketSession session, Instant now) {
+        Instant heartbeat = lastSeen.get(session);
+        return session.isOpen() && heartbeat != null
+                && heartbeat.isAfter(now.minus(PRESENCE_LEASE));
+    }
+
     public void publish(UUID matchId) {
         broadcast(matchId, "{\"type\":\"match.updated\",\"matchId\":\"" + matchId + "\"}");
     }
@@ -55,7 +111,9 @@ public class OnlineMatchSocketHandler extends TextWebSocketHandler {
     private void publishPresence(UUID matchId) {
         Set<WebSocketSession> sessions = subscribers.get(matchId);
         if (sessions == null) return;
+        Instant now = Instant.now();
         long connectedPlayers = sessions.stream()
+                .filter(session -> isFresh(session, now))
                 .map(session -> session.getAttributes().get("playerId"))
                 .filter(UUID.class::isInstance)
                 .distinct()

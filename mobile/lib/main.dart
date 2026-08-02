@@ -180,7 +180,7 @@ class _SplashGateState extends State<SplashGate> {
             onPlayVsAi: () => _chooseSideAndOpen(context, GameMode.computer),
             onDailyChallenge: () => _openGame(context, GameMode.daily),
             onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
-            onOnlineGame: () => _openGame(context, GameMode.online),
+            onOnlineGame: () => _openOnlineGame(context),
             onAnalysis: () => _push(context, const AnalysisScreen()),
             onPuzzles: () => _push(
               context,
@@ -307,6 +307,8 @@ class _SplashGateState extends State<SplashGate> {
     PlayerSideChoice sideChoice = PlayerSideChoice.white,
     DailyChallengeDifficulty? dailyDifficulty,
     String? puzzleId,
+    OnlineMatchDto? initialOnlineMatch,
+    String? initialAuthToken,
   }) {
     return _push(
       context,
@@ -322,9 +324,52 @@ class _SplashGateState extends State<SplashGate> {
         initialSideChoice: sideChoice,
         initialDailyDifficulty: dailyDifficulty,
         initialPuzzleId: puzzleId,
+        initialOnlineMatch: initialOnlineMatch,
+        initialAuthToken: initialAuthToken,
         onLogout: () => _logout(context),
       ),
     );
+  }
+
+  Future<void> _openOnlineGame(BuildContext context) async {
+    final StoredAuthSession? session = await const AuthSessionStore().read();
+    if (!context.mounted) return;
+    if (session == null || session.token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in to play online.')),
+      );
+      return;
+    }
+    final OnlineMatchDto? match =
+        await Navigator.of(context).push<OnlineMatchDto>(
+      MaterialPageRoute<OnlineMatchDto>(
+        fullscreenDialog: true,
+        builder: (_) => Scaffold(
+          backgroundColor: const Color(0xFF06131F),
+          body: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[Color(0xFF0A2231), Color(0xFF040B13)],
+              ),
+            ),
+            child: OnlineMatchmakingSheet(
+              api: const OnlineMatchApi(),
+              token: session.token,
+            ),
+          ),
+        ),
+      ),
+    );
+    if (match != null && context.mounted) {
+      await _openGame(
+        context,
+        GameMode.online,
+        initialOnlineMatch: match,
+        initialAuthToken: session.token,
+      );
+    }
   }
 
   Future<void> _logout(BuildContext currentRouteContext) async {
@@ -1532,6 +1577,8 @@ class GameScreen extends StatefulWidget {
     this.initialSideChoice = PlayerSideChoice.white,
     this.initialDailyDifficulty,
     this.initialPuzzleId,
+    this.initialOnlineMatch,
+    this.initialAuthToken,
     this.onLogout,
     super.key,
   });
@@ -1547,6 +1594,8 @@ class GameScreen extends StatefulWidget {
   final PlayerSideChoice initialSideChoice;
   final DailyChallengeDifficulty? initialDailyDifficulty;
   final String? initialPuzzleId;
+  final OnlineMatchDto? initialOnlineMatch;
+  final String? initialAuthToken;
   final Future<void> Function()? onLogout;
 
   @override
@@ -1571,6 +1620,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   WebSocketChannel? _onlineChannel;
   StreamSubscription<dynamic>? _onlineSocketSubscription;
   Timer? _onlineSocketReconnectTimer;
+  Timer? _onlineHeartbeatTimer;
   OnlineMatchDto? _onlineMatch;
   String? _handledDrawOfferKey;
   String? _archivedOnlineMatchId;
@@ -1627,6 +1677,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   bool _dailyCompletedToday = false;
   int _dailyPlyIndex = 0;
   int _dailyMistakes = 0;
+  bool _puzzleExplorationMode = false;
   late ChessPuzzle _activePuzzle;
 
   bool get _isTacticsMode =>
@@ -1733,7 +1784,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (_gameMode == GameMode.computer && !_humanPlaysWhite) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleAiMove());
     }
-    if (_gameMode == GameMode.online) {
+    if (_gameMode == GameMode.online &&
+        widget.initialOnlineMatch != null &&
+        widget.initialAuthToken != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _beginOnlineMatch(
+              widget.initialOnlineMatch!, widget.initialAuthToken!);
+        }
+      });
+    } else if (_gameMode == GameMode.online) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           unawaited(_showOnlineMatchmakingInfo());
@@ -1822,6 +1882,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     unawaited(_onlineSocketSubscription?.cancel());
     unawaited(_onlineChannel?.sink.close());
     _onlineSocketReconnectTimer?.cancel();
+    _onlineHeartbeatTimer?.cancel();
     final AudioPlayer? warningPlayer = _warningPlayer;
     if (warningPlayer != null) {
       unawaited(warningPlayer.dispose());
@@ -1836,6 +1897,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _onlineMatch != null &&
         _authToken != null) {
       _resumeOnlineSession();
+    } else if (state != AppLifecycleState.resumed) {
+      _onlineHeartbeatTimer?.cancel();
+      unawaited(_onlineChannel?.sink.close());
     }
   }
 
@@ -3275,16 +3339,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
       final String from = _selectedSquare!;
       if (_gameMode == GameMode.puzzle &&
+          !_puzzleExplorationMode &&
           _dailyPlyIndex < _dailyChallenge.solution.length) {
         final String expected =
             _dailyChallenge.solution[_dailyPlyIndex].toLowerCase();
         if (!expected.startsWith('$from$square')) {
           _dailyMistakes++;
-          // Let every chess-legal move appear on the board. A puzzle still
-          // has a forcing solution, but silently refusing all other pieces
-          // makes the board feel locked. The position is paused after an
-          // incorrect move so the player can inspect it and tap Try again.
+          // Every chess-legal move is playable. Leaving the curated line
+          // starts exploration mode, where the defense continues replying.
           puzzleWrongMove = true;
+          _puzzleExplorationMode = true;
         }
       }
       final PositionAnalysis preMoveAnalysis = _analyzePosition(whitesTurn);
@@ -3341,7 +3405,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             capture: captured != null,
           ),
         );
-        if (_isTacticsMode && !puzzleWrongMove) {
+        if (_isTacticsMode && (!puzzleWrongMove || _puzzleExplorationMode)) {
           _dailyPlyIndex++;
         }
         final String moveFeedback = _moveFeedback(
@@ -3378,17 +3442,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           }
           _lastPlayerCoachNote = _coachNote;
           if (_gameMode == GameMode.puzzle && puzzleWrongMove) {
-            _gameResultTitle = 'Incorrect puzzle move';
-            _gameResultDetail =
-                'That move is legal chess, but it does not solve this position. '
-                'Review the board, then tap Try again.';
+            // The curated objective no longer decides terminal state once the
+            // player branches. Continue as a normal legal chess position.
+            _gameResultTitle = null;
+            _gameResultDetail = null;
             _resultVisible = false;
             _coachNote =
-                'Legal move played, but the puzzle has a stronger forcing line. '
-                'Tap Try again to restore the starting position.';
+                'Legal move played. Exploration mode started; the defense will reply. '
+                'Tap Try again anytime to return to the puzzle line.';
             _lastPlayerCoachNote = _coachNote;
             unawaited(ChessSoundService.instance.error());
-          } else if (_isTacticsMode) {
+          } else if (_isTacticsMode && !_puzzleExplorationMode) {
             final bool opponentMated = _isCheckmateFor(!piece.white);
             if (opponentMated) {
               if (_gameMode == GameMode.daily) {
@@ -3426,7 +3490,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           onlineUci != null &&
           onlineExpectedPly != null) {
         unawaited(_submitOnlineMove(onlineUci!, onlineExpectedPly!));
-      } else if (!puzzleWrongMove) {
+      } else {
         _scheduleAiMove();
       }
     }
@@ -3518,7 +3582,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
     replies.sort((AiCandidate a, AiCandidate b) => b.score.compareTo(a.score));
     AiCandidate reply = replies.first;
-    if (_dailyPlyIndex < _dailyChallenge.solution.length) {
+    if (!_puzzleExplorationMode &&
+        _dailyPlyIndex < _dailyChallenge.solution.length) {
       final String plannedMove = _dailyChallenge.solution[_dailyPlyIndex];
       if (plannedMove.length >= 4) {
         final String plannedFrom = plannedMove.substring(0, 2);
@@ -4015,6 +4080,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _dailyCompletedToday = completedToday;
       _dailyPlyIndex = 0;
       _dailyMistakes = 0;
+      _puzzleExplorationMode = false;
       _pieces = resetPieces;
       _moves.clear();
       _capturedWhite.clear();
@@ -4509,10 +4575,21 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _connectOnlineSocket(String token, String matchId) {
     _onlineSocketReconnectTimer?.cancel();
+    _onlineHeartbeatTimer?.cancel();
     try {
       final WebSocketChannel channel =
           _onlineApi.openMatchChannel(token, matchId);
       _onlineChannel = channel;
+      _onlineHeartbeatTimer = Timer.periodic(
+        const Duration(seconds: 2),
+        (_) {
+          try {
+            channel.sink.add('{"type":"heartbeat"}');
+          } on Object {
+            // Stream callbacks schedule the reconnect path.
+          }
+        },
+      );
       _onlineSocketSubscription = channel.stream.listen(
         (dynamic event) {
           _handleOnlineSocketEvent(event);
@@ -4530,6 +4607,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void _scheduleOnlineSocketReconnect(String token, String matchId) {
     if (!mounted || _onlineMatch?.id != matchId) return;
     setState(() => _onlineSocketConnected = false);
+    _onlineHeartbeatTimer?.cancel();
     _onlineSocketReconnectTimer?.cancel();
     _onlineSocketReconnectTimer = Timer(
       const Duration(seconds: 3),
@@ -4694,6 +4772,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (match == null || token == null) return;
     _onlineSubmitting = false;
     _onlineSocketReconnectTimer?.cancel();
+    _onlineHeartbeatTimer?.cancel();
     unawaited(_onlineSocketSubscription?.cancel());
     unawaited(_onlineChannel?.sink.close());
     _onlinePollTimer?.cancel();
@@ -4708,6 +4787,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Future<void> _startFreshOnlineGame() async {
     _onlinePollTimer?.cancel();
     _onlineSocketReconnectTimer?.cancel();
+    _onlineHeartbeatTimer?.cancel();
     await _onlineSocketSubscription?.cancel();
     await _onlineChannel?.sink.close();
     if (!mounted) return;

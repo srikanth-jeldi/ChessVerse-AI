@@ -29,7 +29,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a legal non-solution puzzle move is played before feedback', (
+  testWidgets('a legal non-solution puzzle move gets a defense reply', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -49,15 +49,17 @@ void main() {
     );
     await tester.pump();
 
-    // Easy 001 expects e1-h1. The white king move f6-e6 is legal chess but
-    // is not the curated solution; it must still be shown on the board.
-    await tester.tap(find.byKey(const ValueKey<String>('square-f6')));
+    // Easy 001 expects e1-h1. The rook move e1-e2 is legal chess, keeps the
+    // game live, and must switch to free exploration with a black reply.
+    await tester.tap(find.byKey(const ValueKey<String>('square-e1')));
     await tester.pump();
-    await tester.tap(find.byKey(const ValueKey<String>('square-e6')));
+    await tester.tap(find.byKey(const ValueKey<String>('square-e2')));
     await tester.pump();
 
-    expect(find.textContaining('Legal move played'), findsWidgets);
-    expect(find.textContaining('Tap Try again'), findsWidgets);
+    expect(find.textContaining('ChessVerseAI is calculating'), findsWidgets);
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.textContaining('ChessVerseAI is calculating'), findsNothing);
+    expect(find.textContaining('Incorrect puzzle move'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
