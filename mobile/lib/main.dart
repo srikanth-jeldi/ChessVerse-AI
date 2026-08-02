@@ -75,7 +75,7 @@ class _SplashGateState extends State<SplashGate> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer(const Duration(milliseconds: 1300), () {
+    _timer = Timer(const Duration(milliseconds: 2200), () {
       if (mounted) {
         setState(() => _stage = _RootStage.loading);
         unawaited(_restoreSession());
@@ -540,7 +540,7 @@ class BrandedSplash extends StatelessWidget {
                 ),
                 SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 34),
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 54),
                     child: Column(
                       children: <Widget>[
                         const Spacer(flex: 7),
@@ -587,13 +587,29 @@ class BrandedSplash extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 18),
-                        Text(
-                          'Powered by EpitomeHub',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.56),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.6,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFF02070D).withValues(alpha: 0.64),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: const Color(0xFFFFCE6A)
+                                  .withValues(alpha: 0.42),
+                            ),
+                          ),
+                          child: const Text(
+                            'Powered by EpitomeHub',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Color(0xFFFFD77D),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.7,
+                            ),
                           ),
                         ),
                       ],
