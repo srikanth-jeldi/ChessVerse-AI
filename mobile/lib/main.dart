@@ -510,14 +510,23 @@ class BrandedSplash extends StatelessWidget {
           const String wideAsset =
               'assets/branding/chessverse_king_dual_splash.jpg';
           const String mobileAsset =
-              'assets/branding/splash_screen_mobile_v2.png';
+              'assets/branding/splash_screen_mobile_v2.jpg';
           if (!wide) {
             return Stack(
               fit: StackFit.expand,
               children: <Widget>[
+                const Opacity(
+                  opacity: 0.34,
+                  child: Image(
+                    image: AssetImage(mobileAsset),
+                    fit: BoxFit.cover,
+                    alignment: Alignment.center,
+                    filterQuality: FilterQuality.medium,
+                  ),
+                ),
                 const Image(
                   image: AssetImage(mobileAsset),
-                  fit: BoxFit.cover,
+                  fit: BoxFit.contain,
                   alignment: Alignment.center,
                   filterQuality: FilterQuality.high,
                 ),
@@ -622,9 +631,18 @@ class BrandedSplash extends StatelessWidget {
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
+              const Opacity(
+                opacity: 0.32,
+                child: Image(
+                  image: AssetImage(wideAsset),
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  filterQuality: FilterQuality.medium,
+                ),
+              ),
               const Image(
                 image: AssetImage(wideAsset),
-                fit: BoxFit.cover,
+                fit: BoxFit.contain,
                 alignment: Alignment.center,
                 filterQuality: FilterQuality.high,
               ),
