@@ -270,18 +270,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       showDragHandle: true,
       builder: (BuildContext context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            ListTile(title: Text(title)),
-            for (final String option in values)
-              RadioListTile<String>(
-                value: option,
-                groupValue: selected,
-                title: Text(option),
-                onChanged: (String? value) => Navigator.pop(context, value),
-              ),
-          ],
+        child: RadioGroup<String>(
+          groupValue: selected,
+          onChanged: (String? value) => Navigator.pop(context, value),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              ListTile(title: Text(title)),
+              for (final String option in values)
+                RadioListTile<String>(
+                  value: option,
+                  title: Text(option),
+                ),
+            ],
+          ),
         ),
       ),
     );

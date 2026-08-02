@@ -27,6 +27,7 @@ class SavedGamesScreen extends StatelessWidget {
 
     return _ReferenceScaffold(
       title: 'My Games',
+      alignment: Alignment.topCenter,
       child: Column(
         children: <Widget>[
           const _SegmentTabs(labels: <String>['All', 'White', 'Black']),
@@ -163,10 +164,15 @@ class GameResultScreen extends StatelessWidget {
 }
 
 class _ReferenceScaffold extends StatelessWidget {
-  const _ReferenceScaffold({required this.title, required this.child});
+  const _ReferenceScaffold({
+    required this.title,
+    required this.child,
+    this.alignment = Alignment.center,
+  });
 
   final String title;
   final Widget child;
+  final Alignment alignment;
 
   @override
   Widget build(BuildContext context) {
@@ -176,7 +182,8 @@ class _ReferenceScaffold extends StatelessWidget {
       body: DecoratedBox(
         decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
         child: SafeArea(
-          child: Center(
+          child: Align(
+            alignment: alignment,
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(18),
               child: ConstrainedBox(
