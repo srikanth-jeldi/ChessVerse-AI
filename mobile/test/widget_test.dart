@@ -28,6 +28,10 @@ class _FakeOnlineApi extends OnlineMatchApi {
       randomMatch(token);
 
   @override
+  Future<OnlineMatchDto> getMatch(String token, String matchId) =>
+      randomMatch(token);
+
+  @override
   WebSocketChannel openMatchChannel(String token, String matchId) {
     throw StateError('Socket intentionally unavailable in widget test');
   }
@@ -471,6 +475,30 @@ void main() {
     expect(find.text('FINDING YOUR RIVAL'), findsOneWidget);
     expect(find.text('Searching worldwide players...'), findsOneWidget);
     expect(find.text('Cancel search'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('random search stops after twenty seconds', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: OnlineMatchmakingSheet(
+            api: _FakeOnlineApi(active: false),
+            token: 'test-token',
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Find random player'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 20));
+    await tester.pump();
+
+    expect(find.text('FINDING YOUR RIVAL'), findsNothing);
+    expect(find.textContaining('No active rival found'), findsOneWidget);
+    expect(find.text('Find random player'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

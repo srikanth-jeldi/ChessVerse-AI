@@ -94,7 +94,7 @@ class _SplashGateState extends State<SplashGate> {
     String playerName = session.displayName;
     String? username = session.username;
     String? email = session.email;
-    final String? photoUrl = session.photoUrl;
+    String? photoUrl = session.photoUrl;
     bool isGuest = session.isGuest;
     try {
       final Map<String, dynamic> player =
@@ -104,6 +104,7 @@ class _SplashGateState extends State<SplashGate> {
           playerName;
       username = _profileValue(player['username']) ?? username;
       email = _profileValue(player['email']) ?? email;
+      photoUrl = _profileValue(player['photoUrl']) ?? photoUrl;
       isGuest = player['guest'] as bool? ?? isGuest;
     } on AuthApiException catch (error) {
       if (error.statusCode == 401 || error.statusCode == 403) {
@@ -116,8 +117,6 @@ class _SplashGateState extends State<SplashGate> {
     }
     if (!mounted) return;
     _enableCloudSync(session.token);
-    await _syncCloudProgress(session.token);
-    if (!mounted) return;
     setState(() {
       _playerName = playerName;
       _username = username;
@@ -126,6 +125,30 @@ class _SplashGateState extends State<SplashGate> {
       _isGuest = isGuest;
       _stage = _RootStage.home;
     });
+    // Do not make active-match recovery wait for profile/progress sync. A
+    // killed mobile process has a short server grace window and must reopen
+    // its authoritative match as soon as the authenticated home route exists.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_restoreActiveOnlineMatch(session.token));
+    });
+    unawaited(_syncCloudProgress(session.token));
+  }
+
+  Future<void> _restoreActiveOnlineMatch(String token) async {
+    try {
+      final OnlineMatchDto match =
+          await const OnlineMatchApi().reconnect(token);
+      if (!mounted || _stage != _RootStage.home || !match.isActive) return;
+      await _openGame(
+        context,
+        GameMode.online,
+        initialOnlineMatch: match,
+        initialAuthToken: token,
+      );
+    } on OnlineMatchException {
+      // No active match (or temporary connectivity loss) is a normal startup
+      // state. The home screen remains usable and manual reconnect still works.
+    }
   }
 
   String? _profileValue(Object? value) {
@@ -180,7 +203,7 @@ class _SplashGateState extends State<SplashGate> {
             onPlayVsAi: () => _chooseSideAndOpen(context, GameMode.computer),
             onDailyChallenge: () => _openGame(context, GameMode.daily),
             onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
-            onOnlineGame: () => _openGame(context, GameMode.online),
+            onOnlineGame: () => _openOnlineGame(context),
             onAnalysis: () => _push(context, const AnalysisScreen()),
             onPuzzles: () => _push(
               context,
@@ -307,6 +330,8 @@ class _SplashGateState extends State<SplashGate> {
     PlayerSideChoice sideChoice = PlayerSideChoice.white,
     DailyChallengeDifficulty? dailyDifficulty,
     String? puzzleId,
+    OnlineMatchDto? initialOnlineMatch,
+    String? initialAuthToken,
   }) {
     return _push(
       context,
@@ -322,9 +347,52 @@ class _SplashGateState extends State<SplashGate> {
         initialSideChoice: sideChoice,
         initialDailyDifficulty: dailyDifficulty,
         initialPuzzleId: puzzleId,
+        initialOnlineMatch: initialOnlineMatch,
+        initialAuthToken: initialAuthToken,
         onLogout: () => _logout(context),
       ),
     );
+  }
+
+  Future<void> _openOnlineGame(BuildContext context) async {
+    final StoredAuthSession? session = await const AuthSessionStore().read();
+    if (!context.mounted) return;
+    if (session == null || session.token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in to play online.')),
+      );
+      return;
+    }
+    final OnlineMatchDto? match =
+        await Navigator.of(context).push<OnlineMatchDto>(
+      MaterialPageRoute<OnlineMatchDto>(
+        fullscreenDialog: true,
+        builder: (_) => Scaffold(
+          backgroundColor: const Color(0xFF06131F),
+          body: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[Color(0xFF0A2231), Color(0xFF040B13)],
+              ),
+            ),
+            child: OnlineMatchmakingSheet(
+              api: const OnlineMatchApi(),
+              token: session.token,
+            ),
+          ),
+        ),
+      ),
+    );
+    if (match != null && context.mounted) {
+      await _openGame(
+        context,
+        GameMode.online,
+        initialOnlineMatch: match,
+        initialAuthToken: session.token,
+      );
+    }
   }
 
   Future<void> _logout(BuildContext currentRouteContext) async {
@@ -533,46 +601,27 @@ class BrandedSplash extends StatelessWidget {
               ],
             );
           }
-          final double maxHeroWidth = wide
-              ? constraints.maxWidth.clamp(520.0, 980.0)
-              : constraints.maxWidth * 0.96;
-          final double maxHeroHeight =
-              wide ? constraints.maxHeight * 0.9 : constraints.maxHeight * 0.86;
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
-              ImageFiltered(
-                imageFilter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: const Image(
-                  image: AssetImage(wideAsset),
-                  fit: BoxFit.cover,
-                  alignment: Alignment.center,
-                ),
+              const Image(
+                image: AssetImage(wideAsset),
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+                filterQuality: FilterQuality.high,
               ),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment(0, -0.08),
-                    radius: 0.9,
-                    colors: <Color>[
-                      Color(0x66066C63),
-                      Color(0xD902070D),
-                      Color(0xFF02070D),
-                    ],
-                  ),
-                ),
-              ),
-              SafeArea(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: maxHeroWidth,
-                      maxHeight: maxHeroHeight,
-                    ),
-                    child: Image(
-                      image: const AssetImage(wideAsset),
-                      fit: BoxFit.contain,
-                      alignment: Alignment.center,
+              IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        Color(0x1202070D),
+                        Colors.transparent,
+                        Color(0x2602070D),
+                      ],
+                      stops: <double>[0, 0.62, 1],
                     ),
                   ),
                 ),
@@ -1532,6 +1581,8 @@ class GameScreen extends StatefulWidget {
     this.initialSideChoice = PlayerSideChoice.white,
     this.initialDailyDifficulty,
     this.initialPuzzleId,
+    this.initialOnlineMatch,
+    this.initialAuthToken,
     this.onLogout,
     super.key,
   });
@@ -1547,6 +1598,8 @@ class GameScreen extends StatefulWidget {
   final PlayerSideChoice initialSideChoice;
   final DailyChallengeDifficulty? initialDailyDifficulty;
   final String? initialPuzzleId;
+  final OnlineMatchDto? initialOnlineMatch;
+  final String? initialAuthToken;
   final Future<void> Function()? onLogout;
 
   @override
@@ -1571,6 +1624,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   WebSocketChannel? _onlineChannel;
   StreamSubscription<dynamic>? _onlineSocketSubscription;
   Timer? _onlineSocketReconnectTimer;
+  Timer? _onlineHeartbeatTimer;
   OnlineMatchDto? _onlineMatch;
   String? _handledDrawOfferKey;
   String? _archivedOnlineMatchId;
@@ -1627,6 +1681,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   bool _dailyCompletedToday = false;
   int _dailyPlyIndex = 0;
   int _dailyMistakes = 0;
+  bool _puzzleExplorationMode = false;
   late ChessPuzzle _activePuzzle;
 
   bool get _isTacticsMode =>
@@ -1733,7 +1788,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (_gameMode == GameMode.computer && !_humanPlaysWhite) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleAiMove());
     }
-    if (_gameMode == GameMode.online) {
+    if (_gameMode == GameMode.online &&
+        widget.initialOnlineMatch != null &&
+        widget.initialAuthToken != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _beginOnlineMatch(
+              widget.initialOnlineMatch!, widget.initialAuthToken!);
+        }
+      });
+    } else if (_gameMode == GameMode.online) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           unawaited(_showOnlineMatchmakingInfo());
@@ -1822,6 +1886,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     unawaited(_onlineSocketSubscription?.cancel());
     unawaited(_onlineChannel?.sink.close());
     _onlineSocketReconnectTimer?.cancel();
+    _onlineHeartbeatTimer?.cancel();
     final AudioPlayer? warningPlayer = _warningPlayer;
     if (warningPlayer != null) {
       unawaited(warningPlayer.dispose());
@@ -1836,11 +1901,33 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _onlineMatch != null &&
         _authToken != null) {
       _resumeOnlineSession();
+    } else if (state != AppLifecycleState.resumed) {
+      _onlineHeartbeatTimer?.cancel();
+      unawaited(_onlineChannel?.sink.close());
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Online matchmaking is opened immediately after this route is created.
+    // Do not build the local chess position underneath it: on slower phones
+    // and during the route transition that board used to flash behind the
+    // Online/Friends screen for a frame.
+    if (_gameMode == GameMode.online && _onlineMatch == null) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF06131F),
+        body: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[Color(0xFF0A2231), Color(0xFF040B13)],
+            ),
+          ),
+          child: SizedBox.expand(),
+        ),
+      );
+    }
     final BoardPalette palette = boardPalettes[_skin]!;
     final bool sideToMoveWhite =
         _gameMode == GameMode.online && _onlineMatch != null
@@ -1959,99 +2046,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     )
                   : BoardStage(palette: palette, child: board);
 
-              Widget buildPanel({
-                ValueChanged<GameMode>? onModeChanged,
-              }) =>
-                  GamePanel(
-                    compact: !wide ||
-                        constraints.maxHeight < 620 ||
-                        widePanelWidth < 340,
-                    collapsible: true,
-                    expanded: _controlsExpanded,
-                    whitePlayerName: _whitePlayerName,
-                    blackPlayerName: _blackPlayerName,
-                    activeColor:
-                        _gameMode == GameMode.online && _onlineMatch != null
-                            ? (_onlineMatch!.whiteToMove ? 'White' : 'Black')
-                            : (_moves.length.isEven ? 'White' : 'Black'),
-                    gameMode: _gameMode,
-                    aiLevel: _aiLevel.round(),
-                    aiThinking: _aiThinking,
-                    coachEnabled: _coachEnabled,
-                    moves: _moves,
-                    capturedWhite: _capturedWhite,
-                    capturedBlack: _capturedBlack,
-                    coachNote: _coachNote,
-                    whiteClock: _formatClock(_whiteSeconds),
-                    blackClock: _formatClock(_blackSeconds),
-                    skin: _skin,
-                    onSkinChanged: (BoardSkin skin) =>
-                        setState(() => _skin = skin),
-                    onGameModeChanged: onModeChanged ?? _changeGameMode,
-                    dailyDifficulty: _dailyDifficulty,
-                    dailyProgress: _dailyPlayerMovesCompleted,
-                    dailyGoal: _dailyChallenge.playerMoveGoal,
-                    dailyMistakes: _dailyMistakes,
-                    onDailyDifficultyChanged: _changeDailyDifficulty,
-                    onAiLevelChanged: (double level) {
-                      setState(() => _aiLevel = level);
-                    },
-                    onCoachChanged: (bool value) {
-                      setState(() => _coachEnabled = value);
-                    },
-                    onNewGameRequested: _confirmNewGame,
-                    onResign: _resignGame,
-                    onOfferDraw: _offerDraw,
-                    onMoveHistory: _showMoveHistory,
-                    onUndo: _undo,
-                    onHint: _showHint,
-                    onAnalyze: _showAnalysis,
-                    soundEnabled: _soundEnabled,
-                    showCoordinates: _showCoordinates,
-                    showMoveHints: _showMoveHints,
-                    onSoundChanged: _setSoundEnabled,
-                    onShowCoordinatesChanged: (bool value) {
-                      setState(() => _showCoordinates = value);
-                    },
-                    onShowMoveHintsChanged: (bool value) {
-                      setState(() => _showMoveHints = value);
-                    },
-                    onEditBlackPlayer: _editBlackPlayerName,
-                    onToggleExpanded: () {
-                      setState(() => _controlsExpanded = !_controlsExpanded);
-                    },
-                    onLogout: _logout,
-                    canUndo:
-                        _gameMode != GameMode.online && _history.isNotEmpty,
-                  );
-              void openFullControls() {
-                showModalBottomSheet<void>(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (BuildContext sheetContext) => StatefulBuilder(
-                    builder: (
-                      BuildContext context,
-                      StateSetter setSheetState,
-                    ) =>
-                        SafeArea(
-                      child: FractionallySizedBox(
-                        heightFactor: 0.92,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: buildPanel(
-                            onModeChanged: (GameMode mode) {
-                              _changeGameMode(mode);
-                              setSheetState(() {});
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }
-
               final Widget studioCoach = _StudioCoachPanel(
                 gameMode: _gameMode,
                 activeColor:
@@ -2074,7 +2068,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                         )
                     : _confirmNewGame,
                 onUndo: _undo,
-                onControls: openFullControls,
                 puzzleComplete: _gameMode == GameMode.puzzle &&
                     _gameResultTitle == 'Puzzle complete',
                 onNextPuzzle: _startNextPuzzle,
@@ -2162,9 +2155,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
                             CompactHeader(
-                              playerName: _whitePlayerName,
                               onHome: () => Navigator.of(context).pop(),
-                              onDailyChallenge: _openDailyChallenge,
                               onProfile: _openProfile,
                               onReset: _confirmNewGame,
                               onLogout: _logout,
@@ -2884,6 +2875,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   String _resultScoreLabel() {
+    if (_gameMode == GameMode.online) {
+      final String authoritative = _onlineMatch?.perspectiveScoreLabel ?? '';
+      if (authoritative.isNotEmpty) return authoritative;
+    }
     final String lowerTitle = (_gameResultTitle ?? '').toLowerCase();
     if (lowerTitle.contains('draw')) {
       return '1/2 - 1/2';
@@ -3197,6 +3192,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     String? promotionSquare;
     bool? promotionWhite;
     bool moveCommitted = false;
+    bool puzzleWrongMove = false;
     String? onlineUci;
     int? onlineExpectedPly;
 
@@ -3255,16 +3251,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
       final String from = _selectedSquare!;
       if (_gameMode == GameMode.puzzle &&
+          !_puzzleExplorationMode &&
           _dailyPlyIndex < _dailyChallenge.solution.length) {
         final String expected =
             _dailyChallenge.solution[_dailyPlyIndex].toLowerCase();
         if (!expected.startsWith('$from$square')) {
           _dailyMistakes++;
-          _coachNote =
-              'Legal move, but it misses the forced line. Try another move.';
-          _selectedSquare = null;
-          unawaited(ChessSoundService.instance.error());
-          return;
+          // Every chess-legal move is playable. Leaving the curated line
+          // starts exploration mode, where the defense continues replying.
+          puzzleWrongMove = true;
+          _puzzleExplorationMode = true;
         }
       }
       final PositionAnalysis preMoveAnalysis = _analyzePosition(whitesTurn);
@@ -3321,7 +3317,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             capture: captured != null,
           ),
         );
-        if (_isTacticsMode) {
+        if (_isTacticsMode && (!puzzleWrongMove || _puzzleExplorationMode)) {
           _dailyPlyIndex++;
         }
         final String moveFeedback = _moveFeedback(
@@ -3357,7 +3353,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             _coachNote = '$moveFeedback $_coachNote';
           }
           _lastPlayerCoachNote = _coachNote;
-          if (_isTacticsMode) {
+          if (_gameMode == GameMode.puzzle && puzzleWrongMove) {
+            // The curated objective no longer decides terminal state once the
+            // player branches. Continue as a normal legal chess position.
+            _gameResultTitle = null;
+            _gameResultDetail = null;
+            _resultVisible = false;
+            _coachNote =
+                'Legal move played. Exploration mode started; the defense will reply. '
+                'Tap Try again anytime to return to the puzzle line.';
+            _lastPlayerCoachNote = _coachNote;
+            unawaited(ChessSoundService.instance.error());
+          } else if (_isTacticsMode && !_puzzleExplorationMode) {
             final bool opponentMated = _isCheckmateFor(!piece.white);
             if (opponentMated) {
               if (_gameMode == GameMode.daily) {
@@ -3487,7 +3494,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
     replies.sort((AiCandidate a, AiCandidate b) => b.score.compareTo(a.score));
     AiCandidate reply = replies.first;
-    if (_dailyPlyIndex < _dailyChallenge.solution.length) {
+    if (!_puzzleExplorationMode &&
+        _dailyPlyIndex < _dailyChallenge.solution.length) {
       final String plannedMove = _dailyChallenge.solution[_dailyPlyIndex];
       if (plannedMove.length >= 4) {
         final String plannedFrom = plannedMove.substring(0, 2);
@@ -3984,6 +3992,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _dailyCompletedToday = completedToday;
       _dailyPlyIndex = 0;
       _dailyMistakes = 0;
+      _puzzleExplorationMode = false;
       _pieces = resetPieces;
       _moves.clear();
       _capturedWhite.clear();
@@ -4478,10 +4487,21 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _connectOnlineSocket(String token, String matchId) {
     _onlineSocketReconnectTimer?.cancel();
+    _onlineHeartbeatTimer?.cancel();
     try {
       final WebSocketChannel channel =
           _onlineApi.openMatchChannel(token, matchId);
       _onlineChannel = channel;
+      _onlineHeartbeatTimer = Timer.periodic(
+        const Duration(seconds: 2),
+        (_) {
+          try {
+            channel.sink.add('{"type":"heartbeat"}');
+          } on Object {
+            // Stream callbacks schedule the reconnect path.
+          }
+        },
+      );
       _onlineSocketSubscription = channel.stream.listen(
         (dynamic event) {
           _handleOnlineSocketEvent(event);
@@ -4499,6 +4519,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void _scheduleOnlineSocketReconnect(String token, String matchId) {
     if (!mounted || _onlineMatch?.id != matchId) return;
     setState(() => _onlineSocketConnected = false);
+    _onlineHeartbeatTimer?.cancel();
     _onlineSocketReconnectTimer?.cancel();
     _onlineSocketReconnectTimer = Timer(
       const Duration(seconds: 3),
@@ -4663,6 +4684,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (match == null || token == null) return;
     _onlineSubmitting = false;
     _onlineSocketReconnectTimer?.cancel();
+    _onlineHeartbeatTimer?.cancel();
     unawaited(_onlineSocketSubscription?.cancel());
     unawaited(_onlineChannel?.sink.close());
     _onlinePollTimer?.cancel();
@@ -4677,6 +4699,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Future<void> _startFreshOnlineGame() async {
     _onlinePollTimer?.cancel();
     _onlineSocketReconnectTimer?.cancel();
+    _onlineHeartbeatTimer?.cancel();
     await _onlineSocketSubscription?.cancel();
     await _onlineChannel?.sink.close();
     if (!mounted) return;
@@ -5106,18 +5129,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
 class CompactHeader extends StatelessWidget {
   const CompactHeader({
-    required this.playerName,
     required this.onHome,
-    required this.onDailyChallenge,
     required this.onProfile,
     required this.onReset,
     required this.onLogout,
     super.key,
   });
 
-  final String playerName;
   final VoidCallback onHome;
-  final VoidCallback onDailyChallenge;
   final VoidCallback onProfile;
   final VoidCallback onReset;
   final VoidCallback onLogout;
@@ -5129,9 +5148,21 @@ class CompactHeader extends StatelessWidget {
         const ChessVerseMark(size: 36),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(
-            'ChessVerseAI  |  $playerName',
-            style: Theme.of(context).textTheme.titleLarge,
+          child: Text.rich(
+            const TextSpan(
+              children: <InlineSpan>[
+                TextSpan(text: 'ChessVerse'),
+                TextSpan(
+                  text: 'AI',
+                  style: TextStyle(color: Color(0xFFEABF61)),
+                ),
+              ],
+            ),
+            semanticsLabel: 'ChessVerseAI',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -5139,11 +5170,6 @@ class CompactHeader extends StatelessWidget {
           tooltip: 'Home',
           onPressed: onHome,
           icon: const Icon(Icons.home_rounded),
-        ),
-        IconButton(
-          tooltip: 'Daily challenge',
-          onPressed: onDailyChallenge,
-          icon: const Icon(Icons.local_fire_department_rounded),
         ),
         IconButton(
           tooltip: 'Profile',
@@ -6716,7 +6742,6 @@ class _StudioCoachPanel extends StatelessWidget {
     required this.onAnalyze,
     required this.onTryAgain,
     required this.onUndo,
-    required this.onControls,
     required this.puzzleComplete,
     required this.onNextPuzzle,
     required this.onBackToAcademy,
@@ -6736,7 +6761,6 @@ class _StudioCoachPanel extends StatelessWidget {
   final VoidCallback onAnalyze;
   final VoidCallback onTryAgain;
   final VoidCallback onUndo;
-  final VoidCallback onControls;
   final bool puzzleComplete;
   final VoidCallback onNextPuzzle;
   final VoidCallback onBackToAcademy;
@@ -6844,13 +6868,6 @@ class _StudioCoachPanel extends StatelessWidget {
                           onPressed: canUndo ? onUndo : null,
                           icon: const Icon(Icons.undo_rounded),
                         ),
-                        const SizedBox(width: 6),
-                        IconButton.filled(
-                          key: const ValueKey<String>('open-full-controls'),
-                          tooltip: 'Game controls',
-                          onPressed: onControls,
-                          icon: const Icon(Icons.tune_rounded),
-                        ),
                       ],
                     ),
                   SizedBox(height: compact ? 8 : 14),
@@ -6865,62 +6882,68 @@ class _StudioCoachPanel extends StatelessWidget {
                       ),
                     ),
                   ),
-                  SizedBox(height: compact ? 7 : 10),
-                  _CoachInsightCard(
-                    icon: Icons.help_outline_rounded,
-                    accent: const Color(0xFF9C6CFF),
-                    child: Text(
-                      coachEnabled
-                          ? coachNote
-                          : 'Enable Coach in Game controls for a position-specific explanation.',
-                      maxLines: compact ? 2 : 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: compact ? 7 : 10),
-                  _CoachInsightCard(
-                    icon: Icons.workspace_premium_rounded,
-                    accent: const Color(0xFF63D2B8),
-                    child: Text(
-                      aiThinking
-                          ? 'ChessVerseAI is calculating…'
-                          : lastMove == null
-                              ? 'Select a piece to begin'
-                              : '${lastMoveOwner ?? 'Last move'}: $lastMove',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF63D2B8),
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: compact ? 7 : 10),
-                  Expanded(
-                    child: _CoachInsightCard(
-                      icon: Icons.chat_bubble_rounded,
-                      accent: const Color(0xFF63D2B8),
-                      alignStart: true,
-                      child: SingleChildScrollView(
+                  if (!compact) ...<Widget>[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 74,
+                      child: _CoachInsightCard(
+                        icon: Icons.help_outline_rounded,
+                        accent: const Color(0xFF9C6CFF),
                         child: Text(
                           coachEnabled
                               ? coachNote
-                              : 'Turn Coach on from Game controls to receive move-by-move explanations.',
-                          style: TextStyle(
-                            color: const Color(0xFFF2EDE4),
-                            fontFamily: 'serif',
-                            fontSize: compact ? 14 : 16,
-                            height: 1.35,
+                              : 'Enable Coach for a position-specific explanation.',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            height: 1.2,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
                     ),
-                  ),
+                    SizedBox(height: compact ? 7 : 10),
+                    _CoachInsightCard(
+                      icon: Icons.workspace_premium_rounded,
+                      accent: const Color(0xFF63D2B8),
+                      child: Text(
+                        aiThinking
+                            ? 'ChessVerseAI is calculating…'
+                            : lastMove == null
+                                ? 'Select a piece to begin'
+                                : '${lastMoveOwner ?? 'Last move'}: $lastMove',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF63D2B8),
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: _CoachInsightCard(
+                        icon: Icons.chat_bubble_rounded,
+                        accent: const Color(0xFF63D2B8),
+                        alignStart: true,
+                        child: SingleChildScrollView(
+                          child: Text(
+                            coachEnabled
+                                ? coachNote
+                                : 'Turn Coach on from Game controls to receive move-by-move explanations.',
+                            style: TextStyle(
+                              color: const Color(0xFFF2EDE4),
+                              fontFamily: 'serif',
+                              fontSize: compact ? 14 : 16,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                   if (!compact) ...<Widget>[
                     const SizedBox(height: 10),
                     _CoachProgress(
@@ -6936,7 +6959,7 @@ class _StudioCoachPanel extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: onHint,
-                          icon: const Icon(Icons.lightbulb_outline_rounded),
+                          icon: const Icon(Icons.tips_and_updates_outlined),
                           label: const Text('Hint'),
                         ),
                       ),
@@ -8345,6 +8368,7 @@ class OnlineMatchmakingSheet extends StatefulWidget {
 }
 
 class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
+  static const int _randomSearchLimitSeconds = 20;
   final TextEditingController _roomController = TextEditingController();
   Timer? _pollTimer;
   Timer? _elapsedTimer;
@@ -8436,9 +8460,38 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     );
     _elapsedTimer?.cancel();
     _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _elapsedSeconds++);
+      if (!mounted) return;
+      setState(() => _elapsedSeconds++);
+      if (_randomSearch && _elapsedSeconds >= _randomSearchLimitSeconds) {
+        unawaited(_expireRandomSearch(match));
+      }
     });
     _openSocket(match);
+  }
+
+  Future<void> _expireRandomSearch(OnlineMatchDto waiting) async {
+    if (!_randomSearch || _match?.id != waiting.id || _foundMatch != null) {
+      return;
+    }
+    _pollTimer?.cancel();
+    _elapsedTimer?.cancel();
+    _socketReconnectTimer?.cancel();
+    await _socketSubscription?.cancel();
+    await _channel?.sink.close();
+    try {
+      await widget.api.cancelWaiting(widget.token, waiting.id);
+    } on OnlineMatchException {
+      // The lobby may already have expired server-side.
+    }
+    if (!mounted || _match?.id != waiting.id || _foundMatch != null) return;
+    setState(() {
+      _match = null;
+      _randomSearch = false;
+      _loading = false;
+      _elapsedSeconds = 0;
+      _error =
+          'No active rival found in 20 seconds. Try again or play ChessVerseAI.';
+    });
   }
 
   void _openSocket(OnlineMatchDto match) {

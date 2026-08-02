@@ -47,6 +47,10 @@ class OnlineMatchDto {
     this.rematchMatchId,
     this.ratingBefore,
     this.ratingAfter,
+    this.createdAt,
+    this.startedAt,
+    this.finishedAt,
+    this.durationSeconds,
     this.updatedAt,
   });
 
@@ -74,12 +78,33 @@ class OnlineMatchDto {
   final String? rematchMatchId;
   final int? ratingBefore;
   final int? ratingAfter;
+  final DateTime? createdAt;
+  final DateTime? startedAt;
+  final DateTime? finishedAt;
+  final int? durationSeconds;
   final DateTime? updatedAt;
 
   bool get isActive => status == 'ACTIVE';
   int get plyCount => moves.length;
   bool get whiteToMove => activeColor == 'WHITE';
   bool get isYourTurn => isActive && activeColor == yourColor;
+  String get scoreLabel => switch (result) {
+        '1-0' => '1 - 0',
+        '0-1' => '0 - 1',
+        '1/2-1/2' => '1/2 - 1/2',
+        _ => '',
+      };
+  String get perspectiveScoreLabel {
+    if (result == '1/2-1/2') return '1/2 - 1/2';
+    final bool userIsWhite = yourColor.toUpperCase() == 'WHITE';
+    final bool userWon =
+        (result == '1-0' && userIsWhite) || (result == '0-1' && !userIsWhite);
+    if (result == '1-0' || result == '0-1') {
+      return userWon ? '1 - 0' : '0 - 1';
+    }
+    return '';
+  }
+
   bool get opponentDisconnected =>
       disconnectedColor != null &&
       disconnectedColor!.toUpperCase() != yourColor.toUpperCase();
@@ -122,6 +147,10 @@ class OnlineMatchDto {
       rematchMatchId: json['rematchMatchId'] as String?,
       ratingBefore: (json['ratingBefore'] as num?)?.toInt(),
       ratingAfter: (json['ratingAfter'] as num?)?.toInt(),
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? ''),
+      startedAt: DateTime.tryParse(json['startedAt'] as String? ?? ''),
+      finishedAt: DateTime.tryParse(json['finishedAt'] as String? ?? ''),
+      durationSeconds: (json['durationSeconds'] as num?)?.toInt(),
       updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? ''),
     );
   }

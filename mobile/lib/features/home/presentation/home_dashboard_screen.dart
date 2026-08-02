@@ -49,50 +49,81 @@ class HomeDashboardScreen extends StatelessWidget {
             child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
                 final bool wide = constraints.maxWidth >= 720;
-                return SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    wide ? 28 : 15,
-                    14,
-                    wide ? 28 : 15,
-                    28,
-                  ),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 920),
-                      child: Column(
-                        children: <Widget>[
-                          _TopBar(
-                            playerName: playerName,
-                            profilePhotoUrl: profilePhotoUrl,
-                            onProfile: onProfile,
-                            onSettings: onSettings,
-                          ),
-                          SizedBox(height: wide ? 26 : 18),
-                          const _BrandHero(),
-                          SizedBox(height: wide ? 30 : 22),
-                          const _LiveStats(),
-                          const SizedBox(height: 18),
-                          _GameModeGrid(
-                            wide: wide,
-                            onOnline: onOnlineGame,
-                            onComputer: onPlayVsAi,
-                            onFriends: onOnlineGame,
-                            onPuzzles: onPuzzles,
-                            onRankings: onRankings,
-                            onSettings: onSettings,
-                          ),
-                          const SizedBox(height: 14),
-                          _MoreActions(
-                            onDaily: onDailyChallenge,
-                            onLocal: onLocalGame,
-                            onAnalysis: onAnalysis,
-                            onSaved: onSavedGames,
-                            onLearn: onLearnChess,
-                          ),
-                        ],
-                      ),
+                final bool desktopViewport =
+                    wide && constraints.maxHeight >= 600;
+                final Widget content = Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: 920,
+                      minWidth: wide ? 0 : constraints.maxWidth - 30,
+                    ),
+                    child: Column(
+                      children: <Widget>[
+                        _TopBar(
+                          playerName: playerName,
+                          profilePhotoUrl: profilePhotoUrl,
+                          onProfile: onProfile,
+                          onSettings: onSettings,
+                        ),
+                        SizedBox(height: wide ? 26 : 18),
+                        const _BrandHero(),
+                        SizedBox(height: wide ? 30 : 22),
+                        const _LiveStats(),
+                        const SizedBox(height: 18),
+                        _GameModeGrid(
+                          wide: wide,
+                          onOnline: onOnlineGame,
+                          onComputer: onPlayVsAi,
+                          onFriends: onOnlineGame,
+                          onPuzzles: onPuzzles,
+                          onRankings: onRankings,
+                          onSettings: onSettings,
+                        ),
+                        const SizedBox(height: 14),
+                        _MoreActions(
+                          onDaily: onDailyChallenge,
+                          onLocal: onLocalGame,
+                          onAnalysis: onAnalysis,
+                          onSaved: onSavedGames,
+                          onLearn: onLearnChess,
+                        ),
+                      ],
                     ),
                   ),
+                );
+                if (!wide) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(15, 10, 15, 10),
+                    child: SizedBox.expand(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.center,
+                        child: SizedBox(
+                          width: constraints.maxWidth - 30,
+                          child: content,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                if (desktopViewport) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 14, 28, 20),
+                    child: SizedBox.expand(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.center,
+                        child: SizedBox(
+                          width: constraints.maxWidth - 56,
+                          child: content,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(28, 14, 28, 28),
+                  child: content,
                 );
               },
             ),
@@ -233,6 +264,7 @@ class _TopBar extends StatelessWidget {
                   child: Image.network(
                     profilePhotoUrl!,
                     fit: BoxFit.cover,
+                    webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
                     errorBuilder: (_, __, ___) => const Icon(
                       Icons.emoji_events_rounded,
                       color: Colors.white,
@@ -326,20 +358,26 @@ class _BrandHero extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 13),
-        ShaderMask(
-          shaderCallback: (Rect bounds) => const LinearGradient(
-            colors: <Color>[Colors.white, Color(0xFF9DD9FF)],
-          ).createShader(bounds),
-          child: const Text(
-            'CHESSVERSEAI',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 34,
-              height: 1,
-              letterSpacing: 1.6,
-              fontWeight: FontWeight.w900,
-            ),
+        const Text.rich(
+          TextSpan(
+            children: <InlineSpan>[
+              TextSpan(
+                text: 'CHESSVERSE',
+                style: TextStyle(color: Color(0xFFDDF2FF)),
+              ),
+              TextSpan(
+                text: 'AI',
+                style: TextStyle(color: AppColors.accentGold),
+              ),
+            ],
+          ),
+          semanticsLabel: 'ChessVerseAI',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 34,
+            height: 1,
+            letterSpacing: 1.6,
+            fontWeight: FontWeight.w900,
           ),
         ),
         const SizedBox(height: 6),
@@ -413,23 +451,36 @@ class _StatItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           Icon(icon, size: 18, color: color),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
+          const SizedBox(width: 7),
+          Flexible(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  value,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF7895A8),
+                    fontSize: 9,
+                  ),
+                ),
+              ],
             ),
-          ),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Color(0xFF7895A8), fontSize: 9),
           ),
         ],
       ),

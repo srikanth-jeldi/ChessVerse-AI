@@ -52,6 +52,10 @@ final class OnlineDtos {
             UUID rematchMatchId,
             Integer ratingBefore,
             Integer ratingAfter,
+            Instant createdAt,
+            Instant startedAt,
+            Instant finishedAt,
+            Long durationSeconds,
             Instant updatedAt) {
         static MatchDto from(OnlineMatch match, UUID playerId) {
             String yourColor = match.whitePlayerId.equals(playerId) ? "white" : "black";
@@ -85,7 +89,17 @@ final class OnlineDtos {
                             ? match.whiteRatingBefore : match.blackRatingBefore,
                     match.whitePlayerId.equals(playerId)
                             ? match.whiteRatingAfter : match.blackRatingAfter,
+                    match.createdAt,
+                    match.startedAt,
+                    match.finishedAt,
+                    durationSeconds(match),
                     match.updatedAt);
+        }
+
+        private static Long durationSeconds(OnlineMatch match) {
+            if (match.startedAt == null || match.finishedAt == null) return null;
+            return Math.max(0, java.time.Duration.between(
+                    match.startedAt, match.finishedAt).toSeconds());
         }
 
         private static String colorOf(OnlineMatch match, UUID playerId) {

@@ -16,6 +16,7 @@ class OnlineDisconnectMonitor {
 
     @Scheduled(fixedDelay = 1000)
     void finishExpiredDisconnects() {
+        socket.pruneStaleSessions(java.time.Instant.now());
         for (UUID matchId : matches.finishExpiredDisconnects()) {
             socket.publish(matchId);
         }
