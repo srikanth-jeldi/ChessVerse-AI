@@ -125,6 +125,42 @@ class AuthControllerTest {
     }
 
     @Test
+    void guestUpgradeWithExistingGoogleIdentitySignsIntoExistingAccount() throws Exception {
+        when(googleIdentityVerifier.verify("existing-google-token"))
+                .thenReturn(new GoogleIdentityVerifier.VerifiedGoogleIdentity(
+                        "existing-google-subject",
+                        "existing-google@example.com",
+                        "Existing Google Player",
+                        "https://example.com/existing-avatar.png"));
+
+        MvcResult googleLogin = mockMvc.perform(post("/api/auth/google")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"idToken\":\"existing-google-token\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String existingUsername = objectMapper.readTree(googleLogin.getResponse().getContentAsString())
+                .path("player").path("username").asText();
+
+        MvcResult guestLogin = mockMvc.perform(post("/api/auth/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"installationId\":\"c533df6b-55b6-40e5-a132-4d691a170501\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String guestToken = objectMapper.readTree(guestLogin.getResponse().getContentAsString())
+                .path("token").asText();
+
+        mockMvc.perform(post("/api/auth/google/upgrade")
+                        .header("Authorization", "Bearer " + guestToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"idToken\":\"existing-google-token\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty())
+                .andExpect(jsonPath("$.player.username").value(existingUsername))
+                .andExpect(jsonPath("$.player.guest").value(false))
+                .andExpect(jsonPath("$.player.email").value("existing-google@example.com"));
+    }
+
+    @Test
     void cloudProgressMergeUnionsPuzzleAndDailyProgressAcrossDevices() throws Exception {
         MvcResult guestLogin = mockMvc.perform(post("/api/auth/guest")
                         .contentType(MediaType.APPLICATION_JSON)

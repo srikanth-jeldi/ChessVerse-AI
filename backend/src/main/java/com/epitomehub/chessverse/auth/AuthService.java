@@ -292,10 +292,16 @@ class AuthService {
                 googleIdentityVerifier.verify(request.idToken());
         OAuthIdentity identity =
                 oauthIdentities.findByProviderAndSubject("google", google.subject()).orElse(null);
-        if (identity != null && !identity.player.id.equals(guest.id)) {
-            throw new AuthException(
-                    HttpStatus.CONFLICT,
-                    "That Google account already has ChessVerseAI progress. Sign in with Google to use it; your guest progress remains safe on this device.");
+        if (identity != null && !java.util.Objects.equals(identity.player.id, guest.id)) {
+            // The secure-account screen is itself a Google sign-in surface. If
+            // the selected Google identity already owns an account, complete
+            // that sign-in instead of trapping the user on the guest-upgrade
+            // page. The numbered guest remains attached to the installation,
+            // so none of its progress is overwritten or deleted.
+            identity.player.photoUrl = google.photoUrl();
+            identity.player.updatedAt = Instant.now();
+            players.save(identity.player);
+            return createSession(identity.player);
         }
 
         String email = normalizeEmail(google.email());
