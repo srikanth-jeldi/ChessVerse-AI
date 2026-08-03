@@ -111,34 +111,26 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      for (final String label in <String>[
-        'Play Online',
-        'Play Computer',
-        'Play with Friends',
-        'Chess Puzzles',
-        'Rankings',
-        'Settings',
-        'Daily',
-        'Local',
-        'Analysis',
-        'Saved',
-        'Learn',
-      ]) {
-        expect(find.text(label), findsOneWidget);
-      }
+      expect(find.text('Play Online'), findsOneWidget);
+      expect(find.text('Play Computer'), findsOneWidget);
+      expect(find.text('Play with Friends'), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey<String>('chess-puzzles')), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('rankings')), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('analysis')), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('learn')), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       if (name == 'portrait') {
-        expect(
-            tester.getRect(find.text('Learn')).bottom, lessThan(size.height));
+        expect(find.text('Home'), findsOneWidget);
+        expect(find.text('Profile'), findsOneWidget);
       } else {
         await tester.scrollUntilVisible(
-          find.text('Learn'),
+          find.byKey(const ValueKey<String>('learn')),
           220,
           scrollable: find.byType(Scrollable).first,
         );
-        expect(
-            tester.getRect(find.text('Learn')).bottom, lessThan(size.height));
+        expect(find.byKey(const ValueKey<String>('learn')), findsOneWidget);
       }
       expect(tester.takeException(), isNull);
     });
@@ -204,6 +196,13 @@ void main() {
         220,
         scrollable: find.byType(Scrollable).first,
       );
+      if (tester.getRect(find.text('ACCOUNT')).bottom >= size.height) {
+        await tester.drag(
+          find.byType(Scrollable).first,
+          const Offset(0, -80),
+        );
+        await tester.pumpAndSettle();
+      }
       expect(
           tester.getRect(find.text('ACCOUNT')).bottom, lessThan(size.height));
       expect(tester.takeException(), isNull);

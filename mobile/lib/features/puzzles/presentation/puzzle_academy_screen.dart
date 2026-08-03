@@ -140,17 +140,46 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
               slivers: <Widget>[
                 SliverAppBar(
                   pinned: true,
+                  expandedHeight: 116,
                   backgroundColor: const Color(0xD9071827),
                   surfaceTintColor: Colors.transparent,
                   elevation: 4,
                   scrolledUnderElevation: 4,
                   shadowColor: Colors.black87,
-                  title: const Text(
-                    'PUZZLE ACADEMY',
-                    style: TextStyle(
-                      color: Color(0xFFF6E7C2),
-                      letterSpacing: 1.4,
-                      fontWeight: FontWeight.w900,
+                  title: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(Icons.workspace_premium_rounded,
+                          color: AppColors.accentGold, size: 21),
+                      SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'PUZZLE ACADEMY',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Color(0xFFF4C65B),
+                            fontSize: 21,
+                            letterSpacing: 1.8,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  flexibleSpace: const FlexibleSpaceBar(
+                    background: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          'Train tactics and sharpen pattern recognition',
+                          style: TextStyle(
+                            color: Color(0xFF91A9BC),
+                            fontSize: 11,
+                            letterSpacing: .2,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -159,7 +188,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                   sliver: SliverToBoxAdapter(
                     child: Center(
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 780),
+                        constraints: const BoxConstraints(maxWidth: 920),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
@@ -252,112 +281,123 @@ class _PuzzleHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[Color(0xFF173A43), Color(0xFF091927)],
+    return LayoutBuilder(builder: (BuildContext context, BoxConstraints size) {
+      final bool wide = size.maxWidth >= 650;
+      return Container(
+        constraints: BoxConstraints(minHeight: wide ? 250 : 300),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          image: const DecorationImage(
+            image: AssetImage('assets/backgrounds/home-online-hero-v1.png'),
+            fit: BoxFit.cover,
+            alignment: Alignment.centerRight,
+            opacity: .5,
+          ),
+          gradient: const LinearGradient(colors: <Color>[
+            Color(0xF2122C3A),
+            Color(0xE6061320),
+          ]),
+          border: Border.all(color: AppColors.accentGold, width: 1.2),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+                color: AppColors.accentGold.withValues(alpha: .18),
+                blurRadius: 26),
+          ],
         ),
-        border: Border.all(color: const Color(0xFF9A7133), width: 1.2),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 24,
-            offset: Offset(0, 14),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Container(
-                width: 62,
-                height: 62,
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(17),
-                  color: const Color(0xFF07121C),
-                  border: Border.all(color: AppColors.accentGold),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(11),
-                  child: Image.asset(
-                    'assets/branding/app_icon.png',
-                    fit: BoxFit.cover,
-                  ),
-                ),
+        child: Stack(children: <Widget>[
+          Positioned(
+            top: 0,
+            left: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              decoration: const BoxDecoration(
+                color: Color(0xCC2C2518),
+                borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(27),
+                    bottomRight: Radius.circular(24)),
               ),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      'FEATURED PUZZLE',
-                      style: TextStyle(
+              child: const Row(children: <Widget>[
+                Icon(Icons.star_rounded, color: AppColors.accentGold, size: 18),
+                SizedBox(width: 8),
+                Text('FEATURED PUZZLE',
+                    style: TextStyle(
                         color: AppColors.accentGold,
-                        fontSize: 12,
                         letterSpacing: 1.5,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    SizedBox(height: 3),
-                    Text(
-                      'Tactical Sprint',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 23,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    Text(
-                      'Find the forcing line before the defense escapes.',
-                      style: TextStyle(
-                        color: Color(0xFF9EB5C0),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                        fontWeight: FontWeight.w900)),
+              ]),
+            ),
           ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 8,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: <Widget>[
-              _HeroStat(icon: Icons.extension_rounded, value: '$solved solved'),
-              _HeroStat(
-                icon: Icons.grid_view_rounded,
-                value: '150 puzzles',
-              ),
-              FilledButton.icon(
-                key: const ValueKey<String>('daily-puzzle-start'),
-                onPressed: onStart,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.accentGold,
-                  foregroundColor: const Color(0xFF24180A),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
-                ),
-                icon: const Icon(Icons.play_arrow_rounded),
-                label: const Text(
-                  'SOLVE',
-                  style: TextStyle(fontWeight: FontWeight.w900),
-                ),
-              ),
-            ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 58, 20, 20),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: <Widget>[
+                        Container(
+                          width: wide ? 118 : 82,
+                          height: wide ? 118 : 82,
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              color: const Color(0xE507121C),
+                              border: Border.all(
+                                  color: AppColors.accentGold, width: 1.3)),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(17),
+                            child: Image.asset('assets/branding/app_icon.png',
+                                fit: BoxFit.cover),
+                          ),
+                        ),
+                        const SizedBox(width: 18),
+                        const Expanded(
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                              Text('Tactical Sprint',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 27,
+                                      fontWeight: FontWeight.w900)),
+                              SizedBox(height: 5),
+                              Text(
+                                  'Find the forcing line before the defense escapes.',
+                                  style: TextStyle(
+                                      color: Color(0xFFAFBFCA), height: 1.35)),
+                            ])),
+                      ]),
+                  const SizedBox(height: 18),
+                  Wrap(
+                      spacing: 8,
+                      runSpacing: 10,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: <Widget>[
+                        _HeroStat(
+                            icon: Icons.extension_rounded,
+                            value: '$solved solved'),
+                        const _HeroStat(
+                            icon: Icons.grid_view_rounded,
+                            value: '150 puzzles'),
+                        FilledButton.icon(
+                          key: const ValueKey<String>('daily-puzzle-start'),
+                          onPressed: onStart,
+                          style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.accentGold,
+                              foregroundColor: const Color(0xFF24180A),
+                              elevation: 10,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 15)),
+                          icon: const Icon(Icons.sports_esports_rounded),
+                          label: const Text('SOLVE NOW',
+                              style: TextStyle(fontWeight: FontWeight.w900)),
+                        ),
+                      ]),
+                ]),
           ),
-        ],
-      ),
-    );
+        ]),
+      );
+    });
   }
 }
 

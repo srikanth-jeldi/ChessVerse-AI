@@ -15,13 +15,7 @@ class LeaderboardScreen extends StatefulWidget {
 class _LeaderboardScreenState extends State<LeaderboardScreen> {
   static const LeaderboardApi _api = LeaderboardApi();
   String _scope = 'global';
-  late Future<LeaderboardDto> _leaderboard;
-
-  @override
-  void initState() {
-    super.initState();
-    _leaderboard = _load();
-  }
+  late Future<LeaderboardDto> _leaderboard = _load();
 
   Future<LeaderboardDto> _load() async {
     final StoredAuthSession? session = await const AuthSessionStore().read();
@@ -32,11 +26,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     if (country.isNotEmpty && country != 'Unknown') {
       await _api.syncCountry(session.token, country);
     }
-    return _api.load(
-      session.token,
-      scope: _scope,
-      country: _scope == 'country' ? country : null,
-    );
+    return _api.load(session.token,
+        scope: _scope, country: _scope == 'country' ? country : null);
   }
 
   void _switchScope(String scope) {
@@ -52,27 +43,32 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('RANKINGS'),
-        backgroundColor: const Color(0xD9071827),
+        title: const Text('RANKINGS',
+            style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+        actions: const <Widget>[
+          Padding(
+            padding: EdgeInsets.only(right: 14),
+            child: Icon(Icons.info_outline_rounded, color: Color(0xFF9EB0BA)),
+          ),
+        ],
+        backgroundColor: const Color(0xE6071827),
       ),
       body: FutureBuilder<LeaderboardDto>(
         future: _leaderboard,
-        builder:
-            (BuildContext context, AsyncSnapshot<LeaderboardDto> snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+        builder: (BuildContext context, AsyncSnapshot<LeaderboardDto> snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snapshot.hasError || snapshot.data == null) {
-            final Object error = snapshot.error ?? 'Unable to load rankings.';
-            final String message = error is LeaderboardException
-                ? error.message
-                : 'Unable to load rankings.';
+          if (snap.hasError || snap.data == null) {
+            final Object error = snap.error ?? 'Unable to load rankings.';
             return _ErrorState(
-              message: message,
+              message: error is LeaderboardException
+                  ? error.message
+                  : 'Unable to load rankings.',
               onRetry: () => setState(() => _leaderboard = _load()),
             );
           }
-          final LeaderboardDto board = snapshot.data!;
+          final LeaderboardDto board = snap.data!;
           return RefreshIndicator(
             onRefresh: () async {
               final Future<LeaderboardDto> next = _load();
@@ -80,42 +76,59 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               await next;
             },
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 34),
               children: <Widget>[
-                _RatingHero(player: board.you),
-                const SizedBox(height: 16),
-                SegmentedButton<String>(
-                  segments: <ButtonSegment<String>>[
-                    const ButtonSegment<String>(
-                      value: 'global',
-                      icon: Icon(Icons.public_rounded),
-                      label: Text('Global'),
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 940),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        _RatingHero(player: board.you),
+                        const SizedBox(height: 14),
+                        _ScopeSwitch(
+                          scope: _scope,
+                          country: board.you.country,
+                          onChanged: _switchScope,
+                        ),
+                        const SizedBox(height: 17),
+                        Row(children: <Widget>[
+                          const Text('TOP PLAYERS',
+                              style: TextStyle(
+                                  color: Color(0xFF8396A2),
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.2)),
+                          const Spacer(),
+                          Text(
+                              'TOP ${board.entries.length} OF ${board.totalPlayers}',
+                              style: const TextStyle(
+                                  color: Color(0xFF8396A2), fontSize: 11)),
+                        ]),
+                        const SizedBox(height: 9),
+                        if (board.entries.isEmpty)
+                          const _EmptyBoard()
+                        else
+                          LayoutBuilder(builder: (context, size) {
+                            final int columns = size.maxWidth >= 800 ? 2 : 1;
+                            return GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: columns,
+                                crossAxisSpacing: 10,
+                                mainAxisSpacing: 9,
+                                mainAxisExtent: 91,
+                              ),
+                              itemCount: board.entries.length,
+                              itemBuilder: (_, int index) =>
+                                  _LeaderboardTile(board.entries[index]),
+                            );
+                          }),
+                      ],
                     ),
-                    ButtonSegment<String>(
-                      value: 'country',
-                      icon: const Icon(Icons.flag_rounded),
-                      label: Text(board.you.country),
-                    ),
-                  ],
-                  selected: <String>{_scope},
-                  onSelectionChanged: (Set<String> value) =>
-                      _switchScope(value.first),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  board.totalPlayers == 0
-                      ? 'No ranked players yet'
-                      : 'Top ${board.entries.length} of ${board.totalPlayers} ranked players',
-                  style: const TextStyle(
-                    color: Color(0xFF8197A4),
-                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 10),
-                if (board.entries.isEmpty)
-                  const _EmptyBoard()
-                else
-                  ...board.entries.map(_LeaderboardTile.new),
               ],
             ),
           );
@@ -131,68 +144,204 @@ class _RatingHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(20),
+        constraints: const BoxConstraints(minHeight: 300),
+        padding: const EdgeInsets.fromLTRB(24, 25, 24, 19),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: <Color>[Color(0xFF0C2E43), Color(0xFF102035)],
-          ),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.accentGold.withValues(alpha: .7)),
+          borderRadius: BorderRadius.circular(28),
+          border:
+              Border.all(color: AppColors.accentGold.withValues(alpha: .88)),
+          image: const DecorationImage(
+              image: AssetImage('assets/backgrounds/home-online-hero-v1.png'),
+              fit: BoxFit.cover,
+              opacity: .28),
+          gradient: const LinearGradient(colors: <Color>[
+            Color(0xF20A2742),
+            Color(0xEB071625),
+          ]),
           boxShadow: <BoxShadow>[
             BoxShadow(
-              color: AppColors.accentGold.withValues(alpha: .12),
-              blurRadius: 24,
-            ),
+                color: AppColors.accentGold.withValues(alpha: .22),
+                blurRadius: 28),
+            BoxShadow(
+                color: const Color(0xFF42D5C3).withValues(alpha: .12),
+                blurRadius: 32,
+                offset: const Offset(12, 8)),
           ],
         ),
-        child: Column(
-          children: <Widget>[
-            const Icon(Icons.workspace_premium_rounded,
-                size: 42, color: AppColors.accentGold),
-            const SizedBox(height: 6),
-            Text('${player.rating}',
-                style:
-                    const TextStyle(fontSize: 42, fontWeight: FontWeight.w900)),
-            const Text('CHESSVERSEAI ELO',
-                style: TextStyle(
-                    color: AppColors.accentGold,
-                    letterSpacing: 1.4,
-                    fontWeight: FontWeight.w800)),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: <Widget>[
-                _Metric('GLOBAL',
-                    player.globalRank == 0 ? '—' : '#${player.globalRank}'),
-                _Metric(player.country.toUpperCase(),
-                    player.countryRank == 0 ? '—' : '#${player.countryRank}'),
-                _Metric('PEAK', '${player.peakRating}'),
-              ],
-            ),
-            const Divider(height: 26),
-            Text(
-              '${player.gamesPlayed} games  •  ${player.wins}W  ${player.draws}D  ${player.losses}L',
-              style: const TextStyle(color: Color(0xFFB5C8D2)),
-            ),
-          ],
-        ),
+        child: Column(children: <Widget>[
+          Container(
+            width: 66,
+            height: 66,
+            decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(colors: <Color>[
+                  Color(0xFFFFDE72),
+                  Color(0xFFD99C28),
+                ])),
+            child: const Icon(Icons.workspace_premium_rounded,
+                size: 42, color: Color(0xFF0A1B2A)),
+          ),
+          const SizedBox(height: 10),
+          const Text('CHESSVERSE AI ELO',
+              style: TextStyle(
+                  color: AppColors.accentGold,
+                  letterSpacing: 1.8,
+                  fontWeight: FontWeight.w900)),
+          Text('${player.rating}',
+              style: const TextStyle(
+                  fontSize: 64, height: 1.05, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 14),
+          Row(children: <Widget>[
+            Expanded(
+                child: _Metric(
+                    'GLOBAL',
+                    player.globalRank == 0 ? '—' : '#${player.globalRank}',
+                    const Color(0xFF5FE3C6))),
+            const _MetricDivider(),
+            Expanded(
+                child: _Metric(
+                    player.country.toUpperCase(),
+                    player.countryRank == 0 ? '—' : '#${player.countryRank}',
+                    AppColors.accentGold)),
+            const _MetricDivider(),
+            Expanded(
+                child: _Metric(
+                    'PEAK', '${player.peakRating}', const Color(0xFF9F7AE8))),
+          ]),
+          const Divider(height: 30, color: Color(0xFF778896)),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 22,
+            runSpacing: 8,
+            children: <Widget>[
+              _ResultStat(Icons.sports_esports_rounded, '${player.gamesPlayed}',
+                  'GAMES', const Color(0xFFB7C4CC)),
+              _ResultStat(Icons.check_circle, '${player.wins}', 'W',
+                  const Color(0xFF41C6A7)),
+              _ResultStat(Icons.remove_circle, '${player.draws}', 'D',
+                  const Color(0xFF8796A2)),
+              _ResultStat(Icons.cancel, '${player.losses}', 'L',
+                  const Color(0xFFD75C56)),
+            ],
+          ),
+        ]),
       );
 }
 
 class _Metric extends StatelessWidget {
-  const _Metric(this.label, this.value);
+  const _Metric(this.label, this.value, this.color);
   final String label;
   final String value;
+  final Color color;
   @override
-  Widget build(BuildContext context) => Column(
-        children: <Widget>[
-          Text(value,
-              style:
-                  const TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
-          Text(label,
-              style: const TextStyle(
-                  color: Color(0xFF7F9AA8), fontSize: 10, letterSpacing: .8)),
-        ],
+  Widget build(BuildContext context) => Column(children: <Widget>[
+        Text(value,
+            style: TextStyle(
+                color: color, fontSize: 25, fontWeight: FontWeight.w900)),
+        Text(label,
+            style: const TextStyle(
+                color: Color(0xFF91A3AE), fontSize: 10, letterSpacing: 1.1)),
+      ]);
+}
+
+class _MetricDivider extends StatelessWidget {
+  const _MetricDivider();
+  @override
+  Widget build(BuildContext context) => const SizedBox(
+      height: 43, child: VerticalDivider(color: Color(0xFF405260)));
+}
+
+class _ResultStat extends StatelessWidget {
+  const _ResultStat(this.icon, this.value, this.label, this.color);
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+  @override
+  Widget build(BuildContext context) =>
+      Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+        Icon(icon, color: color, size: 18),
+        const SizedBox(width: 6),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
+        const SizedBox(width: 5),
+        Text(label,
+            style: const TextStyle(color: Color(0xFF8FA1AC), fontSize: 11)),
+      ]);
+}
+
+class _ScopeSwitch extends StatelessWidget {
+  const _ScopeSwitch(
+      {required this.scope, required this.country, required this.onChanged});
+  final String scope;
+  final String country;
+  final ValueChanged<String> onChanged;
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 58,
+        decoration: BoxDecoration(
+            color: const Color(0xC8071725),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: const Color(0xFF6E8490))),
+        child: Row(children: <Widget>[
+          _ScopeOption(
+              selected: scope == 'global',
+              icon: Icons.public_rounded,
+              text: 'Global',
+              onTap: () => onChanged('global')),
+          _ScopeOption(
+              selected: scope == 'country',
+              icon: Icons.flag_rounded,
+              text: country,
+              onTap: () => onChanged('country')),
+        ]),
+      );
+}
+
+class _ScopeOption extends StatelessWidget {
+  const _ScopeOption(
+      {required this.selected,
+      required this.icon,
+      required this.text,
+      required this.onTap});
+  final bool selected;
+  final IconData icon;
+  final String text;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(28),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                gradient: selected
+                    ? const LinearGradient(
+                        colors: <Color>[Color(0xFF0B655F), Color(0xFF103E4D)])
+                    : null,
+                border: selected
+                    ? Border.all(color: const Color(0xFF51E1C4))
+                    : null),
+            child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Icon(icon,
+                      color: selected
+                          ? const Color(0xFF5FE3C6)
+                          : const Color(0xFFC9D2D8)),
+                  const SizedBox(width: 8),
+                  Flexible(
+                      child: Text(text,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: selected
+                                  ? const Color(0xFF5FE3C6)
+                                  : Colors.white,
+                              fontWeight: FontWeight.w800))),
+                ]),
+          ),
+        ),
       );
 }
 
@@ -201,57 +350,85 @@ class _LeaderboardTile extends StatelessWidget {
   final LeaderboardEntryDto entry;
   @override
   Widget build(BuildContext context) {
-    final Color accent = entry.rank <= 3
-        ? AppColors.accentGold
-        : entry.you
-            ? const Color(0xFF63D2B8)
-            : const Color(0xFF355268);
+    final Color accent = switch (entry.rank) {
+      1 => const Color(0xFFFFD45D),
+      2 => const Color(0xFFBECBD5),
+      3 => const Color(0xFFC4774F),
+      _ when entry.you => const Color(0xFF4ED9BE),
+      _ => const Color(0xFF385269),
+    };
+    final String initial = entry.displayName.trim().isEmpty
+        ? 'C'
+        : entry.displayName.trim().characters.first.toUpperCase();
     return Container(
-      margin: const EdgeInsets.only(bottom: 9),
-      padding: const EdgeInsets.all(13),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: entry.you ? const Color(0xFF113443) : const Color(0xFF0B1A27),
-        borderRadius: BorderRadius.circular(17),
-        border: Border.all(color: accent.withValues(alpha: .65)),
-      ),
-      child: Row(
-        children: <Widget>[
-          SizedBox(
-            width: 42,
-            child: Text('#${entry.rank}',
-                style: TextStyle(
-                    color: accent, fontWeight: FontWeight.w900, fontSize: 17)),
-          ),
-          CircleAvatar(
-            backgroundColor: accent.withValues(alpha: .16),
-            child: Text(entry.displayName.characters.first.toUpperCase(),
-                style: TextStyle(color: accent, fontWeight: FontWeight.w900)),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
+          color: entry.you ? const Color(0xE20B3B43) : const Color(0xEE0B1B2A),
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(color: accent.withValues(alpha: .75))),
+      child: Row(children: <Widget>[
+        Container(
+          width: 54,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+              gradient: LinearGradient(colors: <Color>[
+            accent.withValues(alpha: .34),
+            accent.withValues(alpha: .05)
+          ])),
+          child: Text('${entry.rank}',
+              style: TextStyle(
+                  color: accent, fontSize: 20, fontWeight: FontWeight.w900)),
+        ),
+        const SizedBox(width: 10),
+        if (entry.rank <= 3)
+          Padding(
+              padding: const EdgeInsets.only(right: 7),
+              child: Icon(Icons.emoji_events_rounded, color: accent, size: 21)),
+        CircleAvatar(
+          radius: 24,
+          backgroundColor: accent.withValues(alpha: .18),
+          child: Text(initial,
+              style: TextStyle(color: accent, fontWeight: FontWeight.w900)),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
+                Row(children: <Widget>[
+                  if (entry.you)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 5),
+                      child: Text('YOU',
+                          style: TextStyle(
+                              color: Color(0xFF54DDC2),
+                              fontWeight: FontWeight.w900)),
+                    ),
+                  Expanded(
+                    child: Text(entry.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w900)),
+                  ),
+                ]),
                 Text(
-                    entry.you
-                        ? '${entry.displayName}  • YOU'
-                        : entry.displayName,
+                    '${entry.country}  ·  ${entry.gamesPlayed} games  ·  ${entry.wins}W ${entry.draws}D ${entry.losses}L',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w800)),
-                Text(
-                  '${entry.country}  •  ${entry.gamesPlayed} games  •  ${entry.wins}W',
-                  style:
-                      const TextStyle(color: Color(0xFF8197A4), fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          Text('${entry.rating}',
-              style:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-        ],
-      ),
+                    style: const TextStyle(
+                        color: Color(0xFF9BAEB9), fontSize: 11)),
+              ]),
+        ),
+        const SizedBox(width: 8),
+        Text('${entry.rating}',
+            style: TextStyle(
+                color: entry.rank <= 3 || entry.you ? accent : Colors.white,
+                fontSize: 21,
+                fontWeight: FontWeight.w900)),
+        const SizedBox(width: 14),
+      ]),
     );
   }
 }
@@ -260,14 +437,12 @@ class _EmptyBoard extends StatelessWidget {
   const _EmptyBoard();
   @override
   Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.only(top: 80),
-        child: Column(
-          children: <Widget>[
-            Icon(Icons.leaderboard_rounded, size: 52, color: Color(0xFF527081)),
-            SizedBox(height: 12),
-            Text('Complete an online match to enter the rankings.'),
-          ],
-        ),
+        padding: EdgeInsets.only(top: 70),
+        child: Column(children: <Widget>[
+          Icon(Icons.leaderboard_rounded, size: 52, color: Color(0xFF527081)),
+          SizedBox(height: 12),
+          Text('Complete an online match to enter the rankings.'),
+        ]),
       );
 }
 
@@ -279,16 +454,13 @@ class _ErrorState extends StatelessWidget {
   Widget build(BuildContext context) => Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              const Icon(Icons.cloud_off_rounded, size: 46),
-              const SizedBox(height: 12),
-              Text(message, textAlign: TextAlign.center),
-              const SizedBox(height: 14),
-              FilledButton(onPressed: onRetry, child: const Text('Try again')),
-            ],
-          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+            const Icon(Icons.cloud_off_rounded, size: 46),
+            const SizedBox(height: 12),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 14),
+            FilledButton(onPressed: onRetry, child: const Text('Try again')),
+          ]),
         ),
       );
 }

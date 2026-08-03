@@ -4,7 +4,6 @@ import '../../../core/audio/chess_sound_service.dart';
 import '../../../core/app_preferences.dart';
 import '../../../core/layout/responsive_page.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/chessverse_button.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../../legal/presentation/legal_screen.dart';
 
@@ -65,15 +64,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(
+        title: const Text('SETTINGS',
+            style: TextStyle(letterSpacing: 1.5, fontWeight: FontWeight.w900)),
+        backgroundColor: const Color(0xE6071727),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ResponsivePage(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text('Game preferences',
-                      style: Theme.of(context).textTheme.titleLarge),
+                  const _SettingsSectionTitle(
+                    icon: Icons.workspace_premium_rounded,
+                    label: 'GAME PREFERENCES',
+                  ),
                   const SizedBox(height: 12),
                   ChessVerseCard(
                     child: Column(
@@ -138,8 +143,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  Text('Appearance',
-                      style: Theme.of(context).textTheme.titleLarge),
+                  const _SettingsSectionTitle(
+                    icon: Icons.palette_rounded,
+                    label: 'APPEARANCE',
+                  ),
                   const SizedBox(height: 12),
                   ChessVerseCard(
                     child: Column(
@@ -206,7 +213,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  Text('Legal', style: Theme.of(context).textTheme.titleLarge),
+                  const _SettingsSectionTitle(
+                    icon: Icons.shield_outlined,
+                    label: 'LEGAL',
+                  ),
                   const SizedBox(height: 12),
                   ChessVerseCard(
                     child: Column(
@@ -227,10 +237,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  ChessVerseButton(
-                    label: 'Logout',
-                    icon: Icons.logout_rounded,
-                    onPressed: _logout,
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      gradient: const LinearGradient(
+                        colors: <Color>[Color(0xFF7D2CF2), Color(0xFF5122A8)],
+                      ),
+                      boxShadow: const <BoxShadow>[
+                        BoxShadow(color: Color(0x557D2CF2), blurRadius: 20),
+                      ],
+                    ),
+                    child: ListTile(
+                      onTap: _logout,
+                      title: const Text('Logout',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900)),
+                      leading:
+                          const Icon(Icons.logout_rounded, color: Colors.white),
+                      trailing: const SizedBox(width: 24),
+                    ),
                   ),
                 ],
               ),
@@ -317,8 +344,8 @@ class _SettingSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SwitchListTile.adaptive(
-      contentPadding: EdgeInsets.zero,
-      secondary: Icon(icon, color: AppColors.accentGold),
+      contentPadding: const EdgeInsets.symmetric(vertical: 5),
+      secondary: _GoldIcon(icon),
       title: Text(title, style: Theme.of(context).textTheme.titleMedium),
       subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
       value: value,
@@ -343,7 +370,7 @@ class _SettingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: AppColors.accentGold),
+      leading: _GoldIcon(icon),
       title: Text(title, style: Theme.of(context).textTheme.titleMedium),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -370,10 +397,54 @@ class _ActionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: AppColors.accentGold),
+      leading: _GoldIcon(icon),
       title: Text(title, style: Theme.of(context).textTheme.titleMedium),
       trailing: const Icon(Icons.chevron_right_rounded),
       onTap: onTap,
     );
   }
+}
+
+class _SettingsSectionTitle extends StatelessWidget {
+  const _SettingsSectionTitle({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          const Expanded(child: Divider(color: Color(0x557F642F))),
+          const SizedBox(width: 10),
+          Icon(icon, color: AppColors.accentGold, size: 23),
+          const SizedBox(width: 9),
+          Text(label,
+              style: const TextStyle(
+                  color: AppColors.accentGold,
+                  letterSpacing: 1.4,
+                  fontWeight: FontWeight.w900)),
+          const SizedBox(width: 10),
+          const Expanded(child: Divider(color: Color(0x557F642F))),
+        ],
+      );
+}
+
+class _GoldIcon extends StatelessWidget {
+  const _GoldIcon(this.icon);
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF071827),
+          border: Border.all(color: const Color(0xFF19354A)),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(color: Color(0x332D9CF0), blurRadius: 12),
+          ],
+        ),
+        child: Icon(icon, color: AppColors.accentGold, size: 25),
+      );
 }
