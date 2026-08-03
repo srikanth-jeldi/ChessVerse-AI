@@ -426,11 +426,11 @@ class _SplashGateState extends State<SplashGate> {
                                     ),
                                     child: Column(
                                       children: <Widget>[
-                                        Icon(side.icon,
-                                            size: shortLandscape ? 30 : 48,
-                                            color: active
-                                                ? const Color(0xFF57DDC3)
-                                                : const Color(0xFFDDAF4E)),
+                                        _SideChoiceArtwork(
+                                          side: side,
+                                          size: shortLandscape ? 54 : 92,
+                                          active: active,
+                                        ),
                                         const SizedBox(height: 10),
                                         Text(side.label,
                                             style: const TextStyle(
@@ -1352,6 +1352,55 @@ AiProfile aiProfileFor(int level) {
   };
 }
 
+class _SideChoiceArtwork extends StatelessWidget {
+  const _SideChoiceArtwork({
+    required this.side,
+    required this.size,
+    required this.active,
+  });
+
+  final PlayerSideChoice side;
+  final double size;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color glow = side == PlayerSideChoice.white
+        ? const Color(0xFF57DDC3)
+        : const Color(0xFFDDAF4E);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      width: size,
+      height: size,
+      padding: EdgeInsets.all(size * .12),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: <Color>[
+            glow.withValues(alpha: active ? .36 : .2),
+            const Color(0xFF081724),
+          ],
+        ),
+        border: Border.all(color: glow.withValues(alpha: active ? .85 : .35)),
+        boxShadow: active
+            ? <BoxShadow>[
+                BoxShadow(color: glow.withValues(alpha: .24), blurRadius: 22)
+              ]
+            : const <BoxShadow>[],
+      ),
+      child: side == PlayerSideChoice.random
+          ? Icon(Icons.shuffle_rounded, color: glow, size: size * .5)
+          : Image.asset(
+              side == PlayerSideChoice.white
+                  ? 'assets/pieces/staunton_white_pawn.png'
+                  : 'assets/pieces/staunton_black_pawn.png',
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+            ),
+    );
+  }
+}
+
 class AiCandidate {
   const AiCandidate(this.from, this.to, this.score);
 
@@ -1770,30 +1819,41 @@ class _PlayDestination extends StatelessWidget {
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           automaticallyImplyLeading: false,
-          title: const Text('PLAY',
-              style:
-                  TextStyle(letterSpacing: 1.5, fontWeight: FontWeight.w900)),
+          title: const Column(
+            children: <Widget>[
+              Text('PLAY',
+                  style: TextStyle(
+                      letterSpacing: 1.8, fontWeight: FontWeight.w900)),
+              Text('Choose your battle mode',
+                  style: TextStyle(
+                      color: Color(0xFFAEC0D1),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400)),
+            ],
+          ),
+          centerTitle: true,
         ),
         body: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 920),
+              constraints: const BoxConstraints(maxWidth: 1100),
               child: LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints size) =>
                     GridView.count(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: size.maxWidth >= 700 ? 2 : 1,
+                  crossAxisCount: 1,
                   mainAxisSpacing: 14,
                   crossAxisSpacing: 14,
-                  childAspectRatio: size.maxWidth >= 700 ? 2.4 : 2.7,
+                  childAspectRatio: size.maxWidth >= 700 ? 6.2 : 2.85,
                   children: <Widget>[
                     _PlayModeCard(
                       icon: Icons.public_rounded,
                       title: 'Play Online',
                       subtitle: 'Find a live rival worldwide',
                       color: const Color(0xFF0F6B61),
+                      asset: 'assets/backgrounds/home-online-hero-v1.png',
                       onTap: onOnline,
                     ),
                     _PlayModeCard(
@@ -1801,6 +1861,7 @@ class _PlayDestination extends StatelessWidget {
                       title: 'Play Computer',
                       subtitle: 'Challenge the ChessVerse AI',
                       color: const Color(0xFF174A69),
+                      asset: 'assets/backgrounds/home-computer-hero-v1.png',
                       onTap: onComputer,
                     ),
                     _PlayModeCard(
@@ -1833,43 +1894,69 @@ class _PlayModeCard extends StatelessWidget {
     required this.subtitle,
     required this.color,
     required this.onTap,
+    this.asset,
   });
   final IconData icon;
   final String title;
   final String subtitle;
   final Color color;
   final VoidCallback onTap;
+  final String? asset;
 
   @override
   Widget build(BuildContext context) => Card(
-        color: color.withValues(alpha: .9),
+        color: const Color(0xFF071827),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+          side: BorderSide(color: color.withValues(alpha: .8)),
+        ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Row(children: <Widget>[
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: Colors.white.withValues(alpha: .12),
-                child: Icon(icon, color: Colors.white, size: 30),
+          child: Ink(
+            decoration: BoxDecoration(
+              image: asset == null
+                  ? null
+                  : DecorationImage(
+                      image: AssetImage(asset!),
+                      fit: BoxFit.cover,
+                      alignment: Alignment.centerRight,
+                      opacity: .42,
+                    ),
+              gradient: LinearGradient(
+                colors: <Color>[
+                  color.withValues(alpha: .36),
+                  const Color(0xEE071827),
+                ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(title,
-                        style: const TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.w900)),
-                    Text(subtitle,
-                        style: const TextStyle(color: Color(0xFFC5D5E0))),
-                  ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+              child: Row(children: <Widget>[
+                CircleAvatar(
+                  radius: 34,
+                  backgroundColor: const Color(0xB3071A2A),
+                  child: Icon(icon, color: color, size: 34),
                 ),
-              ),
-              const Icon(Icons.chevron_right_rounded),
-            ]),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(title,
+                          style: const TextStyle(
+                              color: Color(0xFFFFF8ED),
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900)),
+                      Text(subtitle,
+                          style: const TextStyle(color: Color(0xFFC5D5E0))),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: color, size: 34),
+              ]),
+            ),
           ),
         ),
       );
