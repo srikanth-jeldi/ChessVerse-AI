@@ -159,7 +159,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                   sliver: SliverToBoxAdapter(
                     child: Center(
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 780),
+                        constraints: const BoxConstraints(maxWidth: 920),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
@@ -256,6 +256,12 @@ class _PuzzleHero extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
+        image: const DecorationImage(
+          image: AssetImage('assets/backgrounds/home-online-hero-v1.png'),
+          fit: BoxFit.cover,
+          alignment: Alignment.centerRight,
+          opacity: .2,
+        ),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

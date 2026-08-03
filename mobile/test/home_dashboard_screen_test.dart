@@ -70,10 +70,30 @@ void main() {
 
     expect(find.text('Play Online'), findsOneWidget);
     expect(find.text('Play with Friends'), findsOneWidget);
-    expect(find.text('Learn'), findsOneWidget);
+    expect(find.text('Learn'), findsNWidgets(2));
     expect(tester.takeException(), isNull);
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Profile'), findsOneWidget);
+    expect(find.bySemanticsLabel('ChessVerse AI'), findsOneWidget);
+  });
 
-    final Rect dashboard = tester.getRect(find.byType(FittedBox));
-    expect(dashboard.center, const Offset(160, 350));
+  testWidgets('home uses the navigation rail on tablet and web widths', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(app(onOnline: () {}, onComputer: () {}));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Play'), findsOneWidget);
+    expect(find.text('Puzzles'), findsNWidgets(2));
+    expect(find.text('Rankings'), findsNWidgets(2));
+    expect(find.text('Play Online'), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('play-computer')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

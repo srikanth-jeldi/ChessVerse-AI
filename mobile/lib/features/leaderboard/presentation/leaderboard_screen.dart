@@ -115,7 +115,30 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                 if (board.entries.isEmpty)
                   const _EmptyBoard()
                 else
-                  ...board.entries.map(_LeaderboardTile.new),
+                  LayoutBuilder(
+                    builder: (BuildContext context, BoxConstraints size) {
+                      if (size.maxWidth < 820) {
+                        return Column(
+                          children:
+                              board.entries.map(_LeaderboardTile.new).toList(),
+                        );
+                      }
+                      return GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 10,
+                          mainAxisExtent: 86,
+                        ),
+                        itemCount: board.entries.length,
+                        itemBuilder: (BuildContext context, int index) =>
+                            _LeaderboardTile(board.entries[index]),
+                      );
+                    },
+                  ),
               ],
             ),
           );
@@ -134,7 +157,12 @@ class _RatingHero extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: <Color>[Color(0xFF0C2E43), Color(0xFF102035)],
+            colors: <Color>[Color(0xF20B2A45), Color(0xF208182A)],
+          ),
+          image: const DecorationImage(
+            image: AssetImage('assets/backgrounds/home-online-hero-v1.png'),
+            fit: BoxFit.cover,
+            opacity: .12,
           ),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: AppColors.accentGold.withValues(alpha: .7)),
@@ -150,14 +178,14 @@ class _RatingHero extends StatelessWidget {
             const Icon(Icons.workspace_premium_rounded,
                 size: 42, color: AppColors.accentGold),
             const SizedBox(height: 6),
-            Text('${player.rating}',
-                style:
-                    const TextStyle(fontSize: 42, fontWeight: FontWeight.w900)),
-            const Text('CHESSVERSEAI ELO',
+            const Text('CHESSVERSE AI ELO',
                 style: TextStyle(
                     color: AppColors.accentGold,
                     letterSpacing: 1.4,
                     fontWeight: FontWeight.w800)),
+            Text('${player.rating}',
+                style:
+                    const TextStyle(fontSize: 42, fontWeight: FontWeight.w900)),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
