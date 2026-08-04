@@ -347,15 +347,6 @@ class _WideHome extends StatefulWidget {
 }
 
 class _WideHomeState extends State<_WideHome> {
-  final PageController _heroController = PageController();
-  int _heroIndex = 0;
-
-  @override
-  void dispose() {
-    _heroController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -389,15 +380,10 @@ class _WideHomeState extends State<_WideHome> {
                           wide: true,
                         ),
                         SizedBox(height: compact ? 10 : 16),
-                        _HomeHeroCarousel(
-                          controller: _heroController,
-                          selectedIndex: _heroIndex,
-                          onPageChanged: (int value) =>
-                              setState(() => _heroIndex = value),
-                          height: compact ? 270 : 310,
-                          wide: true,
-                          slides: <_HomeHeroData>[
-                            _HomeHeroData(
+                        SizedBox(
+                          height: compact ? 260 : 305,
+                          child: _CarouselHero(
+                            data: _HomeHeroData(
                               title: 'Play Online',
                               subtitle:
                                   'Find a live opponent from around the world',
@@ -409,55 +395,9 @@ class _WideHomeState extends State<_WideHome> {
                                   _onlineStatus(widget.onlinePlayerCount),
                               onTap: widget.onOnlineGame,
                             ),
-                            _HomeHeroData(
-                              title: 'Play Computer',
-                              subtitle:
-                                  'Challenge the ChessVerse AI at any level',
-                              icon: Icons.computer_rounded,
-                              buttonLabel: 'Choose Side',
-                              asset:
-                                  'assets/backgrounds/home-computer-hero-v1.png',
-                              onTap: widget.onPlayVsAi,
-                            ),
-                            _HomeHeroData(
-                              title: 'Play with Friends',
-                              subtitle:
-                                  'Create a private room or join with a code',
-                              icon: Icons.groups_rounded,
-                              buttonLabel: 'Open Rooms',
-                              asset:
-                                  'assets/backgrounds/home-friends-hero-v1.png',
-                              onTap: widget.onOnlineGame,
-                            ),
-                            _HomeHeroData(
-                              title: 'Chess Puzzles',
-                              subtitle: 'Train with 150 tactical challenges',
-                              icon: Icons.extension_rounded,
-                              buttonLabel: 'Solve Now',
-                              asset:
-                                  'assets/backgrounds/home-puzzles-hero-v1.png',
-                              onTap: widget.onPuzzles,
-                            ),
-                            _HomeHeroData(
-                              title: 'Rankings',
-                              subtitle: 'Track your ELO and global position',
-                              icon: Icons.leaderboard_rounded,
-                              buttonLabel: 'View Rankings',
-                              asset:
-                                  'assets/backgrounds/home-rankings-hero-v1.png',
-                              onTap: widget.onRankings,
-                            ),
-                            _HomeHeroData(
-                              title: 'Settings',
-                              subtitle:
-                                  'Personalize your board and game experience',
-                              icon: Icons.tune_rounded,
-                              buttonLabel: 'Open Settings',
-                              asset:
-                                  'assets/backgrounds/grandmaster-table-v1.webp',
-                              onTap: widget.onSettings,
-                            ),
-                          ],
+                            wide: true,
+                            onNext: widget.onOnlineGame,
+                          ),
                         ),
                         const SizedBox(height: 18),
                         Row(
@@ -496,6 +436,7 @@ class _WideHomeState extends State<_WideHome> {
                                     keyName: 'chess-puzzles',
                                     icon: Icons.extension_rounded,
                                     label: 'Puzzles',
+                                    subtitle: 'Sharpen your skills',
                                     color: AppColors.accentGold,
                                     asset:
                                         'assets/backgrounds/home-puzzles-hero-v1.png',
@@ -506,6 +447,7 @@ class _WideHomeState extends State<_WideHome> {
                                     keyName: 'rankings',
                                     icon: Icons.leaderboard_rounded,
                                     label: 'Rankings',
+                                    subtitle: 'See stats & progress',
                                     color: const Color(0xFFF1B74D),
                                     asset:
                                         'assets/backgrounds/home-rankings-hero-v1.png',
@@ -516,6 +458,7 @@ class _WideHomeState extends State<_WideHome> {
                                     keyName: 'analysis',
                                     icon: Icons.trending_up_rounded,
                                     label: 'Analysis',
+                                    subtitle: 'Review your games',
                                     color: const Color(0xFF3DA2FF),
                                     asset:
                                         'assets/backgrounds/home-analysis-hero-v1.png',
@@ -526,6 +469,7 @@ class _WideHomeState extends State<_WideHome> {
                                     keyName: 'learn',
                                     icon: Icons.school_rounded,
                                     label: 'Learn',
+                                    subtitle: 'Improve & grow',
                                     color: const Color(0xFFA879F5),
                                     asset:
                                         'assets/backgrounds/home-learn-hero-v1.png',
@@ -841,21 +785,23 @@ class _PlayerHeader extends StatelessWidget {
           key: const ValueKey<String>('home-profile'),
           onTap: onProfile,
           borderRadius: BorderRadius.circular(999),
-          child: _Avatar(photoUrl: profilePhotoUrl, size: 42),
+          child: _Avatar(photoUrl: profilePhotoUrl, size: wide ? 58 : 42),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Text('Welcome back,',
-                  style: TextStyle(color: Color(0xFF9FB6C8), fontSize: 12)),
+              Text('Welcome back,',
+                  style: TextStyle(
+                      color: const Color(0xFF9FB6C8),
+                      fontSize: wide ? 15 : 12)),
               Text(playerName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: Colors.white,
-                      fontSize: 17,
+                      fontSize: wide ? 22 : 17,
                       fontWeight: FontWeight.w800)),
             ],
           ),
@@ -1287,7 +1233,7 @@ class _ActionCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(20),
           child: Ink(
-            height: narrow ? 164 : 126,
+            height: 164,
             padding: EdgeInsets.all(narrow ? 15 : 18),
             decoration: BoxDecoration(
                 color: color.withValues(alpha: .76),
@@ -1377,12 +1323,14 @@ class _MiniCard extends StatelessWidget {
       {required this.keyName,
       required this.icon,
       required this.label,
+      this.subtitle,
       required this.color,
       this.asset,
       required this.onTap});
   final String keyName;
   final IconData icon;
   final String label;
+  final String? subtitle;
   final Color color;
   final String? asset;
   final VoidCallback onTap;
@@ -1395,8 +1343,8 @@ class _MiniCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: Ink(
-          height: 126,
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
+          height: 164,
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 12),
           decoration: BoxDecoration(
               color: const Color(0xDD0C2030),
               image: asset == null
@@ -1412,15 +1360,29 @@ class _MiniCard extends StatelessWidget {
           child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Icon(icon, color: color, size: 24),
-                const SizedBox(height: 6),
+                Icon(icon, color: color, size: 34),
+                const SizedBox(height: 10),
                 Text(label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800))
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800)),
+                if (subtitle != null) ...<Widget>[
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle!,
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFFB9CBD7),
+                      fontSize: 11,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
               ]),
         ),
       ),
