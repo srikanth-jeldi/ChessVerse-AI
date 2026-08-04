@@ -347,6 +347,15 @@ class _WideHome extends StatefulWidget {
 }
 
 class _WideHomeState extends State<_WideHome> {
+  final PageController _heroController = PageController();
+  int _heroIndex = 0;
+
+  @override
+  void dispose() {
+    _heroController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -380,10 +389,15 @@ class _WideHomeState extends State<_WideHome> {
                           wide: true,
                         ),
                         SizedBox(height: compact ? 10 : 16),
-                        SizedBox(
-                          height: compact ? 260 : 305,
-                          child: _CarouselHero(
-                            data: _HomeHeroData(
+                        _HomeHeroCarousel(
+                          controller: _heroController,
+                          selectedIndex: _heroIndex,
+                          onPageChanged: (int value) =>
+                              setState(() => _heroIndex = value),
+                          height: compact ? 270 : 305,
+                          wide: true,
+                          slides: <_HomeHeroData>[
+                            _HomeHeroData(
                               title: 'Play Online',
                               subtitle:
                                   'Find a live opponent from around the world',
@@ -395,9 +409,55 @@ class _WideHomeState extends State<_WideHome> {
                                   _onlineStatus(widget.onlinePlayerCount),
                               onTap: widget.onOnlineGame,
                             ),
-                            wide: true,
-                            onNext: widget.onOnlineGame,
-                          ),
+                            _HomeHeroData(
+                              title: 'Play Computer',
+                              subtitle:
+                                  'Challenge the ChessVerse AI at any level',
+                              icon: Icons.computer_rounded,
+                              buttonLabel: 'Choose Side',
+                              asset:
+                                  'assets/backgrounds/home-computer-hero-v1.png',
+                              onTap: widget.onPlayVsAi,
+                            ),
+                            _HomeHeroData(
+                              title: 'Play with Friends',
+                              subtitle:
+                                  'Create a private room or join with a code',
+                              icon: Icons.groups_rounded,
+                              buttonLabel: 'Open Rooms',
+                              asset:
+                                  'assets/backgrounds/home-friends-hero-v1.png',
+                              onTap: widget.onOnlineGame,
+                            ),
+                            _HomeHeroData(
+                              title: 'Chess Puzzles',
+                              subtitle: 'Train with 150 tactical challenges',
+                              icon: Icons.extension_rounded,
+                              buttonLabel: 'Solve Now',
+                              asset:
+                                  'assets/backgrounds/home-puzzles-hero-v1.png',
+                              onTap: widget.onPuzzles,
+                            ),
+                            _HomeHeroData(
+                              title: 'Rankings',
+                              subtitle: 'Track your ELO and global position',
+                              icon: Icons.leaderboard_rounded,
+                              buttonLabel: 'View Rankings',
+                              asset:
+                                  'assets/backgrounds/home-rankings-hero-v1.png',
+                              onTap: widget.onRankings,
+                            ),
+                            _HomeHeroData(
+                              title: 'Settings',
+                              subtitle:
+                                  'Personalize your board and game experience',
+                              icon: Icons.tune_rounded,
+                              buttonLabel: 'Open Settings',
+                              asset:
+                                  'assets/backgrounds/grandmaster-table-v1.webp',
+                              onTap: widget.onSettings,
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 18),
                         Row(
