@@ -100,6 +100,665 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final Size viewport = MediaQuery.sizeOf(context);
+    final bool compactLandscape = viewport.width >= 600 &&
+        viewport.width > viewport.height * 1.35 &&
+        viewport.height < 760;
+    return Scaffold(
+      backgroundColor: const Color(0xFF020914),
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: <Color>[Color(0xFF06172A), Color(0xFF020914)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: compactLandscape
+              ? _premiumCompactLandscapeBody(context)
+              : Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 20,
+                    ),
+                    child: _premiumResponsiveBody(context),
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _premiumCompactLandscapeBody(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        return KeyedSubtree(
+          key: const ValueKey<String>('auth-landscape-split'),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                Image.asset(
+                  'assets/backgrounds/home-online-hero-v1.png',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.centerRight,
+                ),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: <Color>[
+                        Color(0xFF020B18),
+                        Color(0xF2061426),
+                        Color(0xB3061426),
+                        Color(0x00061426),
+                      ],
+                      stops: <double>[0, .44, .59, .78],
+                    ),
+                  ),
+                ),
+                Row(
+                  children: <Widget>[
+                    SizedBox(
+                      width: constraints.maxWidth * .55,
+                      height: constraints.maxHeight,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          alignment: Alignment.center,
+                          child: SizedBox(
+                            width: 900,
+                            height: 790,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: const Color(0xEE061426),
+                                borderRadius: BorderRadius.circular(34),
+                                border: Border.all(
+                                  color: const Color(0xFF2B405B),
+                                  width: 1.5,
+                                ),
+                                boxShadow: <BoxShadow>[
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: .48),
+                                    blurRadius: 30,
+                                    offset: const Offset(0, 14),
+                                  ),
+                                ],
+                              ),
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.fromLTRB(
+                                  54,
+                                  28,
+                                  54,
+                                  30,
+                                ),
+                                child: _premiumFormContent(context),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const Expanded(child: SizedBox.shrink()),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _premiumResponsiveBody(BuildContext context) {
+    final Size viewport = MediaQuery.sizeOf(context);
+    final bool wide = viewport.width >= 900;
+    final bool compact = viewport.width < 430;
+    final Widget card = SizedBox(
+      width: viewport.width < 546 ? viewport.width - 36 : 510,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: Stack(
+          children: <Widget>[
+            Positioned.fill(child: _premiumPanelBackground()),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                compact ? 22 : 44,
+                compact ? 20 : 34,
+                compact ? 22 : 44,
+                compact ? 22 : 36,
+              ),
+              child: _premiumFormContent(context),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!wide) return card;
+    return SizedBox(
+      width: (viewport.width - 36).clamp(510.0, 1600.0).toDouble(),
+      height: (viewport.height - 40).clamp(620.0, 900.0).toDouble(),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            Image.asset(
+              'assets/backgrounds/home-online-hero-v1.png',
+              fit: BoxFit.cover,
+              alignment: Alignment.centerRight,
+            ),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: <Color>[
+                    Color(0xFF041225),
+                    Color(0xF2051428),
+                    Color(0x40020A16),
+                    Colors.transparent,
+                  ],
+                  stops: <double>[0, .42, .62, 1],
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                width: 720,
+                margin: const EdgeInsets.all(18),
+                padding: const EdgeInsets.fromLTRB(64, 34, 64, 36),
+                decoration: BoxDecoration(
+                  color: const Color(0xE8061426),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: const Color(0xFF263B55)),
+                ),
+                child: SingleChildScrollView(
+                  child: _premiumFormContent(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _premiumFormContent(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        _premiumBrandHeader(context),
+        const SizedBox(height: 24),
+        Text(
+          widget.guestUpgradeToken != null
+              ? 'Secure your progress'
+              : _verificationMode
+                  ? 'Verify your email'
+                  : _loginMode
+                      ? 'Welcome back'
+                      : 'Create your account',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                color: AppColors.textPrimary,
+                fontSize: 31,
+                fontWeight: FontWeight.w900,
+                height: 1.05,
+              ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          _loginMode
+              ? 'Login to continue your games,\nratings and progress'
+              : 'Create your ChessVerse AI identity\nand keep your progress secure',
+          style: const TextStyle(
+            color: Color(0xFF9EACC2),
+            fontSize: 16,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 22),
+        if (!_verificationMode && widget.guestUpgradeToken == null)
+          _premiumModeSelector(),
+        const SizedBox(height: 16),
+        ..._premiumFormFields(context),
+        if (_message != null) ...<Widget>[
+          const SizedBox(height: 14),
+          _Notice(message: _message!, isError: false),
+        ],
+        if (_error != null) ...<Widget>[
+          const SizedBox(height: 14),
+          _Notice(message: _error!, isError: true),
+        ],
+        const SizedBox(height: 18),
+        if (widget.guestUpgradeToken == null) _premiumPrimaryButton(),
+        if (widget.guestUpgradeToken == null) ...<Widget>[
+          const SizedBox(height: 17),
+          const _DividerLabel('or'),
+          const SizedBox(height: 16),
+          _premiumGuestButton(),
+          const SizedBox(height: 17),
+          const _DividerLabel('or continue with'),
+          const SizedBox(height: 14),
+        ],
+        _premiumSocialButtons(),
+        if (widget.guestUpgradeToken == null) ...<Widget>[
+          const SizedBox(height: 18),
+          const _SecurityNote(),
+        ],
+      ],
+    );
+  }
+
+  Widget _premiumPanelBackground() {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFF061426),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: const Color(0xFF263B55), width: 1.5),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.55),
+            blurRadius: 34,
+            offset: const Offset(0, 18),
+          ),
+        ],
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.32,
+              child: Image.asset(
+                'assets/backgrounds/home-online-hero-v1.png',
+                fit: BoxFit.cover,
+                alignment: const Alignment(.72, .18),
+              ),
+            ),
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: <Color>[
+                  Color(0xFF061426),
+                  Color(0xF0061426),
+                  Color(0x8A061426),
+                ],
+                stops: <double>[0, 0.58, 1],
+              ),
+            ),
+          ),
+          Positioned(
+            top: 72,
+            right: -34,
+            height: 430,
+            width: 210,
+            child: IgnorePointer(
+              child: Opacity(
+                opacity: 0.48,
+                child: Image.asset(
+                  'assets/pieces/staunton_black_king.png',
+                  fit: BoxFit.contain,
+                  alignment: Alignment.topRight,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 125,
+            child: CustomPaint(painter: _CheckerPainter()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _premiumBrandHeader(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Image.asset(
+            'assets/branding/app_icon.png',
+            width: 82,
+            height: 82,
+            fit: BoxFit.cover,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text.rich(
+          TextSpan(
+            children: <InlineSpan>[
+              const TextSpan(text: 'ChessVerse '),
+              TextSpan(
+                text: 'AI',
+                style: TextStyle(color: AppColors.accentGold),
+              ),
+            ],
+          ),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: AppColors.textPrimary,
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+              ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Container(width: 54, height: 1, color: const Color(0xFF29405B)),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: Icon(
+                Icons.diamond_rounded,
+                size: 11,
+                color: AppColors.accentGold,
+              ),
+            ),
+            Container(width: 54, height: 1, color: const Color(0xFF29405B)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _premiumModeSelector() {
+    return Container(
+      height: 52,
+      decoration: BoxDecoration(
+        color: const Color(0xAA071528),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0xFF344B65)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: _ModeButton(
+              selected: _loginMode,
+              icon: Icons.login_rounded,
+              label: 'Login',
+              onTap: _loading ? null : () => _setPremiumLoginMode(true),
+            ),
+          ),
+          Expanded(
+            child: _ModeButton(
+              selected: !_loginMode,
+              icon: Icons.person_add_alt_rounded,
+              label: 'Register',
+              onTap: _loading ? null : () => _setPremiumLoginMode(false),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _setPremiumLoginMode(bool value) {
+    setState(() {
+      _loginMode = value;
+      _error = null;
+      _message = null;
+    });
+  }
+
+  List<Widget> _premiumFormFields(BuildContext context) {
+    if (widget.guestUpgradeToken != null) {
+      return const <Widget>[
+        Text(
+          'Link Google to keep this guest profile, rating and match history across devices. Your existing progress will not be deleted.',
+          style: TextStyle(color: AppColors.textSecondary, height: 1.45),
+        ),
+      ];
+    }
+    if (_verificationMode) {
+      return <Widget>[
+        Text(
+          'Enter the 6-digit code sent to ${_emailController.text.trim()}.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 12),
+        _AuthField(
+          controller: _verificationCodeController,
+          label: 'Verification code',
+          icon: Icons.verified_outlined,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          onSubmitted: (_) => _submit(),
+        ),
+        Row(
+          children: <Widget>[
+            Expanded(child: Text(_verificationStatusText)),
+            TextButton(
+              onPressed: _loading || !_canResendVerification
+                  ? null
+                  : _resendVerificationCode,
+              child: const Text('Resend code'),
+            ),
+          ],
+        ),
+      ];
+    }
+    return <Widget>[
+      if (!_loginMode) ...<Widget>[
+        _AuthField(
+          controller: _userIdController,
+          label: 'User ID',
+          icon: Icons.alternate_email_rounded,
+        ),
+        const SizedBox(height: 12),
+        _AuthField(
+          controller: _displayNameController,
+          label: 'Player name',
+          icon: Icons.person_outline_rounded,
+        ),
+        const SizedBox(height: 12),
+      ],
+      _AuthField(
+        controller: _emailController,
+        label: _loginMode ? 'Email or Username' : 'Email',
+        icon: Icons.mail_outline_rounded,
+        keyboardType: TextInputType.emailAddress,
+      ),
+      const SizedBox(height: 12),
+      _AuthField(
+        controller: _passwordController,
+        label: _loginMode ? 'Password' : 'Create password',
+        icon: Icons.lock_outline_rounded,
+        obscureText: true,
+        onSubmitted: (_) => _submit(),
+      ),
+      if (_loginMode) ...<Widget>[
+        const SizedBox(height: 8),
+        Row(
+          children: <Widget>[
+            Checkbox(
+              value: _rememberMe,
+              activeColor: AppColors.accentGold,
+              checkColor: const Color(0xFF08111D),
+              visualDensity: VisualDensity.compact,
+              onChanged: _loading
+                  ? null
+                  : (bool? value) => unawaited(_setRememberMe(value ?? true)),
+            ),
+            const Expanded(
+              child: Text(
+                'Remember me',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13),
+              ),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                minimumSize: Size.zero,
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
+              onPressed: _loading ? null : _forgotPassword,
+              child: const Text(
+                'Forgot password?',
+                maxLines: 1,
+                style: TextStyle(color: AppColors.accentGold, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ];
+  }
+
+  Widget _premiumPrimaryButton() {
+    return Container(
+      height: 58,
+      decoration: BoxDecoration(
+        gradient: AppColors.goldGradient,
+        borderRadius: BorderRadius.circular(13),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: AppColors.accentGold.withValues(alpha: 0.35),
+            blurRadius: 18,
+          ),
+        ],
+      ),
+      child: FilledButton.icon(
+        style: FilledButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: const Color(0xFF101010),
+          shadowColor: Colors.transparent,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+        ),
+        onPressed: _loading ? null : _submit,
+        icon: _loading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.login_rounded),
+        label: Text(
+          _verificationMode
+              ? 'Verify & Continue'
+              : _loginMode
+                  ? 'Login'
+                  : 'Send Code',
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+        ),
+      ),
+    );
+  }
+
+  Widget _premiumGuestButton() {
+    return OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFF5EEAD4),
+        side: const BorderSide(color: Color(0xFF5EEAD4)),
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      onPressed: _loading ? null : _continueAsGuest,
+      child: const Column(
+        children: <Widget>[
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Icon(Icons.person_outline_rounded),
+                SizedBox(width: 10),
+                Text(
+                  'Continue as Guest',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 5),
+          Text(
+            'Start playing instantly. Upgrade anytime.',
+            style: TextStyle(color: Color(0xFF9EACC2), fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _premiumSocialButtons() {
+    final bool filePreview = kIsWeb &&
+        (Uri.base.scheme == 'file' ||
+            Uri.base.host == '127.0.0.1' ||
+            Uri.base.host == 'localhost');
+    final bool compactWeb = kIsWeb && MediaQuery.sizeOf(context).width < 600;
+    if (compactWeb && !filePreview && widget.guestUpgradeToken == null) {
+      return Column(
+        children: <Widget>[
+          SizedBox(
+            height: 42,
+            child: Center(child: buildWebGoogleSignInButton()),
+          ),
+          const SizedBox(height: 10),
+          _SocialButton(
+            label: 'Facebook',
+            onPressed:
+                _loading ? null : () => _showSocialPlaceholder('Facebook'),
+            child: const Icon(
+              Icons.facebook_rounded,
+              color: Color(0xFF4285F4),
+            ),
+          ),
+        ],
+      );
+    }
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: kIsWeb && !filePreview
+              ? Center(child: buildWebGoogleSignInButton())
+              : _SocialButton(
+                  label: widget.guestUpgradeToken == null
+                      ? 'Google'
+                      : 'SECURE WITH GOOGLE',
+                  onPressed: _loading ? null : _signInWithGoogle,
+                  child: const Text(
+                    'G',
+                    style: TextStyle(
+                      color: Color(0xFF4285F4),
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+        ),
+        if (widget.guestUpgradeToken == null) ...<Widget>[
+          const SizedBox(width: 10),
+          Expanded(
+            child: _SocialButton(
+              label: 'Facebook',
+              onPressed:
+                  _loading ? null : () => _showSocialPlaceholder('Facebook'),
+              child: const Icon(
+                Icons.facebook_rounded,
+                color: Color(0xFF4285F4),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // ignore: unused_element
+  Widget _buildLegacy(BuildContext context) {
     return Scaffold(
       body: DecoratedBox(
         decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
@@ -343,18 +1002,6 @@ class _AuthScreenState extends State<AuthScreen> {
                                               : 'SECURE WITH GOOGLE'),
                                     ),
                             ),
-                            if (widget.guestUpgradeToken == null)
-                              const SizedBox(width: 10),
-                            if (widget.guestUpgradeToken == null)
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: _loading
-                                      ? null
-                                      : () => _showSocialPlaceholder('Apple'),
-                                  icon: const Icon(Icons.apple_rounded),
-                                  label: const Text('Apple'),
-                                ),
-                              ),
                           ],
                         ),
                         if (widget.guestUpgradeToken == null)
@@ -911,7 +1558,195 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 }
 
-class _AuthField extends StatelessWidget {
+class _ModeButton extends StatelessWidget {
+  const _ModeButton({
+    required this.selected,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final bool selected;
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(26),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: double.infinity,
+        height: double.infinity,
+        margin: const EdgeInsets.all(3),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xFF0A393E).withValues(alpha: 0.82)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(26),
+          border: selected ? Border.all(color: const Color(0xFF5EEAD4)) : null,
+          boxShadow: selected
+              ? <BoxShadow>[
+                  BoxShadow(
+                    color: const Color(0xFF5EEAD4).withValues(alpha: 0.2),
+                    blurRadius: 14,
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Icon(icon,
+                color: selected ? const Color(0xFF5EEAD4) : Colors.white),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.fade,
+                softWrap: false,
+                style: TextStyle(
+                  color: selected ? const Color(0xFF5EEAD4) : Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DividerLabel extends StatelessWidget {
+  const _DividerLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        const Expanded(child: Divider(color: Color(0xFF34445C))),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(label, style: const TextStyle(color: Color(0xFF9EACC2))),
+        ),
+        const Expanded(child: Divider(color: Color(0xFF34445C))),
+      ],
+    );
+  }
+}
+
+class _SocialButton extends StatelessWidget {
+  const _SocialButton({
+    required this.label,
+    required this.child,
+    required this.onPressed,
+  });
+
+  final String label;
+  final Widget child;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool compact = MediaQuery.sizeOf(context).width < 430;
+    return OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.white,
+        side: const BorderSide(color: Color(0xFF34445C)),
+        padding: EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: compact ? 4 : 8,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      onPressed: onPressed,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          child,
+          SizedBox(width: compact ? 4 : 8),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: compact ? 11.5 : 14,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SecurityNote extends StatelessWidget {
+  const _SecurityNote();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xA80A1A30),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: const Color(0xFF132A44)),
+      ),
+      child: const Row(
+        children: <Widget>[
+          Icon(Icons.shield_outlined, color: Color(0xFF5EEAD4), size: 34),
+          SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              'Guest players receive a secure temporary identity.\nLink Google or email later for account recovery.',
+              style: TextStyle(color: Color(0xFFB1BED1), height: 1.45),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CheckerPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    const int columns = 8;
+    const int rows = 2;
+    final double cellWidth = size.width / columns;
+    final double cellHeight = size.height / rows;
+    for (int row = 0; row < rows; row++) {
+      for (int column = 0; column < columns; column++) {
+        final bool dark = (row + column).isEven;
+        canvas.drawRect(
+          Rect.fromLTWH(
+            column * cellWidth,
+            row * cellHeight,
+            cellWidth,
+            cellHeight,
+          ),
+          Paint()
+            ..color = dark ? const Color(0x19182D45) : const Color(0x10091728),
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _AuthField extends StatefulWidget {
   const _AuthField({
     required this.controller,
     required this.label,
@@ -931,17 +1766,48 @@ class _AuthField extends StatelessWidget {
   final int? maxLength;
 
   @override
+  State<_AuthField> createState() => _AuthFieldState();
+}
+
+class _AuthFieldState extends State<_AuthField> {
+  late bool _obscured = widget.obscureText;
+
+  @override
   Widget build(BuildContext context) {
     return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      onSubmitted: onSubmitted,
-      maxLength: maxLength,
+      controller: widget.controller,
+      keyboardType: widget.keyboardType,
+      obscureText: _obscured,
+      onSubmitted: widget.onSubmitted,
+      maxLength: widget.maxLength,
+      style: const TextStyle(color: AppColors.textPrimary),
       decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon),
-        border: const OutlineInputBorder(),
+        hintText: widget.label,
+        hintStyle: const TextStyle(color: Color(0xFF8493AA)),
+        prefixIcon: Icon(widget.icon, color: const Color(0xFFB7C3D4)),
+        suffixIcon: widget.obscureText
+            ? IconButton(
+                onPressed: () => setState(() => _obscured = !_obscured),
+                icon: Icon(
+                  _obscured
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  color: const Color(0xFFB7C3D4),
+                ),
+              )
+            : null,
+        filled: true,
+        fillColor: const Color(0xA8071528),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(color: Color(0xFF34445C)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(color: Color(0xFF5EEAD4)),
+        ),
       ),
     );
   }
