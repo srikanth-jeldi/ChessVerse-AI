@@ -159,6 +159,35 @@ class OnlineMatchDto {
 class OnlineMatchApi {
   const OnlineMatchApi();
 
+  Future<int> onlinePlayerCount() async {
+    final Uri uri = Uri.parse('${AppConfig.apiBaseUrl}/api/v1/online/presence');
+    try {
+      final http.Response response =
+          await http.get(uri).timeout(const Duration(seconds: 10));
+      final Object? decoded =
+          response.body.isEmpty ? null : jsonDecode(response.body);
+      final Map<String, dynamic> json =
+          decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw OnlineMatchException(
+          json['message'] as String? ?? 'Online presence request failed.',
+          statusCode: response.statusCode,
+        );
+      }
+      return (json['onlinePlayers'] as num?)?.toInt() ?? 0;
+    } on OnlineMatchException {
+      rethrow;
+    } on TimeoutException {
+      throw const OnlineMatchException(
+        'The ChessVerseAI server took too long to respond.',
+      );
+    } catch (_) {
+      throw const OnlineMatchException(
+        'Cannot reach the ChessVerseAI online server. Check your connection.',
+      );
+    }
+  }
+
   Future<OnlineMatchDto> randomMatch(String token) =>
       _request(token, 'POST', '/api/v1/online/queue');
 
