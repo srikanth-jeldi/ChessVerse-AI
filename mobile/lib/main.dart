@@ -1117,12 +1117,9 @@ class ChessVerseLoadingScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF02070D),
       body: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          final bool wide = kIsWeb ||
-              constraints.maxWidth >= 720 ||
-              constraints.maxWidth <= 0;
-          final bool short = constraints.maxHeight > 0 &&
-              constraints.maxHeight < (wide ? 420 : 620);
-          final double logoSize = short ? 62 : (wide ? 126 : 106);
+          final Size viewport = MediaQuery.sizeOf(context);
+          final bool wide =
+              viewport.shortestSide >= 600 && constraints.maxWidth >= 800;
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
@@ -1139,114 +1136,305 @@ class ChessVerseLoadingScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              Center(
-                child: SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: wide ? 560 : 360),
-                    child: Padding(
-                      padding: EdgeInsets.all(short ? 14 : 28),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          Container(
-                            width: logoSize,
-                            height: logoSize,
-                            padding: EdgeInsets.all(short ? 8 : 14),
-                            decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF0A111A,
-                              ).withValues(alpha: 0.82),
-                              borderRadius: BorderRadius.circular(
-                                short ? 20 : 32,
-                              ),
-                              border: Border.all(
-                                color: const Color(
-                                  0xFFD6A84F,
-                                ).withValues(alpha: 0.7),
-                              ),
-                              boxShadow: <BoxShadow>[
-                                BoxShadow(
-                                  color: const Color(
-                                    0xFF63D2B8,
-                                  ).withValues(alpha: 0.28),
-                                  blurRadius: short ? 22 : 42,
-                                  offset: Offset(0, short ? 8 : 18),
-                                ),
-                              ],
-                            ),
-                            child: Image.asset('assets/branding/app_icon.png'),
-                          ),
-                          SizedBox(height: short ? 10 : 26),
-                          Text(
-                            'CHESSVERSEAI',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineLarge
-                                ?.copyWith(
-                                  letterSpacing: 2,
-                                  fontSize: short ? 20 : null,
-                                  fontWeight: FontWeight.w900,
-                                  color: const Color(0xFFF8F2E4),
-                                ),
-                          ),
-                          SizedBox(height: short ? 4 : 8),
-                          Text(
-                            'Think  -  Move  -  Master',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  color: const Color(0xFFE0C47C),
-                                  fontSize: short ? 10 : null,
-                                  letterSpacing: 1.2,
-                                ),
-                          ),
-                          SizedBox(height: short ? 14 : 44),
-                          Text(
-                            'Preparing your board',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  letterSpacing: 0.4,
-                                  fontSize: short ? 10 : null,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                          ),
-                          SizedBox(height: short ? 8 : 14),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(999),
-                            child: LinearProgressIndicator(
-                              minHeight: short ? 5 : 7,
-                              backgroundColor: const Color(
-                                0xFFE0C47C,
-                              ).withValues(alpha: 0.1),
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                Color(0xFF63D2B8),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: short ? 8 : 14),
-                          Text(
-                            'Loading pieces, puzzles, and your profile',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: const Color(0xFFAAA69E)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+              SafeArea(
+                child: wide
+                    ? const _WideChessVerseLoadingPanel()
+                    : const _MobileChessVerseLoadingPanel(),
               ),
             ],
           );
         },
       ),
+    );
+  }
+}
+
+class _MobileChessVerseLoadingPanel extends StatelessWidget {
+  const _MobileChessVerseLoadingPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final bool compact = MediaQuery.sizeOf(context).height < 700;
+    return Center(
+      child: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
+        padding:
+            EdgeInsets.symmetric(horizontal: 30, vertical: compact ? 18 : 32),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 390),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              _LoadingLogo(size: compact ? 102 : 124),
+              SizedBox(height: compact ? 22 : 30),
+              const _LoadingBrand(centered: true),
+              SizedBox(height: compact ? 40 : 64),
+              const _LoadingProgress(centered: true),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WideChessVerseLoadingPanel extends StatelessWidget {
+  const _WideChessVerseLoadingPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
+        padding: const EdgeInsets.all(28),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1280),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 610),
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: const Color(0xE6041018),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: const Color(0x66566D70), width: 2),
+              boxShadow: const <BoxShadow>[
+                BoxShadow(color: Color(0x6600B9A8), blurRadius: 48),
+              ],
+            ),
+            child: Stack(
+              children: <Widget>[
+                Positioned.fill(
+                  left: 500,
+                  child: Image.asset(
+                    'assets/backgrounds/home-online-hero-v1.png',
+                    fit: BoxFit.cover,
+                    alignment: Alignment.centerRight,
+                  ),
+                ),
+                const Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: <Color>[
+                          Color(0xFF031019),
+                          Color(0xF2031019),
+                          Color(0x70031019),
+                          Color(0x12031019),
+                        ],
+                        stops: <double>[0, .37, .62, 1],
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(68, 62, 68, 38),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      const Row(
+                        children: <Widget>[
+                          _LoadingLogo(size: 116),
+                          SizedBox(width: 28),
+                          _LoadingBrand(centered: false),
+                        ],
+                      ),
+                      const SizedBox(height: 42),
+                      const SizedBox(
+                          width: 520, child: _LoadingProgress(centered: false)),
+                      const Spacer(),
+                      const _LoadingFeatureStrip(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadingLogo extends StatelessWidget {
+  const _LoadingLogo({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      padding: EdgeInsets.all(size * .08),
+      decoration: BoxDecoration(
+        color: const Color(0xE6071520),
+        borderRadius: BorderRadius.circular(size * .25),
+        border: Border.all(color: const Color(0xFFE0B85E), width: 1.4),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(color: Color(0x554DE1C8), blurRadius: 42, spreadRadius: 5),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size * .18),
+        child: Image.asset('assets/branding/app_icon.png', fit: BoxFit.cover),
+      ),
+    );
+  }
+}
+
+class _LoadingBrand extends StatelessWidget {
+  const _LoadingBrand({required this.centered});
+
+  final bool centered;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment:
+          centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      children: <Widget>[
+        Text.rich(
+          const TextSpan(
+            children: <InlineSpan>[
+              TextSpan(text: 'CHESSVERSE'),
+              TextSpan(text: ' AI', style: TextStyle(color: Color(0xFFF2BF4D))),
+            ],
+          ),
+          textAlign: centered ? TextAlign.center : TextAlign.left,
+          style: TextStyle(
+            color: const Color(0xFFF8F2E4),
+            fontSize: centered ? 30 : 42,
+            height: 1,
+            fontWeight: FontWeight.w900,
+            letterSpacing: centered ? .4 : .8,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Think  •  Move  •  Master',
+          textAlign: centered ? TextAlign.center : TextAlign.left,
+          style: TextStyle(
+            color: const Color(0xFFE0B85E),
+            fontSize: centered ? 16 : 22,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LoadingProgress extends StatelessWidget {
+  const _LoadingProgress({required this.centered});
+
+  final bool centered;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment:
+          centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          'Preparing your board',
+          textAlign: centered ? TextAlign.center : TextAlign.left,
+          style: TextStyle(
+            color: const Color(0xFFF8F2E4),
+            fontSize: centered ? 18 : 24,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 17),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: const LinearProgressIndicator(
+            minHeight: 8,
+            backgroundColor: Color(0x332F5757),
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF59D4C1)),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Loading pieces, puzzles, and your profile',
+          textAlign: centered ? TextAlign.center : TextAlign.left,
+          style: TextStyle(
+            color: const Color(0xFFAAAEB5),
+            fontSize: centered ? 14 : 17,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LoadingFeatureStrip extends StatelessWidget {
+  const _LoadingFeatureStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 22),
+      decoration: BoxDecoration(
+        color: const Color(0xD9061822),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0x443E6E72)),
+      ),
+      child: const Row(
+        children: <Widget>[
+          Expanded(
+              child: _LoadingFeature(
+                  icon: Icons.extension_rounded,
+                  title: 'Smart Puzzles',
+                  subtitle: 'Train your mind daily')),
+          VerticalDivider(color: Color(0x445A7178)),
+          Expanded(
+              child: _LoadingFeature(
+                  icon: Icons.emoji_events_outlined,
+                  title: 'Compete',
+                  subtitle: 'Challenge players worldwide')),
+          VerticalDivider(color: Color(0x445A7178)),
+          Expanded(
+              child: _LoadingFeature(
+                  icon: Icons.trending_up_rounded,
+                  title: 'Track Progress',
+                  subtitle: 'Improve and climb ranks')),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadingFeature extends StatelessWidget {
+  const _LoadingFeature(
+      {required this.icon, required this.title, required this.subtitle});
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Icon(icon, color: const Color(0xFF59D4C1), size: 38),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(title,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text(subtitle,
+                  style:
+                      const TextStyle(color: Color(0xFFADB7C1), fontSize: 13)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
