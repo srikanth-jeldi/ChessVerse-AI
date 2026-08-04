@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/desktop_app_sidebar.dart';
 
 void _noOnlineAction() {}
 
@@ -8,6 +10,7 @@ class HomeDashboardScreen extends StatelessWidget {
   const HomeDashboardScreen({
     required this.playerName,
     this.profilePhotoUrl,
+    this.onlinePlayerCount,
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onLocalGame,
@@ -25,6 +28,7 @@ class HomeDashboardScreen extends StatelessWidget {
 
   final String playerName;
   final String? profilePhotoUrl;
+  final int? onlinePlayerCount;
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
@@ -45,11 +49,14 @@ class HomeDashboardScreen extends StatelessWidget {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
-            if (constraints.maxWidth >= 760) {
+            final bool tablet = MediaQuery.sizeOf(context).shortestSide >= 600;
+            if ((kIsWeb || tablet) && constraints.maxWidth >= 700) {
               return _WideHome(
                 playerName: playerName,
                 profilePhotoUrl: profilePhotoUrl,
+                onlinePlayerCount: onlinePlayerCount,
                 onPlayVsAi: onPlayVsAi,
+                onDailyChallenge: onDailyChallenge,
                 onOnlineGame: onOnlineGame,
                 onAnalysis: onAnalysis,
                 onPuzzles: onPuzzles,
@@ -63,6 +70,7 @@ class HomeDashboardScreen extends StatelessWidget {
             return _MobileHome(
               playerName: playerName,
               profilePhotoUrl: profilePhotoUrl,
+              onlinePlayerCount: onlinePlayerCount,
               onPlayVsAi: onPlayVsAi,
               onDailyChallenge: onDailyChallenge,
               onLocalGame: onLocalGame,
@@ -87,6 +95,7 @@ class _MobileHome extends StatefulWidget {
   const _MobileHome({
     required this.playerName,
     this.profilePhotoUrl,
+    this.onlinePlayerCount,
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onLocalGame,
@@ -103,6 +112,7 @@ class _MobileHome extends StatefulWidget {
 
   final String playerName;
   final String? profilePhotoUrl;
+  final int? onlinePlayerCount;
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
@@ -148,9 +158,9 @@ class _MobileHomeState extends State<_MobileHome> {
                       onProfile: widget.onProfile,
                       onSettings: widget.onSettings,
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 8),
                     const _BrandHero(compact: true),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 10),
                     _HomeHeroCarousel(
                       controller: _heroController,
                       selectedIndex: _heroIndex,
@@ -164,11 +174,12 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.public_rounded,
                           buttonLabel: 'Play Now',
                           asset: 'assets/backgrounds/home-online-hero-v1.png',
+                          statusLabel: _onlineStatus(widget.onlinePlayerCount),
                           onTap: widget.onOnlineGame,
                         ),
                         _HomeHeroData(
                           title: 'Play Computer',
-                          subtitle: 'Challenge the AI at any level',
+                          subtitle: 'Challenge the ChessVerse AI at any level',
                           icon: Icons.computer_rounded,
                           buttonLabel: 'Choose Side',
                           asset: 'assets/backgrounds/home-computer-hero-v1.png',
@@ -179,6 +190,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           subtitle: 'Create a private room or join with a code',
                           icon: Icons.groups_rounded,
                           buttonLabel: 'Open Rooms',
+                          asset: 'assets/backgrounds/home-friends-hero-v1.png',
                           onTap: widget.onOnlineGame,
                         ),
                         _HomeHeroData(
@@ -186,6 +198,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           subtitle: 'Train with 150 tactical challenges',
                           icon: Icons.extension_rounded,
                           buttonLabel: 'Solve Now',
+                          asset: 'assets/backgrounds/home-puzzles-hero-v1.png',
                           onTap: widget.onPuzzles,
                         ),
                         _HomeHeroData(
@@ -193,17 +206,20 @@ class _MobileHomeState extends State<_MobileHome> {
                           subtitle: 'Track your ELO and global position',
                           icon: Icons.leaderboard_rounded,
                           buttonLabel: 'View Rankings',
+                          asset: 'assets/backgrounds/home-rankings-hero-v1.png',
                           onTap: widget.onRankings,
                         ),
                         _HomeHeroData(
                           title: 'Settings',
                           subtitle:
-                              'Customize sound, board and game experience',
+                              'Personalize your board and game experience',
                           icon: Icons.tune_rounded,
-                          buttonLabel: 'Customize',
+                          buttonLabel: 'Open Settings',
+                          asset: 'assets/backgrounds/grandmaster-table-v1.webp',
                           onTap: widget.onSettings,
                         ),
                       ],
+                      height: 340,
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -215,6 +231,8 @@ class _MobileHomeState extends State<_MobileHome> {
                             title: 'Play Computer',
                             subtitle: 'Challenge the AI',
                             color: const Color(0xFF143D58),
+                            asset:
+                                'assets/backgrounds/home-computer-hero-v1.png',
                             onTap: widget.onPlayVsAi,
                           ),
                         ),
@@ -226,6 +244,8 @@ class _MobileHomeState extends State<_MobileHome> {
                             title: 'Play with Friends',
                             subtitle: 'Create or join room',
                             color: const Color(0xFF15513F),
+                            asset:
+                                'assets/backgrounds/home-friends-hero-v1.png',
                             onTap: widget.onOnlineGame,
                           ),
                         ),
@@ -244,6 +264,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.extension_rounded,
                           label: 'Puzzles',
                           color: AppColors.accentGold,
+                          asset: 'assets/backgrounds/home-puzzles-hero-v1.png',
                           onTap: widget.onPuzzles,
                         ),
                         _MiniCard(
@@ -251,6 +272,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.leaderboard_rounded,
                           label: 'Rankings',
                           color: const Color(0xFFF3B84F),
+                          asset: 'assets/backgrounds/home-rankings-hero-v1.png',
                           onTap: widget.onRankings,
                         ),
                         _MiniCard(
@@ -258,6 +280,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.trending_up_rounded,
                           label: 'Analysis',
                           color: const Color(0xFF3DA2FF),
+                          asset: 'assets/backgrounds/home-analysis-hero-v1.png',
                           onTap: widget.onAnalysis,
                         ),
                         _MiniCard(
@@ -265,28 +288,9 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.school_rounded,
                           label: 'Learn',
                           color: const Color(0xFFA879F5),
+                          asset: 'assets/backgrounds/home-learn-hero-v1.png',
                           onTap: widget.onLearnChess,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: <Widget>[
-                        _SmallAction(
-                            icon: Icons.calendar_today_rounded,
-                            label: 'Daily',
-                            onTap: widget.onDailyChallenge),
-                        _SmallAction(
-                            icon: Icons.swap_horiz_rounded,
-                            label: 'Local',
-                            onTap: widget.onLocalGame),
-                        _SmallAction(
-                            icon: Icons.bookmark_outline_rounded,
-                            label: 'Saved',
-                            onTap: widget.onSavedGames),
                       ],
                     ),
                   ],
@@ -311,7 +315,9 @@ class _WideHome extends StatefulWidget {
   const _WideHome({
     required this.playerName,
     this.profilePhotoUrl,
+    this.onlinePlayerCount,
     required this.onPlayVsAi,
+    required this.onDailyChallenge,
     required this.onOnlineGame,
     required this.onAnalysis,
     required this.onPuzzles,
@@ -324,7 +330,9 @@ class _WideHome extends StatefulWidget {
 
   final String playerName;
   final String? profilePhotoUrl;
+  final int? onlinePlayerCount;
   final VoidCallback onPlayVsAi;
+  final VoidCallback onDailyChallenge;
   final VoidCallback onOnlineGame;
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
@@ -353,7 +361,8 @@ class _WideHomeState extends State<_WideHome> {
     return Row(
       children: <Widget>[
         if (widget.showPrimaryNavigation)
-          _SideRail(
+          DesktopAppSidebar(
+            selected: 'Home',
             onPlay: widget.onOnlineGame,
             onPuzzles: widget.onPuzzles,
             onLearn: widget.onLearnChess,
@@ -377,14 +386,15 @@ class _WideHomeState extends State<_WideHome> {
                           profilePhotoUrl: widget.profilePhotoUrl,
                           onProfile: widget.onProfile,
                           onSettings: widget.onSettings,
+                          wide: true,
                         ),
-                        SizedBox(height: compact ? 14 : 22),
+                        SizedBox(height: compact ? 10 : 16),
                         _HomeHeroCarousel(
                           controller: _heroController,
                           selectedIndex: _heroIndex,
                           onPageChanged: (int value) =>
                               setState(() => _heroIndex = value),
-                          height: 310,
+                          height: compact ? 270 : 310,
                           wide: true,
                           slides: <_HomeHeroData>[
                             _HomeHeroData(
@@ -395,11 +405,14 @@ class _WideHomeState extends State<_WideHome> {
                               buttonLabel: 'Play Now',
                               asset:
                                   'assets/backgrounds/home-online-hero-v1.png',
+                              statusLabel:
+                                  _onlineStatus(widget.onlinePlayerCount),
                               onTap: widget.onOnlineGame,
                             ),
                             _HomeHeroData(
                               title: 'Play Computer',
-                              subtitle: 'Challenge the AI at any level',
+                              subtitle:
+                                  'Challenge the ChessVerse AI at any level',
                               icon: Icons.computer_rounded,
                               buttonLabel: 'Choose Side',
                               asset:
@@ -412,6 +425,8 @@ class _WideHomeState extends State<_WideHome> {
                                   'Create a private room or join with a code',
                               icon: Icons.groups_rounded,
                               buttonLabel: 'Open Rooms',
+                              asset:
+                                  'assets/backgrounds/home-friends-hero-v1.png',
                               onTap: widget.onOnlineGame,
                             ),
                             _HomeHeroData(
@@ -419,6 +434,8 @@ class _WideHomeState extends State<_WideHome> {
                               subtitle: 'Train with 150 tactical challenges',
                               icon: Icons.extension_rounded,
                               buttonLabel: 'Solve Now',
+                              asset:
+                                  'assets/backgrounds/home-puzzles-hero-v1.png',
                               onTap: widget.onPuzzles,
                             ),
                             _HomeHeroData(
@@ -426,14 +443,18 @@ class _WideHomeState extends State<_WideHome> {
                               subtitle: 'Track your ELO and global position',
                               icon: Icons.leaderboard_rounded,
                               buttonLabel: 'View Rankings',
+                              asset:
+                                  'assets/backgrounds/home-rankings-hero-v1.png',
                               onTap: widget.onRankings,
                             ),
                             _HomeHeroData(
                               title: 'Settings',
                               subtitle:
-                                  'Customize sound, board and game experience',
+                                  'Personalize your board and game experience',
                               icon: Icons.tune_rounded,
-                              buttonLabel: 'Customize',
+                              buttonLabel: 'Open Settings',
+                              asset:
+                                  'assets/backgrounds/grandmaster-table-v1.webp',
                               onTap: widget.onSettings,
                             ),
                           ],
@@ -450,6 +471,8 @@ class _WideHomeState extends State<_WideHome> {
                                 title: 'Play Computer',
                                 subtitle: 'Challenge the AI at any level',
                                 color: const Color(0xFF123B58),
+                                asset:
+                                    'assets/backgrounds/home-computer-hero-v1.png',
                                 onTap: widget.onPlayVsAi,
                               ),
                             ),
@@ -462,6 +485,8 @@ class _WideHomeState extends State<_WideHome> {
                                 title: 'Play with Friends',
                                 subtitle: 'Create or join a room',
                                 color: const Color(0xFF14513F),
+                                asset:
+                                    'assets/backgrounds/home-friends-hero-v1.png',
                                 onTap: widget.onOnlineGame,
                               ),
                             ),
@@ -472,6 +497,8 @@ class _WideHomeState extends State<_WideHome> {
                                     icon: Icons.extension_rounded,
                                     label: 'Puzzles',
                                     color: AppColors.accentGold,
+                                    asset:
+                                        'assets/backgrounds/home-puzzles-hero-v1.png',
                                     onTap: widget.onPuzzles)),
                             const SizedBox(width: 14),
                             Expanded(
@@ -480,6 +507,8 @@ class _WideHomeState extends State<_WideHome> {
                                     icon: Icons.leaderboard_rounded,
                                     label: 'Rankings',
                                     color: const Color(0xFFF1B74D),
+                                    asset:
+                                        'assets/backgrounds/home-rankings-hero-v1.png',
                                     onTap: widget.onRankings)),
                             const SizedBox(width: 14),
                             Expanded(
@@ -488,6 +517,8 @@ class _WideHomeState extends State<_WideHome> {
                                     icon: Icons.trending_up_rounded,
                                     label: 'Analysis',
                                     color: const Color(0xFF3DA2FF),
+                                    asset:
+                                        'assets/backgrounds/home-analysis-hero-v1.png',
                                     onTap: widget.onAnalysis)),
                             const SizedBox(width: 14),
                             Expanded(
@@ -496,8 +527,18 @@ class _WideHomeState extends State<_WideHome> {
                                     icon: Icons.school_rounded,
                                     label: 'Learn',
                                     color: const Color(0xFFA879F5),
+                                    asset:
+                                        'assets/backgrounds/home-learn-hero-v1.png',
                                     onTap: widget.onLearnChess)),
                           ],
+                        ),
+                        const SizedBox(height: 18),
+                        _WideDashboardRow(
+                          onDailyChallenge: widget.onDailyChallenge,
+                          onPuzzles: widget.onPuzzles,
+                          onRankings: widget.onRankings,
+                          playerName: widget.playerName,
+                          profilePhotoUrl: widget.profilePhotoUrl,
                         ),
                       ],
                     ),
@@ -512,16 +553,285 @@ class _WideHomeState extends State<_WideHome> {
   }
 }
 
+class _WideDashboardRow extends StatelessWidget {
+  const _WideDashboardRow({
+    required this.onDailyChallenge,
+    required this.onPuzzles,
+    required this.onRankings,
+    required this.playerName,
+    this.profilePhotoUrl,
+  });
+
+  final VoidCallback onDailyChallenge;
+  final VoidCallback onPuzzles;
+  final VoidCallback onRankings;
+  final String playerName;
+  final String? profilePhotoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (BuildContext context, BoxConstraints size) {
+      final bool stack = size.maxWidth < 980;
+      if (stack) {
+        return Column(children: <Widget>[
+          _DashboardPanel(
+            title: 'Daily Puzzle',
+            trailing: 'View all',
+            onTap: onPuzzles,
+            child: _CompactDailyPuzzle(onTap: onDailyChallenge),
+          ),
+          const SizedBox(height: 16),
+          const _DashboardPanel(
+            title: 'Activity Feed',
+            trailing: 'Live',
+            child: _EmptyDashboardState(
+              icon: Icons.auto_graph_rounded,
+              title: 'Your activity appears here',
+              subtitle: 'Games, puzzles and achievements update automatically.',
+            ),
+          ),
+          const SizedBox(height: 16),
+          _DashboardPanel(
+            title: 'Top Players',
+            trailing: 'Global',
+            onTap: onRankings,
+            child: _PlayerPreviewRow(
+              rank: 'YOU',
+              name: playerName,
+              photoUrl: profilePhotoUrl,
+            ),
+          ),
+        ]);
+      }
+      final List<Widget> panels = <Widget>[
+        Expanded(
+          child: _DashboardPanel(
+            title: 'Daily Puzzle',
+            trailing: 'View all',
+            onTap: onPuzzles,
+            child: Row(children: <Widget>[
+              Container(
+                width: 116,
+                height: 116,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  image: const DecorationImage(
+                    image: AssetImage(
+                        'assets/backgrounds/home-puzzles-hero-v1.png'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const Text('Find the best move',
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 5),
+                    const Text('Today’s tactical challenge',
+                        style:
+                            TextStyle(color: Color(0xFF9EB5C7), fontSize: 12)),
+                    const SizedBox(height: 14),
+                    FilledButton(
+                      onPressed: onDailyChallenge,
+                      child: const Text('Solve Puzzle'),
+                    ),
+                  ],
+                ),
+              ),
+            ]),
+          ),
+        ),
+        const SizedBox(width: 16, height: 16),
+        const Expanded(
+          child: _DashboardPanel(
+            title: 'Activity Feed',
+            trailing: 'Live',
+            child: _EmptyDashboardState(
+              icon: Icons.auto_graph_rounded,
+              title: 'Your activity appears here',
+              subtitle:
+                  'Games, puzzles and achievements will update automatically.',
+            ),
+          ),
+        ),
+        const SizedBox(width: 16, height: 16),
+        Expanded(
+          child: _DashboardPanel(
+            title: 'Top Players',
+            trailing: 'Global',
+            onTap: onRankings,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                _PlayerPreviewRow(
+                  rank: 'YOU',
+                  name: playerName,
+                  photoUrl: profilePhotoUrl,
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: onRankings,
+                  icon: const Icon(Icons.leaderboard_rounded, size: 18),
+                  label: const Text('View Rankings'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ];
+      return SizedBox(
+        height: 280,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: panels,
+        ),
+      );
+    });
+  }
+}
+
+class _CompactDailyPuzzle extends StatelessWidget {
+  const _CompactDailyPuzzle({required this.onTap});
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Row(children: <Widget>[
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Image.asset('assets/backgrounds/home-puzzles-hero-v1.png',
+              width: 116, height: 116, fit: BoxFit.cover),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Text('Find the best move',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 12),
+              FilledButton(onPressed: onTap, child: const Text('Solve Puzzle')),
+            ],
+          ),
+        ),
+      ]);
+}
+
+class _DashboardPanel extends StatelessWidget {
+  const _DashboardPanel({
+    required this.title,
+    required this.trailing,
+    required this.child,
+    this.onTap,
+  });
+  final String title;
+  final String trailing;
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 210,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xE60A1D2E),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF1D3D55)),
+        ),
+        child: Column(children: <Widget>[
+          Row(children: <Widget>[
+            Expanded(
+              child: Text(title,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800)),
+            ),
+            InkWell(
+              onTap: onTap,
+              child: Text(trailing,
+                  style:
+                      const TextStyle(color: Color(0xFF42A7FF), fontSize: 12)),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          Expanded(child: child),
+        ]),
+      );
+}
+
+class _EmptyDashboardState extends StatelessWidget {
+  const _EmptyDashboardState(
+      {required this.icon, required this.title, required this.subtitle});
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          Icon(icon, color: const Color(0xFF45D7C2), size: 32),
+          const SizedBox(height: 8),
+          Text(title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 5),
+          Text(subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF8FA9BB), fontSize: 11)),
+        ]),
+      );
+}
+
+class _PlayerPreviewRow extends StatelessWidget {
+  const _PlayerPreviewRow(
+      {required this.rank, required this.name, this.photoUrl});
+  final String rank;
+  final String name;
+  final String? photoUrl;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0E2940),
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: const Color(0xFF2A91F2)),
+        ),
+        child: Row(children: <Widget>[
+          Text(rank,
+              style: const TextStyle(
+                  color: Color(0xFF45D7C2), fontWeight: FontWeight.w900)),
+          const SizedBox(width: 10),
+          _Avatar(photoUrl: photoUrl, size: 34),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w700)),
+          ),
+        ]),
+      );
+}
+
 class _PlayerHeader extends StatelessWidget {
   const _PlayerHeader(
       {required this.playerName,
       this.profilePhotoUrl,
       required this.onProfile,
-      required this.onSettings});
+      required this.onSettings,
+      this.wide = false});
   final String playerName;
   final String? profilePhotoUrl;
   final VoidCallback onProfile;
   final VoidCallback onSettings;
+  final bool wide;
 
   @override
   Widget build(BuildContext context) {
@@ -531,7 +841,7 @@ class _PlayerHeader extends StatelessWidget {
           key: const ValueKey<String>('home-profile'),
           onTap: onProfile,
           borderRadius: BorderRadius.circular(999),
-          child: _Avatar(photoUrl: profilePhotoUrl, size: 48),
+          child: _Avatar(photoUrl: profilePhotoUrl, size: 42),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -545,11 +855,23 @@ class _PlayerHeader extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 19,
+                      fontSize: 17,
                       fontWeight: FontWeight.w800)),
             ],
           ),
         ),
+        if (wide) ...<Widget>[
+          IconButton(
+            tooltip: 'Notifications',
+            onPressed: () {},
+            style: IconButton.styleFrom(
+              backgroundColor: const Color(0xFF102A40),
+              foregroundColor: const Color(0xFFD9E7F0),
+            ),
+            icon: const Icon(Icons.notifications_rounded),
+          ),
+          const SizedBox(width: 6),
+        ],
         IconButton(
           key: const ValueKey<String>('home-settings-top'),
           onPressed: onSettings,
@@ -572,9 +894,9 @@ class _BrandHero extends StatelessWidget {
     return Column(
       children: <Widget>[
         Image.asset('assets/branding/app_icon.png',
-            width: compact ? 72 : 92, height: compact ? 72 : 92),
-        const SizedBox(height: 6),
-        const _BrandWordmark(fontSize: 31),
+            width: compact ? 76 : 72, height: compact ? 76 : 72),
+        const SizedBox(height: 4),
+        _BrandWordmark(fontSize: compact ? 28 : 29),
         const SizedBox(height: 4),
         const Text('CHOOSE YOUR NEXT MOVE',
             style: TextStyle(
@@ -619,6 +941,7 @@ class _HomeHeroData {
     required this.buttonLabel,
     required this.onTap,
     this.asset,
+    this.statusLabel,
   });
   final String title;
   final String subtitle;
@@ -626,6 +949,12 @@ class _HomeHeroData {
   final String buttonLabel;
   final VoidCallback onTap;
   final String? asset;
+  final String? statusLabel;
+}
+
+String _onlineStatus(int? count) {
+  if (count == null) return 'Live arena';
+  return '$count ${count == 1 ? 'player' : 'players'} online';
 }
 
 class _HomeHeroCarousel extends StatelessWidget {
@@ -671,25 +1000,26 @@ class _HomeHeroCarousel extends StatelessWidget {
               },
             ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List<Widget>.generate(
-              slides.length,
-              (int index) => AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                width: selectedIndex == index ? 18 : 6,
-                height: 6,
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                decoration: BoxDecoration(
-                  color: selectedIndex == index
-                      ? const Color(0xFF45D7C2)
-                      : const Color(0xFF3B5668),
-                  borderRadius: BorderRadius.circular(99),
+          if (slides.length > 1) const SizedBox(height: 8),
+          if (slides.length > 1)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List<Widget>.generate(
+                slides.length,
+                (int index) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  width: selectedIndex == index ? 18 : 6,
+                  height: 6,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  decoration: BoxDecoration(
+                    color: selectedIndex == index
+                        ? const Color(0xFF45D7C2)
+                        : const Color(0xFF3B5668),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       );
 }
@@ -775,11 +1105,11 @@ class _CarouselHero extends StatelessWidget {
                         icon: const Icon(Icons.arrow_forward_rounded, size: 17),
                         label: Text(data.buttonLabel),
                       ),
-                      if (data.title == 'Play Online')
-                        const Padding(
-                          padding: EdgeInsets.only(top: 5),
-                          child: Text('●  Live matchmaking',
-                              style: TextStyle(
+                      if (data.statusLabel != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 5),
+                          child: Text('●  ${data.statusLabel}',
+                              style: const TextStyle(
                                   color: Color(0xFF65D8C2), fontSize: 10)),
                         ),
                     ],
@@ -788,11 +1118,16 @@ class _CarouselHero extends StatelessWidget {
               ),
             ),
             Positioned(
-              top: 15,
-              right: 15,
+              right: wide ? 22 : 14,
+              top: wide ? 22 : 14,
               child: IconButton.filledTonal(
-                tooltip: 'Next',
+                key: const ValueKey<String>('home-hero-next'),
+                tooltip: 'Next feature',
                 onPressed: onNext,
+                style: IconButton.styleFrom(
+                  backgroundColor: const Color(0xB20A2842),
+                  foregroundColor: Colors.white,
+                ),
                 icon: const Icon(Icons.chevron_right_rounded),
               ),
             ),
@@ -932,12 +1267,14 @@ class _ActionCard extends StatelessWidget {
       required this.title,
       required this.subtitle,
       required this.color,
+      this.asset,
       required this.onTap});
   final String keyName;
   final IconData icon;
   final String title;
   final String subtitle;
   final Color color;
+  final String? asset;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
@@ -953,7 +1290,15 @@ class _ActionCard extends StatelessWidget {
             height: narrow ? 164 : 126,
             padding: EdgeInsets.all(narrow ? 15 : 18),
             decoration: BoxDecoration(
-                color: color.withValues(alpha: .92),
+                color: color.withValues(alpha: .76),
+                image: asset == null
+                    ? null
+                    : DecorationImage(
+                        image: AssetImage(asset!),
+                        fit: BoxFit.cover,
+                        alignment: Alignment.centerRight,
+                        colorFilter: const ColorFilter.mode(
+                            Color(0x8803182A), BlendMode.darken)),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: color.withValues(alpha: .9))),
             child: narrow
@@ -1033,11 +1378,13 @@ class _MiniCard extends StatelessWidget {
       required this.icon,
       required this.label,
       required this.color,
+      this.asset,
       required this.onTap});
   final String keyName;
   final IconData icon;
   final String label;
   final Color color;
+  final String? asset;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
@@ -1052,6 +1399,14 @@ class _MiniCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
           decoration: BoxDecoration(
               color: const Color(0xDD0C2030),
+              image: asset == null
+                  ? null
+                  : DecorationImage(
+                      image: AssetImage(asset!),
+                      fit: BoxFit.cover,
+                      alignment: Alignment.centerRight,
+                      colorFilter: const ColorFilter.mode(
+                          Color(0xAA061827), BlendMode.darken)),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: color.withValues(alpha: .35))),
           child: Column(
@@ -1280,28 +1635,5 @@ class _Avatar extends StatelessWidget {
                       const Icon(Icons.person_rounded, color: Colors.white))
               : const Icon(Icons.person_rounded, color: Colors.white)),
     );
-  }
-}
-
-class _SmallAction extends StatelessWidget {
-  const _SmallAction(
-      {required this.icon, required this.label, required this.onTap});
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) {
-    return ActionChip(
-        onPressed: onTap,
-        avatar: Icon(icon, size: 16, color: const Color(0xFF8BC8EF)),
-        label: Text(label),
-        labelStyle: const TextStyle(
-            color: Color(0xFFC7DDEA),
-            fontSize: 11,
-            fontWeight: FontWeight.w700),
-        backgroundColor: const Color(0xCC0C2130),
-        side: const BorderSide(color: Color(0xFF24485E)),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)));
   }
 }

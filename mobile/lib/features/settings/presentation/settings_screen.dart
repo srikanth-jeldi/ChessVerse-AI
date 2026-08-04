@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../../../core/audio/chess_sound_service.dart';
 import '../../../core/app_preferences.dart';
 import '../../../core/layout/responsive_page.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
+import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../legal/presentation/legal_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -62,208 +64,346 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final Size viewport = MediaQuery.sizeOf(context);
+    final bool tablet = viewport.shortestSide >= 600;
+    final bool wide = (kIsWeb || tablet) && viewport.width >= 700;
+    final Widget page = Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('SETTINGS',
-            style: TextStyle(letterSpacing: 1.5, fontWeight: FontWeight.w900)),
+        toolbarHeight: wide ? 92 : 72,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const Text('SETTINGS',
+                style:
+                    TextStyle(letterSpacing: 1.5, fontWeight: FontWeight.w900)),
+            if (wide) ...<Widget>[
+              const SizedBox(height: 4),
+              const Text(
+                'Customize your game experience',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
+          ],
+        ),
         backgroundColor: const Color(0xE6071727),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ResponsivePage(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  const _SettingsSectionTitle(
-                    icon: Icons.workspace_premium_rounded,
-                    label: 'GAME PREFERENCES',
-                  ),
-                  const SizedBox(height: 12),
-                  ChessVerseCard(
-                    child: Column(
-                      children: <Widget>[
-                        _SettingSwitch(
-                          icon: Icons.volume_up_rounded,
-                          title: 'Sound effects',
-                          subtitle:
-                              'Move sounds, check alerts, and result effects',
-                          value: _soundEnabled,
-                          onChanged: (bool value) {
-                            setState(() => _soundEnabled = value);
-                            ChessSoundService.instance.enabled = value;
-                            _preferences.writeBool('sound', value);
-                          },
-                        ),
-                        const Divider(color: AppColors.border),
-                        _SettingSwitch(
-                          icon: Icons.lightbulb_rounded,
-                          title: 'Move hints',
-                          subtitle: 'Show legal move and daily challenge hints',
-                          value: _hintsEnabled,
-                          onChanged: (bool value) {
-                            setState(() => _hintsEnabled = value);
-                            _preferences.writeBool('hints', value);
-                          },
-                        ),
-                        const Divider(color: AppColors.border),
-                        _SettingSwitch(
-                          icon: Icons.grid_4x4_rounded,
-                          title: 'Show coordinates',
-                          subtitle: 'Display a-h and 1-8 board labels',
-                          value: _coordinatesEnabled,
-                          onChanged: (bool value) {
-                            setState(() => _coordinatesEnabled = value);
-                            _preferences.writeBool('coordinates', value);
-                          },
-                        ),
-                        const Divider(color: AppColors.border),
-                        _SettingSwitch(
-                          icon: Icons.psychology_alt_rounded,
-                          title: 'AI coach',
-                          subtitle: 'Explain moves and tactical ideas',
-                          value: _coachEnabled,
-                          onChanged: (bool value) {
-                            setState(() => _coachEnabled = value);
-                            _preferences.writeBool('coach', value);
-                          },
-                        ),
-                        const Divider(color: AppColors.border),
-                        _SettingSwitch(
-                          icon: Icons.auto_awesome_rounded,
-                          title: 'Animations',
-                          subtitle: 'Board highlights and smooth transitions',
-                          value: _animationsEnabled,
-                          onChanged: (bool value) {
-                            setState(() => _animationsEnabled = value);
-                            _preferences.writeBool('animations', value);
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  const _SettingsSectionTitle(
-                    icon: Icons.palette_rounded,
-                    label: 'APPEARANCE',
-                  ),
-                  const SizedBox(height: 12),
-                  ChessVerseCard(
-                    child: Column(
-                      children: <Widget>[
-                        _SettingRow(
-                          icon: Icons.grid_view_rounded,
-                          title: 'Board theme',
-                          value: _boardTheme,
-                          onTap: () => _choose(
-                            title: 'Board theme',
-                            values: const <String>[
-                              'Royal Walnut',
-                              'Jade Glass',
-                              'Tournament',
-                              'Marble',
-                              'Sapphire',
-                            ],
-                            selected: _boardTheme,
-                            onSelected: (String value) {
-                              setState(() => _boardTheme = value);
-                              _preferences.writeString('boardTheme', value);
-                            },
-                          ),
-                        ),
-                        const Divider(color: AppColors.border),
-                        _SettingRow(
-                          icon: Icons.extension_rounded,
-                          title: 'Piece style',
-                          value: _pieceStyle,
-                          onTap: () => _choose(
-                            title: 'Piece style',
-                            values: const <String>[
-                              'Staunton 3D',
-                              'Classic',
-                              'Modern',
-                            ],
-                            selected: _pieceStyle,
-                            onSelected: (String value) {
-                              setState(() => _pieceStyle = value);
-                              _preferences.writeString('pieceStyle', value);
-                            },
-                          ),
-                        ),
-                        const Divider(color: AppColors.border),
-                        _SettingRow(
-                          icon: Icons.dark_mode_rounded,
-                          title: 'App theme',
-                          value: _appTheme,
-                          onTap: () => _choose(
-                            title: 'App theme',
-                            values: const <String>[
-                              'Dark premium',
-                              'Midnight blue',
-                              'Emerald',
-                            ],
-                            selected: _appTheme,
-                            onSelected: (String value) {
-                              setState(() => _appTheme = value);
-                              _preferences.writeString('appTheme', value);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  const _SettingsSectionTitle(
-                    icon: Icons.shield_outlined,
-                    label: 'LEGAL',
-                  ),
-                  const SizedBox(height: 12),
-                  ChessVerseCard(
-                    child: Column(
-                      children: <Widget>[
-                        _ActionRow(
-                          icon: Icons.privacy_tip_rounded,
-                          title: 'Privacy Policy',
-                          onTap: () =>
-                              _openLegal(context, LegalPageType.privacy),
-                        ),
-                        const Divider(color: AppColors.border),
-                        _ActionRow(
-                          icon: Icons.description_rounded,
-                          title: 'Terms of Service',
-                          onTap: () => _openLegal(context, LegalPageType.terms),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(18),
-                      gradient: const LinearGradient(
-                        colors: <Color>[Color(0xFF7D2CF2), Color(0xFF5122A8)],
+              maxWidth: wide ? 1240 : null,
+              child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+                  final bool desktop = constraints.maxWidth >= 620;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      const _SettingsSectionTitle(
+                        icon: Icons.workspace_premium_rounded,
+                        label: 'GAME PREFERENCES',
                       ),
-                      boxShadow: const <BoxShadow>[
-                        BoxShadow(color: Color(0x557D2CF2), blurRadius: 20),
-                      ],
-                    ),
-                    child: ListTile(
-                      onTap: _logout,
-                      title: const Text('Logout',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900)),
-                      leading:
-                          const Icon(Icons.logout_rounded, color: Colors.white),
-                      trailing: const SizedBox(width: 24),
-                    ),
-                  ),
-                ],
+                      const SizedBox(height: 12),
+                      ChessVerseCard(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: desktop ? 26 : 16,
+                          vertical: desktop ? 14 : 8,
+                        ),
+                        child: desktop
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Expanded(
+                                    child: Column(
+                                      children: <Widget>[
+                                        _soundSwitch(),
+                                        const Divider(color: AppColors.border),
+                                        _hintsSwitch(),
+                                        const Divider(color: AppColors.border),
+                                        _coordinatesSwitch(),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 24),
+                                  const SizedBox(
+                                    height: 255,
+                                    child: VerticalDivider(
+                                        color: AppColors.border),
+                                  ),
+                                  const SizedBox(width: 24),
+                                  Expanded(
+                                    child: Column(
+                                      children: <Widget>[
+                                        _coachSwitch(),
+                                        const Divider(color: AppColors.border),
+                                        _animationsSwitch(),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                children: <Widget>[
+                                  _soundSwitch(),
+                                  const Divider(color: AppColors.border),
+                                  _hintsSwitch(),
+                                  const Divider(color: AppColors.border),
+                                  _coordinatesSwitch(),
+                                  const Divider(color: AppColors.border),
+                                  _coachSwitch(),
+                                  const Divider(color: AppColors.border),
+                                  _animationsSwitch(),
+                                ],
+                              ),
+                      ),
+                      const SizedBox(height: 18),
+                      const _SettingsSectionTitle(
+                        icon: Icons.palette_rounded,
+                        label: 'APPEARANCE',
+                      ),
+                      const SizedBox(height: 12),
+                      ChessVerseCard(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: desktop ? 26 : 16,
+                          vertical: desktop ? 10 : 8,
+                        ),
+                        child: Flex(
+                          direction: desktop ? Axis.horizontal : Axis.vertical,
+                          children: <Widget>[
+                            _AdaptiveFlexItem(
+                              expanded: desktop,
+                              child: _SettingRow(
+                                icon: Icons.grid_view_rounded,
+                                title: 'Board theme',
+                                value: _boardTheme,
+                                onTap: () => _choose(
+                                  title: 'Board theme',
+                                  values: const <String>[
+                                    'Royal Walnut',
+                                    'Jade Glass',
+                                    'Tournament',
+                                    'Marble',
+                                    'Sapphire',
+                                  ],
+                                  selected: _boardTheme,
+                                  onSelected: (String value) {
+                                    setState(() => _boardTheme = value);
+                                    _preferences.writeString(
+                                        'boardTheme', value);
+                                  },
+                                ),
+                              ),
+                            ),
+                            if (desktop)
+                              const SizedBox(
+                                height: 76,
+                                child: VerticalDivider(color: AppColors.border),
+                              )
+                            else
+                              const Divider(color: AppColors.border),
+                            _AdaptiveFlexItem(
+                              expanded: desktop,
+                              child: _SettingRow(
+                                icon: Icons.extension_rounded,
+                                title: 'Piece style',
+                                value: _pieceStyle,
+                                onTap: () => _choose(
+                                  title: 'Piece style',
+                                  values: const <String>[
+                                    'Staunton 3D',
+                                    'Classic',
+                                    'Modern',
+                                  ],
+                                  selected: _pieceStyle,
+                                  onSelected: (String value) {
+                                    setState(() => _pieceStyle = value);
+                                    _preferences.writeString(
+                                        'pieceStyle', value);
+                                  },
+                                ),
+                              ),
+                            ),
+                            if (desktop)
+                              const SizedBox(
+                                height: 76,
+                                child: VerticalDivider(color: AppColors.border),
+                              )
+                            else
+                              const Divider(color: AppColors.border),
+                            _AdaptiveFlexItem(
+                              expanded: desktop,
+                              child: _SettingRow(
+                                icon: Icons.dark_mode_rounded,
+                                title: 'App theme',
+                                value: _appTheme,
+                                onTap: () => _choose(
+                                  title: 'App theme',
+                                  values: const <String>[
+                                    'Dark premium',
+                                    'Midnight blue',
+                                    'Emerald',
+                                  ],
+                                  selected: _appTheme,
+                                  onSelected: (String value) {
+                                    setState(() => _appTheme = value);
+                                    _preferences.writeString('appTheme', value);
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      const _SettingsSectionTitle(
+                        icon: Icons.shield_outlined,
+                        label: 'LEGAL',
+                      ),
+                      const SizedBox(height: 12),
+                      ChessVerseCard(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: desktop ? 26 : 16,
+                          vertical: desktop ? 8 : 6,
+                        ),
+                        child: Flex(
+                          direction: desktop ? Axis.horizontal : Axis.vertical,
+                          children: <Widget>[
+                            _AdaptiveFlexItem(
+                              expanded: desktop,
+                              child: _ActionRow(
+                                icon: Icons.privacy_tip_rounded,
+                                title: 'Privacy Policy',
+                                onTap: () =>
+                                    _openLegal(context, LegalPageType.privacy),
+                              ),
+                            ),
+                            if (desktop)
+                              const SizedBox(
+                                height: 68,
+                                child: VerticalDivider(color: AppColors.border),
+                              )
+                            else
+                              const Divider(color: AppColors.border),
+                            _AdaptiveFlexItem(
+                              expanded: desktop,
+                              child: _ActionRow(
+                                icon: Icons.description_rounded,
+                                title: 'Terms of Service',
+                                onTap: () =>
+                                    _openLegal(context, LegalPageType.terms),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(18),
+                          gradient: const LinearGradient(
+                            colors: <Color>[
+                              Color(0xFF7D2CF2),
+                              Color(0xFF5122A8)
+                            ],
+                          ),
+                          boxShadow: const <BoxShadow>[
+                            BoxShadow(color: Color(0x557D2CF2), blurRadius: 20),
+                          ],
+                        ),
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: ListTile(
+                            onTap: _logout,
+                            title: const Text('Logout',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900)),
+                            leading: const Icon(Icons.logout_rounded,
+                                color: Colors.white),
+                            trailing: const SizedBox(width: 24),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
     );
+    if (!wide) return page;
+    return Row(
+      children: <Widget>[
+        DesktopAppSidebar(
+          selected: 'Settings',
+          onHome: () => Navigator.maybePop(context),
+          onSettings: () {},
+        ),
+        Expanded(child: page),
+      ],
+    );
   }
+
+  Widget _soundSwitch() => _SettingSwitch(
+        icon: Icons.volume_up_rounded,
+        title: 'Sound effects',
+        subtitle: 'Move sounds, check alerts, and result effects',
+        value: _soundEnabled,
+        onChanged: (bool value) {
+          setState(() => _soundEnabled = value);
+          ChessSoundService.instance.enabled = value;
+          _preferences.writeBool('sound', value);
+        },
+      );
+
+  Widget _hintsSwitch() => _SettingSwitch(
+        icon: Icons.lightbulb_rounded,
+        title: 'Move hints',
+        subtitle: 'Show legal move and daily challenge hints',
+        value: _hintsEnabled,
+        onChanged: (bool value) {
+          setState(() => _hintsEnabled = value);
+          _preferences.writeBool('hints', value);
+        },
+      );
+
+  Widget _coordinatesSwitch() => _SettingSwitch(
+        icon: Icons.grid_4x4_rounded,
+        title: 'Show coordinates',
+        subtitle: 'Display a-h and 1-8 board labels',
+        value: _coordinatesEnabled,
+        onChanged: (bool value) {
+          setState(() => _coordinatesEnabled = value);
+          _preferences.writeBool('coordinates', value);
+        },
+      );
+
+  Widget _coachSwitch() => _SettingSwitch(
+        icon: Icons.psychology_alt_rounded,
+        title: 'AI coach',
+        subtitle: 'Explain moves and tactical ideas',
+        value: _coachEnabled,
+        onChanged: (bool value) {
+          setState(() => _coachEnabled = value);
+          _preferences.writeBool('coach', value);
+        },
+      );
+
+  Widget _animationsSwitch() => _SettingSwitch(
+        icon: Icons.auto_awesome_rounded,
+        title: 'Animations',
+        subtitle: 'Board highlights and smooth transitions',
+        value: _animationsEnabled,
+        onChanged: (bool value) {
+          setState(() => _animationsEnabled = value);
+          _preferences.writeBool('animations', value);
+        },
+      );
 
   Future<void> _logout() async {
     final bool? confirmed = await showDialog<bool>(
@@ -349,9 +489,22 @@ class _SettingSwitch extends StatelessWidget {
       title: Text(title, style: Theme.of(context).textTheme.titleMedium),
       subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
       value: value,
+      activeTrackColor: AppColors.accentGold,
+      activeThumbColor: const Color(0xFF05070A),
       onChanged: onChanged,
     );
   }
+}
+
+class _AdaptiveFlexItem extends StatelessWidget {
+  const _AdaptiveFlexItem({required this.expanded, required this.child});
+
+  final bool expanded;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      expanded ? Expanded(child: child) : child;
 }
 
 class _SettingRow extends StatelessWidget {

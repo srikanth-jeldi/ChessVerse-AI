@@ -7,6 +7,7 @@ import 'core/config/app_config.dart';
 import 'features/analysis/presentation/analysis_screen.dart';
 import 'features/home/presentation/home_dashboard_screen.dart';
 import 'features/library/presentation/reference_screens.dart';
+import 'features/leaderboard/presentation/leaderboard_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/splash/presentation/premium_splash_screen.dart';
@@ -86,12 +87,13 @@ class PreviewShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return HomeDashboardScreen(
-      playerName: 'Guest Player',
+      playerName: 'hello buddy',
       onPlayVsAi: () => _openGame(context, game.GameMode.computer),
       onDailyChallenge: () => _openGame(context, game.GameMode.daily),
       onLocalGame: () => _openGame(context, game.GameMode.local),
       onOnlineGame: () => _openGame(context, game.GameMode.online),
       onAnalysis: () => _openAnalysis(context),
+      onRankings: () => _push(context, const LeaderboardScreen()),
       onPuzzles: () => _push(context, const PuzzlesScreen()),
       onSavedGames: () => _push(context, const SavedGamesScreen()),
       onLearnChess: () => _push(context, const LearnChessScreen()),

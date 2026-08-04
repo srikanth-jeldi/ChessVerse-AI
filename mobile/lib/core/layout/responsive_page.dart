@@ -9,6 +9,7 @@ class ResponsivePage extends StatelessWidget {
     this.scrollable = true,
     this.safeArea = true,
     this.backgroundGradient = true,
+    this.maxWidth,
     super.key,
   });
 
@@ -16,6 +17,7 @@ class ResponsivePage extends StatelessWidget {
   final bool scrollable;
   final bool safeArea;
   final bool backgroundGradient;
+  final double? maxWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +33,7 @@ class ResponsivePage extends StatelessWidget {
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: AppBreakpoints.maxContentWidth(context),
+          maxWidth: maxWidth ?? AppBreakpoints.maxContentWidth(context),
         ),
         child: Padding(
           padding: pagePadding,

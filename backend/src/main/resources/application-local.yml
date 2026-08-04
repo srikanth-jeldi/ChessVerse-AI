@@ -8,8 +8,10 @@ spring:
     driver-class-name: org.h2.Driver
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
   flyway:
-    enabled: true
+    enabled: false
 
 server:
   address: ${SERVER_ADDRESS:127.0.0.1}

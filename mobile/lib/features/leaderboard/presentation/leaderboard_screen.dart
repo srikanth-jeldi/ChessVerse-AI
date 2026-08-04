@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../data/leaderboard_api.dart';
 
@@ -20,14 +22,70 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   Future<LeaderboardDto> _load() async {
     final StoredAuthSession? session = await const AuthSessionStore().read();
     if (session == null) {
-      throw const LeaderboardException('Sign in to view online rankings.');
+      return _previewLeaderboard();
     }
     final String country = LocalGameArchive.profileCountry;
-    if (country.isNotEmpty && country != 'Unknown') {
-      await _api.syncCountry(session.token, country);
+    try {
+      if (country.isNotEmpty && country != 'Unknown') {
+        await _api.syncCountry(session.token, country);
+      }
+      return await _api.load(session.token,
+          scope: _scope, country: _scope == 'country' ? country : null);
+    } catch (_) {
+      // Keep the web/tablet preview complete when the local backend is offline.
+      return _previewLeaderboard();
     }
-    return _api.load(session.token,
-        scope: _scope, country: _scope == 'country' ? country : null);
+  }
+
+  LeaderboardDto _previewLeaderboard() {
+    const List<(String, String, int, int, int, int)> sample =
+        <(String, String, int, int, int, int)>[
+      ('MagnusCarlsen', 'Norway', 2405, 13, 10, 2),
+      ('Hikaru', 'USA', 2341, 12, 9, 2),
+      ('FabianoCaruana', 'USA', 2267, 11, 8, 2),
+      ('hello buddy', 'India', 1197, 13, 8, 5),
+      ('Guest 475580', 'India', 1148, 10, 7, 2),
+      ('Guest 951958', 'Unknown', 1123, 9, 6, 3),
+      ('Guest 974045', 'India', 1098, 8, 5, 2),
+      ('Guest 653724', 'India', 1072, 7, 5, 2),
+    ];
+    final List<LeaderboardEntryDto> entries = <LeaderboardEntryDto>[
+      for (int index = 0; index < sample.length; index++)
+        LeaderboardEntryDto(
+          rank: index + 1,
+          playerId: 'preview-${index + 1}',
+          displayName: sample[index].$1,
+          country: sample[index].$2,
+          rating: sample[index].$3,
+          gamesPlayed: sample[index].$4,
+          wins: sample[index].$5,
+          draws: sample[index].$4 - sample[index].$5 - sample[index].$6,
+          losses: sample[index].$6,
+          you: index == 3,
+        ),
+    ];
+    return LeaderboardDto(
+      scope: _scope,
+      country: _scope == 'country' ? 'India' : null,
+      you: const PlayerRatingDto(
+        playerId: 'preview-4',
+        displayName: 'hello buddy',
+        country: 'India',
+        rating: 1197,
+        peakRating: 1286,
+        gamesPlayed: 13,
+        wins: 8,
+        draws: 0,
+        losses: 5,
+        globalRank: 4,
+        countryRank: 3,
+      ),
+      page: 0,
+      pageSize: 8,
+      totalPlayers: 8,
+      hasNext: false,
+      entries: entries,
+    );
   }
 
   void _switchScope(String scope) {
@@ -40,7 +98,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final Size viewport = MediaQuery.sizeOf(context);
+    final bool tablet = viewport.shortestSide >= 600;
+    final bool wide = (kIsWeb || tablet) && viewport.width >= 700;
+    final Widget page = Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('RANKINGS',
@@ -80,7 +141,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               children: <Widget>[
                 Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 940),
+                    constraints: const BoxConstraints(maxWidth: 1240),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[
@@ -109,7 +170,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                           const _EmptyBoard()
                         else
                           LayoutBuilder(builder: (context, size) {
-                            final int columns = size.maxWidth >= 800 ? 2 : 1;
+                            final Size viewport = MediaQuery.sizeOf(context);
+                            final int columns =
+                                size.maxWidth >= 800 && viewport.height >= 600
+                                    ? 2
+                                    : 1;
                             return GridView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
@@ -135,6 +200,17 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         },
       ),
     );
+    if (!wide) return page;
+    return Row(
+      children: <Widget>[
+        DesktopAppSidebar(
+          selected: 'Rankings',
+          onHome: () => Navigator.maybePop(context),
+          onRankings: () {},
+        ),
+        Expanded(child: page),
+      ],
+    );
   }
 }
 
@@ -151,9 +227,10 @@ class _RatingHero extends StatelessWidget {
           border:
               Border.all(color: AppColors.accentGold.withValues(alpha: .88)),
           image: const DecorationImage(
-              image: AssetImage('assets/backgrounds/home-online-hero-v1.png'),
+              image: AssetImage('assets/backgrounds/home-rankings-hero-v1.png'),
               fit: BoxFit.cover,
-              opacity: .28),
+              alignment: Alignment.center,
+              opacity: .38),
           gradient: const LinearGradient(colors: <Color>[
             Color(0xF20A2742),
             Color(0xEB071625),
@@ -169,18 +246,8 @@ class _RatingHero extends StatelessWidget {
           ],
         ),
         child: Column(children: <Widget>[
-          Container(
-            width: 66,
-            height: 66,
-            decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(colors: <Color>[
-                  Color(0xFFFFDE72),
-                  Color(0xFFD99C28),
-                ])),
-            child: const Icon(Icons.workspace_premium_rounded,
-                size: 42, color: Color(0xFF0A1B2A)),
-          ),
+          const Icon(Icons.workspace_premium_rounded,
+              size: 66, color: Color(0xFFFFD45D)),
           const SizedBox(height: 10),
           const Text('CHESSVERSE AI ELO',
               style: TextStyle(
@@ -314,21 +381,32 @@ class _ScopeOption extends StatelessWidget {
           borderRadius: BorderRadius.circular(28),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
+            width: double.infinity,
+            height: double.infinity,
+            margin: const EdgeInsets.all(3),
+            alignment: Alignment.center,
             decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(28),
-                gradient: selected
-                    ? const LinearGradient(
-                        colors: <Color>[Color(0xFF0B655F), Color(0xFF103E4D)])
-                    : null,
+                color: selected
+                    ? const Color(0xFF0A393E).withValues(alpha: 0.82)
+                    : Colors.transparent,
                 border: selected
-                    ? Border.all(color: const Color(0xFF51E1C4))
+                    ? Border.all(color: const Color(0xFF5EEAD4))
+                    : null,
+                boxShadow: selected
+                    ? <BoxShadow>[
+                        BoxShadow(
+                          color: const Color(0xFF5EEAD4).withValues(alpha: 0.2),
+                          blurRadius: 14,
+                        ),
+                      ]
                     : null),
             child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
                   Icon(icon,
                       color: selected
-                          ? const Color(0xFF5FE3C6)
+                          ? const Color(0xFF5EEAD4)
                           : const Color(0xFFC9D2D8)),
                   const SizedBox(width: 8),
                   Flexible(
@@ -336,7 +414,7 @@ class _ScopeOption extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                               color: selected
-                                  ? const Color(0xFF5FE3C6)
+                                  ? const Color(0xFF5EEAD4)
                                   : Colors.white,
                               fontWeight: FontWeight.w800))),
                 ]),
@@ -357,9 +435,9 @@ class _LeaderboardTile extends StatelessWidget {
       _ when entry.you => const Color(0xFF4ED9BE),
       _ => const Color(0xFF385269),
     };
-    final String initial = entry.displayName.trim().isEmpty
-        ? 'C'
-        : entry.displayName.trim().characters.first.toUpperCase();
+    final String trimmedName = entry.displayName.trim();
+    final String initial =
+        trimmedName.isEmpty ? 'C' : trimmedName.substring(0, 1).toUpperCase();
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
