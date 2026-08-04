@@ -13,10 +13,12 @@ Future<void> _noPuzzleLaunch(String _) async {}
 class PuzzleAcademyScreen extends StatefulWidget {
   const PuzzleAcademyScreen({
     this.onStartPuzzle = _noPuzzleLaunch,
+    this.showPrimaryNavigation = true,
     super.key,
   });
 
   final PuzzleLauncher onStartPuzzle;
+  final bool showPrimaryNavigation;
 
   @override
   State<PuzzleAcademyScreen> createState() => _PuzzleAcademyScreenState();
@@ -154,11 +156,12 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
           if (desktop) {
             return Row(
               children: <Widget>[
-                DesktopAppSidebar(
-                  selected: 'Puzzles',
-                  onHome: () => Navigator.maybePop(context),
-                  onPuzzles: () {},
-                ),
+                if (widget.showPrimaryNavigation)
+                  DesktopAppSidebar(
+                    selected: 'Puzzles',
+                    onHome: () => Navigator.maybePop(context),
+                    onPuzzles: () {},
+                  ),
                 Expanded(
                   child: _DesktopPuzzleAcademy(
                     stats: stats,

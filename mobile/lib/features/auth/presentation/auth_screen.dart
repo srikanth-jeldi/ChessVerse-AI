@@ -289,12 +289,13 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _premiumFormContent(BuildContext context) {
+    final bool dense = MediaQuery.sizeOf(context).height < 900;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        _premiumBrandHeader(context),
-        const SizedBox(height: 24),
+        _premiumBrandHeader(context, dense: dense),
+        SizedBox(height: dense ? 12 : 24),
         Text(
           widget.guestUpgradeToken != null
               ? 'Secure your progress'
@@ -305,50 +306,50 @@ class _AuthScreenState extends State<AuthScreen> {
                       : 'Create your account',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 color: AppColors.textPrimary,
-                fontSize: 31,
+                fontSize: dense ? 26 : 31,
                 fontWeight: FontWeight.w900,
                 height: 1.05,
               ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: dense ? 6 : 10),
         Text(
           _loginMode
               ? 'Login to continue your games,\nratings and progress'
               : 'Create your ChessVerse AI identity\nand keep your progress secure',
-          style: const TextStyle(
+          style: TextStyle(
             color: Color(0xFF9EACC2),
-            fontSize: 16,
-            height: 1.5,
+            fontSize: dense ? 13 : 16,
+            height: dense ? 1.3 : 1.5,
           ),
         ),
-        const SizedBox(height: 22),
+        SizedBox(height: dense ? 12 : 22),
         if (!_verificationMode && widget.guestUpgradeToken == null)
           _premiumModeSelector(),
-        const SizedBox(height: 16),
+        SizedBox(height: dense ? 10 : 16),
         ..._premiumFormFields(context),
         if (_message != null) ...<Widget>[
-          const SizedBox(height: 14),
+          SizedBox(height: dense ? 8 : 14),
           _Notice(message: _message!, isError: false),
         ],
         if (_error != null) ...<Widget>[
-          const SizedBox(height: 14),
+          SizedBox(height: dense ? 8 : 14),
           _Notice(message: _error!, isError: true),
         ],
-        const SizedBox(height: 18),
+        SizedBox(height: dense ? 10 : 18),
         if (widget.guestUpgradeToken == null) _premiumPrimaryButton(),
         if (widget.guestUpgradeToken == null) ...<Widget>[
-          const SizedBox(height: 17),
+          SizedBox(height: dense ? 9 : 17),
           const _DividerLabel('or'),
-          const SizedBox(height: 16),
+          SizedBox(height: dense ? 9 : 16),
           _premiumGuestButton(),
-          const SizedBox(height: 17),
+          SizedBox(height: dense ? 9 : 17),
           const _DividerLabel('or continue with'),
-          const SizedBox(height: 14),
+          SizedBox(height: dense ? 8 : 14),
         ],
         _premiumSocialButtons(),
         if (widget.guestUpgradeToken == null) ...<Widget>[
-          const SizedBox(height: 18),
-          const _SecurityNote(),
+          SizedBox(height: dense ? 8 : 18),
+          if (!dense) const _SecurityNote(),
         ],
       ],
     );
@@ -421,19 +422,19 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _premiumBrandHeader(BuildContext context) {
+  Widget _premiumBrandHeader(BuildContext context, {required bool dense}) {
     return Column(
       children: <Widget>[
         ClipRRect(
           borderRadius: BorderRadius.circular(18),
           child: Image.asset(
             'assets/branding/app_icon.png',
-            width: 82,
-            height: 82,
+            width: dense ? 58 : 82,
+            height: dense ? 58 : 82,
             fit: BoxFit.cover,
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: dense ? 6 : 12),
         Text.rich(
           TextSpan(
             children: <InlineSpan>[
@@ -447,11 +448,11 @@ class _AuthScreenState extends State<AuthScreen> {
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 color: AppColors.textPrimary,
-                fontSize: 26,
+                fontSize: dense ? 21 : 26,
                 fontWeight: FontWeight.w900,
               ),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: dense ? 7 : 14),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[

@@ -300,6 +300,7 @@ class _SplashGateState extends State<SplashGate> {
         onDaily: () => _openGame(context, GameMode.daily),
       ),
       PuzzlesScreen(
+        showPrimaryNavigation: false,
         onStartPuzzle: (String puzzleId) => _openGame(
           context,
           GameMode.puzzle,
@@ -1938,78 +1939,83 @@ class _PlayDestination extends StatelessWidget {
   final VoidCallback onDaily;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: const Column(
-            children: <Widget>[
-              Text('PLAY',
-                  style: TextStyle(
-                      letterSpacing: 1.8, fontWeight: FontWeight.w900)),
-              Text('Choose your battle mode',
-                  style: TextStyle(
-                      color: Color(0xFFAEC0D1),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400)),
-            ],
-          ),
-          centerTitle: true,
+  Widget build(BuildContext context) {
+    final bool wide = MediaQuery.sizeOf(context).width >= 900;
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        toolbarHeight: wide ? 96 : null,
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text('PLAY',
+                style:
+                    TextStyle(letterSpacing: 1.8, fontWeight: FontWeight.w900)),
+            Text('Choose your battle mode',
+                style: TextStyle(
+                    color: Color(0xFFAEC0D1),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400)),
+          ],
         ),
-        body: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1100),
-              child: LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints size) =>
-                    GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 1,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  childAspectRatio: size.maxWidth >= 700 ? 6.4 : 2.7,
-                  children: <Widget>[
-                    _PlayModeCard(
-                      icon: Icons.public_rounded,
-                      title: 'Play Online',
-                      subtitle: 'Find a live rival worldwide',
-                      color: const Color(0xFF0F6B61),
-                      asset: 'assets/backgrounds/home-online-hero-v1.png',
-                      onTap: onOnline,
-                    ),
-                    _PlayModeCard(
-                      icon: Icons.computer_rounded,
-                      title: 'Play Computer',
-                      subtitle: 'Challenge the ChessVerse AI',
-                      color: const Color(0xFF174A69),
-                      asset: 'assets/backgrounds/home-computer-hero-v1.png',
-                      onTap: onComputer,
-                    ),
-                    _PlayModeCard(
-                      icon: Icons.groups_rounded,
-                      title: 'Local Match',
-                      subtitle: 'Two players on one board',
-                      color: const Color(0xFF25664F),
-                      asset: 'assets/backgrounds/home-friends-hero-v1.png',
-                      onTap: onLocal,
-                    ),
-                    _PlayModeCard(
-                      icon: Icons.calendar_month_rounded,
-                      title: 'Daily Challenge',
-                      subtitle: 'Solve today’s featured position',
-                      color: const Color(0xFF8A5A21),
-                      asset: 'assets/backgrounds/home-puzzles-hero-v1.png',
-                      onTap: onDaily,
-                    ),
-                  ],
-                ),
+        centerTitle: !wide,
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(wide ? 28 : 18, 16, wide ? 28 : 18, 24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: wide ? 1320 : 1100),
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints size) =>
+                  GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: wide ? 4 : 1,
+                mainAxisSpacing: wide ? 18 : 14,
+                crossAxisSpacing: wide ? 16 : 14,
+                childAspectRatio: wide ? .56 : 2.25,
+                children: <Widget>[
+                  _PlayModeCard(
+                    icon: Icons.public_rounded,
+                    title: 'Play Online',
+                    subtitle: 'Find a live rival worldwide',
+                    color: const Color(0xFF0F6B61),
+                    asset: 'assets/backgrounds/home-online-hero-v1.png',
+                    onTap: onOnline,
+                  ),
+                  _PlayModeCard(
+                    icon: Icons.computer_rounded,
+                    title: 'Play Computer',
+                    subtitle: 'Challenge the ChessVerse AI',
+                    color: const Color(0xFF174A69),
+                    asset: 'assets/backgrounds/home-computer-hero-v1.png',
+                    onTap: onComputer,
+                  ),
+                  _PlayModeCard(
+                    icon: Icons.groups_rounded,
+                    title: 'Local Match',
+                    subtitle: 'Two players on one board',
+                    color: const Color(0xFF25664F),
+                    asset: 'assets/backgrounds/home-friends-hero-v1.png',
+                    onTap: onLocal,
+                  ),
+                  _PlayModeCard(
+                    icon: Icons.calendar_month_rounded,
+                    title: 'Daily Challenge',
+                    subtitle: 'Solve today’s featured position',
+                    color: const Color(0xFF8A5A21),
+                    asset: 'assets/backgrounds/home-puzzles-hero-v1.png',
+                    onTap: onDaily,
+                  ),
+                ],
               ),
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _PlayModeCard extends StatelessWidget {
@@ -2029,62 +2035,167 @@ class _PlayModeCard extends StatelessWidget {
   final String? asset;
 
   @override
-  Widget build(BuildContext context) => Card(
-        color: const Color(0xFF071827),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
-          side: BorderSide(color: color.withValues(alpha: .8)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Ink(
-            decoration: BoxDecoration(
-              image: asset == null
-                  ? null
-                  : DecorationImage(
-                      image: AssetImage(asset!),
-                      fit: BoxFit.cover,
-                      alignment: Alignment.centerRight,
-                      opacity: .42,
-                    ),
-              gradient: LinearGradient(
-                colors: <Color>[
-                  color.withValues(alpha: .36),
-                  const Color(0xEE071827),
-                ],
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-              child: Row(children: <Widget>[
-                CircleAvatar(
-                  radius: 34,
-                  backgroundColor: const Color(0xB3071A2A),
-                  child: Icon(icon, color: color, size: 34),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(title,
-                          style: const TextStyle(
-                              color: Color(0xFFFFF8ED),
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900)),
-                      Text(subtitle,
-                          style: const TextStyle(color: Color(0xFFC5D5E0))),
-                    ],
+  Widget build(BuildContext context) {
+    final bool desktopCard = MediaQuery.sizeOf(context).width >= 900;
+    return Card(
+      color: const Color(0xFF071827),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: BorderSide(color: color.withValues(alpha: .8)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Ink(
+          decoration: BoxDecoration(
+            image: asset == null
+                ? null
+                : DecorationImage(
+                    image: AssetImage(asset!),
+                    fit: BoxFit.cover,
+                    alignment: Alignment.centerRight,
+                    opacity: desktopCard ? .82 : .28,
                   ),
-                ),
-                Icon(Icons.chevron_right_rounded, color: color, size: 34),
-              ]),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: <Color>[
+                color.withValues(alpha: .36),
+                const Color(0xEE071827),
+              ],
             ),
           ),
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final bool compact = constraints.maxWidth < 430;
+              final bool tall = constraints.maxHeight > constraints.maxWidth;
+              if (tall) {
+                return DecoratedBox(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        Color(0x08000000),
+                        Color(0x18000000),
+                        Color(0xF2071727),
+                      ],
+                      stops: <double>[0, .46, .72],
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        CircleAvatar(
+                          radius: 34,
+                          backgroundColor: const Color(0xC3071A2A),
+                          child: Icon(icon, color: color, size: 34),
+                        ),
+                        const Spacer(),
+                        Text(
+                          title.toUpperCase(),
+                          maxLines: 2,
+                          style: const TextStyle(
+                            color: Color(0xFFFFF8ED),
+                            fontSize: 23,
+                            height: 1.05,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          subtitle,
+                          maxLines: 3,
+                          style: const TextStyle(
+                            color: Color(0xFFC5D5E0),
+                            fontSize: 16,
+                            height: 1.35,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Container(
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: .34),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: color),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: <Widget>[
+                              Text(
+                                title == 'Daily Challenge'
+                                    ? 'Solve Now'
+                                    : title == 'Local Match'
+                                        ? 'Start Match'
+                                        : title == 'Play Computer'
+                                            ? 'Start Game'
+                                            : 'Play Now',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              const Icon(Icons.chevron_right_rounded,
+                                  color: Colors.white),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 16 : 24,
+                  vertical: compact ? 12 : 18,
+                ),
+                child: Row(children: <Widget>[
+                  CircleAvatar(
+                    radius: compact ? 29 : 34,
+                    backgroundColor: const Color(0xB3071A2A),
+                    child: Icon(icon, color: color, size: compact ? 29 : 34),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                color: Color(0xFFFFF8ED),
+                                fontSize: compact ? 22 : 26,
+                                height: 1.05,
+                                fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 4),
+                        Text(subtitle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Color(0xFFC5D5E0),
+                              fontSize: compact ? 13 : 14,
+                              height: 1.2,
+                            )),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: color, size: 34),
+                ]),
+              );
+            },
+          ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class GameScreen extends StatefulWidget {
