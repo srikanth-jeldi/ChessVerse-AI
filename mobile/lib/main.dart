@@ -102,6 +102,7 @@ class _SplashGateState extends State<SplashGate> {
   bool _isGuest = true;
   bool _cloudSyncInFlight = false;
   bool _cloudSyncQueued = false;
+  int? _onlinePlayerCount;
   int _primaryDestination = 0;
 
   @override
@@ -114,8 +115,12 @@ class _SplashGateState extends State<SplashGate> {
     super.didChangeDependencies();
     if (_splashArtworkLoadingStarted) return;
     _splashArtworkLoadingStarted = true;
-    final double width = MediaQuery.sizeOf(context).width;
-    final String artwork = width >= 720
+    final Size viewport = MediaQuery.sizeOf(context);
+    // A phone remains a phone after rotation. Using width alone made a
+    // landscape handset preload the tablet/web splash artwork.
+    final bool useWideArtwork =
+        viewport.shortestSide >= 600 && viewport.width >= 720;
+    final String artwork = useWideArtwork
         ? 'assets/branding/chessverse_king_dual_splash.jpg'
         : 'assets/branding/splash_screen_mobile_v2.jpg';
     unawaited(_preloadSplashAndStartTimer(artwork));
@@ -185,6 +190,16 @@ class _SplashGateState extends State<SplashGate> {
       unawaited(_restoreActiveOnlineMatch(session.token));
     });
     unawaited(_syncCloudProgress(session.token));
+    unawaited(_refreshOnlinePresence());
+  }
+
+  Future<void> _refreshOnlinePresence() async {
+    try {
+      final int count = await const OnlineMatchApi().onlinePlayerCount();
+      if (mounted) setState(() => _onlinePlayerCount = count);
+    } on OnlineMatchException {
+      if (mounted) setState(() => _onlinePlayerCount = null);
+    }
   }
 
   Future<void> _restoreActiveOnlineMatch(String token) async {
@@ -247,6 +262,7 @@ class _SplashGateState extends State<SplashGate> {
                 _enableCloudSync(result.token!);
                 unawaited(_syncCloudProgress(result.token!));
               }
+              unawaited(_refreshOnlinePresence());
             },
           ),
         _RootStage.home => _buildPrimaryShell(context),
@@ -260,6 +276,7 @@ class _SplashGateState extends State<SplashGate> {
         key: const ValueKey<String>('home'),
         playerName: _playerName,
         profilePhotoUrl: _photoUrl,
+        onlinePlayerCount: _onlinePlayerCount,
         onPlayVsAi: () => _chooseSideAndOpen(context, GameMode.computer),
         onDailyChallenge: () => _openGame(context, GameMode.daily),
         onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
@@ -305,12 +322,17 @@ class _SplashGateState extends State<SplashGate> {
     ];
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints size) {
-        final bool wide = size.maxWidth >= 760;
+        final bool genuineWideLayout =
+            size.maxWidth >= 700 && size.maxHeight >= 600;
+        final bool extendedRail = genuineWideLayout && size.maxWidth >= 900;
+        final bool compactRail =
+            genuineWideLayout && size.maxWidth >= 700 && !extendedRail;
+        final bool useRail = extendedRail || compactRail;
         final Widget content = IndexedStack(
           index: _primaryDestination,
           children: destinations,
         );
-        if (wide) {
+        if (useRail) {
           return Scaffold(
             backgroundColor: Colors.transparent,
             body: Row(children: <Widget>[
@@ -318,11 +340,49 @@ class _SplashGateState extends State<SplashGate> {
                 selectedIndex: _primaryDestination,
                 onDestinationSelected: (int value) =>
                     setState(() => _primaryDestination = value),
-                labelType: NavigationRailLabelType.all,
+                labelType: extendedRail
+                    ? NavigationRailLabelType.none
+                    : NavigationRailLabelType.selected,
+                extended: extendedRail,
+                minWidth: 72,
+                minExtendedWidth: 232,
+                groupAlignment: -0.72,
+                indicatorColor: const Color(0xFF123E72),
+                selectedIconTheme:
+                    const IconThemeData(color: Color(0xFF55AFFF), size: 25),
+                selectedLabelTextStyle: const TextStyle(
+                  color: Color(0xFF78BFFF),
+                  fontWeight: FontWeight.w800,
+                ),
+                unselectedIconTheme:
+                    const IconThemeData(color: Color(0xFF8EA4B7), size: 24),
+                unselectedLabelTextStyle:
+                    const TextStyle(color: Color(0xFFB7C5D1)),
                 backgroundColor: const Color(0xE6071727),
-                leading: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 18),
-                  child: ChessVerseMark(size: 54),
+                leading: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    extendedRail ? 16 : 8,
+                    extendedRail ? 18 : 10,
+                    extendedRail ? 16 : 8,
+                    extendedRail ? 28 : 12,
+                  ),
+                  child: Column(children: <Widget>[
+                    ChessVerseMark(size: extendedRail ? 72 : 46),
+                    if (extendedRail) const SizedBox(height: 8),
+                    if (extendedRail)
+                      const Text.rich(
+                        TextSpan(children: <InlineSpan>[
+                          TextSpan(
+                              text: 'CHESSVERSE ',
+                              style: TextStyle(color: Colors.white)),
+                          TextSpan(
+                              text: 'AI',
+                              style: TextStyle(color: Color(0xFFE2AE49))),
+                        ]),
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w900),
+                      ),
+                  ]),
                 ),
                 destinations: _primaryRailDestinations,
               ),
@@ -352,8 +412,8 @@ class _SplashGateState extends State<SplashGate> {
         await showModalBottomSheet<PlayerSideChoice>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: const Color(0xFF15161B),
+      showDragHandle: false,
+      backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         PlayerSideChoice selected = PlayerSideChoice.white;
         return StatefulBuilder(
@@ -364,96 +424,157 @@ class _SplashGateState extends State<SplashGate> {
                 final bool shortLandscape =
                     constraints.maxWidth > constraints.maxHeight &&
                         constraints.maxHeight < 500;
+                final bool wide = kIsWeb ||
+                    (MediaQuery.sizeOf(context).shortestSide >= 600 &&
+                        constraints.maxWidth >= 700);
                 return ConstrainedBox(
                   constraints: BoxConstraints(
                     maxHeight: constraints.maxHeight * 0.94,
                   ),
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(
-                      18,
-                      shortLandscape ? 0 : 8,
-                      18,
-                      shortLandscape ? 12 : 22,
+                  child: Container(
+                    constraints: BoxConstraints(maxWidth: wide ? 1180 : 720),
+                    margin: EdgeInsets.all(wide ? 28 : 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xF5071626),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: const Color(0xFF334352)),
+                      boxShadow: const <BoxShadow>[
+                        BoxShadow(color: Colors.black54, blurRadius: 36),
+                      ],
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: <Widget>[
-                        const Icon(Icons.workspace_premium_rounded,
-                            color: Color(0xFFDDAF4E), size: 42),
-                        Text(
-                          'Choose Your Side',
-                          style: shortLandscape
-                              ? Theme.of(context).textTheme.titleLarge
-                              : Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        SizedBox(height: shortLandscape ? 4 : 8),
-                        Text(
-                          mode == GameMode.local
-                              ? 'Player 1 side for this match.'
-                              : 'ChessVerseAI will take the opposite side.',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        SizedBox(height: shortLandscape ? 10 : 16),
-                        Row(
-                          children: PlayerSideChoice.values.map((
-                            PlayerSideChoice side,
-                          ) {
-                            final bool active = side == selected;
-                            return Expanded(
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 5),
-                                child: InkWell(
-                                  onTap: () =>
-                                      setSheetState(() => selected = side),
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 180),
-                                    padding: EdgeInsets.symmetric(
-                                        vertical: shortLandscape ? 12 : 24),
-                                    decoration: BoxDecoration(
-                                      color: active
-                                          ? const Color(0xFF123B3C)
-                                          : const Color(0xFF0A1927),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: active
-                                            ? const Color(0xFF57DDC3)
-                                            : const Color(0xFF39434A),
-                                        width: active ? 2 : 1,
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(
+                        wide ? 48 : 18,
+                        shortLandscape ? 14 : 28,
+                        wide ? 48 : 18,
+                        shortLandscape ? 16 : 30,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: <Widget>[
+                          const Icon(Icons.workspace_premium_rounded,
+                              color: Color(0xFFE2AE49), size: 52),
+                          Text(
+                            'Choose Your Side',
+                            style: TextStyle(
+                              color: Color(0xFFFFF8ED),
+                              fontSize: wide ? 42 : 30,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          SizedBox(height: shortLandscape ? 4 : 8),
+                          Text(
+                            mode == GameMode.local
+                                ? 'Player 1 side for this match.'
+                                : 'ChessVerseAI will take the opposite side.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          SizedBox(height: shortLandscape ? 10 : 24),
+                          Row(
+                            children: PlayerSideChoice.values.map((
+                              PlayerSideChoice side,
+                            ) {
+                              final bool active = side == selected;
+                              return Expanded(
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 5),
+                                  child: InkWell(
+                                    onTap: () =>
+                                        setSheetState(() => selected = side),
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 180),
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: shortLandscape
+                                            ? 12
+                                            : wide
+                                                ? 30
+                                                : 24,
+                                        horizontal: 8,
                                       ),
-                                    ),
-                                    child: Column(
-                                      children: <Widget>[
-                                        _SideChoiceArtwork(
-                                          side: side,
-                                          size: shortLandscape ? 54 : 92,
-                                          active: active,
+                                      decoration: BoxDecoration(
+                                        color: active
+                                            ? const Color(0xFF123B3C)
+                                            : const Color(0xFF0A1927),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: active
+                                              ? const Color(0xFF57DDC3)
+                                              : const Color(0xFF39434A),
+                                          width: active ? 2 : 1,
                                         ),
-                                        const SizedBox(height: 10),
-                                        Text(side.label,
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.w900)),
-                                      ],
+                                      ),
+                                      child: Column(
+                                        children: <Widget>[
+                                          _SideChoiceArtwork(
+                                            side: side,
+                                            size: shortLandscape
+                                                ? 54
+                                                : wide
+                                                    ? 150
+                                                    : 92,
+                                            active: active,
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Text(side.label,
+                                              style: TextStyle(
+                                                fontSize: wide ? 24 : 16,
+                                                fontWeight: FontWeight.w900,
+                                              )),
+                                          if (wide) ...<Widget>[
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              side == PlayerSideChoice.random
+                                                  ? 'Let us choose for you'
+                                                  : 'You play as ${side.label}',
+                                              style: TextStyle(
+                                                color: active
+                                                    ? const Color(0xFF63D2B8)
+                                                    : const Color(0xFFAEC0D1),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        SizedBox(height: shortLandscape ? 10 : 18),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: () =>
-                                Navigator.of(context).pop(selected),
-                            icon: const Icon(Icons.play_arrow_rounded),
-                            label: Text('Start as ${selected.label}'),
+                              );
+                            }).toList(),
                           ),
-                        ),
-                      ],
+                          SizedBox(height: shortLandscape ? 10 : 22),
+                          if (!shortLandscape)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(14),
+                              margin: const EdgeInsets.only(bottom: 18),
+                              decoration: BoxDecoration(
+                                color: const Color(0x99101F2B),
+                                borderRadius: BorderRadius.circular(16),
+                                border:
+                                    Border.all(color: const Color(0xFF5A4B2A)),
+                              ),
+                              child: const Text(
+                                'Balanced match  •  Fair play  •  AI Opponent',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Color(0xFFC7D2DE)),
+                              ),
+                            ),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: () =>
+                                  Navigator.of(context).pop(selected),
+                              icon: const Icon(Icons.play_arrow_rounded),
+                              label: Text(
+                                  'START AS ${selected.label.toUpperCase()}'),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -646,11 +767,13 @@ class BrandedSplash extends StatelessWidget {
       backgroundColor: const Color(0xFF02070D),
       body: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          // Choose artwork from the actual viewport, not the platform. A
-          // portrait browser/PWA is still a mobile-sized surface; forcing the
-          // 16:9 web artwork there crops the title and footer off-screen.
-          final bool wide =
-              constraints.maxWidth >= 720 || constraints.maxWidth <= 0;
+          // Classify by the viewport's shortest side so rotating a phone does
+          // not switch it to the tablet/web splash. Actual tablets and desktop
+          // surfaces keep the wide artwork.
+          final Size viewport = MediaQuery.sizeOf(context);
+          final bool phoneSized = viewport.shortestSide < 600;
+          final bool wide = !phoneSized &&
+              (constraints.maxWidth >= 720 || constraints.maxWidth <= 0);
           const String wideAsset =
               'assets/branding/chessverse_king_dual_splash.jpg';
           const String mobileAsset =
@@ -1827,7 +1950,7 @@ class _PlayDestination extends StatelessWidget {
               Text('Choose your battle mode',
                   style: TextStyle(
                       color: Color(0xFFAEC0D1),
-                      fontSize: 13,
+                      fontSize: 15,
                       fontWeight: FontWeight.w400)),
             ],
           ),
@@ -1835,7 +1958,7 @@ class _PlayDestination extends StatelessWidget {
         ),
         body: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1100),
               child: LayoutBuilder(
@@ -1846,7 +1969,7 @@ class _PlayDestination extends StatelessWidget {
                   crossAxisCount: 1,
                   mainAxisSpacing: 14,
                   crossAxisSpacing: 14,
-                  childAspectRatio: size.maxWidth >= 700 ? 6.2 : 2.85,
+                  childAspectRatio: size.maxWidth >= 700 ? 6.4 : 2.7,
                   children: <Widget>[
                     _PlayModeCard(
                       icon: Icons.public_rounded,
@@ -1869,6 +1992,7 @@ class _PlayDestination extends StatelessWidget {
                       title: 'Local Match',
                       subtitle: 'Two players on one board',
                       color: const Color(0xFF25664F),
+                      asset: 'assets/backgrounds/home-friends-hero-v1.png',
                       onTap: onLocal,
                     ),
                     _PlayModeCard(
@@ -1876,6 +2000,7 @@ class _PlayDestination extends StatelessWidget {
                       title: 'Daily Challenge',
                       subtitle: 'Solve today’s featured position',
                       color: const Color(0xFF8A5A21),
+                      asset: 'assets/backgrounds/home-puzzles-hero-v1.png',
                       onTap: onDaily,
                     ),
                   ],
@@ -2364,7 +2489,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               // Switch layout exactly once when orientation changes. A second
               // width breakpoint during Android's rotation animation made the
               // board briefly jump sideways before reaching its final place.
-              final bool wide = constraints.maxWidth >= 980 || landscape;
+              final bool wide =
+                  constraints.maxWidth >= 980 && constraints.maxHeight >= 600;
+              final bool compactLandscape = landscape && !wide;
               const EdgeInsets pagePadding = EdgeInsets.zero;
               final double availableHeight =
                   constraints.maxHeight - pagePadding.vertical;
@@ -2391,18 +2518,22 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       pagePadding.horizontal -
                       widePanelWidth -
                       24
-                  : constraints.maxWidth - pagePadding.horizontal;
+                  : compactLandscape
+                      ? constraints.maxWidth * 0.52
+                      : constraints.maxWidth - pagePadding.horizontal;
               final double boardHeight = wide
                   ? availableHeight -
                       wideHeaderHeight -
                       wideDockHeight -
                       arenaRailsHeight -
                       18
-                  : availableHeight -
-                      mobileHeaderHeight -
-                      portraitPanelMinimum -
-                      arenaRailsHeight -
-                      18;
+                  : compactLandscape
+                      ? availableHeight - mobileHeaderHeight - 16
+                      : availableHeight -
+                          mobileHeaderHeight -
+                          portraitPanelMinimum -
+                          arenaRailsHeight -
+                          18;
               final double boardDimension =
                   math.max(0, math.min(boardWidth, boardHeight));
 
@@ -2545,6 +2676,59 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                 ),
                             ],
                           ),
+                        )
+                      else if (compactLandscape)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: <Widget>[
+                            CompactHeader(
+                              onHome: () => Navigator.of(context).pop(),
+                              onProfile: _openProfile,
+                              onReset: _confirmNewGame,
+                              onLogout: _logout,
+                            ),
+                            const SizedBox(height: 6),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+                                child: Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: <Widget>[
+                                    Expanded(
+                                      flex: 11,
+                                      child: Center(
+                                        child: SizedBox(
+                                          width: boardDimension,
+                                          height:
+                                              boardDimension + arenaRailsHeight,
+                                          child: arenaBoard,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      flex: 9,
+                                      child: ClipRect(
+                                        child: FittedBox(
+                                          key: const ValueKey<String>(
+                                            'compact-landscape-ai-coach',
+                                          ),
+                                          fit: BoxFit.contain,
+                                          alignment: Alignment.topCenter,
+                                          child: SizedBox(
+                                            width: 390,
+                                            height: 560,
+                                            child: studioCoach,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         )
                       else
                         Column(
@@ -8983,9 +9167,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
   @override
   Widget build(BuildContext context) {
     final Size size = MediaQuery.sizeOf(context);
-    final bool landscape = size.width > size.height;
-    final double maxWidth = landscape ? 760 : 560;
-    final double maxHeight = size.height * (landscape ? 0.82 : 0.9);
+    final bool wideLayout = size.width >= 900 && size.height >= 600;
+    final double maxWidth = wideLayout ? 1180 : math.min(560, size.width - 20);
+    final double maxHeight = size.height * (wideLayout ? 0.94 : 0.96);
     final OnlineMatchDto? found = _foundMatch;
 
     if (found != null) {
@@ -9024,23 +9208,25 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
 
     return SafeArea(
       child: Align(
-        alignment: landscape ? Alignment.center : Alignment.bottomCenter,
+        alignment: Alignment.center,
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: maxHeight),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: const Color(0xFF071725),
-              borderRadius: BorderRadius.vertical(
-                top: const Radius.circular(18),
-                bottom: Radius.circular(landscape ? 18 : 0),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[Color(0xFF071725), Color(0xFF04111D)],
               ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFF1B3149)),
             ),
             child: SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
-                22,
-                landscape ? 16 : 18,
-                22,
-                landscape ? 18 : 28,
+                wideLayout ? 28 : 18,
+                wideLayout ? 22 : 18,
+                wideLayout ? 28 : 18,
+                wideLayout ? 24 : 22,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -9048,16 +9234,28 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                 children: <Widget>[
                   Row(
                     children: <Widget>[
-                      const Icon(
-                        Icons.travel_explore_rounded,
-                        size: 34,
-                        color: Color(0xFF63D2B8),
+                      Container(
+                        width: wideLayout ? 58 : 44,
+                        height: wideLayout ? 58 : 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF0B2530),
+                          border: Border.all(color: const Color(0xFF38D5B6)),
+                        ),
+                        child: Icon(
+                          Icons.castle_rounded,
+                          size: wideLayout ? 34 : 26,
+                          color: const Color(0xFF63D2B8),
+                        ),
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: wideLayout ? 18 : 12),
                       Expanded(
                         child: Text(
                           'Online 2 Players',
-                          style: Theme.of(context).textTheme.headlineSmall,
+                          style: (wideLayout
+                                  ? Theme.of(context).textTheme.headlineMedium
+                                  : Theme.of(context).textTheme.headlineSmall)
+                              ?.copyWith(fontWeight: FontWeight.w900),
                         ),
                       ),
                       IconButton(
@@ -9066,7 +9264,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: wideLayout ? 2 : 8),
                   const Text(
                     'Play online with a random opponent or invite a friend to a private room.',
                   ),
@@ -9077,17 +9275,34 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                       style: const TextStyle(color: Color(0xFFFF6B6B)),
                     ),
                   ],
-                  const SizedBox(height: 16),
+                  SizedBox(height: wideLayout ? 22 : 16),
                   DecoratedBox(
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: <Color>[Color(0xFF07386A), Color(0xFF071B31)],
+                      image: const DecorationImage(
+                        image: AssetImage(
+                          'assets/backgrounds/online-matchmaking-hero-v1.png',
+                        ),
+                        fit: BoxFit.cover,
+                        alignment: Alignment.center,
+                        opacity: .78,
                       ),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFF2F9CFF)),
+                      gradient: const LinearGradient(
+                        colors: <Color>[Color(0xD9051B35), Color(0x77071936)],
+                      ),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: const Color(0xFF2F9CFF),
+                        width: 1.4,
+                      ),
+                      boxShadow: const <BoxShadow>[
+                        BoxShadow(color: Color(0x442F9CFF), blurRadius: 20),
+                      ],
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: wideLayout ? 230 : 18,
+                        vertical: wideLayout ? 30 : 20,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
@@ -9101,7 +9316,14 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                               Expanded(
                                 child: Text(
                                   'Random Match',
-                                  style: Theme.of(context).textTheme.titleLarge,
+                                  style: (wideLayout
+                                          ? Theme.of(context)
+                                              .textTheme
+                                              .headlineMedium
+                                          : Theme.of(context)
+                                              .textTheme
+                                              .titleLarge)
+                                      ?.copyWith(fontWeight: FontWeight.w900),
                                 ),
                               ),
                               if (_loading)
@@ -9115,9 +9337,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                           ),
                           const SizedBox(height: 8),
                           const Text(
-                            'We’ll find a ChessVerse AI player for you from around the world.',
+                            'We’ll find a player for you from around the world.',
                           ),
-                          const SizedBox(height: 10),
+                          SizedBox(height: wideLayout ? 18 : 12),
                           FilledButton.icon(
                             onPressed: _loading
                                 ? null
@@ -9127,7 +9349,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                       randomSearch: true,
                                     ),
                             icon: const Icon(Icons.bolt_rounded),
-                            label: const Text('Find random player'),
+                            label: const Text('Find Match'),
                           ),
                         ],
                       ),
@@ -9137,20 +9359,48 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                   DecoratedBox(
                     decoration: BoxDecoration(
                       color: const Color(0xFF081D2A),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(22),
                       border: Border.all(color: const Color(0xFF267D72)),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(wideLayout ? 22 : 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
-                          const Text('Play with Friend',
-                              style: TextStyle(fontWeight: FontWeight.w900)),
+                          Row(
+                            children: <Widget>[
+                              Container(
+                                width: 54,
+                                height: 54,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color(0xFF0A2630),
+                                  border: Border.all(
+                                    color: const Color(0xFF267D72),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.group_rounded,
+                                  color: Color(0xFF55D5C0),
+                                  size: 30,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              const Expanded(
+                                child: Text(
+                                  'Play with Friend',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                           const SizedBox(height: 8),
                           if (_match == null)
                             const Text(
-                              'Create a room below, then share its code.',
+                              'Create a private room or join one using a room code.',
                             )
                           else ...<Widget>[
                             SelectableText(
@@ -9162,7 +9412,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                   ?.copyWith(
                                     color: const Color(0xFFD6A84F),
                                     letterSpacing: 2,
-                                    fontSize: landscape ? 30 : null,
+                                    fontSize: wideLayout ? 30 : null,
                                   ),
                             ),
                             const SizedBox(height: 6),
@@ -9195,8 +9445,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                     controller: _roomController,
                     onChanged: (_) => setState(() {}),
                     decoration: const InputDecoration(
-                      labelText: 'Join code',
-                      prefixIcon: Icon(Icons.login_rounded),
+                      labelText: 'Enter room code',
+                      hintText: 'e.g. ABCD1234',
+                      suffixIcon: Icon(Icons.copy_rounded),
                       border: OutlineInputBorder(),
                     ),
                     textCapitalization: TextCapitalization.characters,
@@ -9213,7 +9464,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                   () => widget.api.createRoom(widget.token),
                                 ),
                         icon: const Icon(Icons.group_add_rounded),
-                        label: const Text('Create room'),
+                        label: const Text('Create Room'),
                       ),
                       FilledButton.icon(
                         onPressed:
@@ -9226,24 +9477,87 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                       ),
                                     ),
                         icon: const Icon(Icons.sports_esports_rounded),
-                        label: const Text('Join room'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _loading
-                            ? null
-                            : () => _run(
-                                  () => widget.api.reconnect(widget.token),
-                                ),
-                        icon: const Icon(Icons.sync_rounded),
-                        label: const Text('Reconnect'),
+                        label: const Text('Join Room'),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Moves are validated by ChessVerse AI servers. Active matches restore after an app restart.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Color(0xFFAAA69E), fontSize: 12),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(18),
+                    onTap: _loading
+                        ? null
+                        : () => _run(
+                              () => widget.api.reconnect(widget.token),
+                            ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 13,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF081725),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFF233B51)),
+                      ),
+                      child: const Row(
+                        children: <Widget>[
+                          Icon(
+                            Icons.sync_rounded,
+                            color: Color(0xFF3CA6FF),
+                            size: 32,
+                          ),
+                          SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  'Reconnect',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                Text('Reconnect to your last game.'),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right_rounded),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 13,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF081725),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: const Color(0xFF233B51)),
+                    ),
+                    child: const Row(
+                      children: <Widget>[
+                        Icon(
+                          Icons.verified_user_outlined,
+                          color: Color(0xFF43D6C1),
+                          size: 32,
+                        ),
+                        SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            'Moves are validated by ChessVerse AI servers.\n'
+                            'Active matches restore after an app restart.',
+                            style: TextStyle(
+                              color: Color(0xFFAAAFC0),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
