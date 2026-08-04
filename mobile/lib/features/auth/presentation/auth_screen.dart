@@ -723,33 +723,41 @@ class _AuthScreenState extends State<AuthScreen> {
     return Row(
       children: <Widget>[
         Expanded(
-          child: kIsWeb && !filePreview
-              ? Center(child: buildWebGoogleSignInButton())
-              : _SocialButton(
-                  label: widget.guestUpgradeToken == null
-                      ? 'Google'
-                      : 'SECURE WITH GOOGLE',
-                  onPressed: _loading ? null : _signInWithGoogle,
-                  child: const Text(
-                    'G',
-                    style: TextStyle(
-                      color: Color(0xFF4285F4),
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
+          flex: 1,
+          child: SizedBox(
+            width: double.infinity,
+            child: kIsWeb && !filePreview
+                ? Center(child: buildWebGoogleSignInButton())
+                : _SocialButton(
+                    label: widget.guestUpgradeToken == null
+                        ? 'Google'
+                        : 'SECURE WITH GOOGLE',
+                    onPressed: _loading ? null : _signInWithGoogle,
+                    child: const Text(
+                      'G',
+                      style: TextStyle(
+                        color: Color(0xFF4285F4),
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
-                ),
+          ),
         ),
         if (widget.guestUpgradeToken == null) ...<Widget>[
           const SizedBox(width: 10),
           Expanded(
-            child: _SocialButton(
-              label: 'Facebook',
-              onPressed:
-                  _loading ? null : () => _showSocialPlaceholder('Facebook'),
-              child: const Icon(
-                Icons.facebook_rounded,
-                color: Color(0xFF4285F4),
+            flex: 1,
+            child: SizedBox(
+              width: double.infinity,
+              child: _SocialButton(
+                label: 'Facebook',
+                onPressed:
+                    _loading ? null : () => _showSocialPlaceholder('Facebook'),
+                child: const Icon(
+                  Icons.facebook_rounded,
+                  color: Color(0xFF4285F4),
+                ),
               ),
             ),
           ),

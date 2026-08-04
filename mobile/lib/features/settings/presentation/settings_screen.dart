@@ -324,9 +324,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 style: TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w900)),
-                            leading: const Icon(Icons.logout_rounded,
+                            leading: const SizedBox(width: 24),
+                            trailing: const Icon(Icons.logout_rounded,
                                 color: Colors.white),
-                            trailing: const SizedBox(width: 24),
                           ),
                         ),
                       ),
