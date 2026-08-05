@@ -161,7 +161,7 @@ class _CoachHero extends StatelessWidget {
           image: const DecorationImage(
             image: AssetImage('assets/backgrounds/learn-academy-hero-v1.png'),
             fit: BoxFit.cover,
-            alignment: Alignment.center,
+            alignment: Alignment.centerRight,
           ),
           boxShadow: const <BoxShadow>[
             BoxShadow(color: Color(0x552374B8), blurRadius: 28),
@@ -278,7 +278,7 @@ class _LessonCard extends StatelessWidget {
               image: DecorationImage(
                 image: AssetImage(lesson.asset),
                 fit: BoxFit.cover,
-                alignment: Alignment.center,
+                alignment: Alignment.centerRight,
               ),
             ),
             child: Container(
