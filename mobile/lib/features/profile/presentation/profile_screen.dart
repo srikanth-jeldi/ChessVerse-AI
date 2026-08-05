@@ -221,7 +221,7 @@ class _ProfileHero extends StatelessWidget {
       decoration: BoxDecoration(
         image: const DecorationImage(
           image: AssetImage('assets/backgrounds/home-rankings-hero-v1.png'),
-          fit: BoxFit.fitHeight,
+          fit: BoxFit.cover,
           alignment: Alignment.centerRight,
           opacity: .32,
           filterQuality: FilterQuality.high,
@@ -845,7 +845,7 @@ class _SectionCard extends StatelessWidget {
             ? null
             : DecorationImage(
                 image: AssetImage(asset!),
-                fit: BoxFit.fitHeight,
+                fit: BoxFit.cover,
                 alignment: Alignment.centerRight,
                 opacity: .24,
                 filterQuality: FilterQuality.high,
