@@ -290,7 +290,14 @@ class _SplashGateState extends State<SplashGate> {
         onProfile: () => setState(() => _primaryDestination = 4),
         onSettings: () => _push(
           context,
-          SettingsScreen(onLogout: () => _logout(context)),
+          SettingsScreen(
+            onLogout: () => _logout(context),
+            onHome: () => _closeSettingsAndSelect(context, 0),
+            onPlay: () => _closeSettingsAndSelect(context, 1),
+            onPuzzles: () => _closeSettingsAndSelect(context, 2),
+            onLearn: () => _closeSettingsAndSelect(context, 3),
+            onProfile: () => _closeSettingsAndSelect(context, 4),
+          ),
         ),
         showPrimaryNavigation: false,
       ),
@@ -407,6 +414,12 @@ class _SplashGateState extends State<SplashGate> {
         );
       },
     );
+  }
+
+  void _closeSettingsAndSelect(BuildContext context, int destination) {
+    Navigator.of(context).pop();
+    if (!mounted) return;
+    setState(() => _primaryDestination = destination);
   }
 
   Future<void> _chooseSideAndOpen(BuildContext context, GameMode mode) async {

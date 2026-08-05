@@ -61,12 +61,16 @@ class DesktopAppSidebar extends StatelessWidget {
                   style: TextStyle(
                       color: Color(0xFFF5F7FA),
                       fontSize: 20,
-                      fontWeight: FontWeight.w900)),
+                      fontWeight: FontWeight.w900,
+                      decoration: TextDecoration.none,
+                      decorationColor: Colors.transparent)),
               Text('AI',
                   style: TextStyle(
                       color: Color(0xFFE9B84C),
                       fontSize: 20,
-                      fontWeight: FontWeight.w900)),
+                      fontWeight: FontWeight.w900,
+                      decoration: TextDecoration.none,
+                      decorationColor: Colors.transparent)),
             ],
           ),
           const SizedBox(height: 27),
