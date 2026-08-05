@@ -317,16 +317,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         child: Material(
                           type: MaterialType.transparency,
-                          child: ListTile(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(18),
                             onTap: _logout,
-                            title: const Text('Logout',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900)),
-                            leading: const SizedBox(width: 24),
-                            trailing: const Icon(Icons.logout_rounded,
-                                color: Colors.white),
+                            child: const SizedBox(
+                              height: 58,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: <Widget>[
+                                  Text(
+                                    'Logout',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  SizedBox(width: 10),
+                                  Icon(Icons.logout_rounded,
+                                      color: Colors.white),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ),

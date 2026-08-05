@@ -45,7 +45,7 @@ class DesktopAppSidebar extends StatelessWidget {
       (icon: Icons.calendar_month_rounded, label: 'Events', onTap: onEvents),
       (icon: Icons.shopping_cart_rounded, label: 'Store', onTap: onStore),
       (icon: Icons.settings_rounded, label: 'Settings', onTap: onSettings),
-    ].where((item) => item.onTap != null || item.label == selected).toList();
+    ];
     return Container(
       width: 258,
       decoration: const BoxDecoration(
@@ -70,14 +70,21 @@ class DesktopAppSidebar extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 27),
-          for (final item in items)
-            _DesktopNavItem(
-              icon: item.icon,
-              label: item.label,
-              selected: selected == item.label,
-              onTap: item.onTap,
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: <Widget>[
+                for (final item in items)
+                  _DesktopNavItem(
+                    icon: item.icon,
+                    label: item.label,
+                    selected: selected == item.label,
+                    onTap: item.onTap,
+                  ),
+              ],
             ),
-          const Spacer(),
+          ),
+          const SizedBox(height: 12),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
