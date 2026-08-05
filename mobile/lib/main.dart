@@ -285,7 +285,16 @@ class _SplashGateState extends State<SplashGate> {
         onAnalysis: () => _push(context, const AnalysisScreen()),
         onPuzzles: () => setState(() => _primaryDestination = 2),
         onSavedGames: () => _push(context, const MatchHistoryScreen()),
-        onRankings: () => _push(context, const LeaderboardScreen()),
+        onRankings: () => _push(
+          context,
+          LeaderboardScreen(
+            onHome: () => _closeSettingsAndSelect(context, 0),
+            onPlay: () => _closeSettingsAndSelect(context, 1),
+            onPuzzles: () => _closeSettingsAndSelect(context, 2),
+            onLearn: () => _closeSettingsAndSelect(context, 3),
+            onProfile: () => _closeSettingsAndSelect(context, 4),
+          ),
+        ),
         onLearnChess: () => setState(() => _primaryDestination = 3),
         onProfile: () => setState(() => _primaryDestination = 4),
         onSettings: () => _push(

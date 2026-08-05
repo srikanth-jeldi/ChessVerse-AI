@@ -8,7 +8,20 @@ import '../../auth/data/auth_session_store.dart';
 import '../data/leaderboard_api.dart';
 
 class LeaderboardScreen extends StatefulWidget {
-  const LeaderboardScreen({super.key});
+  const LeaderboardScreen({
+    this.onHome,
+    this.onPlay,
+    this.onPuzzles,
+    this.onLearn,
+    this.onProfile,
+    super.key,
+  });
+
+  final VoidCallback? onHome;
+  final VoidCallback? onPlay;
+  final VoidCallback? onPuzzles;
+  final VoidCallback? onLearn;
+  final VoidCallback? onProfile;
 
   @override
   State<LeaderboardScreen> createState() => _LeaderboardScreenState();
@@ -205,7 +218,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       children: <Widget>[
         DesktopAppSidebar(
           selected: 'Rankings',
-          onHome: () => Navigator.maybePop(context),
+          onHome: widget.onHome ?? () => Navigator.maybePop(context),
+          onPlay: widget.onPlay,
+          onPuzzles: widget.onPuzzles,
+          onLearn: widget.onLearn,
+          onProfile: widget.onProfile,
           onRankings: () {},
         ),
         Expanded(child: page),
