@@ -19,7 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class OnlineMatchService {
     private static final char[] CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".toCharArray();
     private static final Duration RANDOM_QUEUE_LEASE = Duration.ofSeconds(8);
-    static final Duration DISCONNECT_GRACE = Duration.ofSeconds(15);
+    // Mobile radios and app lifecycle transitions can take several seconds to
+    // restore the websocket. Give a temporarily interrupted player a full
+    // minute to reconnect before awarding the game to the opponent.
+    static final Duration DISCONNECT_GRACE = Duration.ofSeconds(60);
 
     private final OnlineMatchRepository matches;
     private final OnlineRatingService ratings;

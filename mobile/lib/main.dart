@@ -2472,6 +2472,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   StreamSubscription<dynamic>? _onlineSocketSubscription;
   Timer? _onlineSocketReconnectTimer;
   Timer? _onlineHeartbeatTimer;
+  Timer? _onlineResultPresentationTimer;
   OnlineMatchDto? _onlineMatch;
   String? _handledDrawOfferKey;
   String? _archivedOnlineMatchId;
@@ -2479,6 +2480,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   int _onlineConnectedPlayers = 0;
   bool _onlineSocketConnected = false;
   bool _onlineSubmitting = false;
+  bool _onlineCelebrationVisible = false;
+  bool _onlineCelebrationWinnerAtTop = false;
+  String? _onlineCelebrationMatchId;
   String? _selectedSquare;
   String? _lastFromSquare;
   String? _lastToSquare;
@@ -2734,6 +2738,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     unawaited(_onlineChannel?.sink.close());
     _onlineSocketReconnectTimer?.cancel();
     _onlineHeartbeatTimer?.cancel();
+    _onlineResultPresentationTimer?.cancel();
     final AudioPlayer? warningPlayer = _warningPlayer;
     if (warningPlayer != null) {
       unawaited(warningPlayer.dispose());
@@ -3119,6 +3124,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                   'Update your details or request a new code.';
                             }),
                             loading: _authLoading,
+                          ),
+                        ),
+                      if (_signedIn &&
+                          _onlineCelebrationVisible &&
+                          _gameMode == GameMode.online)
+                        Positioned.fill(
+                          child: OnlineVictoryCelebration(
+                            winnerAtTop: _onlineCelebrationWinnerAtTop,
+                            title: _gameResultTitle ?? 'Game complete',
                           ),
                         ),
                       if (_signedIn &&
@@ -5369,6 +5383,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           (!_humanPlaysWhite ? widget.initialProfilePhotoUrl : null);
       _coachNote = _onlineStatusText(match);
       if (newMatch) {
+        _onlineResultPresentationTimer?.cancel();
+        _onlineCelebrationVisible = false;
+        _onlineCelebrationMatchId = null;
         _gameResultTitle = null;
         _gameResultDetail = null;
         _resultVisible = false;
@@ -5637,6 +5654,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _resultSaved = false;
       _handledDrawOfferKey = null;
       _joiningRematchId = null;
+      _onlineResultPresentationTimer?.cancel();
+      _onlineCelebrationVisible = false;
+      _onlineCelebrationMatchId = null;
       _coachNote = 'Choose how you want to start your next online match.';
     });
     await _showOnlineMatchmakingInfo();
@@ -5792,6 +5812,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           (result == '1-0' && userWhite) || (result == '0-1' && !userWhite);
       final bool draw = result == '1/2-1/2';
       final bool firstPresentation = _archivedOnlineMatchId != match.id;
+      final bool decisive = result == '1-0' || result == '0-1';
+      final bool winningWhite = result == '1-0';
       setState(() {
         _gameResultTitle = draw
             ? 'Draw'
@@ -5799,9 +5821,32 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 ? 'You win'
                 : 'Opponent wins';
         _gameResultDetail = _onlineResultDetail(match);
-        if (firstPresentation) _resultVisible = true;
+        if (firstPresentation) {
+          // Keep the decisive move visible. The celebration occupies the
+          // winner's side of the board first; the score/action popup follows
+          // after the player has had time to identify the final move.
+          _resultVisible = !decisive;
+          _onlineCelebrationVisible = decisive;
+          _onlineCelebrationWinnerAtTop =
+              winningWhite == _shouldFlipBoard(match.whiteToMove);
+          _onlineCelebrationMatchId = decisive ? match.id : null;
+        }
         _coachNote = _onlineResultDetail(match);
       });
+      if (firstPresentation && decisive) {
+        _onlineResultPresentationTimer?.cancel();
+        _onlineResultPresentationTimer = Timer(
+          const Duration(seconds: 20),
+          () {
+            if (!mounted || _onlineCelebrationMatchId != match.id) return;
+            setState(() {
+              _onlineCelebrationVisible = false;
+              _resultVisible = true;
+            });
+          },
+        );
+        unawaited(ChessSoundService.instance.victory());
+      }
       if (_archivedOnlineMatchId != match.id) {
         _archivedOnlineMatchId = match.id;
         _archiveFinishedGame();
@@ -11226,6 +11271,140 @@ class AuthOverlay extends StatelessWidget {
       ),
     );
   }
+}
+
+class OnlineVictoryCelebration extends StatefulWidget {
+  const OnlineVictoryCelebration({
+    required this.winnerAtTop,
+    required this.title,
+    super.key,
+  });
+
+  final bool winnerAtTop;
+  final String title;
+
+  @override
+  State<OnlineVictoryCelebration> createState() =>
+      _OnlineVictoryCelebrationState();
+}
+
+class _OnlineVictoryCelebrationState extends State<OnlineVictoryCelebration>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2400),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (BuildContext context, Widget? child) => Stack(
+            children: <Widget>[
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _VictoryFireworksPainter(
+                    progress: _controller.value,
+                    winnerAtTop: widget.winnerAtTop,
+                  ),
+                ),
+              ),
+              Align(
+                alignment: widget.winnerAtTop
+                    ? const Alignment(0, -0.72)
+                    : const Alignment(0, 0.72),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: <Color>[Color(0xFFE5A92F), Color(0xFFFFE18A)],
+                    ),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: Colors.white, width: 1.5),
+                    boxShadow: const <BoxShadow>[
+                      BoxShadow(color: Color(0xAAE5A92F), blurRadius: 30),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 28, vertical: 12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        const Icon(Icons.emoji_events_rounded,
+                            color: Color(0xFF07131E)),
+                        const SizedBox(width: 9),
+                        Text(
+                          widget.title.toUpperCase(),
+                          style: const TextStyle(
+                            color: Color(0xFF07131E),
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
+class _VictoryFireworksPainter extends CustomPainter {
+  const _VictoryFireworksPainter({
+    required this.progress,
+    required this.winnerAtTop,
+  });
+
+  final double progress;
+  final bool winnerAtTop;
+
+  static const List<Color> _colors = <Color>[
+    Color(0xFFFFC857),
+    Color(0xFF63D2B8),
+    Color(0xFFFF6B6B),
+    Color(0xFF6EA8FF),
+    Color(0xFFC77DFF),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double bandCenter =
+        winnerAtTop ? size.height * .24 : size.height * .76;
+    final Paint paint = Paint()..style = PaintingStyle.fill;
+    for (int burst = 0; burst < 5; burst++) {
+      final double phase = (progress + burst * .19) % 1;
+      final double opacity = (1 - phase).clamp(0.0, 1.0);
+      final Offset center = Offset(
+        size.width * (.14 + burst * .18),
+        bandCenter + math.sin(burst * 1.7) * size.height * .08,
+      );
+      for (int ray = 0; ray < 12; ray++) {
+        final double angle = (math.pi * 2 * ray / 12) + burst * .35;
+        final double radius =
+            (18 + 88 * phase) * math.min(1.25, size.shortestSide / 420);
+        final Offset particle =
+            center + Offset(math.cos(angle) * radius, math.sin(angle) * radius);
+        paint.color =
+            _colors[(burst + ray) % _colors.length].withValues(alpha: opacity);
+        canvas.drawCircle(particle, 2.2 + 2.8 * opacity, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _VictoryFireworksPainter oldDelegate) =>
+      oldDelegate.progress != progress ||
+      oldDelegate.winnerAtTop != winnerAtTop;
 }
 
 class GameResultOverlay extends StatelessWidget {
