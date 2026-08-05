@@ -9980,42 +9980,51 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(compactDesktop ? 175 : 305,
                             38, compactDesktop ? 28 : 410, 30),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text('Random Match',
-                                style: textTheme.headlineMedium?.copyWith(
-                                    fontSize: 34, fontWeight: FontWeight.w900)),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'We’ll find a player for you\nfrom around the world.',
-                              style: TextStyle(
-                                  color: Color(0xFFC8D1DD),
-                                  fontSize: 20,
-                                  height: 1.45),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: SizedBox(
+                            width: compactDesktop ? 360 : 455,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text('Random Match',
+                                    maxLines: 1,
+                                    style: textTheme.headlineMedium?.copyWith(
+                                        fontSize: 34,
+                                        fontWeight: FontWeight.w900)),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'We’ll find a player for you\nfrom around the world.',
+                                  style: TextStyle(
+                                      color: Color(0xFFC8D1DD),
+                                      fontSize: 20,
+                                      height: 1.45),
+                                ),
+                                const Spacer(),
+                                SizedBox(
+                                  width: compactDesktop ? 320 : 455,
+                                  height: 68,
+                                  child: FilledButton.icon(
+                                    style: FilledButton.styleFrom(
+                                        backgroundColor: gold,
+                                        foregroundColor: Colors.black,
+                                        textStyle: const TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w800)),
+                                    onPressed: _loading
+                                        ? null
+                                        : () => _run(
+                                            () => widget.api
+                                                .randomMatch(widget.token),
+                                            randomSearch: true),
+                                    icon: const Icon(Icons.bolt_rounded,
+                                        size: 30),
+                                    label: const Text('Find Match'),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const Spacer(),
-                            SizedBox(
-                              width: compactDesktop ? 320 : 455,
-                              height: 68,
-                              child: FilledButton.icon(
-                                style: FilledButton.styleFrom(
-                                    backgroundColor: gold,
-                                    foregroundColor: Colors.black,
-                                    textStyle: const TextStyle(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.w800)),
-                                onPressed: _loading
-                                    ? null
-                                    : () => _run(
-                                        () => widget.api
-                                            .randomMatch(widget.token),
-                                        randomSearch: true),
-                                icon: const Icon(Icons.bolt_rounded, size: 30),
-                                label: const Text('Find Match'),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),

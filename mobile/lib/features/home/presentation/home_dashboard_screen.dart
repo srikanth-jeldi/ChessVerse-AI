@@ -1303,7 +1303,7 @@ class _ActionCard extends StatelessWidget {
                     image: AssetImage(asset),
                     fit: BoxFit.cover,
                     alignment: Alignment.centerRight,
-                    opacity: .42),
+                    opacity: .68),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: color.withValues(alpha: .9))),
             child: narrow
@@ -1410,7 +1410,7 @@ class _MiniCard extends StatelessWidget {
                   image: AssetImage(asset),
                   fit: BoxFit.cover,
                   alignment: Alignment.center,
-                  opacity: .32),
+                  opacity: .58),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: color.withValues(alpha: .35))),
           child: Column(
