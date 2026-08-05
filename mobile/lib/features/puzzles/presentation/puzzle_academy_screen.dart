@@ -343,16 +343,6 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
           children: <Widget>[
             Row(
               children: <Widget>[
-                IconButton.filledTonal(
-                  onPressed: () => Navigator.maybePop(context),
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  style: IconButton.styleFrom(
-                    foregroundColor: AppColors.accentGold,
-                    backgroundColor: const Color(0xFF0B1B2B),
-                    side: const BorderSide(color: Color(0xFF6F5129)),
-                  ),
-                ),
-                const SizedBox(width: 20),
                 const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

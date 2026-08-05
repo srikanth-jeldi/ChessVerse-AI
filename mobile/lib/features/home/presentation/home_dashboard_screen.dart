@@ -1091,14 +1091,30 @@ class _CarouselHero extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Icon(data.icon, color: const Color(0xFF48E3CB), size: 35),
-                      const SizedBox(height: 10),
-                      Text(data.title,
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: wide ? 40 : 28,
-                              height: 1,
-                              fontWeight: FontWeight.w900)),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: <Widget>[
+                          Icon(
+                            data.icon,
+                            color: const Color(0xFF48E3CB),
+                            size: wide ? 35 : 30,
+                          ),
+                          SizedBox(width: wide ? 12 : 9),
+                          Expanded(
+                            child: Text(
+                              data.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: wide ? 40 : 28,
+                                height: 1,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                       Text(data.subtitle,
                           maxLines: 2,
