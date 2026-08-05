@@ -38,9 +38,9 @@ class DesktopAppSidebar extends StatelessWidget {
     final List<({IconData icon, String label, VoidCallback? onTap})> items =
         <({IconData icon, String label, VoidCallback? onTap})>[
       (icon: Icons.home_rounded, label: 'Home', onTap: onHome),
-      (icon: Icons.sports_martial_arts_rounded, label: 'Play', onTap: onPlay),
+      (icon: Icons.sports_esports_rounded, label: 'Play', onTap: onPlay),
       (icon: Icons.extension_rounded, label: 'Puzzles', onTap: onPuzzles),
-      (icon: Icons.menu_book_rounded, label: 'Learn', onTap: onLearn),
+      (icon: Icons.school_rounded, label: 'Learn', onTap: onLearn),
       (icon: Icons.person_rounded, label: 'Profile', onTap: onProfile),
     ];
     return Container(
@@ -58,10 +58,13 @@ class DesktopAppSidebar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               Text('CHESSVERSE ',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                  style: TextStyle(
+                      color: Color(0xFFF5F7FA),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900)),
               Text('AI',
                   style: TextStyle(
-                      color: AppColors.accentGold,
+                      color: Color(0xFFE9B84C),
                       fontSize: 20,
                       fontWeight: FontWeight.w900)),
             ],
