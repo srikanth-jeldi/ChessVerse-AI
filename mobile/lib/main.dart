@@ -3127,6 +3127,19 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           ),
                         ),
                       if (_signedIn &&
+                          _gameMode == GameMode.online &&
+                          _onlineMatch?.isActive == true &&
+                          _onlineMatch?.opponentDisconnected == true)
+                        Positioned(
+                          top: wide ? wideHeaderHeight + 12 : 68,
+                          left: wide ? 28 : 16,
+                          right: wide ? widePanelWidth + 42 : 16,
+                          child: OnlineReconnectCountdown(
+                            secondsRemaining:
+                                _onlineMatch!.disconnectSecondsRemaining,
+                          ),
+                        ),
+                      if (_signedIn &&
                           _onlineCelebrationVisible &&
                           _gameMode == GameMode.online)
                         Positioned.fill(
@@ -11264,6 +11277,74 @@ class AuthOverlay extends StatelessWidget {
                     ],
                   ),
                 ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class OnlineReconnectCountdown extends StatelessWidget {
+  const OnlineReconnectCountdown({required this.secondsRemaining, super.key});
+
+  final int secondsRemaining;
+
+  @override
+  Widget build(BuildContext context) {
+    final String countdown =
+        '00:${secondsRemaining.clamp(0, 60).toString().padLeft(2, '0')}';
+    return IgnorePointer(
+      child: Center(
+        child: Semantics(
+          liveRegion: true,
+          label: 'Waiting for opponent. $secondsRemaining seconds remaining.',
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xF20A1D2C),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFE7B84B), width: 1.4),
+              boxShadow: const <BoxShadow>[
+                BoxShadow(color: Color(0x77000000), blurRadius: 24),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      color: Color(0xFF63D2B8),
+                    ),
+                  ),
+                  const SizedBox(width: 11),
+                  const Text(
+                    'WAITING FOR OPPONENT',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: .7,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Text(
+                    countdown,
+                    style: const TextStyle(
+                      color: Color(0xFFE7B84B),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      fontFeatures: <ui.FontFeature>[
+                        ui.FontFeature.tabularFigures(),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
