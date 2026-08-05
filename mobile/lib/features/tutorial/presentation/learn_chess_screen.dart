@@ -17,6 +17,16 @@ class LearnChessScreen extends StatelessWidget {
       accent: Color(0xFF53D8C4),
       progress: 0.35,
       completed: '3 of 8 lessons',
+      chapters: <String>[
+        'Meet the chessboard',
+        'How pawns move',
+        'Rooks and files',
+        'Bishops and diagonals',
+        'The knight jump',
+        'Queen movement',
+        'The king and legal moves',
+        'Captures and piece value',
+      ],
     ),
     _Lesson(
       icon: Icons.security_rounded,
@@ -26,6 +36,14 @@ class LearnChessScreen extends StatelessWidget {
       accent: Color(0xFF4DA8FF),
       progress: 0.18,
       completed: '1 of 6 lessons',
+      chapters: <String>[
+        'Check and checkmate',
+        'Escaping from check',
+        'Castling safely',
+        'Pins around the king',
+        'Back-rank safety',
+        'Building a king shelter',
+      ],
     ),
     _Lesson(
       icon: Icons.bolt_rounded,
@@ -35,6 +53,20 @@ class LearnChessScreen extends StatelessWidget {
       accent: Color(0xFFE9B84C),
       progress: 0.08,
       completed: '1 of 12 lessons',
+      chapters: <String>[
+        'Hanging pieces',
+        'Double attacks',
+        'Knight forks',
+        'Pins',
+        'Skewers',
+        'Discovered attacks',
+        'Removing the defender',
+        'Deflection',
+        'Decoy tactics',
+        'Back-rank mates',
+        'Mate in one',
+        'Mate in two',
+      ],
     ),
     _Lesson(
       icon: Icons.emoji_events_rounded,
@@ -44,6 +76,16 @@ class LearnChessScreen extends StatelessWidget {
       accent: Color(0xFF9C6BFF),
       progress: 0,
       completed: '0 of 8 lessons',
+      chapters: <String>[
+        'King and pawn basics',
+        'The opposition',
+        'Promoting a pawn',
+        'Queen checkmates',
+        'Rook ladder mate',
+        'Rook and king mate',
+        'Basic rook endings',
+        'Drawing positions',
+      ],
     ),
   ];
 
@@ -257,20 +299,28 @@ class _LessonCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xCC071A29),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(lesson.icon, color: lesson.accent, size: 25),
-                  ),
                   const Spacer(),
-                  Text(lesson.title,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 19,
-                          fontWeight: FontWeight.w900)),
+                  Row(
+                    children: <Widget>[
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xCC071A29),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child:
+                            Icon(lesson.icon, color: lesson.accent, size: 21),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(lesson.title,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 19,
+                                fontWeight: FontWeight.w900)),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 5),
                   Text(lesson.body,
                       maxLines: 2,
@@ -363,78 +413,9 @@ class _CoachEvaluationPanel extends StatelessWidget {
 }
 
 Future<void> _openLesson(BuildContext context, _Lesson lesson) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) => SafeArea(
-        child: Container(
-          margin: const EdgeInsets.all(14),
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0A1C2B),
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: lesson.accent.withValues(alpha: .7)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Icon(lesson.icon, color: lesson.accent, size: 32),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(lesson.title,
-                        style: const TextStyle(
-                            fontSize: 25, fontWeight: FontWeight.w900)),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(lesson.body,
-                  style:
-                      const TextStyle(color: Color(0xFFC2CFD9), fontSize: 15)),
-              const SizedBox(height: 18),
-              Text(lesson.completed,
-                  style: TextStyle(
-                      color: lesson.accent, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 10),
-              LinearProgressIndicator(
-                value: lesson.progress,
-                minHeight: 7,
-                borderRadius: BorderRadius.circular(99),
-                backgroundColor: const Color(0xFF263948),
-                valueColor: AlwaysStoppedAnimation<Color>(lesson.accent),
-              ),
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text('${lesson.title} lesson is ready.')));
-                  },
-                  style: FilledButton.styleFrom(
-                      backgroundColor: lesson.accent,
-                      foregroundColor: const Color(0xFF06131D),
-                      padding: const EdgeInsets.symmetric(vertical: 15)),
-                  icon: const Icon(Icons.play_arrow_rounded),
-                  label: Text(
-                      lesson.progress == 0 ? 'START LESSON' : 'CONTINUE',
-                      style: const TextStyle(fontWeight: FontWeight.w900)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => _CourseScreen(course: lesson),
+    ));
 
 class _QualityChip extends StatelessWidget {
   const _QualityChip({required this.label, required this.color});
@@ -450,6 +431,204 @@ class _QualityChip extends StatelessWidget {
       );
 }
 
+class _CourseScreen extends StatelessWidget {
+  const _CourseScreen({required this.course});
+  final _Lesson course;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: const Color(0xFF06131D),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF071827),
+          title: Row(
+            children: <Widget>[
+              Icon(course.icon, color: course.accent),
+              const SizedBox(width: 10),
+              Text(course.title,
+                  style: const TextStyle(fontWeight: FontWeight.w900)),
+            ],
+          ),
+        ),
+        body: ResponsivePage(
+          maxWidth: 980,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(22),
+                  border:
+                      Border.all(color: course.accent.withValues(alpha: .65)),
+                  image: DecorationImage(
+                    image: AssetImage(course.asset),
+                    fit: BoxFit.cover,
+                    colorFilter: const ColorFilter.mode(
+                        Color(0xB8061725), BlendMode.srcOver),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(course.body,
+                        style: const TextStyle(
+                            color: Color(0xFFD2DDE5),
+                            fontSize: 17,
+                            height: 1.4)),
+                    const SizedBox(height: 16),
+                    Text(course.completed,
+                        style: TextStyle(
+                            color: course.accent, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(
+                      value: course.progress,
+                      minHeight: 7,
+                      borderRadius: BorderRadius.circular(99),
+                      backgroundColor: const Color(0xFF263948),
+                      valueColor: AlwaysStoppedAnimation<Color>(course.accent),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 22),
+              const Text('COURSE LESSONS',
+                  style: TextStyle(
+                      color: AppColors.accentGold,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.1)),
+              const SizedBox(height: 12),
+              ...List<Widget>.generate(course.chapters.length, (int index) {
+                final int completedCount =
+                    (course.progress * course.chapters.length).floor();
+                final bool done = index < completedCount;
+                final bool active = index == completedCount;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: ChessVerseCard(
+                    padding: EdgeInsets.zero,
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 7),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => _LessonContentScreen(
+                            course: course,
+                            index: index,
+                            title: course.chapters[index],
+                          ),
+                        ),
+                      ),
+                      leading: CircleAvatar(
+                        backgroundColor: course.accent.withValues(alpha: .16),
+                        foregroundColor: course.accent,
+                        child: done
+                            ? const Icon(Icons.check_rounded)
+                            : Text('${index + 1}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w900)),
+                      ),
+                      title: Text(course.chapters[index],
+                          style: const TextStyle(fontWeight: FontWeight.w800)),
+                      subtitle: Text(active
+                          ? 'Continue this lesson'
+                          : done
+                              ? 'Completed'
+                              : 'Learn the idea, then try a position'),
+                      trailing: Icon(Icons.arrow_forward_rounded,
+                          color: course.accent),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      );
+}
+
+class _LessonContentScreen extends StatelessWidget {
+  const _LessonContentScreen(
+      {required this.course, required this.index, required this.title});
+  final _Lesson course;
+  final int index;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: const Color(0xFF06131D),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF071827),
+          title: Text('${index + 1}. $title'),
+        ),
+        body: ResponsivePage(
+          maxWidth: 820,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                height: 230,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: course.accent),
+                  image: DecorationImage(
+                      image: AssetImage(course.asset), fit: BoxFit.cover),
+                ),
+              ),
+              const SizedBox(height: 22),
+              Text(title,
+                  style: const TextStyle(
+                      fontSize: 28, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 10),
+              Text(_lessonExplanation(course.title, title),
+                  style: const TextStyle(
+                      color: Color(0xFFD0DAE2), fontSize: 17, height: 1.55)),
+              const SizedBox(height: 20),
+              ChessVerseCard(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Icon(Icons.lightbulb_rounded, color: course.accent),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Coach tip: Look at checks, captures, and threats before choosing your move.',
+                        style: TextStyle(
+                            color: course.accent,
+                            fontWeight: FontWeight.w700,
+                            height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: course.accent,
+                    foregroundColor: const Color(0xFF06131D),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  icon: const Icon(Icons.check_circle_rounded),
+                  label: const Text('COMPLETE LESSON',
+                      style: TextStyle(fontWeight: FontWeight.w900)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
+String _lessonExplanation(String course, String lesson) =>
+    'In $lesson, you will learn the essential $course idea step by step. '
+    'Study the example position, identify the safe and legal choices, and '
+    'apply the idea on the board. The lesson finishes with a short practice '
+    'position so you can use the pattern in a real game.';
+
 class _Lesson {
   const _Lesson({
     required this.icon,
@@ -459,6 +638,7 @@ class _Lesson {
     required this.accent,
     required this.progress,
     required this.completed,
+    required this.chapters,
   });
   final IconData icon;
   final String title;
@@ -467,4 +647,5 @@ class _Lesson {
   final Color accent;
   final double progress;
   final String completed;
+  final List<String> chapters;
 }

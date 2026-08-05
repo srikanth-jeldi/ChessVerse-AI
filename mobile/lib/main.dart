@@ -782,13 +782,14 @@ class BrandedSplash extends StatelessWidget {
       backgroundColor: const Color(0xFF02070D),
       body: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          // Classify by the viewport's shortest side so rotating a phone does
-          // not switch it to the tablet/web splash. Actual tablets and desktop
-          // surfaces keep the wide artwork.
+          // Landscape always gets the dedicated edge-to-edge composition.
+          // Portrait phones retain the compact splash used on mobile.
           final Size viewport = MediaQuery.sizeOf(context);
           final bool phoneSized = viewport.shortestSide < 600;
-          final bool wide = !phoneSized &&
-              (constraints.maxWidth >= 720 || constraints.maxWidth <= 0);
+          final bool landscape = viewport.width > viewport.height;
+          final bool wide = landscape ||
+              (!phoneSized &&
+                  (constraints.maxWidth >= 720 || constraints.maxWidth <= 0));
           const String wideAsset =
               'assets/branding/chessverse_king_dual_splash.jpg';
           const String mobileAsset =
@@ -913,18 +914,9 @@ class BrandedSplash extends StatelessWidget {
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
-              const Opacity(
-                opacity: 0.32,
-                child: Image(
-                  image: AssetImage(wideAsset),
-                  fit: BoxFit.cover,
-                  alignment: Alignment.center,
-                  filterQuality: FilterQuality.medium,
-                ),
-              ),
               const Image(
                 image: AssetImage(wideAsset),
-                fit: BoxFit.contain,
+                fit: BoxFit.cover,
                 alignment: Alignment.center,
                 filterQuality: FilterQuality.high,
               ),
