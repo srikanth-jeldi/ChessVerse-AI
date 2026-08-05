@@ -68,6 +68,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _SectionCard(
             title: 'PLAYER PROGRESS',
             icon: Icons.military_tech_rounded,
+            asset: 'assets/backgrounds/home-analysis-hero-v1.png',
             trailing: _Pill(
               icon: Icons.paid_rounded,
               label: '${rewards.coins} coins',
@@ -132,6 +133,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 18),
           _SectionCard(
             title: 'ACCOUNT',
+            asset: 'assets/backgrounds/home-settings-hero-v1.png',
             icon: widget.isGuest
                 ? Icons.person_outline_rounded
                 : Icons.verified_rounded,
@@ -217,6 +219,12 @@ class _ProfileHero extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
+        image: const DecorationImage(
+          image: AssetImage('assets/backgrounds/home-rankings-hero-v1.png'),
+          fit: BoxFit.cover,
+          alignment: Alignment.centerRight,
+          opacity: .38,
+        ),
         borderRadius: BorderRadius.circular(26),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -628,11 +636,13 @@ class _SectionCard extends StatelessWidget {
     required this.icon,
     required this.child,
     this.trailing,
+    this.asset,
   });
   final String title;
   final IconData icon;
   final Widget child;
   final Widget? trailing;
+  final String? asset;
 
   @override
   Widget build(BuildContext context) {
@@ -640,6 +650,14 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xE60C1D2B),
+        image: asset == null
+            ? null
+            : DecorationImage(
+                image: AssetImage(asset!),
+                fit: BoxFit.cover,
+                alignment: Alignment.centerRight,
+                opacity: .2,
+              ),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: const Color(0xFF304854)),
       ),
@@ -713,13 +731,29 @@ class _Stat extends StatelessWidget {
   final String label;
   final String value;
   final IconData icon;
+  String get asset => switch (label) {
+        'Games' => 'assets/backgrounds/home-online-hero-v1.png',
+        'Wins' => 'assets/backgrounds/home-rankings-hero-v1.png',
+        'Win rate' => 'assets/backgrounds/home-analysis-hero-v1.png',
+        _ => 'assets/backgrounds/home-puzzles-hero-v1.png',
+      };
+
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: const Color(0xE60C1D2B),
+          image: DecorationImage(
+            image: AssetImage(asset),
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+            opacity: .3,
+          ),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFF304854)),
+          border: Border.all(color: const Color(0xFF3B6170)),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(color: Color(0x33000000), blurRadius: 16),
+          ],
         ),
         child: Row(
           children: <Widget>[
