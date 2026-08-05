@@ -215,7 +215,7 @@ class _MobileHomeState extends State<_MobileHome> {
                               'Personalize your board and game experience',
                           icon: Icons.tune_rounded,
                           buttonLabel: 'Open Settings',
-                          asset: 'assets/backgrounds/grandmaster-table-v1.webp',
+                          asset: 'assets/backgrounds/home-settings-hero-v1.png',
                           onTap: widget.onSettings,
                         ),
                       ],
@@ -231,6 +231,8 @@ class _MobileHomeState extends State<_MobileHome> {
                             title: 'Play Computer',
                             subtitle: 'Challenge the AI',
                             color: const Color(0xFF143D58),
+                            asset:
+                                'assets/backgrounds/home-computer-hero-v1.png',
                             onTap: widget.onPlayVsAi,
                           ),
                         ),
@@ -242,6 +244,8 @@ class _MobileHomeState extends State<_MobileHome> {
                             title: 'Play with Friends',
                             subtitle: 'Create or join room',
                             color: const Color(0xFF15513F),
+                            asset:
+                                'assets/backgrounds/home-friends-hero-v1.png',
                             onTap: widget.onOnlineGame,
                           ),
                         ),
@@ -260,6 +264,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.extension_rounded,
                           label: 'Puzzles',
                           color: AppColors.accentGold,
+                          asset: 'assets/backgrounds/home-puzzles-hero-v1.png',
                           onTap: widget.onPuzzles,
                         ),
                         _MiniCard(
@@ -267,6 +272,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.leaderboard_rounded,
                           label: 'Rankings',
                           color: const Color(0xFFF3B84F),
+                          asset: 'assets/backgrounds/home-rankings-hero-v1.png',
                           onTap: widget.onRankings,
                         ),
                         _MiniCard(
@@ -274,6 +280,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.trending_up_rounded,
                           label: 'Analysis',
                           color: const Color(0xFF3DA2FF),
+                          asset: 'assets/backgrounds/home-analysis-hero-v1.png',
                           onTap: widget.onAnalysis,
                         ),
                         _MiniCard(
@@ -281,6 +288,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.school_rounded,
                           label: 'Learn',
                           color: const Color(0xFFA879F5),
+                          asset: 'assets/backgrounds/home-learn-hero-v1.png',
                           onTap: widget.onLearnChess,
                         ),
                       ],
@@ -446,7 +454,7 @@ class _WideHomeState extends State<_WideHome> {
                               icon: Icons.tune_rounded,
                               buttonLabel: 'Open Settings',
                               asset:
-                                  'assets/backgrounds/grandmaster-table-v1.webp',
+                                  'assets/backgrounds/home-settings-hero-v1.png',
                               onTap: widget.onSettings,
                             ),
                           ],
@@ -463,6 +471,8 @@ class _WideHomeState extends State<_WideHome> {
                                 title: 'Play Computer',
                                 subtitle: 'Challenge the AI at any level',
                                 color: const Color(0xFF123B58),
+                                asset:
+                                    'assets/backgrounds/home-computer-hero-v1.png',
                                 onTap: widget.onPlayVsAi,
                               ),
                             ),
@@ -475,6 +485,8 @@ class _WideHomeState extends State<_WideHome> {
                                 title: 'Play with Friends',
                                 subtitle: 'Create or join a room',
                                 color: const Color(0xFF14513F),
+                                asset:
+                                    'assets/backgrounds/home-friends-hero-v1.png',
                                 onTap: widget.onOnlineGame,
                               ),
                             ),
@@ -486,6 +498,8 @@ class _WideHomeState extends State<_WideHome> {
                                     label: 'Puzzles',
                                     subtitle: 'Sharpen your skills',
                                     color: AppColors.accentGold,
+                                    asset:
+                                        'assets/backgrounds/home-puzzles-hero-v1.png',
                                     onTap: widget.onPuzzles)),
                             const SizedBox(width: 14),
                             Expanded(
@@ -495,6 +509,8 @@ class _WideHomeState extends State<_WideHome> {
                                     label: 'Rankings',
                                     subtitle: 'See stats & progress',
                                     color: const Color(0xFFF1B74D),
+                                    asset:
+                                        'assets/backgrounds/home-rankings-hero-v1.png',
                                     onTap: widget.onRankings)),
                             const SizedBox(width: 14),
                             Expanded(
@@ -504,6 +520,8 @@ class _WideHomeState extends State<_WideHome> {
                                     label: 'Analysis',
                                     subtitle: 'Review your games',
                                     color: const Color(0xFF3DA2FF),
+                                    asset:
+                                        'assets/backgrounds/home-analysis-hero-v1.png',
                                     onTap: widget.onAnalysis)),
                             const SizedBox(width: 14),
                             Expanded(
@@ -513,6 +531,8 @@ class _WideHomeState extends State<_WideHome> {
                                     label: 'Learn',
                                     subtitle: 'Improve & grow',
                                     color: const Color(0xFFA879F5),
+                                    asset:
+                                        'assets/backgrounds/home-learn-hero-v1.png',
                                     onTap: widget.onLearnChess)),
                           ],
                         ),
@@ -1255,12 +1275,14 @@ class _ActionCard extends StatelessWidget {
       required this.title,
       required this.subtitle,
       required this.color,
+      required this.asset,
       required this.onTap});
   final String keyName;
   final IconData icon;
   final String title;
   final String subtitle;
   final Color color;
+  final String asset;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
@@ -1277,6 +1299,11 @@ class _ActionCard extends StatelessWidget {
             padding: EdgeInsets.all(narrow ? 15 : 18),
             decoration: BoxDecoration(
                 color: color.withValues(alpha: .76),
+                image: DecorationImage(
+                    image: AssetImage(asset),
+                    fit: BoxFit.cover,
+                    alignment: Alignment.centerRight,
+                    opacity: .42),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: color.withValues(alpha: .9))),
             child: narrow
@@ -1357,12 +1384,14 @@ class _MiniCard extends StatelessWidget {
       required this.label,
       this.subtitle,
       required this.color,
+      required this.asset,
       required this.onTap});
   final String keyName;
   final IconData icon;
   final String label;
   final String? subtitle;
   final Color color;
+  final String asset;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
@@ -1377,6 +1406,11 @@ class _MiniCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 12),
           decoration: BoxDecoration(
               color: const Color(0xDD0C2030),
+              image: DecorationImage(
+                  image: AssetImage(asset),
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  opacity: .32),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: color.withValues(alpha: .35))),
           child: Column(

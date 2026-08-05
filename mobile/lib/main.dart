@@ -14,6 +14,7 @@ import 'core/app_preferences.dart';
 import 'core/config/app_config.dart';
 import 'core/local_game_archive.dart';
 import 'core/widgets/chessverse_app_backdrop.dart';
+import 'core/widgets/desktop_app_sidebar.dart';
 import 'features/auth/data/auth_api.dart';
 import 'features/auth/data/auth_session_store.dart';
 import 'features/auth/presentation/auth_screen.dart';
@@ -2276,21 +2277,29 @@ class _PlayModeCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        CircleAvatar(
-                          radius: 34,
-                          backgroundColor: const Color(0xC3071A2A),
-                          child: Icon(icon, color: color, size: 34),
-                        ),
                         const Spacer(),
-                        Text(
-                          title.toUpperCase(),
-                          maxLines: 2,
-                          style: const TextStyle(
-                            color: Color(0xFFFFF8ED),
-                            fontSize: 23,
-                            height: 1.05,
-                            fontWeight: FontWeight.w900,
-                          ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: <Widget>[
+                            CircleAvatar(
+                              radius: 27,
+                              backgroundColor: const Color(0xD3071A2A),
+                              child: Icon(icon, color: color, size: 28),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                title.toUpperCase(),
+                                maxLines: 2,
+                                style: const TextStyle(
+                                  color: Color(0xFFFFF8ED),
+                                  fontSize: 22,
+                                  height: 1.05,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 10),
                         Text(
@@ -9471,6 +9480,10 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     final double maxHeight = size.height * (wideLayout ? 0.94 : 0.96);
     final OnlineMatchDto? found = _foundMatch;
 
+    if (wideLayout && found == null && _match == null) {
+      return _buildDesktopLobby(context);
+    }
+
     if (found != null) {
       return SafeArea(
         child: Center(
@@ -9866,6 +9879,362 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
       ),
     );
   }
+
+  Widget _buildDesktopLobby(BuildContext context) {
+    const Color teal = Color(0xFF45D7C3);
+    const Color gold = Color(0xFFF0B93F);
+    final TextTheme textTheme = Theme.of(context).textTheme;
+    final bool compactDesktop = MediaQuery.sizeOf(context).width < 1250;
+    return SafeArea(
+      child: Container(
+        margin: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF03111F),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFF1A3449)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Row(
+          children: <Widget>[
+            DesktopAppSidebar(
+              selected: 'Play',
+              onHome: () => Navigator.of(context).pop(),
+              onPlay: () {},
+              onPuzzles: () => Navigator.of(context).pop(),
+              onLearn: () => Navigator.of(context).pop(),
+              onAnalysis: () => Navigator.of(context).pop(),
+              onRankings: () => Navigator.of(context).pop(),
+              onFriends: () {},
+              onEvents: () {},
+              onStore: () {},
+              onSettings: () => Navigator.of(context).pop(),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(compactDesktop ? 24 : 38,
+                    compactDesktop ? 22 : 30, compactDesktop ? 24 : 42, 40),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Container(
+                          width: 78,
+                          height: 78,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFF082431),
+                            border: Border.all(color: teal),
+                          ),
+                          child: const Icon(Icons.sports_martial_arts_rounded,
+                              color: teal, size: 43),
+                        ),
+                        const SizedBox(width: 22),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text('Online 2 Players',
+                                  style: textTheme.headlineLarge?.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 38)),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Play online with a random opponent or invite a friend to a private room.',
+                                style: TextStyle(
+                                    color: Color(0xFFB8C3D1), fontSize: 18),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton.filled(
+                          style: IconButton.styleFrom(
+                              backgroundColor: const Color(0xFF0A1A2B),
+                              padding: const EdgeInsets.all(16)),
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close_rounded, size: 30),
+                        ),
+                      ],
+                    ),
+                    if (_error != null) ...<Widget>[
+                      const SizedBox(height: 12),
+                      Text(_error!,
+                          style: const TextStyle(color: Color(0xFFFF6B6B))),
+                    ],
+                    const SizedBox(height: 28),
+                    Container(
+                      height: 288,
+                      decoration: BoxDecoration(
+                        image: const DecorationImage(
+                          image: AssetImage(
+                              'assets/backgrounds/online-matchmaking-hero-v1.png'),
+                          fit: BoxFit.cover,
+                        ),
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(
+                            color: const Color(0xFF2F9CFF), width: 1.6),
+                        boxShadow: const <BoxShadow>[
+                          BoxShadow(color: Color(0x442F9CFF), blurRadius: 18),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(compactDesktop ? 175 : 305,
+                            38, compactDesktop ? 28 : 410, 30),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text('Random Match',
+                                style: textTheme.headlineMedium?.copyWith(
+                                    fontSize: 34, fontWeight: FontWeight.w900)),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'We’ll find a player for you\nfrom around the world.',
+                              style: TextStyle(
+                                  color: Color(0xFFC8D1DD),
+                                  fontSize: 20,
+                                  height: 1.45),
+                            ),
+                            const Spacer(),
+                            SizedBox(
+                              width: compactDesktop ? 320 : 455,
+                              height: 68,
+                              child: FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                    backgroundColor: gold,
+                                    foregroundColor: Colors.black,
+                                    textStyle: const TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w800)),
+                                onPressed: _loading
+                                    ? null
+                                    : () => _run(
+                                        () => widget.api
+                                            .randomMatch(widget.token),
+                                        randomSearch: true),
+                                icon: const Icon(Icons.bolt_rounded, size: 30),
+                                label: const Text('Find Match'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      height: 280,
+                      padding: const EdgeInsets.all(28),
+                      decoration: BoxDecoration(
+                        color: const Color(0xD9071A29),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: const Color(0xFF267D72)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Row(children: <Widget>[
+                                  Container(
+                                    width: 68,
+                                    height: 68,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                          color: const Color(0xFF267D72)),
+                                    ),
+                                    child: const Icon(Icons.group_rounded,
+                                        color: teal, size: 38),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  const Text('Play with Friend',
+                                      style: TextStyle(
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.w900)),
+                                ]),
+                                const SizedBox(height: 8),
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 88),
+                                  child: Text(
+                                    'Create a private room or join\none using a room code.',
+                                    style: TextStyle(
+                                        color: Color(0xFFB8C3D1),
+                                        fontSize: 18,
+                                        height: 1.4),
+                                  ),
+                                ),
+                                const SizedBox(height: 22),
+                                TextField(
+                                  controller: _roomController,
+                                  onChanged: (_) => setState(() {}),
+                                  textCapitalization:
+                                      TextCapitalization.characters,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Enter room code',
+                                    hintText: 'e.g. ABCD1234',
+                                    suffixIcon: Icon(Icons.copy_rounded),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 32),
+                          const VerticalDivider(color: Color(0xFF244257)),
+                          const SizedBox(width: 32),
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              children: <Widget>[
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 76,
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      side: const BorderSide(
+                                          color: Color(0xFF23D8C2)),
+                                      textStyle: const TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w800),
+                                    ),
+                                    onPressed: _loading
+                                        ? null
+                                        : () => _run(() => widget.api
+                                            .createRoom(widget.token)),
+                                    icon: const Icon(Icons.person_add_rounded,
+                                        color: teal, size: 32),
+                                    label: const Text('Create Room'),
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 76,
+                                  child: OutlinedButton.icon(
+                                    onPressed: _loading ||
+                                            _roomController.text.trim().isEmpty
+                                        ? null
+                                        : () => _run(() => widget.api.joinRoom(
+                                            widget.token,
+                                            _roomController.text)),
+                                    icon: const Icon(
+                                        Icons.sports_esports_rounded,
+                                        size: 32),
+                                    label: const Text('Join Room'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    _DesktopOnlineActionRow(
+                      icon: Icons.sync_rounded,
+                      iconColor: const Color(0xFF3CA6FF),
+                      title: 'Reconnect',
+                      subtitle: 'Reconnect to your last game.',
+                      onTap: _loading
+                          ? null
+                          : () =>
+                              _run(() => widget.api.reconnect(widget.token)),
+                    ),
+                    const SizedBox(height: 18),
+                    const _DesktopOnlineValidationRow(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopOnlineActionRow extends StatelessWidget {
+  const _DesktopOnlineActionRow({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Container(
+          height: 104,
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          decoration: BoxDecoration(
+            color: const Color(0xFF071725),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFF233B51)),
+          ),
+          child: Row(children: <Widget>[
+            Container(
+              width: 68,
+              height: 68,
+              decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFF233B51))),
+              child: Icon(icon, color: iconColor, size: 39),
+            ),
+            const SizedBox(width: 22),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(title,
+                      style: const TextStyle(
+                          fontSize: 24, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 4),
+                  Text(subtitle,
+                      style: const TextStyle(
+                          color: Color(0xFFB8C3D1), fontSize: 17)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, size: 34),
+          ]),
+        ),
+      );
+}
+
+class _DesktopOnlineValidationRow extends StatelessWidget {
+  const _DesktopOnlineValidationRow();
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 98,
+        padding: const EdgeInsets.symmetric(horizontal: 28),
+        decoration: BoxDecoration(
+          color: const Color(0xFF071725),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF233B51)),
+        ),
+        child: const Row(children: <Widget>[
+          Icon(Icons.verified_user_outlined,
+              color: Color(0xFF43D6C1), size: 48),
+          SizedBox(width: 22),
+          Text(
+            'Moves are validated by ChessVerse AI servers.\nActive matches restore after an app restart.',
+            style:
+                TextStyle(color: Color(0xFFB8C3D1), fontSize: 17, height: 1.45),
+          ),
+        ]),
+      );
 }
 
 class _MatchSearchingView extends StatefulWidget {
