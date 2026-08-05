@@ -117,10 +117,10 @@ class _SplashGateState extends State<SplashGate> {
     if (_splashArtworkLoadingStarted) return;
     _splashArtworkLoadingStarted = true;
     final Size viewport = MediaQuery.sizeOf(context);
-    // A phone remains a phone after rotation. Using width alone made a
-    // landscape handset preload the tablet/web splash artwork.
-    final bool useWideArtwork =
-        viewport.shortestSide >= 600 && viewport.width >= 720;
+    // Match BrandedSplash exactly: every landscape surface preloads the wide
+    // artwork, including phones rotated before or during app startup.
+    final bool useWideArtwork = viewport.width > viewport.height ||
+        (viewport.shortestSide >= 600 && viewport.width >= 720);
     final String artwork = useWideArtwork
         ? 'assets/branding/chessverse_king_dual_splash.jpg'
         : 'assets/branding/splash_screen_mobile_v2.jpg';
