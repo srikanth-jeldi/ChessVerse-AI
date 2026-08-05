@@ -45,7 +45,7 @@ class DesktopAppSidebar extends StatelessWidget {
       (icon: Icons.calendar_month_rounded, label: 'Events', onTap: onEvents),
       (icon: Icons.shopping_cart_rounded, label: 'Store', onTap: onStore),
       (icon: Icons.settings_rounded, label: 'Settings', onTap: onSettings),
-    ];
+    ].where((item) => item.onTap != null || item.label == selected).toList();
     return Container(
       width: 258,
       decoration: const BoxDecoration(

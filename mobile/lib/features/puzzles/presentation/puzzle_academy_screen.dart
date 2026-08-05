@@ -465,10 +465,10 @@ class _PuzzleHero extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
           image: const DecorationImage(
-            image: AssetImage('assets/backgrounds/home-puzzles-hero-v1.png'),
+            image: AssetImage('assets/backgrounds/puzzle-academy-hero-v2.png'),
             fit: BoxFit.cover,
             alignment: Alignment.centerRight,
-            opacity: .24,
+            opacity: .82,
           ),
           gradient: const LinearGradient(colors: <Color>[
             Color(0xF2122C3A),
@@ -490,11 +490,11 @@ class _PuzzleHero extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
-                    stops: <double>[0, .58, 1],
+                    stops: <double>[0, .52, 1],
                     colors: <Color>[
                       Color(0xF9061726),
-                      Color(0xE60A1B29),
-                      Color(0xB80A1722),
+                      Color(0xC90A1B29),
+                      Color(0x260A1722),
                     ],
                   ),
                 ),
