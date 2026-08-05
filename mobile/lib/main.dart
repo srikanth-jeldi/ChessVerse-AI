@@ -2178,7 +2178,7 @@ class _PlayDestination extends StatelessWidget {
                     title: 'Play Computer',
                     subtitle: 'Challenge the ChessVerse AI',
                     color: const Color(0xFF174A69),
-                    asset: 'assets/backgrounds/home-computer-hero-v1.png',
+                    asset: 'assets/backgrounds/play-computer-card-v2.png',
                     onTap: onComputer,
                   ),
                   _PlayModeCard(
@@ -2186,7 +2186,7 @@ class _PlayDestination extends StatelessWidget {
                     title: 'Local Match',
                     subtitle: 'Two players on one board',
                     color: const Color(0xFF25664F),
-                    asset: 'assets/backgrounds/home-friends-hero-v1.png',
+                    asset: 'assets/backgrounds/local-match-card-v2.png',
                     onTap: onLocal,
                   ),
                   _PlayModeCard(
@@ -2194,7 +2194,7 @@ class _PlayDestination extends StatelessWidget {
                     title: 'Daily Challenge',
                     subtitle: 'Solve today’s featured position',
                     color: const Color(0xFF8A5A21),
-                    asset: 'assets/backgrounds/home-puzzles-hero-v1.png',
+                    asset: 'assets/backgrounds/daily-challenge-card-v2.png',
                     onTap: onDaily,
                   ),
                 ],
@@ -2227,8 +2227,7 @@ class _PlayModeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool desktopCard = MediaQuery.sizeOf(context).width >= 900;
     final Alignment imageAlignment = switch (title) {
-      'Play Computer' => const Alignment(0.58, 0),
-      'Daily Challenge' => const Alignment(0.52, 0),
+      'Play Computer' || 'Local Match' || 'Daily Challenge' => Alignment.center,
       _ => Alignment.centerRight,
     };
     return Card(
