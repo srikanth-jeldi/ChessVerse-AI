@@ -366,6 +366,7 @@ class _WideHomeState extends State<_WideHome> {
             onPlay: widget.onOnlineGame,
             onPuzzles: widget.onPuzzles,
             onLearn: widget.onLearnChess,
+            onProfile: widget.onProfile,
             onAnalysis: widget.onAnalysis,
             onRankings: widget.onRankings,
             onSettings: widget.onSettings,
