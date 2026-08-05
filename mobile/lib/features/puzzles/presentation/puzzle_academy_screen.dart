@@ -698,92 +698,98 @@ class _DifficultyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        key: ValueKey<String>(keyName),
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(
-            color: const Color(0xE6112130),
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool condensed =
+            constraints.hasBoundedHeight && constraints.maxHeight < 112;
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            key: ValueKey<String>(keyName),
+            onTap: onTap,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: accent.withValues(alpha: 0.55)),
-          ),
-          child: Row(
-            children: <Widget>[
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(icon, color: accent, size: 27),
+            child: Ink(
+              padding: EdgeInsets.all(condensed ? 10 : 15),
+              decoration: BoxDecoration(
+                color: const Color(0xE6112130),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: accent.withValues(alpha: 0.55)),
               ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
+              child: Row(
+                children: <Widget>[
+                  Container(
+                    width: condensed ? 44 : 52,
+                    height: condensed ? 44 : 52,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(icon, color: accent, size: condensed ? 23 : 27),
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
+                        Row(
+                          children: <Widget>[
+                            Text(
+                              level,
+                              style: TextStyle(
+                                color: accent,
+                                fontSize: 10,
+                                letterSpacing: 1.2,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              '$solved/50',
+                              style: const TextStyle(
+                                color: Color(0xFF8399A7),
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
                         Text(
-                          level,
+                          title,
                           style: TextStyle(
-                            color: accent,
-                            fontSize: 10,
-                            letterSpacing: 1.2,
+                            color: Colors.white,
+                            fontSize: condensed ? 16 : 18,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const Spacer(),
                         Text(
-                          '$solved/50',
+                          detail,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Color(0xFF8399A7),
-                            fontSize: 10,
+                            color: Color(0xFF8FA5B1),
+                            fontSize: 11,
+                          ),
+                        ),
+                        SizedBox(height: condensed ? 4 : 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            value: solved / PuzzleCatalog.puzzlesPerDifficulty,
+                            minHeight: condensed ? 6 : 5,
+                            color: accent,
+                            backgroundColor: const Color(0xFF263645),
                           ),
                         ),
                       ],
                     ),
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    Text(
-                      detail,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF8FA5B1),
-                        fontSize: 11,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        value: solved / PuzzleCatalog.puzzlesPerDifficulty,
-                        minHeight: 5,
-                        color: accent,
-                        backgroundColor: const Color(0xFF263645),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 9),
+                  Icon(Icons.chevron_right_rounded, color: accent),
+                ],
               ),
-              const SizedBox(width: 9),
-              Icon(Icons.chevron_right_rounded, color: accent),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

@@ -131,10 +131,13 @@ class LearnChessScreen extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _lessons.length,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: wide ? 4 : 2,
+                // Phone cards need the same complete learning information as
+                // tablet/web. A single column keeps the artwork, lesson count,
+                // progress bar and action readable without clipping.
+                crossAxisCount: wide ? 4 : (compact ? 1 : 2),
                 crossAxisSpacing: 14,
                 mainAxisSpacing: 14,
-                childAspectRatio: wide ? 0.78 : (compact ? 0.70 : 0.78),
+                childAspectRatio: wide ? 0.78 : (compact ? 1.22 : 0.78),
               ),
               itemBuilder: (BuildContext context, int index) =>
                   _LessonCard(lesson: _lessons[index]),
