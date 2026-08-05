@@ -2227,8 +2227,8 @@ class _PlayModeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool desktopCard = MediaQuery.sizeOf(context).width >= 900;
     final Alignment imageAlignment = switch (title) {
-      'Play Computer' => const Alignment(-0.42, 0),
-      'Daily Challenge' => const Alignment(-0.28, 0),
+      'Play Computer' => const Alignment(0.58, 0),
+      'Daily Challenge' => const Alignment(0.52, 0),
       _ => Alignment.centerRight,
     };
     return Card(
