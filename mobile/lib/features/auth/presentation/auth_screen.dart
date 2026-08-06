@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -711,7 +712,7 @@ class _AuthScreenState extends State<AuthScreen> {
           _SocialButton(
             label: 'Facebook',
             onPressed:
-                _loading ? null : () => _showSocialPlaceholder('Facebook'),
+                _loading ? null : _signInWithFacebook,
             child: const Icon(
               Icons.facebook_rounded,
               color: Color(0xFF4285F4),
@@ -760,7 +761,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   label: 'Facebook',
                   onPressed: _loading
                       ? null
-                      : () => _showSocialPlaceholder('Facebook'),
+                      : _signInWithFacebook,
                   child: const Icon(
                     Icons.facebook_rounded,
                     color: Color(0xFF4285F4),
@@ -1027,7 +1028,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           OutlinedButton.icon(
                             onPressed: _loading
                                 ? null
-                                : () => _showSocialPlaceholder('Facebook'),
+                                : _signInWithFacebook,
                             icon: const Icon(Icons.facebook_rounded),
                             label: const Text('Facebook Login'),
                           ),
@@ -1052,13 +1053,43 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  void _showSocialPlaceholder(String provider) {
+  Future<void> _signInWithFacebook() async {
     setState(() {
-      _message = AppConfig.usesDummySocialConfig
-          ? '$provider login UI is ready with dummy placeholders. Replace IDs/tokens and enable backend OAuth callbacks before release.'
-          : '$provider credentials are configured. Enable the live backend OAuth callback before release.';
+      _loading = true;
       _error = null;
+      _message = null;
     });
+    try {
+      final LoginResult result = await FacebookAuth.instance.login(
+        permissions: const <String>['email', 'public_profile'],
+      );
+      if (result.status == LoginStatus.cancelled) return;
+      if (result.status != LoginStatus.success || result.accessToken == null) {
+        throw AuthApiException(
+          result.message ?? 'Facebook sign-in failed. Please try again.',
+        );
+      }
+      final String accessToken = result.accessToken!.tokenString;
+      final String? upgradeToken = widget.guestUpgradeToken;
+      final Map<String, dynamic> data = upgradeToken == null
+          ? await _authApi.post(
+              'facebook',
+              <String, String>{'accessToken': accessToken},
+            )
+          : await _authApi.upgradeGuestWithFacebook(
+              upgradeToken,
+              accessToken,
+            );
+      await _completeAuthentication(data);
+    } on AuthApiException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Facebook sign-in failed. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<void> _initializeGoogleForWeb() async {

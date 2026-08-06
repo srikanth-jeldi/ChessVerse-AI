@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ChessVerse AI</string>
-    <string name="facebook_app_id">replace-facebook-app-id</string>
-    <string name="facebook_client_token">replace-facebook-client-token</string>
-    <string name="fb_login_protocol_scheme">fbreplace-facebook-app-id</string>
+    <string name="facebook_app_id">27409411982074524</string>
+    <string name="facebook_client_token">aea3ed77a1ce5ca76b7d630df081e5d9</string>
+    <string name="fb_login_protocol_scheme">fb27409411982074524</string>
 </resources>

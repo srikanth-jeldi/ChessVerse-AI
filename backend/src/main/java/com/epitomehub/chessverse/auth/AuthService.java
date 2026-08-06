@@ -29,6 +29,7 @@ class AuthService {
     private final OAuthIdentityRepository oauthIdentities;
     private final GuestInstallationRepository guestInstallations;
     private final GoogleIdentityVerifier googleIdentityVerifier;
+    private final FacebookIdentityVerifier facebookIdentityVerifier;
     private final OtpDelivery otpDelivery;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
     private final SecureRandom random = new SecureRandom();
@@ -46,6 +47,7 @@ class AuthService {
             OAuthIdentityRepository oauthIdentities,
             GuestInstallationRepository guestInstallations,
             GoogleIdentityVerifier googleIdentityVerifier,
+            FacebookIdentityVerifier facebookIdentityVerifier,
             OtpDelivery otpDelivery,
             @Value("${chessverse.auth.otp-expiry-minutes:10}") long otpExpiryMinutes,
             @Value("${chessverse.auth.session-expiry-days:30}") long sessionExpiryDays,
@@ -59,6 +61,7 @@ class AuthService {
         this.oauthIdentities = oauthIdentities;
         this.guestInstallations = guestInstallations;
         this.googleIdentityVerifier = googleIdentityVerifier;
+        this.facebookIdentityVerifier = facebookIdentityVerifier;
         this.otpDelivery = otpDelivery;
         this.otpExpiry = Duration.ofMinutes(otpExpiryMinutes);
         this.sessionExpiry = Duration.ofDays(sessionExpiryDays);
@@ -330,6 +333,116 @@ class AuthService {
         }
         sessions.deleteByPlayerId(guest.id);
         return createSession(guest);
+    }
+
+    @Transactional
+    AuthResponse facebookLogin(FacebookLoginRequest request) {
+        FacebookIdentityVerifier.VerifiedFacebookIdentity facebook =
+                facebookIdentityVerifier.verify(request.accessToken());
+        return oauthLogin(
+                "facebook",
+                facebook.subject(),
+                facebook.email(),
+                facebook.displayName(),
+                facebook.photoUrl());
+    }
+
+    @Transactional
+    AuthResponse upgradeGuestWithFacebook(String token, FacebookLoginRequest request) {
+        FacebookIdentityVerifier.VerifiedFacebookIdentity facebook =
+                facebookIdentityVerifier.verify(request.accessToken());
+        return upgradeGuestWithOAuth(
+                token,
+                "facebook",
+                facebook.subject(),
+                facebook.email(),
+                facebook.displayName(),
+                facebook.photoUrl());
+    }
+
+    private AuthResponse oauthLogin(
+            String provider,
+            String subject,
+            String rawEmail,
+            String rawDisplayName,
+            String photoUrl) {
+        OAuthIdentity existingIdentity =
+                oauthIdentities.findByProviderAndSubject(provider, subject).orElse(null);
+        if (existingIdentity != null) {
+            existingIdentity.player.photoUrl = photoUrl;
+            existingIdentity.player.updatedAt = Instant.now();
+            players.save(existingIdentity.player);
+            return createSession(existingIdentity.player);
+        }
+
+        String email = normalizeEmail(rawEmail);
+        PlayerAccount player = players.findByEmailIgnoreCase(email).orElse(null);
+        if (player == null) {
+            String displayName = oauthDisplayName(rawDisplayName, email);
+            player = new PlayerAccount(
+                    availableGoogleUsername(email),
+                    displayName,
+                    email,
+                    passwordEncoder.encode(UUID.randomUUID().toString()));
+        }
+        player.verified = true;
+        player.failedLoginAttempts = 0;
+        player.lockedUntil = null;
+        player.photoUrl = photoUrl;
+        player.updatedAt = Instant.now();
+        players.save(player);
+        oauthIdentities.save(new OAuthIdentity(provider, subject, player));
+        return createSession(player);
+    }
+
+    private AuthResponse upgradeGuestWithOAuth(
+            String token,
+            String provider,
+            String subject,
+            String rawEmail,
+            String rawDisplayName,
+            String photoUrl) {
+        AuthSession session = requireSession(token);
+        PlayerAccount guest = session.player;
+        if (!guest.guestAccount) {
+            throw new AuthException(HttpStatus.CONFLICT, "This ChessVerseAI account is already secured.");
+        }
+        OAuthIdentity identity =
+                oauthIdentities.findByProviderAndSubject(provider, subject).orElse(null);
+        if (identity != null && !java.util.Objects.equals(identity.player.id, guest.id)) {
+            identity.player.photoUrl = photoUrl;
+            identity.player.updatedAt = Instant.now();
+            players.save(identity.player);
+            return createSession(identity.player);
+        }
+
+        String email = normalizeEmail(rawEmail);
+        PlayerAccount emailOwner = players.findByEmailIgnoreCase(email).orElse(null);
+        if (emailOwner != null && !emailOwner.id.equals(guest.id)) {
+            throw new AuthException(
+                    HttpStatus.CONFLICT,
+                    "That email already has a ChessVerseAI account. Sign in to that account; your guest progress remains safe on this device.");
+        }
+        guest.username = availableGoogleUsername(email);
+        guest.displayName = oauthDisplayName(rawDisplayName, email);
+        guest.email = email;
+        guest.photoUrl = photoUrl;
+        guest.guestAccount = false;
+        guest.verified = true;
+        guest.failedLoginAttempts = 0;
+        guest.lockedUntil = null;
+        guest.updatedAt = Instant.now();
+        players.save(guest);
+        if (identity == null) oauthIdentities.save(new OAuthIdentity(provider, subject, guest));
+        sessions.deleteByPlayerId(guest.id);
+        return createSession(guest);
+    }
+
+    private String oauthDisplayName(String rawDisplayName, String email) {
+        String displayName = rawDisplayName == null || rawDisplayName.isBlank()
+                ? email.substring(0, email.indexOf('@'))
+                : rawDisplayName.trim();
+        return displayName.substring(0, Math.min(displayName.length(), 80));
     }
 
     @Transactional

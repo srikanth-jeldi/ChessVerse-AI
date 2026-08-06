@@ -55,6 +55,18 @@ class AuthController {
         return authService.upgradeGuestWithGoogle(bearerToken(authorization), request);
     }
 
+    @PostMapping("/facebook")
+    AuthResponse facebookLogin(@Valid @RequestBody FacebookLoginRequest request) {
+        return authService.facebookLogin(request);
+    }
+
+    @PostMapping("/facebook/upgrade")
+    AuthResponse upgradeGuestWithFacebook(
+            @RequestHeader(name = "Authorization", required = false) String authorization,
+            @Valid @RequestBody FacebookLoginRequest request) {
+        return authService.upgradeGuestWithFacebook(bearerToken(authorization), request);
+    }
+
     @PostMapping("/guest")
     AuthResponse guestLogin(@Valid @RequestBody GuestLoginRequest request) {
         return authService.guestLogin(request);

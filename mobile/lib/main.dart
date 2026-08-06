@@ -7,6 +7,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'core/audio/chess_sound_service.dart';
@@ -34,6 +35,14 @@ import 'features/tutorial/presentation/learn_chess_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (kIsWeb) {
+    await FacebookAuth.instance.webAndDesktopInitialize(
+      appId: AppConfig.facebookAppId,
+      cookie: true,
+      xfbml: true,
+      version: 'v26.0',
+    );
+  }
   await LocalGameArchive.init();
   AppConfig.validate();
   runApp(const ChessVerseApp());
@@ -3284,13 +3293,52 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     });
   }
 
-  void _showFacebookSetupMessage() {
+  Future<void> _showFacebookSetupMessage() async {
     setState(() {
+      _authLoading = true;
       _authHasError = false;
-      _authMessage = AppConfig.usesDummySocialConfig
-          ? 'Google, Apple, Facebook, and VPS placeholders are wired. Replace dummy IDs/tokens in CI/VPS before store release. ChessVerseAI login and Guest Player work now.'
-          : 'Social login config is present. Backend OAuth callback endpoints must be enabled on the live VPS before store release.';
+      _authMessage = 'Opening Facebook securely...';
     });
+    try {
+      final LoginResult result = await FacebookAuth.instance.login(
+        permissions: const <String>['email', 'public_profile'],
+      );
+      if (result.status == LoginStatus.cancelled) {
+        if (mounted) {
+          setState(() => _authMessage = 'Facebook sign-in was cancelled.');
+        }
+        return;
+      }
+      if (result.status != LoginStatus.success || result.accessToken == null) {
+        throw AuthApiException(
+          result.message ?? 'Facebook sign-in failed. Please try again.',
+        );
+      }
+      final Map<String, dynamic> response = await _authApi.post(
+        'facebook',
+        <String, String>{
+          'accessToken': result.accessToken!.tokenString,
+        },
+      );
+      if (!mounted) return;
+      await _completeLogin(response);
+    } on AuthApiException catch (error) {
+      if (mounted) {
+        setState(() {
+          _authHasError = true;
+          _authMessage = error.message;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _authHasError = true;
+          _authMessage = 'Facebook sign-in failed. Please try again.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _authLoading = false);
+    }
   }
 
   Future<void> _resendVerificationCode() async {

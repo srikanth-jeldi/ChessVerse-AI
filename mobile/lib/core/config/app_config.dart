@@ -53,12 +53,12 @@ abstract final class AppConfig {
 
   static const String facebookAppId = String.fromEnvironment(
     'FACEBOOK_APP_ID',
-    defaultValue: 'replace-facebook-app-id',
+    defaultValue: '27409411982074524',
   );
 
   static const String facebookClientToken = String.fromEnvironment(
     'FACEBOOK_CLIENT_TOKEN',
-    defaultValue: 'replace-facebook-client-token',
+    defaultValue: 'aea3ed77a1ce5ca76b7d630df081e5d9',
   );
 
   static const String privacyPolicyUrl = String.fromEnvironment(
