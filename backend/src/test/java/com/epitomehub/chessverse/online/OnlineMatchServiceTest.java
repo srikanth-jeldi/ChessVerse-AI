@@ -248,7 +248,7 @@ class OnlineMatchServiceTest {
     @Test
     void expiredDisconnectedPlayerLosesMatch() {
         OnlineMatch match = activeMatch();
-        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(16);
+        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(61);
         when(repository.lockExpiredDisconnects(any())).thenReturn(java.util.List.of(match));
 
         java.util.List<UUID> finished = service.finishExpiredDisconnects();

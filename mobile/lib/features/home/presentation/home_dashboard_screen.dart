@@ -215,7 +215,7 @@ class _MobileHomeState extends State<_MobileHome> {
                               'Personalize your board and game experience',
                           icon: Icons.tune_rounded,
                           buttonLabel: 'Open Settings',
-                          asset: 'assets/backgrounds/grandmaster-table-v1.webp',
+                          asset: 'assets/backgrounds/home-settings-hero-v1.png',
                           onTap: widget.onSettings,
                         ),
                       ],
@@ -366,6 +366,7 @@ class _WideHomeState extends State<_WideHome> {
             onPlay: widget.onOnlineGame,
             onPuzzles: widget.onPuzzles,
             onLearn: widget.onLearnChess,
+            onProfile: widget.onProfile,
             onAnalysis: widget.onAnalysis,
             onRankings: widget.onRankings,
             onSettings: widget.onSettings,
@@ -394,7 +395,7 @@ class _WideHomeState extends State<_WideHome> {
                           selectedIndex: _heroIndex,
                           onPageChanged: (int value) =>
                               setState(() => _heroIndex = value),
-                          height: compact ? 270 : 310,
+                          height: compact ? 270 : 305,
                           wide: true,
                           slides: <_HomeHeroData>[
                             _HomeHeroData(
@@ -454,7 +455,7 @@ class _WideHomeState extends State<_WideHome> {
                               icon: Icons.tune_rounded,
                               buttonLabel: 'Open Settings',
                               asset:
-                                  'assets/backgrounds/grandmaster-table-v1.webp',
+                                  'assets/backgrounds/home-settings-hero-v1.png',
                               onTap: widget.onSettings,
                             ),
                           ],
@@ -496,6 +497,7 @@ class _WideHomeState extends State<_WideHome> {
                                     keyName: 'chess-puzzles',
                                     icon: Icons.extension_rounded,
                                     label: 'Puzzles',
+                                    subtitle: 'Sharpen your skills',
                                     color: AppColors.accentGold,
                                     asset:
                                         'assets/backgrounds/home-puzzles-hero-v1.png',
@@ -506,6 +508,7 @@ class _WideHomeState extends State<_WideHome> {
                                     keyName: 'rankings',
                                     icon: Icons.leaderboard_rounded,
                                     label: 'Rankings',
+                                    subtitle: 'See stats & progress',
                                     color: const Color(0xFFF1B74D),
                                     asset:
                                         'assets/backgrounds/home-rankings-hero-v1.png',
@@ -516,6 +519,7 @@ class _WideHomeState extends State<_WideHome> {
                                     keyName: 'analysis',
                                     icon: Icons.trending_up_rounded,
                                     label: 'Analysis',
+                                    subtitle: 'Review your games',
                                     color: const Color(0xFF3DA2FF),
                                     asset:
                                         'assets/backgrounds/home-analysis-hero-v1.png',
@@ -526,6 +530,7 @@ class _WideHomeState extends State<_WideHome> {
                                     keyName: 'learn',
                                     icon: Icons.school_rounded,
                                     label: 'Learn',
+                                    subtitle: 'Improve & grow',
                                     color: const Color(0xFFA879F5),
                                     asset:
                                         'assets/backgrounds/home-learn-hero-v1.png',
@@ -841,21 +846,23 @@ class _PlayerHeader extends StatelessWidget {
           key: const ValueKey<String>('home-profile'),
           onTap: onProfile,
           borderRadius: BorderRadius.circular(999),
-          child: _Avatar(photoUrl: profilePhotoUrl, size: 42),
+          child: _Avatar(photoUrl: profilePhotoUrl, size: wide ? 58 : 42),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Text('Welcome back,',
-                  style: TextStyle(color: Color(0xFF9FB6C8), fontSize: 12)),
+              Text('Welcome back,',
+                  style: TextStyle(
+                      color: const Color(0xFF9FB6C8),
+                      fontSize: wide ? 15 : 12)),
               Text(playerName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: Colors.white,
-                      fontSize: 17,
+                      fontSize: wide ? 22 : 17,
                       fontWeight: FontWeight.w800)),
             ],
           ),
@@ -1040,14 +1047,6 @@ class _CarouselHero extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: const Color(0xFF2A91F2), width: 1.3),
-            image: data.asset == null
-                ? null
-                : DecorationImage(
-                    image: AssetImage(data.asset!),
-                    fit: BoxFit.cover,
-                    alignment: Alignment.centerRight,
-                    opacity: .9,
-                  ),
             gradient: LinearGradient(
               colors: <Color>[
                 const Color(0xFF0B3159),
@@ -1058,17 +1057,27 @@ class _CarouselHero extends StatelessWidget {
             ),
           ),
           child: Stack(children: <Widget>[
+            if (data.asset != null)
+              Positioned.fill(
+                left: wide ? 390 : 92,
+                child: Image.asset(
+                  data.asset!,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.centerRight,
+                  opacity: const AlwaysStoppedAnimation<double>(.78),
+                ),
+              ),
             Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(24),
                   gradient: const LinearGradient(
                     colors: <Color>[
-                      Color(0xE8081F37),
-                      Color(0x7A08213C),
-                      Color(0x10081727),
+                      Color(0xFF081F37),
+                      Color(0xE608213C),
+                      Color(0x30081727),
                     ],
-                    stops: <double>[0, .5, 1],
+                    stops: <double>[0, .48, 1],
                   ),
                 ),
               ),
@@ -1083,14 +1092,30 @@ class _CarouselHero extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Icon(data.icon, color: const Color(0xFF48E3CB), size: 35),
-                      const SizedBox(height: 10),
-                      Text(data.title,
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: wide ? 40 : 28,
-                              height: 1,
-                              fontWeight: FontWeight.w900)),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: <Widget>[
+                          Icon(
+                            data.icon,
+                            color: const Color(0xFF48E3CB),
+                            size: wide ? 35 : 30,
+                          ),
+                          SizedBox(width: wide ? 12 : 9),
+                          Expanded(
+                            child: Text(
+                              data.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: wide ? 40 : 28,
+                                height: 1,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                       Text(data.subtitle,
                           maxLines: 2,
@@ -1267,14 +1292,14 @@ class _ActionCard extends StatelessWidget {
       required this.title,
       required this.subtitle,
       required this.color,
-      this.asset,
+      required this.asset,
       required this.onTap});
   final String keyName;
   final IconData icon;
   final String title;
   final String subtitle;
   final Color color;
-  final String? asset;
+  final String asset;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
@@ -1287,18 +1312,15 @@ class _ActionCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(20),
           child: Ink(
-            height: narrow ? 164 : 126,
+            height: 164,
             padding: EdgeInsets.all(narrow ? 15 : 18),
             decoration: BoxDecoration(
                 color: color.withValues(alpha: .76),
-                image: asset == null
-                    ? null
-                    : DecorationImage(
-                        image: AssetImage(asset!),
-                        fit: BoxFit.cover,
-                        alignment: Alignment.centerRight,
-                        colorFilter: const ColorFilter.mode(
-                            Color(0x8803182A), BlendMode.darken)),
+                image: DecorationImage(
+                    image: AssetImage(asset),
+                    fit: BoxFit.cover,
+                    alignment: Alignment.centerRight,
+                    opacity: .68),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: color.withValues(alpha: .9))),
             child: narrow
@@ -1377,14 +1399,16 @@ class _MiniCard extends StatelessWidget {
       {required this.keyName,
       required this.icon,
       required this.label,
+      this.subtitle,
       required this.color,
-      this.asset,
+      required this.asset,
       required this.onTap});
   final String keyName;
   final IconData icon;
   final String label;
+  final String? subtitle;
   final Color color;
-  final String? asset;
+  final String asset;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
@@ -1395,32 +1419,43 @@ class _MiniCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: Ink(
-          height: 126,
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
+          height: 164,
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 12),
           decoration: BoxDecoration(
               color: const Color(0xDD0C2030),
-              image: asset == null
-                  ? null
-                  : DecorationImage(
-                      image: AssetImage(asset!),
-                      fit: BoxFit.cover,
-                      alignment: Alignment.centerRight,
-                      colorFilter: const ColorFilter.mode(
-                          Color(0xAA061827), BlendMode.darken)),
+              image: DecorationImage(
+                  image: AssetImage(asset),
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  opacity: .58),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: color.withValues(alpha: .35))),
           child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Icon(icon, color: color, size: 24),
-                const SizedBox(height: 6),
+                Icon(icon, color: color, size: 34),
+                const SizedBox(height: 10),
                 Text(label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800))
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800)),
+                if (subtitle != null) ...<Widget>[
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle!,
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFFB9CBD7),
+                      fontSize: 11,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
               ]),
         ),
       ),

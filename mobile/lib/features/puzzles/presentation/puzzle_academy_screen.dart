@@ -13,10 +13,12 @@ Future<void> _noPuzzleLaunch(String _) async {}
 class PuzzleAcademyScreen extends StatefulWidget {
   const PuzzleAcademyScreen({
     this.onStartPuzzle = _noPuzzleLaunch,
+    this.showPrimaryNavigation = true,
     super.key,
   });
 
   final PuzzleLauncher onStartPuzzle;
+  final bool showPrimaryNavigation;
 
   @override
   State<PuzzleAcademyScreen> createState() => _PuzzleAcademyScreenState();
@@ -154,11 +156,12 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
           if (desktop) {
             return Row(
               children: <Widget>[
-                DesktopAppSidebar(
-                  selected: 'Puzzles',
-                  onHome: () => Navigator.maybePop(context),
-                  onPuzzles: () {},
-                ),
+                if (widget.showPrimaryNavigation)
+                  DesktopAppSidebar(
+                    selected: 'Puzzles',
+                    onHome: () => Navigator.maybePop(context),
+                    onPuzzles: () {},
+                  ),
                 Expanded(
                   child: _DesktopPuzzleAcademy(
                     stats: stats,
@@ -340,16 +343,6 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
           children: <Widget>[
             Row(
               children: <Widget>[
-                IconButton.filledTonal(
-                  onPressed: () => Navigator.maybePop(context),
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  style: IconButton.styleFrom(
-                    foregroundColor: AppColors.accentGold,
-                    backgroundColor: const Color(0xFF0B1B2B),
-                    side: const BorderSide(color: Color(0xFF6F5129)),
-                  ),
-                ),
-                const SizedBox(width: 20),
                 const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -472,10 +465,10 @@ class _PuzzleHero extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
           image: const DecorationImage(
-            image: AssetImage('assets/backgrounds/home-puzzles-hero-v1.png'),
+            image: AssetImage('assets/backgrounds/puzzle-academy-hero-v2.png'),
             fit: BoxFit.cover,
             alignment: Alignment.centerRight,
-            opacity: .24,
+            opacity: .82,
           ),
           gradient: const LinearGradient(colors: <Color>[
             Color(0xF2122C3A),
@@ -497,11 +490,11 @@ class _PuzzleHero extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
-                    stops: <double>[0, .58, 1],
+                    stops: <double>[0, .52, 1],
                     colors: <Color>[
                       Color(0xF9061726),
-                      Color(0xE60A1B29),
-                      Color(0xB80A1722),
+                      Color(0xC90A1B29),
+                      Color(0x260A1722),
                     ],
                   ),
                 ),
@@ -705,92 +698,98 @@ class _DifficultyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        key: ValueKey<String>(keyName),
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(
-            color: const Color(0xE6112130),
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool condensed =
+            constraints.hasBoundedHeight && constraints.maxHeight < 112;
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            key: ValueKey<String>(keyName),
+            onTap: onTap,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: accent.withValues(alpha: 0.55)),
-          ),
-          child: Row(
-            children: <Widget>[
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(icon, color: accent, size: 27),
+            child: Ink(
+              padding: EdgeInsets.all(condensed ? 10 : 15),
+              decoration: BoxDecoration(
+                color: const Color(0xE6112130),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: accent.withValues(alpha: 0.55)),
               ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
+              child: Row(
+                children: <Widget>[
+                  Container(
+                    width: condensed ? 44 : 52,
+                    height: condensed ? 44 : 52,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(icon, color: accent, size: condensed ? 23 : 27),
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
+                        Row(
+                          children: <Widget>[
+                            Text(
+                              level,
+                              style: TextStyle(
+                                color: accent,
+                                fontSize: 10,
+                                letterSpacing: 1.2,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              '$solved/50',
+                              style: const TextStyle(
+                                color: Color(0xFF8399A7),
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
                         Text(
-                          level,
+                          title,
                           style: TextStyle(
-                            color: accent,
-                            fontSize: 10,
-                            letterSpacing: 1.2,
+                            color: Colors.white,
+                            fontSize: condensed ? 16 : 18,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const Spacer(),
                         Text(
-                          '$solved/50',
+                          detail,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Color(0xFF8399A7),
-                            fontSize: 10,
+                            color: Color(0xFF8FA5B1),
+                            fontSize: 11,
+                          ),
+                        ),
+                        SizedBox(height: condensed ? 4 : 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            value: solved / PuzzleCatalog.puzzlesPerDifficulty,
+                            minHeight: condensed ? 6 : 5,
+                            color: accent,
+                            backgroundColor: const Color(0xFF263645),
                           ),
                         ),
                       ],
                     ),
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    Text(
-                      detail,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF8FA5B1),
-                        fontSize: 11,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        value: solved / PuzzleCatalog.puzzlesPerDifficulty,
-                        minHeight: 5,
-                        color: accent,
-                        backgroundColor: const Color(0xFF263645),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 9),
+                  Icon(Icons.chevron_right_rounded, color: accent),
+                ],
               ),
-              const SizedBox(width: 9),
-              Icon(Icons.chevron_right_rounded, color: accent),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

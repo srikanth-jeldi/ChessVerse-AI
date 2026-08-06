@@ -14,6 +14,7 @@ import 'core/app_preferences.dart';
 import 'core/config/app_config.dart';
 import 'core/local_game_archive.dart';
 import 'core/widgets/chessverse_app_backdrop.dart';
+import 'core/widgets/desktop_app_sidebar.dart';
 import 'features/auth/data/auth_api.dart';
 import 'features/auth/data/auth_session_store.dart';
 import 'features/auth/presentation/auth_screen.dart';
@@ -116,10 +117,10 @@ class _SplashGateState extends State<SplashGate> {
     if (_splashArtworkLoadingStarted) return;
     _splashArtworkLoadingStarted = true;
     final Size viewport = MediaQuery.sizeOf(context);
-    // A phone remains a phone after rotation. Using width alone made a
-    // landscape handset preload the tablet/web splash artwork.
-    final bool useWideArtwork =
-        viewport.shortestSide >= 600 && viewport.width >= 720;
+    // Match BrandedSplash exactly: every landscape surface preloads the wide
+    // artwork, including phones rotated before or during app startup.
+    final bool useWideArtwork = viewport.width > viewport.height ||
+        (viewport.shortestSide >= 600 && viewport.width >= 720);
     final String artwork = useWideArtwork
         ? 'assets/branding/chessverse_king_dual_splash.jpg'
         : 'assets/branding/splash_screen_mobile_v2.jpg';
@@ -284,12 +285,28 @@ class _SplashGateState extends State<SplashGate> {
         onAnalysis: () => _push(context, const AnalysisScreen()),
         onPuzzles: () => setState(() => _primaryDestination = 2),
         onSavedGames: () => _push(context, const MatchHistoryScreen()),
-        onRankings: () => _push(context, const LeaderboardScreen()),
+        onRankings: () => _push(
+          context,
+          LeaderboardScreen(
+            onHome: () => _closeSettingsAndSelect(context, 0),
+            onPlay: () => _closeSettingsAndSelect(context, 1),
+            onPuzzles: () => _closeSettingsAndSelect(context, 2),
+            onLearn: () => _closeSettingsAndSelect(context, 3),
+            onProfile: () => _closeSettingsAndSelect(context, 4),
+          ),
+        ),
         onLearnChess: () => setState(() => _primaryDestination = 3),
         onProfile: () => setState(() => _primaryDestination = 4),
         onSettings: () => _push(
           context,
-          SettingsScreen(onLogout: () => _logout(context)),
+          SettingsScreen(
+            onLogout: () => _logout(context),
+            onHome: () => _closeSettingsAndSelect(context, 0),
+            onPlay: () => _closeSettingsAndSelect(context, 1),
+            onPuzzles: () => _closeSettingsAndSelect(context, 2),
+            onLearn: () => _closeSettingsAndSelect(context, 3),
+            onProfile: () => _closeSettingsAndSelect(context, 4),
+          ),
         ),
         showPrimaryNavigation: false,
       ),
@@ -300,6 +317,7 @@ class _SplashGateState extends State<SplashGate> {
         onDaily: () => _openGame(context, GameMode.daily),
       ),
       PuzzlesScreen(
+        showPrimaryNavigation: false,
         onStartPuzzle: (String puzzleId) => _openGame(
           context,
           GameMode.puzzle,
@@ -405,6 +423,12 @@ class _SplashGateState extends State<SplashGate> {
         );
       },
     );
+  }
+
+  void _closeSettingsAndSelect(BuildContext context, int destination) {
+    Navigator.of(context).pop();
+    if (!mounted) return;
+    setState(() => _primaryDestination = destination);
   }
 
   Future<void> _chooseSideAndOpen(BuildContext context, GameMode mode) async {
@@ -767,13 +791,14 @@ class BrandedSplash extends StatelessWidget {
       backgroundColor: const Color(0xFF02070D),
       body: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          // Classify by the viewport's shortest side so rotating a phone does
-          // not switch it to the tablet/web splash. Actual tablets and desktop
-          // surfaces keep the wide artwork.
+          // Landscape always gets the dedicated edge-to-edge composition.
+          // Portrait phones retain the compact splash used on mobile.
           final Size viewport = MediaQuery.sizeOf(context);
           final bool phoneSized = viewport.shortestSide < 600;
-          final bool wide = !phoneSized &&
-              (constraints.maxWidth >= 720 || constraints.maxWidth <= 0);
+          final bool landscape = viewport.width > viewport.height;
+          final bool wide = landscape ||
+              (!phoneSized &&
+                  (constraints.maxWidth >= 720 || constraints.maxWidth <= 0));
           const String wideAsset =
               'assets/branding/chessverse_king_dual_splash.jpg';
           const String mobileAsset =
@@ -898,18 +923,9 @@ class BrandedSplash extends StatelessWidget {
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
-              const Opacity(
-                opacity: 0.32,
-                child: Image(
-                  image: AssetImage(wideAsset),
-                  fit: BoxFit.cover,
-                  alignment: Alignment.center,
-                  filterQuality: FilterQuality.medium,
-                ),
-              ),
               const Image(
                 image: AssetImage(wideAsset),
-                fit: BoxFit.contain,
+                fit: BoxFit.cover,
                 alignment: Alignment.center,
                 filterQuality: FilterQuality.high,
               ),
@@ -1116,12 +1132,9 @@ class ChessVerseLoadingScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF02070D),
       body: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          final bool wide = kIsWeb ||
-              constraints.maxWidth >= 720 ||
-              constraints.maxWidth <= 0;
-          final bool short = constraints.maxHeight > 0 &&
-              constraints.maxHeight < (wide ? 420 : 620);
-          final double logoSize = short ? 62 : (wide ? 126 : 106);
+          final Size viewport = MediaQuery.sizeOf(context);
+          final bool wide =
+              viewport.shortestSide >= 600 && constraints.maxWidth >= 800;
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
@@ -1138,114 +1151,305 @@ class ChessVerseLoadingScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              Center(
-                child: SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: wide ? 560 : 360),
-                    child: Padding(
-                      padding: EdgeInsets.all(short ? 14 : 28),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          Container(
-                            width: logoSize,
-                            height: logoSize,
-                            padding: EdgeInsets.all(short ? 8 : 14),
-                            decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF0A111A,
-                              ).withValues(alpha: 0.82),
-                              borderRadius: BorderRadius.circular(
-                                short ? 20 : 32,
-                              ),
-                              border: Border.all(
-                                color: const Color(
-                                  0xFFD6A84F,
-                                ).withValues(alpha: 0.7),
-                              ),
-                              boxShadow: <BoxShadow>[
-                                BoxShadow(
-                                  color: const Color(
-                                    0xFF63D2B8,
-                                  ).withValues(alpha: 0.28),
-                                  blurRadius: short ? 22 : 42,
-                                  offset: Offset(0, short ? 8 : 18),
-                                ),
-                              ],
-                            ),
-                            child: Image.asset('assets/branding/app_icon.png'),
-                          ),
-                          SizedBox(height: short ? 10 : 26),
-                          Text(
-                            'CHESSVERSEAI',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineLarge
-                                ?.copyWith(
-                                  letterSpacing: 2,
-                                  fontSize: short ? 20 : null,
-                                  fontWeight: FontWeight.w900,
-                                  color: const Color(0xFFF8F2E4),
-                                ),
-                          ),
-                          SizedBox(height: short ? 4 : 8),
-                          Text(
-                            'Think  -  Move  -  Master',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  color: const Color(0xFFE0C47C),
-                                  fontSize: short ? 10 : null,
-                                  letterSpacing: 1.2,
-                                ),
-                          ),
-                          SizedBox(height: short ? 14 : 44),
-                          Text(
-                            'Preparing your board',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  letterSpacing: 0.4,
-                                  fontSize: short ? 10 : null,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                          ),
-                          SizedBox(height: short ? 8 : 14),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(999),
-                            child: LinearProgressIndicator(
-                              minHeight: short ? 5 : 7,
-                              backgroundColor: const Color(
-                                0xFFE0C47C,
-                              ).withValues(alpha: 0.1),
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                Color(0xFF63D2B8),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: short ? 8 : 14),
-                          Text(
-                            'Loading pieces, puzzles, and your profile',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: const Color(0xFFAAA69E)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+              SafeArea(
+                child: wide
+                    ? const _WideChessVerseLoadingPanel()
+                    : const _MobileChessVerseLoadingPanel(),
               ),
             ],
           );
         },
       ),
+    );
+  }
+}
+
+class _MobileChessVerseLoadingPanel extends StatelessWidget {
+  const _MobileChessVerseLoadingPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final bool compact = MediaQuery.sizeOf(context).height < 700;
+    return Center(
+      child: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
+        padding:
+            EdgeInsets.symmetric(horizontal: 30, vertical: compact ? 18 : 32),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 390),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              _LoadingLogo(size: compact ? 102 : 124),
+              SizedBox(height: compact ? 22 : 30),
+              const _LoadingBrand(centered: true),
+              SizedBox(height: compact ? 40 : 64),
+              const _LoadingProgress(centered: true),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WideChessVerseLoadingPanel extends StatelessWidget {
+  const _WideChessVerseLoadingPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
+        padding: const EdgeInsets.all(28),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1280),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 610),
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: const Color(0xE6041018),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: const Color(0x66566D70), width: 2),
+              boxShadow: const <BoxShadow>[
+                BoxShadow(color: Color(0x6600B9A8), blurRadius: 48),
+              ],
+            ),
+            child: Stack(
+              children: <Widget>[
+                Positioned.fill(
+                  left: 500,
+                  child: Image.asset(
+                    'assets/backgrounds/home-online-hero-v1.png',
+                    fit: BoxFit.cover,
+                    alignment: Alignment.centerRight,
+                  ),
+                ),
+                const Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: <Color>[
+                          Color(0xFF031019),
+                          Color(0xF2031019),
+                          Color(0x70031019),
+                          Color(0x12031019),
+                        ],
+                        stops: <double>[0, .37, .62, 1],
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(68, 62, 68, 38),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      const Row(
+                        children: <Widget>[
+                          _LoadingLogo(size: 116),
+                          SizedBox(width: 28),
+                          _LoadingBrand(centered: false),
+                        ],
+                      ),
+                      const SizedBox(height: 42),
+                      const SizedBox(
+                          width: 520, child: _LoadingProgress(centered: false)),
+                      const Spacer(),
+                      const _LoadingFeatureStrip(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadingLogo extends StatelessWidget {
+  const _LoadingLogo({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      padding: EdgeInsets.all(size * .08),
+      decoration: BoxDecoration(
+        color: const Color(0xE6071520),
+        borderRadius: BorderRadius.circular(size * .25),
+        border: Border.all(color: const Color(0xFFE0B85E), width: 1.4),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(color: Color(0x554DE1C8), blurRadius: 42, spreadRadius: 5),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size * .18),
+        child: Image.asset('assets/branding/app_icon.png', fit: BoxFit.cover),
+      ),
+    );
+  }
+}
+
+class _LoadingBrand extends StatelessWidget {
+  const _LoadingBrand({required this.centered});
+
+  final bool centered;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment:
+          centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      children: <Widget>[
+        Text.rich(
+          const TextSpan(
+            children: <InlineSpan>[
+              TextSpan(text: 'CHESSVERSE'),
+              TextSpan(text: ' AI', style: TextStyle(color: Color(0xFFF2BF4D))),
+            ],
+          ),
+          textAlign: centered ? TextAlign.center : TextAlign.left,
+          style: TextStyle(
+            color: const Color(0xFFF8F2E4),
+            fontSize: centered ? 30 : 42,
+            height: 1,
+            fontWeight: FontWeight.w900,
+            letterSpacing: centered ? .4 : .8,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Think  •  Move  •  Master',
+          textAlign: centered ? TextAlign.center : TextAlign.left,
+          style: TextStyle(
+            color: const Color(0xFFE0B85E),
+            fontSize: centered ? 16 : 22,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LoadingProgress extends StatelessWidget {
+  const _LoadingProgress({required this.centered});
+
+  final bool centered;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment:
+          centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          'Preparing your board',
+          textAlign: centered ? TextAlign.center : TextAlign.left,
+          style: TextStyle(
+            color: const Color(0xFFF8F2E4),
+            fontSize: centered ? 18 : 24,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 17),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: const LinearProgressIndicator(
+            minHeight: 8,
+            backgroundColor: Color(0x332F5757),
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF59D4C1)),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Loading pieces, puzzles, and your profile',
+          textAlign: centered ? TextAlign.center : TextAlign.left,
+          style: TextStyle(
+            color: const Color(0xFFAAAEB5),
+            fontSize: centered ? 14 : 17,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LoadingFeatureStrip extends StatelessWidget {
+  const _LoadingFeatureStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 22),
+      decoration: BoxDecoration(
+        color: const Color(0xD9061822),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0x443E6E72)),
+      ),
+      child: const Row(
+        children: <Widget>[
+          Expanded(
+              child: _LoadingFeature(
+                  icon: Icons.extension_rounded,
+                  title: 'Smart Puzzles',
+                  subtitle: 'Train your mind daily')),
+          VerticalDivider(color: Color(0x445A7178)),
+          Expanded(
+              child: _LoadingFeature(
+                  icon: Icons.emoji_events_outlined,
+                  title: 'Compete',
+                  subtitle: 'Challenge players worldwide')),
+          VerticalDivider(color: Color(0x445A7178)),
+          Expanded(
+              child: _LoadingFeature(
+                  icon: Icons.trending_up_rounded,
+                  title: 'Track Progress',
+                  subtitle: 'Improve and climb ranks')),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadingFeature extends StatelessWidget {
+  const _LoadingFeature(
+      {required this.icon, required this.title, required this.subtitle});
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Icon(icon, color: const Color(0xFF59D4C1), size: 38),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(title,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text(subtitle,
+                  style:
+                      const TextStyle(color: Color(0xFFADB7C1), fontSize: 13)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1938,78 +2142,83 @@ class _PlayDestination extends StatelessWidget {
   final VoidCallback onDaily;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: const Column(
-            children: <Widget>[
-              Text('PLAY',
-                  style: TextStyle(
-                      letterSpacing: 1.8, fontWeight: FontWeight.w900)),
-              Text('Choose your battle mode',
-                  style: TextStyle(
-                      color: Color(0xFFAEC0D1),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400)),
-            ],
-          ),
-          centerTitle: true,
+  Widget build(BuildContext context) {
+    final bool wide = MediaQuery.sizeOf(context).width >= 900;
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        toolbarHeight: wide ? 96 : null,
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text('PLAY',
+                style:
+                    TextStyle(letterSpacing: 1.8, fontWeight: FontWeight.w900)),
+            Text('Choose your battle mode',
+                style: TextStyle(
+                    color: Color(0xFFAEC0D1),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400)),
+          ],
         ),
-        body: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1100),
-              child: LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints size) =>
-                    GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 1,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  childAspectRatio: size.maxWidth >= 700 ? 6.4 : 2.7,
-                  children: <Widget>[
-                    _PlayModeCard(
-                      icon: Icons.public_rounded,
-                      title: 'Play Online',
-                      subtitle: 'Find a live rival worldwide',
-                      color: const Color(0xFF0F6B61),
-                      asset: 'assets/backgrounds/home-online-hero-v1.png',
-                      onTap: onOnline,
-                    ),
-                    _PlayModeCard(
-                      icon: Icons.computer_rounded,
-                      title: 'Play Computer',
-                      subtitle: 'Challenge the ChessVerse AI',
-                      color: const Color(0xFF174A69),
-                      asset: 'assets/backgrounds/home-computer-hero-v1.png',
-                      onTap: onComputer,
-                    ),
-                    _PlayModeCard(
-                      icon: Icons.groups_rounded,
-                      title: 'Local Match',
-                      subtitle: 'Two players on one board',
-                      color: const Color(0xFF25664F),
-                      asset: 'assets/backgrounds/home-friends-hero-v1.png',
-                      onTap: onLocal,
-                    ),
-                    _PlayModeCard(
-                      icon: Icons.calendar_month_rounded,
-                      title: 'Daily Challenge',
-                      subtitle: 'Solve today’s featured position',
-                      color: const Color(0xFF8A5A21),
-                      asset: 'assets/backgrounds/home-puzzles-hero-v1.png',
-                      onTap: onDaily,
-                    ),
-                  ],
-                ),
+        centerTitle: !wide,
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(wide ? 28 : 18, 16, wide ? 28 : 18, 24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: wide ? 1320 : 1100),
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints size) =>
+                  GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: wide ? 4 : 1,
+                mainAxisSpacing: wide ? 18 : 14,
+                crossAxisSpacing: wide ? 16 : 14,
+                childAspectRatio: wide ? .56 : 2.25,
+                children: <Widget>[
+                  _PlayModeCard(
+                    icon: Icons.public_rounded,
+                    title: 'Play Online',
+                    subtitle: 'Find a live rival worldwide',
+                    color: const Color(0xFF0F6B61),
+                    asset: 'assets/backgrounds/home-online-hero-v1.png',
+                    onTap: onOnline,
+                  ),
+                  _PlayModeCard(
+                    icon: Icons.computer_rounded,
+                    title: 'Play Computer',
+                    subtitle: 'Challenge the ChessVerse AI',
+                    color: const Color(0xFF174A69),
+                    asset: 'assets/backgrounds/play-computer-card-v2.png',
+                    onTap: onComputer,
+                  ),
+                  _PlayModeCard(
+                    icon: Icons.groups_rounded,
+                    title: 'Local Match',
+                    subtitle: 'Two players on one board',
+                    color: const Color(0xFF25664F),
+                    asset: 'assets/backgrounds/local-match-card-v2.png',
+                    onTap: onLocal,
+                  ),
+                  _PlayModeCard(
+                    icon: Icons.calendar_month_rounded,
+                    title: 'Daily Challenge',
+                    subtitle: 'Solve today’s featured position',
+                    color: const Color(0xFF8A5A21),
+                    asset: 'assets/backgrounds/daily-challenge-card-v2.png',
+                    onTap: onDaily,
+                  ),
+                ],
               ),
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _PlayModeCard extends StatelessWidget {
@@ -2029,62 +2238,179 @@ class _PlayModeCard extends StatelessWidget {
   final String? asset;
 
   @override
-  Widget build(BuildContext context) => Card(
-        color: const Color(0xFF071827),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
-          side: BorderSide(color: color.withValues(alpha: .8)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Ink(
-            decoration: BoxDecoration(
-              image: asset == null
-                  ? null
-                  : DecorationImage(
-                      image: AssetImage(asset!),
-                      fit: BoxFit.cover,
-                      alignment: Alignment.centerRight,
-                      opacity: .42,
-                    ),
-              gradient: LinearGradient(
-                colors: <Color>[
-                  color.withValues(alpha: .36),
-                  const Color(0xEE071827),
-                ],
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-              child: Row(children: <Widget>[
-                CircleAvatar(
-                  radius: 34,
-                  backgroundColor: const Color(0xB3071A2A),
-                  child: Icon(icon, color: color, size: 34),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(title,
-                          style: const TextStyle(
-                              color: Color(0xFFFFF8ED),
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900)),
-                      Text(subtitle,
-                          style: const TextStyle(color: Color(0xFFC5D5E0))),
-                    ],
+  Widget build(BuildContext context) {
+    final bool desktopCard = MediaQuery.sizeOf(context).width >= 900;
+    final Alignment imageAlignment = switch (title) {
+      'Play Computer' || 'Local Match' || 'Daily Challenge' => Alignment.center,
+      _ => Alignment.centerRight,
+    };
+    return Card(
+      color: const Color(0xFF071827),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: BorderSide(color: color.withValues(alpha: .8)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Ink(
+          decoration: BoxDecoration(
+            image: asset == null
+                ? null
+                : DecorationImage(
+                    image: AssetImage(asset!),
+                    fit: BoxFit.cover,
+                    alignment: imageAlignment,
+                    opacity: desktopCard ? .82 : .28,
                   ),
-                ),
-                Icon(Icons.chevron_right_rounded, color: color, size: 34),
-              ]),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: <Color>[
+                color.withValues(alpha: .36),
+                const Color(0xEE071827),
+              ],
             ),
           ),
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final bool compact = constraints.maxWidth < 430;
+              final bool tall = constraints.maxHeight > constraints.maxWidth;
+              if (tall) {
+                return DecoratedBox(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        Color(0x08000000),
+                        Color(0x18000000),
+                        Color(0xF2071727),
+                      ],
+                      stops: <double>[0, .46, .72],
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        const Spacer(),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: <Widget>[
+                            CircleAvatar(
+                              radius: 27,
+                              backgroundColor: const Color(0xD3071A2A),
+                              child: Icon(icon, color: color, size: 28),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                title.toUpperCase(),
+                                maxLines: 2,
+                                style: const TextStyle(
+                                  color: Color(0xFFFFF8ED),
+                                  fontSize: 22,
+                                  height: 1.05,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          subtitle,
+                          maxLines: 3,
+                          style: const TextStyle(
+                            color: Color(0xFFC5D5E0),
+                            fontSize: 16,
+                            height: 1.35,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Container(
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: .34),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: color),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: <Widget>[
+                              Text(
+                                title == 'Daily Challenge'
+                                    ? 'Solve Now'
+                                    : title == 'Local Match'
+                                        ? 'Start Match'
+                                        : title == 'Play Computer'
+                                            ? 'Start Game'
+                                            : 'Play Now',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              const Icon(Icons.chevron_right_rounded,
+                                  color: Colors.white),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 16 : 24,
+                  vertical: compact ? 12 : 18,
+                ),
+                child: Row(children: <Widget>[
+                  CircleAvatar(
+                    radius: compact ? 29 : 34,
+                    backgroundColor: const Color(0xB3071A2A),
+                    child: Icon(icon, color: color, size: compact ? 29 : 34),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                color: Color(0xFFFFF8ED),
+                                fontSize: compact ? 22 : 26,
+                                height: 1.05,
+                                fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 4),
+                        Text(subtitle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Color(0xFFC5D5E0),
+                              fontSize: compact ? 13 : 14,
+                              height: 1.2,
+                            )),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: color, size: 34),
+                ]),
+              );
+            },
+          ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class GameScreen extends StatefulWidget {
@@ -2146,6 +2472,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   StreamSubscription<dynamic>? _onlineSocketSubscription;
   Timer? _onlineSocketReconnectTimer;
   Timer? _onlineHeartbeatTimer;
+  Timer? _onlineResultPresentationTimer;
   OnlineMatchDto? _onlineMatch;
   String? _handledDrawOfferKey;
   String? _archivedOnlineMatchId;
@@ -2153,6 +2480,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   int _onlineConnectedPlayers = 0;
   bool _onlineSocketConnected = false;
   bool _onlineSubmitting = false;
+  bool _onlineCelebrationVisible = false;
+  bool _onlineCelebrationWinnerAtTop = false;
+  String? _onlineCelebrationMatchId;
   String? _selectedSquare;
   String? _lastFromSquare;
   String? _lastToSquare;
@@ -2408,6 +2738,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     unawaited(_onlineChannel?.sink.close());
     _onlineSocketReconnectTimer?.cancel();
     _onlineHeartbeatTimer?.cancel();
+    _onlineResultPresentationTimer?.cancel();
     final AudioPlayer? warningPlayer = _warningPlayer;
     if (warningPlayer != null) {
       unawaited(warningPlayer.dispose());
@@ -2793,6 +3124,28 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                   'Update your details or request a new code.';
                             }),
                             loading: _authLoading,
+                          ),
+                        ),
+                      if (_signedIn &&
+                          _gameMode == GameMode.online &&
+                          _onlineMatch?.isActive == true &&
+                          _onlineMatch?.opponentDisconnected == true)
+                        Positioned(
+                          top: wide ? wideHeaderHeight + 12 : 68,
+                          left: wide ? 28 : 16,
+                          right: wide ? widePanelWidth + 42 : 16,
+                          child: OnlineReconnectCountdown(
+                            secondsRemaining:
+                                _onlineMatch!.disconnectSecondsRemaining,
+                          ),
+                        ),
+                      if (_signedIn &&
+                          _onlineCelebrationVisible &&
+                          _gameMode == GameMode.online)
+                        Positioned.fill(
+                          child: OnlineVictoryCelebration(
+                            winnerAtTop: _onlineCelebrationWinnerAtTop,
+                            title: _gameResultTitle ?? 'Game complete',
                           ),
                         ),
                       if (_signedIn &&
@@ -5043,6 +5396,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           (!_humanPlaysWhite ? widget.initialProfilePhotoUrl : null);
       _coachNote = _onlineStatusText(match);
       if (newMatch) {
+        _onlineResultPresentationTimer?.cancel();
+        _onlineCelebrationVisible = false;
+        _onlineCelebrationMatchId = null;
         _gameResultTitle = null;
         _gameResultDetail = null;
         _resultVisible = false;
@@ -5311,6 +5667,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _resultSaved = false;
       _handledDrawOfferKey = null;
       _joiningRematchId = null;
+      _onlineResultPresentationTimer?.cancel();
+      _onlineCelebrationVisible = false;
+      _onlineCelebrationMatchId = null;
       _coachNote = 'Choose how you want to start your next online match.';
     });
     await _showOnlineMatchmakingInfo();
@@ -5466,6 +5825,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           (result == '1-0' && userWhite) || (result == '0-1' && !userWhite);
       final bool draw = result == '1/2-1/2';
       final bool firstPresentation = _archivedOnlineMatchId != match.id;
+      final bool decisive = result == '1-0' || result == '0-1';
+      final bool winningWhite = result == '1-0';
       setState(() {
         _gameResultTitle = draw
             ? 'Draw'
@@ -5473,9 +5834,32 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 ? 'You win'
                 : 'Opponent wins';
         _gameResultDetail = _onlineResultDetail(match);
-        if (firstPresentation) _resultVisible = true;
+        if (firstPresentation) {
+          // Keep the decisive move visible. The celebration occupies the
+          // winner's side of the board first; the score/action popup follows
+          // after the player has had time to identify the final move.
+          _resultVisible = !decisive;
+          _onlineCelebrationVisible = decisive;
+          _onlineCelebrationWinnerAtTop =
+              winningWhite == _shouldFlipBoard(match.whiteToMove);
+          _onlineCelebrationMatchId = decisive ? match.id : null;
+        }
         _coachNote = _onlineResultDetail(match);
       });
+      if (firstPresentation && decisive) {
+        _onlineResultPresentationTimer?.cancel();
+        _onlineResultPresentationTimer = Timer(
+          const Duration(seconds: 20),
+          () {
+            if (!mounted || _onlineCelebrationMatchId != match.id) return;
+            setState(() {
+              _onlineCelebrationVisible = false;
+              _resultVisible = true;
+            });
+          },
+        );
+        unawaited(ChessSoundService.instance.victory());
+      }
       if (_archivedOnlineMatchId != match.id) {
         _archivedOnlineMatchId = match.id;
         _archiveFinishedGame();
@@ -9172,6 +9556,10 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     final double maxHeight = size.height * (wideLayout ? 0.94 : 0.96);
     final OnlineMatchDto? found = _foundMatch;
 
+    if (wideLayout && found == null && _match == null) {
+      return _buildDesktopLobby(context);
+    }
+
     if (found != null) {
       return SafeArea(
         child: Center(
@@ -9567,6 +9955,371 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
       ),
     );
   }
+
+  Widget _buildDesktopLobby(BuildContext context) {
+    const Color teal = Color(0xFF45D7C3);
+    const Color gold = Color(0xFFF0B93F);
+    final TextTheme textTheme = Theme.of(context).textTheme;
+    final bool compactDesktop = MediaQuery.sizeOf(context).width < 1250;
+    return SafeArea(
+      child: Container(
+        margin: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF03111F),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFF1A3449)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Row(
+          children: <Widget>[
+            DesktopAppSidebar(
+              selected: 'Play',
+              onHome: () => Navigator.of(context).pop(),
+              onPlay: () {},
+              onPuzzles: () => Navigator.of(context).pop(),
+              onLearn: () => Navigator.of(context).pop(),
+              onAnalysis: () => Navigator.of(context).pop(),
+              onRankings: () => Navigator.of(context).pop(),
+              onFriends: () {},
+              onEvents: () {},
+              onStore: () {},
+              onSettings: () => Navigator.of(context).pop(),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(compactDesktop ? 24 : 38,
+                    compactDesktop ? 22 : 30, compactDesktop ? 24 : 42, 40),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Container(
+                          width: 78,
+                          height: 78,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFF082431),
+                            border: Border.all(color: teal),
+                          ),
+                          child: const Icon(Icons.sports_martial_arts_rounded,
+                              color: teal, size: 43),
+                        ),
+                        const SizedBox(width: 22),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text('Online 2 Players',
+                                  style: textTheme.headlineLarge?.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 38)),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Play online with a random opponent or invite a friend to a private room.',
+                                style: TextStyle(
+                                    color: Color(0xFFB8C3D1), fontSize: 18),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton.filled(
+                          style: IconButton.styleFrom(
+                              backgroundColor: const Color(0xFF0A1A2B),
+                              padding: const EdgeInsets.all(16)),
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close_rounded, size: 30),
+                        ),
+                      ],
+                    ),
+                    if (_error != null) ...<Widget>[
+                      const SizedBox(height: 12),
+                      Text(_error!,
+                          style: const TextStyle(color: Color(0xFFFF6B6B))),
+                    ],
+                    const SizedBox(height: 28),
+                    Container(
+                      height: 288,
+                      decoration: BoxDecoration(
+                        image: const DecorationImage(
+                          image: AssetImage(
+                              'assets/backgrounds/online-matchmaking-hero-v1.png'),
+                          fit: BoxFit.cover,
+                        ),
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(
+                            color: const Color(0xFF2F9CFF), width: 1.6),
+                        boxShadow: const <BoxShadow>[
+                          BoxShadow(color: Color(0x442F9CFF), blurRadius: 18),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(compactDesktop ? 175 : 305,
+                            38, compactDesktop ? 28 : 410, 30),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: SizedBox(
+                            width: compactDesktop ? 360 : 455,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text('Random Match',
+                                    maxLines: 1,
+                                    style: textTheme.headlineMedium?.copyWith(
+                                        fontSize: 34,
+                                        fontWeight: FontWeight.w900)),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'We’ll find a player for you\nfrom around the world.',
+                                  style: TextStyle(
+                                      color: Color(0xFFC8D1DD),
+                                      fontSize: 20,
+                                      height: 1.45),
+                                ),
+                                const Spacer(),
+                                SizedBox(
+                                  width: compactDesktop ? 320 : 455,
+                                  height: 68,
+                                  child: FilledButton.icon(
+                                    style: FilledButton.styleFrom(
+                                        backgroundColor: gold,
+                                        foregroundColor: Colors.black,
+                                        textStyle: const TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w800)),
+                                    onPressed: _loading
+                                        ? null
+                                        : () => _run(
+                                            () => widget.api
+                                                .randomMatch(widget.token),
+                                            randomSearch: true),
+                                    icon: const Icon(Icons.bolt_rounded,
+                                        size: 30),
+                                    label: const Text('Find Match'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      height: 280,
+                      padding: const EdgeInsets.all(28),
+                      decoration: BoxDecoration(
+                        color: const Color(0xD9071A29),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: const Color(0xFF267D72)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Row(children: <Widget>[
+                                  Container(
+                                    width: 68,
+                                    height: 68,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                          color: const Color(0xFF267D72)),
+                                    ),
+                                    child: const Icon(Icons.group_rounded,
+                                        color: teal, size: 38),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  const Text('Play with Friend',
+                                      style: TextStyle(
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.w900)),
+                                ]),
+                                const SizedBox(height: 8),
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 88),
+                                  child: Text(
+                                    'Create a private room or join\none using a room code.',
+                                    style: TextStyle(
+                                        color: Color(0xFFB8C3D1),
+                                        fontSize: 18,
+                                        height: 1.4),
+                                  ),
+                                ),
+                                const SizedBox(height: 22),
+                                TextField(
+                                  controller: _roomController,
+                                  onChanged: (_) => setState(() {}),
+                                  textCapitalization:
+                                      TextCapitalization.characters,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Enter room code',
+                                    hintText: 'e.g. ABCD1234',
+                                    suffixIcon: Icon(Icons.copy_rounded),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 32),
+                          const VerticalDivider(color: Color(0xFF244257)),
+                          const SizedBox(width: 32),
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              children: <Widget>[
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 76,
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      side: const BorderSide(
+                                          color: Color(0xFF23D8C2)),
+                                      textStyle: const TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w800),
+                                    ),
+                                    onPressed: _loading
+                                        ? null
+                                        : () => _run(() => widget.api
+                                            .createRoom(widget.token)),
+                                    icon: const Icon(Icons.person_add_rounded,
+                                        color: teal, size: 32),
+                                    label: const Text('Create Room'),
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 76,
+                                  child: OutlinedButton.icon(
+                                    onPressed: _loading ||
+                                            _roomController.text.trim().isEmpty
+                                        ? null
+                                        : () => _run(() => widget.api.joinRoom(
+                                            widget.token,
+                                            _roomController.text)),
+                                    icon: const Icon(
+                                        Icons.sports_esports_rounded,
+                                        size: 32),
+                                    label: const Text('Join Room'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    _DesktopOnlineActionRow(
+                      icon: Icons.sync_rounded,
+                      iconColor: const Color(0xFF3CA6FF),
+                      title: 'Reconnect',
+                      subtitle: 'Reconnect to your last game.',
+                      onTap: _loading
+                          ? null
+                          : () =>
+                              _run(() => widget.api.reconnect(widget.token)),
+                    ),
+                    const SizedBox(height: 18),
+                    const _DesktopOnlineValidationRow(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopOnlineActionRow extends StatelessWidget {
+  const _DesktopOnlineActionRow({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Container(
+          height: 104,
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          decoration: BoxDecoration(
+            color: const Color(0xFF071725),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFF233B51)),
+          ),
+          child: Row(children: <Widget>[
+            Container(
+              width: 68,
+              height: 68,
+              decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFF233B51))),
+              child: Icon(icon, color: iconColor, size: 39),
+            ),
+            const SizedBox(width: 22),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(title,
+                      style: const TextStyle(
+                          fontSize: 24, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 4),
+                  Text(subtitle,
+                      style: const TextStyle(
+                          color: Color(0xFFB8C3D1), fontSize: 17)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, size: 34),
+          ]),
+        ),
+      );
+}
+
+class _DesktopOnlineValidationRow extends StatelessWidget {
+  const _DesktopOnlineValidationRow();
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 98,
+        padding: const EdgeInsets.symmetric(horizontal: 28),
+        decoration: BoxDecoration(
+          color: const Color(0xFF071725),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF233B51)),
+        ),
+        child: const Row(children: <Widget>[
+          Icon(Icons.verified_user_outlined,
+              color: Color(0xFF43D6C1), size: 48),
+          SizedBox(width: 22),
+          Text(
+            'Moves are validated by ChessVerse AI servers.\nActive matches restore after an app restart.',
+            style:
+                TextStyle(color: Color(0xFFB8C3D1), fontSize: 17, height: 1.45),
+          ),
+        ]),
+      );
 }
 
 class _MatchSearchingView extends StatefulWidget {
@@ -10531,6 +11284,208 @@ class AuthOverlay extends StatelessWidget {
       ),
     );
   }
+}
+
+class OnlineReconnectCountdown extends StatelessWidget {
+  const OnlineReconnectCountdown({required this.secondsRemaining, super.key});
+
+  final int secondsRemaining;
+
+  @override
+  Widget build(BuildContext context) {
+    final String countdown =
+        '00:${secondsRemaining.clamp(0, 60).toString().padLeft(2, '0')}';
+    return IgnorePointer(
+      child: Center(
+        child: Semantics(
+          liveRegion: true,
+          label: 'Waiting for opponent. $secondsRemaining seconds remaining.',
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xF20A1D2C),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFE7B84B), width: 1.4),
+              boxShadow: const <BoxShadow>[
+                BoxShadow(color: Color(0x77000000), blurRadius: 24),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      color: Color(0xFF63D2B8),
+                    ),
+                  ),
+                  const SizedBox(width: 11),
+                  const Text(
+                    'WAITING FOR OPPONENT',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: .7,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Text(
+                    countdown,
+                    style: const TextStyle(
+                      color: Color(0xFFE7B84B),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      fontFeatures: <ui.FontFeature>[
+                        ui.FontFeature.tabularFigures(),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class OnlineVictoryCelebration extends StatefulWidget {
+  const OnlineVictoryCelebration({
+    required this.winnerAtTop,
+    required this.title,
+    super.key,
+  });
+
+  final bool winnerAtTop;
+  final String title;
+
+  @override
+  State<OnlineVictoryCelebration> createState() =>
+      _OnlineVictoryCelebrationState();
+}
+
+class _OnlineVictoryCelebrationState extends State<OnlineVictoryCelebration>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2400),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (BuildContext context, Widget? child) => Stack(
+            children: <Widget>[
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _VictoryFireworksPainter(
+                    progress: _controller.value,
+                    winnerAtTop: widget.winnerAtTop,
+                  ),
+                ),
+              ),
+              Align(
+                alignment: widget.winnerAtTop
+                    ? const Alignment(0, -0.72)
+                    : const Alignment(0, 0.72),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: <Color>[Color(0xFFE5A92F), Color(0xFFFFE18A)],
+                    ),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: Colors.white, width: 1.5),
+                    boxShadow: const <BoxShadow>[
+                      BoxShadow(color: Color(0xAAE5A92F), blurRadius: 30),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 28, vertical: 12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        const Icon(Icons.emoji_events_rounded,
+                            color: Color(0xFF07131E)),
+                        const SizedBox(width: 9),
+                        Text(
+                          widget.title.toUpperCase(),
+                          style: const TextStyle(
+                            color: Color(0xFF07131E),
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
+class _VictoryFireworksPainter extends CustomPainter {
+  const _VictoryFireworksPainter({
+    required this.progress,
+    required this.winnerAtTop,
+  });
+
+  final double progress;
+  final bool winnerAtTop;
+
+  static const List<Color> _colors = <Color>[
+    Color(0xFFFFC857),
+    Color(0xFF63D2B8),
+    Color(0xFFFF6B6B),
+    Color(0xFF6EA8FF),
+    Color(0xFFC77DFF),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double bandCenter =
+        winnerAtTop ? size.height * .24 : size.height * .76;
+    final Paint paint = Paint()..style = PaintingStyle.fill;
+    for (int burst = 0; burst < 5; burst++) {
+      final double phase = (progress + burst * .19) % 1;
+      final double opacity = (1 - phase).clamp(0.0, 1.0);
+      final Offset center = Offset(
+        size.width * (.14 + burst * .18),
+        bandCenter + math.sin(burst * 1.7) * size.height * .08,
+      );
+      for (int ray = 0; ray < 12; ray++) {
+        final double angle = (math.pi * 2 * ray / 12) + burst * .35;
+        final double radius =
+            (18 + 88 * phase) * math.min(1.25, size.shortestSide / 420);
+        final Offset particle =
+            center + Offset(math.cos(angle) * radius, math.sin(angle) * radius);
+        paint.color =
+            _colors[(burst + ray) % _colors.length].withValues(alpha: opacity);
+        canvas.drawCircle(particle, 2.2 + 2.8 * opacity, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _VictoryFireworksPainter oldDelegate) =>
+      oldDelegate.progress != progress ||
+      oldDelegate.winnerAtTop != winnerAtTop;
 }
 
 class GameResultOverlay extends StatelessWidget {

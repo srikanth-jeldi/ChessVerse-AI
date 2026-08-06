@@ -6,13 +6,21 @@ import '../../../core/widgets/chessverse_card.dart';
 import '../../puzzles/presentation/puzzle_academy_screen.dart';
 
 class PuzzlesScreen extends StatelessWidget {
-  const PuzzlesScreen({this.onStartPuzzle = _ignorePuzzleLaunch, super.key});
+  const PuzzlesScreen({
+    this.onStartPuzzle = _ignorePuzzleLaunch,
+    this.showPrimaryNavigation = true,
+    super.key,
+  });
 
   final PuzzleLauncher onStartPuzzle;
+  final bool showPrimaryNavigation;
 
   @override
   Widget build(BuildContext context) {
-    return PuzzleAcademyScreen(onStartPuzzle: onStartPuzzle);
+    return PuzzleAcademyScreen(
+      onStartPuzzle: onStartPuzzle,
+      showPrimaryNavigation: showPrimaryNavigation,
+    );
   }
 }
 

@@ -10,6 +10,7 @@ class DesktopAppSidebar extends StatelessWidget {
     this.onPlay,
     this.onPuzzles,
     this.onLearn,
+    this.onProfile,
     this.onAnalysis,
     this.onRankings,
     this.onFriends,
@@ -24,6 +25,7 @@ class DesktopAppSidebar extends StatelessWidget {
   final VoidCallback? onPlay;
   final VoidCallback? onPuzzles;
   final VoidCallback? onLearn;
+  final VoidCallback? onProfile;
   final VoidCallback? onAnalysis;
   final VoidCallback? onRankings;
   final VoidCallback? onFriends;
@@ -36,15 +38,10 @@ class DesktopAppSidebar extends StatelessWidget {
     final List<({IconData icon, String label, VoidCallback? onTap})> items =
         <({IconData icon, String label, VoidCallback? onTap})>[
       (icon: Icons.home_rounded, label: 'Home', onTap: onHome),
-      (icon: Icons.sports_martial_arts_rounded, label: 'Play', onTap: onPlay),
+      (icon: Icons.sports_esports_rounded, label: 'Play', onTap: onPlay),
       (icon: Icons.extension_rounded, label: 'Puzzles', onTap: onPuzzles),
-      (icon: Icons.menu_book_rounded, label: 'Learn', onTap: onLearn),
-      (icon: Icons.trending_up_rounded, label: 'Analysis', onTap: onAnalysis),
-      (icon: Icons.bar_chart_rounded, label: 'Rankings', onTap: onRankings),
-      (icon: Icons.group_rounded, label: 'Friends', onTap: onFriends),
-      (icon: Icons.calendar_month_rounded, label: 'Events', onTap: onEvents),
-      (icon: Icons.shopping_cart_rounded, label: 'Store', onTap: onStore),
-      (icon: Icons.settings_rounded, label: 'Settings', onTap: onSettings),
+      (icon: Icons.school_rounded, label: 'Learn', onTap: onLearn),
+      (icon: Icons.person_rounded, label: 'Profile', onTap: onProfile),
     ];
     return Container(
       width: 258,
@@ -60,33 +57,34 @@ class DesktopAppSidebar extends StatelessWidget {
           const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              Text('CHESSVERSE ', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-              Text('AI', style: TextStyle(color: AppColors.accentGold, fontSize: 20, fontWeight: FontWeight.w900)),
+              Text('CHESSVERSE ',
+                  style: TextStyle(
+                      color: Color(0xFFF5F7FA),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      decoration: TextDecoration.none,
+                      decorationColor: Colors.transparent)),
+              Text('AI',
+                  style: TextStyle(
+                      color: Color(0xFFE9B84C),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      decoration: TextDecoration.none,
+                      decorationColor: Colors.transparent)),
             ],
           ),
           const SizedBox(height: 27),
-          for (final item in items)
-            _DesktopNavItem(
-              icon: item.icon,
-              label: item.label,
-              selected: selected == item.label,
-              onTap: item.onTap,
-            ),
-          const Spacer(),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFB77D1E)),
-              color: const Color(0xB30A1723),
-            ),
-            child: const Row(
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
               children: <Widget>[
-                Icon(Icons.workspace_premium_rounded, color: AppColors.accentGold, size: 38),
-                SizedBox(width: 12),
-                Expanded(child: Text('Upgrade to\nPremium', style: TextStyle(color: Color(0xFFFFCF55), fontSize: 17, height: 1.35, fontWeight: FontWeight.w700))),
-                Icon(Icons.chevron_right_rounded, color: AppColors.accentGold),
+                for (final item in items)
+                  _DesktopNavItem(
+                    icon: item.icon,
+                    label: item.label,
+                    selected: selected == item.label,
+                    onTap: item.onTap,
+                  ),
               ],
             ),
           ),
@@ -97,36 +95,59 @@ class DesktopAppSidebar extends StatelessWidget {
 }
 
 class _DesktopNavItem extends StatelessWidget {
-  const _DesktopNavItem({required this.icon, required this.label, required this.selected, this.onTap});
+  const _DesktopNavItem(
+      {required this.icon,
+      required this.label,
+      required this.selected,
+      this.onTap});
   final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 5),
-        child: Material(
-          color: selected ? const Color(0xFF102C45) : Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: selected ? const BorderSide(color: Color(0xFFC28A24)) : BorderSide.none,
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: onTap,
-            child: SizedBox(
-              height: 50,
-              child: Row(
-                children: <Widget>[
-                  const SizedBox(width: 15),
-                  Icon(icon, size: 25, color: selected ? AppColors.accentGold : const Color(0xFF9DAFC2)),
-                  const SizedBox(width: 18),
-                  Text(label, style: TextStyle(color: selected ? const Color(0xFFFFCC43) : const Color(0xFFC4CFDC), fontSize: 17, fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
-                ],
-              ),
+  Widget build(BuildContext context) {
+    final bool homeSelected = selected && label == 'Home';
+    final Color activeColor =
+        homeSelected ? const Color(0xFF4DA8FF) : AppColors.accentGold;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Material(
+        color: selected
+            ? (homeSelected ? const Color(0xFF123E70) : const Color(0xFF102C45))
+            : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: selected
+              ? BorderSide(
+                  color: homeSelected
+                      ? const Color(0xFF2F91ED)
+                      : const Color(0xFFC28A24))
+              : BorderSide.none,
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: SizedBox(
+            height: 50,
+            child: Row(
+              children: <Widget>[
+                const SizedBox(width: 15),
+                Icon(icon,
+                    size: 25,
+                    color: selected ? activeColor : const Color(0xFF9DAFC2)),
+                const SizedBox(width: 18),
+                Text(label,
+                    style: TextStyle(
+                        color: selected ? activeColor : const Color(0xFFC4CFDC),
+                        fontSize: 17,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w500)),
+              ],
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
 }

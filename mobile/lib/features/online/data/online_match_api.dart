@@ -114,7 +114,7 @@ class OnlineMatchDto {
     final DateTime reference = serverNow ?? DateTime.now().toUtc();
     if (deadline == null) return 0;
     return ((deadline.difference(reference).inMilliseconds + 999) ~/ 1000)
-        .clamp(0, 15);
+        .clamp(0, 60);
   }
 
   factory OnlineMatchDto.fromJson(Map<String, dynamic> json) {

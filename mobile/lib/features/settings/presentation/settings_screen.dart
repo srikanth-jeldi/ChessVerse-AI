@@ -10,9 +10,22 @@ import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../legal/presentation/legal_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({this.onLogout, super.key});
+  const SettingsScreen({
+    this.onLogout,
+    this.onHome,
+    this.onPlay,
+    this.onPuzzles,
+    this.onLearn,
+    this.onProfile,
+    super.key,
+  });
 
   final Future<void> Function()? onLogout;
+  final VoidCallback? onHome;
+  final VoidCallback? onPlay;
+  final VoidCallback? onPuzzles;
+  final VoidCallback? onLearn;
+  final VoidCallback? onProfile;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -317,16 +330,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         child: Material(
                           type: MaterialType.transparency,
-                          child: ListTile(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(18),
                             onTap: _logout,
-                            title: const Text('Logout',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900)),
-                            leading: const Icon(Icons.logout_rounded,
-                                color: Colors.white),
-                            trailing: const SizedBox(width: 24),
+                            child: const SizedBox(
+                              height: 58,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: <Widget>[
+                                  Text(
+                                    'Logout',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  SizedBox(width: 10),
+                                  Icon(Icons.logout_rounded,
+                                      color: Colors.white),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -341,7 +365,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: <Widget>[
         DesktopAppSidebar(
           selected: 'Settings',
-          onHome: () => Navigator.maybePop(context),
+          onHome: widget.onHome ?? () => Navigator.maybePop(context),
+          onPlay: widget.onPlay,
+          onPuzzles: widget.onPuzzles,
+          onLearn: widget.onLearn,
+          onProfile: widget.onProfile,
           onSettings: () {},
         ),
         Expanded(child: page),
