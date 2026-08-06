@@ -620,7 +620,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _premiumPrimaryButton() {
     return Container(
-      height: 58,
+      height: 50,
       decoration: BoxDecoration(
         gradient: AppColors.goldGradient,
         borderRadius: BorderRadius.circular(13),
@@ -653,7 +653,7 @@ class _AuthScreenState extends State<AuthScreen> {
               : _loginMode
                   ? 'Login'
                   : 'Send Code',
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
         ),
       ),
     );
@@ -664,7 +664,7 @@ class _AuthScreenState extends State<AuthScreen> {
       style: OutlinedButton.styleFrom(
         foregroundColor: const Color(0xFF5EEAD4),
         side: const BorderSide(color: Color(0xFF5EEAD4)),
-        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       onPressed: _loading ? null : _continueAsGuest,
@@ -675,19 +675,19 @@ class _AuthScreenState extends State<AuthScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Icon(Icons.person_outline_rounded),
-                SizedBox(width: 10),
+                Icon(Icons.person_outline_rounded, size: 20),
+                SizedBox(width: 8),
                 Text(
                   'Continue as Guest',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                 ),
               ],
             ),
           ),
-          SizedBox(height: 5),
+          SizedBox(height: 3),
           Text(
             'Start playing instantly. Upgrade anytime.',
-            style: TextStyle(color: Color(0xFF9EACC2), fontSize: 12),
+            style: TextStyle(color: Color(0xFF9EACC2), fontSize: 11),
           ),
         ],
       ),
