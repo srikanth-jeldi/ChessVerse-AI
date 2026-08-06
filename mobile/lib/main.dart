@@ -2692,7 +2692,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             (_whiteSeconds == 0 || _blackSeconds == 0)) {
           _gameResultTitle = _whiteSeconds == 0 ? 'Black wins' : 'White wins';
           _gameResultDetail = 'Victory on time';
-          _resultVisible = true;
+          _delayLocalResultOverlay();
           _coachNote = '$_gameResultTitle. $_gameResultDetail.';
           _archiveFinishedGame();
           unawaited(ChessSoundService.instance.victory());
@@ -5034,7 +5034,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _gameResultTitle = whiteToMove ? 'Black wins' : 'White wins';
       _gameResultDetail =
           '${whiteToMove ? _whitePlayerName : _blackPlayerName} resigned';
-      _resultVisible = true;
+      _delayLocalResultOverlay();
       _coachNote = 'Resignation accepted. $_gameResultTitle.';
       _archiveFinishedGame();
     });
@@ -5072,7 +5072,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       setState(() {
         _gameResultTitle = 'Draw';
         _gameResultDetail = 'Draw agreed';
-        _resultVisible = true;
+        _delayLocalResultOverlay();
         _coachNote = 'Draw agreed by both players.';
         _archiveFinishedGame();
       });
@@ -5837,15 +5837,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           // Keep the decisive move visible. The celebration occupies the
           // winner's side of the board first; the score/action popup follows
           // after the player has had time to identify the final move.
-          _resultVisible = !decisive;
+          _resultVisible = false;
           _onlineCelebrationVisible = decisive;
           _onlineCelebrationWinnerAtTop =
               winningWhite == _shouldFlipBoard(match.whiteToMove);
-          _onlineCelebrationMatchId = decisive ? match.id : null;
+          _onlineCelebrationMatchId = match.id;
         }
         _coachNote = _onlineResultDetail(match);
       });
-      if (firstPresentation && decisive) {
+      if (firstPresentation) {
         _onlineResultPresentationTimer?.cancel();
         _onlineResultPresentationTimer = Timer(
           const Duration(seconds: 20),
@@ -5857,7 +5857,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             });
           },
         );
-        unawaited(ChessSoundService.instance.victory());
+        if (decisive) {
+          unawaited(ChessSoundService.instance.victory());
+        } else {
+          unawaited(ChessSoundService.instance.draw());
+        }
       }
       if (_archivedOnlineMatchId != match.id) {
         _archivedOnlineMatchId = match.id;
@@ -6001,7 +6005,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
       _gameResultTitle = '${sideToMoveWhite ? 'Black' : 'White'} wins';
       _gameResultDetail = 'Checkmate';
-      _resultVisible = true;
+      _delayLocalResultOverlay();
       _archiveFinishedGame();
       unawaited(ChessSoundService.instance.checkmate());
       return 'Checkmate. $_gameResultTitle.';
@@ -6009,7 +6013,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (stalemate) {
       _gameResultTitle = 'Draw';
       _gameResultDetail = 'Stalemate';
-      _resultVisible = true;
+      _delayLocalResultOverlay();
       _archiveFinishedGame();
       unawaited(ChessSoundService.instance.draw());
       return 'Stalemate. No legal move for $side.';
@@ -6018,6 +6022,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return '$side is in check.';
     }
     return fallback;
+  }
+
+  void _delayLocalResultOverlay() {
+    _onlineResultPresentationTimer?.cancel();
+    _resultVisible = false;
+    _onlineResultPresentationTimer = Timer(
+      const Duration(seconds: 20),
+      () {
+        if (!mounted || _gameMode == GameMode.online) return;
+        setState(() => _resultVisible = true);
+      },
+    );
   }
 
   String _coachMoveExplanation({
