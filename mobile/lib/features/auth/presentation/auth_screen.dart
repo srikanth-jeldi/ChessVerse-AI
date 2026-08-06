@@ -720,49 +720,53 @@ class _AuthScreenState extends State<AuthScreen> {
         ],
       );
     }
-    return Row(
-      children: <Widget>[
-        Expanded(
-          flex: 1,
-          child: SizedBox(
-            width: double.infinity,
-            child: kIsWeb && !filePreview
-                ? Center(child: buildWebGoogleSignInButton())
-                : _SocialButton(
-                    label: widget.guestUpgradeToken == null
-                        ? 'Google'
-                        : 'SECURE WITH GOOGLE',
-                    onPressed: _loading ? null : _signInWithGoogle,
-                    child: const Text(
-                      'G',
-                      style: TextStyle(
-                        color: Color(0xFF4285F4),
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool showFacebook = widget.guestUpgradeToken == null;
+        final double buttonWidth = showFacebook
+            ? ((constraints.maxWidth - 10) / 2).floorToDouble()
+            : constraints.maxWidth;
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            SizedBox(
+              width: buttonWidth,
+              height: 58,
+              child: kIsWeb && !filePreview
+                  ? Center(child: buildWebGoogleSignInButton())
+                  : _SocialButton(
+                      label: showFacebook ? 'Google' : 'SECURE WITH GOOGLE',
+                      onPressed: _loading ? null : _signInWithGoogle,
+                      child: const Text(
+                        'G',
+                        style: TextStyle(
+                          color: Color(0xFF4285F4),
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
+            ),
+            if (showFacebook) ...<Widget>[
+              const SizedBox(width: 10),
+              SizedBox(
+                width: buttonWidth,
+                height: 58,
+                child: _SocialButton(
+                  label: 'Facebook',
+                  onPressed: _loading
+                      ? null
+                      : () => _showSocialPlaceholder('Facebook'),
+                  child: const Icon(
+                    Icons.facebook_rounded,
+                    color: Color(0xFF4285F4),
                   ),
-          ),
-        ),
-        if (widget.guestUpgradeToken == null) ...<Widget>[
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 1,
-            child: SizedBox(
-              width: double.infinity,
-              child: _SocialButton(
-                label: 'Facebook',
-                onPressed:
-                    _loading ? null : () => _showSocialPlaceholder('Facebook'),
-                child: const Icon(
-                  Icons.facebook_rounded,
-                  color: Color(0xFF4285F4),
                 ),
               ),
-            ),
-          ),
-        ],
-      ],
+            ],
+          ],
+        );
+      },
     );
   }
 

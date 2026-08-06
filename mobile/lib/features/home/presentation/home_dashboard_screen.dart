@@ -1435,13 +1435,21 @@ class _MiniCard extends StatelessWidget {
               children: <Widget>[
                 Icon(icon, color: color, size: 34),
                 const SizedBox(height: 10),
-                Text(label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                SizedBox(
+                  width: double.infinity,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 15,
-                        fontWeight: FontWeight.w800)),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
                 if (subtitle != null) ...<Widget>[
                   const SizedBox(height: 6),
                   Text(
