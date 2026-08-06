@@ -11,6 +11,7 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'core/audio/chess_sound_service.dart';
+import 'core/auth/facebook_sdk_ready.dart';
 import 'core/app_preferences.dart';
 import 'core/config/app_config.dart';
 import 'core/local_game_archive.dart';
@@ -36,6 +37,7 @@ import 'features/tutorial/presentation/learn_chess_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (kIsWeb) {
+    await ensureFacebookSdkReady();
     await FacebookAuth.instance.webAndDesktopInitialize(
       appId: AppConfig.facebookAppId,
       cookie: true,
@@ -2249,9 +2251,8 @@ class _PlayModeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool desktopCard = MediaQuery.sizeOf(context).width >= 900;
-    final Alignment imageAlignment = title == 'Play Online'
-        ? const Alignment(0.5, 0)
-        : Alignment.center;
+    final Alignment imageAlignment =
+        title == 'Play Online' ? const Alignment(0.5, 0) : Alignment.center;
     return Card(
       color: const Color(0xFF071827),
       shape: RoundedRectangleBorder(
@@ -3300,6 +3301,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _authMessage = 'Opening Facebook securely...';
     });
     try {
+      if (kIsWeb) await ensureFacebookSdkReady();
       final LoginResult result = await FacebookAuth.instance.login(
         permissions: const <String>['email', 'public_profile'],
       );

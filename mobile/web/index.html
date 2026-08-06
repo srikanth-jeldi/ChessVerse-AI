@@ -32,6 +32,45 @@
   <title>ChessVerseAI</title>
   <link rel="manifest" href="manifest.json">
 
+  <script>
+    // flutter_facebook_auth can expose FB.login before its asynchronous
+    // initialization has completed. Keep one shared readiness promise so the
+    // Flutter app never opens the login dialog before FB.init has run.
+    window.__chessverseFacebookReady = new Promise(function (resolve, reject) {
+      window.fbAsyncInit = function () {
+        try {
+          FB.init({
+            appId: '27409411982074524',
+            cookie: true,
+            xfbml: true,
+            version: 'v26.0'
+          });
+          resolve(true);
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      var existing = document.getElementById('facebook-jssdk');
+      if (!existing) {
+        var script = document.createElement('script');
+        script.id = 'facebook-jssdk';
+        script.async = true;
+        script.defer = true;
+        script.crossOrigin = 'anonymous';
+        script.src = 'https://connect.facebook.net/en_US/sdk.js';
+        script.onerror = function () {
+          reject(new Error('Facebook SDK could not be loaded.'));
+        };
+        document.head.appendChild(script);
+      }
+    });
+
+    window.chessverseFacebookReady = function () {
+      return window.__chessverseFacebookReady;
+    };
+  </script>
+
 
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
 

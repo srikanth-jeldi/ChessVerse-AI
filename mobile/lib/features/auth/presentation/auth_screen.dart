@@ -5,6 +5,7 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../../core/auth/facebook_sdk_ready.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/auth_api.dart';
@@ -711,8 +712,7 @@ class _AuthScreenState extends State<AuthScreen> {
           const SizedBox(height: 10),
           _SocialButton(
             label: 'Facebook',
-            onPressed:
-                _loading ? null : _signInWithFacebook,
+            onPressed: _loading ? null : _signInWithFacebook,
             child: const Icon(
               Icons.facebook_rounded,
               color: Color(0xFF4285F4),
@@ -759,9 +759,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 height: 58,
                 child: _SocialButton(
                   label: 'Facebook',
-                  onPressed: _loading
-                      ? null
-                      : _signInWithFacebook,
+                  onPressed: _loading ? null : _signInWithFacebook,
                   child: const Icon(
                     Icons.facebook_rounded,
                     color: Color(0xFF4285F4),
@@ -1026,9 +1024,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           const SizedBox(height: 10),
                         if (widget.guestUpgradeToken == null)
                           OutlinedButton.icon(
-                            onPressed: _loading
-                                ? null
-                                : _signInWithFacebook,
+                            onPressed: _loading ? null : _signInWithFacebook,
                             icon: const Icon(Icons.facebook_rounded),
                             label: const Text('Facebook Login'),
                           ),
@@ -1060,6 +1056,7 @@ class _AuthScreenState extends State<AuthScreen> {
       _message = null;
     });
     try {
+      if (kIsWeb) await ensureFacebookSdkReady();
       final LoginResult result = await FacebookAuth.instance.login(
         permissions: const <String>['email', 'public_profile'],
       );
