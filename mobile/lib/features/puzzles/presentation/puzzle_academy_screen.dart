@@ -371,44 +371,51 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
             _PuzzleHero(solved: stats.puzzlesSolved, onStart: onStart),
             const SizedBox(height: 18),
             Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  Expanded(
-                    flex: 7,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        const _SectionHeading(
-                          eyebrow: 'TACTICAL TRAINING',
-                          title: 'Choose your challenge',
-                          subtitle:
-                              'Every position is interactive and validated by the ChessVerse AI rules engine.',
-                        ),
-                        const SizedBox(height: 12),
-                        Expanded(
-                          child: Column(
-                            children: <Widget>[
-                              Expanded(
-                                  child: _difficulty(PuzzleDifficulty.easy)),
-                              const SizedBox(height: 10),
-                              Expanded(
-                                  child: _difficulty(PuzzleDifficulty.medium)),
-                              const SizedBox(height: 10),
-                              Expanded(
-                                  child: _difficulty(PuzzleDifficulty.hard)),
-                            ],
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Expanded(
+                      flex: 7,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          const _SectionHeading(
+                            eyebrow: 'TACTICAL TRAINING',
+                            title: 'Choose your challenge',
+                            subtitle:
+                                'Every position is interactive and validated by the ChessVerse AI rules engine.',
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 106,
+                            child: _difficulty(PuzzleDifficulty.easy),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            height: 106,
+                            child: _difficulty(PuzzleDifficulty.medium),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            height: 106,
+                            child: _difficulty(PuzzleDifficulty.hard),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 24),
-                  Expanded(
-                    flex: 3,
-                    child: _TrainingStatsPanel(stats: stats, rewards: rewards),
-                  ),
-                ],
+                    const SizedBox(width: 24),
+                    Expanded(
+                      flex: 3,
+                      child: SizedBox(
+                        height: 360,
+                        child:
+                            _TrainingStatsPanel(stats: stats, rewards: rewards),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
