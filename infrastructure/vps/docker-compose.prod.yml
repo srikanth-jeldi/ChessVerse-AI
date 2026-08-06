@@ -37,6 +37,9 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_FROM: ${MAIL_FROM}
       GOOGLE_WEB_CLIENT_ID: ${GOOGLE_WEB_CLIENT_ID}
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
+      FACEBOOK_GRAPH_VERSION: ${FACEBOOK_GRAPH_VERSION:-v26.0}
       ALLOWED_ORIGIN_PATTERNS: https://${APP_DOMAIN}
       AUTH_DELIVERY: mail
       AUTH_RATE_LIMIT_ENABLED: "true"
@@ -71,6 +74,8 @@ services:
       dockerfile: infrastructure/vps/web/Dockerfile
       args:
         API_BASE_URL: https://${API_DOMAIN}
+        FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
+        FACEBOOK_CLIENT_TOKEN: ${FACEBOOK_CLIENT_TOKEN}
     restart: unless-stopped
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
