@@ -2240,7 +2240,9 @@ class _PlayModeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool desktopCard = MediaQuery.sizeOf(context).width >= 900;
-    const Alignment imageAlignment = Alignment.center;
+    final Alignment imageAlignment = title == 'Play Online'
+        ? const Alignment(0.5, 0)
+        : Alignment.center;
     return Card(
       color: const Color(0xFF071827),
       shape: RoundedRectangleBorder(
@@ -5927,7 +5929,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final String ratingText = ratingDelta == null
         ? ''
         : ' • ELO ${ratingDelta >= 0 ? '+' : ''}$ratingDelta';
-    return '${match.result ?? ''} • $reason$ratingText';
+    final bool userWhite = match.yourColor.toUpperCase() == 'WHITE';
+    final bool userWon = (match.result == '1-0' && userWhite) ||
+        (match.result == '0-1' && !userWhite);
+    final int coinsEarned = userWon ? 26 : 8;
+    return '${match.result ?? ''} • $reason$ratingText • Coins +$coinsEarned';
   }
 
   Future<void> _showPromotionPicker(String square, bool white) async {

@@ -380,9 +380,11 @@ class LocalGameArchive {
       if (result.contains('draw')) {
         draws++;
       } else if (result.contains('white wins') ||
+          result.contains('you win') ||
           result.contains('challenge complete')) {
         wins++;
-      } else if (result.contains('black wins')) {
+      } else if (result.contains('black wins') ||
+          result.contains('opponent wins')) {
         losses++;
       }
     }
