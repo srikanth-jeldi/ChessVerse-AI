@@ -302,7 +302,7 @@ class _AuthScreenState extends State<AuthScreen> {
               : _verificationMode
                   ? 'Verify your email'
                   : _loginMode
-                      ? 'Welcome back'
+                      ? 'Welcome'
                       : 'Create your account',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 color: AppColors.textPrimary,
@@ -737,12 +737,16 @@ class _AuthScreenState extends State<AuthScreen> {
                   : _SocialButton(
                       label: showFacebook ? 'Google' : 'SECURE WITH GOOGLE',
                       onPressed: _loading ? null : _signInWithGoogle,
-                      child: const Text(
-                        'G',
-                        style: TextStyle(
-                          color: Color(0xFF4285F4),
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
+                      child: Transform.translate(
+                        offset: const Offset(0, -1.5),
+                        child: const Text(
+                          'G',
+                          style: TextStyle(
+                            color: Color(0xFF4285F4),
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            height: 1,
+                          ),
                         ),
                       ),
                     ),
@@ -833,7 +837,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               : _verificationMode
                                   ? 'Verify your email'
                                   : _loginMode
-                                      ? 'Welcome back'
+                                      ? 'Welcome'
                                       : 'Create ChessVerseAI ID',
                           style: Theme.of(context)
                               .textTheme
