@@ -14,9 +14,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 class FacebookIdentityVerifier {
+    private static final Logger log = LoggerFactory.getLogger(FacebookIdentityVerifier.class);
     private final String appId;
     private final String appSecret;
     private final String graphVersion;
@@ -46,6 +49,10 @@ class FacebookIdentityVerifier {
             if (!debug.path("is_valid").asBoolean(false)
                     || !appId.equals(debug.path("app_id").asText())
                     || debug.path("user_id").asText().isBlank()) {
+                log.warn("Facebook token validation failed: valid={}, appMatch={}, userPresent={}",
+                        debug.path("is_valid").asBoolean(false),
+                        appId.equals(debug.path("app_id").asText()),
+                        !debug.path("user_id").asText().isBlank());
                 throw invalidToken();
             }
 
@@ -53,8 +60,16 @@ class FacebookIdentityVerifier {
                     + encode(accessToken));
             String subject = profile.path("id").asText();
             String email = profile.path("email").asText();
-            if (!subject.equals(debug.path("user_id").asText()) || email.isBlank()) {
+            if (!subject.equals(debug.path("user_id").asText())) {
+                log.warn("Facebook profile subject did not match the validated token user");
                 throw invalidToken();
+            }
+            // Facebook does not guarantee an email for every account, even when the
+            // email permission is requested. The provider subject remains the stable,
+            // verified identity, so use a non-routable address for those accounts.
+            if (email.isBlank()) {
+                email = "facebook_" + subject + "@identity.chessverse.invalid";
+                log.info("Facebook account has no email; using provider-scoped identity address");
             }
             String name = profile.path("name").asText(null);
             String photo = profile.path("picture").path("data").path("url").asText(null);
@@ -78,7 +93,10 @@ class FacebookIdentityVerifier {
                 .POST(HttpRequest.BodyPublishers.ofString(form))
                 .build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() < 200 || response.statusCode() >= 300) throw invalidToken();
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            log.warn("Facebook app access-token request failed with HTTP {}", response.statusCode());
+            throw invalidToken();
+        }
         String token = objectMapper.readTree(response.body()).path("access_token").asText();
         if (token.isBlank()) throw invalidToken();
         return token;
@@ -91,7 +109,10 @@ class FacebookIdentityVerifier {
                 .GET()
                 .build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() < 200 || response.statusCode() >= 300) throw invalidToken();
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            log.warn("Facebook Graph request failed with HTTP {}", response.statusCode());
+            throw invalidToken();
+        }
         return objectMapper.readTree(response.body());
     }
 
