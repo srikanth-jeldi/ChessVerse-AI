@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -39,8 +40,9 @@ class FacebookIdentityVerifier {
             throw new AuthException(HttpStatus.SERVICE_UNAVAILABLE, "Facebook login is not configured.");
         }
         try {
+            String appAccessToken = fetchAppAccessToken();
             JsonNode debug = get("debug_token?input_token=" + encode(accessToken)
-                    + "&access_token=" + encode(appId + "|" + appSecret)).path("data");
+                    + "&access_token=" + encode(appAccessToken)).path("data");
             if (!debug.path("is_valid").asBoolean(false)
                     || !appId.equals(debug.path("app_id").asText())
                     || debug.path("user_id").asText().isBlank()) {
@@ -63,6 +65,23 @@ class FacebookIdentityVerifier {
             if (exception instanceof InterruptedException) Thread.currentThread().interrupt();
             throw invalidToken();
         }
+    }
+
+    private String fetchAppAccessToken() throws IOException, InterruptedException {
+        String form = "client_id=" + encode(appId)
+                + "&client_secret=" + encode(appSecret)
+                + "&grant_type=client_credentials";
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://graph.facebook.com/oauth/access_token"))
+                .timeout(Duration.ofSeconds(8))
+                .header("Content-Type", MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+                .POST(HttpRequest.BodyPublishers.ofString(form))
+                .build();
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() < 200 || response.statusCode() >= 300) throw invalidToken();
+        String token = objectMapper.readTree(response.body()).path("access_token").asText();
+        if (token.isBlank()) throw invalidToken();
+        return token;
     }
 
     private JsonNode get(String pathAndQuery) throws IOException, InterruptedException {
