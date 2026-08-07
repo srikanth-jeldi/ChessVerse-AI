@@ -30,6 +30,12 @@ public class OnlineMatchController {
         this.socket = socket;
     }
 
+    @GetMapping("/presence")
+    OnlineDtos.PresenceDto presence() {
+        return new OnlineDtos.PresenceDto(
+                matches.waitingRandomPlayerCount() + socket.connectedPlayerCount());
+    }
+
     @PostMapping("/queue")
     OnlineDtos.MatchDto queue(@RequestHeader("Authorization") String authorization) {
         OnlineDtos.MatchDto match = matches.randomMatch(player(authorization));

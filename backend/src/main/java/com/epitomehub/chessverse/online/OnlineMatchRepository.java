@@ -30,6 +30,13 @@ interface OnlineMatchRepository extends JpaRepository<OnlineMatch, UUID> {
             @Param("playerId") UUID playerId,
             @Param("activeAfter") Instant activeAfter);
 
+    @Query("""
+            select count(match) from OnlineMatch match
+            where match.randomQueue = true and match.status = 'WAITING'
+              and match.updatedAt >= :activeAfter
+            """)
+    long countFreshRandomQueue(@Param("activeAfter") Instant activeAfter);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select match from OnlineMatch match

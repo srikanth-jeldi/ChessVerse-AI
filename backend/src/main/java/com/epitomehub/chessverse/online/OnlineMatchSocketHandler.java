@@ -109,6 +109,18 @@ public class OnlineMatchSocketHandler extends TextWebSocketHandler {
                 && heartbeat.isAfter(now.minus(PRESENCE_LEASE));
     }
 
+    public long connectedPlayerCount() {
+        Instant now = Instant.now();
+        return subscribers.values().stream()
+                .flatMap(Set::stream)
+                .filter(session -> isFresh(session, now))
+                .map(session -> session.getAttributes().get("playerId"))
+                .filter(UUID.class::isInstance)
+                .map(UUID.class::cast)
+                .distinct()
+                .count();
+    }
+
     public void publish(UUID matchId) {
         broadcast(matchId, "{\"type\":\"match.updated\",\"matchId\":\"" + matchId + "\"}");
     }

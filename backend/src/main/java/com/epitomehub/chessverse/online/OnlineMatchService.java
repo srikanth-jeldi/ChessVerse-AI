@@ -64,6 +64,11 @@ public class OnlineMatchService {
         return OnlineDtos.MatchDto.from(matches.save(opponent), player.id());
     }
 
+    @Transactional(readOnly = true)
+    public long waitingRandomPlayerCount() {
+        return matches.countFreshRandomQueue(Instant.now().minus(RANDOM_QUEUE_LEASE));
+    }
+
     @Transactional
     public OnlineDtos.MatchDto joinRoom(AuthenticatedPlayer player, String rawCode) {
         OnlineMatch current = current(player.id());
