@@ -13,6 +13,7 @@ import java.util.Locale;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,7 @@ class AuthService {
     private final GoogleIdentityVerifier googleIdentityVerifier;
     private final FacebookIdentityVerifier facebookIdentityVerifier;
     private final OtpDelivery otpDelivery;
+    private final JdbcTemplate jdbcTemplate;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
     private final SecureRandom random = new SecureRandom();
     private final Duration otpExpiry;
@@ -49,6 +51,7 @@ class AuthService {
             GoogleIdentityVerifier googleIdentityVerifier,
             FacebookIdentityVerifier facebookIdentityVerifier,
             OtpDelivery otpDelivery,
+            JdbcTemplate jdbcTemplate,
             @Value("${chessverse.auth.otp-expiry-minutes:10}") long otpExpiryMinutes,
             @Value("${chessverse.auth.session-expiry-days:30}") long sessionExpiryDays,
             @Value("${chessverse.auth.login-lockout-minutes:15}") long loginLockoutMinutes,
@@ -63,6 +66,7 @@ class AuthService {
         this.googleIdentityVerifier = googleIdentityVerifier;
         this.facebookIdentityVerifier = facebookIdentityVerifier;
         this.otpDelivery = otpDelivery;
+        this.jdbcTemplate = jdbcTemplate;
         this.otpExpiry = Duration.ofMinutes(otpExpiryMinutes);
         this.sessionExpiry = Duration.ofDays(sessionExpiryDays);
         this.loginLockout = Duration.ofMinutes(loginLockoutMinutes);
@@ -481,6 +485,29 @@ class AuthService {
     @Transactional
     void logout(String token) {
         sessions.deleteByTokenHash(sha256(token));
+    }
+
+    @Transactional
+    void deleteAccount(String token) {
+        PlayerAccount player = requireSession(token).player;
+        // Remove managed sessions first. Otherwise Hibernate can flush the
+        // authenticated session after its player has already been deleted.
+        sessions.deleteByPlayerId(player.id);
+        sessions.flush();
+        jdbcTemplate.update(
+                "delete from online_match where white_player_id = ? or black_player_id = ?",
+                player.id,
+                player.id);
+        jdbcTemplate.update("delete from player_completed_puzzle where player_id = ?", player.id);
+        jdbcTemplate.update("delete from player_completed_daily_challenge where player_id = ?", player.id);
+        jdbcTemplate.update("delete from player_cloud_progress where player_id = ?", player.id);
+        jdbcTemplate.update("delete from online_player_rating where player_id = ?", player.id);
+        jdbcTemplate.update("delete from guest_installation where player_id = ?", player.id);
+        jdbcTemplate.update("delete from oauth_identity where player_id = ?", player.id);
+        jdbcTemplate.update("delete from password_reset where player_id = ?", player.id);
+        jdbcTemplate.update("delete from email_verification where player_id = ?", player.id);
+        players.delete(player);
+        players.flush();
     }
 
     private AuthResponse createSession(PlayerAccount player) {

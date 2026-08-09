@@ -222,7 +222,7 @@ class _AuthScreenState extends State<AuthScreen> {
     final bool wide = viewport.width >= 900;
     final bool compact = viewport.width < 430;
     final Widget card = SizedBox(
-      width: viewport.width < 546 ? viewport.width - 36 : 510,
+      width: viewport.width < 546 ? viewport.width - 56 : 470,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(30),
         child: Stack(
@@ -230,10 +230,10 @@ class _AuthScreenState extends State<AuthScreen> {
             Positioned.fill(child: _premiumPanelBackground()),
             Padding(
               padding: EdgeInsets.fromLTRB(
-                compact ? 22 : 44,
-                compact ? 20 : 34,
-                compact ? 22 : 44,
-                compact ? 22 : 36,
+                compact ? 24 : 40,
+                compact ? 14 : 28,
+                compact ? 24 : 40,
+                compact ? 16 : 30,
               ),
               child: _premiumFormContent(context),
             ),
@@ -397,13 +397,13 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
           Positioned(
-            top: 72,
-            right: -34,
-            height: 430,
-            width: 210,
+            top: 48,
+            right: -18,
+            height: 300,
+            width: 170,
             child: IgnorePointer(
               child: Opacity(
-                opacity: 0.48,
+                opacity: 0.42,
                 child: Image.asset(
                   'assets/pieces/staunton_black_king.png',
                   fit: BoxFit.contain,
@@ -476,7 +476,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _premiumModeSelector() {
     return Container(
-      height: 52,
+      height: 46,
       decoration: BoxDecoration(
         color: const Color(0xAA071528),
         borderRadius: BorderRadius.circular(28),
@@ -571,7 +571,7 @@ class _AuthScreenState extends State<AuthScreen> {
         icon: Icons.mail_outline_rounded,
         keyboardType: TextInputType.emailAddress,
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 8),
       _AuthField(
         controller: _passwordController,
         label: _loginMode ? 'Password' : 'Create password',
@@ -580,7 +580,7 @@ class _AuthScreenState extends State<AuthScreen> {
         onSubmitted: (_) => _submit(),
       ),
       if (_loginMode) ...<Widget>[
-        const SizedBox(height: 8),
+        const SizedBox(height: 5),
         Row(
           children: <Widget>[
             Checkbox(
@@ -622,7 +622,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _premiumPrimaryButton() {
     return Container(
-      height: 50,
+      height: 46,
       decoration: BoxDecoration(
         gradient: AppColors.goldGradient,
         borderRadius: BorderRadius.circular(13),
@@ -666,7 +666,7 @@ class _AuthScreenState extends State<AuthScreen> {
       style: OutlinedButton.styleFrom(
         foregroundColor: const Color(0xFF5EEAD4),
         side: const BorderSide(color: Color(0xFF5EEAD4)),
-        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 14),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       onPressed: _loading ? null : _continueAsGuest,
@@ -732,7 +732,7 @@ class _AuthScreenState extends State<AuthScreen> {
           children: <Widget>[
             SizedBox(
               width: buttonWidth,
-              height: 58,
+              height: 50,
               child: kIsWeb && !filePreview
                   ? Center(child: buildWebGoogleSignInButton())
                   : _SocialButton(
@@ -756,7 +756,7 @@ class _AuthScreenState extends State<AuthScreen> {
               const SizedBox(width: 10),
               SizedBox(
                 width: buttonWidth,
-                height: 58,
+                height: 50,
                 child: _SocialButton(
                   label: 'Facebook',
                   onPressed: _loading ? null : _signInWithFacebook,
@@ -1708,7 +1708,7 @@ class _SocialButton extends StatelessWidget {
         foregroundColor: Colors.white,
         side: const BorderSide(color: Color(0xFF34445C)),
         padding: EdgeInsets.symmetric(
-          vertical: 16,
+          vertical: 11,
           horizontal: compact ? 4 : 8,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1844,7 +1844,7 @@ class _AuthFieldState extends State<_AuthField> {
         filled: true,
         fillColor: const Color(0xA8071528),
         contentPadding:
-            const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
+            const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(13),
           borderSide: const BorderSide(color: Color(0xFF34445C)),

@@ -5,6 +5,7 @@ import static com.epitomehub.chessverse.auth.AuthDtos.*;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -92,6 +93,12 @@ class AuthController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void logout(@RequestHeader(name = "Authorization", required = false) String authorization) {
         authService.logout(bearerToken(authorization));
+    }
+
+    @DeleteMapping("/account")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void deleteAccount(@RequestHeader(name = "Authorization", required = false) String authorization) {
+        authService.deleteAccount(bearerToken(authorization));
     }
 
     private String bearerToken(String authorization) {

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../../core/audio/chess_sound_service.dart';
 import '../../../core/app_preferences.dart';
 import '../../../core/layout/responsive_page.dart';
+import '../../../core/notifications/daily_reminder_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
@@ -12,6 +13,7 @@ import '../../legal/presentation/legal_screen.dart';
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     this.onLogout,
+    this.onDeleteAccount,
     this.onHome,
     this.onPlay,
     this.onPuzzles,
@@ -21,6 +23,7 @@ class SettingsScreen extends StatefulWidget {
   });
 
   final Future<void> Function()? onLogout;
+  final Future<void> Function()? onDeleteAccount;
   final VoidCallback? onHome;
   final VoidCallback? onPlay;
   final VoidCallback? onPuzzles;
@@ -38,6 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _coachEnabled = true;
   bool _animationsEnabled = true;
   bool _coordinatesEnabled = true;
+  bool _dailyReminderEnabled = false;
   String _boardTheme = 'Royal Walnut';
   String _pieceStyle = 'Staunton 3D';
   String _appTheme = 'Dark premium';
@@ -56,6 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _preferences.readBool('coach', fallback: true),
       _preferences.readBool('animations', fallback: true),
       _preferences.readBool('coordinates', fallback: true),
+      _preferences.readBool('dailyReminder', fallback: false),
       _preferences.readString('boardTheme', fallback: 'Royal Walnut'),
       _preferences.readString('pieceStyle', fallback: 'Staunton 3D'),
       _preferences.readString('appTheme', fallback: 'Dark premium'),
@@ -67,9 +72,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _coachEnabled = values[2] as bool;
       _animationsEnabled = values[3] as bool;
       _coordinatesEnabled = values[4] as bool;
-      _boardTheme = values[5] as String;
-      _pieceStyle = values[6] as String;
-      _appTheme = values[7] as String;
+      _dailyReminderEnabled = values[5] as bool;
+      _boardTheme = values[6] as String;
+      _pieceStyle = values[7] as String;
+      _appTheme = values[8] as String;
       _loading = false;
     });
     ChessSoundService.instance.enabled = _soundEnabled;
@@ -155,6 +161,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         _coachSwitch(),
                                         const Divider(color: AppColors.border),
                                         _animationsSwitch(),
+                                        const Divider(color: AppColors.border),
+                                        _dailyReminderSwitch(),
                                       ],
                                     ),
                                   ),
@@ -171,6 +179,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   _coachSwitch(),
                                   const Divider(color: AppColors.border),
                                   _animationsSwitch(),
+                                  const Divider(color: AppColors.border),
+                                  _dailyReminderSwitch(),
                                 ],
                               ),
                       ),
@@ -354,6 +364,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      TextButton.icon(
+                        key: const ValueKey<String>('delete-account'),
+                        onPressed: _deleteAccount,
+                        icon: const Icon(Icons.delete_forever_rounded),
+                        label: const Text('Delete account permanently'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFFFF7777),
+                          minimumSize: const Size.fromHeight(52),
+                        ),
+                      ),
                     ],
                   );
                 },
@@ -433,6 +454,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
         },
       );
 
+  Widget _dailyReminderSwitch() => _SettingSwitch(
+        icon: Icons.notifications_active_rounded,
+        title: 'Daily chess reminder',
+        subtitle: 'Remind me to play the daily challenge',
+        value: _dailyReminderEnabled,
+        onChanged: (bool value) async {
+          bool enabled = value;
+          if (value) {
+            enabled = await DailyReminderService.instance.enable();
+          } else {
+            await DailyReminderService.instance.disable();
+          }
+          if (!mounted) return;
+          setState(() => _dailyReminderEnabled = enabled);
+          await _preferences.writeBool('dailyReminder', enabled);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(enabled
+                  ? 'Daily reminder set for 7:00 PM.'
+                  : value
+                      ? 'Notification permission is required.'
+                      : 'Daily reminder disabled.'),
+            ),
+          );
+        },
+      );
+
   Future<void> _logout() async {
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -453,6 +501,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (confirmed != true || !mounted) return;
     await widget.onLogout?.call();
+  }
+
+  Future<void> _deleteAccount() async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Delete account permanently?'),
+        content: const Text(
+          'Your profile, progress, rating and match history will be permanently deleted. This cannot be undone.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep account'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB3261E)),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete forever'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await widget.onDeleteAccount?.call();
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Account deletion failed: $error')),
+      );
+    }
   }
 
   Future<void> _choose({

@@ -102,6 +102,21 @@ class AuthApi {
     }
   }
 
+  Future<void> deleteAccount(String token) async {
+    final http.Response response;
+    try {
+      response = await http.delete(
+        Uri.parse('${AppConfig.apiBaseUrl}/api/auth/account'),
+        headers: <String, String>{'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 15));
+    } on TimeoutException {
+      throw const AuthApiException('The server took too long to respond.');
+    } catch (_) {
+      throw const AuthApiException(_connectionMessage);
+    }
+    _decode(response);
+  }
+
   Map<String, dynamic> _decode(http.Response response) {
     final Object? decoded =
         response.body.isEmpty ? null : jsonDecode(response.body);
@@ -125,4 +140,7 @@ class AuthApiException implements Exception {
 
   final String message;
   final int? statusCode;
+
+  @override
+  String toString() => message;
 }
