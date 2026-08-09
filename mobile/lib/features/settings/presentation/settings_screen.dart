@@ -42,6 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _animationsEnabled = true;
   bool _coordinatesEnabled = true;
   bool _dailyReminderEnabled = false;
+  bool _deletingAccount = false;
   String _boardTheme = 'Royal Walnut';
   String _pieceStyle = 'Staunton 3D';
   String _appTheme = 'Dark premium';
@@ -367,9 +368,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 12),
                       TextButton.icon(
                         key: const ValueKey<String>('delete-account'),
-                        onPressed: _deleteAccount,
-                        icon: const Icon(Icons.delete_forever_rounded),
-                        label: const Text('Delete account permanently'),
+                        onPressed: _deletingAccount ? null : _deleteAccount,
+                        icon: _deletingAccount
+                            ? const SizedBox.square(
+                                dimension: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.delete_forever_rounded),
+                        label: Text(_deletingAccount
+                            ? 'Deleting account…'
+                            : 'Delete account permanently'),
                         style: TextButton.styleFrom(
                           foregroundColor: const Color(0xFFFF7777),
                           minimumSize: const Size.fromHeight(52),
@@ -517,7 +526,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Keep account'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB3261E)),
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFB3261E)),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete forever'),
           ),
@@ -525,13 +535,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (confirmed != true || !mounted) return;
+    setState(() => _deletingAccount = true);
     try {
       await widget.onDeleteAccount?.call();
     } on Object catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Account deletion failed: $error')),
+        SnackBar(content: Text('Account deletion failed: ${error.toString()}')),
       );
+    } finally {
+      if (mounted) setState(() => _deletingAccount = false);
     }
   }
 

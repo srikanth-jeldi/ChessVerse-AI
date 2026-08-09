@@ -101,6 +101,15 @@ class AuthController {
         authService.deleteAccount(bearerToken(authorization));
     }
 
+    // Keep the REST DELETE route above for existing clients, and offer a POST
+    // variant for mobile networks/proxies that reject DELETE requests.
+    @PostMapping("/account/delete")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void deleteAccountFromMobile(
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        authService.deleteAccount(bearerToken(authorization));
+    }
+
     private String bearerToken(String authorization) {
         if (authorization == null || !authorization.startsWith("Bearer ")) {
             throw new AuthException(HttpStatus.UNAUTHORIZED, "Sign in to continue.");

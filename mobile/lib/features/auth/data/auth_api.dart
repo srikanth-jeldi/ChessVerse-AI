@@ -105,8 +105,8 @@ class AuthApi {
   Future<void> deleteAccount(String token) async {
     final http.Response response;
     try {
-      response = await http.delete(
-        Uri.parse('${AppConfig.apiBaseUrl}/api/auth/account'),
+      response = await http.post(
+        Uri.parse('${AppConfig.apiBaseUrl}/api/auth/account/delete'),
         headers: <String, String>{'Authorization': 'Bearer $token'},
       ).timeout(const Duration(seconds: 15));
     } on TimeoutException {

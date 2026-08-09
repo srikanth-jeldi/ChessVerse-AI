@@ -274,6 +274,25 @@ class AuthControllerTest {
     }
 
     @Test
+    void mobilePostCanPermanentlyDeleteAccount() throws Exception {
+        MvcResult guestLogin = mockMvc.perform(post("/api/auth/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"installationId\":\"1496ac2c-c65c-46f5-b745-90551dfed8d1\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String token = objectMapper.readTree(guestLogin.getResponse().getContentAsString())
+                .path("token").asText();
+
+        mockMvc.perform(post("/api/auth/account/delete")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void passwordResetRevokesExistingPasswordAndAcceptsNewPassword() throws Exception {
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
