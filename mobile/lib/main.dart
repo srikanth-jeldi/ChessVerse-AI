@@ -22,7 +22,9 @@ import 'features/auth/data/auth_api.dart';
 import 'features/auth/data/auth_session_store.dart';
 import 'features/auth/presentation/auth_screen.dart';
 import 'features/engine/data/engine_api.dart';
+import 'features/analysis/domain/ai_review_report.dart';
 import 'features/analysis/presentation/analysis_screen.dart';
+import 'features/analysis/presentation/adaptive_ai_review.dart';
 import 'features/home/presentation/home_dashboard_screen.dart';
 import 'features/library/presentation/reference_screens.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
@@ -3352,7 +3354,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             onReview: () {
                               setState(() => _resultVisible = false);
                               WidgetsBinding.instance.addPostFrameCallback(
-                                (_) => _showMoveHistory(),
+                                (_) => _showAiReview(),
                               );
                             },
                           ),
@@ -5350,6 +5352,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) => MoveHistorySheet(moves: _moves),
     );
+  }
+
+  void _showAiReview() {
+    final AiReviewReport report = AiReviewReport.fromMoves(
+      _moves,
+      result: _gameResultTitle,
+      knownAccuracy: _playerAccuracy,
+      knownTurningPoint: _turningPoint,
+    );
+    showAdaptiveAiReview(context, report: report);
   }
 
   void _saveSnapshot() {

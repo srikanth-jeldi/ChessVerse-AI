@@ -5,6 +5,8 @@ import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_button.dart';
 import '../../../core/widgets/chessverse_card.dart';
+import '../domain/ai_review_report.dart';
+import 'adaptive_ai_review.dart';
 
 class AnalysisScreen extends StatelessWidget {
   const AnalysisScreen({super.key});
@@ -23,6 +25,13 @@ class AnalysisScreen extends StatelessWidget {
             game.result.toLowerCase().contains('loss'))
         .length;
     final SavedGameRecord? latest = games.isEmpty ? null : games.first;
+    final AiReviewReport? latestReport = latest == null
+        ? null
+        : AiReviewReport.fromMoves(
+            latest.moves,
+            newestFirst: false,
+            result: latest.result,
+          );
     final String focus = _trainingFocus(games, averageMoves, losses);
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -65,14 +74,19 @@ class AnalysisScreen extends StatelessWidget {
             const SizedBox(height: 12),
             _AnalysisFeatureCard(
               icon: Icons.timeline_rounded,
-              title: '${games.length} games analyzed',
-              subtitle: '$averageMoves average recorded moves per game.',
+              title: latestReport == null
+                  ? '${games.length} games analyzed'
+                  : '${latestReport.accuracy}% latest-game accuracy',
+              subtitle: latestReport?.headline ??
+                  '$averageMoves average recorded moves per game.',
             ),
             const SizedBox(height: 12),
             _AnalysisFeatureCard(
               icon: Icons.psychology_alt_rounded,
               title: 'Personalized training focus',
-              subtitle: focus,
+              subtitle: latestReport == null
+                  ? focus
+                  : '${latestReport.trainingFocus} Recommended: ${latestReport.recommendedLesson}.',
             ),
             const SizedBox(height: 12),
             _AnalysisFeatureCard(
@@ -80,38 +94,19 @@ class AnalysisScreen extends StatelessWidget {
               title: latest == null ? 'Latest game report' : latest.result,
               subtitle: latest == null
                   ? 'Your latest result and coach recommendation will appear here.'
-                  : '${latest.summary} · ${latest.detail}',
+                  : latestReport?.turningPoint ??
+                      '${latest.summary} • ${latest.detail}',
             ),
             const SizedBox(height: 18),
             ChessVerseButton(
-              label: games.isEmpty ? 'No saved game yet' : 'Show AI coach plan',
+              label: games.isEmpty ? 'No saved game yet' : 'Open full AI review',
               icon: Icons.auto_graph_rounded,
               onPressed: games.isEmpty
                   ? null
-                  : () {
-                      showModalBottomSheet<void>(
-                        context: context,
-                        showDragHandle: true,
-                        builder: (BuildContext context) => Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text('Your next training plan',
-                                  style:
-                                      Theme.of(context).textTheme.titleLarge),
-                              const SizedBox(height: 12),
-                              Text(focus),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'During Play vs Computer, use Hint or Analyze for live Stockfish best moves, evaluation, and principal variation.',
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                  : () => showAdaptiveAiReview(
+                        context,
+                        report: latestReport!,
+                      ),
             ),
           ],
         ),
