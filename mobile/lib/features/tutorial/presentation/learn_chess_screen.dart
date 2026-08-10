@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/layout/responsive_page.dart';
+import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
+import '../../analysis/domain/ai_review_report.dart';
 import '../domain/academy_lesson.dart';
 import 'interactive_academy_lesson_screen.dart';
 
@@ -96,6 +98,19 @@ class LearnChessScreen extends StatelessWidget {
     final Size viewport = MediaQuery.sizeOf(context);
     final bool wide = AppBreakpoints.isTabletOrLarger(context);
     final bool compact = viewport.width < 520;
+    final SavedGameRecord? latest = LocalGameArchive.games.isEmpty
+        ? null
+        : LocalGameArchive.games.first;
+    final AiReviewReport? report = latest == null
+        ? null
+        : AiReviewReport.fromMoves(
+            latest.moves,
+            newestFirst: false,
+            result: latest.result,
+          );
+    final AcademyLesson recommended = AcademyCatalog.forChapter(
+      report?.recommendedLesson.split('•').last.trim() ?? 'How pawns move',
+    );
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -121,6 +136,12 @@ class LearnChessScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             _CoachHero(compact: compact),
+            const SizedBox(height: 16),
+            _PersonalizedPathCard(
+              lesson: recommended,
+              reason: report?.trainingFocus ??
+                  'Start with piece movement, then the AI coach will adapt your path after every reviewed game.',
+            ),
             const SizedBox(height: 24),
             const _SectionHeading(
               eyebrow: 'CHESS ACADEMY',
@@ -151,6 +172,64 @@ class LearnChessScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _PersonalizedPathCard extends StatelessWidget {
+  const _PersonalizedPathCard({required this.lesson, required this.reason});
+
+  final AcademyLesson lesson;
+  final String reason;
+
+  @override
+  Widget build(BuildContext context) => ChessVerseCard(
+        padding: const EdgeInsets.all(16),
+        child: Row(children: <Widget>[
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: <Color>[Color(0xFF9C72FF), Color(0xFF2FD5C4)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(Icons.route_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text('YOUR AI LEARNING PATH',
+                    style: TextStyle(
+                      color: Color(0xFF59E4C8),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1,
+                    )),
+                const SizedBox(height: 4),
+                Text('Next: ${lesson.title}',
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 3),
+                Text(reason,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppColors.textSecondary, height: 1.35)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          IconButton.filled(
+            tooltip: 'Start recommended lesson',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => InteractiveAcademyLessonScreen(lesson: lesson),
+              ),
+            ),
+            icon: const Icon(Icons.play_arrow_rounded),
+          ),
+        ]),
+      );
 }
 
 class _CoachHero extends StatelessWidget {
