@@ -2635,8 +2635,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   int _onlineConnectedPlayers = 0;
   bool _onlineSocketConnected = false;
   bool _onlineSubmitting = false;
-  bool _onlineCelebrationVisible = false;
-  bool _onlineCelebrationWinnerAtTop = false;
   String? _onlineCelebrationMatchId;
   String? _selectedSquare;
   String? _lastFromSquare;
@@ -2682,7 +2680,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String? _gameResultDetail;
   bool _resultVisible = true;
   bool _checkWarningActive = false;
-  bool _controlsExpanded = false;
   bool _resultSaved = false;
   bool _soundEnabled = true;
   bool _showCoordinates = true;
@@ -2693,7 +2690,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   late DailyChallenge _dailyChallenge;
   bool _dailyCompletedToday = false;
   int _dailyPlyIndex = 0;
-  int _dailyMistakes = 0;
   bool _puzzleExplorationMode = false;
   late ChessPuzzle _activePuzzle;
 
@@ -3972,11 +3968,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     return false;
   }
 
-  void _changeDailyDifficulty(DailyChallengeDifficulty difficulty) {
-    setState(() => _dailyDifficulty = difficulty);
-    _reset();
-  }
-
   int get _dailyPlayerMovesCompleted => (_dailyPlyIndex + 1) ~/ 2;
 
   bool _isLegalMove(String from, String to, {bool? whiteToMove}) {
@@ -4313,52 +4304,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         '$seconds ${seconds == 1 ? 'second' : 'seconds'}.';
   }
 
-  Future<void> _editBlackPlayerName() async {
-    String candidate = _blackPlayerName;
-    final String? name = await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text('Rename Player 2'),
-        content: TextFormField(
-          initialValue: candidate,
-          autofocus: true,
-          maxLength: 24,
-          textCapitalization: TextCapitalization.words,
-          onChanged: (String value) => candidate = value,
-          decoration: const InputDecoration(
-            labelText: 'Player name',
-            prefixIcon: Icon(Icons.manage_accounts_outlined),
-            border: OutlineInputBorder(),
-          ),
-          onFieldSubmitted: (String value) {
-            final String clean = value.trim();
-            if (clean.isNotEmpty) {
-              Navigator.of(context).pop(clean);
-            }
-          },
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final String clean = candidate.trim();
-              if (clean.isNotEmpty) {
-                Navigator.of(context).pop(clean);
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    if (name != null && mounted) {
-      setState(() => _blackPlayerName = name);
-    }
-  }
-
   void _handleSquareTap(String square) {
     _dismissTurnReminder();
     if (_coachArrowFrom != null || _coachArrowTo != null) {
@@ -4457,7 +4402,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         final String expected =
             _dailyChallenge.solution[_dailyPlyIndex].toLowerCase();
         if (!expected.startsWith('$from$square')) {
-          _dailyMistakes++;
           // Every chess-legal move is playable. Leaving the curated line
           // starts exploration mode, where the defense continues replying.
           puzzleWrongMove = true;
@@ -4648,8 +4592,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _turnReminderTimer = Timer(
       showing ? const Duration(milliseconds: 1800) : const Duration(seconds: 5),
       () {
-        if (!mounted || _boardTouchedThisTurn || _gameResultTitle != null)
+        if (!mounted || _boardTouchedThisTurn || _gameResultTitle != null) {
           return;
+        }
         setState(() => _turnBannerVisible = !showing);
         _scheduleTurnReminderStep(showing: !showing);
       },
@@ -5290,7 +5235,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _dailyChallenge = challenge;
       _dailyCompletedToday = completedToday;
       _dailyPlyIndex = 0;
-      _dailyMistakes = 0;
       _puzzleExplorationMode = false;
       _pieces = resetPieces;
       _moves.clear();
@@ -5389,65 +5333,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void _setSoundEnabled(bool value) {
     setState(() => _soundEnabled = value);
     ChessSoundService.instance.enabled = value;
-  }
-
-  void _resignGame() {
-    if (_gameResultTitle != null) {
-      return;
-    }
-    if (_gameMode == GameMode.online) {
-      unawaited(_resignOnlineGame());
-      return;
-    }
-    final bool whiteToMove = _moves.length.isEven;
-    setState(() {
-      _gameResultTitle = whiteToMove ? 'Black wins' : 'White wins';
-      _gameResultDetail =
-          '${whiteToMove ? _whitePlayerName : _blackPlayerName} resigned';
-      _delayLocalResultOverlay();
-      _coachNote = 'Resignation accepted. $_gameResultTitle.';
-      _archiveFinishedGame();
-    });
-    unawaited(ChessSoundService.instance.victory());
-  }
-
-  Future<void> _offerDraw() async {
-    if (_gameResultTitle != null) {
-      return;
-    }
-    if (_gameMode == GameMode.online) {
-      await _offerOnlineDraw();
-      return;
-    }
-    final bool? accepted = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text('Offer draw?'),
-        content: const Text(
-          'For offline play this records a mutual draw immediately.',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Accept draw'),
-          ),
-        ],
-      ),
-    );
-    if (accepted == true) {
-      setState(() {
-        _gameResultTitle = 'Draw';
-        _gameResultDetail = 'Draw agreed';
-        _delayLocalResultOverlay();
-        _coachNote = 'Draw agreed by both players.';
-        _archiveFinishedGame();
-      });
-      unawaited(ChessSoundService.instance.draw());
-    }
   }
 
   void _archiveFinishedGame() {
@@ -5835,7 +5720,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _coachNote = _onlineStatusText(match);
       if (newMatch) {
         _onlineResultPresentationTimer?.cancel();
-        _onlineCelebrationVisible = false;
         _onlineCelebrationMatchId = null;
         _gameResultTitle = null;
         _gameResultDetail = null;
@@ -6106,7 +5990,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _handledDrawOfferKey = null;
       _joiningRematchId = null;
       _onlineResultPresentationTimer?.cancel();
-      _onlineCelebrationVisible = false;
       _onlineCelebrationMatchId = null;
       _coachNote = 'Choose how you want to start your next online match.';
     });
@@ -6169,46 +6052,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _resignOnlineGame() async {
-    final OnlineMatchDto? match = _onlineMatch;
-    final String? token = _authToken;
-    if (match == null || token == null || !match.isActive) return;
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text('Resign online match?'),
-        content: const Text('Your opponent will win this match.'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Keep playing'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Resign'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-    try {
-      _rebuildFromOnline(await _onlineApi.resign(token, match.id));
-    } on OnlineMatchException catch (error) {
-      if (mounted) setState(() => _coachNote = error.message);
-    }
-  }
-
-  Future<void> _offerOnlineDraw() async {
-    final OnlineMatchDto? match = _onlineMatch;
-    final String? token = _authToken;
-    if (match == null || token == null || !match.isActive) return;
-    try {
-      _rebuildFromOnline(await _onlineApi.offerDraw(token, match.id));
-    } on OnlineMatchException catch (error) {
-      if (mounted) setState(() => _coachNote = error.message);
-    }
-  }
-
   Future<void> _respondOnlineDraw(bool accept) async {
     final OnlineMatchDto? match = _onlineMatch;
     final String? token = _authToken;
@@ -6264,7 +6107,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       final bool draw = result == '1/2-1/2';
       final bool firstPresentation = _archivedOnlineMatchId != match.id;
       final bool decisive = result == '1-0' || result == '0-1';
-      final bool winningWhite = result == '1-0';
       setState(() {
         _gameResultTitle = draw
             ? 'Draw'
@@ -6277,9 +6119,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           // winner's side of the board first; the score/action popup follows
           // after the player has had time to identify the final move.
           _resultVisible = false;
-          _onlineCelebrationVisible = decisive;
-          _onlineCelebrationWinnerAtTop =
-              winningWhite == _shouldFlipBoard(match.whiteToMove);
           _onlineCelebrationMatchId = match.id;
         }
         _coachNote = _onlineResultDetail(match);
@@ -6291,7 +6130,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           () {
             if (!mounted || _onlineCelebrationMatchId != match.id) return;
             setState(() {
-              _onlineCelebrationVisible = false;
               _resultVisible = true;
             });
           },

@@ -469,6 +469,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: 'Remind me to play the daily challenge',
         value: _dailyReminderEnabled,
         onChanged: (bool value) async {
+          final ScaffoldMessengerState messenger =
+              ScaffoldMessenger.of(context);
           bool enabled = value;
           if (value) {
             enabled = await DailyReminderService.instance.enable();
@@ -478,7 +480,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (!mounted) return;
           setState(() => _dailyReminderEnabled = enabled);
           await _preferences.writeBool('dailyReminder', enabled);
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             SnackBar(
               content: Text(enabled
                   ? 'Daily reminder set for 7:00 PM.'
