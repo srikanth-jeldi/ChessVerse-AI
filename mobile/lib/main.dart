@@ -1824,9 +1824,10 @@ class AiProfile {
 
 AiProfile aiProfileFor(int level) {
   return switch (level.clamp(1, 10)) {
-    1 => const AiProfile('Beginner', 1320, 'Beatable, short calculation'),
-    2 => const AiProfile('Learner', 1400, 'Basic tactics and development'),
-    3 => const AiProfile('Casual', 1500, 'Punishes simple mistakes'),
+    1 => const AiProfile('Beginner', 600, 'Makes frequent learning mistakes'),
+    2 =>
+      const AiProfile('Learner', 850, 'Sees simple captures, still blunders'),
+    3 => const AiProfile('Casual', 1100, 'Basic tactics and development'),
     4 => const AiProfile('Intermediate', 1600, 'Plans two ideas ahead'),
     5 => const AiProfile('Club', 1750, 'Solid positional play'),
     6 => const AiProfile('Advanced', 1900, 'Finds tactical combinations'),
@@ -1892,6 +1893,41 @@ class AiCandidate {
   final String from;
   final String to;
   final double score;
+}
+
+AiCandidate chooseAiCandidateForLevel(
+  List<AiCandidate> sortedCandidates,
+  int level,
+  math.Random random, {
+  AiCandidate? engineMove,
+}) {
+  assert(sortedCandidates.isNotEmpty);
+  final int boundedLevel = level.clamp(1, 10);
+  if (engineMove != null && boundedLevel >= 4) return engineMove;
+
+  // Beginner levels intentionally inspect a much wider set of legal moves.
+  // This creates human-like inaccuracies instead of exposing Stockfish's
+  // minimum UCI strength (which is already too strong for a new player).
+  final double candidateFraction = switch (boundedLevel) {
+    1 => 1.0,
+    2 => .80,
+    3 => .60,
+    4 => .42,
+    5 => .32,
+    6 => .24,
+    7 => .16,
+    8 => .10,
+    9 => .06,
+    _ => .01,
+  };
+  final int poolSize = math.max(
+    1,
+    math.min(
+      sortedCandidates.length,
+      (sortedCandidates.length * candidateFraction).ceil(),
+    ),
+  );
+  return sortedCandidates[random.nextInt(poolSize)];
 }
 
 class PositionAnalysis {
@@ -3046,6 +3082,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 checkedKingSquare: checkedKingSquare,
                 decisiveSquare:
                     _gameResultDetail == 'Checkmate' ? _lastToSquare : null,
+                fallenKingSquare: _gameResultDetail == 'Checkmate'
+                    ? _kingSquare(sideToMoveWhite)
+                    : null,
                 coachArrowFrom: _coachArrowFrom,
                 coachArrowTo: _coachArrowTo,
                 flipped: _shouldFlipBoard(sideToMoveWhite),
@@ -3371,8 +3410,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                         Positioned.fill(
                           child: OnlineVictoryCelebration(
                             winnerAtTop: true,
-                            title: _gameResultTitle!,
-                            showTitle: false,
+                            title: _resultDisplayTitle(),
+                            showTitle: true,
                           ),
                         ),
                       if (_moveQualityText != null &&
@@ -4789,7 +4828,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
 
     AiCandidate? engineMove;
-    if (widget.useRemoteEngine) {
+    final int level = _aiLevel.round();
+    // Stockfish's UCI_LimitStrength floor is still club-player strength.
+    // Keep levels 1-3 on the deliberately imperfect local selector.
+    if (widget.useRemoteEngine && level >= 4) {
       try {
         final Map<String, dynamic> response = await _engineApi.bestMove(
           fen: _toFen(),
@@ -4865,13 +4907,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     candidates.sort(
       (AiCandidate a, AiCandidate b) => b.score.compareTo(a.score),
     );
-    final int level = _aiLevel.round();
-    final int poolSize = math.min(
-      candidates.length,
-      math.max(1, ((11 - level) / 2).ceil()),
+    final AiCandidate move = chooseAiCandidateForLevel(
+      candidates,
+      level,
+      _random,
+      engineMove: engineMove,
     );
-    final AiCandidate move =
-        engineMove ?? candidates[_random.nextInt(poolSize)];
     final bool stockfishPowered = engineMove != null;
 
     setState(() {
@@ -6596,6 +6637,7 @@ class ChessBoard extends StatefulWidget {
     required this.moveSequence,
     required this.checkedKingSquare,
     required this.decisiveSquare,
+    this.fallenKingSquare,
     required this.coachArrowFrom,
     required this.coachArrowTo,
     required this.flipped,
@@ -6616,6 +6658,7 @@ class ChessBoard extends StatefulWidget {
   final int moveSequence;
   final String? checkedKingSquare;
   final String? decisiveSquare;
+  final String? fallenKingSquare;
   final String? coachArrowFrom;
   final String? coachArrowTo;
   final bool flipped;
@@ -6736,6 +6779,7 @@ class _ChessBoardState extends State<ChessBoard> {
                 final bool lastCapture = square == lastCaptureSquare;
                 final bool checkedKing = square == checkedKingSquare;
                 final bool decisiveMove = square == decisiveSquare;
+                final bool kingFallen = square == widget.fallenKingSquare;
 
                 return BoardSquare(
                   key: ValueKey<String>('square-$square'),
@@ -6748,6 +6792,7 @@ class _ChessBoardState extends State<ChessBoard> {
                   lastCapture: lastCapture,
                   checkedKing: checkedKing,
                   decisiveMove: decisiveMove,
+                  kingFallen: kingFallen,
                   palette: palette,
                   piece: piece,
                   showRank: showCoordinates && col == 0,
@@ -7079,6 +7124,7 @@ class BoardSquare extends StatelessWidget {
     required this.lastCapture,
     required this.checkedKing,
     required this.decisiveMove,
+    this.kingFallen = false,
     required this.palette,
     required this.showRank,
     required this.showFile,
@@ -7096,6 +7142,7 @@ class BoardSquare extends StatelessWidget {
   final bool lastCapture;
   final bool checkedKing;
   final bool decisiveMove;
+  final bool kingFallen;
   final BoardPalette palette;
   final bool showRank;
   final bool showFile;
@@ -7331,13 +7378,31 @@ class BoardSquare extends StatelessWidget {
             Center(
               child: piece == null
                   ? const SizedBox.shrink()
-                  : ChessCoin(
-                      key: ValueKey<String>(
-                        '$square-${piece!.white}-${piece!.code}',
+                  : TweenAnimationBuilder<double>(
+                      key: ValueKey<String>('king-fall-$square-$kingFallen'),
+                      tween: Tween<double>(begin: 0, end: kingFallen ? 1 : 0),
+                      duration: const Duration(milliseconds: 900),
+                      curve: Curves.easeInOutBack,
+                      builder:
+                          (BuildContext context, double fall, Widget? child) {
+                        return Transform.translate(
+                          offset: Offset(0, fall * 9),
+                          child: Transform.rotate(
+                            alignment: Alignment.bottomCenter,
+                            angle:
+                                (piece!.white ? 1 : -1) * math.pi * .48 * fall,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: ChessCoin(
+                        key: ValueKey<String>(
+                          '$square-${piece!.white}-${piece!.code}',
+                        ),
+                        piece: piece!,
+                        selected: selected,
+                        accent: palette.accent,
                       ),
-                      piece: piece!,
-                      selected: selected,
-                      accent: palette.accent,
                     ),
             ),
             if (lastCapture)
@@ -11833,6 +11898,50 @@ class _OnlineVictoryCelebrationState extends State<OnlineVictoryCelebration>
   Widget build(BuildContext context) => IgnorePointer(
         child: AnimatedBuilder(
           animation: _controller,
+          child: widget.showTitle
+              ? TweenAnimationBuilder<double>(
+                  key: ValueKey<String>('victory-title-${widget.title}'),
+                  tween: Tween<double>(begin: .35, end: 1),
+                  duration: const Duration(milliseconds: 950),
+                  curve: Curves.elasticOut,
+                  builder:
+                      (BuildContext context, double scale, Widget? child) =>
+                          Transform.scale(scale: scale, child: child),
+                  child: Align(
+                    alignment: const Alignment(0, -0.48),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: <Color>[Color(0xFFE5A92F), Color(0xFFFFE18A)],
+                        ),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: const <BoxShadow>[
+                          BoxShadow(color: Color(0xAAE5A92F), blurRadius: 30),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 28, vertical: 12),
+                        child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              const Icon(Icons.emoji_events_rounded,
+                                  color: Color(0xFF07131E)),
+                              const SizedBox(width: 9),
+                              Text(widget.title.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Color(0xFF07131E),
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.1,
+                                  )),
+                            ]),
+                      ),
+                    ),
+                  ),
+                )
+              : null,
           builder: (BuildContext context, Widget? child) => Stack(
             children: <Widget>[
               Positioned.fill(
@@ -11843,45 +11952,7 @@ class _OnlineVictoryCelebrationState extends State<OnlineVictoryCelebration>
                   ),
                 ),
               ),
-              if (widget.showTitle)
-                Align(
-                  alignment: widget.winnerAtTop
-                      ? const Alignment(0, -0.72)
-                      : const Alignment(0, 0.72),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: <Color>[Color(0xFFE5A92F), Color(0xFFFFE18A)],
-                      ),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: Colors.white, width: 1.5),
-                      boxShadow: const <BoxShadow>[
-                        BoxShadow(color: Color(0xAAE5A92F), blurRadius: 30),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 28, vertical: 12),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          const Icon(Icons.emoji_events_rounded,
-                              color: Color(0xFF07131E)),
-                          const SizedBox(width: 9),
-                          Text(
-                            widget.title.toUpperCase(),
-                            style: const TextStyle(
-                              color: Color(0xFF07131E),
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+              if (child != null) child,
             ],
           ),
         ),

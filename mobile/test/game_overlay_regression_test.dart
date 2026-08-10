@@ -64,4 +64,47 @@ void main() {
     expect(painter.from, 'g8');
     expect(painter.to, 'f6');
   });
+
+  testWidgets('losing king falls and victory title zooms over fireworks',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Stack(children: <Widget>[
+            ChessBoard(
+              pieces: const <String, ChessPiece>{
+                'e1': ChessPiece('K', true),
+                'e8': ChessPiece('K', false),
+              },
+              selectedSquare: null,
+              legalTargets: const <String>{},
+              lastFromSquare: 'h5',
+              lastToSquare: 'e8',
+              lastCaptureSquare: null,
+              moveSequence: 12,
+              checkedKingSquare: 'e8',
+              decisiveSquare: 'e8',
+              fallenKingSquare: 'e8',
+              coachArrowFrom: null,
+              coachArrowTo: null,
+              flipped: false,
+              showCoordinates: true,
+              palette: boardPalettes[BoardSkin.royalWalnut]!,
+              onSquareTap: (_) {},
+            ),
+            const OnlineVictoryCelebration(
+              winnerAtTop: true,
+              title: 'You win',
+            ),
+          ]),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byKey(const ValueKey<String>('king-fall-e8-true')),
+        findsOneWidget);
+    expect(find.text('YOU WIN'), findsOneWidget);
+    expect(find.byType(CustomPaint), findsWidgets);
+  });
 }
