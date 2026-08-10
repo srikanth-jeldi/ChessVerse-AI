@@ -517,7 +517,7 @@ class _AuthScreenState extends State<AuthScreen> {
     if (widget.guestUpgradeToken != null) {
       return const <Widget>[
         Text(
-          'Link Google to keep this guest profile, rating and match history across devices. Your existing progress will not be deleted.',
+          'Link Google or Facebook to keep this guest profile, rating and match history across devices. Your existing progress will not be deleted.',
           style: TextStyle(color: AppColors.textSecondary, height: 1.45),
         ),
       ];
@@ -723,10 +723,10 @@ class _AuthScreenState extends State<AuthScreen> {
     }
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final bool showFacebook = widget.guestUpgradeToken == null;
-        final double buttonWidth = showFacebook
-            ? ((constraints.maxWidth - 10) / 2).floorToDouble()
-            : constraints.maxWidth;
+        // Guest accounts can be secured with either provider. Hiding Facebook
+        // here left upgrade users with only Google in both orientations.
+        final double buttonWidth =
+            ((constraints.maxWidth - 10) / 2).floorToDouble();
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
@@ -736,7 +736,7 @@ class _AuthScreenState extends State<AuthScreen> {
               child: kIsWeb && !filePreview
                   ? Center(child: buildWebGoogleSignInButton())
                   : _SocialButton(
-                      label: showFacebook ? 'Google' : 'SECURE WITH GOOGLE',
+                      label: 'Google',
                       onPressed: _loading ? null : _signInWithGoogle,
                       child: Transform.translate(
                         offset: const Offset(0, -1.5),
@@ -752,21 +752,19 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                     ),
             ),
-            if (showFacebook) ...<Widget>[
-              const SizedBox(width: 10),
-              SizedBox(
-                width: buttonWidth,
-                height: 50,
-                child: _SocialButton(
-                  label: 'Facebook',
-                  onPressed: _loading ? null : _signInWithFacebook,
-                  child: const Icon(
-                    Icons.facebook_rounded,
-                    color: Color(0xFF4285F4),
-                  ),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: buttonWidth,
+              height: 50,
+              child: _SocialButton(
+                label: 'Facebook',
+                onPressed: _loading ? null : _signInWithFacebook,
+                child: const Icon(
+                  Icons.facebook_rounded,
+                  color: Color(0xFF4285F4),
                 ),
               ),
-            ],
+            ),
           ],
         );
       },
@@ -876,7 +874,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         const SizedBox(height: 18),
                         if (widget.guestUpgradeToken != null) ...<Widget>[
                           const Text(
-                            'Link Google to keep this guest profile, rating and match history across devices. Your existing progress will not be deleted.',
+                            'Link Google or Facebook to keep this guest profile, rating and match history across devices. Your existing progress will not be deleted.',
                             style: TextStyle(
                                 color: AppColors.textSecondary, height: 1.45),
                           ),

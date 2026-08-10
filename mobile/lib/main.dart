@@ -322,6 +322,7 @@ class _SplashGateState extends State<SplashGate> {
         onRankings: () => _push(
           context,
           LeaderboardScreen(
+            profilePhotoUrl: _photoUrl,
             onHome: () => _closeSettingsAndSelect(context, 0),
             onPlay: () => _closeSettingsAndSelect(context, 1),
             onPuzzles: () => _closeSettingsAndSelect(context, 2),

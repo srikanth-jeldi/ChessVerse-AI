@@ -9,6 +9,7 @@ import '../data/leaderboard_api.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({
+    this.profilePhotoUrl,
     this.onHome,
     this.onPlay,
     this.onPuzzles,
@@ -17,6 +18,7 @@ class LeaderboardScreen extends StatefulWidget {
     super.key,
   });
 
+  final String? profilePhotoUrl;
   final VoidCallback? onHome;
   final VoidCallback? onPlay;
   final VoidCallback? onPuzzles;
@@ -199,8 +201,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                                 mainAxisExtent: 91,
                               ),
                               itemCount: board.entries.length,
-                              itemBuilder: (_, int index) =>
-                                  _LeaderboardTile(board.entries[index]),
+                              itemBuilder: (_, int index) => _LeaderboardTile(
+                                board.entries[index],
+                                profilePhotoUrl: widget.profilePhotoUrl,
+                              ),
                             );
                           }),
                       ],
@@ -441,8 +445,9 @@ class _ScopeOption extends StatelessWidget {
 }
 
 class _LeaderboardTile extends StatelessWidget {
-  const _LeaderboardTile(this.entry);
+  const _LeaderboardTile(this.entry, {this.profilePhotoUrl});
   final LeaderboardEntryDto entry;
+  final String? profilePhotoUrl;
   @override
   Widget build(BuildContext context) {
     final Color accent = switch (entry.rank) {
@@ -455,6 +460,11 @@ class _LeaderboardTile extends StatelessWidget {
     final String trimmedName = entry.displayName.trim();
     final String initial =
         trimmedName.isEmpty ? 'C' : trimmedName.substring(0, 1).toUpperCase();
+    final String? usablePhotoUrl = entry.you &&
+            profilePhotoUrl != null &&
+            profilePhotoUrl!.trim().isNotEmpty
+        ? profilePhotoUrl!.trim()
+        : null;
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -482,8 +492,15 @@ class _LeaderboardTile extends StatelessWidget {
         CircleAvatar(
           radius: 24,
           backgroundColor: accent.withValues(alpha: .18),
-          child: Text(initial,
-              style: TextStyle(color: accent, fontWeight: FontWeight.w900)),
+          backgroundImage:
+              usablePhotoUrl == null ? null : NetworkImage(usablePhotoUrl),
+          onBackgroundImageError: usablePhotoUrl == null
+              ? null
+              : (Object error, StackTrace? stackTrace) {},
+          child: usablePhotoUrl == null
+              ? Text(initial,
+                  style: TextStyle(color: accent, fontWeight: FontWeight.w900))
+              : null,
         ),
         const SizedBox(width: 11),
         Expanded(
