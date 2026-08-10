@@ -6959,6 +6959,7 @@ class _ChessBoardState extends State<ChessBoard> {
                           flipped: flipped,
                           progress: progress,
                           accent: palette.accent,
+                          fadeOut: true,
                         ),
                       );
                     },
@@ -6975,6 +6976,7 @@ class _ChessBoardState extends State<ChessBoard> {
                       flipped: flipped,
                       progress: 1,
                       accent: const Color(0xFF57E0C3),
+                      fadeOut: false,
                     ),
                   ),
                 ),
@@ -7013,6 +7015,7 @@ class LastMoveTrailPainter extends CustomPainter {
     required this.flipped,
     required this.progress,
     required this.accent,
+    this.fadeOut = false,
   });
 
   final String from;
@@ -7020,6 +7023,7 @@ class LastMoveTrailPainter extends CustomPainter {
   final bool flipped;
   final double progress;
   final Color accent;
+  final bool fadeOut;
 
   Offset _center(String square, Size size) {
     final int file = square.codeUnitAt(0) - 97;
@@ -7032,9 +7036,16 @@ class LastMoveTrailPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final double drawProgress =
+        fadeOut ? (progress / 0.68).clamp(0.0, 1.0) : progress.clamp(0.0, 1.0);
+    final double opacity = fadeOut && progress > 0.68
+        ? ((1 - progress) / 0.32).clamp(0.0, 1.0)
+        : 1;
+    if (opacity <= 0) return;
+
     final Offset start = _center(from, size);
     final Offset target = _center(to, size);
-    final Offset end = Offset.lerp(start, target, progress)!;
+    final Offset end = Offset.lerp(start, target, drawProgress)!;
     final double cell = size.shortestSide / 8;
     final Offset delta = end - start;
     final double distance = delta.distance;
@@ -7057,13 +7068,13 @@ class LastMoveTrailPainter extends CustomPainter {
       ..moveTo(visualStart.dx, visualStart.dy)
       ..quadraticBezierTo(control.dx, control.dy, visualEnd.dx, visualEnd.dy);
     final Paint glow = Paint()
-      ..color = accent.withValues(alpha: 0.34 * progress)
+      ..color = accent.withValues(alpha: 0.34 * opacity)
       ..strokeWidth = cell * 0.19
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
     final Paint shadow = Paint()
-      ..color = Colors.black.withValues(alpha: 0.32 * progress)
+      ..color = Colors.black.withValues(alpha: 0.32 * opacity)
       ..strokeWidth = cell * 0.14
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke
@@ -7071,9 +7082,9 @@ class LastMoveTrailPainter extends CustomPainter {
     final Paint line = Paint()
       ..shader = LinearGradient(
         colors: <Color>[
-          Colors.white.withValues(alpha: 0.82),
-          accent.withValues(alpha: 0.9),
-          Colors.white.withValues(alpha: 0.7),
+          Colors.white.withValues(alpha: 0.82 * opacity),
+          accent.withValues(alpha: 0.9 * opacity),
+          Colors.white.withValues(alpha: 0.7 * opacity),
         ],
       ).createShader(Rect.fromPoints(visualStart, visualEnd))
       ..strokeWidth = cell * 0.075
@@ -7085,7 +7096,7 @@ class LastMoveTrailPainter extends CustomPainter {
     canvas.drawPath(trail, line);
     canvas.drawCircle(
       start,
-      cell * 0.11 * progress,
+      cell * 0.11 * drawProgress,
       Paint()
         ..color = Colors.transparent
         ..style = PaintingStyle.stroke
@@ -7096,7 +7107,7 @@ class LastMoveTrailPainter extends CustomPainter {
       target,
       cell * 0.24 * progress,
       Paint()
-        ..color = accent.withValues(alpha: 0.12 * progress)
+        ..color = accent.withValues(alpha: 0.12 * opacity)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
     );
   }
@@ -7107,7 +7118,8 @@ class LastMoveTrailPainter extends CustomPainter {
         oldDelegate.to != to ||
         oldDelegate.flipped != flipped ||
         oldDelegate.progress != progress ||
-        oldDelegate.accent != accent;
+        oldDelegate.accent != accent ||
+        oldDelegate.fadeOut != fadeOut;
   }
 }
 
@@ -8277,6 +8289,24 @@ class _StudioCoachPanel extends StatelessWidget {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final bool compact = constraints.maxHeight < 560;
+        final Widget coachMessageCard = _CoachInsightCard(
+          icon: Icons.psychology_alt_rounded,
+          accent: const Color(0xFF9C6CFF),
+          alignStart: true,
+          child: SingleChildScrollView(
+            child: Text(
+              coachEnabled
+                  ? coachNote
+                  : 'Turn Coach on in Game controls for live move explanations.',
+              style: const TextStyle(
+                color: Color(0xFFF2EDE4),
+                fontSize: 15,
+                height: 1.25,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        );
         return DecoratedBox(
           decoration: BoxDecoration(
             color: const Color(0xFF061527).withValues(alpha: 0.97),
@@ -8367,27 +8397,10 @@ class _StudioCoachPanel extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: compact ? 8 : 10),
-                  SizedBox(
-                    height: compact ? 76 : 84,
-                    child: _CoachInsightCard(
-                      icon: Icons.psychology_alt_rounded,
-                      accent: const Color(0xFF9C6CFF),
-                      alignStart: true,
-                      child: SingleChildScrollView(
-                        child: Text(
-                          coachEnabled
-                              ? coachNote
-                              : 'Turn Coach on in Game controls for live move explanations.',
-                          style: const TextStyle(
-                            color: Color(0xFFF2EDE4),
-                            fontSize: 15,
-                            height: 1.25,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  if (compact)
+                    Expanded(child: coachMessageCard)
+                  else
+                    SizedBox(height: 84, child: coachMessageCard),
                   if (!compact) ...<Widget>[
                     const SizedBox(height: 10),
                     _CoachInsightCard(
@@ -8442,7 +8455,6 @@ class _StudioCoachPanel extends StatelessWidget {
                       evaluationPawns: evaluationPawns,
                     ),
                   ],
-                  if (compact) const Spacer(),
                   SizedBox(height: compact ? 8 : 12),
                   Row(
                     children: <Widget>[
