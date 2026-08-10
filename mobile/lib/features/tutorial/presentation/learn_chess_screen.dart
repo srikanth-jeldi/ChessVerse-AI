@@ -4,6 +4,8 @@ import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/layout/responsive_page.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
+import '../domain/academy_lesson.dart';
+import 'interactive_academy_lesson_screen.dart';
 
 class LearnChessScreen extends StatelessWidget {
   const LearnChessScreen({super.key});
@@ -515,10 +517,10 @@ class _CourseScreen extends StatelessWidget {
                           horizontal: 16, vertical: 7),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => _LessonContentScreen(
-                            course: course,
-                            index: index,
-                            title: course.chapters[index],
+                          builder: (_) => InteractiveAcademyLessonScreen(
+                            lesson: AcademyCatalog.forChapter(
+                              course.chapters[index],
+                            ),
                           ),
                         ),
                       ),
@@ -549,88 +551,6 @@ class _CourseScreen extends StatelessWidget {
         ),
       );
 }
-
-class _LessonContentScreen extends StatelessWidget {
-  const _LessonContentScreen(
-      {required this.course, required this.index, required this.title});
-  final _Lesson course;
-  final int index;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: const Color(0xFF06131D),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF071827),
-          title: Text('${index + 1}. $title'),
-        ),
-        body: ResponsivePage(
-          maxWidth: 820,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Container(
-                height: 230,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: course.accent),
-                  image: DecorationImage(
-                      image: AssetImage(course.asset), fit: BoxFit.cover),
-                ),
-              ),
-              const SizedBox(height: 22),
-              Text(title,
-                  style: const TextStyle(
-                      fontSize: 28, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 10),
-              Text(_lessonExplanation(course.title, title),
-                  style: const TextStyle(
-                      color: Color(0xFFD0DAE2), fontSize: 17, height: 1.55)),
-              const SizedBox(height: 20),
-              ChessVerseCard(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Icon(Icons.lightbulb_rounded, color: course.accent),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Coach tip: Look at checks, captures, and threats before choosing your move.',
-                        style: TextStyle(
-                            color: course.accent,
-                            fontWeight: FontWeight.w700,
-                            height: 1.4),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: course.accent,
-                    foregroundColor: const Color(0xFF06131D),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  icon: const Icon(Icons.check_circle_rounded),
-                  label: const Text('COMPLETE LESSON',
-                      style: TextStyle(fontWeight: FontWeight.w900)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-}
-
-String _lessonExplanation(String course, String lesson) =>
-    'In $lesson, you will learn the essential $course idea step by step. '
-    'Study the example position, identify the safe and legal choices, and '
-    'apply the idea on the board. The lesson finishes with a short practice '
-    'position so you can use the pattern in a real game.';
 
 class _Lesson {
   const _Lesson({
