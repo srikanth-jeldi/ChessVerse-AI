@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../../../core/audio/chess_sound_service.dart';
 import '../../../core/app_preferences.dart';
+import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/layout/responsive_page.dart';
 import '../../../core/notifications/daily_reminder_service.dart';
 import '../../../core/theme/app_colors.dart';
@@ -85,8 +85,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final Size viewport = MediaQuery.sizeOf(context);
-    final bool tablet = viewport.shortestSide >= 600;
-    final bool wide = (kIsWeb || tablet) && viewport.width >= 700;
+    final bool wide =
+        AppBreakpoints.isTabletOrLarger(context) && viewport.width >= 700;
     final Widget page = Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -120,7 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               maxWidth: wide ? 1240 : null,
               child: LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints constraints) {
-                  final bool desktop = constraints.maxWidth >= 620;
+                  final bool desktop = wide && constraints.maxWidth >= 620;
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[

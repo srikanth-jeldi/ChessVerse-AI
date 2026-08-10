@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
+import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
@@ -112,8 +112,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   @override
   Widget build(BuildContext context) {
     final Size viewport = MediaQuery.sizeOf(context);
-    final bool tablet = viewport.shortestSide >= 600;
-    final bool wide = (kIsWeb || tablet) && viewport.width >= 700;
+    final bool wide =
+        AppBreakpoints.isTabletOrLarger(context) && viewport.width >= 700;
     final Widget page = Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(

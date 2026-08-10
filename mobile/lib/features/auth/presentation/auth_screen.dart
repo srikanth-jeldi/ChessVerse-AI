@@ -219,7 +219,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _premiumResponsiveBody(BuildContext context) {
     final Size viewport = MediaQuery.sizeOf(context);
-    final bool wide = viewport.width >= 900;
+    final bool wide = viewport.shortestSide >= 600 && viewport.width >= 900;
     final bool compact = viewport.width < 430;
     final Widget card = SizedBox(
       width: viewport.width < 546 ? viewport.width - 56 : 470,

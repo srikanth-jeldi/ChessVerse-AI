@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
+import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
 
@@ -49,8 +49,8 @@ class HomeDashboardScreen extends StatelessWidget {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
-            final bool tablet = MediaQuery.sizeOf(context).shortestSide >= 600;
-            if ((kIsWeb || tablet) && constraints.maxWidth >= 700) {
+            if (AppBreakpoints.isTabletOrLarger(context) &&
+                constraints.maxWidth >= 700) {
               return _WideHome(
                 playerName: playerName,
                 profilePhotoUrl: profilePhotoUrl,
