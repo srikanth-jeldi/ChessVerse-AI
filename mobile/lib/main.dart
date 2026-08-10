@@ -4605,8 +4605,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       final int cp = (engine['evaluationCp'] as num?)?.toInt() ?? 0;
       setState(() {
         _engineEvaluationPawns = cp / 100;
-        _coachArrowFrom = best ? null : bestMove.substring(0, 2);
-        _coachArrowTo = best ? null : bestMove.substring(2, 4);
+        // Post-move review is textual. Board arrows are reserved for an
+        // explicit Hint/Analyze request so a completed move never leaves two
+        // competing motion trails on the board.
+        _coachArrowFrom = null;
+        _coachArrowTo = null;
         if (_playerMoveScores.isNotEmpty) {
           _playerMoveScores[_playerMoveScores.length - 1] = best ? 100 : 68;
         }
@@ -11684,19 +11687,23 @@ class _TurnBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
-      child: Center(
+      child: Align(
+        alignment: const Alignment(0, -0.72),
         child: Semantics(
           liveRegion: true,
           label: 'Your turn',
           child: TweenAnimationBuilder<double>(
             key: const ValueKey<String>('prominent-turn-banner'),
-            tween: Tween<double>(begin: 0.82, end: 1),
-            duration: const Duration(milliseconds: 420),
-            curve: Curves.easeOutBack,
+            tween: Tween<double>(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 520),
+            curve: Curves.easeOutCubic,
             builder: (BuildContext context, double value, Widget? child) {
               return Opacity(
                 opacity: value.clamp(0.0, 1.0),
-                child: Transform.scale(scale: value, child: child),
+                child: Transform.translate(
+                  offset: Offset(0, 18 * (1 - value)),
+                  child: child,
+                ),
               );
             },
             child: const Text(
