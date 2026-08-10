@@ -222,7 +222,7 @@ class _AuthScreenState extends State<AuthScreen> {
     final bool wide = viewport.shortestSide >= 600 && viewport.width >= 900;
     final bool compact = viewport.width < 430;
     final Widget card = SizedBox(
-      width: viewport.width < 546 ? viewport.width - 56 : 470,
+      width: viewport.width < 546 ? viewport.width - 32 : 490,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(30),
         child: Stack(
@@ -230,10 +230,10 @@ class _AuthScreenState extends State<AuthScreen> {
             Positioned.fill(child: _premiumPanelBackground()),
             Padding(
               padding: EdgeInsets.fromLTRB(
-                compact ? 24 : 40,
-                compact ? 14 : 28,
-                compact ? 24 : 40,
-                compact ? 16 : 30,
+                compact ? 28 : 42,
+                compact ? 24 : 34,
+                compact ? 28 : 42,
+                compact ? 26 : 36,
               ),
               child: _premiumFormContent(context),
             ),
@@ -291,7 +291,10 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _premiumFormContent(BuildContext context) {
-    final bool dense = MediaQuery.sizeOf(context).height < 900;
+    // Typical phones are ~720-850 logical px tall. Treating every one of
+    // them as dense made the complete form look cramped in the middle of the
+    // screen. Only genuinely short windows use the compressed rhythm.
+    final bool dense = MediaQuery.sizeOf(context).height < 680;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,

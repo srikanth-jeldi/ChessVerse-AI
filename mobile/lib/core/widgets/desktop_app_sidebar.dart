@@ -42,6 +42,12 @@ class DesktopAppSidebar extends StatelessWidget {
       (icon: Icons.extension_rounded, label: 'Puzzles', onTap: onPuzzles),
       (icon: Icons.school_rounded, label: 'Learn', onTap: onLearn),
       (icon: Icons.person_rounded, label: 'Profile', onTap: onProfile),
+      (icon: Icons.analytics_rounded, label: 'Analysis', onTap: onAnalysis),
+      (icon: Icons.emoji_events_rounded, label: 'Rankings', onTap: onRankings),
+      (icon: Icons.people_alt_rounded, label: 'Friends', onTap: onFriends),
+      (icon: Icons.event_rounded, label: 'Events', onTap: onEvents),
+      (icon: Icons.storefront_rounded, label: 'Store', onTap: onStore),
+      (icon: Icons.settings_rounded, label: 'Settings', onTap: onSettings),
     ];
     return Container(
       width: 258,
@@ -57,13 +63,17 @@ class DesktopAppSidebar extends StatelessWidget {
           const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              Text('CHESSVERSE ',
-                  style: TextStyle(
-                      color: Color(0xFFF5F7FA),
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      decoration: TextDecoration.none,
-                      decorationColor: Colors.transparent)),
+              Flexible(
+                child: Text('CHESSVERSE ',
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    style: TextStyle(
+                        color: Color(0xFFF5F7FA),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        decoration: TextDecoration.none,
+                        decorationColor: Colors.transparent)),
+              ),
               Text('AI',
                   style: TextStyle(
                       color: Color(0xFFE9B84C),

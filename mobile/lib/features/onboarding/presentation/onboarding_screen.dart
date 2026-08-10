@@ -231,28 +231,27 @@ class _OnboardingPage extends StatelessWidget {
                         color: AppColors.accentGold,
                       ),
                 ),
-                if (!tightLandscape) ...<Widget>[
-                  SizedBox(height: landscape ? 10 : 18),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: AppColors.surface.withValues(alpha: 0.82),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(landscape ? 14 : 18),
-                      child: Text(
-                        data.body,
-                        textAlign: TextAlign.center,
-                        maxLines: landscape ? 3 : null,
-                        overflow: TextOverflow.fade,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                      ),
+                SizedBox(height: tightLandscape ? 6 : (landscape ? 10 : 18)),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface.withValues(alpha: 0.82),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(tightLandscape ? 9 : (landscape ? 14 : 18)),
+                    child: Text(
+                      data.body,
+                      textAlign: TextAlign.center,
+                      maxLines: tightLandscape ? 2 : (landscape ? 3 : null),
+                      overflow: TextOverflow.fade,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: tightLandscape ? 11 : null,
+                          ),
                     ),
                   ),
-                ],
+                ),
               ],
             ),
           ),

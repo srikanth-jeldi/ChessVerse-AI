@@ -517,19 +517,34 @@ class _PieceGlyph extends StatelessWidget {
   final bool glowing;
 
   @override
-  Widget build(BuildContext context) => Text(
-        _pieceGlyph(piece),
-        style: TextStyle(
-          fontSize: size,
-          height: 1,
-          color: piece.white ? const Color(0xFFFFE6AF) : const Color(0xFF101820),
-          shadows: <Shadow>[
-            const Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 2)),
-            if (glowing) const Shadow(color: Color(0xFF59E4C8), blurRadius: 18),
-          ],
+  Widget build(BuildContext context) => SizedBox.square(
+        dimension: size,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: .42),
+                blurRadius: size * .09,
+                offset: Offset(0, size * .06),
+              ),
+              if (glowing)
+                const BoxShadow(color: Color(0xFF59E4C8), blurRadius: 18),
+            ],
+          ),
+          child: Image.asset(
+            _academyPieceAsset(piece),
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+            semanticLabel:
+                '${piece.white ? 'White' : 'Black'} ${_pieceName(piece.symbol)}',
+          ),
         ),
       );
 }
+
+String _academyPieceAsset(AcademyPiece piece) =>
+    'assets/pieces/staunton_${piece.white ? 'white' : 'black'}_${_pieceName(piece.symbol).toLowerCase()}.png';
 
 class _CoachPanel extends StatelessWidget {
   const _CoachPanel({
@@ -792,6 +807,9 @@ Offset _squareOffset(String square) {
   return Offset(col.toDouble(), (8 - rank).toDouble());
 }
 
+// Legacy Unicode fallback retained for platforms that may add a no-assets
+// accessibility mode later.
+// ignore: unused_element
 String _pieceGlyph(AcademyPiece piece) {
   const Map<String, String> white = <String, String>{
     'K': '♔',

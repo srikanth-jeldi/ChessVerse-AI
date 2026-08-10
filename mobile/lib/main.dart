@@ -3088,7 +3088,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 lastMoveOwner: _lastPlayerMove == null ? null : 'Your move',
                 dailyProgress: _dailyPlayerMovesCompleted,
                 dailyGoal: _dailyChallenge.playerMoveGoal,
-                canUndo: _gameMode != GameMode.online && _history.isNotEmpty,
+                canUndo: _gameMode != GameMode.online &&
+                    _gameResultTitle == null &&
+                    _history.isNotEmpty,
                 onHint: _showHint,
                 onAnalyze: _showAnalysis,
                 onTryAgain: _gameMode == GameMode.online
@@ -5391,6 +5393,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _undo() {
+    // A finished result is authoritative. Undo must never reopen a won,
+    // checkmated, drawn, or completed challenge.
+    if (_gameResultTitle != null) return;
     if (_gameMode == GameMode.online) {
       setState(() {
         _selectedSquare = null;

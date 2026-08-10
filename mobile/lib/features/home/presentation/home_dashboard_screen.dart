@@ -395,7 +395,7 @@ class _WideHomeState extends State<_WideHome> {
                           selectedIndex: _heroIndex,
                           onPageChanged: (int value) =>
                               setState(() => _heroIndex = value),
-                          height: compact ? 270 : 305,
+                          height: compact ? 272 : 305,
                           wide: true,
                           slides: <_HomeHeroData>[
                             _HomeHeroData(
@@ -1156,6 +1156,21 @@ class _CarouselHero extends StatelessWidget {
                 icon: const Icon(Icons.chevron_right_rounded),
               ),
             ),
+            // Paint the frame last. Background artwork previously covered the
+            // right and bottom edges on some carousel slides.
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: const Color(0xFF2A91F2),
+                      width: 1.6,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ]),
         ),
       );
@@ -1420,7 +1435,7 @@ class _MiniCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         child: Ink(
           height: 164,
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
               color: const Color(0xDD0C2030),
               image: DecorationImage(
@@ -1433,8 +1448,8 @@ class _MiniCard extends StatelessWidget {
           child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Icon(icon, color: color, size: 34),
-                const SizedBox(height: 10),
+                Icon(icon, color: color, size: 28),
+                const SizedBox(height: 6),
                 SizedBox(
                   width: double.infinity,
                   child: FittedBox(
