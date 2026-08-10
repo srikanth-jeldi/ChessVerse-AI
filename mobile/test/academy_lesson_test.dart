@@ -15,7 +15,7 @@ void main() {
           expect(_validSquare(square), isTrue);
         }
       }
-      expect(AcademyCatalog.lessons.length, greaterThanOrEqualTo(16));
+      expect(AcademyCatalog.lessons.length, greaterThanOrEqualTo(27));
     });
 
     test('maps the public course chapter names to focused lessons', () {
@@ -24,6 +24,18 @@ void main() {
       expect(AcademyCatalog.forChapter('Back-rank mates').id, 'back-rank');
       expect(AcademyCatalog.forChapter('Promoting a pawn').id, 'promotion');
       expect(AcademyCatalog.forChapter('Queen checkmates').id, 'queen-mate');
+      expect(AcademyCatalog.forChapter('En passant capture').id, 'en-passant');
+      expect(AcademyCatalog.forChapter('Pins').id, 'pin');
+      expect(AcademyCatalog.forChapter('Skewers').id, 'skewer');
+      expect(AcademyCatalog.forChapter('Discovered attacks').id,
+          'discovered-attack');
+      expect(AcademyCatalog.forChapter('King opposition').id, 'opposition');
+      expect(AcademyCatalog.forChapter('Rook and king checkmate').id,
+          'rook-king-mate');
+      expect(AcademyCatalog.forChapter('Avoiding stalemate').id, 'stalemate');
+      expect(AcademyCatalog.forChapter('Deflection tactics').id, 'deflection');
+      expect(AcademyCatalog.forChapter('Decoy tactics').id, 'decoy');
+      expect(AcademyCatalog.forChapter('Mate in two').id, 'mate-two');
     });
   });
 }

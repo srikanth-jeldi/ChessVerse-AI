@@ -238,7 +238,7 @@ class _CoachHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        height: compact ? 250 : 270,
+        height: compact ? 296 : 270,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(26),
           border: Border.all(color: const Color(0xFF2C8FCA), width: 1.2),
@@ -278,11 +278,15 @@ class _CoachHero extends StatelessWidget {
                       Icon(Icons.auto_awesome_rounded,
                           color: Color(0xFF53D8C4), size: 20),
                       SizedBox(width: 8),
-                      Text('AI-GUIDED TRAINING',
-                          style: TextStyle(
-                              color: Color(0xFF53D8C4),
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.1)),
+                      Flexible(
+                        child: Text('AI-GUIDED TRAINING',
+                            maxLines: 1,
+                            overflow: TextOverflow.fade,
+                            style: TextStyle(
+                                color: Color(0xFF53D8C4),
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.1)),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -469,8 +473,11 @@ class _CoachEvaluationPanel extends StatelessWidget {
                       Icon(Icons.psychology_alt_rounded,
                           color: Color(0xFF9C6BFF)),
                       SizedBox(width: 9),
-                      Text('HOW THE AI COACH RESPONDS',
-                          style: TextStyle(fontWeight: FontWeight.w900)),
+                      Expanded(
+                        child: Text('HOW THE AI COACH RESPONDS',
+                            maxLines: 2,
+                            style: TextStyle(fontWeight: FontWeight.w900)),
+                      ),
                     ],
                   ),
                   SizedBox(height: 7),
