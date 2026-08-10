@@ -1,0 +1,67 @@
+import 'package:chessverse_ai/main.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  testWidgets('turn reminder is text-only and has no popup subtitle',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(initiallySignedIn: true, useRemoteEngine: false),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('YOUR TURN'), findsOneWidget);
+    expect(find.textContaining('You play'), findsNothing);
+    expect(
+      find.byKey(const ValueKey<String>('prominent-turn-banner')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('coach recommendation suppresses the previous-move arrow',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ChessBoard(
+            pieces: const <String, ChessPiece>{
+              'e4': ChessPiece('P', true),
+              'f6': ChessPiece('N', false),
+            },
+            selectedSquare: null,
+            legalTargets: const <String>{},
+            lastFromSquare: 'e2',
+            lastToSquare: 'e4',
+            lastCaptureSquare: null,
+            moveSequence: 2,
+            checkedKingSquare: null,
+            decisiveSquare: null,
+            coachArrowFrom: 'g8',
+            coachArrowTo: 'f6',
+            flipped: false,
+            showCoordinates: true,
+            palette: boardPalettes[BoardSkin.royalWalnut]!,
+            onSquareTap: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final Iterable<CustomPaint> arrowPaints = tester
+        .widgetList<CustomPaint>(find.byType(CustomPaint))
+        .where((CustomPaint paint) => paint.painter is LastMoveTrailPainter);
+    expect(arrowPaints, hasLength(1));
+    final LastMoveTrailPainter painter =
+        arrowPaints.single.painter! as LastMoveTrailPainter;
+    expect(painter.from, 'g8');
+    expect(painter.to, 'f6');
+  });
+}

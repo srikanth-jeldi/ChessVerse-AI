@@ -3108,19 +3108,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                         _onlineMatch!.yourColor.toLowerCase(),
                 _ => true,
               };
-              final String turnTitle = switch (_gameMode) {
-                GameMode.computer => yourTurn ? 'YOUR TURN' : 'AI TURN',
-                GameMode.online => yourTurn ? 'YOUR TURN' : 'OPPONENT TURN',
-                GameMode.local =>
-                  '${sideToMoveWhite ? 'WHITE' : 'BLACK'} — YOUR TURN',
-                _ => 'YOUR TURN',
-              };
-              final String turnSubtitle = _gameMode == GameMode.computer
-                  ? (yourTurn
-                      ? 'You play ${_humanPlaysWhite ? 'White' : 'Black'}'
-                      : '${aiProfileFor(_aiLevel.round()).name} is thinking')
-                  : '${sideToMoveWhite ? 'White' : 'Black'} to move';
-
               return Padding(
                 padding: pagePadding,
                 child: KeyedSubtree(
@@ -3286,12 +3273,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           top: wide ? wideHeaderHeight + 12 : 66,
                           left: wide ? 24 : 12,
                           right: wide ? widePanelWidth + 42 : 12,
-                          child: _TurnBanner(
-                            title: turnTitle,
-                            subtitle: turnSubtitle,
-                            isYours: yourTurn,
-                            aiThinking: _aiThinking,
-                          ),
+                          child: const _TurnBanner(),
                         ),
                       if (!_signedIn)
                         Positioned.fill(
@@ -6780,7 +6762,9 @@ class _ChessBoardState extends State<ChessBoard> {
                 ),
               ),
             ),
-            if (lastFromSquare != null && lastToSquare != null)
+            if (lastFromSquare != null &&
+                lastToSquare != null &&
+                (widget.coachArrowFrom == null || widget.coachArrowTo == null))
               Positioned.fill(
                 child: IgnorePointer(
                   child: TweenAnimationBuilder<double>(
@@ -11683,83 +11667,38 @@ class AuthOverlay extends StatelessWidget {
 }
 
 class _TurnBanner extends StatelessWidget {
-  const _TurnBanner({
-    required this.title,
-    required this.subtitle,
-    required this.isYours,
-    required this.aiThinking,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool isYours;
-  final bool aiThinking;
+  const _TurnBanner();
 
   @override
   Widget build(BuildContext context) {
-    final Color accent =
-        isYours ? const Color(0xFF57E0C3) : const Color(0xFFFFC857);
     return IgnorePointer(
       child: Center(
         child: Semantics(
           liveRegion: true,
-          label: '$title. $subtitle',
-          child: AnimatedContainer(
+          label: 'Your turn',
+          child: TweenAnimationBuilder<double>(
             key: const ValueKey<String>('prominent-turn-banner'),
-            duration: const Duration(milliseconds: 220),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-            decoration: BoxDecoration(
-              color: const Color(0xF2071827),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: accent, width: 2),
-              boxShadow: <BoxShadow>[
-                BoxShadow(color: accent.withValues(alpha: .34), blurRadius: 20),
-                const BoxShadow(color: Colors.black54, blurRadius: 12),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                if (aiThinking)
-                  SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: accent,
-                    ),
-                  )
-                else
-                  Icon(
-                    isYours ? Icons.touch_app_rounded : Icons.memory_rounded,
-                    color: accent,
-                    size: 20,
-                  ),
-                const SizedBox(width: 9),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: accent,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.1,
-                      ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            tween: Tween<double>(begin: 0.82, end: 1),
+            duration: const Duration(milliseconds: 420),
+            curve: Curves.easeOutBack,
+            builder: (BuildContext context, double value, Widget? child) {
+              return Opacity(
+                opacity: value.clamp(0.0, 1.0),
+                child: Transform.scale(scale: value, child: child),
+              );
+            },
+            child: const Text(
+              'YOUR TURN',
+              style: TextStyle(
+                color: Color(0xFF66F1D3),
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2.2,
+                shadows: <Shadow>[
+                  Shadow(color: Colors.black, blurRadius: 12),
+                  Shadow(color: Color(0xFF006C64), blurRadius: 24),
+                ],
+              ),
             ),
           ),
         ),
