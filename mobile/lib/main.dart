@@ -920,6 +920,7 @@ class BrandedSplash extends StatelessWidget {
                   ),
                 ),
                 const Image(
+                  key: ValueKey<String>('branded-splash-image'),
                   image: AssetImage(mobileAsset),
                   fit: BoxFit.contain,
                   alignment: Alignment.center,
@@ -1360,7 +1361,7 @@ class _WideChessVerseLoadingPanel extends StatelessWidget {
                       const SizedBox(height: 42),
                       const SizedBox(
                           width: 520, child: _LoadingProgress(centered: false)),
-                      const Spacer(),
+                      const SizedBox(height: 42),
                       const _LoadingFeatureStrip(),
                     ],
                   ),
@@ -8126,6 +8127,7 @@ class _StudioCoachPanel extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
+        final bool hasBoundedHeight = constraints.hasBoundedHeight;
         final bool compact = constraints.maxHeight < 560;
         final Widget coachMessageCard = _CoachInsightCard(
           icon: Icons.psychology_alt_rounded,
@@ -8236,7 +8238,9 @@ class _StudioCoachPanel extends StatelessWidget {
                   ),
                   SizedBox(height: compact ? 8 : 10),
                   if (compact)
-                    Expanded(child: coachMessageCard)
+                    hasBoundedHeight
+                        ? Expanded(child: coachMessageCard)
+                        : SizedBox(height: 112, child: coachMessageCard)
                   else
                     SizedBox(height: 84, child: coachMessageCard),
                   if (!compact) ...<Widget>[
@@ -8260,26 +8264,48 @@ class _StudioCoachPanel extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Expanded(
-                      child: _CoachInsightCard(
-                        icon: Icons.chat_bubble_rounded,
-                        accent: const Color(0xFF63D2B8),
-                        alignStart: true,
-                        child: SingleChildScrollView(
-                          child: Text(
-                            coachEnabled
-                                ? coachNote
-                                : 'Turn Coach on from Game controls to receive move-by-move explanations.',
-                            style: TextStyle(
-                              color: const Color(0xFFF2EDE4),
-                              fontFamily: 'serif',
-                              fontSize: compact ? 14 : 16,
-                              height: 1.35,
+                    hasBoundedHeight
+                        ? Expanded(
+                            child: _CoachInsightCard(
+                              icon: Icons.chat_bubble_rounded,
+                              accent: const Color(0xFF63D2B8),
+                              alignStart: true,
+                              child: SingleChildScrollView(
+                                child: Text(
+                                  coachEnabled
+                                      ? coachNote
+                                      : 'Turn Coach on from Game controls to receive move-by-move explanations.',
+                                  style: TextStyle(
+                                    color: const Color(0xFFF2EDE4),
+                                    fontFamily: 'serif',
+                                    fontSize: compact ? 14 : 16,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        : SizedBox(
+                            height: 160,
+                            child: _CoachInsightCard(
+                              icon: Icons.chat_bubble_rounded,
+                              accent: const Color(0xFF63D2B8),
+                              alignStart: true,
+                              child: SingleChildScrollView(
+                                child: Text(
+                                  coachEnabled
+                                      ? coachNote
+                                      : 'Turn Coach on from Game controls to receive move-by-move explanations.',
+                                  style: TextStyle(
+                                    color: const Color(0xFFF2EDE4),
+                                    fontFamily: 'serif',
+                                    fontSize: compact ? 14 : 16,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    ),
                   ],
                   if (!compact) ...<Widget>[
                     const SizedBox(height: 10),
