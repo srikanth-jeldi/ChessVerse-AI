@@ -23,6 +23,8 @@ void main() {
       find.byKey(const ValueKey<String>('auth-king-anchor')),
     );
     expect((king.bottom - selector.top).abs(), lessThan(1));
+    expect(king.center.dx, greaterThan(selector.center.dx + 100));
+    expect(king.height, greaterThan(220));
   });
 
   testWidgets('landscape phone uses the dedicated mobile split',

@@ -505,10 +505,10 @@ class _AuthScreenState extends State<AuthScreen> {
         _premiumModeSelector(),
         Positioned(
           key: const ValueKey<String>('auth-king-anchor'),
-          right: 8,
+          right: -36,
           bottom: 46,
-          width: 112,
-          height: 205,
+          width: 150,
+          height: 245,
           child: IgnorePointer(
             child: Opacity(
               opacity: 0.58,
