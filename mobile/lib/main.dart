@@ -2080,6 +2080,19 @@ class GameSnapshot {
   final int blackSeconds;
 }
 
+int computerUndoSnapshotIndex(
+  List<GameSnapshot> history, {
+  required bool humanPlaysWhite,
+}) {
+  for (int index = history.length - 1; index >= 0; index--) {
+    final bool whiteToMove = history[index].moves.length.isEven;
+    if (whiteToMove == humanPlaysWhite) {
+      return index;
+    }
+  }
+  return -1;
+}
+
 class ParsedMove {
   const ParsedMove(this.from, this.to);
 
@@ -2700,6 +2713,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   final List<GameSnapshot> _history = <GameSnapshot>[];
   Timer? _clockTimer;
   Timer? _moveQualityTimer;
+  Timer? _aiWatchdogTimer;
   Timer? _turnReminderTimer;
   Timer? _onlinePollTimer;
   WebSocketChannel? _onlineChannel;
@@ -2737,6 +2751,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   GameMode _gameMode = GameMode.computer;
   double _aiLevel = 4;
   bool _aiThinking = false;
+  int _aiMoveEpoch = 0;
   bool _coachEnabled = true;
   bool _humanPlaysWhite = true;
   int _whiteSeconds = 10 * 60;
@@ -2982,6 +2997,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _clockTimer?.cancel();
     _moveQualityTimer?.cancel();
+    _aiWatchdogTimer?.cancel();
     _turnReminderTimer?.cancel();
     _onlinePollTimer?.cancel();
     unawaited(_onlineSocketSubscription?.cancel());
@@ -4808,6 +4824,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
 
+    final int requestEpoch = ++_aiMoveEpoch;
+    _aiWatchdogTimer?.cancel();
     setState(() {
       _aiThinking = true;
       _selectedSquare = null;
@@ -4816,8 +4834,24 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     });
     Future<void>.delayed(
       aiThinkDelayFor(_aiLevel.round()),
-      _performAiMove,
+      () => _performAiMove(requestEpoch),
     );
+    _aiWatchdogTimer = Timer(const Duration(seconds: 20), () {
+      if (!mounted ||
+          requestEpoch != _aiMoveEpoch ||
+          !_aiThinking ||
+          _gameResultTitle != null) {
+        return;
+      }
+      final bool stillAiTurn = _moves.length.isEven == aiPlaysWhite;
+      setState(() {
+        _aiThinking = false;
+        _coachNote = stillAiTurn
+            ? 'AI reply recovered. Calculating again...'
+            : 'Your turn.';
+      });
+      if (stillAiTurn) _scheduleAiMove();
+    });
   }
 
   void _scheduleDailyReply() {
@@ -4925,14 +4959,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _restartTurnReminder();
   }
 
-  Future<void> _performAiMove() async {
+  Future<void> _performAiMove(int requestEpoch) async {
     final bool aiPlaysWhite = !_humanPlaysWhite;
     final bool aiTurn = _moves.length.isEven == aiPlaysWhite;
     if (!mounted ||
         _gameMode != GameMode.computer ||
         _gameResultTitle != null ||
         !_aiThinking ||
-        !aiTurn) {
+        !aiTurn ||
+        requestEpoch != _aiMoveEpoch) {
       return;
     }
 
@@ -4965,7 +5000,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _gameMode != GameMode.computer ||
         _gameResultTitle != null ||
         !_aiThinking ||
-        !aiStillTurn) {
+        !aiStillTurn ||
+        requestEpoch != _aiMoveEpoch) {
       return;
     }
 
@@ -5003,6 +5039,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
 
     if (candidates.isEmpty) {
+      _aiWatchdogTimer?.cancel();
       setState(() {
         _aiThinking = false;
         _coachNote = _gameStateNote(
@@ -5024,6 +5061,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     );
     final bool stockfishPowered = engineMove != null;
 
+    _aiWatchdogTimer?.cancel();
     setState(() {
       _saveSnapshot();
       _lastFromSquare = move.from;
@@ -5371,6 +5409,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final Map<String, ChessPiece> resetPieces = _isTacticsMode
         ? _dailyStartingPosition(challenge)
         : Map<String, ChessPiece>.from(_initialPieces);
+    _aiWatchdogTimer?.cancel();
+    _aiMoveEpoch++;
     setState(() {
       _applyPlayerSideNames(_playerDisplayName);
       _dailyChallenge = challenge;
@@ -5561,13 +5601,23 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
 
+    // In computer mode restore the newest snapshot where it is the human's
+    // turn. This works both while AI is thinking (one ply to undo) and after
+    // its reply (two plies), without leaving an unscheduled AI turn.
+    final int snapshotIndex = _gameMode == GameMode.computer
+        ? computerUndoSnapshotIndex(
+            _history,
+            humanPlaysWhite: _humanPlaysWhite,
+          )
+        : (_isTacticsMode && _history.length >= 2
+            ? _history.length - 2
+            : _history.length - 1);
+    if (snapshotIndex < 0) return;
+    _aiMoveEpoch++;
+    _aiWatchdogTimer?.cancel();
     setState(() {
-      final int steps = (_gameMode == GameMode.computer || _isTacticsMode) &&
-              _history.length >= 2
-          ? 2
-          : 1;
-      final GameSnapshot snapshot = _history[_history.length - steps];
-      _history.removeRange(_history.length - steps, _history.length);
+      final GameSnapshot snapshot = _history[snapshotIndex];
+      _history.removeRange(snapshotIndex, _history.length);
       _pieces = Map<String, ChessPiece>.from(snapshot.pieces);
       _moves
         ..clear()

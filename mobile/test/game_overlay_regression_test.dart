@@ -3,6 +3,64 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  GameSnapshot snapshotWithPly(int ply) => GameSnapshot(
+        pieces: const <String, ChessPiece>{},
+        moves: List<String>.filled(ply, 'move'),
+        capturedWhite: const <ChessPiece>[],
+        capturedBlack: const <ChessPiece>[],
+        coachNote: 'test',
+        lastFromSquare: null,
+        lastToSquare: null,
+        lastCaptureSquare: null,
+        whiteSeconds: 600,
+        blackSeconds: 600,
+      );
+
+  test('computer undo always restores the latest human-turn snapshot', () {
+    final List<GameSnapshot> aiThinkingHistory = <GameSnapshot>[
+      snapshotWithPly(0),
+      snapshotWithPly(1),
+      snapshotWithPly(2),
+    ];
+    expect(
+      computerUndoSnapshotIndex(
+        aiThinkingHistory,
+        humanPlaysWhite: true,
+      ),
+      2,
+    );
+
+    final List<GameSnapshot> afterAiReplyHistory = <GameSnapshot>[
+      ...aiThinkingHistory,
+      snapshotWithPly(3),
+    ];
+    expect(
+      computerUndoSnapshotIndex(
+        afterAiReplyHistory,
+        humanPlaysWhite: true,
+      ),
+      2,
+    );
+    expect(
+      computerUndoSnapshotIndex(
+        <GameSnapshot>[
+          snapshotWithPly(0),
+          snapshotWithPly(1),
+          snapshotWithPly(2),
+        ],
+        humanPlaysWhite: false,
+      ),
+      1,
+    );
+    expect(
+      computerUndoSnapshotIndex(
+        <GameSnapshot>[snapshotWithPly(0)],
+        humanPlaysWhite: false,
+      ),
+      -1,
+    );
+  });
+
   testWidgets('turn reminder is text-only and has no popup subtitle',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(390, 844);
