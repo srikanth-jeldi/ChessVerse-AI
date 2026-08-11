@@ -33,6 +33,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   static const LeaderboardApi _api = LeaderboardApi();
   String _scope = 'global';
   late Future<LeaderboardDto> _leaderboard = _load();
+  bool _naturalUserRowVisible = false;
 
   Future<LeaderboardDto> _load() async {
     final StoredAuthSession? session = await const AuthSessionStore().read();
@@ -145,74 +146,166 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             );
           }
           final LeaderboardDto board = snap.data!;
-          return RefreshIndicator(
-            onRefresh: () async {
-              final Future<LeaderboardDto> next = _load();
-              setState(() => _leaderboard = next);
-              await next;
-            },
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 34),
-              children: <Widget>[
-                Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1240),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        _RatingHero(player: board.you),
-                        const SizedBox(height: 14),
-                        _ScopeSwitch(
-                          scope: _scope,
-                          country: board.you.country,
-                          onChanged: _switchScope,
-                        ),
-                        const SizedBox(height: 17),
-                        Row(children: <Widget>[
-                          const Text('TOP PLAYERS',
-                              style: TextStyle(
-                                  color: Color(0xFF8396A2),
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.2)),
-                          const Spacer(),
-                          Text(
-                              'TOP ${board.entries.length} OF ${board.totalPlayers}',
-                              style: const TextStyle(
-                                  color: Color(0xFF8396A2), fontSize: 11)),
-                        ]),
-                        const SizedBox(height: 9),
-                        if (board.entries.isEmpty)
-                          const _EmptyBoard()
-                        else
-                          LayoutBuilder(builder: (context, size) {
-                            final Size viewport = MediaQuery.sizeOf(context);
-                            final int columns =
-                                size.maxWidth >= 800 && viewport.height >= 600
-                                    ? 2
-                                    : 1;
-                            return GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: columns,
-                                crossAxisSpacing: 10,
-                                mainAxisSpacing: 9,
-                                mainAxisExtent: 91,
+          final LeaderboardEntryDto currentEntry =
+              LeaderboardEntryDto.current(board.you, scope: _scope);
+          final int currentIndex = board.entries.indexWhere(
+            (LeaderboardEntryDto entry) =>
+                entry.you || entry.playerId == board.you.playerId,
+          );
+          final bool pinCurrentUser = currentEntry.rank > 10 &&
+              currentEntry.rank > 0 &&
+              !_naturalUserRowVisible;
+          return Stack(
+            children: <Widget>[
+              NotificationListener<ScrollNotification>(
+                onNotification: (ScrollNotification notification) {
+                  if (currentIndex < 0 || wide) return false;
+                  // Hero/scope/header occupy roughly the first 430 logical px;
+                  // each mobile ranking row is 100 px. Hide the pinned duplicate
+                  // as soon as the user's natural row enters the viewport.
+                  final double rowTop = 430 + currentIndex * 100.0;
+                  final double top = notification.metrics.pixels;
+                  final double bottom =
+                      top + notification.metrics.viewportDimension;
+                  final bool visible =
+                      rowTop < bottom - 30 && rowTop + 91 > top + 30;
+                  if (visible != _naturalUserRowVisible) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() => _naturalUserRowVisible = visible);
+                      }
+                    });
+                  }
+                  return false;
+                },
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    final Future<LeaderboardDto> next = _load();
+                    setState(() => _leaderboard = next);
+                    await next;
+                  },
+                  child: ListView(
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      16,
+                      16,
+                      pinCurrentUser ? 132 : 34,
+                    ),
+                    children: <Widget>[
+                      Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1240),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              _RatingHero(player: board.you),
+                              const SizedBox(height: 14),
+                              _ScopeSwitch(
+                                scope: _scope,
+                                country: board.you.country,
+                                onChanged: _switchScope,
                               ),
-                              itemCount: board.entries.length,
-                              itemBuilder: (_, int index) => _LeaderboardTile(
-                                board.entries[index],
+                              const SizedBox(height: 17),
+                              Row(children: <Widget>[
+                                const Text('TOP PLAYERS',
+                                    style: TextStyle(
+                                        color: Color(0xFF8396A2),
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 1.2)),
+                                const Spacer(),
+                                Text(
+                                    'TOP ${board.entries.length} OF ${board.totalPlayers}',
+                                    style: const TextStyle(
+                                        color: Color(0xFF8396A2),
+                                        fontSize: 11)),
+                              ]),
+                              const SizedBox(height: 9),
+                              if (board.entries.isEmpty)
+                                const _EmptyBoard()
+                              else
+                                LayoutBuilder(builder: (context, size) {
+                                  final Size viewport =
+                                      MediaQuery.sizeOf(context);
+                                  final int columns = size.maxWidth >= 800 &&
+                                          viewport.height >= 600
+                                      ? 2
+                                      : 1;
+                                  return GridView.builder(
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    gridDelegate:
+                                        SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: columns,
+                                      crossAxisSpacing: 10,
+                                      mainAxisSpacing: 9,
+                                      mainAxisExtent: 91,
+                                    ),
+                                    itemCount: board.entries.length,
+                                    itemBuilder: (_, int index) =>
+                                        _LeaderboardTile(
+                                      board.entries[index],
+                                      profilePhotoUrl: widget.profilePhotoUrl,
+                                    ),
+                                  );
+                                }),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (pinCurrentUser)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 12,
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 620),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(19),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: .55),
+                              blurRadius: 24,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: <Widget>[
+                            const Padding(
+                              padding: EdgeInsets.only(left: 8, bottom: 4),
+                              child: Text(
+                                'YOUR CURRENT RANK',
+                                style: TextStyle(
+                                  color: Color(0xFF65C9F4),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              height: 91,
+                              child: _LeaderboardTile(
+                                currentEntry,
                                 profilePhotoUrl: widget.profilePhotoUrl,
                               ),
-                            );
-                          }),
-                      ],
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ],
-            ),
+            ],
           );
         },
       ),

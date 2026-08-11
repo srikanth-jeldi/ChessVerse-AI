@@ -3137,8 +3137,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 decisiveSquare:
                     _gameResultDetail == 'Checkmate' ? _lastToSquare : null,
                 fallenKingSquare: _gameResultDetail == 'Checkmate'
-                    ? _kingSquare(sideToMoveWhite)
+                    ? (_kingSquare(sideToMoveWhite) ??
+                        (_lastCapturedPiece?.code == 'K'
+                            ? _lastCaptureSquare
+                            : null))
                     : null,
+                fallenKingWhite: sideToMoveWhite,
                 coachArrowFrom: _coachArrowFrom,
                 coachArrowTo: _coachArrowTo,
                 flipped: _shouldFlipBoard(sideToMoveWhite),
@@ -6796,6 +6800,7 @@ class ChessBoard extends StatefulWidget {
     required this.checkedKingSquare,
     required this.decisiveSquare,
     this.fallenKingSquare,
+    this.fallenKingWhite,
     required this.coachArrowFrom,
     required this.coachArrowTo,
     required this.flipped,
@@ -6817,6 +6822,7 @@ class ChessBoard extends StatefulWidget {
   final String? checkedKingSquare;
   final String? decisiveSquare;
   final String? fallenKingSquare;
+  final bool? fallenKingWhite;
   final String? coachArrowFrom;
   final String? coachArrowTo;
   final bool flipped;
@@ -6925,10 +6931,18 @@ class _ChessBoardState extends State<ChessBoard> {
                 final String square = '${String.fromCharCode(97 + file)}$rank';
                 final bool dark = (row + col).isOdd;
                 final bool selected = square == selectedSquare;
-                final ChessPiece? piece =
-                    moveAnimating && square == lastToSquare
+                final bool kingFallen = square == widget.fallenKingSquare;
+                // A checkmating move must leave the losing king visible.  Do
+                // not let the short destination-piece animation hide it, and
+                // recover gracefully from older saved positions that removed
+                // the king instead of ending on checkmate.
+                final ChessPiece? boardPiece = pieces[square];
+                final ChessPiece? piece = kingFallen
+                    ? (boardPiece ??
+                        ChessPiece('K', widget.fallenKingWhite ?? true))
+                    : moveAnimating && square == lastToSquare
                         ? null
-                        : pieces[square];
+                        : boardPiece;
                 final bool legalTarget = legalTargets.contains(square);
                 final bool captureTarget =
                     legalTarget && piece != null && square != selectedSquare;
@@ -6937,8 +6951,6 @@ class _ChessBoardState extends State<ChessBoard> {
                 final bool lastCapture = square == lastCaptureSquare;
                 final bool checkedKing = square == checkedKingSquare;
                 final bool decisiveMove = square == decisiveSquare;
-                final bool kingFallen = square == widget.fallenKingSquare;
-
                 return BoardSquare(
                   key: ValueKey<String>('square-$square'),
                   square: square,
@@ -8368,7 +8380,7 @@ class _StudioCoachPanel extends StatelessWidget {
     final String modeLabel = switch (gameMode) {
       GameMode.daily => 'DAILY CHALLENGE',
       GameMode.puzzle => 'PUZZLE TRAINING',
-      GameMode.computer => 'AI TRAINING',
+      GameMode.computer => 'AI TRAINING • 3-LEVEL HINTS • GAME REVIEW',
       GameMode.local => 'LOCAL MATCH',
       GameMode.online => 'ONLINE BATTLE',
     };
@@ -12332,7 +12344,7 @@ class GameResultOverlay extends StatelessWidget {
                               child: OutlinedButton.icon(
                                 onPressed: onReview,
                                 icon: const Icon(Icons.analytics_outlined),
-                                label: const Text('Review moves'),
+                                label: const Text('AI Review My Game'),
                               ),
                             ),
                             const SizedBox(width: 10),
