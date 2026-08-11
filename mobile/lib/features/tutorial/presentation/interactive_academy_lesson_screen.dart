@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../core/app_preferences.dart';
+import '../../../core/chess_piece_appearance.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../domain/academy_lesson.dart';
@@ -694,29 +695,72 @@ class _PieceGlyph extends StatelessWidget {
   final bool glowing;
 
   @override
-  Widget build(BuildContext context) => SizedBox.square(
-        dimension: size,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: Colors.black.withValues(alpha: .42),
-                blurRadius: size * .09,
-                offset: Offset(0, size * .06),
+  Widget build(BuildContext context) =>
+      ValueListenableBuilder<ChessPieceAppearance>(
+        valueListenable: ChessPieceAppearanceController.current,
+        builder: (BuildContext context, ChessPieceAppearance appearance, _) {
+          final double scale =
+              appearance.size == ChessPieceVisualSize.extraLarge ? 1.28 : 1.14;
+          final Widget visual;
+          if (appearance.style == ChessPieceVisualStyle.classic2d) {
+            visual = Text(
+              _pieceGlyph(piece),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'serif',
+                fontSize: size * .9,
+                height: 1,
+                color: piece.white
+                    ? const Color(0xFFFFF4D0)
+                    : const Color(0xFF111722),
+                shadows: const <Shadow>[
+                  Shadow(color: Colors.black87, blurRadius: 3),
+                ],
               ),
-              if (glowing)
-                const BoxShadow(color: Color(0xFF59E4C8), blurRadius: 18),
-            ],
-          ),
-          child: Image.asset(
-            _academyPieceAsset(piece),
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-            semanticLabel:
-                '${piece.white ? 'White' : 'Black'} ${_pieceName(piece.symbol)}',
-          ),
-        ),
+            );
+          } else {
+            Widget image = Image.asset(
+              _academyPieceAsset(piece),
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+              semanticLabel:
+                  '${piece.white ? 'White' : 'Black'} ${_pieceName(piece.symbol)}',
+            );
+            if (appearance.style == ChessPieceVisualStyle.highContrast) {
+              image = ColorFiltered(
+                colorFilter: ColorFilter.mode(
+                  piece.white
+                      ? const Color(0xFFFFF0B8)
+                      : const Color(0xFF89BFFF),
+                  BlendMode.modulate,
+                ),
+                child: image,
+              );
+            }
+            visual = image;
+          }
+          return SizedBox.square(
+            dimension: size,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: .42),
+                    blurRadius: size * .09,
+                    offset: Offset(0, size * .06),
+                  ),
+                  if (glowing)
+                    const BoxShadow(color: Color(0xFF59E4C8), blurRadius: 18),
+                ],
+              ),
+              child: Transform.scale(
+                scale: scale,
+                child: visual,
+              ),
+            ),
+          );
+        },
       );
 }
 

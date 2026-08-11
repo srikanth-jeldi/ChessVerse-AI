@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/layout/app_breakpoints.dart';
+import '../../../core/chess_piece_appearance.dart';
 import '../../../core/layout/responsive_page.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
@@ -370,12 +371,52 @@ class _PieceQuickLesson extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
           child: Column(children: <Widget>[
-            Image.asset(
-              'assets/pieces/staunton_white_${name.toLowerCase()}.png',
-              width: 36,
-              height: 36,
-              fit: BoxFit.contain,
-              filterQuality: FilterQuality.high,
+            ValueListenableBuilder<ChessPieceAppearance>(
+              valueListenable: ChessPieceAppearanceController.current,
+              builder:
+                  (BuildContext context, ChessPieceAppearance appearance, _) {
+                if (appearance.style == ChessPieceVisualStyle.classic2d) {
+                  const Map<String, String> glyphs = <String, String>{
+                    'Pawn': '\u2659',
+                    'Rook': '\u2656',
+                    'Knight': '\u2658',
+                    'Bishop': '\u2657',
+                    'Queen': '\u2655',
+                    'King': '\u2654',
+                  };
+                  return Text(
+                    glyphs[name]!,
+                    style: const TextStyle(
+                      fontFamily: 'serif',
+                      fontSize: 38,
+                      height: 1,
+                      color: Color(0xFFFFF4D0),
+                    ),
+                  );
+                }
+                Widget image = Image.asset(
+                  'assets/pieces/staunton_white_${name.toLowerCase()}.png',
+                  width: 42,
+                  height: 42,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                );
+                if (appearance.style == ChessPieceVisualStyle.highContrast) {
+                  image = ColorFiltered(
+                    colorFilter: const ColorFilter.mode(
+                      Color(0xFFFFF0B8),
+                      BlendMode.modulate,
+                    ),
+                    child: image,
+                  );
+                }
+                return Transform.scale(
+                  scale: appearance.size == ChessPieceVisualSize.extraLarge
+                      ? 1.18
+                      : 1.05,
+                  child: image,
+                );
+              },
             ),
             const SizedBox(height: 3),
             Text(name,

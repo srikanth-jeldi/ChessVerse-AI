@@ -13,6 +13,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'core/audio/chess_sound_service.dart';
 import 'core/auth/facebook_sdk_ready.dart';
 import 'core/app_preferences.dart';
+import 'core/chess_piece_appearance.dart';
 import 'core/config/app_config.dart';
 import 'core/local_game_archive.dart';
 import 'core/notifications/daily_reminder_service.dart';
@@ -2727,6 +2728,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   bool _showMoveHints = true;
   bool _turnBannerVisible = true;
   bool _boardTouchedThisTurn = false;
+  bool _landscapeCoachCollapsed = false;
   DailyChallengeDifficulty _dailyDifficulty = DailyChallengeDifficulty.medium;
   late DailyChallenge _dailyChallenge;
   bool _dailyCompletedToday = false;
@@ -2910,9 +2912,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _preferences.readBool('coach', fallback: true),
       _preferences.readBool('coordinates', fallback: true),
       _preferences.readString('boardTheme', fallback: 'Royal Walnut'),
+      _preferences.readString('pieceStyle', fallback: 'Premium 3D'),
+      _preferences.readString('pieceSize', fallback: 'Large'),
     ]);
     if (!mounted) return;
     final String boardTheme = values[4] as String;
+    ChessPieceAppearanceController.current.value = ChessPieceAppearance(
+      style: ChessPieceAppearanceController.styleFromLabel(values[5] as String),
+      size: ChessPieceAppearanceController.sizeFromLabel(values[6] as String),
+    );
     setState(() {
       _soundEnabled = values[0] as bool;
       _showMoveHints = values[1] as bool;
@@ -3035,7 +3043,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               // tall desktop windows; move history remains available from the
               // controls on shorter web screens.
               final bool showWideDock = wide && constraints.maxHeight >= 900;
-              final double mobileHeaderHeight = wide ? 0 : 58;
+              final double mobileHeaderHeight = wide
+                  ? 0
+                  : compactLandscape
+                      ? 48
+                      : 58;
               final double widePanelWidth = math.min(
                 410,
                 math.max(320, constraints.maxWidth * 0.30),
@@ -3052,7 +3064,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       widePanelWidth -
                       24
                   : compactLandscape
-                      ? constraints.maxWidth * 0.62
+                      ? constraints.maxWidth *
+                          (_landscapeCoachCollapsed ? 0.94 : 0.68)
                       : constraints.maxWidth - pagePadding.horizontal;
               final double boardHeight = wide
                   ? availableHeight -
@@ -3061,7 +3074,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       arenaRailsHeight -
                       18
                   : compactLandscape
-                      ? availableHeight - mobileHeaderHeight - 16
+                      ? availableHeight - mobileHeaderHeight - 4
                       : availableHeight -
                           mobileHeaderHeight -
                           portraitPanelMinimum -
@@ -3234,22 +3247,31 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
-                            CompactHeader(
-                              onHome: () => Navigator.of(context).pop(),
-                              onProfile: _openProfile,
-                              onReset: _confirmNewGame,
-                              onLogout: _logout,
+                            SizedBox(
+                              height: mobileHeaderHeight,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: SizedBox(
+                                  width: constraints.maxWidth,
+                                  child: CompactHeader(
+                                    onHome: () => Navigator.of(context).pop(),
+                                    onProfile: _openProfile,
+                                    onReset: _confirmNewGame,
+                                    onLogout: _logout,
+                                  ),
+                                ),
+                              ),
                             ),
-                            const SizedBox(height: 6),
                             Expanded(
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+                                padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
                                 child: Row(
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: <Widget>[
                                     Expanded(
-                                      flex: 13,
+                                      flex: _landscapeCoachCollapsed ? 20 : 15,
                                       child: Center(
                                         child: SizedBox(
                                           width: boardDimension,
@@ -3259,20 +3281,44 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      flex: 7,
-                                      child: ClipRect(
-                                        child: FittedBox(
-                                          key: const ValueKey<String>(
-                                            'compact-landscape-ai-coach',
+                                    const SizedBox(width: 4),
+                                    if (!_landscapeCoachCollapsed)
+                                      Expanded(
+                                        flex: 6,
+                                        child: ClipRect(
+                                          child: FittedBox(
+                                            key: const ValueKey<String>(
+                                              'compact-landscape-ai-coach',
+                                            ),
+                                            fit: BoxFit.contain,
+                                            alignment: Alignment.topCenter,
+                                            child: SizedBox(
+                                              width: 390,
+                                              height: 560,
+                                              child: studioCoach,
+                                            ),
                                           ),
-                                          fit: BoxFit.contain,
-                                          alignment: Alignment.topCenter,
-                                          child: SizedBox(
-                                            width: 390,
-                                            height: 560,
-                                            child: studioCoach,
+                                        ),
+                                      ),
+                                    SizedBox(
+                                      width: 42,
+                                      child: Align(
+                                        alignment: Alignment.topCenter,
+                                        child: IconButton.filledTonal(
+                                          key: const ValueKey<String>(
+                                            'landscape-coach-toggle',
+                                          ),
+                                          tooltip: _landscapeCoachCollapsed
+                                              ? 'Show AI Coach'
+                                              : 'Maximize board',
+                                          onPressed: () => setState(() {
+                                            _landscapeCoachCollapsed =
+                                                !_landscapeCoachCollapsed;
+                                          }),
+                                          icon: Icon(
+                                            _landscapeCoachCollapsed
+                                                ? Icons.psychology_alt_rounded
+                                                : Icons.fullscreen_rounded,
                                           ),
                                         ),
                                       ),
@@ -7524,146 +7570,175 @@ class ChessCoin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final double size = math.min(
-          constraints.maxWidth,
-          constraints.maxHeight,
-        );
-        final double pieceSize = size * 1.15;
+    return ValueListenableBuilder<ChessPieceAppearance>(
+      valueListenable: ChessPieceAppearanceController.current,
+      builder: (BuildContext context, ChessPieceAppearance appearance, _) {
+        return LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+          final double size = math.min(
+            constraints.maxWidth,
+            constraints.maxHeight,
+          );
+          final double pieceSize = size *
+              (appearance.size == ChessPieceVisualSize.extraLarge
+                  ? 1.42
+                  : 1.27);
+          final double silhouetteScale = switch (piece.code) {
+            'K' => 1.00,
+            'Q' => .98,
+            'N' => .96,
+            'B' => .94,
+            'R' => .91,
+            _ => .88,
+          };
 
-        return AnimatedRotation(
-          turns: selected ? -0.012 : 0,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutBack,
-          child: AnimatedScale(
+          return AnimatedRotation(
+            turns: selected ? -0.012 : 0,
             duration: const Duration(milliseconds: 220),
-            scale: selected ? 1.13 : 1,
             curve: Curves.easeOutBack,
-            child: SizedBox(
-              width: pieceSize,
-              height: pieceSize,
-              child: Stack(
-                alignment: Alignment.center,
-                children: <Widget>[
-                  Positioned(
-                    bottom: pieceSize * 0.08,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: <Color>[
-                            (piece.white
-                                    ? const Color(0xFFFFF0C8)
-                                    : const Color(0xFF5D6674))
-                                .withValues(alpha: 0.28),
-                            Colors.transparent,
-                          ],
-                        ),
-                      ),
-                      child: SizedBox(
-                        width: pieceSize * 0.72,
-                        height: pieceSize * 0.34,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: pieceSize * 0.045,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(pieceSize),
-                        boxShadow: <BoxShadow>[
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.48),
-                            blurRadius: pieceSize * 0.07,
-                            spreadRadius: pieceSize * 0.012,
-                          ),
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: pieceSize * 0.11,
-                            offset: Offset(0, pieceSize * 0.08),
-                          ),
-                          if (selected)
-                            BoxShadow(
-                              color: accent.withValues(alpha: 0.68),
-                              blurRadius: pieceSize * 0.2,
-                              spreadRadius: pieceSize * 0.06,
-                            ),
-                        ],
-                      ),
-                      child: SizedBox(
-                        width: pieceSize * 0.54,
-                        height: pieceSize * 0.055,
-                      ),
-                    ),
-                  ),
-                  Transform.translate(
-                    offset: Offset(0, selected ? -pieceSize * 0.035 : 0),
-                    child: Image.asset(
-                      pieceAsset(piece),
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.high,
-                      semanticLabel:
-                          '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}',
-                    ),
-                  ),
-                  IgnorePointer(
-                    child: ShaderMask(
-                      blendMode: BlendMode.srcATop,
-                      shaderCallback: (Rect bounds) {
-                        return LinearGradient(
-                          begin: const Alignment(-0.85, -1),
-                          end: const Alignment(0.7, 0.9),
-                          colors: <Color>[
-                            Colors.white.withValues(alpha: 0.58),
-                            Colors.white.withValues(alpha: 0.06),
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.18),
-                          ],
-                          stops: const <double>[0, 0.24, 0.58, 1],
-                        ).createShader(bounds);
-                      },
-                      child: Opacity(
-                        opacity: piece.white ? 0.34 : 0.24,
-                        child: Image.asset(
-                          pieceAsset(piece),
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.high,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: pieceSize * 0.11,
-                    left: pieceSize * 0.25,
-                    child: IgnorePointer(
+            child: AnimatedScale(
+              duration: const Duration(milliseconds: 220),
+              scale: selected ? 1.13 : 1,
+              curve: Curves.easeOutBack,
+              child: SizedBox(
+                width: pieceSize,
+                height: pieceSize,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: <Widget>[
+                    Positioned(
+                      bottom: pieceSize * 0.08,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(
-                            alpha: piece.white ? 0.2 : 0.12,
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: <Color>[
+                              (piece.white
+                                      ? const Color(0xFFFFF0C8)
+                                      : const Color(0xFF5D6674))
+                                  .withValues(alpha: 0.28),
+                              Colors.transparent,
+                            ],
                           ),
+                        ),
+                        child: SizedBox(
+                          width: pieceSize * 0.72,
+                          height: pieceSize * 0.34,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: pieceSize * 0.045,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(pieceSize),
                           boxShadow: <BoxShadow>[
                             BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.22),
-                              blurRadius: pieceSize * 0.09,
+                              color: Colors.black.withValues(alpha: 0.48),
+                              blurRadius: pieceSize * 0.07,
+                              spreadRadius: pieceSize * 0.012,
                             ),
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: pieceSize * 0.11,
+                              offset: Offset(0, pieceSize * 0.08),
+                            ),
+                            if (selected)
+                              BoxShadow(
+                                color: accent.withValues(alpha: 0.68),
+                                blurRadius: pieceSize * 0.2,
+                                spreadRadius: pieceSize * 0.06,
+                              ),
                           ],
                         ),
                         child: SizedBox(
-                          width: pieceSize * 0.13,
-                          height: pieceSize * 0.035,
+                          width: pieceSize * 0.54,
+                          height: pieceSize * 0.055,
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    Transform.translate(
+                      offset: Offset(0, selected ? -pieceSize * 0.035 : 0),
+                      child: Transform.scale(
+                        scale: silhouetteScale,
+                        child: _pieceVisual(appearance, pieceSize),
+                      ),
+                    ),
+                    Positioned(
+                      top: pieceSize * 0.11,
+                      left: pieceSize * 0.25,
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(
+                              alpha: piece.white ? 0.2 : 0.12,
+                            ),
+                            borderRadius: BorderRadius.circular(pieceSize),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: Colors.white.withValues(alpha: 0.22),
+                                blurRadius: pieceSize * 0.09,
+                              ),
+                            ],
+                          ),
+                          child: SizedBox(
+                            width: pieceSize * 0.13,
+                            height: pieceSize * 0.035,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
+          );
+        });
       },
     );
+  }
+
+  Widget _pieceVisual(ChessPieceAppearance appearance, double pieceSize) {
+    final String label =
+        '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}';
+    if (appearance.style == ChessPieceVisualStyle.classic2d) {
+      return Semantics(
+        label: label,
+        child: Text(
+          pieceGlyph(piece),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'serif',
+            fontSize: pieceSize * .79,
+            height: 1,
+            color:
+                piece.white ? const Color(0xFFFFF4D0) : const Color(0xFF111722),
+            shadows: <Shadow>[
+              Shadow(
+                color: piece.white ? Colors.black87 : Colors.white70,
+                blurRadius: pieceSize * .045,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    final Widget image = Image.asset(
+      pieceAsset(piece),
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
+      semanticLabel: label,
+    );
+    if (appearance.style == ChessPieceVisualStyle.highContrast) {
+      return ColorFiltered(
+        colorFilter: ColorFilter.mode(
+          piece.white ? const Color(0xFFFFF0B8) : const Color(0xFF89BFFF),
+          BlendMode.modulate,
+        ),
+        child: image,
+      );
+    }
+    return image;
   }
 }
 

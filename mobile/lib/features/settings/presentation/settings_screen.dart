@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/audio/chess_sound_service.dart';
 import '../../../core/app_preferences.dart';
+import '../../../core/chess_piece_appearance.dart';
 import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/layout/responsive_page.dart';
 import '../../../core/notifications/daily_reminder_service.dart';
@@ -44,7 +45,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _dailyReminderEnabled = false;
   bool _deletingAccount = false;
   String _boardTheme = 'Royal Walnut';
-  String _pieceStyle = 'Staunton 3D';
+  String _pieceStyle = 'Premium 3D';
+  String _pieceSize = 'Large';
   String _appTheme = 'Dark premium';
   bool _loading = true;
 
@@ -63,7 +65,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _preferences.readBool('coordinates', fallback: true),
       _preferences.readBool('dailyReminder', fallback: false),
       _preferences.readString('boardTheme', fallback: 'Royal Walnut'),
-      _preferences.readString('pieceStyle', fallback: 'Staunton 3D'),
+      _preferences.readString('pieceStyle', fallback: 'Premium 3D'),
+      _preferences.readString('pieceSize', fallback: 'Large'),
       _preferences.readString('appTheme', fallback: 'Dark premium'),
     ]);
     if (!mounted) return;
@@ -75,10 +78,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _coordinatesEnabled = values[4] as bool;
       _dailyReminderEnabled = values[5] as bool;
       _boardTheme = values[6] as String;
-      _pieceStyle = values[7] as String;
-      _appTheme = values[8] as String;
+      _pieceStyle = ChessPieceAppearanceController.styleLabel(
+        ChessPieceAppearanceController.styleFromLabel(values[7] as String),
+      );
+      _pieceSize = values[8] as String;
+      _appTheme = values[9] as String;
       _loading = false;
     });
+    ChessPieceAppearanceController.current.value = ChessPieceAppearance(
+      style: ChessPieceAppearanceController.styleFromLabel(_pieceStyle),
+      size: ChessPieceAppearanceController.sizeFromLabel(_pieceSize),
+    );
     ChessSoundService.instance.enabled = _soundEnabled;
   }
 
@@ -238,16 +248,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 value: _pieceStyle,
                                 onTap: () => _choose(
                                   title: 'Piece style',
-                                  values: const <String>[
-                                    'Staunton 3D',
-                                    'Classic',
-                                    'Modern',
-                                  ],
+                                  values: ChessPieceAppearanceController
+                                      .styleLabels,
                                   selected: _pieceStyle,
                                   onSelected: (String value) {
                                     setState(() => _pieceStyle = value);
                                     _preferences.writeString(
                                         'pieceStyle', value);
+                                    ChessPieceAppearanceController
+                                            .current.value =
+                                        ChessPieceAppearanceController
+                                            .current.value
+                                            .copyWith(
+                                      style: ChessPieceAppearanceController
+                                          .styleFromLabel(value),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            if (desktop)
+                              const SizedBox(
+                                height: 76,
+                                child: VerticalDivider(color: AppColors.border),
+                              )
+                            else
+                              const Divider(color: AppColors.border),
+                            _AdaptiveFlexItem(
+                              expanded: desktop,
+                              child: _SettingRow(
+                                icon: Icons.zoom_out_map_rounded,
+                                title: 'Piece size',
+                                value: _pieceSize,
+                                onTap: () => _choose(
+                                  title: 'Piece size',
+                                  values:
+                                      ChessPieceAppearanceController.sizeLabels,
+                                  selected: _pieceSize,
+                                  onSelected: (String value) {
+                                    setState(() => _pieceSize = value);
+                                    _preferences.writeString(
+                                        'pieceSize', value);
+                                    ChessPieceAppearanceController
+                                            .current.value =
+                                        ChessPieceAppearanceController
+                                            .current.value
+                                            .copyWith(
+                                      size: ChessPieceAppearanceController
+                                          .sizeFromLabel(value),
+                                    );
                                   },
                                 ),
                               ),
