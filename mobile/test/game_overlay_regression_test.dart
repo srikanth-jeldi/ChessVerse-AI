@@ -65,6 +65,46 @@ void main() {
     expect(painter.to, 'f6');
   });
 
+  testWidgets('latest move arrow remains visible after its entrance animation',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ChessBoard(
+            pieces: const <String, ChessPiece>{
+              'e4': ChessPiece('P', true),
+            },
+            selectedSquare: null,
+            legalTargets: const <String>{},
+            lastFromSquare: 'e2',
+            lastToSquare: 'e4',
+            lastCaptureSquare: null,
+            moveSequence: 1,
+            checkedKingSquare: null,
+            decisiveSquare: null,
+            coachArrowFrom: null,
+            coachArrowTo: null,
+            flipped: false,
+            showCoordinates: true,
+            palette: boardPalettes[BoardSkin.royalWalnut]!,
+            onSquareTap: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 2));
+
+    final LastMoveTrailPainter painter = tester
+        .widgetList<CustomPaint>(find.byType(CustomPaint))
+        .map((CustomPaint paint) => paint.painter)
+        .whereType<LastMoveTrailPainter>()
+        .single;
+    expect(painter.from, 'e2');
+    expect(painter.to, 'e4');
+    expect(painter.progress, 1);
+    expect(painter.fadeOut, isFalse);
+  });
+
   testWidgets('losing king falls and victory title zooms over fireworks',
       (WidgetTester tester) async {
     await tester.pumpWidget(

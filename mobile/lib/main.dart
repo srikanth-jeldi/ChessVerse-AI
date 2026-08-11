@@ -6852,7 +6852,9 @@ class _ChessBoardState extends State<ChessBoard> {
                           flipped: flipped,
                           progress: progress,
                           accent: palette.accent,
-                          fadeOut: true,
+                          // Keep the latest move visible until the next move.
+                          // The old fade made the arrow look like a brief flash.
+                          fadeOut: false,
                         ),
                       );
                     },
