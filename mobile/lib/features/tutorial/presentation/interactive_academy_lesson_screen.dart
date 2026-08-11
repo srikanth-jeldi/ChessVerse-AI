@@ -178,6 +178,8 @@ class _InteractiveAcademyLessonScreenState
   Widget build(BuildContext context) {
     final Size viewport = MediaQuery.sizeOf(context);
     final bool desktop = viewport.width >= 900 && viewport.height >= 620;
+    final bool phoneLandscape =
+        viewport.width > viewport.height && viewport.shortestSide < 600;
     return Scaffold(
       backgroundColor: const Color(0xFF04111B),
       appBar: AppBar(
@@ -206,10 +208,49 @@ class _InteractiveAcademyLessonScreenState
         ],
       ),
       body: SafeArea(
-        child: desktop ? _buildDesktop(context) : _buildMobile(context),
+        child: phoneLandscape
+            ? _buildPhoneLandscape(context)
+            : desktop
+                ? _buildDesktop(context)
+                : _buildMobile(context),
       ),
     );
   }
+
+  Widget _buildPhoneLandscape(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Center(
+                child: _AnimatedAcademyBoard(
+                  lesson: widget.lesson,
+                  movement: _movement,
+                  phase: _phase,
+                  selected: _selected,
+                  onSquareTap: _onSquareTap,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 330,
+              child: SingleChildScrollView(
+                child: _CoachPanel(
+                  lesson: widget.lesson,
+                  phase: _phase,
+                  feedback: _feedback,
+                  attempts: _attempts,
+                  completed: _completed.contains(widget.lesson.id),
+                  loading: _loadingProgress,
+                  onReplay: _playDemonstration,
+                  onPracticeAgain: _resetPractice,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 
   Widget _buildDesktop(BuildContext context) => Padding(
         padding: const EdgeInsets.all(20),
@@ -353,11 +394,58 @@ class _AnimatedAcademyBoard extends StatelessWidget {
                             onTap: onSquareTap,
                           ),
                       if (demonstrating)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: CustomPaint(
+                              painter: _AcademyRoutePainter(
+                                from: lesson.from,
+                                to: lesson.to,
+                                progress: movement.value,
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (demonstrating)
                         _MovingPiece(
                           lesson: lesson,
                           progress: movement.value,
                           squareSize: square,
                         ),
+                      Positioned(
+                        top: 10,
+                        right: 10,
+                        child: IgnorePointer(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: phase == _LessonPhase.demonstration
+                                  ? const Color(0xEE6D42D8)
+                                  : const Color(0xEE0E5277),
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: const <BoxShadow>[
+                                BoxShadow(
+                                    color: Color(0x6659E4C8), blurRadius: 14),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 7),
+                              child: Text(
+                                phase == _LessonPhase.demonstration
+                                    ? '1  AI DEMO'
+                                    : phase == _LessonPhase.practice
+                                        ? '2  YOUR TURN'
+                                        : '3  MASTERED',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: .8,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                       if (phase == _LessonPhase.success)
                         Positioned.fill(
                           child: IgnorePointer(
@@ -490,6 +578,77 @@ class _BoardSquare extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AcademyRoutePainter extends CustomPainter {
+  const _AcademyRoutePainter({
+    required this.from,
+    required this.to,
+    required this.progress,
+  });
+
+  final String from;
+  final String to;
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double cell = size.width / 8;
+    final Offset fromSquare = _squareOffset(from);
+    final Offset toSquare = _squareOffset(to);
+    final Offset start = Offset(
+      (fromSquare.dx + .5) * cell,
+      (fromSquare.dy + .5) * cell,
+    );
+    final Offset target = Offset(
+      (toSquare.dx + .5) * cell,
+      (toSquare.dy + .5) * cell,
+    );
+    final Offset delta = target - start;
+    if (delta.distance < 1) return;
+    final Offset direction = delta / delta.distance;
+    final Offset normal = Offset(-direction.dy, direction.dx);
+    final Offset control = Offset.lerp(start, target, .5)! + normal * cell * .2;
+    final Path fullRoute = Path()
+      ..moveTo(start.dx, start.dy)
+      ..quadraticBezierTo(control.dx, control.dy, target.dx, target.dy);
+    final metric = fullRoute.computeMetrics().first;
+    final Path route = metric.extractPath(0, metric.length * progress);
+    final Offset end =
+        metric.getTangentForOffset(metric.length * progress)?.position ?? start;
+    final Paint glow = Paint()
+      ..color = const Color(0x8859E4C8)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = cell * .17
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+    final Paint line = Paint()
+      ..shader = const LinearGradient(
+        colors: <Color>[Color(0xFF5EEAD4), Color(0xFF2A91F2)],
+      ).createShader(Rect.fromPoints(start, target))
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = cell * .055;
+    canvas
+      ..drawPath(route, glow)
+      ..drawPath(route, line)
+      ..drawCircle(
+        target,
+        cell * (.13 + .05 * math.sin(progress * math.pi * 4).abs()),
+        Paint()..color = const Color(0x9959E4C8),
+      )
+      ..drawCircle(
+        end,
+        cell * .075,
+        Paint()..color = Colors.white,
+      );
+  }
+
+  @override
+  bool shouldRepaint(_AcademyRoutePainter oldDelegate) =>
+      oldDelegate.from != from ||
+      oldDelegate.to != to ||
+      oldDelegate.progress != progress;
 }
 
 class _MovingPiece extends StatelessWidget {

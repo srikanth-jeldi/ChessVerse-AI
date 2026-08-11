@@ -103,9 +103,9 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     final Size viewport = MediaQuery.sizeOf(context);
-    final bool compactLandscape = viewport.width >= 600 &&
-        viewport.width > viewport.height * 1.35 &&
-        viewport.height < 760;
+    final bool compactLandscape =
+        viewport.width > viewport.height && viewport.shortestSide < 600;
+    final bool keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       backgroundColor: const Color(0xFF020914),
       body: DecoratedBox(
@@ -119,15 +119,22 @@ class _AuthScreenState extends State<AuthScreen> {
         child: SafeArea(
           child: compactLandscape
               ? _premiumCompactLandscapeBody(context)
-              : Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 20,
+              : keyboardVisible
+                  ? Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(12),
+                        child: _premiumResponsiveBody(context),
+                      ),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: _premiumResponsiveBody(context),
+                        ),
+                      ),
                     ),
-                    child: _premiumResponsiveBody(context),
-                  ),
-                ),
         ),
       ),
     );
@@ -138,78 +145,73 @@ class _AuthScreenState extends State<AuthScreen> {
       builder: (BuildContext context, BoxConstraints constraints) {
         return KeyedSubtree(
           key: const ValueKey<String>('auth-landscape-split'),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(22),
-            child: Stack(
-              fit: StackFit.expand,
-              children: <Widget>[
-                Image.asset(
-                  'assets/backgrounds/home-online-hero-v1.png',
-                  fit: BoxFit.cover,
-                  alignment: Alignment.centerRight,
-                ),
-                const DecoratedBox(
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Container(
+                  width: 900,
+                  height: 600,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: <Color>[
-                        Color(0xFF020B18),
-                        Color(0xF2061426),
-                        Color(0xB3061426),
-                        Color(0x00061426),
-                      ],
-                      stops: <double>[0, .44, .59, .78],
-                    ),
+                    color: const Color(0xF2061426),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: const Color(0xFF2B405B)),
                   ),
-                ),
-                Row(
-                  children: <Widget>[
-                    SizedBox(
-                      width: constraints.maxWidth * .55,
-                      height: constraints.maxHeight,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-                        child: FittedBox(
-                          fit: BoxFit.contain,
-                          alignment: Alignment.center,
-                          child: SizedBox(
-                            width: 900,
-                            height: 790,
-                            child: DecoratedBox(
+                  child: Row(
+                    children: <Widget>[
+                      SizedBox(
+                        width: 330,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: <Widget>[
+                            Image.asset(
+                              'assets/backgrounds/home-online-hero-v1.png',
+                              fit: BoxFit.cover,
+                            ),
+                            const DecoratedBox(
                               decoration: BoxDecoration(
-                                color: const Color(0xEE061426),
-                                borderRadius: BorderRadius.circular(34),
-                                border: Border.all(
-                                  color: const Color(0xFF2B405B),
-                                  width: 1.5,
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: <Color>[
+                                    Color(0x99061426),
+                                    Color(0xF2061426),
+                                  ],
                                 ),
-                                boxShadow: <BoxShadow>[
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: .48),
-                                    blurRadius: 30,
-                                    offset: const Offset(0, 14),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(34),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: <Widget>[
+                                  _premiumBrandHeader(context, dense: false),
+                                  const SizedBox(height: 26),
+                                  Image.asset(
+                                    'assets/pieces/staunton_black_king.png',
+                                    height: 220,
+                                    fit: BoxFit.contain,
                                   ),
                                 ],
                               ),
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.fromLTRB(
-                                  54,
-                                  28,
-                                  54,
-                                  30,
-                                ),
-                                child: _premiumFormContent(context),
-                              ),
                             ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(42, 22, 42, 22),
+                          child: _premiumFormContent(
+                            context,
+                            showBrand: false,
                           ),
                         ),
                       ),
-                    ),
-                    const Expanded(child: SizedBox.shrink()),
-                  ],
+                    ],
+                  ),
                 ),
-              ],
+              ),
             ),
           ),
         );
@@ -290,17 +292,20 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _premiumFormContent(BuildContext context) {
+  Widget _premiumFormContent(
+    BuildContext context, {
+    bool showBrand = true,
+  }) {
     // Typical phones are ~720-850 logical px tall. Treating every one of
     // them as dense made the complete form look cramped in the middle of the
     // screen. Only genuinely short windows use the compressed rhythm.
-    final bool dense = MediaQuery.sizeOf(context).height < 680;
+    final bool dense = MediaQuery.sizeOf(context).height < 900;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        _premiumBrandHeader(context, dense: dense),
-        SizedBox(height: dense ? 12 : 24),
+        if (showBrand) _premiumBrandHeader(context, dense: dense),
+        if (showBrand) SizedBox(height: dense ? 10 : 24),
         Text(
           widget.guestUpgradeToken != null
               ? 'Secure your progress'
@@ -329,7 +334,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         SizedBox(height: dense ? 12 : 22),
         if (!_verificationMode && widget.guestUpgradeToken == null)
-          _premiumModeSelector(),
+          _premiumModeSelectorWithKing(),
         SizedBox(height: dense ? 10 : 16),
         ..._premiumFormFields(context),
         if (_message != null) ...<Widget>[
@@ -400,22 +405,6 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
           Positioned(
-            top: 48,
-            right: -18,
-            height: 300,
-            width: 170,
-            child: IgnorePointer(
-              child: Opacity(
-                opacity: 0.42,
-                child: Image.asset(
-                  'assets/pieces/staunton_black_king.png',
-                  fit: BoxFit.contain,
-                  alignment: Alignment.topRight,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
             left: 0,
             right: 0,
             bottom: 0,
@@ -479,6 +468,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _premiumModeSelector() {
     return Container(
+      key: const ValueKey<String>('auth-mode-selector'),
       height: 46,
       decoration: BoxDecoration(
         color: const Color(0xAA071528),
@@ -505,6 +495,32 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _premiumModeSelectorWithKing() {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: <Widget>[
+        _premiumModeSelector(),
+        Positioned(
+          key: const ValueKey<String>('auth-king-anchor'),
+          right: 8,
+          bottom: 46,
+          width: 112,
+          height: 205,
+          child: IgnorePointer(
+            child: Opacity(
+              opacity: 0.58,
+              child: Image.asset(
+                'assets/pieces/staunton_black_king.png',
+                fit: BoxFit.contain,
+                alignment: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

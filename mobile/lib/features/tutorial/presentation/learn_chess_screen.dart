@@ -98,9 +98,8 @@ class LearnChessScreen extends StatelessWidget {
     final Size viewport = MediaQuery.sizeOf(context);
     final bool wide = AppBreakpoints.isTabletOrLarger(context);
     final bool compact = viewport.width < 520;
-    final SavedGameRecord? latest = LocalGameArchive.games.isEmpty
-        ? null
-        : LocalGameArchive.games.first;
+    final SavedGameRecord? latest =
+        LocalGameArchive.games.isEmpty ? null : LocalGameArchive.games.first;
     final AiReviewReport? report = latest == null
         ? null
         : AiReviewReport.fromMoves(
@@ -142,11 +141,14 @@ class LearnChessScreen extends StatelessWidget {
               reason: report?.trainingFocus ??
                   'Start with piece movement, then the AI coach will adapt your path after every reviewed game.',
             ),
+            const SizedBox(height: 14),
+            const _LearningMethodCard(),
             const SizedBox(height: 24),
             const _SectionHeading(
               eyebrow: 'CHESS ACADEMY',
-              title: 'Choose your lesson',
-              subtitle: 'Short guided lessons with practical positions.',
+              title: 'Your lessons, in order',
+              subtitle:
+                  'Start with every coin, then learn king safety, tactics and checkmate.',
             ),
             const SizedBox(height: 14),
             GridView.builder(
@@ -172,6 +174,81 @@ class LearnChessScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LearningMethodCard extends StatelessWidget {
+  const _LearningMethodCard();
+
+  @override
+  Widget build(BuildContext context) => ChessVerseCard(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: const <Widget>[
+            Expanded(
+              child: _LearningStep(
+                number: '1',
+                title: 'WATCH',
+                body: 'AI shows the move',
+                icon: Icons.smart_display_rounded,
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: AppColors.accentGold),
+            Expanded(
+              child: _LearningStep(
+                number: '2',
+                title: 'PRACTICE',
+                body: 'You repeat it',
+                icon: Icons.touch_app_rounded,
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: AppColors.accentGold),
+            Expanded(
+              child: _LearningStep(
+                number: '3',
+                title: 'MASTER',
+                body: 'AI corrects you',
+                icon: Icons.workspace_premium_rounded,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _LearningStep extends StatelessWidget {
+  const _LearningStep({
+    required this.number,
+    required this.title,
+    required this.body,
+    required this.icon,
+  });
+
+  final String number;
+  final String title;
+  final String body;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: <Widget>[
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: const Color(0xFF123B52),
+            child: Icon(icon, size: 19, color: const Color(0xFF59E4C8)),
+          ),
+          const SizedBox(height: 7),
+          Text('$number. $title',
+              textAlign: TextAlign.center,
+              style:
+                  const TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 2),
+          Text(body,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              style: const TextStyle(
+                  color: AppColors.textSecondary, fontSize: 10, height: 1.2)),
+        ],
+      );
 }
 
 class _PersonalizedPathCard extends StatelessWidget {

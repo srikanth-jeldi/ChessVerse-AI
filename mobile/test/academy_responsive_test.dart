@@ -58,5 +58,26 @@ void main() {
     expect(find.text('YOUR AI LEARNING PATH'), findsOneWidget);
     expect(find.textContaining('Next:'), findsOneWidget);
     expect(find.byTooltip('Start recommended lesson'), findsOneWidget);
+    expect(find.text('1. WATCH'), findsOneWidget);
+    expect(find.text('2. PRACTICE'), findsOneWidget);
+    expect(find.text('3. MASTER'), findsOneWidget);
+  });
+
+  testWidgets('landscape phone keeps the academy board and coach side by side',
+      (WidgetTester tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(844, 390);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(MaterialApp(
+      home: InteractiveAcademyLessonScreen(
+        lesson: AcademyCatalog.forChapter('How pawns move'),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('AI COACH'), findsOneWidget);
+    expect(find.text('1  AI DEMO'), findsOneWidget);
+    expect(find.text('LESSON FLOW'), findsNothing);
   });
 }
