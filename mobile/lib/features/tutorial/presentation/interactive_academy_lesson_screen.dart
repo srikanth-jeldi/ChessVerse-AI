@@ -150,13 +150,18 @@ class _InteractiveAcademyLessonScreenState
     final AcademyPiece? piece = widget.lesson.pieces[widget.lesson.from];
     final String name = _pieceName(piece?.symbol);
     return switch (piece?.symbol) {
-      'P' => 'Not quite. Pawns move straight ahead; look again at ${widget.lesson.to}.',
-      'N' => 'Try the L-shape: two squares, then one sideways. Find ${widget.lesson.to}.',
+      'P' =>
+        'Not quite. Pawns move straight ahead; look again at ${widget.lesson.to}.',
+      'N' =>
+        'Try the L-shape: two squares, then one sideways. Find ${widget.lesson.to}.',
       'B' => 'Keep the bishop on its diagonal. $square leaves that diagonal.',
       'R' => 'A rook needs a straight rank or file. Trace the glowing line.',
-      'Q' => 'The queen needs a clear straight or diagonal line to ${widget.lesson.to}.',
-      'K' => 'The king moves one safe square. Check the highlighted escape square.',
-      _ => 'That is not the strongest $name move here. Follow the animated route once more.',
+      'Q' =>
+        'The queen needs a clear straight or diagonal line to ${widget.lesson.to}.',
+      'K' =>
+        'The king moves one safe square. Check the highlighted escape square.',
+      _ =>
+        'That is not the strongest $name move here. Follow the animated route once more.',
     };
   }
 
@@ -306,10 +311,13 @@ class _AnimatedAcademyBoard extends StatelessWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFB88A45), width: 2),
+            border: Border.all(color: const Color(0xFF2A91F2), width: 2.4),
             boxShadow: const <BoxShadow>[
-              BoxShadow(color: Color(0x662DD5C4), blurRadius: 30),
-              BoxShadow(color: Color(0xAA000000), blurRadius: 24, offset: Offset(0, 12)),
+              BoxShadow(color: Color(0x662A91F2), blurRadius: 30),
+              BoxShadow(
+                  color: Color(0xAA000000),
+                  blurRadius: 24,
+                  offset: Offset(0, 12)),
             ],
           ),
           child: ClipRRect(
@@ -320,7 +328,8 @@ class _AnimatedAcademyBoard extends StatelessWidget {
                 return AnimatedBuilder(
                   animation: movement,
                   builder: (BuildContext context, Widget? child) {
-                    final bool demonstrating = phase == _LessonPhase.demonstration;
+                    final bool demonstrating =
+                        phase == _LessonPhase.demonstration;
                     final bool moved = phase == _LessonPhase.success;
                     final Map<String, AcademyPiece> pieces =
                         Map<String, AcademyPiece>.from(lesson.pieces);
@@ -355,7 +364,7 @@ class _AnimatedAcademyBoard extends StatelessWidget {
                             child: DecoratedBox(
                               decoration: BoxDecoration(
                                 border: Border.all(
-                                  color: const Color(0xFF59E4C8),
+                                  color: const Color(0xFF2A91F2),
                                   width: 5,
                                 ),
                               ),
@@ -401,8 +410,10 @@ class _BoardSquare extends StatelessWidget {
     final bool light = (row + col).isEven;
     final bool highlighted = lesson.highlighted.contains(squareName);
     final bool isSelected = selected == squareName;
-    final bool target = phase == _LessonPhase.practice && squareName == lesson.to;
-    final Color base = light ? const Color(0xFFD8C5A7) : const Color(0xFF6D4A32);
+    final bool target =
+        phase == _LessonPhase.practice && squareName == lesson.to;
+    final Color base =
+        light ? const Color(0xFFD8C5A7) : const Color(0xFF6D4A32);
     return Positioned(
       left: col * size,
       top: row * size,
@@ -410,7 +421,8 @@ class _BoardSquare extends StatelessWidget {
       height: size,
       child: Semantics(
         button: true,
-        label: '$squareName ${piece == null ? 'empty' : _pieceName(piece!.symbol)}',
+        label:
+            '$squareName ${piece == null ? 'empty' : _pieceName(piece!.symbol)}',
         child: InkWell(
           onTap: () => onTap(squareName),
           child: AnimatedContainer(
@@ -439,7 +451,9 @@ class _BoardSquare extends StatelessWidget {
                   top: 3,
                   child: Text('${8 - row}',
                       style: TextStyle(
-                        color: light ? const Color(0xFF6D4A32) : const Color(0xFFD8C5A7),
+                        color: light
+                            ? const Color(0xFF6D4A32)
+                            : const Color(0xFFD8C5A7),
                         fontSize: math.max(9, size * .15),
                         fontWeight: FontWeight.w900,
                       )),
@@ -450,7 +464,9 @@ class _BoardSquare extends StatelessWidget {
                   bottom: 2,
                   child: Text(String.fromCharCode(97 + col),
                       style: TextStyle(
-                        color: light ? const Color(0xFF6D4A32) : const Color(0xFFD8C5A7),
+                        color: light
+                            ? const Color(0xFF6D4A32)
+                            : const Color(0xFFD8C5A7),
                         fontSize: math.max(9, size * .15),
                         fontWeight: FontWeight.w900,
                       )),
@@ -502,7 +518,8 @@ class _MovingPiece extends StatelessWidget {
       child: IgnorePointer(
         child: Transform.scale(
           scale: 1 + math.sin(progress * math.pi) * .13,
-          child: _PieceGlyph(piece: piece, size: squareSize * .76, glowing: true),
+          child:
+              _PieceGlyph(piece: piece, size: squareSize * .76, glowing: true),
         ),
       ),
     );
@@ -510,7 +527,8 @@ class _MovingPiece extends StatelessWidget {
 }
 
 class _PieceGlyph extends StatelessWidget {
-  const _PieceGlyph({required this.piece, required this.size, this.glowing = false});
+  const _PieceGlyph(
+      {required this.piece, required this.size, this.glowing = false});
 
   final AcademyPiece piece;
   final double size;
@@ -650,9 +668,11 @@ class _CoachPanel extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: onPracticeAgain,
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF59E4C8),
-                    foregroundColor: const Color(0xFF04111B),
+                    backgroundColor: const Color(0xFF1769E0),
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
+                    elevation: 5,
+                    shadowColor: const Color(0x992A91F2),
                   ),
                   icon: const Icon(Icons.refresh_rounded),
                   label: const Text('PRACTICE AGAIN',
@@ -699,13 +719,21 @@ class _CurriculumRail extends StatelessWidget {
                   letterSpacing: 1.1,
                 )),
             const SizedBox(height: 18),
-            const _RailStep(number: '01', title: 'Watch', icon: Icons.animation_rounded),
+            const _RailStep(
+                number: '01', title: 'Watch', icon: Icons.animation_rounded),
             const _RailLine(),
-            const _RailStep(number: '02', title: 'Understand', icon: Icons.psychology_rounded),
+            const _RailStep(
+                number: '02',
+                title: 'Understand',
+                icon: Icons.psychology_rounded),
             const _RailLine(),
-            const _RailStep(number: '03', title: 'Practice', icon: Icons.touch_app_rounded),
+            const _RailStep(
+                number: '03', title: 'Practice', icon: Icons.touch_app_rounded),
             const _RailLine(),
-            const _RailStep(number: '04', title: 'Master', icon: Icons.workspace_premium_rounded),
+            const _RailStep(
+                number: '04',
+                title: 'Master',
+                icon: Icons.workspace_premium_rounded),
             const Spacer(),
             Text(lesson.eyebrow,
                 style: const TextStyle(
@@ -715,14 +743,16 @@ class _CurriculumRail extends StatelessWidget {
                 )),
             const SizedBox(height: 6),
             Text(lesson.title,
-                style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+                style:
+                    const TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
           ],
         ),
       );
 }
 
 class _RailStep extends StatelessWidget {
-  const _RailStep({required this.number, required this.title, required this.icon});
+  const _RailStep(
+      {required this.number, required this.title, required this.icon});
   final String number;
   final String title;
   final IconData icon;

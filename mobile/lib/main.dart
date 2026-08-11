@@ -3118,7 +3118,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                         : 'AI TURN')
                     : _gameMode == GameMode.online && _onlineMatch != null
                         ? (_onlineStatusText(_onlineMatch!))
-                        : '${_moves.length.isEven ? 'WHITE' : 'BLACK'} — YOUR TURN',
+                        : _moves.length.isEven
+                            ? 'PLAYER 1 • WHITE'
+                            : 'PLAYER 2 • BLACK',
                 aiThinking: _aiThinking,
                 coachEnabled: _coachEnabled,
                 coachNote: _lastPlayerCoachNote ?? _coachNote,
@@ -3977,8 +3979,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _whitePlayerName = 'Guest Player';
         _blackPlayerName = 'Puzzle Defense';
       case GameMode.local:
-        _whitePlayerName = _humanPlaysWhite ? playerName : 'Player 2';
-        _blackPlayerName = _humanPlaysWhite ? 'Player 2' : playerName;
+        _whitePlayerName = 'Player 1 • White';
+        _blackPlayerName = 'Player 2 • Black';
       case GameMode.online:
         _whitePlayerName = playerName;
         _blackPlayerName = 'Online Rival';
@@ -3990,7 +3992,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return !_humanPlaysWhite;
     }
     if (_gameMode == GameMode.local) {
-      return !sideToMoveWhite;
+      // Pass-and-play remains White-at-bottom for the whole match. Rotating
+      // after every move makes coordinates and piece positions disorienting.
+      return false;
     }
     return false;
   }
@@ -11779,13 +11783,13 @@ class _TurnBanner extends StatelessWidget {
             child: const Text(
               'YOUR TURN',
               style: TextStyle(
-                color: Color(0xFF66F1D3),
+                color: Color(0xFF4DA8FF),
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 2.2,
                 shadows: <Shadow>[
                   Shadow(color: Colors.black, blurRadius: 12),
-                  Shadow(color: Color(0xFF006C64), blurRadius: 24),
+                  Shadow(color: Color(0xFF0756A6), blurRadius: 24),
                 ],
               ),
             ),
