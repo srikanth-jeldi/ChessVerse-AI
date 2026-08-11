@@ -6,7 +6,7 @@ import '../../../core/layout/responsive_page.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
-import '../../analysis/domain/ai_review_report.dart';
+import '../../analysis/domain/player_learning_profile.dart';
 import '../domain/academy_lesson.dart';
 import 'interactive_academy_lesson_screen.dart';
 
@@ -99,17 +99,12 @@ class LearnChessScreen extends StatelessWidget {
     final Size viewport = MediaQuery.sizeOf(context);
     final bool wide = AppBreakpoints.isTabletOrLarger(context);
     final bool compact = viewport.width < 520;
-    final SavedGameRecord? latest =
-        LocalGameArchive.games.isEmpty ? null : LocalGameArchive.games.first;
-    final AiReviewReport? report = latest == null
-        ? null
-        : AiReviewReport.fromMoves(
-            latest.moves,
-            newestFirst: false,
-            result: latest.result,
-          );
+    final PlayerLearningProfile learningProfile =
+        PlayerLearningProfile.fromGames(LocalGameArchive.games);
     final AcademyLesson recommended = AcademyCatalog.forChapter(
-      report?.recommendedLesson.split('•').last.trim() ?? 'How pawns move',
+      LocalGameArchive.games.isEmpty
+          ? 'How pawns move'
+          : learningProfile.recommendedLesson,
     );
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -139,8 +134,9 @@ class LearnChessScreen extends StatelessWidget {
             const SizedBox(height: 16),
             _PersonalizedPathCard(
               lesson: recommended,
-              reason: report?.trainingFocus ??
-                  'Start with piece movement, then the AI coach will adapt your path after every reviewed game.',
+              reason: LocalGameArchive.games.isEmpty
+                  ? 'Start with piece movement, then the AI coach will adapt your path after every reviewed game.'
+                  : learningProfile.recommendationReason,
             ),
             const SizedBox(height: 14),
             const _LearningMethodCard(),

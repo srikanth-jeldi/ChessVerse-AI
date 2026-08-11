@@ -67,7 +67,9 @@ class _AiReviewWorkspace extends StatelessWidget {
         Expanded(
           child: desktop
               ? Row(children: <Widget>[
-                  SizedBox(width: 390, child: SingleChildScrollView(child: overview)),
+                  SizedBox(
+                      width: 390,
+                      child: SingleChildScrollView(child: overview)),
                   const SizedBox(width: 22),
                   Expanded(child: timeline),
                 ])
@@ -112,10 +114,12 @@ class _ReviewOverview extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(report.headline,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w900)),
                     const SizedBox(height: 5),
                     Text(report.summary,
-                        style: const TextStyle(color: AppColors.textSecondary, height: 1.35)),
+                        style: const TextStyle(
+                            color: AppColors.textSecondary, height: 1.35)),
                   ],
                 ),
               ),
@@ -135,11 +139,26 @@ class _ReviewOverview extends StatelessWidget {
             body: report.turningPoint,
             color: AppColors.accentGold,
           ),
+          if (report.importantMistakes.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 12),
+            _InsightCard(
+              icon: Icons.priority_high_rounded,
+              label: '3 IMPORTANT MOMENTS',
+              body: report.importantMistakes
+                  .asMap()
+                  .entries
+                  .map((MapEntry<int, String> item) =>
+                      '${item.key + 1}. ${item.value}')
+                  .join('\n\n'),
+              color: const Color(0xFFFF7A72),
+            ),
+          ],
           const SizedBox(height: 12),
           _InsightCard(
             icon: Icons.psychology_alt_rounded,
             label: 'NEXT TRAINING FOCUS',
-            body: '${report.trainingFocus}\n\nRecommended: ${report.recommendedLesson}',
+            body:
+                '${report.trainingFocus}\n\nRecommended: ${report.recommendedLesson}',
             color: const Color(0xFF9C72FF),
           ),
         ],
@@ -160,23 +179,27 @@ class _InsightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ChessVerseCard(
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-          Icon(icon, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-              Text(label,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: .9,
-                  )),
-              const SizedBox(height: 6),
-              Text(body, style: const TextStyle(height: 1.4)),
+        child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Icon(icon, color: color),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(label,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: .9,
+                          )),
+                      const SizedBox(height: 6),
+                      Text(body, style: const TextStyle(height: 1.4)),
+                    ]),
+              ),
             ]),
-          ),
-        ]),
       );
 }
 
@@ -187,59 +210,71 @@ class _MoveTimeline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (report.insights.isEmpty) {
-      return const Center(child: Text('Complete a game to unlock move review.'));
+      return const Center(
+          child: Text('Complete a game to unlock move review.'));
     }
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-      const Text('MOVE-BY-MOVE COACHING',
-          style: TextStyle(
-            color: AppColors.accentGold,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1,
-          )),
-      const SizedBox(height: 10),
-      Expanded(
-        child: ListView.separated(
-          itemCount: report.insights.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
-          itemBuilder: (BuildContext context, int index) {
-            final AiMoveInsight insight = report.insights[index];
-            final Color color = switch (insight.label) {
-              'Power move' => const Color(0xFF59E4C8),
-              'Excellent' => const Color(0xFF4DA8FF),
-              'Tactical' => AppColors.accentGold,
-              'Principled' => const Color(0xFF9C72FF),
-              _ => const Color(0xFF8EA4B7),
-            };
-            return ChessVerseCard(
-              padding: const EdgeInsets.all(13),
-              child: Row(children: <Widget>[
-                CircleAvatar(
-                  backgroundColor: color.withValues(alpha: .16),
-                  foregroundColor: color,
-                  child: Text('${insight.number}',
-                      style: const TextStyle(fontWeight: FontWeight.w900)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-                    Row(children: <Widget>[
-                      Expanded(
-                        child: Text('${insight.side} • ${insight.notation}',
-                            style: const TextStyle(fontWeight: FontWeight.w900)),
-                      ),
-                      Text(insight.label,
-                          style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 11)),
-                    ]),
-                    const SizedBox(height: 4),
-                    Text('${insight.phase}: ${insight.explanation}',
-                        style: const TextStyle(color: AppColors.textSecondary, height: 1.35)),
+    return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text('MOVE-BY-MOVE COACHING',
+              style: TextStyle(
+                color: AppColors.accentGold,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1,
+              )),
+          const SizedBox(height: 10),
+          Expanded(
+            child: ListView.separated(
+              itemCount: report.insights.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (BuildContext context, int index) {
+                final AiMoveInsight insight = report.insights[index];
+                final Color color = switch (insight.label) {
+                  'Power move' => const Color(0xFF59E4C8),
+                  'Excellent' => const Color(0xFF4DA8FF),
+                  'Tactical' => AppColors.accentGold,
+                  'Principled' => const Color(0xFF9C72FF),
+                  _ => const Color(0xFF8EA4B7),
+                };
+                return ChessVerseCard(
+                  padding: const EdgeInsets.all(13),
+                  child: Row(children: <Widget>[
+                    CircleAvatar(
+                      backgroundColor: color.withValues(alpha: .16),
+                      foregroundColor: color,
+                      child: Text('${insight.number}',
+                          style: const TextStyle(fontWeight: FontWeight.w900)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Row(children: <Widget>[
+                              Expanded(
+                                child: Text(
+                                    '${insight.side} • ${insight.notation}',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w900)),
+                              ),
+                              Text(insight.label,
+                                  style: TextStyle(
+                                      color: color,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 11)),
+                            ]),
+                            const SizedBox(height: 4),
+                            Text('${insight.phase}: ${insight.explanation}',
+                                style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    height: 1.35)),
+                          ]),
+                    ),
                   ]),
-                ),
-              ]),
-            );
-          },
-        ),
-      ),
-    ]);
+                );
+              },
+            ),
+          ),
+        ]);
   }
 }

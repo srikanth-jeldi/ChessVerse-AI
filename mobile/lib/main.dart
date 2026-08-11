@@ -1839,6 +1839,21 @@ AiProfile aiProfileFor(int level) {
   };
 }
 
+Duration aiThinkDelayFor(int level) => Duration(
+      milliseconds: switch (level.clamp(1, 10)) {
+        1 => 1250,
+        2 => 1050,
+        3 => 850,
+        4 => 700,
+        5 => 620,
+        6 => 540,
+        7 => 470,
+        8 => 410,
+        9 => 360,
+        _ => 320,
+      },
+    );
+
 class _SideChoiceArtwork extends StatelessWidget {
   const _SideChoiceArtwork({
     required this.side,
@@ -2686,11 +2701,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String? _lastPlayerMove;
   String? _lastPlayerCoachNote;
   String? _moveQualityText;
+  int _hintStage = 0;
   String? _coachArrowFrom;
   String? _coachArrowTo;
   int _coachRequestEpoch = 0;
   double _engineEvaluationPawns = 0;
   final List<int> _playerMoveScores = <int>[];
+  final List<String> _importantMistakes = <String>[];
   String? _turningPoint;
   String _coachNote = 'Select a coin to see legal moves.';
   BoardSkin _skin = BoardSkin.royalWalnut;
@@ -3146,6 +3163,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 canUndo: _gameMode != GameMode.online &&
                     _gameResultTitle == null &&
                     _history.isNotEmpty,
+                hintLabel: switch (_hintStage) {
+                  1 => 'Direction',
+                  2 => 'Exact move',
+                  _ => 'Piece hint',
+                },
+                analyzeLabel:
+                    _moveQualityText == null ? 'Analyze' : 'Why weak?',
                 onHint: _showHint,
                 onAnalyze: _showAnalysis,
                 onTryAgain: _gameMode == GameMode.online
@@ -4110,22 +4134,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     return 'Average step - playable, but look for more pressure.';
   }
 
-  String _moveSuggestionText(
-    PositionAnalysis analysis,
-    String from,
-    String to,
-  ) {
-    final String playedMove = '$from to $to';
-    final String? bestMove = analysis.bestMove;
-    if (bestMove == null) {
-      return 'No stronger coach suggestion found.';
-    }
-    if (bestMove == playedMove) {
-      return 'Coach agrees: this was the best move.';
-    }
-    return 'Coach idea: move $bestMove for a ${analysis.quality.toLowerCase()}.';
-  }
-
   void _scheduleMoveQualityDismiss() {
     _moveQualityTimer?.cancel();
     _moveQualityTimer = Timer(const Duration(milliseconds: 2300), () {
@@ -4490,7 +4498,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           _puzzleExplorationMode = true;
         }
       }
-      final PositionAnalysis preMoveAnalysis = _analyzePosition(whitesTurn);
       if (_gameMode == GameMode.computer && widget.useRemoteEngine) {
         engineReviewFen = _toFen();
         engineReviewMove = '$from$square';
@@ -4563,12 +4570,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           _playerMoveScores.add(score);
           if (score < 60) {
             _turningPoint = '$move — $moveFeedback';
+            _recordImportantMistake('$move • $moveFeedback');
           }
         }
         if (_gameMode == GameMode.computer) {
-          _moveQualityText =
-              '$moveFeedback ${_moveSuggestionText(preMoveAnalysis, from, square)}';
+          _moveQualityText = _scoreForMoveFeedback(moveFeedback) < 60
+              ? '$moveFeedback Tap “Why is this weak?” in AI Coach to understand the safer plan.'
+              : null;
         }
+        _hintStage = 0;
         _lastPlayerMove = move;
         _coachNote = castleMove
             ? '${piece.white ? 'White' : 'Black'} castles ${square.startsWith('g') ? 'king side' : 'queen side'}.'
@@ -4710,11 +4720,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           _playerMoveScores[_playerMoveScores.length - 1] = best ? 100 : 68;
         }
         _moveQualityText = best
-            ? 'Stockfish: Best move. Your move matches the engine choice.'
-            : 'Stockfish review: playable. Best move was $recommendation. '
-                '${_engineEvaluationExplanation(engine, _moves.length.isOdd)}';
+            ? null
+            : 'Weak move alert • $recommendation was safer. Tap Analyze to see why.';
+        if (!best) {
+          _turningPoint ??= '$playedMove — $recommendation was stronger.';
+          _recordImportantMistake(
+            '$playedMove • Prefer $recommendation. '
+            '${_engineEvaluationExplanation(engine, _moves.length.isOdd)}',
+          );
+        }
       });
-      _scheduleMoveQualityDismiss();
+      if (!best) _scheduleMoveQualityDismiss();
     } on EngineApiException {
       // Keep the immediate on-device coach feedback when analysis is offline.
     }
@@ -4726,6 +4742,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (feedback.startsWith('Good')) return 82;
     if (feedback.startsWith('Not good')) return 48;
     return 68;
+  }
+
+  void _recordImportantMistake(String message) {
+    _importantMistakes.remove(message);
+    _importantMistakes.insert(0, message);
+    if (_importantMistakes.length > 3) {
+      _importantMistakes.removeLast();
+    }
   }
 
   int? get _playerAccuracy {
@@ -4763,7 +4787,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _coachNote =
           '${aiProfileFor(_aiLevel.round()).name} AI is calculating...';
     });
-    Future<void>.delayed(const Duration(milliseconds: 650), _performAiMove);
+    Future<void>.delayed(
+      aiThinkDelayFor(_aiLevel.round()),
+      _performAiMove,
+    );
   }
 
   void _scheduleDailyReply() {
@@ -5340,6 +5367,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _coachArrowTo = null;
       _engineEvaluationPawns = 0;
       _playerMoveScores.clear();
+      _importantMistakes.clear();
       _turningPoint = null;
       _whiteSeconds = 10 * 60;
       _blackSeconds = 10 * 60;
@@ -5461,6 +5489,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       result: _gameResultTitle,
       knownAccuracy: _playerAccuracy,
       knownTurningPoint: _turningPoint,
+      knownMistakes: _importantMistakes.reversed.toList(growable: false),
     );
     showAdaptiveAiReview(context, report: report);
   }
@@ -5549,6 +5578,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Future<void> _showHint() async {
     final bool whiteToMove = _isTacticsMode ? true : _moves.length.isEven;
+    final int hintStage = (_hintStage % 3) + 1;
+    setState(() => _hintStage = hintStage);
     if (_gameMode == GameMode.computer && widget.useRemoteEngine) {
       final int requestEpoch = ++_coachRequestEpoch;
       final String requestedFen = _toFen();
@@ -5568,13 +5599,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           final String from = move.substring(0, 2);
           final String to = move.substring(2, 4);
           setState(() {
-            _selectedSquare = from;
-            _coachArrowFrom = from;
-            _coachArrowTo = to;
+            _selectedSquare = hintStage >= 1 ? from : null;
+            _coachArrowFrom = hintStage == 3 ? from : null;
+            _coachArrowTo = hintStage == 3 ? to : null;
             final int cp = (engine['evaluationCp'] as num?)?.toInt() ?? 0;
             _engineEvaluationPawns = cp / 100;
-            _coachNote = 'AI hint: consider $from → $to. '
-                '${_engineEvaluationExplanation(engine, whiteToMove)}';
+            _coachNote = _progressiveHintText(
+              stage: hintStage,
+              from: from,
+              to: to,
+              explanation: _engineEvaluationExplanation(engine, whiteToMove),
+            );
           });
           return;
         }
@@ -5603,11 +5638,44 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       } else {
         final int remaining =
             _dailyChallenge.playerMoveGoal - _dailyPlayerMovesCompleted;
-        _coachNote = _isTacticsMode
-            ? 'Hint: inspect $bestFrom. ${bestTargets.length} legal option(s); $remaining move(s) remain.'
-            : 'Coach hint: inspect $bestFrom. It has ${bestTargets.length} promising squares.';
+        final String bestTo = bestTargets.first;
+        _coachArrowFrom = hintStage == 3 ? bestFrom : null;
+        _coachArrowTo = hintStage == 3 ? bestTo : null;
+        _coachNote = _progressiveHintText(
+          stage: hintStage,
+          from: bestFrom,
+          to: bestTo,
+          explanation: _isTacticsMode
+              ? '$remaining move(s) remain. Look for forcing checks first.'
+              : 'Compare checks, captures, and threats before moving.',
+        );
       }
     });
+  }
+
+  String _progressiveHintText({
+    required int stage,
+    required String from,
+    required String to,
+    required String explanation,
+  }) {
+    final ChessPiece? piece = _pieces[from];
+    final String name = piece == null ? 'piece' : pieceName(piece.code);
+    final SquarePosition target = ChessRules.positionOf(to);
+    final String direction =
+        target.file >= 4 ? 'toward the king side' : 'toward the queen side';
+    final bool simpleLanguage = _aiLevel <= 3;
+    return switch (stage) {
+      1 => simpleLanguage
+          ? 'Hint 1/3 • Start with the $name on $from.'
+          : 'Piece hint 1/3 • Candidate: $name on $from. Check its forcing options.',
+      2 => simpleLanguage
+          ? 'Hint 2/3 • Move that $name $direction.'
+          : 'Direction hint 2/3 • Improve the $name $direction and challenge the centre.',
+      _ => simpleLanguage
+          ? 'Hint 3/3 • Try $from → $to. $explanation'
+          : 'Exact move 3/3 • Calculate $from → $to. $explanation',
+    };
   }
 
   Future<void> _showAnalysis() async {
@@ -8240,6 +8308,8 @@ class _StudioCoachPanel extends StatelessWidget {
     required this.dailyProgress,
     required this.dailyGoal,
     required this.canUndo,
+    required this.hintLabel,
+    required this.analyzeLabel,
     required this.onHint,
     required this.onAnalyze,
     required this.onTryAgain,
@@ -8260,6 +8330,8 @@ class _StudioCoachPanel extends StatelessWidget {
   final int dailyProgress;
   final int dailyGoal;
   final bool canUndo;
+  final String hintLabel;
+  final String analyzeLabel;
   final VoidCallback onHint;
   final VoidCallback onAnalyze;
   final VoidCallback onTryAgain;
@@ -8494,9 +8566,9 @@ class _StudioCoachPanel extends StatelessWidget {
                         child: OutlinedButton.icon(
                           onPressed: onHint,
                           icon: const Icon(Icons.tips_and_updates_outlined),
-                          label: const FittedBox(
+                          label: FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: Text('Hint', maxLines: 1),
+                            child: Text(hintLabel, maxLines: 1),
                           ),
                         ),
                       ),
@@ -8505,9 +8577,9 @@ class _StudioCoachPanel extends StatelessWidget {
                         child: OutlinedButton.icon(
                           onPressed: onAnalyze,
                           icon: const Icon(Icons.visibility_outlined),
-                          label: const FittedBox(
+                          label: FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: Text('Analyze', maxLines: 1),
+                            child: Text(analyzeLabel, maxLines: 1),
                           ),
                         ),
                       ),

@@ -4,6 +4,10 @@ import 'package:chessverse_ai/main.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('beginner thinks more slowly than grandmaster', () {
+    expect(aiThinkDelayFor(1), greaterThan(aiThinkDelayFor(10)));
+  });
+
   test('beginner explores weak moves while grandmaster stays best', () {
     final List<AiCandidate> candidates = List<AiCandidate>.generate(
       20,

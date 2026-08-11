@@ -27,4 +27,13 @@ void main() {
     expect(report.accuracy, 91);
     expect(report.turningPoint, 'Move 18 — missed fork');
   });
+
+  test('AI review keeps only the three most important supplied mistakes', () {
+    final AiReviewReport report = AiReviewReport.fromMoves(
+      <String>['e4'],
+      knownMistakes: const <String>['one', 'two', 'three', 'four'],
+    );
+
+    expect(report.importantMistakes, <String>['one', 'two', 'three']);
+  });
 }

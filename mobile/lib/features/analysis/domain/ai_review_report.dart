@@ -29,6 +29,7 @@ class AiReviewReport {
     required this.trainingFocus,
     required this.turningPoint,
     required this.recommendedLesson,
+    required this.importantMistakes,
     required this.insights,
   });
 
@@ -39,6 +40,7 @@ class AiReviewReport {
   final String trainingFocus;
   final String turningPoint;
   final String recommendedLesson;
+  final List<String> importantMistakes;
   final List<AiMoveInsight> insights;
 
   factory AiReviewReport.fromMoves(
@@ -47,6 +49,7 @@ class AiReviewReport {
     String? result,
     int? knownAccuracy,
     String? knownTurningPoint,
+    List<String>? knownMistakes,
   }) {
     final List<String> chronological = newestFirst
         ? moves.reversed.toList(growable: false)
@@ -119,9 +122,8 @@ class AiReviewReport {
     final AiMoveInsight? pivotal = insights.cast<AiMoveInsight?>().firstWhere(
           (AiMoveInsight? item) =>
               item!.label == 'Power move' || item.label == 'Tactical',
-          orElse: () => insights.isEmpty
-              ? null
-              : insights[insights.length ~/ 2],
+          orElse: () =>
+              insights.isEmpty ? null : insights[insights.length ~/ 2],
         );
     final String focus;
     final String lesson;
@@ -142,6 +144,15 @@ class AiReviewReport {
           'Calculation discipline: compare at least two candidate moves before choosing the most forcing line.';
       lesson = 'Tactics • Back-rank mates';
     }
+    final List<String> importantMistakes = knownMistakes == null ||
+            knownMistakes.isEmpty
+        ? insights
+            .where((AiMoveInsight insight) => insight.label == 'Playable')
+            .take(3)
+            .map((AiMoveInsight insight) =>
+                'Move ${insight.number}: ${insight.notation} • Compare forcing checks, captures, and threats.')
+            .toList(growable: false)
+        : knownMistakes.take(3).toList(growable: false);
     return AiReviewReport(
       accuracy: accuracy,
       headline: accuracy >= 85
@@ -163,6 +174,7 @@ class AiReviewReport {
               ? 'Play a complete game to unlock a move-level turning point.'
               : 'Move ${pivotal.number}: ${pivotal.notation} — ${pivotal.explanation}'),
       recommendedLesson: lesson,
+      importantMistakes: importantMistakes,
       insights: insights,
     );
   }
