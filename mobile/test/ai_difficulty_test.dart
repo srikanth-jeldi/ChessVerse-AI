@@ -27,7 +27,7 @@ void main() {
     );
   });
 
-  test('remote engine result cannot override beginner selection', () {
+  test('remote engine strength is progressively applied by level', () {
     final List<AiCandidate> candidates = <AiCandidate>[
       const AiCandidate('a1', 'a2', 10),
       const AiCandidate('b1', 'b2', 1),
@@ -43,14 +43,37 @@ void main() {
       ),
       isNot(same(engineMove)),
     );
+    final int intermediateEngineMoves = List<AiCandidate>.generate(
+      200,
+      (int index) => chooseAiCandidateForLevel(
+        candidates,
+        4,
+        math.Random(index),
+        engineMove: engineMove,
+      ),
+    ).where((AiCandidate move) => identical(move, engineMove)).length;
+    expect(intermediateEngineMoves, inInclusiveRange(45, 95));
     expect(
       chooseAiCandidateForLevel(
         candidates,
-        4,
+        10,
         math.Random(3),
         engineMove: engineMove,
       ),
       same(engineMove),
     );
+  });
+
+  test('difficulty profiles expose a monotonic strength curve', () {
+    for (int level = 1; level < 10; level++) {
+      expect(
+        aiProfileFor(level).engineMoveProbability,
+        lessThan(aiProfileFor(level + 1).engineMoveProbability),
+      );
+      expect(
+        aiProfileFor(level).mistakeProbability,
+        greaterThan(aiProfileFor(level + 1).mistakeProbability),
+      );
+    }
   });
 }

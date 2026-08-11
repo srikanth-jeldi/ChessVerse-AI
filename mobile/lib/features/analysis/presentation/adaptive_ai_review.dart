@@ -150,7 +150,7 @@ class _ReviewOverview extends StatelessWidget {
                   .map((MapEntry<int, String> item) =>
                       '${item.key + 1}. ${item.value}')
                   .join('\n\n'),
-              color: const Color(0xFFFF7A72),
+              color: AppColors.accentGold,
             ),
           ],
           const SizedBox(height: 12),
@@ -159,7 +159,7 @@ class _ReviewOverview extends StatelessWidget {
             label: 'NEXT TRAINING FOCUS',
             body:
                 '${report.trainingFocus}\n\nRecommended: ${report.recommendedLesson}',
-            color: const Color(0xFF9C72FF),
+            color: const Color(0xFF59E4C8),
           ),
         ],
       );
@@ -231,9 +231,9 @@ class _MoveTimeline extends StatelessWidget {
                 final AiMoveInsight insight = report.insights[index];
                 final Color color = switch (insight.label) {
                   'Power move' => const Color(0xFF59E4C8),
-                  'Excellent' => const Color(0xFF4DA8FF),
+                  'Excellent' => AppColors.info,
                   'Tactical' => AppColors.accentGold,
-                  'Principled' => const Color(0xFF9C72FF),
+                  'Principled' => const Color(0xFF59E4C8),
                   _ => const Color(0xFF8EA4B7),
                 };
                 return ChessVerseCard(

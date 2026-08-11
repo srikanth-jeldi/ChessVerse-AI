@@ -1816,26 +1816,45 @@ class DailyChallenge {
 }
 
 class AiProfile {
-  const AiProfile(this.name, this.elo, this.description);
+  const AiProfile(
+    this.name,
+    this.elo,
+    this.description, {
+    required this.engineMoveProbability,
+    required this.mistakeProbability,
+  });
 
   final String name;
   final int elo;
   final String description;
+  final double engineMoveProbability;
+  final double mistakeProbability;
 }
 
 AiProfile aiProfileFor(int level) {
   return switch (level.clamp(1, 10)) {
-    1 => const AiProfile('Beginner', 600, 'Makes frequent learning mistakes'),
-    2 =>
-      const AiProfile('Learner', 850, 'Sees simple captures, still blunders'),
-    3 => const AiProfile('Casual', 1100, 'Basic tactics and development'),
-    4 => const AiProfile('Intermediate', 1600, 'Plans two ideas ahead'),
-    5 => const AiProfile('Club', 1750, 'Solid positional play'),
-    6 => const AiProfile('Advanced', 1900, 'Finds tactical combinations'),
-    7 => const AiProfile('Expert', 2100, 'Deep calculation and defense'),
-    8 => const AiProfile('Candidate Master', 2300, 'Tournament strength'),
-    9 => const AiProfile('Master', 2600, 'Elite engine pressure'),
-    _ => const AiProfile('Grandmaster', 3000, 'Maximum challenge'),
+    1 => const AiProfile('New to Chess', 600, 'Frequent human-like mistakes',
+        engineMoveProbability: 0, mistakeProbability: .58),
+    2 => const AiProfile(
+        'Beginner', 850, 'Sees simple captures, still blunders',
+        engineMoveProbability: .05, mistakeProbability: .44),
+    3 => const AiProfile('Learner', 1100, 'Basic tactics and development',
+        engineMoveProbability: .15, mistakeProbability: .32),
+    4 => const AiProfile('Intermediate', 1400, 'Plans one or two ideas ahead',
+        engineMoveProbability: .35, mistakeProbability: .23),
+    5 => const AiProfile(
+        'Club', 1600, 'Solid play with occasional inaccuracies',
+        engineMoveProbability: .50, mistakeProbability: .17),
+    6 => const AiProfile('Advanced', 1800, 'Finds tactical combinations',
+        engineMoveProbability: .65, mistakeProbability: .11),
+    7 => const AiProfile('Expert', 2000, 'Deep calculation and defense',
+        engineMoveProbability: .78, mistakeProbability: .07),
+    8 => const AiProfile('Candidate Master', 2200, 'Tournament strength',
+        engineMoveProbability: .90, mistakeProbability: .035),
+    9 => const AiProfile('Master', 2500, 'Elite engine pressure',
+        engineMoveProbability: .97, mistakeProbability: .012),
+    _ => const AiProfile('Grandmaster', 2900, 'Maximum challenge',
+        engineMoveProbability: 1, mistakeProbability: 0),
   };
 }
 
@@ -1919,7 +1938,11 @@ AiCandidate chooseAiCandidateForLevel(
 }) {
   assert(sortedCandidates.isNotEmpty);
   final int boundedLevel = level.clamp(1, 10);
-  if (engineMove != null && boundedLevel >= 4) return engineMove;
+  final AiProfile profile = aiProfileFor(boundedLevel);
+  if (engineMove != null &&
+      random.nextDouble() < profile.engineMoveProbability) {
+    return engineMove;
+  }
 
   // Beginner levels intentionally inspect a much wider set of legal moves.
   // This creates human-like inaccuracies instead of exposing Stockfish's
@@ -1928,12 +1951,12 @@ AiCandidate chooseAiCandidateForLevel(
     1 => 1.0,
     2 => .80,
     3 => .60,
-    4 => .42,
-    5 => .32,
+    4 => .48,
+    5 => .34,
     6 => .24,
-    7 => .16,
-    8 => .10,
-    9 => .06,
+    7 => .15,
+    8 => .08,
+    9 => .03,
     _ => .01,
   };
   final int poolSize = math.max(

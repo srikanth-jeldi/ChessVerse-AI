@@ -19,7 +19,7 @@ class LearnChessScreen extends StatelessWidget {
       title: 'Piece Basics',
       body: 'Learn how every piece moves and captures.',
       asset: 'assets/backgrounds/home-online-hero-v1.png',
-      accent: Color(0xFF53D8C4),
+      accent: Color(0xFF59E4C8),
       progress: 0.35,
       completed: '3 of 8 lessons',
       chapters: <String>[
@@ -38,7 +38,7 @@ class LearnChessScreen extends StatelessWidget {
       title: 'King Safety',
       body: 'Understand check, escape squares, and pins.',
       asset: 'assets/backgrounds/home-settings-hero-v1.png',
-      accent: Color(0xFF4DA8FF),
+      accent: AppColors.info,
       progress: 0.18,
       completed: '1 of 6 lessons',
       chapters: <String>[
@@ -78,7 +78,7 @@ class LearnChessScreen extends StatelessWidget {
       title: 'Endgames',
       body: 'Finish cleanly with rook, queen, and pawn endings.',
       asset: 'assets/backgrounds/home-rankings-hero-v1.png',
-      accent: Color(0xFF9C6BFF),
+      accent: AppColors.accentGold,
       progress: 0,
       completed: '0 of 8 lessons',
       chapters: <String>[
@@ -100,7 +100,10 @@ class LearnChessScreen extends StatelessWidget {
     final bool wide = AppBreakpoints.isTabletOrLarger(context);
     final bool compact = viewport.width < 520;
     final PlayerLearningProfile learningProfile =
-        PlayerLearningProfile.fromGames(LocalGameArchive.games);
+        PlayerLearningProfile.fromGames(
+      LocalGameArchive.games,
+      cloudScores: LocalGameArchive.cloudWeaknessScores,
+    );
     final AcademyLesson recommended = AcademyCatalog.forChapter(
       LocalGameArchive.games.isEmpty
           ? 'How pawns move'
@@ -139,6 +142,11 @@ class LearnChessScreen extends StatelessWidget {
                   : learningProfile.recommendationReason,
             ),
             const SizedBox(height: 14),
+            _WeeklyAiReportCard(
+              profile: learningProfile,
+              gamesReviewed: LocalGameArchive.games.length,
+            ),
+            const SizedBox(height: 14),
             const _LearningMethodCard(),
             const SizedBox(height: 24),
             const _SectionHeading(
@@ -168,6 +176,89 @@ class LearnChessScreen extends StatelessWidget {
             const _CoachEvaluationPanel(),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _WeeklyAiReportCard extends StatelessWidget {
+  const _WeeklyAiReportCard({
+    required this.profile,
+    required this.gamesReviewed,
+  });
+
+  final PlayerLearningProfile profile;
+  final int gamesReviewed;
+
+  @override
+  Widget build(BuildContext context) {
+    final int maxScore = profile.scores.values.fold<int>(
+      1,
+      (int current, int value) => value > current ? value : current,
+    );
+    return ChessVerseCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Row(
+            children: <Widget>[
+              Icon(Icons.insights_rounded, color: AppColors.accentGold),
+              SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  'WEEKLY AI IMPROVEMENT REPORT',
+                  style: TextStyle(
+                    color: AppColors.accentGold,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .8,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            gamesReviewed == 0
+                ? 'Complete a game to activate your personal skill map.'
+                : '$gamesReviewed recent games reviewed • strongest: '
+                    '${PlayerLearningProfile.labelFor(profile.strongestSkill)} • '
+                    'focus: ${PlayerLearningProfile.labelFor(profile.primaryWeakness)}',
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 14),
+          ...ChessWeakness.values.map((ChessWeakness weakness) {
+            final int score = profile.scoreFor(weakness);
+            final double risk = gamesReviewed == 0 ? 0 : score / maxScore;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 9),
+              child: Row(
+                children: <Widget>[
+                  SizedBox(
+                    width: 112,
+                    child: Text(
+                      PlayerLearningProfile.labelFor(weakness),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(99),
+                      child: LinearProgressIndicator(
+                        minHeight: 7,
+                        value: risk.clamp(0, 1),
+                        backgroundColor: AppColors.border,
+                        color: weakness == profile.primaryWeakness
+                            ? AppColors.accentGold
+                            : const Color(0xFF59E4C8),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -275,7 +366,7 @@ class _PersonalizedPathCard extends StatelessWidget {
               height: 52,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: <Color>[Color(0xFF9C72FF), Color(0xFF2FD5C4)],
+                  colors: <Color>[Color(0xFF123B52), Color(0xFF59E4C8)],
                 ),
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -471,14 +562,14 @@ class _CoachHero extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
                       Icon(Icons.auto_awesome_rounded,
-                          color: Color(0xFF53D8C4), size: 20),
+                          color: Color(0xFF59E4C8), size: 20),
                       SizedBox(width: 8),
                       Flexible(
                         child: Text('AI-GUIDED TRAINING',
                             maxLines: 1,
                             overflow: TextOverflow.fade,
                             style: TextStyle(
-                                color: Color(0xFF53D8C4),
+                                color: Color(0xFF59E4C8),
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 1.1)),
                       ),
@@ -666,7 +757,7 @@ class _CoachEvaluationPanel extends StatelessWidget {
                   Row(
                     children: <Widget>[
                       Icon(Icons.psychology_alt_rounded,
-                          color: Color(0xFF9C6BFF)),
+                          color: AppColors.accentGold),
                       SizedBox(width: 9),
                       Expanded(
                         child: Text('HOW THE AI COACH RESPONDS',

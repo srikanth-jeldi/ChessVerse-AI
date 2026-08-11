@@ -14,7 +14,10 @@ class PlayerLearningProfile {
 
   final Map<ChessWeakness, int> scores;
 
-  factory PlayerLearningProfile.fromGames(List<SavedGameRecord> games) {
+  factory PlayerLearningProfile.fromGames(
+    List<SavedGameRecord> games, {
+    Map<String, int> cloudScores = const <String, int>{},
+  }) {
     final Map<ChessWeakness, int> scores = <ChessWeakness, int>{
       for (final ChessWeakness weakness in ChessWeakness.values) weakness: 0,
     };
@@ -52,6 +55,10 @@ class PlayerLearningProfile {
         scores[ChessWeakness.endgame] = scores[ChessWeakness.endgame]! + 3;
       }
     }
+    for (final ChessWeakness weakness in ChessWeakness.values) {
+      final int remote = cloudScores[weakness.name] ?? 0;
+      if (remote > scores[weakness]!) scores[weakness] = remote;
+    }
     return PlayerLearningProfile(scores);
   }
 
@@ -63,6 +70,26 @@ class PlayerLearningProfile {
         )
         .key;
   }
+
+  ChessWeakness get strongestSkill {
+    return scores.entries
+        .reduce(
+          (MapEntry<ChessWeakness, int> a, MapEntry<ChessWeakness, int> b) =>
+              b.value < a.value ? b : a,
+        )
+        .key;
+  }
+
+  int scoreFor(ChessWeakness weakness) => scores[weakness] ?? 0;
+
+  static String labelFor(ChessWeakness weakness) => switch (weakness) {
+        ChessWeakness.opening => 'Opening',
+        ChessWeakness.kingSafety => 'King safety',
+        ChessWeakness.hangingPieces => 'Piece safety',
+        ChessWeakness.missedCaptures => 'Capture scan',
+        ChessWeakness.timeManagement => 'Time management',
+        ChessWeakness.endgame => 'Endgame',
+      };
 
   String get recommendedLesson => switch (primaryWeakness) {
         ChessWeakness.opening => 'Develop with purpose',

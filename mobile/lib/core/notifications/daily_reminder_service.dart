@@ -9,6 +9,7 @@ class DailyReminderService {
 
   static final DailyReminderService instance = DailyReminderService._();
   static const int _notificationId = 7714;
+  static const int _weeklyReportNotificationId = 7715;
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   bool _initialized = false;
@@ -35,13 +36,13 @@ class DailyReminderService {
   Future<bool> enable() async {
     if (kIsWeb) return false;
     await initialize();
-    final AndroidFlutterLocalNotificationsPlugin? android = _plugin
-        .resolvePlatformSpecificImplementation<
+    final AndroidFlutterLocalNotificationsPlugin? android =
+        _plugin.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
     final bool androidAllowed =
         await android?.requestNotificationsPermission() ?? true;
-    final IOSFlutterLocalNotificationsPlugin? ios = _plugin
-        .resolvePlatformSpecificImplementation<
+    final IOSFlutterLocalNotificationsPlugin? ios =
+        _plugin.resolvePlatformSpecificImplementation<
             IOSFlutterLocalNotificationsPlugin>();
     final bool iosAllowed = await ios?.requestPermissions(
           alert: true,
@@ -73,6 +74,35 @@ class DailyReminderService {
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
+    tz.TZDateTime weekly = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      10,
+    );
+    while (weekly.weekday != DateTime.sunday || !weekly.isAfter(now)) {
+      weekly = weekly.add(const Duration(days: 1));
+    }
+    await _plugin.zonedSchedule(
+      _weeklyReportNotificationId,
+      'Your weekly AI report is ready',
+      'See your strongest skill, biggest weakness, and next 5-minute lesson.',
+      weekly,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'weekly_ai_report',
+          'Weekly AI improvement report',
+          channelDescription:
+              'One useful weekly summary of your ChessVerseAI progress',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+    );
     return true;
   }
 
@@ -80,5 +110,6 @@ class DailyReminderService {
     if (kIsWeb) return;
     await initialize();
     await _plugin.cancel(_notificationId);
+    await _plugin.cancel(_weeklyReportNotificationId);
   }
 }

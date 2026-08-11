@@ -518,7 +518,7 @@ class _BoardSquare extends StatelessWidget {
             duration: const Duration(milliseconds: 260),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFF2FD5C4)
+                  ? const Color(0xFF59E4C8)
                   : target
                       ? const Color(0xFFB9993B)
                       : highlighted
@@ -794,7 +794,7 @@ class _CoachPanel extends StatelessWidget {
         ? const Color(0xFF59E4C8)
         : phase == _LessonPhase.practice
             ? AppColors.accentGold
-            : const Color(0xFF9C72FF);
+            : AppColors.accentGold;
     return ChessVerseCard(
       padding: const EdgeInsets.all(20),
       child: Column(
