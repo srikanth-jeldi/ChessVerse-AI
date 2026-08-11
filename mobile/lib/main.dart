@@ -12458,12 +12458,47 @@ class MiniCapturedPiece extends StatelessWidget {
         height: 34,
         child: Padding(
           padding: const EdgeInsets.all(2),
-          child: Image.asset(
-            pieceAsset(piece),
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.medium,
-            semanticLabel:
-                'Captured ${piece.white ? 'white' : 'black'} ${pieceName(piece.code)}',
+          child: ValueListenableBuilder<ChessPieceAppearance>(
+            valueListenable: ChessPieceAppearanceController.current,
+            builder:
+                (BuildContext context, ChessPieceAppearance appearance, _) {
+              if (appearance.style == ChessPieceVisualStyle.classic2d) {
+                return Text(
+                  pieceGlyph(piece),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'serif',
+                    fontSize: 28,
+                    height: 1,
+                    color: piece.white
+                        ? const Color(0xFFFFF4D0)
+                        : const Color(0xFF111722),
+                    shadows: const <Shadow>[
+                      Shadow(color: Colors.black87, blurRadius: 2),
+                    ],
+                  ),
+                );
+              }
+              Widget image = Image.asset(
+                pieceAsset(piece),
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.medium,
+                semanticLabel:
+                    'Captured ${piece.white ? 'white' : 'black'} ${pieceName(piece.code)}',
+              );
+              if (appearance.style == ChessPieceVisualStyle.highContrast) {
+                image = ColorFiltered(
+                  colorFilter: ColorFilter.mode(
+                    piece.white
+                        ? const Color(0xFFFFF0B8)
+                        : const Color(0xFF89BFFF),
+                    BlendMode.modulate,
+                  ),
+                  child: image,
+                );
+              }
+              return image;
+            },
           ),
         ),
       ),
