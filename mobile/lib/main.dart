@@ -2687,6 +2687,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String? _moveQualityText;
   String? _coachArrowFrom;
   String? _coachArrowTo;
+  int _coachRequestEpoch = 0;
   double _engineEvaluationPawns = 0;
   final List<int> _playerMoveScores = <int>[];
   String? _turningPoint;
@@ -4336,6 +4337,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _handleSquareTap(String square) {
+    // Hint/Analyze results belong to one exact board position. Invalidate
+    // in-flight work before processing a touch so a late engine response
+    // cannot paint an old move on the current board.
+    _coachRequestEpoch++;
     _dismissTurnReminder();
     if (_coachArrowFrom != null || _coachArrowTo != null) {
       setState(() {
@@ -5499,13 +5504,19 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Future<void> _showHint() async {
     final bool whiteToMove = _isTacticsMode ? true : _moves.length.isEven;
     if (_gameMode == GameMode.computer && widget.useRemoteEngine) {
+      final int requestEpoch = ++_coachRequestEpoch;
+      final String requestedFen = _toFen();
       try {
         setState(() => _coachNote = 'Stockfish is finding your best plan…');
         final Map<String, dynamic> engine = await _engineApi.analyze(
-          fen: _toFen(),
+          fen: requestedFen,
           level: math.max(4, _aiLevel.round()),
         );
-        if (!mounted) return;
+        if (!mounted ||
+            requestEpoch != _coachRequestEpoch ||
+            requestedFen != _toFen()) {
+          return;
+        }
         final String move = engine['bestMove'] as String? ?? '';
         if (move.length >= 4) {
           final String from = move.substring(0, 2);
@@ -5557,13 +5568,19 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final bool whiteToMove = _moves.length.isEven;
     PositionAnalysis analysis = _analyzePosition(whiteToMove);
     if (_gameMode == GameMode.computer && widget.useRemoteEngine) {
+      final int requestEpoch = ++_coachRequestEpoch;
+      final String requestedFen = _toFen();
       try {
         setState(() => _coachNote = 'Running Stockfish position analysis…');
         final Map<String, dynamic> engine = await _engineApi.analyze(
-          fen: _toFen(),
+          fen: requestedFen,
           level: math.max(5, _aiLevel.round()),
         );
-        if (!mounted) return;
+        if (!mounted ||
+            requestEpoch != _coachRequestEpoch ||
+            requestedFen != _toFen()) {
+          return;
+        }
         final String best = engine['bestMove'] as String? ?? '';
         final int cp = (engine['evaluationCp'] as num?)?.toInt() ?? 0;
         final int? mate = (engine['mateIn'] as num?)?.toInt();
