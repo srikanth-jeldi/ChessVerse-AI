@@ -10500,7 +10500,10 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                         image: AssetImage(
                           'assets/backgrounds/online-matchmaking-hero-v1.png',
                         ),
-                        fit: BoxFit.cover,
+                        // Preserve the complete wide composition on phones:
+                        // pawn at the left, copy in the centre and map at the
+                        // right. Cover was cropping both visual anchors.
+                        fit: BoxFit.contain,
                         alignment: Alignment.center,
                         opacity: .78,
                       ),
@@ -10518,13 +10521,15 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                     ),
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(
-                        wideLayout ? 230 : 150,
+                        wideLayout ? 230 : 92,
                         wideLayout ? 30 : 20,
-                        wideLayout ? 230 : 14,
+                        wideLayout ? 230 : 92,
                         wideLayout ? 30 : 18,
                       ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        crossAxisAlignment: wideLayout
+                            ? CrossAxisAlignment.stretch
+                            : CrossAxisAlignment.center,
                         children: <Widget>[
                           Row(
                             children: <Widget>[
@@ -10565,7 +10570,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                           ),
                           SizedBox(height: wideLayout ? 18 : 12),
                           Align(
-                            alignment: Alignment.centerLeft,
+                            alignment: wideLayout
+                                ? Alignment.centerLeft
+                                : Alignment.center,
                             child: SizedBox(
                               width: wideLayout ? 280 : 176,
                               height: wideLayout ? 52 : 44,
