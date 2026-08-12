@@ -10532,16 +10532,35 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                             'We’ll find a player for you from around the world.',
                           ),
                           SizedBox(height: wideLayout ? 18 : 12),
-                          FilledButton.icon(
-                            onPressed: _loading
-                                ? null
-                                : () => _run(
-                                      () =>
-                                          widget.api.randomMatch(widget.token),
-                                      randomSearch: true,
-                                    ),
-                            icon: const Icon(Icons.bolt_rounded),
-                            label: const Text('Find Match'),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: SizedBox(
+                              width: wideLayout ? 280 : 210,
+                              height: wideLayout ? 52 : 46,
+                              child: FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                  ),
+                                  textStyle: TextStyle(
+                                    fontSize: wideLayout ? 17 : 15,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                onPressed: _loading
+                                    ? null
+                                    : () => _run(
+                                          () => widget.api
+                                              .randomMatch(widget.token),
+                                          randomSearch: true,
+                                        ),
+                                icon: Icon(
+                                  Icons.bolt_rounded,
+                                  size: wideLayout ? 22 : 20,
+                                ),
+                                label: const Text('Find Match'),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -10882,23 +10901,30 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                 ),
                                 const Spacer(),
                                 SizedBox(
-                                  width: compactDesktop ? 320 : 455,
-                                  height: 68,
+                                  width: compactDesktop ? 250 : 290,
+                                  height: 54,
                                   child: FilledButton.icon(
                                     style: FilledButton.styleFrom(
-                                        backgroundColor: gold,
-                                        foregroundColor: Colors.black,
-                                        textStyle: const TextStyle(
-                                            fontSize: 22,
-                                            fontWeight: FontWeight.w800)),
+                                      backgroundColor: gold,
+                                      foregroundColor: Colors.black,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                      ),
+                                      textStyle: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
                                     onPressed: _loading
                                         ? null
                                         : () => _run(
                                             () => widget.api
                                                 .randomMatch(widget.token),
                                             randomSearch: true),
-                                    icon: const Icon(Icons.bolt_rounded,
-                                        size: 30),
+                                    icon: const Icon(
+                                      Icons.bolt_rounded,
+                                      size: 24,
+                                    ),
                                     label: const Text('Find Match'),
                                   ),
                                 ),
