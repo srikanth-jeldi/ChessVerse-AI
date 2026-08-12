@@ -3014,15 +3014,41 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed &&
-        _gameMode == GameMode.online &&
-        _onlineMatch != null &&
-        _authToken != null) {
-      _resumeOnlineSession();
+    if (state == AppLifecycleState.resumed) {
+      if (_gameMode == GameMode.online &&
+          _onlineMatch != null &&
+          _authToken != null) {
+        _resumeOnlineSession();
+      } else if (_gameMode == GameMode.computer && _gameResultTitle == null) {
+        // Android can suspend delayed callbacks while the app is backgrounded.
+        // Re-evaluate the position on resume so an interrupted AI turn never
+        // leaves the board waiting until the player starts a new game.
+        _recoverComputerTurnIfNeeded();
+      }
     } else if (state != AppLifecycleState.resumed) {
       _onlineHeartbeatTimer?.cancel();
       unawaited(_onlineChannel?.sink.close());
     }
+  }
+
+  void _recoverComputerTurnIfNeeded() {
+    if (!mounted ||
+        _gameMode != GameMode.computer ||
+        _gameResultTitle != null) {
+      return;
+    }
+    final bool aiPlaysWhite = !_humanPlaysWhite;
+    final bool aiTurn = _moves.length.isEven == aiPlaysWhite;
+    if (!aiTurn) return;
+
+    _aiWatchdogTimer?.cancel();
+    _aiMoveEpoch++;
+    if (_aiThinking) {
+      setState(() => _aiThinking = false);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scheduleAiMove();
+    });
   }
 
   @override
@@ -12561,19 +12587,10 @@ class GameResultOverlay extends StatelessWidget {
         ),
       ),
     );
-    if (draw || missed) return resultCard;
-    return Stack(
-      fit: StackFit.expand,
-      children: <Widget>[
-        resultCard,
-        Positioned.fill(
-          child: OnlineVictoryCelebration(
-            winnerAtTop: true,
-            title: title,
-          ),
-        ),
-      ],
-    );
+    // The board already presents the cinematic king-fall/title/fireworks
+    // sequence before this result sheet is revealed. Keep the sheet calm and
+    // fully readable instead of starting a second celebration over its CTAs.
+    return resultCard;
   }
 }
 

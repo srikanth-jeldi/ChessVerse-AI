@@ -245,7 +245,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                                     itemBuilder: (_, int index) =>
                                         _LeaderboardTile(
                                       board.entries[index],
-                                      profilePhotoUrl: widget.profilePhotoUrl,
+                                      profilePhotoUrl: board.entries[index].you
+                                          ? widget.profilePhotoUrl
+                                          : null,
                                     ),
                                   );
                                 }),

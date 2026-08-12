@@ -220,11 +220,7 @@ class _RulesCard extends StatelessWidget {
           _RuleLine(
               text:
                   'Complete ${challenge.moveGoal} moves to protect your streak.'),
-          const SizedBox(height: 12),
-          Text(
-            'Next integration step: connect this UI to the existing DailyChallenge game mode in main.dart without changing board logic.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          const SizedBox(height: 4),
         ],
       ),
     );
