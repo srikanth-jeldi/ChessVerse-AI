@@ -38,6 +38,24 @@ class PlayerCloudProgress {
     @Column(name = "daily_streak", nullable = false)
     int dailyStreak;
 
+    @Column(name = "opening_weakness", nullable = false)
+    int openingWeakness;
+
+    @Column(name = "king_safety_weakness", nullable = false)
+    int kingSafetyWeakness;
+
+    @Column(name = "hanging_pieces_weakness", nullable = false)
+    int hangingPiecesWeakness;
+
+    @Column(name = "missed_captures_weakness", nullable = false)
+    int missedCapturesWeakness;
+
+    @Column(name = "time_management_weakness", nullable = false)
+    int timeManagementWeakness;
+
+    @Column(name = "endgame_weakness", nullable = false)
+    int endgameWeakness;
+
     @Column(name = "last_daily_completed_at")
     Instant lastDailyCompletedAt;
 

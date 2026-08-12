@@ -67,6 +67,30 @@ class AuthApi {
     return _decode(response);
   }
 
+  Future<Map<String, dynamic>> upgradeGuestWithFacebook(
+    String token,
+    String accessToken,
+  ) async {
+    final http.Response response;
+    try {
+      response = await http
+          .post(
+            Uri.parse('${AppConfig.apiBaseUrl}/api/auth/facebook/upgrade'),
+            headers: <String, String>{
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(<String, String>{'accessToken': accessToken}),
+          )
+          .timeout(const Duration(seconds: 15));
+    } on TimeoutException {
+      throw const AuthApiException('The server took too long to respond.');
+    } catch (_) {
+      throw const AuthApiException(_connectionMessage);
+    }
+    return _decode(response);
+  }
+
   Future<void> logout(String token) async {
     try {
       await http.post(
@@ -78,14 +102,45 @@ class AuthApi {
     }
   }
 
+  Future<void> deleteAccount(String token) async {
+    http.Response response;
+    try {
+      response = await http.post(
+        Uri.parse('${AppConfig.apiBaseUrl}/api/auth/account/delete'),
+        headers: <String, String>{'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 15));
+      // Older deployed backends expose only the canonical DELETE endpoint.
+      // Keep Android compatible during rolling deployments without asking the
+      // user to install a server-matched APK.
+      if (response.statusCode == 404 || response.statusCode == 405) {
+        response = await http.delete(
+          Uri.parse('${AppConfig.apiBaseUrl}/api/auth/account'),
+          headers: <String, String>{'Authorization': 'Bearer $token'},
+        ).timeout(const Duration(seconds: 15));
+      }
+    } on TimeoutException {
+      throw const AuthApiException('The server took too long to respond.');
+    } catch (_) {
+      throw const AuthApiException(_connectionMessage);
+    }
+    _decode(response);
+  }
+
   Map<String, dynamic> _decode(http.Response response) {
-    final Object? decoded =
-        response.body.isEmpty ? null : jsonDecode(response.body);
+    Object? decoded;
+    if (response.body.isNotEmpty) {
+      try {
+        decoded = jsonDecode(response.body);
+      } on FormatException {
+        decoded = null;
+      }
+    }
     final Map<String, dynamic> data =
         decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AuthApiException(
-        data['message'] as String? ?? 'Authentication failed.',
+        data['message'] as String? ??
+            'ChessVerseAI server rejected the request (${response.statusCode}).',
         statusCode: response.statusCode,
       );
     }
@@ -101,4 +156,7 @@ class AuthApiException implements Exception {
 
   final String message;
   final int? statusCode;
+
+  @override
+  String toString() => message;
 }

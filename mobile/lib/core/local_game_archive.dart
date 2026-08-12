@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -100,7 +101,9 @@ class LocalGameArchive {
   static const String _profileAvatarKey = 'chessverse_profile_avatar';
   static const String _profileUsernameKey = 'chessverse_profile_username';
   static const String _profileUpdatedAtKey = 'chessverse_profile_updated_at';
+  static const String _savedGamesKey = 'chessverse_saved_games_v1';
   static final List<SavedGameRecord> _games = <SavedGameRecord>[];
+  static final Map<String, int> _cloudWeaknessScores = <String, int>{};
   static final Set<String> _completedDailyChallengeIds = <String>{};
   static final Set<String> _completedPuzzleIds = <String>{};
   static DateTime? _lastDailyCompletedAt;
@@ -118,7 +121,40 @@ class LocalGameArchive {
   static List<SavedGameRecord> get games =>
       List<SavedGameRecord>.unmodifiable(_games);
 
+  static Map<String, int> get cloudWeaknessScores =>
+      Map<String, int>.unmodifiable(_cloudWeaknessScores);
+
   static Future<void> init() async {
+    final String? savedGamesRaw = await _storage.read(key: _savedGamesKey);
+    if (savedGamesRaw != null && savedGamesRaw.trim().isNotEmpty) {
+      try {
+        final List<dynamic> decoded =
+            jsonDecode(savedGamesRaw) as List<dynamic>;
+        _games
+          ..clear()
+          ..addAll(
+            decoded.take(50).map((dynamic value) {
+              final Map<String, dynamic> game = value as Map<String, dynamic>;
+              return SavedGameRecord(
+                mode: game['mode'] as String? ?? 'Game',
+                result: game['result'] as String? ?? 'Game complete',
+                detail: game['detail'] as String? ?? 'Game complete',
+                moves: (game['moves'] as List<dynamic>? ?? <dynamic>[])
+                    .whereType<String>()
+                    .toList(growable: false),
+                playedAt:
+                    DateTime.tryParse(game['playedAt'] as String? ?? '') ??
+                        DateTime.now(),
+                whitePlayer: game['whitePlayer'] as String? ?? 'White',
+                blackPlayer: game['blackPlayer'] as String? ?? 'Black',
+              );
+            }),
+          );
+      } on Object {
+        // Ignore a legacy or partially written archive and start clean.
+        _games.clear();
+      }
+    }
     final String? raw = await _storage.read(key: _completedDailyKey);
     if (raw != null && raw.trim().isNotEmpty) {
       _completedDailyChallengeIds.addAll(
@@ -161,6 +197,27 @@ class LocalGameArchive {
     if (_games.length > 50) {
       _games.removeLast();
     }
+    unawaited(_persistGames());
+    _notifyCloudChange();
+  }
+
+  static Future<void> _persistGames() async {
+    final String encoded = jsonEncode(
+      _games
+          .map(
+            (SavedGameRecord game) => <String, dynamic>{
+              'mode': game.mode,
+              'result': game.result,
+              'detail': game.detail,
+              'moves': game.moves,
+              'playedAt': game.playedAt.toUtc().toIso8601String(),
+              'whitePlayer': game.whitePlayer,
+              'blackPlayer': game.blackPlayer,
+            },
+          )
+          .toList(growable: false),
+    );
+    await _storage.write(key: _savedGamesKey, value: encoded);
   }
 
   static bool isDailyChallengeComplete(String challengeId) {
@@ -274,18 +331,71 @@ class LocalGameArchive {
     _notifyCloudChange();
   }
 
-  static Map<String, dynamic> cloudSnapshot() => <String, dynamic>{
-        'profileUsername': _profileUsername,
-        'country': _profileCountry,
-        'chessLevel': _profileLevel,
-        'avatar': _profileAvatar,
-        'profileUpdatedAt': _profileUpdatedAt?.toIso8601String(),
-        'dailyStreak': _dailyStreak,
-        'lastDailyCompletedAt': _lastDailyCompletedAt?.toIso8601String(),
-        'completedPuzzleIds': _completedPuzzleIds.toList()..sort(),
-        'completedDailyChallengeIds': _completedDailyChallengeIds.toList()
-          ..sort(),
-      };
+  static Map<String, dynamic> cloudSnapshot() {
+    final Map<String, int> weaknesses = _localWeaknessScores();
+    return <String, dynamic>{
+      'profileUsername': _profileUsername,
+      'country': _profileCountry,
+      'chessLevel': _profileLevel,
+      'avatar': _profileAvatar,
+      'profileUpdatedAt': _profileUpdatedAt?.toIso8601String(),
+      'dailyStreak': _dailyStreak,
+      'openingWeakness': weaknesses['opening'] ?? 0,
+      'kingSafetyWeakness': weaknesses['kingSafety'] ?? 0,
+      'hangingPiecesWeakness': weaknesses['hangingPieces'] ?? 0,
+      'missedCapturesWeakness': weaknesses['missedCaptures'] ?? 0,
+      'timeManagementWeakness': weaknesses['timeManagement'] ?? 0,
+      'endgameWeakness': weaknesses['endgame'] ?? 0,
+      'lastDailyCompletedAt': _lastDailyCompletedAt?.toIso8601String(),
+      'completedPuzzleIds': _completedPuzzleIds.toList()..sort(),
+      'completedDailyChallengeIds': _completedDailyChallengeIds.toList()
+        ..sort(),
+    };
+  }
+
+  static Map<String, int> _localWeaknessScores() {
+    final Map<String, int> scores = <String, int>{
+      'opening': 0,
+      'kingSafety': 0,
+      'hangingPieces': 0,
+      'missedCaptures': 0,
+      'timeManagement': 0,
+      'endgame': 0,
+    };
+    for (final SavedGameRecord game in _games.take(20)) {
+      final bool loss = game.result.toLowerCase().contains('wins') &&
+          !game.result.toLowerCase().startsWith('you');
+      final bool castled = game.moves.any(
+        (String move) => move.contains('O-O') || move.contains('0-0'),
+      );
+      final int captures =
+          game.moves.where((String move) => move.contains('x')).length;
+      if (loss && game.moves.length < 24) {
+        scores['opening'] = scores['opening']! + 3;
+      }
+      if (!castled && game.moves.length >= 12) {
+        scores['kingSafety'] = scores['kingSafety']! + 2;
+      }
+      if (loss && captures >= 5) {
+        scores['hangingPieces'] = scores['hangingPieces']! + 2;
+      }
+      if (captures < (game.moves.length / 10).floor()) {
+        scores['missedCaptures'] = scores['missedCaptures']! + 1;
+      }
+      if (game.result.toLowerCase().contains('time')) {
+        scores['timeManagement'] = scores['timeManagement']! + 4;
+      }
+      if (loss && game.moves.length >= 36) {
+        scores['endgame'] = scores['endgame']! + 3;
+      }
+    }
+    for (final MapEntry<String, int> remote in _cloudWeaknessScores.entries) {
+      if ((scores[remote.key] ?? 0) < remote.value) {
+        scores[remote.key] = remote.value;
+      }
+    }
+    return scores;
+  }
 
   static Future<void> mergeCloudSnapshot(Map<String, dynamic> cloud) async {
     _mergingCloud = true;
@@ -304,6 +414,20 @@ class LocalGameArchive {
         _dailyStreak,
         (cloud['dailyStreak'] as num?)?.toInt() ?? 0,
       );
+      for (final String key in <String>[
+        'opening',
+        'kingSafety',
+        'hangingPieces',
+        'missedCaptures',
+        'timeManagement',
+        'endgame',
+      ]) {
+        final String responseKey = '${key}Weakness';
+        _cloudWeaknessScores[key] = mathMax(
+          _cloudWeaknessScores[key] ?? 0,
+          (cloud[responseKey] as num?)?.toInt() ?? 0,
+        );
+      }
       final DateTime? remoteDaily = DateTime.tryParse(
         cloud['lastDailyCompletedAt'] as String? ?? '',
       )?.toUtc();
@@ -380,9 +504,11 @@ class LocalGameArchive {
       if (result.contains('draw')) {
         draws++;
       } else if (result.contains('white wins') ||
+          result.contains('you win') ||
           result.contains('challenge complete')) {
         wins++;
-      } else if (result.contains('black wins')) {
+      } else if (result.contains('black wins') ||
+          result.contains('opponent wins')) {
         losses++;
       }
     }

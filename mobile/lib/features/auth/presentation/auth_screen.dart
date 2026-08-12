@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../../core/auth/facebook_sdk_ready.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/auth_api.dart';
@@ -101,9 +103,9 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     final Size viewport = MediaQuery.sizeOf(context);
-    final bool compactLandscape = viewport.width >= 600 &&
-        viewport.width > viewport.height * 1.35 &&
-        viewport.height < 760;
+    final bool compactLandscape =
+        viewport.width > viewport.height && viewport.shortestSide < 600;
+    final bool keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       backgroundColor: const Color(0xFF020914),
       body: DecoratedBox(
@@ -117,15 +119,22 @@ class _AuthScreenState extends State<AuthScreen> {
         child: SafeArea(
           child: compactLandscape
               ? _premiumCompactLandscapeBody(context)
-              : Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 20,
+              : keyboardVisible
+                  ? Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(12),
+                        child: _premiumResponsiveBody(context),
+                      ),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: _premiumResponsiveBody(context),
+                        ),
+                      ),
                     ),
-                    child: _premiumResponsiveBody(context),
-                  ),
-                ),
         ),
       ),
     );
@@ -136,78 +145,73 @@ class _AuthScreenState extends State<AuthScreen> {
       builder: (BuildContext context, BoxConstraints constraints) {
         return KeyedSubtree(
           key: const ValueKey<String>('auth-landscape-split'),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(22),
-            child: Stack(
-              fit: StackFit.expand,
-              children: <Widget>[
-                Image.asset(
-                  'assets/backgrounds/home-online-hero-v1.png',
-                  fit: BoxFit.cover,
-                  alignment: Alignment.centerRight,
-                ),
-                const DecoratedBox(
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Container(
+                  width: 900,
+                  height: 600,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: <Color>[
-                        Color(0xFF020B18),
-                        Color(0xF2061426),
-                        Color(0xB3061426),
-                        Color(0x00061426),
-                      ],
-                      stops: <double>[0, .44, .59, .78],
-                    ),
+                    color: const Color(0xF2061426),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: const Color(0xFF2B405B)),
                   ),
-                ),
-                Row(
-                  children: <Widget>[
-                    SizedBox(
-                      width: constraints.maxWidth * .55,
-                      height: constraints.maxHeight,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-                        child: FittedBox(
-                          fit: BoxFit.contain,
-                          alignment: Alignment.center,
-                          child: SizedBox(
-                            width: 900,
-                            height: 790,
-                            child: DecoratedBox(
+                  child: Row(
+                    children: <Widget>[
+                      SizedBox(
+                        width: 330,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: <Widget>[
+                            Image.asset(
+                              'assets/backgrounds/home-online-hero-v1.png',
+                              fit: BoxFit.cover,
+                            ),
+                            const DecoratedBox(
                               decoration: BoxDecoration(
-                                color: const Color(0xEE061426),
-                                borderRadius: BorderRadius.circular(34),
-                                border: Border.all(
-                                  color: const Color(0xFF2B405B),
-                                  width: 1.5,
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: <Color>[
+                                    Color(0x99061426),
+                                    Color(0xF2061426),
+                                  ],
                                 ),
-                                boxShadow: <BoxShadow>[
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: .48),
-                                    blurRadius: 30,
-                                    offset: const Offset(0, 14),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(34),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: <Widget>[
+                                  _premiumBrandHeader(context, dense: false),
+                                  const SizedBox(height: 26),
+                                  Image.asset(
+                                    'assets/pieces/staunton_black_king.png',
+                                    height: 220,
+                                    fit: BoxFit.contain,
                                   ),
                                 ],
                               ),
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.fromLTRB(
-                                  54,
-                                  28,
-                                  54,
-                                  30,
-                                ),
-                                child: _premiumFormContent(context),
-                              ),
                             ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(42, 22, 42, 22),
+                          child: _premiumFormContent(
+                            context,
+                            showBrand: false,
                           ),
                         ),
                       ),
-                    ),
-                    const Expanded(child: SizedBox.shrink()),
-                  ],
+                    ],
+                  ),
                 ),
-              ],
+              ),
             ),
           ),
         );
@@ -217,10 +221,10 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _premiumResponsiveBody(BuildContext context) {
     final Size viewport = MediaQuery.sizeOf(context);
-    final bool wide = viewport.width >= 900;
+    final bool wide = viewport.shortestSide >= 600 && viewport.width >= 900;
     final bool compact = viewport.width < 430;
     final Widget card = SizedBox(
-      width: viewport.width < 546 ? viewport.width - 36 : 510,
+      width: viewport.width < 546 ? viewport.width - 32 : 490,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(30),
         child: Stack(
@@ -228,10 +232,10 @@ class _AuthScreenState extends State<AuthScreen> {
             Positioned.fill(child: _premiumPanelBackground()),
             Padding(
               padding: EdgeInsets.fromLTRB(
-                compact ? 22 : 44,
-                compact ? 20 : 34,
-                compact ? 22 : 44,
-                compact ? 22 : 36,
+                compact ? 28 : 42,
+                compact ? 24 : 34,
+                compact ? 28 : 42,
+                compact ? 26 : 36,
               ),
               child: _premiumFormContent(context),
             ),
@@ -288,21 +292,27 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _premiumFormContent(BuildContext context) {
+  Widget _premiumFormContent(
+    BuildContext context, {
+    bool showBrand = true,
+  }) {
+    // Typical phones are ~720-850 logical px tall. Treating every one of
+    // them as dense made the complete form look cramped in the middle of the
+    // screen. Only genuinely short windows use the compressed rhythm.
     final bool dense = MediaQuery.sizeOf(context).height < 900;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        _premiumBrandHeader(context, dense: dense),
-        SizedBox(height: dense ? 12 : 24),
+        if (showBrand) _premiumBrandHeader(context, dense: dense),
+        if (showBrand) SizedBox(height: dense ? 10 : 24),
         Text(
           widget.guestUpgradeToken != null
               ? 'Secure your progress'
               : _verificationMode
                   ? 'Verify your email'
                   : _loginMode
-                      ? 'Welcome back'
+                      ? 'Welcome'
                       : 'Create your account',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 color: AppColors.textPrimary,
@@ -324,7 +334,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         SizedBox(height: dense ? 12 : 22),
         if (!_verificationMode && widget.guestUpgradeToken == null)
-          _premiumModeSelector(),
+          _premiumModeSelectorWithKing(),
         SizedBox(height: dense ? 10 : 16),
         ..._premiumFormFields(context),
         if (_message != null) ...<Widget>[
@@ -395,22 +405,6 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
           Positioned(
-            top: 72,
-            right: -34,
-            height: 430,
-            width: 210,
-            child: IgnorePointer(
-              child: Opacity(
-                opacity: 0.48,
-                child: Image.asset(
-                  'assets/pieces/staunton_black_king.png',
-                  fit: BoxFit.contain,
-                  alignment: Alignment.topRight,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
             left: 0,
             right: 0,
             bottom: 0,
@@ -474,7 +468,8 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _premiumModeSelector() {
     return Container(
-      height: 52,
+      key: const ValueKey<String>('auth-mode-selector'),
+      height: 46,
       decoration: BoxDecoration(
         color: const Color(0xAA071528),
         borderRadius: BorderRadius.circular(28),
@@ -503,6 +498,32 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
+  Widget _premiumModeSelectorWithKing() {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: <Widget>[
+        _premiumModeSelector(),
+        Positioned(
+          key: const ValueKey<String>('auth-king-anchor'),
+          right: -58,
+          bottom: 46,
+          width: 160,
+          height: 255,
+          child: IgnorePointer(
+            child: Opacity(
+              opacity: 0.58,
+              child: Image.asset(
+                'assets/pieces/staunton_black_king.png',
+                fit: BoxFit.contain,
+                alignment: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _setPremiumLoginMode(bool value) {
     setState(() {
       _loginMode = value;
@@ -515,7 +536,7 @@ class _AuthScreenState extends State<AuthScreen> {
     if (widget.guestUpgradeToken != null) {
       return const <Widget>[
         Text(
-          'Link Google to keep this guest profile, rating and match history across devices. Your existing progress will not be deleted.',
+          'Link Google or Facebook to keep this guest profile, rating and match history across devices. Your existing progress will not be deleted.',
           style: TextStyle(color: AppColors.textSecondary, height: 1.45),
         ),
       ];
@@ -569,7 +590,7 @@ class _AuthScreenState extends State<AuthScreen> {
         icon: Icons.mail_outline_rounded,
         keyboardType: TextInputType.emailAddress,
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 8),
       _AuthField(
         controller: _passwordController,
         label: _loginMode ? 'Password' : 'Create password',
@@ -578,7 +599,7 @@ class _AuthScreenState extends State<AuthScreen> {
         onSubmitted: (_) => _submit(),
       ),
       if (_loginMode) ...<Widget>[
-        const SizedBox(height: 8),
+        const SizedBox(height: 5),
         Row(
           children: <Widget>[
             Checkbox(
@@ -620,7 +641,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _premiumPrimaryButton() {
     return Container(
-      height: 58,
+      height: 46,
       decoration: BoxDecoration(
         gradient: AppColors.goldGradient,
         borderRadius: BorderRadius.circular(13),
@@ -653,7 +674,7 @@ class _AuthScreenState extends State<AuthScreen> {
               : _loginMode
                   ? 'Login'
                   : 'Send Code',
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
         ),
       ),
     );
@@ -664,7 +685,7 @@ class _AuthScreenState extends State<AuthScreen> {
       style: OutlinedButton.styleFrom(
         foregroundColor: const Color(0xFF5EEAD4),
         side: const BorderSide(color: Color(0xFF5EEAD4)),
-        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       onPressed: _loading ? null : _continueAsGuest,
@@ -675,19 +696,19 @@ class _AuthScreenState extends State<AuthScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Icon(Icons.person_outline_rounded),
-                SizedBox(width: 10),
+                Icon(Icons.person_outline_rounded, size: 20),
+                SizedBox(width: 8),
                 Text(
                   'Continue as Guest',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                 ),
               ],
             ),
           ),
-          SizedBox(height: 5),
+          SizedBox(height: 3),
           Text(
             'Start playing instantly. Upgrade anytime.',
-            style: TextStyle(color: Color(0xFF9EACC2), fontSize: 12),
+            style: TextStyle(color: Color(0xFF9EACC2), fontSize: 11),
           ),
         ],
       ),
@@ -710,8 +731,7 @@ class _AuthScreenState extends State<AuthScreen> {
           const SizedBox(height: 10),
           _SocialButton(
             label: 'Facebook',
-            onPressed:
-                _loading ? null : () => _showSocialPlaceholder('Facebook'),
+            onPressed: _loading ? null : _signInWithFacebook,
             child: const Icon(
               Icons.facebook_rounded,
               color: Color(0xFF4285F4),
@@ -720,49 +740,53 @@ class _AuthScreenState extends State<AuthScreen> {
         ],
       );
     }
-    return Row(
-      children: <Widget>[
-        Expanded(
-          flex: 1,
-          child: SizedBox(
-            width: double.infinity,
-            child: kIsWeb && !filePreview
-                ? Center(child: buildWebGoogleSignInButton())
-                : _SocialButton(
-                    label: widget.guestUpgradeToken == null
-                        ? 'Google'
-                        : 'SECURE WITH GOOGLE',
-                    onPressed: _loading ? null : _signInWithGoogle,
-                    child: const Text(
-                      'G',
-                      style: TextStyle(
-                        color: Color(0xFF4285F4),
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        // Guest accounts can be secured with either provider. Hiding Facebook
+        // here left upgrade users with only Google in both orientations.
+        final double buttonWidth =
+            ((constraints.maxWidth - 10) / 2).floorToDouble();
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            SizedBox(
+              width: buttonWidth,
+              height: 50,
+              child: kIsWeb && !filePreview
+                  ? Center(child: buildWebGoogleSignInButton())
+                  : _SocialButton(
+                      label: 'Google',
+                      onPressed: _loading ? null : _signInWithGoogle,
+                      child: Transform.translate(
+                        offset: const Offset(0, -1.5),
+                        child: const Text(
+                          'G',
+                          style: TextStyle(
+                            color: Color(0xFF4285F4),
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            height: 1,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-          ),
-        ),
-        if (widget.guestUpgradeToken == null) ...<Widget>[
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 1,
-            child: SizedBox(
-              width: double.infinity,
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: buttonWidth,
+              height: 50,
               child: _SocialButton(
                 label: 'Facebook',
-                onPressed:
-                    _loading ? null : () => _showSocialPlaceholder('Facebook'),
+                onPressed: _loading ? null : _signInWithFacebook,
                 child: const Icon(
                   Icons.facebook_rounded,
                   color: Color(0xFF4285F4),
                 ),
               ),
             ),
-          ),
-        ],
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -829,7 +853,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               : _verificationMode
                                   ? 'Verify your email'
                                   : _loginMode
-                                      ? 'Welcome back'
+                                      ? 'Welcome'
                                       : 'Create ChessVerseAI ID',
                           style: Theme.of(context)
                               .textTheme
@@ -869,7 +893,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         const SizedBox(height: 18),
                         if (widget.guestUpgradeToken != null) ...<Widget>[
                           const Text(
-                            'Link Google to keep this guest profile, rating and match history across devices. Your existing progress will not be deleted.',
+                            'Link Google or Facebook to keep this guest profile, rating and match history across devices. Your existing progress will not be deleted.',
                             style: TextStyle(
                                 color: AppColors.textSecondary, height: 1.45),
                           ),
@@ -1017,9 +1041,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           const SizedBox(height: 10),
                         if (widget.guestUpgradeToken == null)
                           OutlinedButton.icon(
-                            onPressed: _loading
-                                ? null
-                                : () => _showSocialPlaceholder('Facebook'),
+                            onPressed: _loading ? null : _signInWithFacebook,
                             icon: const Icon(Icons.facebook_rounded),
                             label: const Text('Facebook Login'),
                           ),
@@ -1044,13 +1066,44 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  void _showSocialPlaceholder(String provider) {
+  Future<void> _signInWithFacebook() async {
     setState(() {
-      _message = AppConfig.usesDummySocialConfig
-          ? '$provider login UI is ready with dummy placeholders. Replace IDs/tokens and enable backend OAuth callbacks before release.'
-          : '$provider credentials are configured. Enable the live backend OAuth callback before release.';
+      _loading = true;
       _error = null;
+      _message = null;
     });
+    try {
+      if (kIsWeb) await ensureFacebookSdkReady();
+      final LoginResult result = await FacebookAuth.instance.login(
+        permissions: const <String>['email', 'public_profile'],
+      );
+      if (result.status == LoginStatus.cancelled) return;
+      if (result.status != LoginStatus.success || result.accessToken == null) {
+        throw AuthApiException(
+          result.message ?? 'Facebook sign-in failed. Please try again.',
+        );
+      }
+      final String accessToken = result.accessToken!.tokenString;
+      final String? upgradeToken = widget.guestUpgradeToken;
+      final Map<String, dynamic> data = upgradeToken == null
+          ? await _authApi.post(
+              'facebook',
+              <String, String>{'accessToken': accessToken},
+            )
+          : await _authApi.upgradeGuestWithFacebook(
+              upgradeToken,
+              accessToken,
+            );
+      await _completeAuthentication(data);
+    } on AuthApiException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Facebook sign-in failed. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<void> _initializeGoogleForWeb() async {
@@ -1672,7 +1725,7 @@ class _SocialButton extends StatelessWidget {
         foregroundColor: Colors.white,
         side: const BorderSide(color: Color(0xFF34445C)),
         padding: EdgeInsets.symmetric(
-          vertical: 16,
+          vertical: 11,
           horizontal: compact ? 4 : 8,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1808,7 +1861,7 @@ class _AuthFieldState extends State<_AuthField> {
         filled: true,
         fillColor: const Color(0xA8071528),
         contentPadding:
-            const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
+            const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(13),
           borderSide: const BorderSide(color: Color(0xFF34445C)),

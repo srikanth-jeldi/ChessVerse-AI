@@ -5,6 +5,7 @@ import static com.epitomehub.chessverse.auth.AuthDtos.*;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -55,6 +56,18 @@ class AuthController {
         return authService.upgradeGuestWithGoogle(bearerToken(authorization), request);
     }
 
+    @PostMapping("/facebook")
+    AuthResponse facebookLogin(@Valid @RequestBody FacebookLoginRequest request) {
+        return authService.facebookLogin(request);
+    }
+
+    @PostMapping("/facebook/upgrade")
+    AuthResponse upgradeGuestWithFacebook(
+            @RequestHeader(name = "Authorization", required = false) String authorization,
+            @Valid @RequestBody FacebookLoginRequest request) {
+        return authService.upgradeGuestWithFacebook(bearerToken(authorization), request);
+    }
+
     @PostMapping("/guest")
     AuthResponse guestLogin(@Valid @RequestBody GuestLoginRequest request) {
         return authService.guestLogin(request);
@@ -80,6 +93,21 @@ class AuthController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void logout(@RequestHeader(name = "Authorization", required = false) String authorization) {
         authService.logout(bearerToken(authorization));
+    }
+
+    @DeleteMapping("/account")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void deleteAccount(@RequestHeader(name = "Authorization", required = false) String authorization) {
+        authService.deleteAccount(bearerToken(authorization));
+    }
+
+    // Keep the REST DELETE route above for existing clients, and offer a POST
+    // variant for mobile networks/proxies that reject DELETE requests.
+    @PostMapping("/account/delete")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void deleteAccountFromMobile(
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        authService.deleteAccount(bearerToken(authorization));
     }
 
     private String bearerToken(String authorization) {

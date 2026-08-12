@@ -39,6 +39,12 @@ class CloudProgressService {
             progress.profileUpdatedAt = request.profileUpdatedAt();
         }
         progress.dailyStreak = Math.max(progress.dailyStreak, request.dailyStreak());
+        progress.openingWeakness = Math.max(progress.openingWeakness, zeroIfNull(request.openingWeakness()));
+        progress.kingSafetyWeakness = Math.max(progress.kingSafetyWeakness, zeroIfNull(request.kingSafetyWeakness()));
+        progress.hangingPiecesWeakness = Math.max(progress.hangingPiecesWeakness, zeroIfNull(request.hangingPiecesWeakness()));
+        progress.missedCapturesWeakness = Math.max(progress.missedCapturesWeakness, zeroIfNull(request.missedCapturesWeakness()));
+        progress.timeManagementWeakness = Math.max(progress.timeManagementWeakness, zeroIfNull(request.timeManagementWeakness()));
+        progress.endgameWeakness = Math.max(progress.endgameWeakness, zeroIfNull(request.endgameWeakness()));
         if (request.lastDailyCompletedAt() != null
                 && (progress.lastDailyCompletedAt == null
                 || request.lastDailyCompletedAt().isAfter(progress.lastDailyCompletedAt))) {
@@ -52,5 +58,9 @@ class CloudProgressService {
         }
         progress.updatedAt = Instant.now();
         return ProgressResponse.from(progressRepository.save(progress));
+    }
+
+    private int zeroIfNull(Integer value) {
+        return value == null ? 0 : value;
     }
 }

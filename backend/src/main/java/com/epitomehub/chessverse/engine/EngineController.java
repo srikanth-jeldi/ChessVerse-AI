@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,6 +25,11 @@ class EngineController {
         return stockfish.bestMove(request);
     }
 
+    @PostMapping("/analyze")
+    AnalyzeResponse analyze(@Valid @RequestBody AnalyzeRequest request) {
+        return stockfish.analyze(request);
+    }
+
     record BestMoveRequest(
             @NotBlank @Size(max = 120) String fen,
             @Min(1) @Max(10) int level) {
@@ -35,5 +41,19 @@ class EngineController {
             int level,
             int targetElo,
             int moveTimeMs) {
+    }
+
+    record AnalyzeRequest(
+            @NotBlank @Size(max = 120) String fen,
+            @Min(1) @Max(10) int level) {
+    }
+
+    record AnalyzeResponse(
+            String bestMove,
+            String engine,
+            int evaluationCp,
+            Integer mateIn,
+            List<String> principalVariation,
+            int depth) {
     }
 }

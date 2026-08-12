@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../../../core/audio/chess_sound_service.dart';
 import '../../../core/app_preferences.dart';
+import '../../../core/chess_piece_appearance.dart';
+import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/layout/responsive_page.dart';
+import '../../../core/notifications/daily_reminder_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
@@ -12,6 +14,7 @@ import '../../legal/presentation/legal_screen.dart';
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     this.onLogout,
+    this.onDeleteAccount,
     this.onHome,
     this.onPlay,
     this.onPuzzles,
@@ -21,6 +24,7 @@ class SettingsScreen extends StatefulWidget {
   });
 
   final Future<void> Function()? onLogout;
+  final Future<void> Function()? onDeleteAccount;
   final VoidCallback? onHome;
   final VoidCallback? onPlay;
   final VoidCallback? onPuzzles;
@@ -38,8 +42,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _coachEnabled = true;
   bool _animationsEnabled = true;
   bool _coordinatesEnabled = true;
+  bool _dailyReminderEnabled = false;
+  bool _deletingAccount = false;
   String _boardTheme = 'Royal Walnut';
-  String _pieceStyle = 'Staunton 3D';
+  String _pieceStyle = 'Premium 3D';
+  String _pieceSize = 'Large';
   String _appTheme = 'Dark premium';
   bool _loading = true;
 
@@ -56,8 +63,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _preferences.readBool('coach', fallback: true),
       _preferences.readBool('animations', fallback: true),
       _preferences.readBool('coordinates', fallback: true),
+      _preferences.readBool('dailyReminder', fallback: false),
       _preferences.readString('boardTheme', fallback: 'Royal Walnut'),
-      _preferences.readString('pieceStyle', fallback: 'Staunton 3D'),
+      _preferences.readString('pieceStyle', fallback: 'Premium 3D'),
+      _preferences.readString('pieceSize', fallback: 'Large'),
       _preferences.readString('appTheme', fallback: 'Dark premium'),
     ]);
     if (!mounted) return;
@@ -67,19 +76,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _coachEnabled = values[2] as bool;
       _animationsEnabled = values[3] as bool;
       _coordinatesEnabled = values[4] as bool;
-      _boardTheme = values[5] as String;
-      _pieceStyle = values[6] as String;
-      _appTheme = values[7] as String;
+      _dailyReminderEnabled = values[5] as bool;
+      _boardTheme = values[6] as String;
+      _pieceStyle = ChessPieceAppearanceController.styleLabel(
+        ChessPieceAppearanceController.styleFromLabel(values[7] as String),
+      );
+      _pieceSize = values[8] as String;
+      _appTheme = values[9] as String;
       _loading = false;
     });
+    ChessPieceAppearanceController.current.value = ChessPieceAppearance(
+      style: ChessPieceAppearanceController.styleFromLabel(_pieceStyle),
+      size: ChessPieceAppearanceController.sizeFromLabel(_pieceSize),
+    );
     ChessSoundService.instance.enabled = _soundEnabled;
   }
 
   @override
   Widget build(BuildContext context) {
     final Size viewport = MediaQuery.sizeOf(context);
-    final bool tablet = viewport.shortestSide >= 600;
-    final bool wide = (kIsWeb || tablet) && viewport.width >= 700;
+    final bool wide =
+        AppBreakpoints.isTabletOrLarger(context) && viewport.width >= 700;
     final Widget page = Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -113,7 +130,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               maxWidth: wide ? 1240 : null,
               child: LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints constraints) {
-                  final bool desktop = constraints.maxWidth >= 620;
+                  final bool desktop = wide && constraints.maxWidth >= 620;
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
@@ -155,6 +172,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         _coachSwitch(),
                                         const Divider(color: AppColors.border),
                                         _animationsSwitch(),
+                                        const Divider(color: AppColors.border),
+                                        _dailyReminderSwitch(),
                                       ],
                                     ),
                                   ),
@@ -171,6 +190,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   _coachSwitch(),
                                   const Divider(color: AppColors.border),
                                   _animationsSwitch(),
+                                  const Divider(color: AppColors.border),
+                                  _dailyReminderSwitch(),
                                 ],
                               ),
                       ),
@@ -227,16 +248,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 value: _pieceStyle,
                                 onTap: () => _choose(
                                   title: 'Piece style',
-                                  values: const <String>[
-                                    'Staunton 3D',
-                                    'Classic',
-                                    'Modern',
-                                  ],
+                                  values: ChessPieceAppearanceController
+                                      .styleLabels,
                                   selected: _pieceStyle,
                                   onSelected: (String value) {
                                     setState(() => _pieceStyle = value);
                                     _preferences.writeString(
                                         'pieceStyle', value);
+                                    ChessPieceAppearanceController
+                                            .current.value =
+                                        ChessPieceAppearanceController
+                                            .current.value
+                                            .copyWith(
+                                      style: ChessPieceAppearanceController
+                                          .styleFromLabel(value),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            if (desktop)
+                              const SizedBox(
+                                height: 76,
+                                child: VerticalDivider(color: AppColors.border),
+                              )
+                            else
+                              const Divider(color: AppColors.border),
+                            _AdaptiveFlexItem(
+                              expanded: desktop,
+                              child: _SettingRow(
+                                icon: Icons.zoom_out_map_rounded,
+                                title: 'Piece size',
+                                value: _pieceSize,
+                                onTap: () => _choose(
+                                  title: 'Piece size',
+                                  values:
+                                      ChessPieceAppearanceController.sizeLabels,
+                                  selected: _pieceSize,
+                                  onSelected: (String value) {
+                                    setState(() => _pieceSize = value);
+                                    _preferences.writeString(
+                                        'pieceSize', value);
+                                    ChessPieceAppearanceController
+                                            .current.value =
+                                        ChessPieceAppearanceController
+                                            .current.value
+                                            .copyWith(
+                                      size: ChessPieceAppearanceController
+                                          .sizeFromLabel(value),
+                                    );
                                   },
                                 ),
                               ),
@@ -354,6 +414,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      TextButton.icon(
+                        key: const ValueKey<String>('delete-account'),
+                        onPressed: _deletingAccount ? null : _deleteAccount,
+                        icon: _deletingAccount
+                            ? const SizedBox.square(
+                                dimension: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.delete_forever_rounded),
+                        label: Text(_deletingAccount
+                            ? 'Deleting account…'
+                            : 'Delete account permanently'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFFFF7777),
+                          minimumSize: const Size.fromHeight(52),
+                        ),
+                      ),
                     ],
                   );
                 },
@@ -433,6 +512,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
         },
       );
 
+  Widget _dailyReminderSwitch() => _SettingSwitch(
+        icon: Icons.notifications_active_rounded,
+        title: 'Daily chess reminder',
+        subtitle: 'Remind me to play the daily challenge',
+        value: _dailyReminderEnabled,
+        onChanged: (bool value) async {
+          final ScaffoldMessengerState messenger =
+              ScaffoldMessenger.of(context);
+          bool enabled = value;
+          if (value) {
+            enabled = await DailyReminderService.instance.enable();
+          } else {
+            await DailyReminderService.instance.disable();
+          }
+          if (!mounted) return;
+          setState(() => _dailyReminderEnabled = enabled);
+          await _preferences.writeBool('dailyReminder', enabled);
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(enabled
+                  ? 'Daily reminder set for 7:00 PM.'
+                  : value
+                      ? 'Notification permission is required.'
+                      : 'Daily reminder disabled.'),
+            ),
+          );
+        },
+      );
+
   Future<void> _logout() async {
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -453,6 +561,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (confirmed != true || !mounted) return;
     await widget.onLogout?.call();
+  }
+
+  Future<void> _deleteAccount() async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Delete account permanently?'),
+        content: const Text(
+          'Your profile, progress, rating and match history will be permanently deleted. This cannot be undone.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep account'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFB3261E)),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete forever'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _deletingAccount = true);
+    try {
+      await widget.onDeleteAccount?.call();
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Account deletion failed: ${error.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => _deletingAccount = false);
+    }
   }
 
   Future<void> _choose({

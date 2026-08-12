@@ -25,9 +25,9 @@
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>FacebookAppID</key>
-		<string>replace-facebook-app-id</string>
+		<string>27409411982074524</string>
 		<key>FacebookClientToken</key>
-		<string>replace-facebook-client-token</string>
+		<string>aea3ed77a1ce5ca76b7d630df081e5d9</string>
 		<key>FacebookDisplayName</key>
 		<string>ChessVerse AI</string>
 		<key>CFBundleURLTypes</key>
@@ -35,7 +35,7 @@
 			<dict>
 				<key>CFBundleURLSchemes</key>
 				<array>
-					<string>fbreplace-facebook-app-id</string>
+					<string>fb27409411982074524</string>
 				</array>
 			</dict>
 		</array>

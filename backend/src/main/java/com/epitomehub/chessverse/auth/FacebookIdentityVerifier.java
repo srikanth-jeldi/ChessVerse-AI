@@ -1,0 +1,129 @@
+package com.epitomehub.chessverse.auth;
+
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@Component
+class FacebookIdentityVerifier {
+    private static final Logger log = LoggerFactory.getLogger(FacebookIdentityVerifier.class);
+    private final String appId;
+    private final String appSecret;
+    private final String graphVersion;
+    private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
+
+    FacebookIdentityVerifier(
+            @Value("${chessverse.oauth.facebook-app-id:}") String appId,
+            @Value("${chessverse.oauth.facebook-app-secret:}") String appSecret,
+            @Value("${chessverse.oauth.facebook-graph-version:v26.0}") String graphVersion,
+            ObjectMapper objectMapper) {
+        this.appId = appId.trim();
+        this.appSecret = appSecret.trim();
+        this.graphVersion = graphVersion.trim();
+        this.objectMapper = objectMapper;
+        this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+    }
+
+    VerifiedFacebookIdentity verify(String accessToken) {
+        if (appId.isEmpty() || appSecret.isEmpty() || appId.startsWith("replace-")) {
+            throw new AuthException(HttpStatus.SERVICE_UNAVAILABLE, "Facebook login is not configured.");
+        }
+        try {
+            String appAccessToken = fetchAppAccessToken();
+            JsonNode debug = get("debug_token?input_token=" + encode(accessToken)
+                    + "&access_token=" + encode(appAccessToken)).path("data");
+            if (!debug.path("is_valid").asBoolean(false)
+                    || !appId.equals(debug.path("app_id").asText())
+                    || debug.path("user_id").asText().isBlank()) {
+                log.warn("Facebook token validation failed: valid={}, appMatch={}, userPresent={}",
+                        debug.path("is_valid").asBoolean(false),
+                        appId.equals(debug.path("app_id").asText()),
+                        !debug.path("user_id").asText().isBlank());
+                throw invalidToken();
+            }
+
+            JsonNode profile = get("me?fields=id,name,email,picture.type(large)&access_token="
+                    + encode(accessToken));
+            String subject = profile.path("id").asText();
+            String email = profile.path("email").asText();
+            if (!subject.equals(debug.path("user_id").asText())) {
+                log.warn("Facebook profile subject did not match the validated token user");
+                throw invalidToken();
+            }
+            // Facebook does not guarantee an email for every account, even when the
+            // email permission is requested. The provider subject remains the stable,
+            // verified identity, so use a non-routable address for those accounts.
+            if (email.isBlank()) {
+                email = "facebook_" + subject + "@identity.chessverse.invalid";
+                log.info("Facebook account has no email; using provider-scoped identity address");
+            }
+            String name = profile.path("name").asText(null);
+            String photo = profile.path("picture").path("data").path("url").asText(null);
+            return new VerifiedFacebookIdentity(subject, email, name, photo);
+        } catch (AuthException exception) {
+            throw exception;
+        } catch (IOException | InterruptedException | RuntimeException exception) {
+            if (exception instanceof InterruptedException) Thread.currentThread().interrupt();
+            throw invalidToken();
+        }
+    }
+
+    private String fetchAppAccessToken() throws IOException, InterruptedException {
+        String form = "client_id=" + encode(appId)
+                + "&client_secret=" + encode(appSecret)
+                + "&grant_type=client_credentials";
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://graph.facebook.com/oauth/access_token"))
+                .timeout(Duration.ofSeconds(8))
+                .header("Content-Type", MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+                .POST(HttpRequest.BodyPublishers.ofString(form))
+                .build();
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            log.warn("Facebook app access-token request failed with HTTP {}", response.statusCode());
+            throw invalidToken();
+        }
+        String token = objectMapper.readTree(response.body()).path("access_token").asText();
+        if (token.isBlank()) throw invalidToken();
+        return token;
+    }
+
+    private JsonNode get(String pathAndQuery) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://graph.facebook.com/" + graphVersion + "/" + pathAndQuery))
+                .timeout(Duration.ofSeconds(8))
+                .GET()
+                .build();
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            log.warn("Facebook Graph request failed with HTTP {}", response.statusCode());
+            throw invalidToken();
+        }
+        return objectMapper.readTree(response.body());
+    }
+
+    private String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    private AuthException invalidToken() {
+        return new AuthException(HttpStatus.UNAUTHORIZED, "Facebook sign-in could not be verified.");
+    }
+
+    record VerifiedFacebookIdentity(String subject, String email, String displayName, String photoUrl) {
+    }
+}

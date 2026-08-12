@@ -31,7 +31,7 @@ class LegalScreen extends StatelessWidget {
             ),
             _LegalSection(
               'Data deletion',
-              'Users can request account and data deletion from the support channel. A public data deletion URL will be connected before store release.',
+              'Users can permanently delete their account in Settings. Deletion removes the account and associated server data; the public deletion page also explains the available request process.',
             ),
           ]
         : const <_LegalSection>[
@@ -67,7 +67,7 @@ class LegalScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'MVP draft - replace with reviewed legal copy before store release.',
+              'Effective August 10, 2026',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.textSecondary,
                   ),

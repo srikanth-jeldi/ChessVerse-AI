@@ -7,19 +7,25 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'core/audio/chess_sound_service.dart';
+import 'core/auth/facebook_sdk_ready.dart';
 import 'core/app_preferences.dart';
+import 'core/chess_piece_appearance.dart';
 import 'core/config/app_config.dart';
 import 'core/local_game_archive.dart';
+import 'core/notifications/daily_reminder_service.dart';
 import 'core/widgets/chessverse_app_backdrop.dart';
 import 'core/widgets/desktop_app_sidebar.dart';
 import 'features/auth/data/auth_api.dart';
 import 'features/auth/data/auth_session_store.dart';
 import 'features/auth/presentation/auth_screen.dart';
 import 'features/engine/data/engine_api.dart';
+import 'features/analysis/domain/ai_review_report.dart';
 import 'features/analysis/presentation/analysis_screen.dart';
+import 'features/analysis/presentation/adaptive_ai_review.dart';
 import 'features/home/presentation/home_dashboard_screen.dart';
 import 'features/library/presentation/reference_screens.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
@@ -34,7 +40,23 @@ import 'features/tutorial/presentation/learn_chess_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (kIsWeb) {
+    try {
+      await ensureFacebookSdkReady().timeout(const Duration(seconds: 8));
+      await FacebookAuth.instance.webAndDesktopInitialize(
+        appId: AppConfig.facebookAppId,
+        cookie: true,
+        xfbml: true,
+        version: 'v26.0',
+      );
+    } on Object {
+      // Facebook can be unavailable because of tracking protection, an SDK
+      // outage, or an inactive Meta app. It must never prevent ChessVerseAI
+      // from starting; the login action reports its own recoverable error.
+    }
+  }
   await LocalGameArchive.init();
+  unawaited(_restoreDailyReminder());
   AppConfig.validate();
   runApp(const ChessVerseApp());
 }
@@ -143,21 +165,36 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   Future<void> _restoreSession() async {
-    final StoredAuthSession? session = await _sessionStore.read();
+    StoredAuthSession? session;
+    try {
+      session = await _sessionStore.read();
+    } on Object {
+      // Browser privacy modes and damaged secure-storage state can reject the
+      // read. Treat that exactly like a signed-out launch instead of leaving
+      // the loading screen visible forever.
+      try {
+        await _sessionStore.clear();
+      } on Object {
+        // A failed cleanup is harmless; AuthScreen can still start.
+      }
+      if (mounted) setState(() => _stage = _RootStage.auth);
+      return;
+    }
     if (session == null) {
       await Future<void>.delayed(const Duration(milliseconds: 700));
       if (mounted) setState(() => _stage = _RootStage.onboarding);
       return;
     }
 
-    String playerName = session.displayName;
-    String? username = session.username;
-    String? email = session.email;
-    String? photoUrl = session.photoUrl;
-    bool isGuest = session.isGuest;
+    final StoredAuthSession restoredSession = session;
+    String playerName = restoredSession.displayName;
+    String? username = restoredSession.username;
+    String? email = restoredSession.email;
+    String? photoUrl = restoredSession.photoUrl;
+    bool isGuest = restoredSession.isGuest;
     try {
       final Map<String, dynamic> player =
-          await _authApi.currentPlayer(session.token);
+          await _authApi.currentPlayer(restoredSession.token);
       playerName = _profileValue(player['displayName']) ??
           _profileValue(player['username']) ??
           playerName;
@@ -175,7 +212,7 @@ class _SplashGateState extends State<SplashGate> {
       // network is temporarily unavailable.
     }
     if (!mounted) return;
-    _enableCloudSync(session.token);
+    _enableCloudSync(restoredSession.token);
     setState(() {
       _playerName = playerName;
       _username = username;
@@ -188,9 +225,9 @@ class _SplashGateState extends State<SplashGate> {
     // killed mobile process has a short server grace window and must reopen
     // its authoritative match as soon as the authenticated home route exists.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_restoreActiveOnlineMatch(session.token));
+      unawaited(_restoreActiveOnlineMatch(restoredSession.token));
     });
-    unawaited(_syncCloudProgress(session.token));
+    unawaited(_syncCloudProgress(restoredSession.token));
     unawaited(_refreshOnlinePresence());
   }
 
@@ -288,6 +325,7 @@ class _SplashGateState extends State<SplashGate> {
         onRankings: () => _push(
           context,
           LeaderboardScreen(
+            profilePhotoUrl: _photoUrl,
             onHome: () => _closeSettingsAndSelect(context, 0),
             onPlay: () => _closeSettingsAndSelect(context, 1),
             onPuzzles: () => _closeSettingsAndSelect(context, 2),
@@ -301,6 +339,7 @@ class _SplashGateState extends State<SplashGate> {
           context,
           SettingsScreen(
             onLogout: () => _logout(context),
+            onDeleteAccount: () => _deleteAccount(context),
             onHome: () => _closeSettingsAndSelect(context, 0),
             onPlay: () => _closeSettingsAndSelect(context, 1),
             onPuzzles: () => _closeSettingsAndSelect(context, 2),
@@ -432,14 +471,15 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   Future<void> _chooseSideAndOpen(BuildContext context, GameMode mode) async {
-    final PlayerSideChoice? choice =
-        await showModalBottomSheet<PlayerSideChoice>(
+    final _GameLaunchChoice? choice =
+        await showModalBottomSheet<_GameLaunchChoice>(
       context: context,
       isScrollControlled: true,
       showDragHandle: false,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         PlayerSideChoice selected = PlayerSideChoice.white;
+        double selectedAiLevel = 4;
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setSheetState) =>
               SafeArea(
@@ -448,9 +488,8 @@ class _SplashGateState extends State<SplashGate> {
                 final bool shortLandscape =
                     constraints.maxWidth > constraints.maxHeight &&
                         constraints.maxHeight < 500;
-                final bool wide = kIsWeb ||
-                    (MediaQuery.sizeOf(context).shortestSide >= 600 &&
-                        constraints.maxWidth >= 700);
+                final bool wide = constraints.maxWidth >= 700 &&
+                    MediaQuery.sizeOf(context).shortestSide >= 600;
                 return ConstrainedBox(
                   constraints: BoxConstraints(
                     maxHeight: constraints.maxHeight * 0.94,
@@ -569,6 +608,39 @@ class _SplashGateState extends State<SplashGate> {
                               );
                             }).toList(),
                           ),
+                          if (mode == GameMode.computer) ...<Widget>[
+                            SizedBox(height: shortLandscape ? 8 : 18),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'AI LEVEL  •  ${aiProfileFor(selectedAiLevel.round()).name}',
+                                style: const TextStyle(
+                                  color: Color(0xFFE2AE49),
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                            Slider(
+                              key: const ValueKey<String>('computer-ai-level'),
+                              value: selectedAiLevel,
+                              min: 1,
+                              max: 10,
+                              divisions: 9,
+                              label: aiProfileFor(selectedAiLevel.round()).name,
+                              onChanged: (double value) => setSheetState(
+                                () => selectedAiLevel = value,
+                              ),
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: const <Widget>[
+                                Text('New to Chess',
+                                    style: TextStyle(fontSize: 12)),
+                                Text('Grandmaster',
+                                    style: TextStyle(fontSize: 12)),
+                              ],
+                            ),
+                          ],
                           SizedBox(height: shortLandscape ? 10 : 22),
                           if (!shortLandscape)
                             Container(
@@ -590,8 +662,9 @@ class _SplashGateState extends State<SplashGate> {
                           SizedBox(
                             width: double.infinity,
                             child: FilledButton.icon(
-                              onPressed: () =>
-                                  Navigator.of(context).pop(selected),
+                              onPressed: () => Navigator.of(context).pop(
+                                _GameLaunchChoice(selected, selectedAiLevel),
+                              ),
                               icon: const Icon(Icons.play_arrow_rounded),
                               label: Text(
                                   'START AS ${selected.label.toUpperCase()}'),
@@ -609,7 +682,12 @@ class _SplashGateState extends State<SplashGate> {
       },
     );
     if (choice != null && context.mounted) {
-      _openGame(context, mode, sideChoice: choice);
+      _openGame(
+        context,
+        mode,
+        sideChoice: choice.side,
+        aiLevel: choice.aiLevel,
+      );
     }
   }
 
@@ -617,6 +695,7 @@ class _SplashGateState extends State<SplashGate> {
     BuildContext context,
     GameMode mode, {
     PlayerSideChoice sideChoice = PlayerSideChoice.white,
+    double aiLevel = 4,
     DailyChallengeDifficulty? dailyDifficulty,
     String? puzzleId,
     OnlineMatchDto? initialOnlineMatch,
@@ -626,7 +705,10 @@ class _SplashGateState extends State<SplashGate> {
       context,
       GameScreen(
         initiallySignedIn: true,
-        useRemoteEngine: false,
+        // Computer games use the production Stockfish service. The game
+        // already falls back to its offline move generator if the API is
+        // unavailable, so genuine AI strength never sacrifices playability.
+        useRemoteEngine: mode == GameMode.computer,
         initialGameMode: mode,
         initialPlayerName: _playerName,
         initialUsername: _username,
@@ -634,6 +716,7 @@ class _SplashGateState extends State<SplashGate> {
         initialProfilePhotoUrl: _photoUrl,
         initiallyGuest: _isGuest,
         initialSideChoice: sideChoice,
+        initialAiLevel: aiLevel,
         initialDailyDifficulty: dailyDifficulty,
         initialPuzzleId: puzzleId,
         initialOnlineMatch: initialOnlineMatch,
@@ -708,6 +791,30 @@ class _SplashGateState extends State<SplashGate> {
       _username = null;
       _email = null;
       _isGuest = true;
+      _stage = _RootStage.auth;
+    });
+  }
+
+  Future<void> _deleteAccount(BuildContext currentRouteContext) async {
+    final StoredAuthSession? session = await _sessionStore.read();
+    if (session == null) {
+      throw const AuthApiException('No signed-in account was found.');
+    }
+    await _authApi.deleteAccount(session.token);
+    await _sessionStore.clear();
+    LocalGameArchive.onCloudRelevantChange = null;
+    if (!mounted) return;
+    if (currentRouteContext.mounted) {
+      Navigator.of(currentRouteContext)
+          .popUntil((Route<dynamic> route) => route.isFirst);
+    }
+    setState(() {
+      _playerName = 'ChessVerseAI Player';
+      _username = null;
+      _email = null;
+      _photoUrl = null;
+      _isGuest = true;
+      _primaryDestination = 0;
       _stage = _RootStage.auth;
     });
   }
@@ -817,6 +924,7 @@ class BrandedSplash extends StatelessWidget {
                   ),
                 ),
                 const Image(
+                  key: ValueKey<String>('branded-splash-image'),
                   image: AssetImage(mobileAsset),
                   fit: BoxFit.contain,
                   alignment: Alignment.center,
@@ -1185,6 +1293,8 @@ class _MobileChessVerseLoadingPanel extends StatelessWidget {
               const _LoadingBrand(centered: true),
               SizedBox(height: compact ? 40 : 64),
               const _LoadingProgress(centered: true),
+              SizedBox(height: compact ? 22 : 34),
+              const _MobileLoadingFeatures(),
             ],
           ),
         ),
@@ -1255,7 +1365,7 @@ class _WideChessVerseLoadingPanel extends StatelessWidget {
                       const SizedBox(height: 42),
                       const SizedBox(
                           width: 520, child: _LoadingProgress(centered: false)),
-                      const Spacer(),
+                      const SizedBox(height: 42),
                       const _LoadingFeatureStrip(),
                     ],
                   ),
@@ -1604,6 +1714,55 @@ List<String> dailyChallengeSolutionFor(
 
 enum PlayerSideChoice { white, random, black }
 
+class _GameLaunchChoice {
+  const _GameLaunchChoice(this.side, this.aiLevel);
+
+  final PlayerSideChoice side;
+  final double aiLevel;
+}
+
+Future<void> _restoreDailyReminder() async {
+  const AppPreferences preferences = AppPreferences();
+  final bool enabled =
+      await preferences.readBool('dailyReminder', fallback: false);
+  if (enabled) await DailyReminderService.instance.enable();
+}
+
+class _MobileLoadingFeatures extends StatelessWidget {
+  const _MobileLoadingFeatures();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: <Widget>[
+        _MobileLoadingFeature(Icons.extension_rounded, 'Puzzles'),
+        _MobileLoadingFeature(Icons.emoji_events_outlined, 'Compete'),
+        _MobileLoadingFeature(Icons.trending_up_rounded, 'Progress'),
+      ],
+    );
+  }
+}
+
+class _MobileLoadingFeature extends StatelessWidget {
+  const _MobileLoadingFeature(this.icon, this.label);
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        Icon(icon, color: const Color(0xFF59D4C1), size: 26),
+        const SizedBox(height: 6),
+        Text(label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+      ],
+    );
+  }
+}
+
 extension PlayerSideChoiceDetails on PlayerSideChoice {
   String get label => switch (this) {
         PlayerSideChoice.white => 'White',
@@ -1657,27 +1816,62 @@ class DailyChallenge {
 }
 
 class AiProfile {
-  const AiProfile(this.name, this.elo, this.description);
+  const AiProfile(
+    this.name,
+    this.elo,
+    this.description, {
+    required this.engineMoveProbability,
+    required this.mistakeProbability,
+  });
 
   final String name;
   final int elo;
   final String description;
+  final double engineMoveProbability;
+  final double mistakeProbability;
 }
 
 AiProfile aiProfileFor(int level) {
   return switch (level.clamp(1, 10)) {
-    1 => const AiProfile('Beginner', 1320, 'Beatable, short calculation'),
-    2 => const AiProfile('Learner', 1400, 'Basic tactics and development'),
-    3 => const AiProfile('Casual', 1500, 'Punishes simple mistakes'),
-    4 => const AiProfile('Intermediate', 1600, 'Plans two ideas ahead'),
-    5 => const AiProfile('Club', 1750, 'Solid positional play'),
-    6 => const AiProfile('Advanced', 1900, 'Finds tactical combinations'),
-    7 => const AiProfile('Expert', 2100, 'Deep calculation and defense'),
-    8 => const AiProfile('Candidate Master', 2300, 'Tournament strength'),
-    9 => const AiProfile('Master', 2600, 'Elite engine pressure'),
-    _ => const AiProfile('Grandmaster', 3000, 'Maximum challenge'),
+    1 => const AiProfile('New to Chess', 600, 'Frequent human-like mistakes',
+        engineMoveProbability: 0, mistakeProbability: .58),
+    2 => const AiProfile(
+        'Beginner', 850, 'Sees simple captures, still blunders',
+        engineMoveProbability: .05, mistakeProbability: .44),
+    3 => const AiProfile('Learner', 1100, 'Basic tactics and development',
+        engineMoveProbability: .15, mistakeProbability: .32),
+    4 => const AiProfile('Intermediate', 1400, 'Plans one or two ideas ahead',
+        engineMoveProbability: .35, mistakeProbability: .23),
+    5 => const AiProfile(
+        'Club', 1600, 'Solid play with occasional inaccuracies',
+        engineMoveProbability: .50, mistakeProbability: .17),
+    6 => const AiProfile('Advanced', 1800, 'Finds tactical combinations',
+        engineMoveProbability: .65, mistakeProbability: .11),
+    7 => const AiProfile('Expert', 2000, 'Deep calculation and defense',
+        engineMoveProbability: .78, mistakeProbability: .07),
+    8 => const AiProfile('Candidate Master', 2200, 'Tournament strength',
+        engineMoveProbability: .90, mistakeProbability: .035),
+    9 => const AiProfile('Master', 2500, 'Elite engine pressure',
+        engineMoveProbability: .97, mistakeProbability: .012),
+    _ => const AiProfile('Grandmaster', 2900, 'Maximum challenge',
+        engineMoveProbability: 1, mistakeProbability: 0),
   };
 }
+
+Duration aiThinkDelayFor(int level) => Duration(
+      milliseconds: switch (level.clamp(1, 10)) {
+        1 => 1250,
+        2 => 1050,
+        3 => 850,
+        4 => 700,
+        5 => 620,
+        6 => 540,
+        7 => 470,
+        8 => 410,
+        9 => 360,
+        _ => 320,
+      },
+    );
 
 class _SideChoiceArtwork extends StatelessWidget {
   const _SideChoiceArtwork({
@@ -1734,6 +1928,45 @@ class AiCandidate {
   final String from;
   final String to;
   final double score;
+}
+
+AiCandidate chooseAiCandidateForLevel(
+  List<AiCandidate> sortedCandidates,
+  int level,
+  math.Random random, {
+  AiCandidate? engineMove,
+}) {
+  assert(sortedCandidates.isNotEmpty);
+  final int boundedLevel = level.clamp(1, 10);
+  final AiProfile profile = aiProfileFor(boundedLevel);
+  if (engineMove != null &&
+      random.nextDouble() < profile.engineMoveProbability) {
+    return engineMove;
+  }
+
+  // Beginner levels intentionally inspect a much wider set of legal moves.
+  // This creates human-like inaccuracies instead of exposing Stockfish's
+  // minimum UCI strength (which is already too strong for a new player).
+  final double candidateFraction = switch (boundedLevel) {
+    1 => 1.0,
+    2 => .80,
+    3 => .60,
+    4 => .48,
+    5 => .34,
+    6 => .24,
+    7 => .15,
+    8 => .08,
+    9 => .03,
+    _ => .01,
+  };
+  final int poolSize = math.max(
+    1,
+    math.min(
+      sortedCandidates.length,
+      (sortedCandidates.length * candidateFraction).ceil(),
+    ),
+  );
+  return sortedCandidates[random.nextInt(poolSize)];
 }
 
 class PositionAnalysis {
@@ -1845,6 +2078,19 @@ class GameSnapshot {
   final String? lastCaptureSquare;
   final int whiteSeconds;
   final int blackSeconds;
+}
+
+int computerUndoSnapshotIndex(
+  List<GameSnapshot> history, {
+  required bool humanPlaysWhite,
+}) {
+  for (int index = history.length - 1; index >= 0; index--) {
+    final bool whiteToMove = history[index].moves.length.isEven;
+    if (whiteToMove == humanPlaysWhite) {
+      return index;
+    }
+  }
+  return -1;
 }
 
 class ParsedMove {
@@ -2240,10 +2486,8 @@ class _PlayModeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool desktopCard = MediaQuery.sizeOf(context).width >= 900;
-    final Alignment imageAlignment = switch (title) {
-      'Play Computer' || 'Local Match' || 'Daily Challenge' => Alignment.center,
-      _ => Alignment.centerRight,
-    };
+    final Alignment imageAlignment =
+        title == 'Play Online' ? const Alignment(0.5, 0) : Alignment.center;
     return Card(
       color: const Color(0xFF071827),
       shape: RoundedRectangleBorder(
@@ -2424,6 +2668,7 @@ class GameScreen extends StatefulWidget {
     this.initialProfilePhotoUrl,
     this.initiallyGuest = true,
     this.initialSideChoice = PlayerSideChoice.white,
+    this.initialAiLevel = 4,
     this.initialDailyDifficulty,
     this.initialPuzzleId,
     this.initialOnlineMatch,
@@ -2442,6 +2687,7 @@ class GameScreen extends StatefulWidget {
   final String? initialProfilePhotoUrl;
   final bool initiallyGuest;
   final PlayerSideChoice initialSideChoice;
+  final double initialAiLevel;
   final DailyChallengeDifficulty? initialDailyDifficulty;
   final String? initialPuzzleId;
   final OnlineMatchDto? initialOnlineMatch;
@@ -2467,6 +2713,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   final List<GameSnapshot> _history = <GameSnapshot>[];
   Timer? _clockTimer;
   Timer? _moveQualityTimer;
+  Timer? _aiWatchdogTimer;
+  Timer? _turnReminderTimer;
   Timer? _onlinePollTimer;
   WebSocketChannel? _onlineChannel;
   StreamSubscription<dynamic>? _onlineSocketSubscription;
@@ -2480,8 +2728,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   int _onlineConnectedPlayers = 0;
   bool _onlineSocketConnected = false;
   bool _onlineSubmitting = false;
-  bool _onlineCelebrationVisible = false;
-  bool _onlineCelebrationWinnerAtTop = false;
   String? _onlineCelebrationMatchId;
   String? _selectedSquare;
   String? _lastFromSquare;
@@ -2492,11 +2738,20 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String? _lastPlayerMove;
   String? _lastPlayerCoachNote;
   String? _moveQualityText;
+  int _hintStage = 0;
+  String? _coachArrowFrom;
+  String? _coachArrowTo;
+  int _coachRequestEpoch = 0;
+  double _engineEvaluationPawns = 0;
+  final List<int> _playerMoveScores = <int>[];
+  final List<String> _importantMistakes = <String>[];
+  String? _turningPoint;
   String _coachNote = 'Select a coin to see legal moves.';
   BoardSkin _skin = BoardSkin.royalWalnut;
   GameMode _gameMode = GameMode.computer;
   double _aiLevel = 4;
   bool _aiThinking = false;
+  int _aiMoveEpoch = 0;
   bool _coachEnabled = true;
   bool _humanPlaysWhite = true;
   int _whiteSeconds = 10 * 60;
@@ -2522,16 +2777,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String? _gameResultDetail;
   bool _resultVisible = true;
   bool _checkWarningActive = false;
-  bool _controlsExpanded = false;
   bool _resultSaved = false;
   bool _soundEnabled = true;
   bool _showCoordinates = true;
   bool _showMoveHints = true;
+  bool _turnBannerVisible = true;
+  bool _boardTouchedThisTurn = false;
+  bool _landscapeCoachCollapsed = true;
   DailyChallengeDifficulty _dailyDifficulty = DailyChallengeDifficulty.medium;
   late DailyChallenge _dailyChallenge;
   bool _dailyCompletedToday = false;
   int _dailyPlyIndex = 0;
-  int _dailyMistakes = 0;
   bool _puzzleExplorationMode = false;
   late ChessPuzzle _activePuzzle;
 
@@ -2599,6 +2855,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _dailyChallenge.id,
     );
     _gameMode = widget.initialGameMode;
+    _aiLevel = widget.initialAiLevel.clamp(1, 10).toDouble();
     _humanPlaysWhite = switch (widget.initialSideChoice) {
       PlayerSideChoice.white => true,
       PlayerSideChoice.black => false,
@@ -2639,6 +2896,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (_gameMode == GameMode.computer && !_humanPlaysWhite) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleAiMove());
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _restartTurnReminder());
     if (_gameMode == GameMode.online &&
         widget.initialOnlineMatch != null &&
         widget.initialAuthToken != null) {
@@ -2693,7 +2951,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             (_whiteSeconds == 0 || _blackSeconds == 0)) {
           _gameResultTitle = _whiteSeconds == 0 ? 'Black wins' : 'White wins';
           _gameResultDetail = 'Victory on time';
-          _resultVisible = true;
+          _delayLocalResultOverlay();
           _coachNote = '$_gameResultTitle. $_gameResultDetail.';
           _archiveFinishedGame();
           unawaited(ChessSoundService.instance.victory());
@@ -2709,9 +2967,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _preferences.readBool('coach', fallback: true),
       _preferences.readBool('coordinates', fallback: true),
       _preferences.readString('boardTheme', fallback: 'Royal Walnut'),
+      _preferences.readString('pieceStyle', fallback: 'Premium 3D'),
+      _preferences.readString('pieceSize', fallback: 'Large'),
     ]);
     if (!mounted) return;
     final String boardTheme = values[4] as String;
+    ChessPieceAppearanceController.current.value = ChessPieceAppearance(
+      style: ChessPieceAppearanceController.styleFromLabel(values[5] as String),
+      size: ChessPieceAppearanceController.sizeFromLabel(values[6] as String),
+    );
     setState(() {
       _soundEnabled = values[0] as bool;
       _showMoveHints = values[1] as bool;
@@ -2733,6 +2997,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _clockTimer?.cancel();
     _moveQualityTimer?.cancel();
+    _aiWatchdogTimer?.cancel();
+    _turnReminderTimer?.cancel();
     _onlinePollTimer?.cancel();
     unawaited(_onlineSocketSubscription?.cancel());
     unawaited(_onlineChannel?.sink.close());
@@ -2833,24 +3099,33 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               // tall desktop windows; move history remains available from the
               // controls on shorter web screens.
               final bool showWideDock = wide && constraints.maxHeight >= 900;
-              final double mobileHeaderHeight = wide ? 0 : 58;
+              final double mobileHeaderHeight = wide
+                  ? 0
+                  : compactLandscape
+                      ? 48
+                      : 58;
               final double widePanelWidth = math.min(
                 410,
                 math.max(320, constraints.maxWidth * 0.30),
               );
               final double wideHeaderHeight = roomyLandscape ? 78 : 54;
               final double wideDockHeight = showWideDock ? 126 : 0;
-              final double portraitPanelMinimum = landscape ? 72 : 190;
+              final double portraitPanelMinimum = landscape ? 64 : 145;
               final bool showOnlineArena =
                   _gameMode == GameMode.online && _onlineMatch != null;
-              final double arenaRailsHeight = showOnlineArena ? 136 : 0;
+              // Phone landscape uses compact rails over the board. Reserving
+              // the portrait rail height here used to shrink the playable
+              // board to little more than half of the available height.
+              final double arenaRailsHeight =
+                  showOnlineArena && !compactLandscape ? 136 : 0;
               final double boardWidth = wide
                   ? constraints.maxWidth -
                       pagePadding.horizontal -
                       widePanelWidth -
                       24
                   : compactLandscape
-                      ? constraints.maxWidth * 0.52
+                      ? constraints.maxWidth *
+                          (_landscapeCoachCollapsed ? 0.94 : 0.68)
                       : constraints.maxWidth - pagePadding.horizontal;
               final double boardHeight = wide
                   ? availableHeight -
@@ -2859,7 +3134,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       arenaRailsHeight -
                       18
                   : compactLandscape
-                      ? availableHeight - mobileHeaderHeight - 16
+                      ? availableHeight - mobileHeaderHeight - 4
                       : availableHeight -
                           mobileHeaderHeight -
                           portraitPanelMinimum -
@@ -2881,6 +3156,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 checkedKingSquare: checkedKingSquare,
                 decisiveSquare:
                     _gameResultDetail == 'Checkmate' ? _lastToSquare : null,
+                fallenKingSquare: _gameResultDetail == 'Checkmate'
+                    ? (_kingSquare(sideToMoveWhite) ??
+                        (_lastCapturedPiece?.code == 'K'
+                            ? _lastCaptureSquare
+                            : null))
+                    : null,
+                fallenKingWhite: sideToMoveWhite,
+                coachArrowFrom: _coachArrowFrom,
+                coachArrowTo: _coachArrowTo,
                 flipped: _shouldFlipBoard(sideToMoveWhite),
                 showCoordinates: _showCoordinates,
                 palette: palette,
@@ -2901,23 +3185,39 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       matchActive: _onlineMatch?.isActive ?? false,
                       socketConnected: _onlineSocketConnected,
                       connectedPlayers: _onlineConnectedPlayers,
+                      compactOverlay: compactLandscape,
                     )
                   : BoardStage(palette: palette, child: board);
 
               final Widget studioCoach = _StudioCoachPanel(
                 gameMode: _gameMode,
-                activeColor:
-                    _gameMode == GameMode.online && _onlineMatch != null
-                        ? (_onlineMatch!.whiteToMove ? 'White' : 'Black')
-                        : (_moves.length.isEven ? 'White' : 'Black'),
+                activeColor: _gameMode == GameMode.computer
+                    ? (sideToMoveWhite == _humanPlaysWhite && !_aiThinking
+                        ? 'YOUR TURN'
+                        : 'AI TURN')
+                    : _gameMode == GameMode.online && _onlineMatch != null
+                        ? (_onlineStatusText(_onlineMatch!))
+                        : _moves.length.isEven
+                            ? 'PLAYER 1 • WHITE'
+                            : 'PLAYER 2 • BLACK',
                 aiThinking: _aiThinking,
                 coachEnabled: _coachEnabled,
                 coachNote: _lastPlayerCoachNote ?? _coachNote,
+                evaluationPawns: _engineEvaluationPawns,
                 lastMove: _lastPlayerMove,
                 lastMoveOwner: _lastPlayerMove == null ? null : 'Your move',
                 dailyProgress: _dailyPlayerMovesCompleted,
                 dailyGoal: _dailyChallenge.playerMoveGoal,
-                canUndo: _gameMode != GameMode.online && _history.isNotEmpty,
+                canUndo: _gameMode != GameMode.online &&
+                    _gameResultTitle == null &&
+                    _history.isNotEmpty,
+                hintLabel: switch (_hintStage) {
+                  1 => 'Direction',
+                  2 => 'Exact move',
+                  _ => 'Piece hint',
+                },
+                analyzeLabel:
+                    _moveQualityText == null ? 'Analyze' : 'Why weak?',
                 onHint: _showHint,
                 onAnalyze: _showAnalysis,
                 onTryAgain: _gameMode == GameMode.online
@@ -2931,7 +3231,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 onNextPuzzle: _startNextPuzzle,
                 onBackToAcademy: () => Navigator.of(context).pop(),
               );
-
+              final bool yourTurn = switch (_gameMode) {
+                GameMode.computer =>
+                  sideToMoveWhite == _humanPlaysWhite && !_aiThinking,
+                GameMode.online => _onlineMatch != null &&
+                    _onlineMatch!.activeColor.toLowerCase() ==
+                        _onlineMatch!.yourColor.toLowerCase(),
+                _ => true,
+              };
               return Padding(
                 padding: pagePadding,
                 child: KeyedSubtree(
@@ -3012,22 +3319,31 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
-                            CompactHeader(
-                              onHome: () => Navigator.of(context).pop(),
-                              onProfile: _openProfile,
-                              onReset: _confirmNewGame,
-                              onLogout: _logout,
+                            SizedBox(
+                              height: mobileHeaderHeight,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: SizedBox(
+                                  width: constraints.maxWidth,
+                                  child: CompactHeader(
+                                    onHome: () => Navigator.of(context).pop(),
+                                    onProfile: _openProfile,
+                                    onReset: _confirmNewGame,
+                                    onLogout: _logout,
+                                  ),
+                                ),
+                              ),
                             ),
-                            const SizedBox(height: 6),
                             Expanded(
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+                                padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
                                 child: Row(
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: <Widget>[
                                     Expanded(
-                                      flex: 11,
+                                      flex: _landscapeCoachCollapsed ? 20 : 15,
                                       child: Center(
                                         child: SizedBox(
                                           width: boardDimension,
@@ -3037,20 +3353,44 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      flex: 9,
-                                      child: ClipRect(
-                                        child: FittedBox(
-                                          key: const ValueKey<String>(
-                                            'compact-landscape-ai-coach',
+                                    const SizedBox(width: 4),
+                                    if (!_landscapeCoachCollapsed)
+                                      Expanded(
+                                        flex: 6,
+                                        child: ClipRect(
+                                          child: FittedBox(
+                                            key: const ValueKey<String>(
+                                              'compact-landscape-ai-coach',
+                                            ),
+                                            fit: BoxFit.contain,
+                                            alignment: Alignment.topCenter,
+                                            child: SizedBox(
+                                              width: 390,
+                                              height: 560,
+                                              child: studioCoach,
+                                            ),
                                           ),
-                                          fit: BoxFit.contain,
-                                          alignment: Alignment.topCenter,
-                                          child: SizedBox(
-                                            width: 390,
-                                            height: 560,
-                                            child: studioCoach,
+                                        ),
+                                      ),
+                                    SizedBox(
+                                      width: 42,
+                                      child: Align(
+                                        alignment: Alignment.topCenter,
+                                        child: IconButton.filledTonal(
+                                          key: const ValueKey<String>(
+                                            'landscape-coach-toggle',
+                                          ),
+                                          tooltip: _landscapeCoachCollapsed
+                                              ? 'Show AI Coach'
+                                              : 'Maximize board',
+                                          onPressed: () => setState(() {
+                                            _landscapeCoachCollapsed =
+                                                !_landscapeCoachCollapsed;
+                                          }),
+                                          icon: Icon(
+                                            _landscapeCoachCollapsed
+                                                ? Icons.psychology_alt_rounded
+                                                : Icons.fullscreen_rounded,
                                           ),
                                         ),
                                       ),
@@ -3088,6 +3428,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                               ),
                             ),
                           ],
+                        ),
+                      if (_signedIn &&
+                          _gameResultTitle == null &&
+                          yourTurn &&
+                          _turnBannerVisible)
+                        Positioned(
+                          top: wide ? wideHeaderHeight + 12 : 66,
+                          left: wide ? 24 : 12,
+                          right: wide ? widePanelWidth + 42 : 12,
+                          child: const _TurnBanner(),
                         ),
                       if (!_signedIn)
                         Positioned.fill(
@@ -3140,15 +3490,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           ),
                         ),
                       if (_signedIn &&
-                          _onlineCelebrationVisible &&
-                          _gameMode == GameMode.online)
-                        Positioned.fill(
-                          child: OnlineVictoryCelebration(
-                            winnerAtTop: _onlineCelebrationWinnerAtTop,
-                            title: _gameResultTitle ?? 'Game complete',
-                          ),
-                        ),
-                      if (_signedIn &&
                           _gameResultTitle != null &&
                           _resultVisible)
                         Positioned.fill(
@@ -3156,6 +3497,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             title: _resultDisplayTitle(),
                             detail: _gameResultDetail ?? 'Game complete',
                             scoreLabel: _resultScoreLabel(),
+                            accuracy: _playerAccuracy,
+                            turningPoint: _turningPoint,
                             onNewGame: _gameMode == GameMode.online
                                 ? _startFreshOnlineGame
                                 : _gameMode == GameMode.puzzle
@@ -3170,9 +3513,26 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             onDismiss: () => setState(() {
                               _resultVisible = false;
                             }),
-                            onReview: () => setState(() {
-                              _resultVisible = false;
-                            }),
+                            onReview: () {
+                              setState(() => _resultVisible = false);
+                              WidgetsBinding.instance.addPostFrameCallback(
+                                (_) => _showAiReview(),
+                              );
+                            },
+                          ),
+                        ),
+                      if (_signedIn &&
+                          _gameResultTitle != null &&
+                          !_resultVisible &&
+                          !_gameResultTitle!.toLowerCase().contains('draw') &&
+                          !_gameResultTitle!
+                              .toLowerCase()
+                              .contains('challenge missed'))
+                        Positioned.fill(
+                          child: OnlineVictoryCelebration(
+                            winnerAtTop: true,
+                            title: _resultDisplayTitle(),
+                            showTitle: true,
                           ),
                         ),
                       if (_moveQualityText != null &&
@@ -3285,13 +3645,53 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     });
   }
 
-  void _showFacebookSetupMessage() {
+  Future<void> _showFacebookSetupMessage() async {
     setState(() {
+      _authLoading = true;
       _authHasError = false;
-      _authMessage = AppConfig.usesDummySocialConfig
-          ? 'Google, Apple, Facebook, and VPS placeholders are wired. Replace dummy IDs/tokens in CI/VPS before store release. ChessVerseAI login and Guest Player work now.'
-          : 'Social login config is present. Backend OAuth callback endpoints must be enabled on the live VPS before store release.';
+      _authMessage = 'Opening Facebook securely...';
     });
+    try {
+      if (kIsWeb) await ensureFacebookSdkReady();
+      final LoginResult result = await FacebookAuth.instance.login(
+        permissions: const <String>['email', 'public_profile'],
+      );
+      if (result.status == LoginStatus.cancelled) {
+        if (mounted) {
+          setState(() => _authMessage = 'Facebook sign-in was cancelled.');
+        }
+        return;
+      }
+      if (result.status != LoginStatus.success || result.accessToken == null) {
+        throw AuthApiException(
+          result.message ?? 'Facebook sign-in failed. Please try again.',
+        );
+      }
+      final Map<String, dynamic> response = await _authApi.post(
+        'facebook',
+        <String, String>{
+          'accessToken': result.accessToken!.tokenString,
+        },
+      );
+      if (!mounted) return;
+      await _completeLogin(response);
+    } on AuthApiException catch (error) {
+      if (mounted) {
+        setState(() {
+          _authHasError = true;
+          _authMessage = error.message;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _authHasError = true;
+          _authMessage = 'Facebook sign-in failed. Please try again.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _authLoading = false);
+    }
   }
 
   Future<void> _resendVerificationCode() async {
@@ -3698,8 +4098,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _whitePlayerName = 'Guest Player';
         _blackPlayerName = 'Puzzle Defense';
       case GameMode.local:
-        _whitePlayerName = _humanPlaysWhite ? playerName : 'Player 2';
-        _blackPlayerName = _humanPlaysWhite ? 'Player 2' : playerName;
+        _whitePlayerName = 'Player 1 • White';
+        _blackPlayerName = 'Player 2 • Black';
       case GameMode.online:
         _whitePlayerName = playerName;
         _blackPlayerName = 'Online Rival';
@@ -3711,14 +4111,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return !_humanPlaysWhite;
     }
     if (_gameMode == GameMode.local) {
-      return !sideToMoveWhite;
+      // Pass-and-play remains White-at-bottom for the whole match. Rotating
+      // after every move makes coordinates and piece positions disorienting.
+      return false;
     }
     return false;
-  }
-
-  void _changeDailyDifficulty(DailyChallengeDifficulty difficulty) {
-    setState(() => _dailyDifficulty = difficulty);
-    _reset();
   }
 
   int get _dailyPlayerMovesCompleted => (_dailyPlyIndex + 1) ~/ 2;
@@ -3783,22 +4180,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return 'Not good step - king safety first.';
     }
     return 'Average step - playable, but look for more pressure.';
-  }
-
-  String _moveSuggestionText(
-    PositionAnalysis analysis,
-    String from,
-    String to,
-  ) {
-    final String playedMove = '$from to $to';
-    final String? bestMove = analysis.bestMove;
-    if (bestMove == null) {
-      return 'No stronger coach suggestion found.';
-    }
-    if (bestMove == playedMove) {
-      return 'Coach agrees: this was the best move.';
-    }
-    return 'Coach idea: move $bestMove for a ${analysis.quality.toLowerCase()}.';
   }
 
   void _scheduleMoveQualityDismiss() {
@@ -4057,53 +4438,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         '$seconds ${seconds == 1 ? 'second' : 'seconds'}.';
   }
 
-  Future<void> _editBlackPlayerName() async {
-    String candidate = _blackPlayerName;
-    final String? name = await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text('Rename Player 2'),
-        content: TextFormField(
-          initialValue: candidate,
-          autofocus: true,
-          maxLength: 24,
-          textCapitalization: TextCapitalization.words,
-          onChanged: (String value) => candidate = value,
-          decoration: const InputDecoration(
-            labelText: 'Player name',
-            prefixIcon: Icon(Icons.manage_accounts_outlined),
-            border: OutlineInputBorder(),
-          ),
-          onFieldSubmitted: (String value) {
-            final String clean = value.trim();
-            if (clean.isNotEmpty) {
-              Navigator.of(context).pop(clean);
-            }
-          },
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final String clean = candidate.trim();
-              if (clean.isNotEmpty) {
-                Navigator.of(context).pop(clean);
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    if (name != null && mounted) {
-      setState(() => _blackPlayerName = name);
-    }
-  }
-
   void _handleSquareTap(String square) {
+    // Hint/Analyze results belong to one exact board position. Invalidate
+    // in-flight work before processing a touch so a late engine response
+    // cannot paint an old move on the current board.
+    _coachRequestEpoch++;
+    _dismissTurnReminder();
+    if (_coachArrowFrom != null || _coachArrowTo != null) {
+      setState(() {
+        _coachArrowFrom = null;
+        _coachArrowTo = null;
+      });
+    }
     if (_gameResultTitle != null || _aiThinking) {
       return;
     }
@@ -4131,6 +4477,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     bool puzzleWrongMove = false;
     String? onlineUci;
     int? onlineExpectedPly;
+    String? engineReviewFen;
+    String? engineReviewMove;
 
     setState(() {
       final bool whitesTurn =
@@ -4192,14 +4540,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         final String expected =
             _dailyChallenge.solution[_dailyPlyIndex].toLowerCase();
         if (!expected.startsWith('$from$square')) {
-          _dailyMistakes++;
           // Every chess-legal move is playable. Leaving the curated line
           // starts exploration mode, where the defense continues replying.
           puzzleWrongMove = true;
           _puzzleExplorationMode = true;
         }
       }
-      final PositionAnalysis preMoveAnalysis = _analyzePosition(whitesTurn);
+      if (_gameMode == GameMode.computer && widget.useRemoteEngine) {
+        engineReviewFen = _toFen();
+        engineReviewMove = '$from$square';
+      }
       _saveSnapshot();
       _lastFromSquare = from;
       _lastToSquare = square;
@@ -4264,9 +4614,19 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           castleMove: castleMove,
         );
         if (_gameMode == GameMode.computer) {
-          _moveQualityText =
-              '$moveFeedback ${_moveSuggestionText(preMoveAnalysis, from, square)}';
+          final int score = _scoreForMoveFeedback(moveFeedback);
+          _playerMoveScores.add(score);
+          if (score < 60) {
+            _turningPoint = '$move — $moveFeedback';
+            _recordImportantMistake('$move • $moveFeedback');
+          }
         }
+        if (_gameMode == GameMode.computer) {
+          _moveQualityText = _scoreForMoveFeedback(moveFeedback) < 60
+              ? '$moveFeedback Tap “Why is this weak?” in AI Coach to understand the safer plan.'
+              : null;
+        }
+        _hintStage = 0;
         _lastPlayerMove = move;
         _coachNote = castleMove
             ? '${piece.white ? 'White' : 'Black'} castles ${square.startsWith('g') ? 'king side' : 'queen side'}.'
@@ -4331,6 +4691,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         promotionWhite!,
       ).then((_) => _scheduleAiMove());
     } else if (moveCommitted) {
+      if (engineReviewFen != null && engineReviewMove != null) {
+        unawaited(
+          _reviewPlayerMoveWithEngine(engineReviewFen!, engineReviewMove!),
+        );
+      }
       if (_moveQualityText != null) {
         _scheduleMoveQualityDismiss();
       }
@@ -4341,7 +4706,104 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       } else {
         _scheduleAiMove();
       }
+      if (_gameMode == GameMode.local) {
+        _restartTurnReminder();
+      }
     }
+  }
+
+  void _dismissTurnReminder() {
+    _boardTouchedThisTurn = true;
+    _turnReminderTimer?.cancel();
+    if (_turnBannerVisible && mounted) {
+      setState(() => _turnBannerVisible = false);
+    }
+  }
+
+  void _restartTurnReminder() {
+    _turnReminderTimer?.cancel();
+    _boardTouchedThisTurn = false;
+    if (!mounted || _gameResultTitle != null) return;
+    setState(() => _turnBannerVisible = true);
+    _scheduleTurnReminderStep(showing: true);
+  }
+
+  void _scheduleTurnReminderStep({required bool showing}) {
+    _turnReminderTimer = Timer(
+      showing ? const Duration(milliseconds: 1800) : const Duration(seconds: 5),
+      () {
+        if (!mounted || _boardTouchedThisTurn || _gameResultTitle != null) {
+          return;
+        }
+        setState(() => _turnBannerVisible = !showing);
+        _scheduleTurnReminderStep(showing: !showing);
+      },
+    );
+  }
+
+  Future<void> _reviewPlayerMoveWithEngine(
+    String fen,
+    String playedMove,
+  ) async {
+    try {
+      final Map<String, dynamic> engine = await _engineApi.analyze(
+        fen: fen,
+        level: math.max(5, _aiLevel.round()),
+      );
+      if (!mounted) return;
+      final String bestMove = engine['bestMove'] as String? ?? '';
+      if (bestMove.length < 4) return;
+      final bool best = bestMove.toLowerCase() == playedMove.toLowerCase();
+      final String recommendation =
+          '${bestMove.substring(0, 2)} to ${bestMove.substring(2, 4)}';
+      final int cp = (engine['evaluationCp'] as num?)?.toInt() ?? 0;
+      setState(() {
+        _engineEvaluationPawns = cp / 100;
+        // Post-move review is textual. Board arrows are reserved for an
+        // explicit Hint/Analyze request so a completed move never leaves two
+        // competing motion trails on the board.
+        _coachArrowFrom = null;
+        _coachArrowTo = null;
+        if (_playerMoveScores.isNotEmpty) {
+          _playerMoveScores[_playerMoveScores.length - 1] = best ? 100 : 68;
+        }
+        _moveQualityText = best
+            ? null
+            : 'Weak move alert • $recommendation was safer. Tap Analyze to see why.';
+        if (!best) {
+          _turningPoint ??= '$playedMove — $recommendation was stronger.';
+          _recordImportantMistake(
+            '$playedMove • Prefer $recommendation. '
+            '${_engineEvaluationExplanation(engine, _moves.length.isOdd)}',
+          );
+        }
+      });
+      if (!best) _scheduleMoveQualityDismiss();
+    } on EngineApiException {
+      // Keep the immediate on-device coach feedback when analysis is offline.
+    }
+  }
+
+  int _scoreForMoveFeedback(String feedback) {
+    if (feedback.startsWith('Amazing')) return 96;
+    if (feedback.startsWith('Superb')) return 90;
+    if (feedback.startsWith('Good')) return 82;
+    if (feedback.startsWith('Not good')) return 48;
+    return 68;
+  }
+
+  void _recordImportantMistake(String message) {
+    _importantMistakes.remove(message);
+    _importantMistakes.insert(0, message);
+    if (_importantMistakes.length > 3) {
+      _importantMistakes.removeLast();
+    }
+  }
+
+  int? get _playerAccuracy {
+    if (_playerMoveScores.isEmpty) return null;
+    final int total = _playerMoveScores.fold<int>(0, (int a, int b) => a + b);
+    return (total / _playerMoveScores.length).round().clamp(0, 100);
   }
 
   String? _kingSquare(bool white) {
@@ -4367,13 +4829,34 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
 
+    final int requestEpoch = ++_aiMoveEpoch;
+    _aiWatchdogTimer?.cancel();
     setState(() {
       _aiThinking = true;
       _selectedSquare = null;
       _coachNote =
           '${aiProfileFor(_aiLevel.round()).name} AI is calculating...';
     });
-    Future<void>.delayed(const Duration(milliseconds: 650), _performAiMove);
+    Future<void>.delayed(
+      aiThinkDelayFor(_aiLevel.round()),
+      () => _performAiMove(requestEpoch),
+    );
+    _aiWatchdogTimer = Timer(const Duration(seconds: 20), () {
+      if (!mounted ||
+          requestEpoch != _aiMoveEpoch ||
+          !_aiThinking ||
+          _gameResultTitle != null) {
+        return;
+      }
+      final bool stillAiTurn = _moves.length.isEven == aiPlaysWhite;
+      setState(() {
+        _aiThinking = false;
+        _coachNote = stillAiTurn
+            ? 'AI reply recovered. Calculating again...'
+            : 'Your turn.';
+      });
+      if (stillAiTurn) _scheduleAiMove();
+    });
   }
 
   void _scheduleDailyReply() {
@@ -4478,21 +4961,26 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             '${_dailyChallenge.playerMoveGoal - _dailyPlayerMovesCompleted} move(s) remain. Find checkmate.',
       );
     });
+    _restartTurnReminder();
   }
 
-  Future<void> _performAiMove() async {
+  Future<void> _performAiMove(int requestEpoch) async {
     final bool aiPlaysWhite = !_humanPlaysWhite;
     final bool aiTurn = _moves.length.isEven == aiPlaysWhite;
     if (!mounted ||
         _gameMode != GameMode.computer ||
         _gameResultTitle != null ||
         !_aiThinking ||
-        !aiTurn) {
+        !aiTurn ||
+        requestEpoch != _aiMoveEpoch) {
       return;
     }
 
     AiCandidate? engineMove;
-    if (widget.useRemoteEngine) {
+    final int level = _aiLevel.round();
+    // Stockfish's UCI_LimitStrength floor is still club-player strength.
+    // Keep levels 1-3 on the deliberately imperfect local selector.
+    if (widget.useRemoteEngine && level >= 4) {
       try {
         final Map<String, dynamic> response = await _engineApi.bestMove(
           fen: _toFen(),
@@ -4506,8 +4994,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             engineMove = AiCandidate(from, to, 1000);
           }
         }
-      } on EngineApiException {
-        // The deterministic local fallback keeps offline games playable.
+      } on Object {
+        // Malformed, timed-out, and unavailable engine responses all fall
+        // back locally so the board can never remain stuck on "AI turn".
       }
     }
 
@@ -4516,7 +5005,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _gameMode != GameMode.computer ||
         _gameResultTitle != null ||
         !_aiThinking ||
-        !aiStillTurn) {
+        !aiStillTurn ||
+        requestEpoch != _aiMoveEpoch) {
       return;
     }
 
@@ -4554,6 +5044,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
 
     if (candidates.isEmpty) {
+      _aiWatchdogTimer?.cancel();
       setState(() {
         _aiThinking = false;
         _coachNote = _gameStateNote(
@@ -4567,15 +5058,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     candidates.sort(
       (AiCandidate a, AiCandidate b) => b.score.compareTo(a.score),
     );
-    final int level = _aiLevel.round();
-    final int poolSize = math.min(
-      candidates.length,
-      math.max(1, ((11 - level) / 2).ceil()),
+    final AiCandidate move = chooseAiCandidateForLevel(
+      candidates,
+      level,
+      _random,
+      engineMove: engineMove,
     );
-    final AiCandidate move =
-        engineMove ?? candidates[_random.nextInt(poolSize)];
     final bool stockfishPowered = engineMove != null;
 
+    _aiWatchdogTimer?.cancel();
     setState(() {
       _saveSnapshot();
       _lastFromSquare = move.from;
@@ -4628,6 +5119,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       );
       _aiThinking = false;
     });
+    _restartTurnReminder();
   }
 
   String _toFen() {
@@ -4922,12 +5414,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final Map<String, ChessPiece> resetPieces = _isTacticsMode
         ? _dailyStartingPosition(challenge)
         : Map<String, ChessPiece>.from(_initialPieces);
+    _aiWatchdogTimer?.cancel();
+    _aiMoveEpoch++;
     setState(() {
       _applyPlayerSideNames(_playerDisplayName);
       _dailyChallenge = challenge;
       _dailyCompletedToday = completedToday;
       _dailyPlyIndex = 0;
-      _dailyMistakes = 0;
       _puzzleExplorationMode = false;
       _pieces = resetPieces;
       _moves.clear();
@@ -4942,6 +5435,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _lastPlayerMove = null;
       _lastPlayerCoachNote = null;
       _moveQualityText = null;
+      _coachArrowFrom = null;
+      _coachArrowTo = null;
+      _engineEvaluationPawns = 0;
+      _playerMoveScores.clear();
+      _importantMistakes.clear();
+      _turningPoint = null;
       _whiteSeconds = 10 * 60;
       _blackSeconds = 10 * 60;
       _selectedSquare = null;
@@ -4963,6 +5462,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _resultSaved = false;
       _checkWarningActive = false;
     });
+    _restartTurnReminder();
     if (_gameMode == GameMode.computer && !_humanPlaysWhite) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -5022,65 +5522,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     ChessSoundService.instance.enabled = value;
   }
 
-  void _resignGame() {
-    if (_gameResultTitle != null) {
-      return;
-    }
-    if (_gameMode == GameMode.online) {
-      unawaited(_resignOnlineGame());
-      return;
-    }
-    final bool whiteToMove = _moves.length.isEven;
-    setState(() {
-      _gameResultTitle = whiteToMove ? 'Black wins' : 'White wins';
-      _gameResultDetail =
-          '${whiteToMove ? _whitePlayerName : _blackPlayerName} resigned';
-      _resultVisible = true;
-      _coachNote = 'Resignation accepted. $_gameResultTitle.';
-      _archiveFinishedGame();
-    });
-    unawaited(ChessSoundService.instance.victory());
-  }
-
-  Future<void> _offerDraw() async {
-    if (_gameResultTitle != null) {
-      return;
-    }
-    if (_gameMode == GameMode.online) {
-      await _offerOnlineDraw();
-      return;
-    }
-    final bool? accepted = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text('Offer draw?'),
-        content: const Text(
-          'For offline play this records a mutual draw immediately.',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Accept draw'),
-          ),
-        ],
-      ),
-    );
-    if (accepted == true) {
-      setState(() {
-        _gameResultTitle = 'Draw';
-        _gameResultDetail = 'Draw agreed';
-        _resultVisible = true;
-        _coachNote = 'Draw agreed by both players.';
-        _archiveFinishedGame();
-      });
-      unawaited(ChessSoundService.instance.draw());
-    }
-  }
-
   void _archiveFinishedGame() {
     if (_resultSaved || _gameResultTitle == null) {
       return;
@@ -5114,6 +5555,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     );
   }
 
+  void _showAiReview() {
+    final AiReviewReport report = AiReviewReport.fromMoves(
+      _moves,
+      result: _gameResultTitle,
+      knownAccuracy: _playerAccuracy,
+      knownTurningPoint: _turningPoint,
+      knownMistakes: _importantMistakes.reversed.toList(growable: false),
+    );
+    showAdaptiveAiReview(context, report: report);
+  }
+
   void _saveSnapshot() {
     if (_gameMode == GameMode.online) {
       return;
@@ -5138,6 +5590,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _undo() {
+    // A finished result is authoritative. Undo must never reopen a won,
+    // checkmated, drawn, or completed challenge.
+    if (_gameResultTitle != null) return;
     if (_gameMode == GameMode.online) {
       setState(() {
         _selectedSquare = null;
@@ -5151,13 +5606,23 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
 
+    // In computer mode restore the newest snapshot where it is the human's
+    // turn. This works both while AI is thinking (one ply to undo) and after
+    // its reply (two plies), without leaving an unscheduled AI turn.
+    final int snapshotIndex = _gameMode == GameMode.computer
+        ? computerUndoSnapshotIndex(
+            _history,
+            humanPlaysWhite: _humanPlaysWhite,
+          )
+        : (_isTacticsMode && _history.length >= 2
+            ? _history.length - 2
+            : _history.length - 1);
+    if (snapshotIndex < 0) return;
+    _aiMoveEpoch++;
+    _aiWatchdogTimer?.cancel();
     setState(() {
-      final int steps = (_gameMode == GameMode.computer || _isTacticsMode) &&
-              _history.length >= 2
-          ? 2
-          : 1;
-      final GameSnapshot snapshot = _history[_history.length - steps];
-      _history.removeRange(_history.length - steps, _history.length);
+      final GameSnapshot snapshot = _history[snapshotIndex];
+      _history.removeRange(snapshotIndex, _history.length);
       _pieces = Map<String, ChessPiece>.from(snapshot.pieces);
       _moves
         ..clear()
@@ -5193,8 +5658,47 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     });
   }
 
-  void _showHint() {
+  Future<void> _showHint() async {
     final bool whiteToMove = _isTacticsMode ? true : _moves.length.isEven;
+    final int hintStage = (_hintStage % 3) + 1;
+    setState(() => _hintStage = hintStage);
+    if (_gameMode == GameMode.computer && widget.useRemoteEngine) {
+      final int requestEpoch = ++_coachRequestEpoch;
+      final String requestedFen = _toFen();
+      try {
+        setState(() => _coachNote = 'Stockfish is finding your best plan…');
+        final Map<String, dynamic> engine = await _engineApi.analyze(
+          fen: requestedFen,
+          level: math.max(4, _aiLevel.round()),
+        );
+        if (!mounted ||
+            requestEpoch != _coachRequestEpoch ||
+            requestedFen != _toFen()) {
+          return;
+        }
+        final String move = engine['bestMove'] as String? ?? '';
+        if (move.length >= 4) {
+          final String from = move.substring(0, 2);
+          final String to = move.substring(2, 4);
+          setState(() {
+            _selectedSquare = hintStage >= 1 ? from : null;
+            _coachArrowFrom = hintStage == 3 ? from : null;
+            _coachArrowTo = hintStage == 3 ? to : null;
+            final int cp = (engine['evaluationCp'] as num?)?.toInt() ?? 0;
+            _engineEvaluationPawns = cp / 100;
+            _coachNote = _progressiveHintText(
+              stage: hintStage,
+              from: from,
+              to: to,
+              explanation: _engineEvaluationExplanation(engine, whiteToMove),
+            );
+          });
+          return;
+        }
+      } on EngineApiException {
+        // Continue with the always-available local hint below.
+      }
+    }
     String? bestFrom;
     List<String> bestTargets = <String>[];
 
@@ -5216,16 +5720,97 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       } else {
         final int remaining =
             _dailyChallenge.playerMoveGoal - _dailyPlayerMovesCompleted;
-        _coachNote = _isTacticsMode
-            ? 'Hint: inspect $bestFrom. ${bestTargets.length} legal option(s); $remaining move(s) remain.'
-            : 'Coach hint: inspect $bestFrom. It has ${bestTargets.length} promising squares.';
+        final String bestTo = bestTargets.first;
+        _coachArrowFrom = hintStage == 3 ? bestFrom : null;
+        _coachArrowTo = hintStage == 3 ? bestTo : null;
+        _coachNote = _progressiveHintText(
+          stage: hintStage,
+          from: bestFrom,
+          to: bestTo,
+          explanation: _isTacticsMode
+              ? '$remaining move(s) remain. Look for forcing checks first.'
+              : 'Compare checks, captures, and threats before moving.',
+        );
       }
     });
   }
 
-  void _showAnalysis() {
+  String _progressiveHintText({
+    required int stage,
+    required String from,
+    required String to,
+    required String explanation,
+  }) {
+    final ChessPiece? piece = _pieces[from];
+    final String name = piece == null ? 'piece' : pieceName(piece.code);
+    final SquarePosition target = ChessRules.positionOf(to);
+    final String direction =
+        target.file >= 4 ? 'toward the king side' : 'toward the queen side';
+    final bool simpleLanguage = _aiLevel <= 3;
+    return switch (stage) {
+      1 => simpleLanguage
+          ? 'Hint 1/3 • Start with the $name on $from.'
+          : 'Piece hint 1/3 • Candidate: $name on $from. Check its forcing options.',
+      2 => simpleLanguage
+          ? 'Hint 2/3 • Move that $name $direction.'
+          : 'Direction hint 2/3 • Improve the $name $direction and challenge the centre.',
+      _ => simpleLanguage
+          ? 'Hint 3/3 • Try $from → $to. $explanation'
+          : 'Exact move 3/3 • Calculate $from → $to. $explanation',
+    };
+  }
+
+  Future<void> _showAnalysis() async {
     final bool whiteToMove = _moves.length.isEven;
-    final PositionAnalysis analysis = _analyzePosition(whiteToMove);
+    PositionAnalysis analysis = _analyzePosition(whiteToMove);
+    if (_gameMode == GameMode.computer && widget.useRemoteEngine) {
+      final int requestEpoch = ++_coachRequestEpoch;
+      final String requestedFen = _toFen();
+      try {
+        setState(() => _coachNote = 'Running Stockfish position analysis…');
+        final Map<String, dynamic> engine = await _engineApi.analyze(
+          fen: requestedFen,
+          level: math.max(5, _aiLevel.round()),
+        );
+        if (!mounted ||
+            requestEpoch != _coachRequestEpoch ||
+            requestedFen != _toFen()) {
+          return;
+        }
+        final String best = engine['bestMove'] as String? ?? '';
+        final int cp = (engine['evaluationCp'] as num?)?.toInt() ?? 0;
+        final int? mate = (engine['mateIn'] as num?)?.toInt();
+        final List<dynamic> pv =
+            engine['principalVariation'] as List<dynamic>? ?? <dynamic>[];
+        analysis = PositionAnalysis(
+          side: whiteToMove ? 'White' : 'Black',
+          evaluation: mate == null
+              ? (whiteToMove ? cp : -cp) / 100
+              : (mate > 0 ? 99 : -99),
+          material: analysis.material,
+          legalMoves: analysis.legalMoves,
+          captures: analysis.captures,
+          bestMove: best.length >= 4
+              ? '${best.substring(0, 2)} to ${best.substring(2, 4)}'
+              : analysis.bestMove,
+          quality: mate == null
+              ? 'Stockfish depth ${engine['depth']}'
+              : 'Forced mate',
+          coachLine: '${_engineEvaluationExplanation(engine, whiteToMove)} '
+              '${pv.isEmpty ? '' : 'Plan: ${pv.take(5).join(' → ')}.'}',
+          inCheck: analysis.inCheck,
+        );
+        if (best.length >= 4) {
+          setState(() {
+            _coachArrowFrom = best.substring(0, 2);
+            _coachArrowTo = best.substring(2, 4);
+            _engineEvaluationPawns = (whiteToMove ? cp : -cp) / 100;
+          });
+        }
+      } on EngineApiException {
+        // The local analysis remains useful while the engine is offline.
+      }
+    }
 
     setState(() {
       _coachNote = analysis.bestMove == null
@@ -5397,7 +5982,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _coachNote = _onlineStatusText(match);
       if (newMatch) {
         _onlineResultPresentationTimer?.cancel();
-        _onlineCelebrationVisible = false;
         _onlineCelebrationMatchId = null;
         _gameResultTitle = null;
         _gameResultDetail = null;
@@ -5668,7 +6252,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _handledDrawOfferKey = null;
       _joiningRematchId = null;
       _onlineResultPresentationTimer?.cancel();
-      _onlineCelebrationVisible = false;
       _onlineCelebrationMatchId = null;
       _coachNote = 'Choose how you want to start your next online match.';
     });
@@ -5731,46 +6314,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _resignOnlineGame() async {
-    final OnlineMatchDto? match = _onlineMatch;
-    final String? token = _authToken;
-    if (match == null || token == null || !match.isActive) return;
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text('Resign online match?'),
-        content: const Text('Your opponent will win this match.'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Keep playing'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Resign'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-    try {
-      _rebuildFromOnline(await _onlineApi.resign(token, match.id));
-    } on OnlineMatchException catch (error) {
-      if (mounted) setState(() => _coachNote = error.message);
-    }
-  }
-
-  Future<void> _offerOnlineDraw() async {
-    final OnlineMatchDto? match = _onlineMatch;
-    final String? token = _authToken;
-    if (match == null || token == null || !match.isActive) return;
-    try {
-      _rebuildFromOnline(await _onlineApi.offerDraw(token, match.id));
-    } on OnlineMatchException catch (error) {
-      if (mounted) setState(() => _coachNote = error.message);
-    }
-  }
-
   Future<void> _respondOnlineDraw(bool accept) async {
     final OnlineMatchDto? match = _onlineMatch;
     final String? token = _authToken;
@@ -5826,7 +6369,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       final bool draw = result == '1/2-1/2';
       final bool firstPresentation = _archivedOnlineMatchId != match.id;
       final bool decisive = result == '1-0' || result == '0-1';
-      final bool winningWhite = result == '1-0';
       setState(() {
         _gameResultTitle = draw
             ? 'Draw'
@@ -5838,27 +6380,27 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           // Keep the decisive move visible. The celebration occupies the
           // winner's side of the board first; the score/action popup follows
           // after the player has had time to identify the final move.
-          _resultVisible = !decisive;
-          _onlineCelebrationVisible = decisive;
-          _onlineCelebrationWinnerAtTop =
-              winningWhite == _shouldFlipBoard(match.whiteToMove);
-          _onlineCelebrationMatchId = decisive ? match.id : null;
+          _resultVisible = false;
+          _onlineCelebrationMatchId = match.id;
         }
         _coachNote = _onlineResultDetail(match);
       });
-      if (firstPresentation && decisive) {
+      if (firstPresentation) {
         _onlineResultPresentationTimer?.cancel();
         _onlineResultPresentationTimer = Timer(
-          const Duration(seconds: 20),
+          const Duration(seconds: 10),
           () {
             if (!mounted || _onlineCelebrationMatchId != match.id) return;
             setState(() {
-              _onlineCelebrationVisible = false;
               _resultVisible = true;
             });
           },
         );
-        unawaited(ChessSoundService.instance.victory());
+        if (decisive) {
+          unawaited(ChessSoundService.instance.victory());
+        } else {
+          unawaited(ChessSoundService.instance.draw());
+        }
       }
       if (_archivedOnlineMatchId != match.id) {
         _archivedOnlineMatchId = match.id;
@@ -5930,7 +6472,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final String ratingText = ratingDelta == null
         ? ''
         : ' • ELO ${ratingDelta >= 0 ? '+' : ''}$ratingDelta';
-    return '${match.result ?? ''} • $reason$ratingText';
+    final bool userWhite = match.yourColor.toUpperCase() == 'WHITE';
+    final bool userWon = (match.result == '1-0' && userWhite) ||
+        (match.result == '0-1' && !userWhite);
+    final int coinsEarned = userWon ? 26 : 8;
+    return '${match.result ?? ''} • $reason$ratingText • Coins +$coinsEarned';
   }
 
   Future<void> _showPromotionPicker(String square, bool white) async {
@@ -5998,7 +6544,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
       _gameResultTitle = '${sideToMoveWhite ? 'Black' : 'White'} wins';
       _gameResultDetail = 'Checkmate';
-      _resultVisible = true;
+      _delayLocalResultOverlay();
       _archiveFinishedGame();
       unawaited(ChessSoundService.instance.checkmate());
       return 'Checkmate. $_gameResultTitle.';
@@ -6006,7 +6552,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (stalemate) {
       _gameResultTitle = 'Draw';
       _gameResultDetail = 'Stalemate';
-      _resultVisible = true;
+      _delayLocalResultOverlay();
       _archiveFinishedGame();
       unawaited(ChessSoundService.instance.draw());
       return 'Stalemate. No legal move for $side.';
@@ -6015,6 +6561,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return '$side is in check.';
     }
     return fallback;
+  }
+
+  void _delayLocalResultOverlay() {
+    _onlineResultPresentationTimer?.cancel();
+    _resultVisible = false;
+    _onlineResultPresentationTimer = Timer(
+      const Duration(seconds: 10),
+      () {
+        if (!mounted || _gameMode == GameMode.online) return;
+        setState(() => _resultVisible = true);
+      },
+    );
   }
 
   String _coachMoveExplanation({
@@ -6094,6 +6652,23 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     } catch (_) {
       // A muted device or browser policy should never interrupt the game.
     }
+  }
+
+  String _engineEvaluationExplanation(
+    Map<String, dynamic> engine,
+    bool _,
+  ) {
+    final int? mate = (engine['mateIn'] as num?)?.toInt();
+    if (mate != null) {
+      return mate > 0
+          ? 'There is a forced checkmate in $mate.'
+          : 'You must defend against checkmate in ${mate.abs()}.';
+    }
+    final int cp = (engine['evaluationCp'] as num?)?.toInt() ?? 0;
+    final double pawns = cp.abs() / 100;
+    if (cp.abs() < 25) return 'The position is approximately balanced.';
+    final String side = cp > 0 ? 'the side to move' : 'the defending side';
+    return 'Stockfish estimates a ${pawns.toStringAsFixed(1)} pawn advantage for $side.';
   }
 
   String _formatClock(int seconds) {
@@ -6242,7 +6817,7 @@ class BoardStage extends StatelessWidget {
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(9, 9, 9, 14),
+          padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
           child: DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
@@ -6258,7 +6833,7 @@ class BoardStage extends StatelessWidget {
                 ),
               ],
             ),
-            child: Padding(padding: const EdgeInsets.all(3), child: child),
+            child: Padding(padding: const EdgeInsets.all(1), child: child),
           ),
         ),
       ),
@@ -6279,6 +6854,10 @@ class ChessBoard extends StatefulWidget {
     required this.moveSequence,
     required this.checkedKingSquare,
     required this.decisiveSquare,
+    this.fallenKingSquare,
+    this.fallenKingWhite,
+    required this.coachArrowFrom,
+    required this.coachArrowTo,
     required this.flipped,
     required this.showCoordinates,
     required this.palette,
@@ -6297,6 +6876,10 @@ class ChessBoard extends StatefulWidget {
   final int moveSequence;
   final String? checkedKingSquare;
   final String? decisiveSquare;
+  final String? fallenKingSquare;
+  final bool? fallenKingWhite;
+  final String? coachArrowFrom;
+  final String? coachArrowTo;
   final bool flipped;
   final bool showCoordinates;
   final BoardPalette palette;
@@ -6403,10 +6986,18 @@ class _ChessBoardState extends State<ChessBoard> {
                 final String square = '${String.fromCharCode(97 + file)}$rank';
                 final bool dark = (row + col).isOdd;
                 final bool selected = square == selectedSquare;
-                final ChessPiece? piece =
-                    moveAnimating && square == lastToSquare
+                final bool kingFallen = square == widget.fallenKingSquare;
+                // A checkmating move must leave the losing king visible.  Do
+                // not let the short destination-piece animation hide it, and
+                // recover gracefully from older saved positions that removed
+                // the king instead of ending on checkmate.
+                final ChessPiece? boardPiece = pieces[square];
+                final ChessPiece? piece = kingFallen
+                    ? (boardPiece ??
+                        ChessPiece('K', widget.fallenKingWhite ?? true))
+                    : moveAnimating && square == lastToSquare
                         ? null
-                        : pieces[square];
+                        : boardPiece;
                 final bool legalTarget = legalTargets.contains(square);
                 final bool captureTarget =
                     legalTarget && piece != null && square != selectedSquare;
@@ -6415,7 +7006,6 @@ class _ChessBoardState extends State<ChessBoard> {
                 final bool lastCapture = square == lastCaptureSquare;
                 final bool checkedKing = square == checkedKingSquare;
                 final bool decisiveMove = square == decisiveSquare;
-
                 return BoardSquare(
                   key: ValueKey<String>('square-$square'),
                   square: square,
@@ -6427,6 +7017,7 @@ class _ChessBoardState extends State<ChessBoard> {
                   lastCapture: lastCapture,
                   checkedKing: checkedKing,
                   decisiveMove: decisiveMove,
+                  kingFallen: kingFallen,
                   palette: palette,
                   piece: piece,
                   showRank: showCoordinates && col == 0,
@@ -6461,7 +7052,9 @@ class _ChessBoardState extends State<ChessBoard> {
                 ),
               ),
             ),
-            if (lastFromSquare != null && lastToSquare != null)
+            if (lastFromSquare != null &&
+                lastToSquare != null &&
+                (widget.coachArrowFrom == null || widget.coachArrowTo == null))
               Positioned.fill(
                 child: IgnorePointer(
                   child: TweenAnimationBuilder<double>(
@@ -6480,9 +7073,27 @@ class _ChessBoardState extends State<ChessBoard> {
                           flipped: flipped,
                           progress: progress,
                           accent: palette.accent,
+                          // Keep the latest move visible until the next move.
+                          // The old fade made the arrow look like a brief flash.
+                          fadeOut: false,
                         ),
                       );
                     },
+                  ),
+                ),
+              ),
+            if (widget.coachArrowFrom != null && widget.coachArrowTo != null)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: LastMoveTrailPainter(
+                      from: widget.coachArrowFrom!,
+                      to: widget.coachArrowTo!,
+                      flipped: flipped,
+                      progress: 1,
+                      accent: const Color(0xFF57E0C3),
+                      fadeOut: false,
+                    ),
                   ),
                 ),
               ),
@@ -6520,6 +7131,7 @@ class LastMoveTrailPainter extends CustomPainter {
     required this.flipped,
     required this.progress,
     required this.accent,
+    this.fadeOut = false,
   });
 
   final String from;
@@ -6527,6 +7139,7 @@ class LastMoveTrailPainter extends CustomPainter {
   final bool flipped;
   final double progress;
   final Color accent;
+  final bool fadeOut;
 
   Offset _center(String square, Size size) {
     final int file = square.codeUnitAt(0) - 97;
@@ -6539,9 +7152,16 @@ class LastMoveTrailPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final double drawProgress =
+        fadeOut ? (progress / 0.68).clamp(0.0, 1.0) : progress.clamp(0.0, 1.0);
+    final double opacity = fadeOut && progress > 0.68
+        ? ((1 - progress) / 0.32).clamp(0.0, 1.0)
+        : 1;
+    if (opacity <= 0) return;
+
     final Offset start = _center(from, size);
     final Offset target = _center(to, size);
-    final Offset end = Offset.lerp(start, target, progress)!;
+    final Offset end = Offset.lerp(start, target, drawProgress)!;
     final double cell = size.shortestSide / 8;
     final Offset delta = end - start;
     final double distance = delta.distance;
@@ -6564,13 +7184,13 @@ class LastMoveTrailPainter extends CustomPainter {
       ..moveTo(visualStart.dx, visualStart.dy)
       ..quadraticBezierTo(control.dx, control.dy, visualEnd.dx, visualEnd.dy);
     final Paint glow = Paint()
-      ..color = accent.withValues(alpha: 0.34 * progress)
+      ..color = accent.withValues(alpha: 0.34 * opacity)
       ..strokeWidth = cell * 0.19
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
     final Paint shadow = Paint()
-      ..color = Colors.black.withValues(alpha: 0.32 * progress)
+      ..color = Colors.black.withValues(alpha: 0.32 * opacity)
       ..strokeWidth = cell * 0.14
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke
@@ -6578,9 +7198,9 @@ class LastMoveTrailPainter extends CustomPainter {
     final Paint line = Paint()
       ..shader = LinearGradient(
         colors: <Color>[
-          Colors.white.withValues(alpha: 0.82),
-          accent.withValues(alpha: 0.9),
-          Colors.white.withValues(alpha: 0.7),
+          Colors.white.withValues(alpha: 0.82 * opacity),
+          accent.withValues(alpha: 0.9 * opacity),
+          Colors.white.withValues(alpha: 0.7 * opacity),
         ],
       ).createShader(Rect.fromPoints(visualStart, visualEnd))
       ..strokeWidth = cell * 0.075
@@ -6592,7 +7212,7 @@ class LastMoveTrailPainter extends CustomPainter {
     canvas.drawPath(trail, line);
     canvas.drawCircle(
       start,
-      cell * 0.11 * progress,
+      cell * 0.11 * drawProgress,
       Paint()
         ..color = Colors.transparent
         ..style = PaintingStyle.stroke
@@ -6603,7 +7223,7 @@ class LastMoveTrailPainter extends CustomPainter {
       target,
       cell * 0.24 * progress,
       Paint()
-        ..color = accent.withValues(alpha: 0.12 * progress)
+        ..color = accent.withValues(alpha: 0.12 * opacity)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
     );
   }
@@ -6614,7 +7234,8 @@ class LastMoveTrailPainter extends CustomPainter {
         oldDelegate.to != to ||
         oldDelegate.flipped != flipped ||
         oldDelegate.progress != progress ||
-        oldDelegate.accent != accent;
+        oldDelegate.accent != accent ||
+        oldDelegate.fadeOut != fadeOut;
   }
 }
 
@@ -6730,6 +7351,7 @@ class BoardSquare extends StatelessWidget {
     required this.lastCapture,
     required this.checkedKing,
     required this.decisiveMove,
+    this.kingFallen = false,
     required this.palette,
     required this.showRank,
     required this.showFile,
@@ -6747,6 +7369,7 @@ class BoardSquare extends StatelessWidget {
   final bool lastCapture;
   final bool checkedKing;
   final bool decisiveMove;
+  final bool kingFallen;
   final BoardPalette palette;
   final bool showRank;
   final bool showFile;
@@ -6982,13 +7605,31 @@ class BoardSquare extends StatelessWidget {
             Center(
               child: piece == null
                   ? const SizedBox.shrink()
-                  : ChessCoin(
-                      key: ValueKey<String>(
-                        '$square-${piece!.white}-${piece!.code}',
+                  : TweenAnimationBuilder<double>(
+                      key: ValueKey<String>('king-fall-$square-$kingFallen'),
+                      tween: Tween<double>(begin: 0, end: kingFallen ? 1 : 0),
+                      duration: const Duration(milliseconds: 900),
+                      curve: Curves.easeInOutBack,
+                      builder:
+                          (BuildContext context, double fall, Widget? child) {
+                        return Transform.translate(
+                          offset: Offset(0, fall * 9),
+                          child: Transform.rotate(
+                            alignment: Alignment.bottomCenter,
+                            angle:
+                                (piece!.white ? 1 : -1) * math.pi * .48 * fall,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: ChessCoin(
+                        key: ValueKey<String>(
+                          '$square-${piece!.white}-${piece!.code}',
+                        ),
+                        piece: piece!,
+                        selected: selected,
+                        accent: palette.accent,
                       ),
-                      piece: piece!,
-                      selected: selected,
-                      accent: palette.accent,
                     ),
             ),
             if (lastCapture)
@@ -7087,146 +7728,208 @@ class ChessCoin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final double size = math.min(
-          constraints.maxWidth,
-          constraints.maxHeight,
-        );
-        final double pieceSize = size * 0.94;
+    return ValueListenableBuilder<ChessPieceAppearance>(
+      valueListenable: ChessPieceAppearanceController.current,
+      builder: (BuildContext context, ChessPieceAppearance appearance, _) {
+        return LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+          final double size = math.min(
+            constraints.maxWidth,
+            constraints.maxHeight,
+          );
+          final bool classic2d =
+              appearance.style == ChessPieceVisualStyle.classic2d;
+          final double pieceSize = size *
+              (appearance.size == ChessPieceVisualSize.extraLarge
+                  ? (classic2d ? 1.44 : 1.58)
+                  : (classic2d ? 1.31 : 1.43));
+          final double silhouetteScale = switch (piece.code) {
+            'K' => 1.00,
+            'Q' => .98,
+            'N' => .96,
+            'B' => .94,
+            'R' => .91,
+            _ => .88,
+          };
 
-        return AnimatedRotation(
-          turns: selected ? -0.012 : 0,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutBack,
-          child: AnimatedScale(
+          return AnimatedRotation(
+            turns: selected ? -0.012 : 0,
             duration: const Duration(milliseconds: 220),
-            scale: selected ? 1.13 : 1,
             curve: Curves.easeOutBack,
-            child: SizedBox(
-              width: pieceSize,
-              height: pieceSize,
-              child: Stack(
-                alignment: Alignment.center,
-                children: <Widget>[
-                  Positioned(
-                    bottom: pieceSize * 0.08,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: <Color>[
-                            (piece.white
-                                    ? const Color(0xFFFFF0C8)
-                                    : const Color(0xFF5D6674))
-                                .withValues(alpha: 0.28),
-                            Colors.transparent,
-                          ],
-                        ),
-                      ),
-                      child: SizedBox(
-                        width: pieceSize * 0.72,
-                        height: pieceSize * 0.34,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: pieceSize * 0.045,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(pieceSize),
-                        boxShadow: <BoxShadow>[
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.62),
-                            blurRadius: pieceSize * 0.09,
-                            spreadRadius: pieceSize * 0.025,
-                          ),
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.28),
-                            blurRadius: pieceSize * 0.16,
-                            offset: Offset(0, pieceSize * 0.08),
-                          ),
-                          if (selected)
-                            BoxShadow(
-                              color: accent.withValues(alpha: 0.68),
-                              blurRadius: pieceSize * 0.2,
-                              spreadRadius: pieceSize * 0.06,
-                            ),
-                        ],
-                      ),
-                      child: SizedBox(
-                        width: pieceSize * 0.54,
-                        height: pieceSize * 0.055,
-                      ),
-                    ),
-                  ),
-                  Transform.translate(
-                    offset: Offset(0, selected ? -pieceSize * 0.035 : 0),
-                    child: Image.asset(
-                      pieceAsset(piece),
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.high,
-                      semanticLabel:
-                          '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}',
-                    ),
-                  ),
-                  IgnorePointer(
-                    child: ShaderMask(
-                      blendMode: BlendMode.srcATop,
-                      shaderCallback: (Rect bounds) {
-                        return LinearGradient(
-                          begin: const Alignment(-0.85, -1),
-                          end: const Alignment(0.7, 0.9),
-                          colors: <Color>[
-                            Colors.white.withValues(alpha: 0.58),
-                            Colors.white.withValues(alpha: 0.06),
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.18),
-                          ],
-                          stops: const <double>[0, 0.24, 0.58, 1],
-                        ).createShader(bounds);
-                      },
-                      child: Opacity(
-                        opacity: piece.white ? 0.34 : 0.24,
-                        child: Image.asset(
-                          pieceAsset(piece),
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.high,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: pieceSize * 0.11,
-                    left: pieceSize * 0.25,
-                    child: IgnorePointer(
+            child: AnimatedScale(
+              duration: const Duration(milliseconds: 220),
+              scale: selected ? 1.13 : 1,
+              curve: Curves.easeOutBack,
+              child: SizedBox(
+                width: pieceSize,
+                height: pieceSize,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: <Widget>[
+                    Positioned(
+                      bottom: pieceSize * 0.08,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(
-                            alpha: piece.white ? 0.2 : 0.12,
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: <Color>[
+                              (piece.white
+                                      ? const Color(0xFFFFF0C8)
+                                      : const Color(0xFF5D6674))
+                                  .withValues(alpha: 0.28),
+                              Colors.transparent,
+                            ],
                           ),
-                          borderRadius: BorderRadius.circular(pieceSize),
-                          boxShadow: <BoxShadow>[
-                            BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.22),
-                              blurRadius: pieceSize * 0.09,
-                            ),
-                          ],
                         ),
                         child: SizedBox(
-                          width: pieceSize * 0.13,
-                          height: pieceSize * 0.035,
+                          width: pieceSize * 0.72,
+                          height: pieceSize * 0.34,
                         ),
                       ),
                     ),
+                    if (!classic2d)
+                      Positioned(
+                        bottom: pieceSize * 0.045,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(pieceSize),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.48),
+                                blurRadius: pieceSize * 0.07,
+                                spreadRadius: pieceSize * 0.012,
+                              ),
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: pieceSize * 0.11,
+                                offset: Offset(0, pieceSize * 0.08),
+                              ),
+                              if (selected)
+                                BoxShadow(
+                                  color: accent.withValues(alpha: 0.68),
+                                  blurRadius: pieceSize * 0.2,
+                                  spreadRadius: pieceSize * 0.06,
+                                ),
+                            ],
+                          ),
+                          child: SizedBox(
+                            width: pieceSize * 0.42,
+                            height: pieceSize * 0.035,
+                          ),
+                        ),
+                      ),
+                    Transform.translate(
+                      offset: Offset(0, selected ? -pieceSize * 0.035 : 0),
+                      child: Transform.scale(
+                        scale: silhouetteScale,
+                        child: _pieceVisual(appearance, pieceSize),
+                      ),
+                    ),
+                    Positioned(
+                      top: pieceSize * 0.11,
+                      left: pieceSize * 0.25,
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(
+                              alpha: piece.white ? 0.2 : 0.12,
+                            ),
+                            borderRadius: BorderRadius.circular(pieceSize),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: Colors.white.withValues(alpha: 0.22),
+                                blurRadius: pieceSize * 0.09,
+                              ),
+                            ],
+                          ),
+                          child: SizedBox(
+                            width: pieceSize * 0.13,
+                            height: pieceSize * 0.035,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  Widget _pieceVisual(ChessPieceAppearance appearance, double pieceSize) {
+    final String label =
+        '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}';
+    if (appearance.style == ChessPieceVisualStyle.classic2d) {
+      final String solidGlyph = switch (piece.code) {
+        'K' => '♚',
+        'Q' => '♛',
+        'R' => '♜',
+        'B' => '♝',
+        'N' => '♞',
+        _ => '♟',
+      };
+      final Color fill =
+          piece.white ? const Color(0xFFFFD98A) : const Color(0xFF10243A);
+      final Color outline =
+          piece.white ? const Color(0xFF15283D) : const Color(0xFFE7C67E);
+      return Semantics(
+        label: label,
+        child: Stack(
+          alignment: Alignment.center,
+          children: <Widget>[
+            Text(
+              solidGlyph,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'serif',
+                fontSize: pieceSize * .82,
+                height: 1,
+                foreground: Paint()
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = math.max(1.8, pieceSize * .035)
+                  ..color = outline,
+              ),
+            ),
+            Text(
+              solidGlyph,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'serif',
+                fontSize: pieceSize * .82,
+                height: 1,
+                color: fill,
+                shadows: <Shadow>[
+                  Shadow(
+                    color: Colors.black.withValues(alpha: .42),
+                    blurRadius: pieceSize * .035,
+                    offset: Offset(0, pieceSize * .018),
                   ),
                 ],
               ),
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      );
+    }
+    final Widget image = Image.asset(
+      pieceAsset(piece),
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
+      semanticLabel: label,
     );
+    if (appearance.style == ChessPieceVisualStyle.highContrast) {
+      return ColorFiltered(
+        colorFilter: ColorFilter.mode(
+          piece.white ? const Color(0xFFFFF0B8) : const Color(0xFF89BFFF),
+          BlendMode.modulate,
+        ),
+        child: image,
+      );
+    }
+    return image;
   }
 }
 
@@ -7722,11 +8425,14 @@ class _StudioCoachPanel extends StatelessWidget {
     required this.aiThinking,
     required this.coachEnabled,
     required this.coachNote,
+    required this.evaluationPawns,
     required this.lastMove,
     required this.lastMoveOwner,
     required this.dailyProgress,
     required this.dailyGoal,
     required this.canUndo,
+    required this.hintLabel,
+    required this.analyzeLabel,
     required this.onHint,
     required this.onAnalyze,
     required this.onTryAgain,
@@ -7741,11 +8447,14 @@ class _StudioCoachPanel extends StatelessWidget {
   final bool aiThinking;
   final bool coachEnabled;
   final String coachNote;
+  final double evaluationPawns;
   final String? lastMove;
   final String? lastMoveOwner;
   final int dailyProgress;
   final int dailyGoal;
   final bool canUndo;
+  final String hintLabel;
+  final String analyzeLabel;
   final VoidCallback onHint;
   final VoidCallback onAnalyze;
   final VoidCallback onTryAgain;
@@ -7759,7 +8468,7 @@ class _StudioCoachPanel extends StatelessWidget {
     final String modeLabel = switch (gameMode) {
       GameMode.daily => 'DAILY CHALLENGE',
       GameMode.puzzle => 'PUZZLE TRAINING',
-      GameMode.computer => 'AI TRAINING',
+      GameMode.computer => 'AI TRAINING • 3-LEVEL HINTS • GAME REVIEW',
       GameMode.local => 'LOCAL MATCH',
       GameMode.online => 'ONLINE BATTLE',
     };
@@ -7781,7 +8490,26 @@ class _StudioCoachPanel extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
+        final bool hasBoundedHeight = constraints.hasBoundedHeight;
         final bool compact = constraints.maxHeight < 560;
+        final Widget coachMessageCard = _CoachInsightCard(
+          icon: Icons.psychology_alt_rounded,
+          accent: const Color(0xFF9C6CFF),
+          alignStart: true,
+          child: SingleChildScrollView(
+            child: Text(
+              coachEnabled
+                  ? coachNote
+                  : 'Turn Coach on in Game controls for live move explanations.',
+              style: const TextStyle(
+                color: Color(0xFFF2EDE4),
+                fontSize: 15,
+                height: 1.25,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        );
         return DecoratedBox(
           decoration: BoxDecoration(
             color: const Color(0xFF061527).withValues(alpha: 0.97),
@@ -7871,28 +8599,15 @@ class _StudioCoachPanel extends StatelessWidget {
                       ),
                     ),
                   ),
+                  SizedBox(height: compact ? 8 : 10),
+                  if (compact)
+                    hasBoundedHeight
+                        ? Expanded(child: coachMessageCard)
+                        : SizedBox(height: 112, child: coachMessageCard)
+                  else
+                    SizedBox(height: 84, child: coachMessageCard),
                   if (!compact) ...<Widget>[
                     const SizedBox(height: 10),
-                    SizedBox(
-                      height: 74,
-                      child: _CoachInsightCard(
-                        icon: Icons.help_outline_rounded,
-                        accent: const Color(0xFF9C6CFF),
-                        child: Text(
-                          coachEnabled
-                              ? coachNote
-                              : 'Enable Coach for a position-specific explanation.',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 17,
-                            height: 1.2,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: compact ? 7 : 10),
                     _CoachInsightCard(
                       icon: Icons.workspace_premium_rounded,
                       accent: const Color(0xFF63D2B8),
@@ -7912,26 +8627,48 @@ class _StudioCoachPanel extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Expanded(
-                      child: _CoachInsightCard(
-                        icon: Icons.chat_bubble_rounded,
-                        accent: const Color(0xFF63D2B8),
-                        alignStart: true,
-                        child: SingleChildScrollView(
-                          child: Text(
-                            coachEnabled
-                                ? coachNote
-                                : 'Turn Coach on from Game controls to receive move-by-move explanations.',
-                            style: TextStyle(
-                              color: const Color(0xFFF2EDE4),
-                              fontFamily: 'serif',
-                              fontSize: compact ? 14 : 16,
-                              height: 1.35,
+                    hasBoundedHeight
+                        ? Expanded(
+                            child: _CoachInsightCard(
+                              icon: Icons.chat_bubble_rounded,
+                              accent: const Color(0xFF63D2B8),
+                              alignStart: true,
+                              child: SingleChildScrollView(
+                                child: Text(
+                                  coachEnabled
+                                      ? coachNote
+                                      : 'Turn Coach on from Game controls to receive move-by-move explanations.',
+                                  style: TextStyle(
+                                    color: const Color(0xFFF2EDE4),
+                                    fontFamily: 'serif',
+                                    fontSize: compact ? 14 : 16,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        : SizedBox(
+                            height: 160,
+                            child: _CoachInsightCard(
+                              icon: Icons.chat_bubble_rounded,
+                              accent: const Color(0xFF63D2B8),
+                              alignStart: true,
+                              child: SingleChildScrollView(
+                                child: Text(
+                                  coachEnabled
+                                      ? coachNote
+                                      : 'Turn Coach on from Game controls to receive move-by-move explanations.',
+                                  style: TextStyle(
+                                    color: const Color(0xFFF2EDE4),
+                                    fontFamily: 'serif',
+                                    fontSize: compact ? 14 : 16,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    ),
                   ],
                   if (!compact) ...<Widget>[
                     const SizedBox(height: 10),
@@ -7940,7 +8677,10 @@ class _StudioCoachPanel extends StatelessWidget {
                       goal: goalSteps,
                     ),
                     const SizedBox(height: 10),
-                    _CoachEvaluation(activeColor: activeColor),
+                    _CoachEvaluation(
+                      activeColor: activeColor,
+                      evaluationPawns: evaluationPawns,
+                    ),
                   ],
                   SizedBox(height: compact ? 8 : 12),
                   Row(
@@ -7949,7 +8689,10 @@ class _StudioCoachPanel extends StatelessWidget {
                         child: OutlinedButton.icon(
                           onPressed: onHint,
                           icon: const Icon(Icons.tips_and_updates_outlined),
-                          label: const Text('Hint'),
+                          label: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(hintLabel, maxLines: 1),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -7957,7 +8700,10 @@ class _StudioCoachPanel extends StatelessWidget {
                         child: OutlinedButton.icon(
                           onPressed: onAnalyze,
                           icon: const Icon(Icons.visibility_outlined),
-                          label: const Text('Threat'),
+                          label: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(analyzeLabel, maxLines: 1),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -7969,8 +8715,14 @@ class _StudioCoachPanel extends StatelessWidget {
                                 ? Icons.sync_rounded
                                 : Icons.refresh_rounded,
                           ),
-                          label: Text(
-                            gameMode == GameMode.online ? 'Sync' : 'Try again',
+                          label: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              gameMode == GameMode.online
+                                  ? 'Sync'
+                                  : 'Try again',
+                              maxLines: 1,
+                            ),
                           ),
                         ),
                       ),
@@ -8072,9 +8824,13 @@ class _CoachProgress extends StatelessWidget {
 }
 
 class _CoachEvaluation extends StatelessWidget {
-  const _CoachEvaluation({required this.activeColor});
+  const _CoachEvaluation({
+    required this.activeColor,
+    required this.evaluationPawns,
+  });
 
   final String activeColor;
+  final double evaluationPawns;
 
   @override
   Widget build(BuildContext context) {
@@ -8087,8 +8843,10 @@ class _CoachEvaluation extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          const Text(
-            'Evaluation',
+          Text(
+            evaluationPawns == 0
+                ? 'Evaluation 0.0'
+                : 'Evaluation ${evaluationPawns > 0 ? '+' : ''}${evaluationPawns.toStringAsFixed(1)}',
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(width: 12),
@@ -8199,6 +8957,7 @@ class _OnlineArenaBoard extends StatelessWidget {
     required this.matchActive,
     required this.socketConnected,
     required this.connectedPlayers,
+    this.compactOverlay = false,
   });
 
   final Widget board;
@@ -8213,6 +8972,7 @@ class _OnlineArenaBoard extends StatelessWidget {
   final bool matchActive;
   final bool socketConnected;
   final int connectedPlayers;
+  final bool compactOverlay;
 
   @override
   Widget build(BuildContext context) {
@@ -8222,6 +8982,7 @@ class _OnlineArenaBoard extends StatelessWidget {
       clock: whiteClock,
       active: matchActive && activeColor == 'white',
       pieceColor: Colors.white,
+      compact: compactOverlay,
     );
     final Widget black = _OnlinePlayerRail(
       name: blackName,
@@ -8229,7 +8990,41 @@ class _OnlineArenaBoard extends StatelessWidget {
       clock: blackClock,
       active: matchActive && activeColor == 'black',
       pieceColor: const Color(0xFF171717),
+      compact: compactOverlay,
     );
+    if (compactOverlay) {
+      return Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          board,
+          Positioned(
+            left: 6,
+            right: 6,
+            top: 6,
+            height: 38,
+            child: flipped ? white : black,
+          ),
+          Positioned(
+            left: 6,
+            right: 6,
+            bottom: 6,
+            height: 38,
+            child: flipped ? black : white,
+          ),
+          Positioned(
+            top: 48,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: _OnlineConnectionBanner(
+                reconnecting: !socketConnected,
+                opponentAway: socketConnected && connectedPlayers < 2,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
     return Column(
       children: <Widget>[
         SizedBox(
@@ -8259,6 +9054,7 @@ class _OnlinePlayerRail extends StatelessWidget {
     required this.clock,
     required this.active,
     required this.pieceColor,
+    this.compact = false,
   });
 
   final String name;
@@ -8266,6 +9062,7 @@ class _OnlinePlayerRail extends StatelessWidget {
   final String clock;
   final bool active;
   final Color pieceColor;
+  final bool compact;
 
   String get initials {
     final List<String> words = name
@@ -8284,7 +9081,10 @@ class _OnlinePlayerRail extends StatelessWidget {
         : null;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 6 : 8,
+        vertical: compact ? 3 : 5,
+      ),
       decoration: BoxDecoration(
         color: active ? const Color(0xFF173A35) : const Color(0xFF111C1F),
         borderRadius: BorderRadius.circular(12),
@@ -8305,7 +9105,7 @@ class _OnlinePlayerRail extends StatelessWidget {
         children: <Widget>[
           ClipOval(
             child: SizedBox.square(
-              dimension: 34,
+              dimension: compact ? 26 : 34,
               child: usablePhoto == null
                   ? _AvatarInitials(initials: initials)
                   : Image.network(
@@ -8316,7 +9116,7 @@ class _OnlinePlayerRail extends StatelessWidget {
                     ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: compact ? 5 : 8),
           Container(
             width: 14,
             height: 14,
@@ -8326,21 +9126,25 @@ class _OnlinePlayerRail extends StatelessWidget {
               border: Border.all(color: const Color(0xFFB9914E)),
             ),
           ),
-          const SizedBox(width: 7),
+          SizedBox(width: compact ? 5 : 7),
           Expanded(
             child: Text(
               name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFFF4ECDD),
+              style: TextStyle(
+                color: const Color(0xFFF4ECDD),
+                fontSize: compact ? 12 : null,
                 fontWeight: FontWeight.w800,
               ),
             ),
           ),
           AnimatedContainer(
             duration: const Duration(milliseconds: 220),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 8 : 12,
+              vertical: compact ? 3 : 5,
+            ),
             decoration: BoxDecoration(
               color: active ? const Color(0xFF63D2B8) : const Color(0xFF24272A),
               borderRadius: BorderRadius.circular(8),
@@ -8349,7 +9153,7 @@ class _OnlinePlayerRail extends StatelessWidget {
               clock,
               style: TextStyle(
                 color: active ? const Color(0xFF071A17) : Colors.white,
-                fontSize: 18,
+                fontSize: compact ? 14 : 18,
                 fontWeight: FontWeight.w900,
                 fontFeatures: const <ui.FontFeature>[
                   ui.FontFeature.tabularFigures(),
@@ -9687,9 +10491,11 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                       ],
                     ),
                     child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: wideLayout ? 230 : 18,
-                        vertical: wideLayout ? 30 : 20,
+                      padding: EdgeInsets.fromLTRB(
+                        wideLayout ? 230 : 150,
+                        wideLayout ? 30 : 20,
+                        wideLayout ? 230 : 14,
+                        wideLayout ? 30 : 18,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -9704,6 +10510,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                               Expanded(
                                 child: Text(
                                   'Random Match',
+                                  maxLines: 1,
                                   style: (wideLayout
                                           ? Theme.of(context)
                                               .textTheme
@@ -9711,7 +10518,10 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                           : Theme.of(context)
                                               .textTheme
                                               .titleLarge)
-                                      ?.copyWith(fontWeight: FontWeight.w900),
+                                      ?.copyWith(
+                                    fontSize: wideLayout ? null : 20,
+                                    fontWeight: FontWeight.w900,
+                                  ),
                                 ),
                               ),
                               if (_loading)
@@ -9728,16 +10538,35 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                             'We’ll find a player for you from around the world.',
                           ),
                           SizedBox(height: wideLayout ? 18 : 12),
-                          FilledButton.icon(
-                            onPressed: _loading
-                                ? null
-                                : () => _run(
-                                      () =>
-                                          widget.api.randomMatch(widget.token),
-                                      randomSearch: true,
-                                    ),
-                            icon: const Icon(Icons.bolt_rounded),
-                            label: const Text('Find Match'),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: SizedBox(
+                              width: wideLayout ? 280 : 176,
+                              height: wideLayout ? 52 : 44,
+                              child: FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                  ),
+                                  textStyle: TextStyle(
+                                    fontSize: wideLayout ? 17 : 14,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                onPressed: _loading
+                                    ? null
+                                    : () => _run(
+                                          () => widget.api
+                                              .randomMatch(widget.token),
+                                          randomSearch: true,
+                                        ),
+                                icon: Icon(
+                                  Icons.bolt_rounded,
+                                  size: wideLayout ? 22 : 20,
+                                ),
+                                label: const Text('Find Match'),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -10078,23 +10907,30 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                 ),
                                 const Spacer(),
                                 SizedBox(
-                                  width: compactDesktop ? 320 : 455,
-                                  height: 68,
+                                  width: compactDesktop ? 250 : 290,
+                                  height: 54,
                                   child: FilledButton.icon(
                                     style: FilledButton.styleFrom(
-                                        backgroundColor: gold,
-                                        foregroundColor: Colors.black,
-                                        textStyle: const TextStyle(
-                                            fontSize: 22,
-                                            fontWeight: FontWeight.w800)),
+                                      backgroundColor: gold,
+                                      foregroundColor: Colors.black,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                      ),
+                                      textStyle: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
                                     onPressed: _loading
                                         ? null
                                         : () => _run(
                                             () => widget.api
                                                 .randomMatch(widget.token),
                                             randomSearch: true),
-                                    icon: const Icon(Icons.bolt_rounded,
-                                        size: 30),
+                                    icon: const Icon(
+                                      Icons.bolt_rounded,
+                                      size: 24,
+                                    ),
                                     label: const Text('Find Match'),
                                   ),
                                 ),
@@ -11286,6 +12122,51 @@ class AuthOverlay extends StatelessWidget {
   }
 }
 
+class _TurnBanner extends StatelessWidget {
+  const _TurnBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Align(
+        alignment: const Alignment(0, -0.72),
+        child: Semantics(
+          liveRegion: true,
+          label: 'Your turn',
+          child: TweenAnimationBuilder<double>(
+            key: const ValueKey<String>('prominent-turn-banner'),
+            tween: Tween<double>(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 520),
+            curve: Curves.easeOutCubic,
+            builder: (BuildContext context, double value, Widget? child) {
+              return Opacity(
+                opacity: value.clamp(0.0, 1.0),
+                child: Transform.translate(
+                  offset: Offset(0, 18 * (1 - value)),
+                  child: child,
+                ),
+              );
+            },
+            child: const Text(
+              'YOUR TURN',
+              style: TextStyle(
+                color: Color(0xFF4DA8FF),
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2.2,
+                shadows: <Shadow>[
+                  Shadow(color: Colors.black, blurRadius: 12),
+                  Shadow(color: Color(0xFF0756A6), blurRadius: 24),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class OnlineReconnectCountdown extends StatelessWidget {
   const OnlineReconnectCountdown({required this.secondsRemaining, super.key});
 
@@ -11358,11 +12239,13 @@ class OnlineVictoryCelebration extends StatefulWidget {
   const OnlineVictoryCelebration({
     required this.winnerAtTop,
     required this.title,
+    this.showTitle = true,
     super.key,
   });
 
   final bool winnerAtTop;
   final String title;
+  final bool showTitle;
 
   @override
   State<OnlineVictoryCelebration> createState() =>
@@ -11386,6 +12269,50 @@ class _OnlineVictoryCelebrationState extends State<OnlineVictoryCelebration>
   Widget build(BuildContext context) => IgnorePointer(
         child: AnimatedBuilder(
           animation: _controller,
+          child: widget.showTitle
+              ? TweenAnimationBuilder<double>(
+                  key: ValueKey<String>('victory-title-${widget.title}'),
+                  tween: Tween<double>(begin: .35, end: 1),
+                  duration: const Duration(milliseconds: 950),
+                  curve: Curves.elasticOut,
+                  builder:
+                      (BuildContext context, double scale, Widget? child) =>
+                          Transform.scale(scale: scale, child: child),
+                  child: Align(
+                    alignment: const Alignment(0, -0.48),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: <Color>[Color(0xFFE5A92F), Color(0xFFFFE18A)],
+                        ),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: const <BoxShadow>[
+                          BoxShadow(color: Color(0xAAE5A92F), blurRadius: 30),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 28, vertical: 12),
+                        child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              const Icon(Icons.emoji_events_rounded,
+                                  color: Color(0xFF07131E)),
+                              const SizedBox(width: 9),
+                              Text(widget.title.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Color(0xFF07131E),
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.1,
+                                  )),
+                            ]),
+                      ),
+                    ),
+                  ),
+                )
+              : null,
           builder: (BuildContext context, Widget? child) => Stack(
             children: <Widget>[
               Positioned.fill(
@@ -11396,44 +12323,7 @@ class _OnlineVictoryCelebrationState extends State<OnlineVictoryCelebration>
                   ),
                 ),
               ),
-              Align(
-                alignment: widget.winnerAtTop
-                    ? const Alignment(0, -0.72)
-                    : const Alignment(0, 0.72),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: <Color>[Color(0xFFE5A92F), Color(0xFFFFE18A)],
-                    ),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: Colors.white, width: 1.5),
-                    boxShadow: const <BoxShadow>[
-                      BoxShadow(color: Color(0xAAE5A92F), blurRadius: 30),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 28, vertical: 12),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        const Icon(Icons.emoji_events_rounded,
-                            color: Color(0xFF07131E)),
-                        const SizedBox(width: 9),
-                        Text(
-                          widget.title.toUpperCase(),
-                          style: const TextStyle(
-                            color: Color(0xFF07131E),
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.1,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              if (child != null) child,
             ],
           ),
         ),
@@ -11493,6 +12383,8 @@ class GameResultOverlay extends StatelessWidget {
     required this.title,
     required this.detail,
     required this.scoreLabel,
+    required this.accuracy,
+    required this.turningPoint,
     required this.onNewGame,
     this.newGameLabel,
     this.onRematch,
@@ -11504,6 +12396,8 @@ class GameResultOverlay extends StatelessWidget {
   final String title;
   final String detail;
   final String scoreLabel;
+  final int? accuracy;
+  final String? turningPoint;
   final VoidCallback onNewGame;
   final String? newGameLabel;
   final VoidCallback? onRematch;
@@ -11516,7 +12410,7 @@ class GameResultOverlay extends StatelessWidget {
     final bool missed = title.toLowerCase().contains('challenge missed');
     final bool dailyComplete =
         title.toLowerCase().contains('challenge complete');
-    return ColoredBox(
+    final Widget resultCard = ColoredBox(
       color: Colors.black.withValues(alpha: 0.72),
       child: SafeArea(
         child: LayoutBuilder(
@@ -11582,6 +12476,25 @@ class GameResultOverlay extends StatelessWidget {
                         ),
                         SizedBox(height: shortLandscape ? 3 : 8),
                         Text(detail, textAlign: TextAlign.center),
+                        if (accuracy != null) ...<Widget>[
+                          SizedBox(height: shortLandscape ? 5 : 10),
+                          Text(
+                            'AI accuracy: $accuracy%',
+                            style: const TextStyle(
+                              color: Color(0xFF57E0C3),
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          if (turningPoint != null)
+                            Text(
+                              'Turning point: $turningPoint',
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Color(0xFFFFC857)),
+                            ),
+                        ],
                         SizedBox(height: shortLandscape ? 3 : 8),
                         Text(
                           missed
@@ -11597,7 +12510,7 @@ class GameResultOverlay extends StatelessWidget {
                               child: OutlinedButton.icon(
                                 onPressed: onReview,
                                 icon: const Icon(Icons.analytics_outlined),
-                                label: const Text('Review board'),
+                                label: const Text('AI Review My Game'),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -11647,6 +12560,19 @@ class GameResultOverlay extends StatelessWidget {
           },
         ),
       ),
+    );
+    if (draw || missed) return resultCard;
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        resultCard,
+        Positioned.fill(
+          child: OnlineVictoryCelebration(
+            winnerAtTop: true,
+            title: title,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -11805,12 +12731,47 @@ class MiniCapturedPiece extends StatelessWidget {
         height: 34,
         child: Padding(
           padding: const EdgeInsets.all(2),
-          child: Image.asset(
-            pieceAsset(piece),
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.medium,
-            semanticLabel:
-                'Captured ${piece.white ? 'white' : 'black'} ${pieceName(piece.code)}',
+          child: ValueListenableBuilder<ChessPieceAppearance>(
+            valueListenable: ChessPieceAppearanceController.current,
+            builder:
+                (BuildContext context, ChessPieceAppearance appearance, _) {
+              if (appearance.style == ChessPieceVisualStyle.classic2d) {
+                return Text(
+                  pieceGlyph(piece),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'serif',
+                    fontSize: 28,
+                    height: 1,
+                    color: piece.white
+                        ? const Color(0xFFFFF4D0)
+                        : const Color(0xFF111722),
+                    shadows: const <Shadow>[
+                      Shadow(color: Colors.black87, blurRadius: 2),
+                    ],
+                  ),
+                );
+              }
+              Widget image = Image.asset(
+                pieceAsset(piece),
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.medium,
+                semanticLabel:
+                    'Captured ${piece.white ? 'white' : 'black'} ${pieceName(piece.code)}',
+              );
+              if (appearance.style == ChessPieceVisualStyle.highContrast) {
+                image = ColorFiltered(
+                  colorFilter: ColorFilter.mode(
+                    piece.white
+                        ? const Color(0xFFFFF0B8)
+                        : const Color(0xFF89BFFF),
+                    BlendMode.modulate,
+                  ),
+                  child: image,
+                );
+              }
+              return image;
+            },
           ),
         ),
       ),

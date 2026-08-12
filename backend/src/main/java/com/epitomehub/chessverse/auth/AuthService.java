@@ -13,6 +13,7 @@ import java.util.Locale;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +30,9 @@ class AuthService {
     private final OAuthIdentityRepository oauthIdentities;
     private final GuestInstallationRepository guestInstallations;
     private final GoogleIdentityVerifier googleIdentityVerifier;
+    private final FacebookIdentityVerifier facebookIdentityVerifier;
     private final OtpDelivery otpDelivery;
+    private final JdbcTemplate jdbcTemplate;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
     private final SecureRandom random = new SecureRandom();
     private final Duration otpExpiry;
@@ -46,7 +49,9 @@ class AuthService {
             OAuthIdentityRepository oauthIdentities,
             GuestInstallationRepository guestInstallations,
             GoogleIdentityVerifier googleIdentityVerifier,
+            FacebookIdentityVerifier facebookIdentityVerifier,
             OtpDelivery otpDelivery,
+            JdbcTemplate jdbcTemplate,
             @Value("${chessverse.auth.otp-expiry-minutes:10}") long otpExpiryMinutes,
             @Value("${chessverse.auth.session-expiry-days:30}") long sessionExpiryDays,
             @Value("${chessverse.auth.login-lockout-minutes:15}") long loginLockoutMinutes,
@@ -59,7 +64,9 @@ class AuthService {
         this.oauthIdentities = oauthIdentities;
         this.guestInstallations = guestInstallations;
         this.googleIdentityVerifier = googleIdentityVerifier;
+        this.facebookIdentityVerifier = facebookIdentityVerifier;
         this.otpDelivery = otpDelivery;
+        this.jdbcTemplate = jdbcTemplate;
         this.otpExpiry = Duration.ofMinutes(otpExpiryMinutes);
         this.sessionExpiry = Duration.ofDays(sessionExpiryDays);
         this.loginLockout = Duration.ofMinutes(loginLockoutMinutes);
@@ -333,6 +340,116 @@ class AuthService {
     }
 
     @Transactional
+    AuthResponse facebookLogin(FacebookLoginRequest request) {
+        FacebookIdentityVerifier.VerifiedFacebookIdentity facebook =
+                facebookIdentityVerifier.verify(request.accessToken());
+        return oauthLogin(
+                "facebook",
+                facebook.subject(),
+                facebook.email(),
+                facebook.displayName(),
+                facebook.photoUrl());
+    }
+
+    @Transactional
+    AuthResponse upgradeGuestWithFacebook(String token, FacebookLoginRequest request) {
+        FacebookIdentityVerifier.VerifiedFacebookIdentity facebook =
+                facebookIdentityVerifier.verify(request.accessToken());
+        return upgradeGuestWithOAuth(
+                token,
+                "facebook",
+                facebook.subject(),
+                facebook.email(),
+                facebook.displayName(),
+                facebook.photoUrl());
+    }
+
+    private AuthResponse oauthLogin(
+            String provider,
+            String subject,
+            String rawEmail,
+            String rawDisplayName,
+            String photoUrl) {
+        OAuthIdentity existingIdentity =
+                oauthIdentities.findByProviderAndSubject(provider, subject).orElse(null);
+        if (existingIdentity != null) {
+            existingIdentity.player.photoUrl = photoUrl;
+            existingIdentity.player.updatedAt = Instant.now();
+            players.save(existingIdentity.player);
+            return createSession(existingIdentity.player);
+        }
+
+        String email = normalizeEmail(rawEmail);
+        PlayerAccount player = players.findByEmailIgnoreCase(email).orElse(null);
+        if (player == null) {
+            String displayName = oauthDisplayName(rawDisplayName, email);
+            player = new PlayerAccount(
+                    availableGoogleUsername(email),
+                    displayName,
+                    email,
+                    passwordEncoder.encode(UUID.randomUUID().toString()));
+        }
+        player.verified = true;
+        player.failedLoginAttempts = 0;
+        player.lockedUntil = null;
+        player.photoUrl = photoUrl;
+        player.updatedAt = Instant.now();
+        players.save(player);
+        oauthIdentities.save(new OAuthIdentity(provider, subject, player));
+        return createSession(player);
+    }
+
+    private AuthResponse upgradeGuestWithOAuth(
+            String token,
+            String provider,
+            String subject,
+            String rawEmail,
+            String rawDisplayName,
+            String photoUrl) {
+        AuthSession session = requireSession(token);
+        PlayerAccount guest = session.player;
+        if (!guest.guestAccount) {
+            throw new AuthException(HttpStatus.CONFLICT, "This ChessVerseAI account is already secured.");
+        }
+        OAuthIdentity identity =
+                oauthIdentities.findByProviderAndSubject(provider, subject).orElse(null);
+        if (identity != null && !java.util.Objects.equals(identity.player.id, guest.id)) {
+            identity.player.photoUrl = photoUrl;
+            identity.player.updatedAt = Instant.now();
+            players.save(identity.player);
+            return createSession(identity.player);
+        }
+
+        String email = normalizeEmail(rawEmail);
+        PlayerAccount emailOwner = players.findByEmailIgnoreCase(email).orElse(null);
+        if (emailOwner != null && !emailOwner.id.equals(guest.id)) {
+            throw new AuthException(
+                    HttpStatus.CONFLICT,
+                    "That email already has a ChessVerseAI account. Sign in to that account; your guest progress remains safe on this device.");
+        }
+        guest.username = availableGoogleUsername(email);
+        guest.displayName = oauthDisplayName(rawDisplayName, email);
+        guest.email = email;
+        guest.photoUrl = photoUrl;
+        guest.guestAccount = false;
+        guest.verified = true;
+        guest.failedLoginAttempts = 0;
+        guest.lockedUntil = null;
+        guest.updatedAt = Instant.now();
+        players.save(guest);
+        if (identity == null) oauthIdentities.save(new OAuthIdentity(provider, subject, guest));
+        sessions.deleteByPlayerId(guest.id);
+        return createSession(guest);
+    }
+
+    private String oauthDisplayName(String rawDisplayName, String email) {
+        String displayName = rawDisplayName == null || rawDisplayName.isBlank()
+                ? email.substring(0, email.indexOf('@'))
+                : rawDisplayName.trim();
+        return displayName.substring(0, Math.min(displayName.length(), 80));
+    }
+
+    @Transactional
     AuthResponse guestLogin(GuestLoginRequest request) {
         String installationHash = sha256(
                 UUID.fromString(request.installationId()).toString().toLowerCase(Locale.ROOT));
@@ -368,6 +485,29 @@ class AuthService {
     @Transactional
     void logout(String token) {
         sessions.deleteByTokenHash(sha256(token));
+    }
+
+    @Transactional
+    void deleteAccount(String token) {
+        PlayerAccount player = requireSession(token).player;
+        // Remove managed sessions first. Otherwise Hibernate can flush the
+        // authenticated session after its player has already been deleted.
+        sessions.deleteByPlayerId(player.id);
+        sessions.flush();
+        jdbcTemplate.update(
+                "delete from online_match where white_player_id = ? or black_player_id = ?",
+                player.id,
+                player.id);
+        jdbcTemplate.update("delete from player_completed_puzzle where player_id = ?", player.id);
+        jdbcTemplate.update("delete from player_completed_daily_challenge where player_id = ?", player.id);
+        jdbcTemplate.update("delete from player_cloud_progress where player_id = ?", player.id);
+        jdbcTemplate.update("delete from online_player_rating where player_id = ?", player.id);
+        jdbcTemplate.update("delete from guest_installation where player_id = ?", player.id);
+        jdbcTemplate.update("delete from oauth_identity where player_id = ?", player.id);
+        jdbcTemplate.update("delete from password_reset where player_id = ?", player.id);
+        jdbcTemplate.update("delete from email_verification where player_id = ?", player.id);
+        players.delete(player);
+        players.flush();
     }
 
     private AuthResponse createSession(PlayerAccount player) {

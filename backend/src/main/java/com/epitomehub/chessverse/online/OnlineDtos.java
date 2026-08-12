@@ -27,6 +27,9 @@ final class OnlineDtos {
     record DrawResponseRequest(boolean accept) {
     }
 
+    record PresenceDto(long onlinePlayers) {
+    }
+
     record MatchDto(
             UUID id,
             String roomCode,

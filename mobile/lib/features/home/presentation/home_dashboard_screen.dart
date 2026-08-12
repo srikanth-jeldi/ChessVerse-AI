@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
+import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
 
@@ -49,8 +49,8 @@ class HomeDashboardScreen extends StatelessWidget {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
-            final bool tablet = MediaQuery.sizeOf(context).shortestSide >= 600;
-            if ((kIsWeb || tablet) && constraints.maxWidth >= 700) {
+            if (AppBreakpoints.isTabletOrLarger(context) &&
+                constraints.maxWidth >= 700) {
               return _WideHome(
                 playerName: playerName,
                 profilePhotoUrl: profilePhotoUrl,
@@ -395,7 +395,7 @@ class _WideHomeState extends State<_WideHome> {
                           selectedIndex: _heroIndex,
                           onPageChanged: (int value) =>
                               setState(() => _heroIndex = value),
-                          height: compact ? 270 : 305,
+                          height: compact ? 272 : 305,
                           wide: true,
                           slides: <_HomeHeroData>[
                             _HomeHeroData(
@@ -1156,6 +1156,21 @@ class _CarouselHero extends StatelessWidget {
                 icon: const Icon(Icons.chevron_right_rounded),
               ),
             ),
+            // Paint the frame last. Background artwork previously covered the
+            // right and bottom edges on some carousel slides.
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: const Color(0xFF2A91F2),
+                      width: 1.6,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ]),
         ),
       );
@@ -1420,7 +1435,7 @@ class _MiniCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         child: Ink(
           height: 164,
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
               color: const Color(0xDD0C2030),
               image: DecorationImage(
@@ -1433,15 +1448,23 @@ class _MiniCard extends StatelessWidget {
           child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Icon(icon, color: color, size: 34),
-                const SizedBox(height: 10),
-                Text(label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                Icon(icon, color: color, size: 28),
+                const SizedBox(height: 6),
+                SizedBox(
+                  width: double.infinity,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 15,
-                        fontWeight: FontWeight.w800)),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
                 if (subtitle != null) ...<Widget>[
                   const SizedBox(height: 6),
                   Text(
@@ -1459,115 +1482,6 @@ class _MiniCard extends StatelessWidget {
               ]),
         ),
       ),
-    );
-  }
-}
-
-class _SideRail extends StatelessWidget {
-  const _SideRail(
-      {required this.onPlay,
-      required this.onPuzzles,
-      required this.onLearn,
-      required this.onAnalysis,
-      required this.onRankings,
-      required this.onSettings});
-  final VoidCallback onPlay;
-  final VoidCallback onPuzzles;
-  final VoidCallback onLearn;
-  final VoidCallback onAnalysis;
-  final VoidCallback onRankings;
-  final VoidCallback onSettings;
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 224,
-      decoration: const BoxDecoration(
-          color: Color(0xE6071726),
-          border: Border(right: BorderSide(color: Color(0xFF203A4D)))),
-      padding: const EdgeInsets.fromLTRB(18, 24, 18, 20),
-      child: LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints constraints) {
-          final bool compact = constraints.maxHeight < 600;
-          final List<Widget> items = <Widget>[
-            Image.asset('assets/branding/app_icon.png',
-                width: compact ? 52 : 78, height: compact ? 52 : 78),
-            SizedBox(height: compact ? 6 : 10),
-            _BrandWordmark(fontSize: compact ? 15 : 18),
-            SizedBox(height: compact ? 14 : 28),
-            const _RailItem(
-                icon: Icons.home_rounded, label: 'Home', selected: true),
-            _RailItem(
-                icon: Icons.sports_esports_rounded,
-                label: 'Play',
-                onTap: onPlay),
-            _RailItem(
-                icon: Icons.extension_rounded,
-                label: 'Puzzles',
-                onTap: onPuzzles),
-            _RailItem(
-                icon: Icons.school_rounded, label: 'Learn', onTap: onLearn),
-            _RailItem(
-                icon: Icons.trending_up_rounded,
-                label: 'Analysis',
-                onTap: onAnalysis),
-            _RailItem(
-                icon: Icons.leaderboard_rounded,
-                label: 'Rankings',
-                onTap: onRankings),
-            if (!compact) const Spacer(),
-            _RailItem(
-                icon: Icons.settings_rounded,
-                label: 'Settings',
-                onTap: onSettings),
-          ];
-          return compact
-              ? SingleChildScrollView(child: Column(children: items))
-              : Column(children: items);
-        },
-      ),
-    );
-  }
-}
-
-class _RailItem extends StatelessWidget {
-  const _RailItem(
-      {required this.icon,
-      required this.label,
-      this.onTap,
-      this.selected = false});
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-  final bool selected;
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-          color: selected ? const Color(0xFF103D70) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
-                  child: Row(children: <Widget>[
-                    Icon(icon,
-                        color: selected
-                            ? const Color(0xFF4DA9FF)
-                            : const Color(0xFF9DB1C2),
-                        size: 22),
-                    const SizedBox(width: 15),
-                    Text(label,
-                        style: TextStyle(
-                            color: selected
-                                ? const Color(0xFFB9DEFF)
-                                : const Color(0xFFB7C6D2),
-                            fontSize: 14,
-                            fontWeight:
-                                selected ? FontWeight.w800 : FontWeight.w500))
-                  ])))),
     );
   }
 }

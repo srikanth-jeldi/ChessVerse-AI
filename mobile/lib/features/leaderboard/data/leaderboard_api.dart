@@ -86,6 +86,23 @@ class LeaderboardEntryDto {
         losses: (json['losses'] as num?)?.toInt() ?? 0,
         you: json['you'] as bool? ?? false,
       );
+
+  factory LeaderboardEntryDto.current(
+    PlayerRatingDto player, {
+    required String scope,
+  }) =>
+      LeaderboardEntryDto(
+        rank: scope == 'country' ? player.countryRank : player.globalRank,
+        playerId: player.playerId,
+        displayName: player.displayName,
+        country: player.country,
+        rating: player.rating,
+        gamesPlayed: player.gamesPlayed,
+        wins: player.wins,
+        draws: player.draws,
+        losses: player.losses,
+        you: true,
+      );
 }
 
 class LeaderboardDto {
@@ -133,11 +150,13 @@ class LeaderboardApi {
     String token, {
     required String scope,
     String? country,
+    int page = 0,
+    int size = 50,
   }) async {
     final Map<String, String> query = <String, String>{
       'scope': scope,
-      'page': '0',
-      'size': '50',
+      'page': '$page',
+      'size': '$size',
     };
     if (country != null && country.isNotEmpty) query['country'] = country;
     final Uri uri = Uri.parse('${AppConfig.apiBaseUrl}/api/v1/leaderboard')
