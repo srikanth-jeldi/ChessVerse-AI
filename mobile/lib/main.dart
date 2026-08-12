@@ -10491,9 +10491,11 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                       ],
                     ),
                     child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: wideLayout ? 230 : 18,
-                        vertical: wideLayout ? 30 : 20,
+                      padding: EdgeInsets.fromLTRB(
+                        wideLayout ? 230 : 150,
+                        wideLayout ? 30 : 20,
+                        wideLayout ? 230 : 14,
+                        wideLayout ? 30 : 18,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -10508,6 +10510,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                               Expanded(
                                 child: Text(
                                   'Random Match',
+                                  maxLines: 1,
                                   style: (wideLayout
                                           ? Theme.of(context)
                                               .textTheme
@@ -10515,7 +10518,10 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                           : Theme.of(context)
                                               .textTheme
                                               .titleLarge)
-                                      ?.copyWith(fontWeight: FontWeight.w900),
+                                      ?.copyWith(
+                                    fontSize: wideLayout ? null : 20,
+                                    fontWeight: FontWeight.w900,
+                                  ),
                                 ),
                               ),
                               if (_loading)
@@ -10535,15 +10541,15 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: SizedBox(
-                              width: wideLayout ? 280 : 210,
-                              height: wideLayout ? 52 : 46,
+                              width: wideLayout ? 280 : 176,
+                              height: wideLayout ? 52 : 44,
                               child: FilledButton.icon(
                                 style: FilledButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 18,
                                   ),
                                   textStyle: TextStyle(
-                                    fontSize: wideLayout ? 17 : 15,
+                                    fontSize: wideLayout ? 17 : 14,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
