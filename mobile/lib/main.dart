@@ -2783,7 +2783,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   bool _showMoveHints = true;
   bool _turnBannerVisible = true;
   bool _boardTouchedThisTurn = false;
-  bool _landscapeCoachCollapsed = false;
+  bool _landscapeCoachCollapsed = true;
   DailyChallengeDifficulty _dailyDifficulty = DailyChallengeDifficulty.medium;
   late DailyChallenge _dailyChallenge;
   bool _dailyCompletedToday = false;
@@ -3113,7 +3113,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               final double portraitPanelMinimum = landscape ? 64 : 145;
               final bool showOnlineArena =
                   _gameMode == GameMode.online && _onlineMatch != null;
-              final double arenaRailsHeight = showOnlineArena ? 136 : 0;
+              // Phone landscape uses compact rails over the board. Reserving
+              // the portrait rail height here used to shrink the playable
+              // board to little more than half of the available height.
+              final double arenaRailsHeight =
+                  showOnlineArena && !compactLandscape ? 136 : 0;
               final double boardWidth = wide
                   ? constraints.maxWidth -
                       pagePadding.horizontal -
@@ -3181,6 +3185,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       matchActive: _onlineMatch?.isActive ?? false,
                       socketConnected: _onlineSocketConnected,
                       connectedPlayers: _onlineConnectedPlayers,
+                      compactOverlay: compactLandscape,
                     )
                   : BoardStage(palette: palette, child: board);
 
@@ -7732,10 +7737,12 @@ class ChessCoin extends StatelessWidget {
             constraints.maxWidth,
             constraints.maxHeight,
           );
+          final bool classic2d =
+              appearance.style == ChessPieceVisualStyle.classic2d;
           final double pieceSize = size *
               (appearance.size == ChessPieceVisualSize.extraLarge
-                  ? 1.42
-                  : 1.27);
+                  ? (classic2d ? 1.44 : 1.58)
+                  : (classic2d ? 1.31 : 1.43));
           final double silhouetteScale = switch (piece.code) {
             'K' => 1.00,
             'Q' => .98,
@@ -7780,36 +7787,37 @@ class ChessCoin extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Positioned(
-                      bottom: pieceSize * 0.045,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(pieceSize),
-                          boxShadow: <BoxShadow>[
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.48),
-                              blurRadius: pieceSize * 0.07,
-                              spreadRadius: pieceSize * 0.012,
-                            ),
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: pieceSize * 0.11,
-                              offset: Offset(0, pieceSize * 0.08),
-                            ),
-                            if (selected)
+                    if (!classic2d)
+                      Positioned(
+                        bottom: pieceSize * 0.045,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(pieceSize),
+                            boxShadow: <BoxShadow>[
                               BoxShadow(
-                                color: accent.withValues(alpha: 0.68),
-                                blurRadius: pieceSize * 0.2,
-                                spreadRadius: pieceSize * 0.06,
+                                color: Colors.black.withValues(alpha: 0.48),
+                                blurRadius: pieceSize * 0.07,
+                                spreadRadius: pieceSize * 0.012,
                               ),
-                          ],
-                        ),
-                        child: SizedBox(
-                          width: pieceSize * 0.54,
-                          height: pieceSize * 0.055,
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: pieceSize * 0.11,
+                                offset: Offset(0, pieceSize * 0.08),
+                              ),
+                              if (selected)
+                                BoxShadow(
+                                  color: accent.withValues(alpha: 0.68),
+                                  blurRadius: pieceSize * 0.2,
+                                  spreadRadius: pieceSize * 0.06,
+                                ),
+                            ],
+                          ),
+                          child: SizedBox(
+                            width: pieceSize * 0.42,
+                            height: pieceSize * 0.035,
+                          ),
                         ),
                       ),
-                    ),
                     Transform.translate(
                       offset: Offset(0, selected ? -pieceSize * 0.035 : 0),
                       child: Transform.scale(
@@ -7855,24 +7863,54 @@ class ChessCoin extends StatelessWidget {
     final String label =
         '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}';
     if (appearance.style == ChessPieceVisualStyle.classic2d) {
+      final String solidGlyph = switch (piece.code) {
+        'K' => '♚',
+        'Q' => '♛',
+        'R' => '♜',
+        'B' => '♝',
+        'N' => '♞',
+        _ => '♟',
+      };
+      final Color fill =
+          piece.white ? const Color(0xFFFFD98A) : const Color(0xFF10243A);
+      final Color outline =
+          piece.white ? const Color(0xFF15283D) : const Color(0xFFE7C67E);
       return Semantics(
         label: label,
-        child: Text(
-          pieceGlyph(piece),
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: 'serif',
-            fontSize: pieceSize * .79,
-            height: 1,
-            color:
-                piece.white ? const Color(0xFFFFF4D0) : const Color(0xFF111722),
-            shadows: <Shadow>[
-              Shadow(
-                color: piece.white ? Colors.black87 : Colors.white70,
-                blurRadius: pieceSize * .045,
+        child: Stack(
+          alignment: Alignment.center,
+          children: <Widget>[
+            Text(
+              solidGlyph,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'serif',
+                fontSize: pieceSize * .82,
+                height: 1,
+                foreground: Paint()
+                  ..style = PaintingStyle.stroke
+                  ..strokeWidth = math.max(1.8, pieceSize * .035)
+                  ..color = outline,
               ),
-            ],
-          ),
+            ),
+            Text(
+              solidGlyph,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'serif',
+                fontSize: pieceSize * .82,
+                height: 1,
+                color: fill,
+                shadows: <Shadow>[
+                  Shadow(
+                    color: Colors.black.withValues(alpha: .42),
+                    blurRadius: pieceSize * .035,
+                    offset: Offset(0, pieceSize * .018),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -8919,6 +8957,7 @@ class _OnlineArenaBoard extends StatelessWidget {
     required this.matchActive,
     required this.socketConnected,
     required this.connectedPlayers,
+    this.compactOverlay = false,
   });
 
   final Widget board;
@@ -8933,6 +8972,7 @@ class _OnlineArenaBoard extends StatelessWidget {
   final bool matchActive;
   final bool socketConnected;
   final int connectedPlayers;
+  final bool compactOverlay;
 
   @override
   Widget build(BuildContext context) {
@@ -8942,6 +8982,7 @@ class _OnlineArenaBoard extends StatelessWidget {
       clock: whiteClock,
       active: matchActive && activeColor == 'white',
       pieceColor: Colors.white,
+      compact: compactOverlay,
     );
     final Widget black = _OnlinePlayerRail(
       name: blackName,
@@ -8949,7 +8990,41 @@ class _OnlineArenaBoard extends StatelessWidget {
       clock: blackClock,
       active: matchActive && activeColor == 'black',
       pieceColor: const Color(0xFF171717),
+      compact: compactOverlay,
     );
+    if (compactOverlay) {
+      return Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          board,
+          Positioned(
+            left: 6,
+            right: 6,
+            top: 6,
+            height: 38,
+            child: flipped ? white : black,
+          ),
+          Positioned(
+            left: 6,
+            right: 6,
+            bottom: 6,
+            height: 38,
+            child: flipped ? black : white,
+          ),
+          Positioned(
+            top: 48,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: _OnlineConnectionBanner(
+                reconnecting: !socketConnected,
+                opponentAway: socketConnected && connectedPlayers < 2,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
     return Column(
       children: <Widget>[
         SizedBox(
@@ -8979,6 +9054,7 @@ class _OnlinePlayerRail extends StatelessWidget {
     required this.clock,
     required this.active,
     required this.pieceColor,
+    this.compact = false,
   });
 
   final String name;
@@ -8986,6 +9062,7 @@ class _OnlinePlayerRail extends StatelessWidget {
   final String clock;
   final bool active;
   final Color pieceColor;
+  final bool compact;
 
   String get initials {
     final List<String> words = name
@@ -9004,7 +9081,10 @@ class _OnlinePlayerRail extends StatelessWidget {
         : null;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 6 : 8,
+        vertical: compact ? 3 : 5,
+      ),
       decoration: BoxDecoration(
         color: active ? const Color(0xFF173A35) : const Color(0xFF111C1F),
         borderRadius: BorderRadius.circular(12),
@@ -9025,7 +9105,7 @@ class _OnlinePlayerRail extends StatelessWidget {
         children: <Widget>[
           ClipOval(
             child: SizedBox.square(
-              dimension: 34,
+              dimension: compact ? 26 : 34,
               child: usablePhoto == null
                   ? _AvatarInitials(initials: initials)
                   : Image.network(
@@ -9036,7 +9116,7 @@ class _OnlinePlayerRail extends StatelessWidget {
                     ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: compact ? 5 : 8),
           Container(
             width: 14,
             height: 14,
@@ -9046,21 +9126,25 @@ class _OnlinePlayerRail extends StatelessWidget {
               border: Border.all(color: const Color(0xFFB9914E)),
             ),
           ),
-          const SizedBox(width: 7),
+          SizedBox(width: compact ? 5 : 7),
           Expanded(
             child: Text(
               name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFFF4ECDD),
+              style: TextStyle(
+                color: const Color(0xFFF4ECDD),
+                fontSize: compact ? 12 : null,
                 fontWeight: FontWeight.w800,
               ),
             ),
           ),
           AnimatedContainer(
             duration: const Duration(milliseconds: 220),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 8 : 12,
+              vertical: compact ? 3 : 5,
+            ),
             decoration: BoxDecoration(
               color: active ? const Color(0xFF63D2B8) : const Color(0xFF24272A),
               borderRadius: BorderRadius.circular(8),
@@ -9069,7 +9153,7 @@ class _OnlinePlayerRail extends StatelessWidget {
               clock,
               style: TextStyle(
                 color: active ? const Color(0xFF071A17) : Colors.white,
-                fontSize: 18,
+                fontSize: compact ? 14 : 18,
                 fontWeight: FontWeight.w900,
                 fontFeatures: const <ui.FontFeature>[
                   ui.FontFeature.tabularFigures(),
