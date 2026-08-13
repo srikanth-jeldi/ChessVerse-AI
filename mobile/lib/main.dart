@@ -790,6 +790,7 @@ class _SplashGateState extends State<SplashGate> {
       _playerName = 'ChessVerseAI Player';
       _username = null;
       _email = null;
+      _photoUrl = null;
       _isGuest = true;
       _stage = _RootStage.auth;
     });
@@ -948,8 +949,9 @@ class BrandedSplash extends StatelessWidget {
                   ),
                 ),
                 SafeArea(
+                  minimum: const EdgeInsets.only(bottom: 12),
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 54),
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
                     child: Column(
                       children: <Widget>[
                         const Spacer(flex: 7),
@@ -996,28 +998,36 @@ class BrandedSplash extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 18),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color:
-                                const Color(0xFF02070D).withValues(alpha: 0.64),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: const Color(0xFFFFCE6A)
-                                  .withValues(alpha: 0.42),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 260),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
                             ),
-                          ),
-                          child: const Text(
-                            'Powered by EpitomeHub',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Color(0xFFFFD77D),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.7,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF02070D)
+                                  .withValues(alpha: 0.72),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: const Color(0xFFFFCE6A)
+                                    .withValues(alpha: 0.42),
+                              ),
+                            ),
+                            child: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'Powered by EpitomeHub',
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                style: TextStyle(
+                                  color: Color(0xFFFFD77D),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.7,
+                                ),
+                              ),
                             ),
                           ),
                         ),

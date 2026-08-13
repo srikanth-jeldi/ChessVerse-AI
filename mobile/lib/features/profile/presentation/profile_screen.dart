@@ -44,6 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final LocalGameStats stats = LocalGameArchive.stats();
     final RewardSnapshot rewards = LocalGameArchive.rewards();
+    final String? accountEmail = _publicAccountEmail(widget.email);
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -143,7 +144,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Text(
                   widget.isGuest
                       ? 'Guest identity and online progress are safe on this device. Secure with Google to restore them after reinstalling or changing devices.'
-                      : '${widget.email ?? 'Verified ChessVerseAI player'}\nYour identity and training progress are ready across ChessVerseAI.',
+                      : '${accountEmail ?? 'Email not shared'}\nYour identity and training progress are ready across ChessVerseAI.',
                   style:
                       const TextStyle(color: Color(0xFFA9BBC4), height: 1.45),
                 ),
@@ -163,6 +164,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
+  }
+
+  String? _publicAccountEmail(String? value) {
+    final String email = value?.trim() ?? '';
+    if (email.isEmpty || email.toLowerCase().endsWith('.invalid')) return null;
+    return email;
   }
 
   Future<void> _editProfile() async {

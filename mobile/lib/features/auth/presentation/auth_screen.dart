@@ -1122,8 +1122,10 @@ class _AuthScreenState extends State<AuthScreen> {
           if (mounted) {
             setState(() {
               _loading = false;
-              _error = 'Google sign-in failed. Please try again.';
-              _message = null;
+              // Google initializes in the background on web. A blocked popup,
+              // privacy extension or signed-out One Tap session must not show
+              // an error before the user asks to sign in with Google.
+              _googleInitialized = false;
             });
           }
         },
@@ -1131,8 +1133,9 @@ class _AuthScreenState extends State<AuthScreen> {
     } catch (_) {
       if (mounted) {
         setState(() {
-          _error = 'Google sign-in could not start. Please refresh and retry.';
-          _message = null;
+          // Keep Facebook/email login clean and usable. The explicit Google
+          // button retries initialization and reports an actionable error.
+          _googleInitialized = false;
         });
       }
     }
