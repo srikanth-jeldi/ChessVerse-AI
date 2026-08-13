@@ -3561,6 +3561,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             showTitle: true,
                           ),
                         ),
+                      if (_signedIn &&
+                          _gameResultTitle != null &&
+                          !_resultVisible &&
+                          _gameResultTitle!.toLowerCase().contains('draw'))
+                        Positioned.fill(
+                          child: _DrawResultBadge(
+                            detail: _gameResultDetail ?? 'Game drawn',
+                          ),
+                        ),
                       if (_moveQualityText != null &&
                           _gameMode == GameMode.computer &&
                           _gameResultTitle == null)
@@ -6414,7 +6423,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (firstPresentation) {
         _onlineResultPresentationTimer?.cancel();
         _onlineResultPresentationTimer = Timer(
-          const Duration(seconds: 10),
+          draw
+              ? const Duration(milliseconds: 900)
+              : const Duration(seconds: 10),
           () {
             if (!mounted || _onlineCelebrationMatchId != match.id) return;
             setState(() {
@@ -6578,7 +6589,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (stalemate) {
       _gameResultTitle = 'Draw';
       _gameResultDetail = 'Stalemate';
-      _delayLocalResultOverlay();
+      _delayLocalResultOverlay(
+        delay: const Duration(milliseconds: 900),
+      );
       _archiveFinishedGame();
       unawaited(ChessSoundService.instance.draw());
       return 'Stalemate. No legal move for $side.';
@@ -6589,11 +6602,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     return fallback;
   }
 
-  void _delayLocalResultOverlay() {
+  void _delayLocalResultOverlay({
+    Duration delay = const Duration(seconds: 10),
+  }) {
     _onlineResultPresentationTimer?.cancel();
     _resultVisible = false;
     _onlineResultPresentationTimer = Timer(
-      const Duration(seconds: 10),
+      delay,
       () {
         if (!mounted || _gameMode == GameMode.online) return;
         setState(() => _resultVisible = true);
@@ -12266,6 +12281,67 @@ class OnlineReconnectCountdown extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DrawResultBadge extends StatelessWidget {
+  const _DrawResultBadge({required this.detail});
+
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: Center(
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: .72, end: 1),
+            duration: const Duration(milliseconds: 360),
+            curve: Curves.easeOutBack,
+            builder: (BuildContext context, double scale, Widget? child) =>
+                Transform.scale(scale: scale, child: child),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: const Color(0xF2071827),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: const Color(0xFF65C9F4),
+                  width: 1.5,
+                ),
+                boxShadow: const <BoxShadow>[
+                  BoxShadow(color: Color(0x663CA6FF), blurRadius: 28),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 16,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    const Text(
+                      'DRAW',
+                      style: TextStyle(
+                        color: Color(0xFF65C9F4),
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      detail,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
 }
 
 class OnlineVictoryCelebration extends StatefulWidget {
