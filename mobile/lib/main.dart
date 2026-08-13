@@ -90,20 +90,6 @@ const List<NavigationDestination> _primaryNavigationDestinations =
   NavigationDestination(icon: Icon(Icons.person_rounded), label: 'Profile'),
 ];
 
-const List<NavigationRailDestination> _primaryRailDestinations =
-    <NavigationRailDestination>[
-  NavigationRailDestination(
-      icon: Icon(Icons.home_rounded), label: Text('Home')),
-  NavigationRailDestination(
-      icon: Icon(Icons.sports_esports_rounded), label: Text('Play')),
-  NavigationRailDestination(
-      icon: Icon(Icons.extension_rounded), label: Text('Puzzles')),
-  NavigationRailDestination(
-      icon: Icon(Icons.school_rounded), label: Text('Learn')),
-  NavigationRailDestination(
-      icon: Icon(Icons.person_rounded), label: Text('Profile')),
-];
-
 class SplashGate extends StatefulWidget {
   const SplashGate({super.key});
 
@@ -381,69 +367,33 @@ class _SplashGateState extends State<SplashGate> {
       builder: (BuildContext context, BoxConstraints size) {
         final bool genuineWideLayout =
             size.maxWidth >= 700 && size.maxHeight >= 600;
-        final bool extendedRail = genuineWideLayout && size.maxWidth >= 900;
-        final bool compactRail =
-            genuineWideLayout && size.maxWidth >= 700 && !extendedRail;
-        final bool useRail = extendedRail || compactRail;
+        final bool useDesktopSidebar = genuineWideLayout;
         final Widget content = IndexedStack(
           index: _primaryDestination,
           children: destinations,
         );
-        if (useRail) {
+        if (useDesktopSidebar) {
+          const List<String> desktopSections = <String>[
+            'Home',
+            'Play',
+            'Puzzles',
+            'Learn',
+            'Profile',
+          ];
+          void selectDestination(int value) {
+            setState(() => _primaryDestination = value);
+          }
           return Scaffold(
             backgroundColor: Colors.transparent,
             body: Row(children: <Widget>[
-              NavigationRail(
-                selectedIndex: _primaryDestination,
-                onDestinationSelected: (int value) =>
-                    setState(() => _primaryDestination = value),
-                labelType: extendedRail
-                    ? NavigationRailLabelType.none
-                    : NavigationRailLabelType.selected,
-                extended: extendedRail,
-                minWidth: 72,
-                minExtendedWidth: 232,
-                groupAlignment: -0.72,
-                indicatorColor: const Color(0xFF123E72),
-                selectedIconTheme:
-                    const IconThemeData(color: Color(0xFF55AFFF), size: 25),
-                selectedLabelTextStyle: const TextStyle(
-                  color: Color(0xFF78BFFF),
-                  fontWeight: FontWeight.w800,
-                ),
-                unselectedIconTheme:
-                    const IconThemeData(color: Color(0xFF8EA4B7), size: 24),
-                unselectedLabelTextStyle:
-                    const TextStyle(color: Color(0xFFB7C5D1)),
-                backgroundColor: const Color(0xE6071727),
-                leading: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    extendedRail ? 16 : 8,
-                    extendedRail ? 18 : 10,
-                    extendedRail ? 16 : 8,
-                    extendedRail ? 28 : 12,
-                  ),
-                  child: Column(children: <Widget>[
-                    ChessVerseMark(size: extendedRail ? 72 : 46),
-                    if (extendedRail) const SizedBox(height: 8),
-                    if (extendedRail)
-                      const Text.rich(
-                        TextSpan(children: <InlineSpan>[
-                          TextSpan(
-                              text: 'CHESSVERSE ',
-                              style: TextStyle(color: Colors.white)),
-                          TextSpan(
-                              text: 'AI',
-                              style: TextStyle(color: Color(0xFFE2AE49))),
-                        ]),
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w900),
-                      ),
-                  ]),
-                ),
-                destinations: _primaryRailDestinations,
+              DesktopAppSidebar(
+                selected: desktopSections[_primaryDestination],
+                onHome: () => selectDestination(0),
+                onPlay: () => selectDestination(1),
+                onPuzzles: () => selectDestination(2),
+                onLearn: () => selectDestination(3),
+                onProfile: () => selectDestination(4),
               ),
-              const VerticalDivider(width: 1, color: Color(0xFF19354A)),
               Expanded(child: content),
             ]),
           );

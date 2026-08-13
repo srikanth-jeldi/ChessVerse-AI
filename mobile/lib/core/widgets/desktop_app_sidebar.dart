@@ -111,22 +111,15 @@ class _DesktopNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool homeSelected = selected && label == 'Home';
-    final Color activeColor =
-        homeSelected ? const Color(0xFF4DA8FF) : AppColors.accentGold;
+    final Color activeColor = AppColors.accentGold;
     return Padding(
       padding: const EdgeInsets.only(bottom: 5),
       child: Material(
-        color: selected
-            ? (homeSelected ? const Color(0xFF123E70) : const Color(0xFF102C45))
-            : Colors.transparent,
+        color: selected ? const Color(0xFF102C45) : Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: selected
-              ? BorderSide(
-                  color: homeSelected
-                      ? const Color(0xFF2F91ED)
-                      : const Color(0xFFC28A24))
+              ? const BorderSide(color: Color(0xFFC28A24))
               : BorderSide.none,
         ),
         child: InkWell(
