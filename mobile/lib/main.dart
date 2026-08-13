@@ -991,11 +991,15 @@ class BrandedSplash extends StatelessWidget {
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
-              const Image(
-                image: AssetImage(wideAsset),
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
-                filterQuality: FilterQuality.high,
+              const ColoredBox(
+                color: Color(0xFF02070D),
+                child: Image(
+                  key: ValueKey<String>('branded-splash-image-wide'),
+                  image: AssetImage(wideAsset),
+                  fit: BoxFit.contain,
+                  alignment: Alignment.center,
+                  filterQuality: FilterQuality.high,
+                ),
               ),
               IgnorePointer(
                 child: DecoratedBox(
