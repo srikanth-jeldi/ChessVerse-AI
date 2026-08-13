@@ -64,7 +64,12 @@ jobs:
       - name: Compile Android release bundle
         run: >-
           flutter build appbundle --release
-          --dart-define=API_BASE_URL=https://api.chessverse.example
+          --dart-define=CHESSVERSE_ENV=production
+          --dart-define=API_BASE_URL=https://api.chessverseai.com
+          --dart-define=WEB_BASE_URL=https://chessverseai.com
+          --dart-define=PRIVACY_POLICY_URL=https://chessverseai.com/privacy
+          --dart-define=TERMS_URL=https://chessverseai.com/terms
+          --dart-define=DATA_DELETION_URL=https://chessverseai.com/data-deletion
 
   backend-image:
     name: Backend container image

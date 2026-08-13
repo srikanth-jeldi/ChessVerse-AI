@@ -31,6 +31,15 @@ patchbase/
 patchwork/
 release/
 mobile/test/failures/
+.dart-localappdata/
+.dart-state/
+mobile/.dart-localappdata/
+mobile/.dart-state/
+mobile/.dartServer/
+mobile/.qa-appdata/
+mobile/.qa-auth/
+mobile/build-corrupt-*/
+mobile/build-jni-corrupt-*/
 
 # Local release artifacts and scratch patches.
 *.apk
