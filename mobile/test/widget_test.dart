@@ -402,6 +402,41 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('portrait game keeps the AI coach actions in scrollable space', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+          initialGameMode: GameMode.local,
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('portrait-game-scroll-view')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .getSize(
+            find.byKey(const ValueKey<String>('mobile-ai-coach')),
+          )
+          .height,
+      greaterThanOrEqualTo(360),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('daily challenge follows the forced line and ends in checkmate', (
     WidgetTester tester,
   ) async {

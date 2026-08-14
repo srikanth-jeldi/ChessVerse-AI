@@ -20,18 +20,27 @@ public class OnlineMatchController {
     private final PlayerAuthenticationService authentication;
     private final OnlineMatchService matches;
     private final OnlineMatchSocketHandler socket;
+    private final OnlinePresenceService presence;
 
     public OnlineMatchController(
             PlayerAuthenticationService authentication,
             OnlineMatchService matches,
-            OnlineMatchSocketHandler socket) {
+            OnlineMatchSocketHandler socket,
+            OnlinePresenceService presence) {
         this.authentication = authentication;
         this.matches = matches;
         this.socket = socket;
+        this.presence = presence;
+    }
+
+    @PostMapping("/presence")
+    OnlineDtos.PresenceDto presence(@RequestHeader("Authorization") String authorization) {
+        AuthenticatedPlayer player = player(authorization);
+        return new OnlineDtos.PresenceDto(presence.heartbeat(player.id()));
     }
 
     @GetMapping("/presence")
-    OnlineDtos.PresenceDto presence() {
+    OnlineDtos.PresenceDto legacyMatchmakingPresence() {
         return new OnlineDtos.PresenceDto(
                 matches.waitingRandomPlayerCount() + socket.connectedPlayerCount());
     }

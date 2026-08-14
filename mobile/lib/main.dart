@@ -40,6 +40,11 @@ import 'features/tutorial/presentation/learn_chess_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb) {
+    await SystemChrome.setPreferredOrientations(
+      const <DeviceOrientation>[DeviceOrientation.portraitUp],
+    );
+  }
   if (kIsWeb) {
     try {
       await ensureFacebookSdkReady().timeout(const Duration(seconds: 8));
@@ -102,6 +107,7 @@ class _SplashGateState extends State<SplashGate> {
   static const AuthSessionStore _sessionStore = AuthSessionStore();
   static const CloudProgressApi _cloudProgressApi = CloudProgressApi();
   Timer? _timer;
+  Timer? _presenceTimer;
   bool _splashArtworkLoadingStarted = false;
   _RootStage _stage = _RootStage.splash;
   String _playerName = 'Guest Player';
@@ -214,12 +220,21 @@ class _SplashGateState extends State<SplashGate> {
       unawaited(_restoreActiveOnlineMatch(restoredSession.token));
     });
     unawaited(_syncCloudProgress(restoredSession.token));
-    unawaited(_refreshOnlinePresence());
+    _startOnlinePresence(restoredSession.token);
   }
 
-  Future<void> _refreshOnlinePresence() async {
+  void _startOnlinePresence(String token) {
+    _presenceTimer?.cancel();
+    unawaited(_refreshOnlinePresence(token));
+    _presenceTimer = Timer.periodic(
+      const Duration(seconds: 20),
+      (_) => unawaited(_refreshOnlinePresence(token)),
+    );
+  }
+
+  Future<void> _refreshOnlinePresence(String token) async {
     try {
-      final int count = await const OnlineMatchApi().onlinePlayerCount();
+      final int count = await const OnlineMatchApi().onlinePlayerCount(token);
       if (mounted) setState(() => _onlinePlayerCount = count);
     } on OnlineMatchException {
       if (mounted) setState(() => _onlinePlayerCount = null);
@@ -251,6 +266,7 @@ class _SplashGateState extends State<SplashGate> {
   @override
   void dispose() {
     _timer?.cancel();
+    _presenceTimer?.cancel();
     super.dispose();
   }
 
@@ -285,8 +301,8 @@ class _SplashGateState extends State<SplashGate> {
               if (result.token != null) {
                 _enableCloudSync(result.token!);
                 unawaited(_syncCloudProgress(result.token!));
+                _startOnlinePresence(result.token!);
               }
-              unawaited(_refreshOnlinePresence());
             },
           ),
         _RootStage.home => _buildPrimaryShell(context),
@@ -383,6 +399,7 @@ class _SplashGateState extends State<SplashGate> {
           void selectDestination(int value) {
             setState(() => _primaryDestination = value);
           }
+
           return Scaffold(
             backgroundColor: Colors.transparent,
             body: Row(children: <Widget>[
@@ -718,6 +735,8 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   Future<void> _logout(BuildContext currentRouteContext) async {
+    _presenceTimer?.cancel();
+    _presenceTimer = null;
     const AuthSessionStore sessionStore = AuthSessionStore();
     const AuthApi authApi = AuthApi();
     final StoredAuthSession? session = await sessionStore.read();
@@ -742,11 +761,14 @@ class _SplashGateState extends State<SplashGate> {
       _email = null;
       _photoUrl = null;
       _isGuest = true;
+      _onlinePlayerCount = null;
       _stage = _RootStage.auth;
     });
   }
 
   Future<void> _deleteAccount(BuildContext currentRouteContext) async {
+    _presenceTimer?.cancel();
+    _presenceTimer = null;
     final StoredAuthSession? session = await _sessionStore.read();
     if (session == null) {
       throw const AuthApiException('No signed-in account was found.');
@@ -765,6 +787,7 @@ class _SplashGateState extends State<SplashGate> {
       _email = null;
       _photoUrl = null;
       _isGuest = true;
+      _onlinePlayerCount = null;
       _primaryDestination = 0;
       _stage = _RootStage.auth;
     });
@@ -3100,7 +3123,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               );
               final double wideHeaderHeight = roomyLandscape ? 78 : 54;
               final double wideDockHeight = showWideDock ? 126 : 0;
-              final double portraitPanelMinimum = landscape ? 64 : 145;
               final bool showOnlineArena =
                   _gameMode == GameMode.online && _onlineMatch != null;
               // Phone landscape uses compact rails over the board. Reserving
@@ -3125,13 +3147,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       18
                   : compactLandscape
                       ? availableHeight - mobileHeaderHeight - 4
-                      : availableHeight -
-                          mobileHeaderHeight -
-                          portraitPanelMinimum -
-                          arenaRailsHeight -
-                          18;
-              final double boardDimension =
-                  math.max(0, math.min(boardWidth, boardHeight));
+                      : boardWidth;
+              // Portrait is a vertically scrolling composition. Limiting its
+              // board by the viewport height left only ~145px for the online
+              // AI Coach after the two player rails, so the action row was
+              // clipped. Keep the board at the full usable width and let the
+              // page scroll to a properly sized coach panel below it.
+              final double boardDimension = math.max(
+                0,
+                wide || compactLandscape
+                    ? math.min(boardWidth, boardHeight)
+                    : boardWidth,
+              );
 
               final Widget board = ChessBoard(
                 pieces: _pieces,
@@ -3233,7 +3260,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 padding: pagePadding,
                 child: KeyedSubtree(
                   key: ValueKey<String>(
-                    wide ? 'landscape-game-layout' : 'portrait-game-layout',
+                    wide || compactLandscape
+                        ? 'landscape-game-layout'
+                        : 'portrait-game-layout',
                   ),
                   child: Stack(
                     fit: StackFit.expand,
@@ -3392,32 +3421,46 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           ],
                         )
                       else
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            CompactHeader(
-                              onHome: () => Navigator.of(context).pop(),
-                              onProfile: _openProfile,
-                              onReset: _confirmNewGame,
-                              onLogout: _logout,
+                        SingleChildScrollView(
+                          key: const ValueKey<String>(
+                            'portrait-game-scroll-view',
+                          ),
+                          padding: EdgeInsets.only(
+                            bottom: math.max(
+                              12,
+                              MediaQuery.viewPaddingOf(context).bottom + 12,
                             ),
-                            const SizedBox(height: 8),
-                            Center(
-                              child: SizedBox(
-                                width: boardDimension,
-                                height: boardDimension + arenaRailsHeight,
-                                child: arenaBoard,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              CompactHeader(
+                                onHome: () => Navigator.of(context).pop(),
+                                onProfile: _openProfile,
+                                onReset: _confirmNewGame,
+                                onLogout: _logout,
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Expanded(
-                              key: const ValueKey<String>('mobile-ai-coach'),
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(6, 0, 6, 6),
-                                child: studioCoach,
+                              const SizedBox(height: 8),
+                              Center(
+                                child: SizedBox(
+                                  width: boardDimension,
+                                  height: boardDimension + arenaRailsHeight,
+                                  child: arenaBoard,
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                key: const ValueKey<String>('mobile-ai-coach'),
+                                height: (constraints.maxHeight * 0.46)
+                                    .clamp(360.0, 440.0),
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(6, 0, 6, 0),
+                                  child: studioCoach,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       if (_signedIn &&
                           _gameResultTitle == null &&

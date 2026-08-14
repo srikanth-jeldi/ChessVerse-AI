@@ -99,7 +99,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('home makes it clear that live presence excludes this player', (
+  testWidgets('home makes it clear that presence excludes the current player', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(1280, 800);
@@ -117,7 +117,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.textContaining('No other players in live arena'),
+      find.textContaining('No other players online'),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
