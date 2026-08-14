@@ -15,6 +15,7 @@ class HomeDashboardScreen extends StatelessWidget {
     required this.onDailyChallenge,
     required this.onLocalGame,
     this.onOnlineGame = _noOnlineAction,
+    this.onFriendsGame = _noOnlineAction,
     required this.onAnalysis,
     required this.onPuzzles,
     required this.onSavedGames,
@@ -33,6 +34,7 @@ class HomeDashboardScreen extends StatelessWidget {
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
   final VoidCallback onOnlineGame;
+  final VoidCallback onFriendsGame;
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
   final VoidCallback onSavedGames;
@@ -57,7 +59,9 @@ class HomeDashboardScreen extends StatelessWidget {
                 onlinePlayerCount: onlinePlayerCount,
                 onPlayVsAi: onPlayVsAi,
                 onDailyChallenge: onDailyChallenge,
+                onLocalGame: onLocalGame,
                 onOnlineGame: onOnlineGame,
+                onFriendsGame: onFriendsGame,
                 onAnalysis: onAnalysis,
                 onPuzzles: onPuzzles,
                 onLearnChess: onLearnChess,
@@ -75,6 +79,7 @@ class HomeDashboardScreen extends StatelessWidget {
               onDailyChallenge: onDailyChallenge,
               onLocalGame: onLocalGame,
               onOnlineGame: onOnlineGame,
+              onFriendsGame: onFriendsGame,
               onAnalysis: onAnalysis,
               onPuzzles: onPuzzles,
               onSavedGames: onSavedGames,
@@ -100,6 +105,7 @@ class _MobileHome extends StatefulWidget {
     required this.onDailyChallenge,
     required this.onLocalGame,
     required this.onOnlineGame,
+    required this.onFriendsGame,
     required this.onAnalysis,
     required this.onPuzzles,
     required this.onSavedGames,
@@ -117,6 +123,7 @@ class _MobileHome extends StatefulWidget {
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
   final VoidCallback onOnlineGame;
+  final VoidCallback onFriendsGame;
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
   final VoidCallback onSavedGames;
@@ -191,7 +198,16 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.groups_rounded,
                           buttonLabel: 'Open Rooms',
                           asset: 'assets/backgrounds/home-friends-hero-v1.png',
-                          onTap: widget.onOnlineGame,
+                          onTap: widget.onFriendsGame,
+                        ),
+                        _HomeHeroData(
+                          title: 'Two Players — Same Device',
+                          subtitle:
+                              'Pass and play locally without rotating the board',
+                          icon: Icons.people_alt_rounded,
+                          buttonLabel: 'Start Local Match',
+                          asset: 'assets/backgrounds/local-match-card-v2.png',
+                          onTap: widget.onLocalGame,
                         ),
                         _HomeHeroData(
                           title: 'Chess Puzzles',
@@ -246,10 +262,20 @@ class _MobileHomeState extends State<_MobileHome> {
                             color: const Color(0xFF15513F),
                             asset:
                                 'assets/backgrounds/home-friends-hero-v1.png',
-                            onTap: widget.onOnlineGame,
+                            onTap: widget.onFriendsGame,
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 12),
+                    _ActionCard(
+                      keyName: 'local-match',
+                      icon: Icons.people_alt_rounded,
+                      title: 'Two Players — Same Device',
+                      subtitle: 'Player 1 • White  /  Player 2 • Black',
+                      color: const Color(0xFF123B58),
+                      asset: 'assets/backgrounds/local-match-card-v2.png',
+                      onTap: widget.onLocalGame,
                     ),
                     const SizedBox(height: 12),
                     GridView.count(
@@ -319,6 +345,8 @@ class _WideHome extends StatefulWidget {
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onOnlineGame,
+    required this.onFriendsGame,
+    required this.onLocalGame,
     required this.onAnalysis,
     required this.onPuzzles,
     required this.onLearnChess,
@@ -334,6 +362,8 @@ class _WideHome extends StatefulWidget {
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onOnlineGame;
+  final VoidCallback onFriendsGame;
+  final VoidCallback onLocalGame;
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
   final VoidCallback onLearnChess;
@@ -428,7 +458,16 @@ class _WideHomeState extends State<_WideHome> {
                               buttonLabel: 'Open Rooms',
                               asset:
                                   'assets/backgrounds/home-friends-hero-v1.png',
-                              onTap: widget.onOnlineGame,
+                              onTap: widget.onFriendsGame,
+                            ),
+                            _HomeHeroData(
+                              title: 'Two Players — Same Device',
+                              subtitle: 'Pass and play locally on one board',
+                              icon: Icons.people_alt_rounded,
+                              buttonLabel: 'Start Local Match',
+                              asset:
+                                  'assets/backgrounds/local-match-card-v2.png',
+                              onTap: widget.onLocalGame,
                             ),
                             _HomeHeroData(
                               title: 'Chess Puzzles',
@@ -488,7 +527,21 @@ class _WideHomeState extends State<_WideHome> {
                                 color: const Color(0xFF14513F),
                                 asset:
                                     'assets/backgrounds/home-friends-hero-v1.png',
-                                onTap: widget.onOnlineGame,
+                                onTap: widget.onFriendsGame,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              flex: 2,
+                              child: _ActionCard(
+                                keyName: 'local-match',
+                                icon: Icons.people_alt_rounded,
+                                title: 'Same Device',
+                                subtitle: 'Player 1 vs Player 2',
+                                color: const Color(0xFF123B58),
+                                asset:
+                                    'assets/backgrounds/local-match-card-v2.png',
+                                onTap: widget.onLocalGame,
                               ),
                             ),
                             const SizedBox(width: 14),

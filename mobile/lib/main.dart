@@ -321,6 +321,10 @@ class _SplashGateState extends State<SplashGate> {
         onDailyChallenge: () => _openGame(context, GameMode.daily),
         onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
         onOnlineGame: () => _openOnlineGame(context),
+        onFriendsGame: () => _openOnlineGame(
+          context,
+          lobbyMode: OnlineLobbyMode.friends,
+        ),
         onAnalysis: () => _push(context, const AnalysisScreen()),
         onPuzzles: () => setState(() => _primaryDestination = 2),
         onSavedGames: () => _push(context, const MatchHistoryScreen()),
@@ -693,7 +697,10 @@ class _SplashGateState extends State<SplashGate> {
     );
   }
 
-  Future<void> _openOnlineGame(BuildContext context) async {
+  Future<void> _openOnlineGame(
+    BuildContext context, {
+    OnlineLobbyMode lobbyMode = OnlineLobbyMode.random,
+  }) async {
     final StoredAuthSession? session = await const AuthSessionStore().read();
     if (!context.mounted) return;
     if (session == null || session.token.isEmpty) {
@@ -719,6 +726,7 @@ class _SplashGateState extends State<SplashGate> {
             child: OnlineMatchmakingSheet(
               api: const OnlineMatchApi(),
               token: session.token,
+              initialMode: lobbyMode,
             ),
           ),
         ),
@@ -3470,7 +3478,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           top: wide ? wideHeaderHeight + 12 : 66,
                           left: wide ? 24 : 12,
                           right: wide ? widePanelWidth + 42 : 12,
-                          child: const _TurnBanner(),
+                          child: _TurnBanner(
+                            label: _gameMode == GameMode.local
+                                ? (_moves.length.isEven
+                                    ? 'PLAYER 1 • WHITE'
+                                    : 'PLAYER 2 • BLACK')
+                                : 'YOUR TURN',
+                          ),
                         ),
                       if (!_signedIn)
                         Positioned.fill(
@@ -10201,15 +10215,19 @@ class AnalysisMetric extends StatelessWidget {
   }
 }
 
+enum OnlineLobbyMode { random, friends }
+
 class OnlineMatchmakingSheet extends StatefulWidget {
   const OnlineMatchmakingSheet({
     required this.api,
     required this.token,
+    this.initialMode = OnlineLobbyMode.random,
     super.key,
   });
 
   final OnlineMatchApi api;
   final String token;
+  final OnlineLobbyMode initialMode;
 
   @override
   State<OnlineMatchmakingSheet> createState() => _OnlineMatchmakingSheetState();
@@ -10408,7 +10426,10 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     final double maxHeight = size.height * (wideLayout ? 0.94 : 0.96);
     final OnlineMatchDto? found = _foundMatch;
 
-    if (wideLayout && found == null && _match == null) {
+    if (wideLayout &&
+        widget.initialMode == OnlineLobbyMode.random &&
+        found == null &&
+        _match == null) {
       return _buildDesktopLobby(context);
     }
 
@@ -10491,7 +10512,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                       SizedBox(width: wideLayout ? 18 : 12),
                       Expanded(
                         child: Text(
-                          'Online 2 Players',
+                          widget.initialMode == OnlineLobbyMode.random
+                              ? 'Play Online'
+                              : 'Play with Friends',
                           style: (wideLayout
                                   ? Theme.of(context).textTheme.headlineMedium
                                   : Theme.of(context).textTheme.headlineSmall)
@@ -10505,8 +10528,10 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                     ],
                   ),
                   SizedBox(height: wideLayout ? 2 : 8),
-                  const Text(
-                    'Play online with a random opponent or invite a friend to a private room.',
+                  Text(
+                    widget.initialMode == OnlineLobbyMode.random
+                        ? 'Find a live opponent from around the world.'
+                        : 'Create a private room or join your friend with a code.',
                   ),
                   if (_error != null) ...<Widget>[
                     const SizedBox(height: 12),
@@ -10516,243 +10541,250 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                     ),
                   ],
                   SizedBox(height: wideLayout ? 22 : 16),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      image: const DecorationImage(
-                        image: AssetImage(
-                          'assets/backgrounds/online-matchmaking-hero-v1.png',
+                  if (widget.initialMode == OnlineLobbyMode.random)
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        image: const DecorationImage(
+                          image: AssetImage(
+                            'assets/backgrounds/online-matchmaking-hero-v1.png',
+                          ),
+                          // Preserve the complete wide composition on phones:
+                          // pawn at the left, copy in the centre and map at the
+                          // right. Cover was cropping both visual anchors.
+                          fit: BoxFit.contain,
+                          alignment: Alignment.center,
+                          opacity: .78,
                         ),
-                        // Preserve the complete wide composition on phones:
-                        // pawn at the left, copy in the centre and map at the
-                        // right. Cover was cropping both visual anchors.
-                        fit: BoxFit.contain,
-                        alignment: Alignment.center,
-                        opacity: .78,
-                      ),
-                      gradient: const LinearGradient(
-                        colors: <Color>[Color(0xD9051B35), Color(0x77071936)],
-                      ),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(
-                        color: const Color(0xFF2F9CFF),
-                        width: 1.4,
-                      ),
-                      boxShadow: const <BoxShadow>[
-                        BoxShadow(color: Color(0x442F9CFF), blurRadius: 20),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        wideLayout ? 230 : 92,
-                        wideLayout ? 30 : 20,
-                        wideLayout ? 230 : 92,
-                        wideLayout ? 30 : 18,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: wideLayout
-                            ? CrossAxisAlignment.stretch
-                            : CrossAxisAlignment.center,
-                        children: <Widget>[
-                          Row(
-                            children: <Widget>[
-                              const Icon(
-                                Icons.travel_explore_rounded,
-                                color: Color(0xFFD6A84F),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'Random Match',
-                                  maxLines: 1,
-                                  style: (wideLayout
-                                          ? Theme.of(context)
-                                              .textTheme
-                                              .headlineMedium
-                                          : Theme.of(context)
-                                              .textTheme
-                                              .titleLarge)
-                                      ?.copyWith(
-                                    fontSize: wideLayout ? null : 20,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                              if (_loading)
-                                const SizedBox.square(
-                                  dimension: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'We’ll find a player for you from around the world.',
-                          ),
-                          SizedBox(height: wideLayout ? 18 : 12),
-                          Align(
-                            alignment: wideLayout
-                                ? Alignment.centerLeft
-                                : Alignment.center,
-                            child: SizedBox(
-                              width: wideLayout ? 280 : 176,
-                              height: wideLayout ? 52 : 44,
-                              child: FilledButton.icon(
-                                style: FilledButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 18,
-                                  ),
-                                  textStyle: TextStyle(
-                                    fontSize: wideLayout ? 17 : 14,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                onPressed: _loading
-                                    ? null
-                                    : () => _run(
-                                          () => widget.api
-                                              .randomMatch(widget.token),
-                                          randomSearch: true,
-                                        ),
-                                icon: Icon(
-                                  Icons.bolt_rounded,
-                                  size: wideLayout ? 22 : 20,
-                                ),
-                                label: const Text('Find Match'),
-                              ),
-                            ),
-                          ),
+                        gradient: const LinearGradient(
+                          colors: <Color>[Color(0xD9051B35), Color(0x77071936)],
+                        ),
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: const Color(0xFF2F9CFF),
+                          width: 1.4,
+                        ),
+                        boxShadow: const <BoxShadow>[
+                          BoxShadow(color: Color(0x442F9CFF), blurRadius: 20),
                         ],
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF081D2A),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: const Color(0xFF267D72)),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(wideLayout ? 22 : 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          Row(
-                            children: <Widget>[
-                              Container(
-                                width: 54,
-                                height: 54,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: const Color(0xFF0A2630),
-                                  border: Border.all(
-                                    color: const Color(0xFF267D72),
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          wideLayout ? 230 : 92,
+                          wideLayout ? 30 : 20,
+                          wideLayout ? 230 : 92,
+                          wideLayout ? 30 : 18,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: wideLayout
+                              ? CrossAxisAlignment.stretch
+                              : CrossAxisAlignment.center,
+                          children: <Widget>[
+                            Row(
+                              children: <Widget>[
+                                const Icon(
+                                  Icons.travel_explore_rounded,
+                                  color: Color(0xFFD6A84F),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Random Match',
+                                    maxLines: 1,
+                                    style: (wideLayout
+                                            ? Theme.of(context)
+                                                .textTheme
+                                                .headlineMedium
+                                            : Theme.of(context)
+                                                .textTheme
+                                                .titleLarge)
+                                        ?.copyWith(
+                                      fontSize: wideLayout ? null : 20,
+                                      fontWeight: FontWeight.w900,
+                                    ),
                                   ),
                                 ),
-                                child: const Icon(
-                                  Icons.group_rounded,
-                                  color: Color(0xFF55D5C0),
-                                  size: 30,
+                                if (_loading)
+                                  const SizedBox.square(
+                                    dimension: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'We’ll find a player for you from around the world.',
+                            ),
+                            SizedBox(height: wideLayout ? 18 : 12),
+                            Align(
+                              alignment: wideLayout
+                                  ? Alignment.centerLeft
+                                  : Alignment.center,
+                              child: SizedBox(
+                                width: wideLayout ? 280 : 176,
+                                height: wideLayout ? 52 : 44,
+                                child: FilledButton.icon(
+                                  style: FilledButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                    ),
+                                    textStyle: TextStyle(
+                                      fontSize: wideLayout ? 17 : 14,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  onPressed: _loading
+                                      ? null
+                                      : () => _run(
+                                            () => widget.api
+                                                .randomMatch(widget.token),
+                                            randomSearch: true,
+                                          ),
+                                  icon: Icon(
+                                    Icons.bolt_rounded,
+                                    size: wideLayout ? 22 : 20,
+                                  ),
+                                  label: const Text('Find Match'),
                                 ),
                               ),
-                              const SizedBox(width: 14),
-                              const Expanded(
-                                child: Text(
-                                  'Play with Friend',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          if (_match == null)
-                            const Text(
-                              'Create a private room or join one using a room code.',
-                            )
-                          else ...<Widget>[
-                            SelectableText(
-                              _match!.roomCode,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineMedium
-                                  ?.copyWith(
-                                    color: const Color(0xFFD6A84F),
-                                    letterSpacing: 2,
-                                    fontSize: wideLayout ? 30 : null,
-                                  ),
-                            ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              'Waiting for opponent… this screen reconnects automatically.',
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 10),
-                            FilledButton.icon(
-                              onPressed: () {
-                                Clipboard.setData(
-                                  ClipboardData(text: _match!.roomCode),
-                                );
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Invite code copied'),
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.copy_rounded),
-                              label: const Text('Copy invite code'),
                             ),
                           ],
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _roomController,
-                    onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      labelText: 'Enter room code',
-                      hintText: 'e.g. ABCD1234',
-                      suffixIcon: Icon(Icons.copy_rounded),
-                      border: OutlineInputBorder(),
-                    ),
-                    textCapitalization: TextCapitalization.characters,
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: <Widget>[
-                      OutlinedButton.icon(
-                        onPressed: _loading
-                            ? null
-                            : () => _run(
-                                  () => widget.api.createRoom(widget.token),
-                                ),
-                        icon: const Icon(Icons.group_add_rounded),
-                        label: const Text('Create Room'),
+                  if (widget.initialMode == OnlineLobbyMode.random)
+                    const SizedBox(height: 14),
+                  if (widget.initialMode == OnlineLobbyMode.friends)
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF081D2A),
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: const Color(0xFF267D72)),
                       ),
-                      FilledButton.icon(
-                        onPressed:
-                            _loading || _roomController.text.trim().isEmpty
-                                ? null
-                                : () => _run(
-                                      () => widget.api.joinRoom(
-                                        widget.token,
-                                        _roomController.text,
-                                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(wideLayout ? 22 : 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: <Widget>[
+                            Row(
+                              children: <Widget>[
+                                Container(
+                                  width: 54,
+                                  height: 54,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: const Color(0xFF0A2630),
+                                    border: Border.all(
+                                      color: const Color(0xFF267D72),
                                     ),
-                        icon: const Icon(Icons.sports_esports_rounded),
-                        label: const Text('Join Room'),
+                                  ),
+                                  child: const Icon(
+                                    Icons.group_rounded,
+                                    color: Color(0xFF55D5C0),
+                                    size: 30,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                const Expanded(
+                                  child: Text(
+                                    'Play with Friend',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            if (_match == null)
+                              const Text(
+                                'Create a private room or join one using a room code.',
+                              )
+                            else ...<Widget>[
+                              SelectableText(
+                                _match!.roomCode,
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium
+                                    ?.copyWith(
+                                      color: const Color(0xFFD6A84F),
+                                      letterSpacing: 2,
+                                      fontSize: wideLayout ? 30 : null,
+                                    ),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Waiting for opponent… this screen reconnects automatically.',
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 10),
+                              FilledButton.icon(
+                                onPressed: () {
+                                  Clipboard.setData(
+                                    ClipboardData(text: _match!.roomCode),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Invite code copied'),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.copy_rounded),
+                                label: const Text('Copy invite code'),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                  if (widget.initialMode == OnlineLobbyMode.friends)
+                    const SizedBox(height: 14),
+                  if (widget.initialMode == OnlineLobbyMode.friends)
+                    TextField(
+                      controller: _roomController,
+                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(
+                        labelText: 'Enter room code',
+                        hintText: 'e.g. ABCD1234',
+                        suffixIcon: Icon(Icons.copy_rounded),
+                        border: OutlineInputBorder(),
+                      ),
+                      textCapitalization: TextCapitalization.characters,
+                    ),
+                  if (widget.initialMode == OnlineLobbyMode.friends)
+                    const SizedBox(height: 12),
+                  if (widget.initialMode == OnlineLobbyMode.friends)
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: <Widget>[
+                        OutlinedButton.icon(
+                          onPressed: _loading
+                              ? null
+                              : () => _run(
+                                    () => widget.api.createRoom(widget.token),
+                                  ),
+                          icon: const Icon(Icons.group_add_rounded),
+                          label: const Text('Create Room'),
+                        ),
+                        FilledButton.icon(
+                          onPressed:
+                              _loading || _roomController.text.trim().isEmpty
+                                  ? null
+                                  : () => _run(
+                                        () => widget.api.joinRoom(
+                                          widget.token,
+                                          _roomController.text,
+                                        ),
+                                      ),
+                          icon: const Icon(Icons.sports_esports_rounded),
+                          label: const Text('Join Room'),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: 12),
                   InkWell(
                     borderRadius: BorderRadius.circular(18),
@@ -12178,7 +12210,9 @@ class AuthOverlay extends StatelessWidget {
 }
 
 class _TurnBanner extends StatelessWidget {
-  const _TurnBanner();
+  const _TurnBanner({required this.label});
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -12187,7 +12221,7 @@ class _TurnBanner extends StatelessWidget {
         alignment: const Alignment(0, -0.72),
         child: Semantics(
           liveRegion: true,
-          label: 'Your turn',
+          label: label,
           child: TweenAnimationBuilder<double>(
             key: const ValueKey<String>('prominent-turn-banner'),
             tween: Tween<double>(begin: 0, end: 1),
@@ -12202,8 +12236,8 @@ class _TurnBanner extends StatelessWidget {
                 ),
               );
             },
-            child: const Text(
-              'YOUR TURN',
+            child: Text(
+              label,
               style: TextStyle(
                 color: Color(0xFF4DA8FF),
                 fontSize: 22,
