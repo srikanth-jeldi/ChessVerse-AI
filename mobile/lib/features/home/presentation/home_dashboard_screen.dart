@@ -201,15 +201,6 @@ class _MobileHomeState extends State<_MobileHome> {
                           onTap: widget.onFriendsGame,
                         ),
                         _HomeHeroData(
-                          title: 'Two Players — Same Device',
-                          subtitle:
-                              'Pass and play locally without rotating the board',
-                          icon: Icons.people_alt_rounded,
-                          buttonLabel: 'Start Local Match',
-                          asset: 'assets/backgrounds/local-match-card-v2.png',
-                          onTap: widget.onLocalGame,
-                        ),
-                        _HomeHeroData(
                           title: 'Chess Puzzles',
                           subtitle: 'Train with 150 tactical challenges',
                           icon: Icons.extension_rounded,
@@ -266,16 +257,6 @@ class _MobileHomeState extends State<_MobileHome> {
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 12),
-                    _ActionCard(
-                      keyName: 'local-match',
-                      icon: Icons.people_alt_rounded,
-                      title: 'Two Players — Same Device',
-                      subtitle: 'Player 1 • White  /  Player 2 • Black',
-                      color: const Color(0xFF123B58),
-                      asset: 'assets/backgrounds/local-match-card-v2.png',
-                      onTap: widget.onLocalGame,
                     ),
                     const SizedBox(height: 12),
                     GridView.count(
@@ -461,15 +442,6 @@ class _WideHomeState extends State<_WideHome> {
                               onTap: widget.onFriendsGame,
                             ),
                             _HomeHeroData(
-                              title: 'Two Players — Same Device',
-                              subtitle: 'Pass and play locally on one board',
-                              icon: Icons.people_alt_rounded,
-                              buttonLabel: 'Start Local Match',
-                              asset:
-                                  'assets/backgrounds/local-match-card-v2.png',
-                              onTap: widget.onLocalGame,
-                            ),
-                            _HomeHeroData(
                               title: 'Chess Puzzles',
                               subtitle: 'Train with 150 tactical challenges',
                               icon: Icons.extension_rounded,
@@ -528,20 +500,6 @@ class _WideHomeState extends State<_WideHome> {
                                 asset:
                                     'assets/backgrounds/home-friends-hero-v1.png',
                                 onTap: widget.onFriendsGame,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              flex: 2,
-                              child: _ActionCard(
-                                keyName: 'local-match',
-                                icon: Icons.people_alt_rounded,
-                                title: 'Same Device',
-                                subtitle: 'Player 1 vs Player 2',
-                                color: const Color(0xFF123B58),
-                                asset:
-                                    'assets/backgrounds/local-match-card-v2.png',
-                                onTap: widget.onLocalGame,
                               ),
                             ),
                             const SizedBox(width: 14),

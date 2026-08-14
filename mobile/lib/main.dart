@@ -321,10 +321,7 @@ class _SplashGateState extends State<SplashGate> {
         onDailyChallenge: () => _openGame(context, GameMode.daily),
         onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
         onOnlineGame: () => _openOnlineGame(context),
-        onFriendsGame: () => _openOnlineGame(
-          context,
-          lobbyMode: OnlineLobbyMode.friends,
-        ),
+        onFriendsGame: () => _openFriendPlayChooser(context),
         onAnalysis: () => _push(context, const AnalysisScreen()),
         onPuzzles: () => setState(() => _primaryDestination = 2),
         onSavedGames: () => _push(context, const MatchHistoryScreen()),
@@ -439,6 +436,94 @@ class _SplashGateState extends State<SplashGate> {
     Navigator.of(context).pop();
     if (!mounted) return;
     setState(() => _primaryDestination = destination);
+  }
+
+  Future<void> _openFriendPlayChooser(BuildContext context) async {
+    final _FriendPlayChoice? choice =
+        await showModalBottomSheet<_FriendPlayChoice>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext sheetContext) => SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Container(
+              margin: const EdgeInsets.all(14),
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+              decoration: BoxDecoration(
+                color: const Color(0xFA071827),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: const Color(0xFF29475C)),
+                boxShadow: const <BoxShadow>[
+                  BoxShadow(color: Colors.black54, blurRadius: 32),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              'Choose How to Play',
+                              style: TextStyle(
+                                color: Color(0xFFFFF8ED),
+                                fontSize: 27,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Play online with a friend or share this device.',
+                              style: TextStyle(color: Color(0xFFAFBCCB)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  _FriendPlayChoiceCard(
+                    icon: Icons.language_rounded,
+                    title: 'Online with Friend',
+                    subtitle: 'Create a private room or join with a room code.',
+                    accent: const Color(0xFF4FD9C5),
+                    onTap: () => Navigator.of(sheetContext)
+                        .pop(_FriendPlayChoice.online),
+                  ),
+                  const SizedBox(height: 12),
+                  _FriendPlayChoiceCard(
+                    icon: Icons.people_alt_rounded,
+                    title: 'Two Players — Same Device',
+                    subtitle:
+                        'Player 1 • White   /   Player 2 • Black. Board stays fixed.',
+                    accent: const Color(0xFFE2AE49),
+                    onTap: () =>
+                        Navigator.of(sheetContext).pop(_FriendPlayChoice.local),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    if (!mounted || choice == null) return;
+    if (choice == _FriendPlayChoice.online) {
+      await _openOnlineGame(context, lobbyMode: OnlineLobbyMode.friends);
+    } else {
+      await _chooseSideAndOpen(context, GameMode.local);
+    }
   }
 
   Future<void> _chooseSideAndOpen(BuildContext context, GameMode mode) async {
@@ -1708,6 +1793,83 @@ List<String> dailyChallengeSolutionFor(
 }
 
 enum PlayerSideChoice { white, random, black }
+
+enum _FriendPlayChoice { online, local }
+
+class _FriendPlayChoiceCard extends StatelessWidget {
+  const _FriendPlayChoiceCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.accent,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color accent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0A2234),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: accent.withValues(alpha: .72)),
+          ),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: .12),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: accent.withValues(alpha: .7)),
+                ),
+                child: Icon(icon, color: accent, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Color(0xFFFFF8ED),
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Color(0xFFAFBCCB),
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.arrow_forward_rounded, color: accent),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _GameLaunchChoice {
   const _GameLaunchChoice(this.side, this.aiLevel);
