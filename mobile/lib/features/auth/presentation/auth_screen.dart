@@ -1237,6 +1237,8 @@ class _AuthScreenState extends State<AuthScreen> {
 
     final String? username = _nonBlankString(player['username']);
     final String? email = _nonBlankString(player['email']);
+    final String? resolvedPhotoUrl =
+        _nonBlankString(player['photoUrl']) ?? _nonBlankString(photoUrl);
     final bool isGuest = guestOverride ?? player['guest'] == true;
     final String name = _nonBlankString(player['displayName']) ??
         username ??
@@ -1250,7 +1252,7 @@ class _AuthScreenState extends State<AuthScreen> {
           displayName: name,
           username: username,
           email: email,
-          photoUrl: photoUrl,
+          photoUrl: resolvedPhotoUrl,
           isGuest: isGuest,
         ),
       );
@@ -1266,7 +1268,7 @@ class _AuthScreenState extends State<AuthScreen> {
         token: token,
         username: username,
         email: email,
-        photoUrl: photoUrl,
+        photoUrl: resolvedPhotoUrl,
       ),
     );
   }

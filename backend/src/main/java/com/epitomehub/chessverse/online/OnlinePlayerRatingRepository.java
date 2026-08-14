@@ -42,8 +42,42 @@ interface OnlinePlayerRatingRepository extends JpaRepository<OnlinePlayerRating,
             """)
     Page<OnlinePlayerRating> byCountry(@Param("country") String country, Pageable pageable);
 
-    long countByGamesPlayedGreaterThanAndRatingGreaterThan(int gamesPlayed, int rating);
+    @Query(value = """
+            select count(*) from online_player_rating candidate
+            where candidate.games_played > 0 and (
+                candidate.rating > :rating
+                or (candidate.rating = :rating and candidate.wins > :wins)
+                or (candidate.rating = :rating and candidate.wins = :wins
+                    and candidate.games_played > :gamesPlayed)
+                or (candidate.rating = :rating and candidate.wins = :wins
+                    and candidate.games_played = :gamesPlayed
+                    and candidate.player_id < :playerId)
+            )
+            """, nativeQuery = true)
+    long countGlobalPlayersAhead(
+            @Param("rating") int rating,
+            @Param("wins") int wins,
+            @Param("gamesPlayed") int gamesPlayed,
+            @Param("playerId") UUID playerId);
 
-    long countByCountryIgnoreCaseAndGamesPlayedGreaterThanAndRatingGreaterThan(
-            String country, int gamesPlayed, int rating);
+    @Query(value = """
+            select count(*) from online_player_rating candidate
+            where candidate.games_played > 0
+              and lower(candidate.country) = lower(:country)
+              and (
+                candidate.rating > :rating
+                or (candidate.rating = :rating and candidate.wins > :wins)
+                or (candidate.rating = :rating and candidate.wins = :wins
+                    and candidate.games_played > :gamesPlayed)
+                or (candidate.rating = :rating and candidate.wins = :wins
+                    and candidate.games_played = :gamesPlayed
+                    and candidate.player_id < :playerId)
+              )
+            """, nativeQuery = true)
+    long countCountryPlayersAhead(
+            @Param("country") String country,
+            @Param("rating") int rating,
+            @Param("wins") int wins,
+            @Param("gamesPlayed") int gamesPlayed,
+            @Param("playerId") UUID playerId);
 }

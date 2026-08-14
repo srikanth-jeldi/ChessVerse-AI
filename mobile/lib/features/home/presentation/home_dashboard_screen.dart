@@ -961,7 +961,8 @@ class _HomeHeroData {
 
 String _onlineStatus(int? count) {
   if (count == null) return 'Live arena';
-  return '$count ${count == 1 ? 'player' : 'players'} online';
+  if (count == 0) return 'No other players in live arena';
+  return '$count other ${count == 1 ? 'player' : 'players'} in live arena';
 }
 
 class _HomeHeroCarousel extends StatelessWidget {

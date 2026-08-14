@@ -8,11 +8,13 @@ void main() {
   Widget app({
     required VoidCallback onOnline,
     required VoidCallback onComputer,
+    int? onlinePlayerCount,
   }) {
     return MaterialApp(
       theme: AppTheme.darkTheme,
       home: HomeDashboardScreen(
         playerName: 'Test Player',
+        onlinePlayerCount: onlinePlayerCount,
         onPlayVsAi: onComputer,
         onDailyChallenge: () {},
         onLocalGame: () {},
@@ -91,9 +93,33 @@ void main() {
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Play'), findsOneWidget);
     expect(find.text('Puzzles'), findsNWidgets(2));
-    expect(find.text('Rankings'), findsNWidgets(2));
+    expect(find.text('Rankings'), findsOneWidget);
     expect(find.text('Play Online'), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('play-computer')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('home makes it clear that live presence excludes this player', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      app(
+        onOnline: () {},
+        onComputer: () {},
+        onlinePlayerCount: 0,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('No other players in live arena'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 }

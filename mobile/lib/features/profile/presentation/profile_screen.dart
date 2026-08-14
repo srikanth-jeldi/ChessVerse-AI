@@ -784,6 +784,7 @@ class _Avatar extends StatelessWidget {
                 width: size,
                 height: size,
                 fit: BoxFit.cover,
+                webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
                 errorBuilder: (_, __, ___) =>
                     Icon(icons[index], color: Colors.white, size: size * 0.5),
               ),
