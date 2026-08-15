@@ -673,7 +673,7 @@ void main() {
     expect(find.text('FINDING YOUR RIVAL'), findsOneWidget);
     expect(find.text('VS'), findsOneWidget);
     expect(find.text('128'), findsOneWidget);
-    expect(find.text('Window'), findsOneWidget);
+    expect(find.text('Estimated wait'), findsOneWidget);
     expect(find.text('Open'), findsOneWidget);
     expect(find.text('SEARCH SETTINGS'), findsOneWidget);
     expect(tester.takeException(), isNull);

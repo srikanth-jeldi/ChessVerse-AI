@@ -1,8 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../../core/local_game_archive.dart';
 import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
+import '../../auth/data/auth_session_store.dart';
+import '../../leaderboard/data/leaderboard_api.dart';
 
 void _noOnlineAction() {}
 
@@ -11,6 +16,7 @@ class HomeDashboardScreen extends StatelessWidget {
     required this.playerName,
     this.profilePhotoUrl,
     this.onlinePlayerCount,
+    this.activityGames,
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onLocalGame,
@@ -30,6 +36,7 @@ class HomeDashboardScreen extends StatelessWidget {
   final String playerName;
   final String? profilePhotoUrl;
   final int? onlinePlayerCount;
+  final List<SavedGameRecord>? activityGames;
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
@@ -57,6 +64,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 playerName: playerName,
                 profilePhotoUrl: profilePhotoUrl,
                 onlinePlayerCount: onlinePlayerCount,
+                activityGames: activityGames,
                 onPlayVsAi: onPlayVsAi,
                 onDailyChallenge: onDailyChallenge,
                 onLocalGame: onLocalGame,
@@ -323,6 +331,7 @@ class _WideHome extends StatefulWidget {
     required this.playerName,
     this.profilePhotoUrl,
     this.onlinePlayerCount,
+    this.activityGames,
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onOnlineGame,
@@ -340,6 +349,7 @@ class _WideHome extends StatefulWidget {
   final String playerName;
   final String? profilePhotoUrl;
   final int? onlinePlayerCount;
+  final List<SavedGameRecord>? activityGames;
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onOnlineGame;
@@ -555,6 +565,7 @@ class _WideHomeState extends State<_WideHome> {
                           onRankings: widget.onRankings,
                           playerName: widget.playerName,
                           profilePhotoUrl: widget.profilePhotoUrl,
+                          activityGames: widget.activityGames,
                         ),
                       ],
                     ),
@@ -569,13 +580,14 @@ class _WideHomeState extends State<_WideHome> {
   }
 }
 
-class _WideDashboardRow extends StatelessWidget {
+class _WideDashboardRow extends StatefulWidget {
   const _WideDashboardRow({
     required this.onDailyChallenge,
     required this.onPuzzles,
     required this.onRankings,
     required this.playerName,
     this.profilePhotoUrl,
+    this.activityGames,
   });
 
   final VoidCallback onDailyChallenge;
@@ -583,6 +595,64 @@ class _WideDashboardRow extends StatelessWidget {
   final VoidCallback onRankings;
   final String playerName;
   final String? profilePhotoUrl;
+  final List<SavedGameRecord>? activityGames;
+
+  @override
+  State<_WideDashboardRow> createState() => _WideDashboardRowState();
+}
+
+class _WideDashboardRowState extends State<_WideDashboardRow> {
+  static const LeaderboardApi _leaderboardApi = LeaderboardApi();
+  static const AuthSessionStore _sessionStore = AuthSessionStore();
+  LeaderboardDto? _leaderboard;
+  bool _loadingLeaderboard = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_refreshLeaderboard());
+    LocalGameArchive.activityRevision.addListener(_handleActivityChange);
+  }
+
+  @override
+  void dispose() {
+    LocalGameArchive.activityRevision.removeListener(_handleActivityChange);
+    super.dispose();
+  }
+
+  void _handleActivityChange() {
+    if (!mounted) return;
+    setState(() {});
+    unawaited(_refreshLeaderboard());
+  }
+
+  Future<void> _refreshLeaderboard() async {
+    try {
+      final StoredAuthSession? session = await _sessionStore.read();
+      if (session == null || session.token.isEmpty) {
+        if (mounted) setState(() => _loadingLeaderboard = false);
+        return;
+      }
+      final LeaderboardDto board = await _leaderboardApi.load(
+        session.token,
+        scope: 'global',
+        size: 3,
+      );
+      if (mounted) {
+        setState(() {
+          _leaderboard = board;
+          _loadingLeaderboard = false;
+        });
+      }
+    } on Object {
+      if (mounted) setState(() => _loadingLeaderboard = false);
+    }
+  }
+
+  List<SavedGameRecord> get _recentGames =>
+      (widget.activityGames ?? LocalGameArchive.games)
+          .take(3)
+          .toList(growable: false);
 
   @override
   Widget build(BuildContext context) {
@@ -593,28 +663,25 @@ class _WideDashboardRow extends StatelessWidget {
           _DashboardPanel(
             title: 'Daily Puzzle',
             trailing: 'View all',
-            onTap: onPuzzles,
-            child: _CompactDailyPuzzle(onTap: onDailyChallenge),
+            onTap: widget.onPuzzles,
+            child: _CompactDailyPuzzle(onTap: widget.onDailyChallenge),
           ),
           const SizedBox(height: 16),
-          const _DashboardPanel(
+          _DashboardPanel(
             title: 'Activity Feed',
             trailing: 'Live',
-            child: _EmptyDashboardState(
-              icon: Icons.auto_graph_rounded,
-              title: 'Your activity appears here',
-              subtitle: 'Games, puzzles and achievements update automatically.',
-            ),
+            child: _ActivityFeed(games: _recentGames),
           ),
           const SizedBox(height: 16),
           _DashboardPanel(
             title: 'Top Players',
             trailing: 'Global',
-            onTap: onRankings,
-            child: _PlayerPreviewRow(
-              rank: 'YOU',
-              name: playerName,
-              photoUrl: profilePhotoUrl,
+            onTap: widget.onRankings,
+            child: _TopPlayersPreview(
+              board: _leaderboard,
+              loading: _loadingLeaderboard,
+              playerName: widget.playerName,
+              profilePhotoUrl: widget.profilePhotoUrl,
             ),
           ),
         ]);
@@ -624,7 +691,7 @@ class _WideDashboardRow extends StatelessWidget {
           child: _DashboardPanel(
             title: 'Daily Puzzle',
             trailing: 'View all',
-            onTap: onPuzzles,
+            onTap: widget.onPuzzles,
             child: Row(children: <Widget>[
               Container(
                 width: 116,
@@ -653,7 +720,7 @@ class _WideDashboardRow extends StatelessWidget {
                             TextStyle(color: Color(0xFF9EB5C7), fontSize: 12)),
                     const SizedBox(height: 14),
                     FilledButton(
-                      onPressed: onDailyChallenge,
+                      onPressed: widget.onDailyChallenge,
                       child: const Text('Solve Puzzle'),
                     ),
                   ],
@@ -663,16 +730,11 @@ class _WideDashboardRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16, height: 16),
-        const Expanded(
+        Expanded(
           child: _DashboardPanel(
             title: 'Activity Feed',
             trailing: 'Live',
-            child: _EmptyDashboardState(
-              icon: Icons.auto_graph_rounded,
-              title: 'Your activity appears here',
-              subtitle:
-                  'Games, puzzles and achievements will update automatically.',
-            ),
+            child: _ActivityFeed(games: _recentGames),
           ),
         ),
         const SizedBox(width: 16, height: 16),
@@ -680,22 +742,12 @@ class _WideDashboardRow extends StatelessWidget {
           child: _DashboardPanel(
             title: 'Top Players',
             trailing: 'Global',
-            onTap: onRankings,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                _PlayerPreviewRow(
-                  rank: 'YOU',
-                  name: playerName,
-                  photoUrl: profilePhotoUrl,
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  onPressed: onRankings,
-                  icon: const Icon(Icons.leaderboard_rounded, size: 18),
-                  label: const Text('View Rankings'),
-                ),
-              ],
+            onTap: widget.onRankings,
+            child: _TopPlayersPreview(
+              board: _leaderboard,
+              loading: _loadingLeaderboard,
+              playerName: widget.playerName,
+              profilePhotoUrl: widget.profilePhotoUrl,
             ),
           ),
         ),
@@ -804,34 +856,243 @@ class _EmptyDashboardState extends StatelessWidget {
       );
 }
 
-class _PlayerPreviewRow extends StatelessWidget {
-  const _PlayerPreviewRow(
-      {required this.rank, required this.name, this.photoUrl});
-  final String rank;
+class _ActivityFeed extends StatelessWidget {
+  const _ActivityFeed({required this.games});
+  final List<SavedGameRecord> games;
+
+  @override
+  Widget build(BuildContext context) {
+    final LocalGameStats stats = LocalGameArchive.stats();
+    final List<_ActivityItem> items = <_ActivityItem>[
+      ...games.map((SavedGameRecord game) {
+        final String outcome = game.playerOutcome ?? 'untracked';
+        final bool win = outcome == 'win';
+        final bool draw = outcome == 'draw';
+        return _ActivityItem(
+          icon: win
+              ? Icons.emoji_events_rounded
+              : draw
+                  ? Icons.handshake_rounded
+                  : Icons.sports_esports_rounded,
+          color: win
+              ? const Color(0xFFF0B84B)
+              : draw
+                  ? const Color(0xFF58DFC9)
+                  : const Color(0xFF8FA9BB),
+          title: win
+              ? 'Won ${game.mode} game'
+              : draw
+                  ? 'Drew ${game.mode} game'
+                  : 'Completed ${game.mode} game',
+          detail: _relativeActivityTime(game.playedAt),
+        );
+      }),
+      if (stats.puzzlesSolved > 0)
+        _ActivityItem(
+          icon: Icons.extension_rounded,
+          color: const Color(0xFFA879F5),
+          title: '${stats.puzzlesSolved} puzzles solved',
+          detail: 'Training progress',
+        ),
+      if (stats.dailyStreak > 0)
+        _ActivityItem(
+          icon: Icons.local_fire_department_rounded,
+          color: const Color(0xFFFF7B49),
+          title: '${stats.dailyStreak} day streak',
+          detail: 'Daily challenge',
+        ),
+    ].take(3).toList(growable: false);
+    if (items.isEmpty) {
+      return const _EmptyDashboardState(
+        icon: Icons.auto_graph_rounded,
+        title: 'Your activity appears here',
+        subtitle: 'Games, puzzles and achievements update automatically.',
+      );
+    }
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: items
+          .map((_ActivityItem item) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(children: <Widget>[
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: item.color.withValues(alpha: .13),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Icon(item.icon, color: item.color, size: 18),
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(item.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700)),
+                        Text(item.detail,
+                            style: const TextStyle(
+                                color: Color(0xFF8FA9BB), fontSize: 10)),
+                      ],
+                    ),
+                  ),
+                ]),
+              ))
+          .toList(growable: false),
+    );
+  }
+}
+
+class _ActivityItem {
+  const _ActivityItem({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.detail,
+  });
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String detail;
+}
+
+String _relativeActivityTime(DateTime playedAt) {
+  final Duration elapsed = DateTime.now().difference(playedAt);
+  if (elapsed.inMinutes < 1) return 'Just now';
+  if (elapsed.inHours < 1) return '${elapsed.inMinutes}m ago';
+  if (elapsed.inDays < 1) return '${elapsed.inHours}h ago';
+  return '${elapsed.inDays}d ago';
+}
+
+class _TopPlayersPreview extends StatelessWidget {
+  const _TopPlayersPreview({
+    required this.board,
+    required this.loading,
+    required this.playerName,
+    this.profilePhotoUrl,
+  });
+  final LeaderboardDto? board;
+  final bool loading;
+  final String playerName;
+  final String? profilePhotoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          for (int rank = 1; rank <= 3; rank++)
+            _CompactRankingRow(
+              rank: rank,
+              name: 'Loading player…',
+              rating: null,
+              highlight: false,
+            ),
+          const SizedBox(height: 3),
+          _CompactRankingRow(
+            rank: 0,
+            name: playerName,
+            rating: null,
+            highlight: true,
+            photoUrl: profilePhotoUrl,
+          ),
+        ],
+      );
+    }
+    final List<LeaderboardEntryDto> leaders =
+        (board?.entries ?? const <LeaderboardEntryDto>[])
+            .take(3)
+            .toList(growable: false);
+    final PlayerRatingDto? current = board?.you;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        for (int index = 0; index < 3; index++)
+          _CompactRankingRow(
+            rank: index < leaders.length ? leaders[index].rank : index + 1,
+            name: index < leaders.length
+                ? leaders[index].displayName
+                : 'Rank awaiting player',
+            rating: index < leaders.length ? leaders[index].rating : null,
+            highlight: false,
+          ),
+        const SizedBox(height: 3),
+        _CompactRankingRow(
+          rank: current?.globalRank ?? 0,
+          name: current?.displayName ?? playerName,
+          rating: current?.rating,
+          highlight: true,
+          photoUrl: profilePhotoUrl,
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactRankingRow extends StatelessWidget {
+  const _CompactRankingRow({
+    required this.rank,
+    required this.name,
+    required this.rating,
+    required this.highlight,
+    this.photoUrl,
+  });
+  final int rank;
   final String name;
+  final int? rating;
+  final bool highlight;
   final String? photoUrl;
+
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(10),
+        height: 28,
+        margin: const EdgeInsets.symmetric(vertical: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFF0E2940),
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: const Color(0xFF2A91F2)),
+          color: highlight ? const Color(0xFF12364E) : const Color(0x8A0E2940),
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(
+            color:
+                highlight ? const Color(0xFF45D7C2) : const Color(0xFF27465A),
+          ),
         ),
         child: Row(children: <Widget>[
-          Text(rank,
-              style: const TextStyle(
-                  color: Color(0xFF45D7C2), fontWeight: FontWeight.w900)),
-          const SizedBox(width: 10),
-          _Avatar(photoUrl: photoUrl, size: 34),
-          const SizedBox(width: 9),
+          SizedBox(
+            width: 28,
+            child: Text(rank > 0 ? '#$rank' : '—',
+                style: TextStyle(
+                    color: highlight
+                        ? const Color(0xFF58DFC9)
+                        : const Color(0xFFF0B84B),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900)),
+          ),
+          if (highlight) ...<Widget>[
+            _Avatar(photoUrl: photoUrl, size: 22),
+            const SizedBox(width: 6),
+          ],
           Expanded(
-            child: Text(name,
+            child: Text(highlight ? 'YOU • $name' : name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w700)),
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700)),
           ),
+          if (rating != null)
+            Text('$rating',
+                style: const TextStyle(
+                    color: Color(0xFFC9D6DF),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700)),
         ]),
       );
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SavedGameRecord {
@@ -174,6 +175,7 @@ class LocalGameArchive {
   static int _profileAvatar = 0;
   static DateTime? _profileUpdatedAt;
   static Future<void> Function()? onCloudRelevantChange;
+  static final ValueNotifier<int> activityRevision = ValueNotifier<int>(0);
   static bool _mergingCloud = false;
 
   static List<SavedGameRecord> get games =>
@@ -563,6 +565,7 @@ class LocalGameArchive {
   static int mathMax(int left, int right) => left > right ? left : right;
 
   static void _notifyCloudChange() {
+    activityRevision.value++;
     if (_mergingCloud) return;
     final Future<void> Function()? callback = onCloudRelevantChange;
     if (callback != null) unawaited(callback());

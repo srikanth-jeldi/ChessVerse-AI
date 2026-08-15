@@ -1,4 +1,5 @@
 import 'package:chessverse_ai/core/audio/chess_sound_service.dart';
+import 'package:chessverse_ai/core/local_game_archive.dart';
 import 'package:chessverse_ai/features/analysis/presentation/analysis_screen.dart';
 import 'package:chessverse_ai/features/auth/presentation/auth_screen.dart';
 import 'package:chessverse_ai/features/daily_challenge/presentation/daily_challenge_screen.dart';
@@ -145,6 +146,7 @@ void main() {
       _app(
         HomeDashboardScreen(
           playerName: 'Guest Player',
+          activityGames: const <SavedGameRecord>[],
           onPlayVsAi: () {},
           onDailyChallenge: () {},
           onLocalGame: () {},
@@ -171,6 +173,7 @@ void main() {
       _app(
         HomeDashboardScreen(
           playerName: 'Guest Player',
+          activityGames: const <SavedGameRecord>[],
           onPlayVsAi: () {},
           onDailyChallenge: () {},
           onLocalGame: () {},
