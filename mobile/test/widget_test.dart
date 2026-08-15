@@ -537,8 +537,17 @@ void main() {
     await tester.pump();
 
     expect(find.text('FINDING YOUR RIVAL'), findsOneWidget);
-    expect(find.text('Searching worldwide players...'), findsOneWidget);
-    expect(find.text('Cancel search'), findsOneWidget);
+    expect(
+      find.text('Searching worldwide for the best available match'),
+      findsOneWidget,
+    );
+    expect(find.text('VS'), findsOneWidget);
+    expect(find.text('SEARCH SETTINGS'), findsOneWidget);
+    expect(find.text('CANCEL SEARCH'), findsOneWidget);
+    expect(
+      tester.getBottomRight(find.text('CANCEL SEARCH')).dy,
+      lessThanOrEqualTo(tester.view.physicalSize.height),
+    );
     expect(tester.takeException(), isNull);
   });
 

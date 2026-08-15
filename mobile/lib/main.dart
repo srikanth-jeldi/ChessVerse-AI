@@ -11734,8 +11734,10 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
     final String timer =
         '${(widget.elapsedSeconds ~/ 60).toString().padLeft(2, '0')}:'
         '${(widget.elapsedSeconds % 60).toString().padLeft(2, '0')}';
-    if (widget.wideLayout && widget.randomSearch) {
-      return _buildAdvancedSearch(context, timer);
+    if (widget.randomSearch) {
+      return widget.wideLayout
+          ? _buildAdvancedSearch(context, timer)
+          : _buildMobileAdvancedSearch(context, timer);
     }
     return Material(
       color: Colors.transparent,
@@ -12127,6 +12129,448 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
       ),
     );
   }
+
+  Widget _buildMobileAdvancedSearch(BuildContext context, String timer) {
+    const Color teal = Color(0xFF58DFC9);
+    const Color gold = Color(0xFFF0B84B);
+    final bool userIsWhite = widget.match.yourColor == 'WHITE';
+    final String? resolvedName = userIsWhite
+        ? widget.match.whitePlayerName
+        : widget.match.blackPlayerName;
+    final String playerName =
+        resolvedName?.trim().isNotEmpty == true ? resolvedName!.trim() : 'You';
+    final String rating = widget.match.ratingBefore?.toString() ?? 'Unrated';
+    final int remaining = math.max(0, 20 - widget.elapsedSeconds);
+
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.1,
+      child: Material(
+        color: const Color(0xFF020B14),
+        child: Stack(
+          children: <Widget>[
+            const Positioned(
+              left: -64,
+              bottom: 80,
+              child: Icon(Icons.castle_rounded,
+                  size: 220, color: Color(0x0C58DFC9)),
+            ),
+            const Positioned(
+              right: -66,
+              bottom: 130,
+              child: Icon(Icons.castle_outlined,
+                  size: 220, color: Color(0x0CF0B84B)),
+            ),
+            SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(18, 6, 18, 18),
+                child: Column(
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        IconButton(
+                          tooltip: 'Cancel search',
+                          onPressed: widget.onCancel,
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                              color: gold),
+                        ),
+                        const Expanded(
+                          child: Text(
+                            'RANKED RAPID • 10 MIN',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: gold,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.7,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Search settings',
+                          onPressed: () => _showMobileSearchSettings(context),
+                          icon: const Icon(Icons.tune_rounded, color: gold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    const Text(
+                      'FINDING YOUR RIVAL',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .7,
+                        fontFamily: 'serif',
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    const Text(
+                      'Searching worldwide for the best available match',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xFFA8B4C1), fontSize: 12),
+                    ),
+                    const SizedBox(height: 13),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: _MobileMatchPlayerCard(
+                            accent: teal,
+                            icon: Icons.person_rounded,
+                            title: playerName,
+                            rating: rating,
+                            subtitle: 'Worldwide',
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 7),
+                          child: AnimatedBuilder(
+                            animation: _pulse,
+                            builder: (BuildContext context, Widget? child) {
+                              final double value =
+                                  Curves.easeInOut.transform(_pulse.value);
+                              return Container(
+                                width: 50 + value * 4,
+                                height: 50 + value * 4,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF071725),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: gold),
+                                  boxShadow: <BoxShadow>[
+                                    BoxShadow(
+                                      color: gold.withValues(
+                                          alpha: .13 + value * .16),
+                                      blurRadius: 18,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                                child: const Text('VS',
+                                    style: TextStyle(
+                                        color: gold,
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w900)),
+                              );
+                            },
+                          ),
+                        ),
+                        const Expanded(
+                          child: _MobileMatchPlayerCard(
+                            accent: gold,
+                            icon: Icons.person_search_rounded,
+                            title: 'Searching…',
+                            rating: 'Best match',
+                            subtitle: 'Worldwide',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    AnimatedBuilder(
+                      animation: _pulse,
+                      builder: (BuildContext context, Widget? child) {
+                        final double value =
+                            Curves.easeInOut.transform(_pulse.value);
+                        return SizedBox.square(
+                          dimension: 174,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: <Widget>[
+                              for (int index = 0; index < 4; index++)
+                                Transform.rotate(
+                                  angle: (value + index / 4) * math.pi * 2,
+                                  child: Container(
+                                    width: 88.0 + index * 23,
+                                    height: 88.0 + index * 23,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: (index.isEven ? teal : gold)
+                                            .withValues(
+                                                alpha: .18 + value * .15),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              Container(
+                                width: 116,
+                                height: 116,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: RadialGradient(
+                                    colors: <Color>[
+                                      teal.withValues(alpha: .2),
+                                      const Color(0xFF03111D),
+                                    ],
+                                  ),
+                                  border: Border.all(
+                                      color: teal.withValues(alpha: .7)),
+                                  boxShadow: <BoxShadow>[
+                                    BoxShadow(
+                                      color: teal.withValues(alpha: .2),
+                                      blurRadius: 26,
+                                    ),
+                                  ],
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    Text('♘',
+                                        style: TextStyle(
+                                            color: teal, fontSize: 43)),
+                                    Text('♞',
+                                        style: TextStyle(
+                                            color: gold, fontSize: 43)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                    const Text('SEARCH TIME',
+                        style: TextStyle(
+                            color: Color(0xFFAAB5C1),
+                            fontSize: 12,
+                            letterSpacing: 1.4)),
+                    Text(timer,
+                        style: const TextStyle(
+                            color: teal,
+                            fontSize: 34,
+                            fontWeight: FontWeight.w900,
+                            fontFeatures: <ui.FontFeature>[
+                              ui.FontFeature.tabularFigures(),
+                            ])),
+                    const SizedBox(height: 9),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 9),
+                      decoration: BoxDecoration(
+                        color: const Color(0xD9071725),
+                        borderRadius: BorderRadius.circular(17),
+                        border: Border.all(color: const Color(0xFF46503F)),
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: _MobileSearchFact(
+                              icon: Icons.groups_rounded,
+                              value:
+                                  widget.onlinePlayerCount?.toString() ?? '—',
+                              label: 'Online',
+                            ),
+                          ),
+                          const _MobileFactDivider(),
+                          Expanded(
+                            child: _MobileSearchFact(
+                              icon: Icons.schedule_rounded,
+                              value: '${remaining}s',
+                              label: 'Window',
+                            ),
+                          ),
+                          const _MobileFactDivider(),
+                          const Expanded(
+                            child: _MobileSearchFact(
+                              icon: Icons.gps_fixed_rounded,
+                              value: 'Open',
+                              label: 'Range',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 9),
+                    const Text(
+                      'Keep this screen open. Your match starts automatically.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xFF94A2AF), fontSize: 12),
+                    ),
+                    const SizedBox(height: 11),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: OutlinedButton.icon(
+                        onPressed: widget.onCancel,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: gold,
+                          side: const BorderSide(color: gold, width: 1.4),
+                          textStyle: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w900),
+                        ),
+                        icon: const Icon(Icons.close_rounded),
+                        label: const Text('CANCEL SEARCH'),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _showMobileSearchSettings(context),
+                      icon: const Icon(Icons.tune_rounded),
+                      label: const Text('SEARCH SETTINGS'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showMobileSearchSettings(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF071725),
+      showDragHandle: true,
+      builder: (BuildContext context) => const SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(24, 8, 24, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text('Search settings',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+              SizedBox(height: 18),
+              _SearchSettingRow(
+                  icon: Icons.speed_rounded,
+                  label: 'Time control',
+                  value: 'Rapid • 10 min'),
+              _SearchSettingRow(
+                  icon: Icons.public_rounded,
+                  label: 'Region',
+                  value: 'Worldwide'),
+              _SearchSettingRow(
+                  icon: Icons.tune_rounded,
+                  label: 'Rating pool',
+                  value: 'Open pool'),
+              SizedBox(height: 12),
+              Text(
+                'More matchmaking filters will appear when the server supports them.',
+                style: TextStyle(color: Color(0xFF93A5B6), height: 1.4),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileMatchPlayerCard extends StatelessWidget {
+  const _MobileMatchPlayerCard({
+    required this.accent,
+    required this.icon,
+    required this.title,
+    required this.rating,
+    required this.subtitle,
+  });
+
+  final Color accent;
+  final IconData icon;
+  final String title;
+  final String rating;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 112,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xD9071928),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: accent.withValues(alpha: .75)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Container(
+              width: 39,
+              height: 39,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: accent.withValues(alpha: .13),
+                border: Border.all(color: accent.withValues(alpha: .7)),
+              ),
+              child: Icon(icon, color: accent, size: 24),
+            ),
+            const SizedBox(height: 3),
+            Text(title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 2),
+            Text(rating,
+                maxLines: 1,
+                style: TextStyle(
+                    color: accent, fontSize: 12, fontWeight: FontWeight.w800)),
+            Text(subtitle,
+                style: const TextStyle(color: Color(0xFF91A3B4), fontSize: 10)),
+          ],
+        ),
+      );
+}
+
+class _MobileSearchFact extends StatelessWidget {
+  const _MobileSearchFact({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: <Widget>[
+          Icon(icon, color: const Color(0xFF58DFC9), size: 22),
+          const SizedBox(height: 3),
+          Text(value,
+              maxLines: 1, style: const TextStyle(fontWeight: FontWeight.w900)),
+          Text(label,
+              style: const TextStyle(color: Color(0xFF94A5B5), fontSize: 10)),
+        ],
+      );
+}
+
+class _MobileFactDivider extends StatelessWidget {
+  const _MobileFactDivider();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 1,
+        height: 48,
+        color: const Color(0xFF334A5B),
+      );
+}
+
+class _SearchSettingRow extends StatelessWidget {
+  const _SearchSettingRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        child: Row(
+          children: <Widget>[
+            Icon(icon, color: const Color(0xFF58DFC9)),
+            const SizedBox(width: 14),
+            Expanded(child: Text(label)),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
+          ],
+        ),
+      );
 }
 
 class _MatchPlayerCard extends StatelessWidget {
