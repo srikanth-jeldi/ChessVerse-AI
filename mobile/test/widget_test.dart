@@ -13,6 +13,9 @@ class _FakeOnlineApi extends OnlineMatchApi {
   final bool active;
 
   @override
+  Future<int> onlinePlayerCount(String token) async => 128;
+
+  @override
   Future<OnlineMatchDto> randomMatch(String token) async => OnlineMatchDto(
         id: '11111111-1111-1111-1111-111111111111',
         roomCode: 'CVTEST',
@@ -536,6 +539,39 @@ void main() {
     expect(find.text('FINDING YOUR RIVAL'), findsOneWidget);
     expect(find.text('Searching worldwide players...'), findsOneWidget);
     expect(find.text('Cancel search'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop matchmaking shows real lightweight rival workspace', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: OnlineMatchmakingSheet(
+            api: _FakeOnlineApi(active: false),
+            token: 'test-token',
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Find Match'));
+    await tester.pump();
+
+    expect(find.text('CHESSVERSE AI MATCHMAKING'), findsOneWidget);
+    expect(find.text('YOU'), findsOneWidget);
+    expect(find.text('RIVAL'), findsOneWidget);
+    expect(find.text('VS'), findsOneWidget);
+    expect(find.text('128'), findsOneWidget);
+    expect(find.text('Search window'), findsOneWidget);
+    expect(find.text('Open pool'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
