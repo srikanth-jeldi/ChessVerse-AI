@@ -881,7 +881,11 @@ class _PlayerHeader extends StatelessWidget {
         if (wide) ...<Widget>[
           IconButton(
             tooltip: 'Notifications',
-            onPressed: () {},
+            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('You are all caught up. No new notifications.'),
+              ),
+            ),
             style: IconButton.styleFrom(
               backgroundColor: const Color(0xFF102A40),
               foregroundColor: const Color(0xFFD9E7F0),

@@ -12,6 +12,7 @@ class SavedGameRecord {
     required this.playedAt,
     required this.whitePlayer,
     required this.blackPlayer,
+    this.playerOutcome,
   });
 
   final String mode;
@@ -21,6 +22,7 @@ class SavedGameRecord {
   final DateTime playedAt;
   final String whitePlayer;
   final String blackPlayer;
+  final String? playerOutcome;
 
   String get summary => '$whitePlayer vs $blackPlayer';
 }
@@ -44,8 +46,63 @@ class LocalGameStats {
   final int puzzlesSolved;
   final int dailyStreak;
 
-  int get winRate =>
-      gamesPlayed == 0 ? 0 : ((wins / gamesPlayed) * 100).round();
+  int get winRate => wins + draws + losses == 0
+      ? 0
+      : ((wins / (wins + draws + losses)) * 100).round();
+}
+
+String playerOutcomeForResult(
+  String result, {
+  required bool humanPlaysWhite,
+  required bool tracksPlayer,
+}) {
+  if (!tracksPlayer) return 'untracked';
+  final String normalized = result.toLowerCase();
+  if (normalized.contains('draw') || normalized.contains('stalemate')) {
+    return 'draw';
+  }
+  if (normalized.contains('challenge complete') ||
+      normalized.contains('puzzle complete') ||
+      normalized.contains('you win') ||
+      normalized.contains('victory')) {
+    return 'win';
+  }
+  if (normalized.contains('challenge missed') ||
+      normalized.contains('opponent wins') ||
+      normalized.contains('defeat')) {
+    return 'loss';
+  }
+  if (normalized.contains('white wins')) {
+    return humanPlaysWhite ? 'win' : 'loss';
+  }
+  if (normalized.contains('black wins')) {
+    return humanPlaysWhite ? 'loss' : 'win';
+  }
+  return 'untracked';
+}
+
+int dailyStreakAfterCompletion({
+  required int currentStreak,
+  required DateTime? previousCompletion,
+  required DateTime completion,
+}) {
+  if (previousCompletion == null) return 1;
+  final DateTime previousDay = DateTime.utc(
+    previousCompletion.toUtc().year,
+    previousCompletion.toUtc().month,
+    previousCompletion.toUtc().day,
+  );
+  final DateTime completionDay = DateTime.utc(
+    completion.toUtc().year,
+    completion.toUtc().month,
+    completion.toUtc().day,
+  );
+  final int elapsedDays = completionDay.difference(previousDay).inDays;
+  if (elapsedDays <= 0) {
+    return currentStreak.clamp(1, 1 << 30).toInt();
+  }
+  if (elapsedDays == 1) return currentStreak + 1;
+  return 1;
 }
 
 class RewardBadge {
@@ -94,6 +151,7 @@ class LocalGameArchive {
       'chessverse_completed_daily_challenges';
   static const String _lastDailyCompletionKey =
       'chessverse_last_daily_completion_utc';
+  static const String _dailyStreakKey = 'chessverse_daily_streak';
   static const String _completedPuzzlesKey =
       'chessverse_completed_independent_puzzles';
   static const String _profileCountryKey = 'chessverse_profile_country';
@@ -147,6 +205,7 @@ class LocalGameArchive {
                         DateTime.now(),
                 whitePlayer: game['whitePlayer'] as String? ?? 'White',
                 blackPlayer: game['blackPlayer'] as String? ?? 'Black',
+                playerOutcome: game['playerOutcome'] as String?,
               );
             }),
           );
@@ -170,6 +229,10 @@ class LocalGameArchive {
     _lastDailyCompletedAt = completionRaw == null
         ? null
         : DateTime.tryParse(completionRaw)?.toUtc();
+    _dailyStreak = int.tryParse(
+          await _storage.read(key: _dailyStreakKey) ?? '',
+        ) ??
+        0;
     final String? puzzlesRaw = await _storage.read(key: _completedPuzzlesKey);
     if (puzzlesRaw != null && puzzlesRaw.trim().isNotEmpty) {
       _completedPuzzleIds.addAll(
@@ -213,6 +276,7 @@ class LocalGameArchive {
               'playedAt': game.playedAt.toUtc().toIso8601String(),
               'whitePlayer': game.whitePlayer,
               'blackPlayer': game.blackPlayer,
+              'playerOutcome': game.playerOutcome,
             },
           )
           .toList(growable: false),
@@ -255,12 +319,20 @@ class LocalGameArchive {
   static void markDailyChallengeComplete(String challengeId) {
     if (_completedDailyChallengeIds.add(challengeId)) {
       _dailySolved++;
-      _dailyStreak = _dailyStreak == 0 ? 1 : _dailyStreak + 1;
+      final DateTime now = DateTime.now().toUtc();
+      _dailyStreak = dailyStreakAfterCompletion(
+        currentStreak: _dailyStreak,
+        previousCompletion: _lastDailyCompletedAt,
+        completion: now,
+      );
       unawaited(
         _storage.write(
           key: _completedDailyKey,
           value: _completedDailyChallengeIds.join(','),
         ),
+      );
+      unawaited(
+        _storage.write(key: _dailyStreakKey, value: '$_dailyStreak'),
       );
     }
     _lastDailyCompletedAt = DateTime.now().toUtc();
@@ -466,6 +538,7 @@ class LocalGameArchive {
           key: _completedDailyKey,
           value: _completedDailyChallengeIds.join(','),
         ),
+        _storage.write(key: _dailyStreakKey, value: '$_dailyStreak'),
         if (_lastDailyCompletedAt != null)
           _storage.write(
             key: _lastDailyCompletionKey,
@@ -500,15 +573,17 @@ class LocalGameArchive {
     int draws = 0;
     int losses = 0;
     for (final SavedGameRecord game in _games) {
-      final String result = game.result.toLowerCase();
-      if (result.contains('draw')) {
+      final String outcome = game.playerOutcome ??
+          playerOutcomeForResult(
+            game.result,
+            humanPlaysWhite: true,
+            tracksPlayer: true,
+          );
+      if (outcome == 'draw') {
         draws++;
-      } else if (result.contains('white wins') ||
-          result.contains('you win') ||
-          result.contains('challenge complete')) {
+      } else if (outcome == 'win') {
         wins++;
-      } else if (result.contains('black wins') ||
-          result.contains('opponent wins')) {
+      } else if (outcome == 'loss') {
         losses++;
       }
     }

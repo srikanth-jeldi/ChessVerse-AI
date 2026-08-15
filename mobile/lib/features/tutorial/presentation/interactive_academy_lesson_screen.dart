@@ -699,8 +699,11 @@ class _PieceGlyph extends StatelessWidget {
       ValueListenableBuilder<ChessPieceAppearance>(
         valueListenable: ChessPieceAppearanceController.current,
         builder: (BuildContext context, ChessPieceAppearance appearance, _) {
-          final double scale =
-              appearance.size == ChessPieceVisualSize.extraLarge ? 1.28 : 1.14;
+          final double scale = switch (appearance.size) {
+            ChessPieceVisualSize.large => 1.14,
+            ChessPieceVisualSize.extraLarge => 1.28,
+            ChessPieceVisualSize.doubleExtraLarge => 1.40,
+          };
           final Widget visual;
           if (appearance.style == ChessPieceVisualStyle.classic2d) {
             visual = Text(

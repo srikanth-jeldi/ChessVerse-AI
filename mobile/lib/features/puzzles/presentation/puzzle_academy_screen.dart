@@ -25,6 +25,25 @@ class PuzzleAcademyScreen extends StatefulWidget {
 }
 
 class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
+  void _showTrainingInsights(
+    LocalGameStats stats,
+    RewardSnapshot rewards,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) => _TrainingInsightsSheet(
+        stats: stats,
+        rewards: rewards,
+        onDifficulty: (PuzzleDifficulty difficulty) {
+          Navigator.of(context).pop();
+          _openPuzzlePicker(this.context, difficulty);
+        },
+      ),
+    );
+  }
+
   Future<void> _launchPuzzle(String puzzleId) async {
     await widget.onStartPuzzle(puzzleId);
     if (mounted) {
@@ -174,6 +193,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                     ),
                     onDifficulty: (PuzzleDifficulty difficulty) =>
                         _openPuzzlePicker(context, difficulty),
+                    onViewStats: () => _showTrainingInsights(stats, rewards),
                   ),
                 ),
               ],
@@ -326,12 +346,14 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
     required this.rewards,
     required this.onStart,
     required this.onDifficulty,
+    required this.onViewStats,
   });
 
   final LocalGameStats stats;
   final RewardSnapshot rewards;
   final VoidCallback onStart;
   final ValueChanged<PuzzleDifficulty> onDifficulty;
+  final VoidCallback onViewStats;
 
   @override
   Widget build(BuildContext context) {
@@ -409,9 +431,12 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
                     Expanded(
                       flex: 3,
                       child: SizedBox(
-                        height: 360,
-                        child:
-                            _TrainingStatsPanel(stats: stats, rewards: rewards),
+                        height: 380,
+                        child: _TrainingStatsPanel(
+                          stats: stats,
+                          rewards: rewards,
+                          onViewStats: onViewStats,
+                        ),
                       ),
                     ),
                   ],
@@ -800,16 +825,20 @@ class _DifficultyCard extends StatelessWidget {
 }
 
 class _TrainingStatsPanel extends StatelessWidget {
-  const _TrainingStatsPanel({required this.stats, required this.rewards});
+  const _TrainingStatsPanel({
+    required this.stats,
+    required this.rewards,
+    required this.onViewStats,
+  });
 
   final LocalGameStats stats;
   final RewardSnapshot rewards;
+  final VoidCallback onViewStats;
 
   @override
   Widget build(BuildContext context) {
-    final int accuracy = stats.puzzlesSolved == 0
-        ? 0
-        : (76 + stats.puzzlesSolved).clamp(0, 100).toInt();
+    final int completion =
+        ((stats.puzzlesSolved / PuzzleCatalog.all.length) * 100).round();
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       decoration: BoxDecoration(
@@ -893,13 +922,13 @@ class _TrainingStatsPanel extends StatelessWidget {
                   ),
                   _TrainingStatRow(
                     icon: Icons.verified_outlined,
-                    label: 'Accuracy',
-                    value: '$accuracy%',
+                    label: 'Completion',
+                    value: '$completion%',
                     color: const Color(0xFF5DD7C0),
                   ),
                   _TrainingStatRow(
                     icon: Icons.local_fire_department_rounded,
-                    label: 'Best Streak',
+                    label: 'Daily Streak',
                     value: '${rewards.streak}',
                     color: const Color(0xFFF06E42),
                   ),
@@ -909,7 +938,8 @@ class _TrainingStatsPanel extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           OutlinedButton.icon(
-            onPressed: () {},
+            key: const ValueKey<String>('view-training-insights'),
+            onPressed: onViewStats,
             style: OutlinedButton.styleFrom(
               foregroundColor: const Color(0xFF66AFFF),
               side: const BorderSide(color: Color(0xFF4398E8)),
@@ -918,10 +948,252 @@ class _TrainingStatsPanel extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12)),
             ),
             icon: const Icon(Icons.bar_chart_rounded),
-            label:
-                const Text('VIEW STATS', style: TextStyle(letterSpacing: 1.2)),
+            label: const Text('VIEW INSIGHTS',
+                style: TextStyle(letterSpacing: 1.2)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TrainingInsightsSheet extends StatelessWidget {
+  const _TrainingInsightsSheet({
+    required this.stats,
+    required this.rewards,
+    required this.onDifficulty,
+  });
+
+  final LocalGameStats stats;
+  final RewardSnapshot rewards;
+  final ValueChanged<PuzzleDifficulty> onDifficulty;
+
+  @override
+  Widget build(BuildContext context) {
+    final Map<PuzzleDifficulty, int> solved = <PuzzleDifficulty, int>{
+      for (final PuzzleDifficulty difficulty in PuzzleDifficulty.values)
+        difficulty: LocalGameArchive.puzzleSolvedCount(difficulty.name),
+    };
+    final PuzzleDifficulty recommended = PuzzleDifficulty.values.reduce(
+      (PuzzleDifficulty a, PuzzleDifficulty b) =>
+          solved[a]! <= solved[b]! ? a : b,
+    );
+    final int total = PuzzleCatalog.all.length;
+    final int remaining = (total - stats.puzzlesSolved).clamp(0, total).toInt();
+    final int completion = total == 0
+        ? 0
+        : ((stats.puzzlesSolved / total) * 100).round().clamp(0, 100).toInt();
+
+    return SafeArea(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Container(
+            margin: const EdgeInsets.all(12),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * .9,
+            ),
+            decoration: BoxDecoration(
+              color: const Color(0xFA071827),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: const Color(0x8062E4D1)),
+              boxShadow: const <BoxShadow>[
+                BoxShadow(
+                  color: Color(0x99000000),
+                  blurRadius: 32,
+                  offset: Offset(0, 16),
+                ),
+              ],
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(22, 16, 22, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      const Expanded(
+                        child: Text(
+                          'TRAINING INSIGHTS',
+                          style: TextStyle(
+                            color: AppColors.accentGold,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                  const Text(
+                    'Real progress from completed ChessVerseAI puzzle boards.',
+                    style: TextStyle(color: Color(0xFFA7B7C6)),
+                  ),
+                  const SizedBox(height: 18),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: <Widget>[
+                      _InsightMetric(
+                        label: 'COMPLETED',
+                        value: '${stats.puzzlesSolved}/$total',
+                        icon: Icons.extension_rounded,
+                      ),
+                      _InsightMetric(
+                        label: 'COMPLETION',
+                        value: '$completion%',
+                        icon: Icons.donut_large_rounded,
+                      ),
+                      _InsightMetric(
+                        label: 'REMAINING',
+                        value: '$remaining',
+                        icon: Icons.flag_outlined,
+                      ),
+                      _InsightMetric(
+                        label: 'DAILY STREAK',
+                        value: '${rewards.streak}',
+                        icon: Icons.local_fire_department_rounded,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  for (final PuzzleDifficulty difficulty
+                      in PuzzleDifficulty.values) ...<Widget>[
+                    _DifficultyInsight(
+                      difficulty: difficulty,
+                      solved: solved[difficulty]!,
+                      onTap: () => onDifficulty(difficulty),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                    key: const ValueKey<String>('continue-recommended-puzzles'),
+                    onPressed: () => onDifficulty(recommended),
+                    icon: const Icon(Icons.play_arrow_rounded),
+                    label: Text(
+                      'CONTINUE ${recommended.name.toUpperCase()} TRAINING',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InsightMetric extends StatelessWidget {
+  const _InsightMetric({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 145,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF102332),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF294A5D)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Icon(icon, color: const Color(0xFF62E4D1), size: 20),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF91A7B6),
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _DifficultyInsight extends StatelessWidget {
+  const _DifficultyInsight({
+    required this.difficulty,
+    required this.solved,
+    required this.onTap,
+  });
+
+  final PuzzleDifficulty difficulty;
+  final int solved;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color accent = switch (difficulty) {
+      PuzzleDifficulty.easy => const Color(0xFF63D2B8),
+      PuzzleDifficulty.medium => AppColors.accentGold,
+      PuzzleDifficulty.hard => const Color(0xFFF08A4B),
+    };
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Ink(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0D2030),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accent.withValues(alpha: .55)),
+        ),
+        child: Row(
+          children: <Widget>[
+            Icon(Icons.insights_rounded, color: accent),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    '${difficulty.name.toUpperCase()} TACTICS',
+                    style:
+                        TextStyle(color: accent, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 6),
+                  LinearProgressIndicator(
+                    value: solved / PuzzleCatalog.puzzlesPerDifficulty,
+                    color: accent,
+                    backgroundColor: const Color(0xFF344B5C),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              '$solved/${PuzzleCatalog.puzzlesPerDifficulty}',
+              style: const TextStyle(color: Colors.white),
+            ),
+            const Icon(Icons.chevron_right_rounded),
+          ],
+        ),
       ),
     );
   }

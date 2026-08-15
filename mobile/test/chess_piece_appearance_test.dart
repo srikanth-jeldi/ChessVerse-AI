@@ -3,6 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('ChessPieceAppearanceController', () {
+    test('uses Extra Large pieces by default', () {
+      expect(
+        const ChessPieceAppearance().size,
+        ChessPieceVisualSize.extraLarge,
+      );
+    });
+
     test('maps current and legacy style labels', () {
       expect(
         ChessPieceAppearanceController.styleFromLabel('Premium 3D'),
@@ -26,6 +33,16 @@ void main() {
       expect(
         ChessPieceAppearanceController.sizeFromLabel('Large'),
         ChessPieceVisualSize.large,
+      );
+      expect(
+        ChessPieceAppearanceController.sizeFromLabel('Double Extra Large'),
+        ChessPieceVisualSize.doubleExtraLarge,
+      );
+      expect(
+        ChessPieceAppearanceController.sizeLabel(
+          ChessPieceVisualSize.doubleExtraLarge,
+        ),
+        'Double Extra Large',
       );
     });
   });

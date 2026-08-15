@@ -498,9 +498,11 @@ class _PieceQuickLesson extends StatelessWidget {
                   );
                 }
                 return Transform.scale(
-                  scale: appearance.size == ChessPieceVisualSize.extraLarge
-                      ? 1.18
-                      : 1.05,
+                  scale: switch (appearance.size) {
+                    ChessPieceVisualSize.large => 1.05,
+                    ChessPieceVisualSize.extraLarge => 1.18,
+                    ChessPieceVisualSize.doubleExtraLarge => 1.30,
+                  },
                   child: image,
                 );
               },

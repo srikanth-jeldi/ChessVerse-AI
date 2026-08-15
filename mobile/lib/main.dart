@@ -95,6 +95,128 @@ const List<NavigationDestination> _primaryNavigationDestinations =
   NavigationDestination(icon: Icon(Icons.person_rounded), label: 'Profile'),
 ];
 
+class _GlassBottomNavigation extends StatelessWidget {
+  const _GlassBottomNavigation({
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      minimum: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xC90A2233),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0x4262E1D0)),
+              boxShadow: const <BoxShadow>[
+                BoxShadow(
+                  color: Color(0x52000000),
+                  blurRadius: 24,
+                  offset: Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: Color(0x241E9BFF),
+                  blurRadius: 18,
+                  spreadRadius: -4,
+                ),
+              ],
+            ),
+            child: SizedBox(
+              height: 64,
+              child: Row(
+                children: List<Widget>.generate(
+                  _primaryNavigationDestinations.length,
+                  (int index) {
+                    final NavigationDestination destination =
+                        _primaryNavigationDestinations[index];
+                    final bool selected = index == selectedIndex;
+                    return Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 2,
+                          vertical: 5,
+                        ),
+                        child: Semantics(
+                          selected: selected,
+                          button: true,
+                          label: destination.label,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(18),
+                            onTap: () => onDestinationSelected(index),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 240),
+                              curve: Curves.easeOutCubic,
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? const Color(0x522C9DCF)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: selected
+                                    ? const <BoxShadow>[
+                                        BoxShadow(
+                                          color: Color(0x3828A9DF),
+                                          blurRadius: 12,
+                                          spreadRadius: -3,
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: <Widget>[
+                                  IconTheme(
+                                    data: IconThemeData(
+                                      color: selected
+                                          ? const Color(0xFFF7F1E5)
+                                          : const Color(0xFFC3D1DC),
+                                      size: selected ? 23 : 22,
+                                    ),
+                                    child: destination.icon,
+                                  ),
+                                  const SizedBox(height: 1),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      destination.label,
+                                      maxLines: 1,
+                                      style: TextStyle(
+                                        color: selected
+                                            ? const Color(0xFFF7F1E5)
+                                            : const Color(0xFFC3D1DC),
+                                        fontSize: 10.5,
+                                        fontWeight: selected
+                                            ? FontWeight.w800
+                                            : FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class SplashGate extends StatefulWidget {
   const SplashGate({super.key});
 
@@ -417,15 +539,13 @@ class _SplashGateState extends State<SplashGate> {
           );
         }
         return Scaffold(
+          extendBody: true,
           backgroundColor: Colors.transparent,
           body: content,
-          bottomNavigationBar: NavigationBar(
+          bottomNavigationBar: _GlassBottomNavigation(
             selectedIndex: _primaryDestination,
             onDestinationSelected: (int value) =>
                 setState(() => _primaryDestination = value),
-            backgroundColor: const Color(0xF2071A29),
-            indicatorColor: const Color(0xFF124B77),
-            destinations: _primaryNavigationDestinations,
           ),
         );
       },
@@ -518,7 +638,7 @@ class _SplashGateState extends State<SplashGate> {
         ),
       ),
     );
-    if (!mounted || choice == null) return;
+    if (!mounted || !context.mounted || choice == null) return;
     if (choice == _FriendPlayChoice.online) {
       await _openOnlineGame(context, lobbyMode: OnlineLobbyMode.friends);
     } else {
@@ -2080,11 +2200,12 @@ class _SideChoiceArtwork extends StatelessWidget {
 }
 
 class AiCandidate {
-  const AiCandidate(this.from, this.to, this.score);
+  const AiCandidate(this.from, this.to, this.score, {this.promotion});
 
   final String from;
   final String to;
   final double score;
+  final String? promotion;
 }
 
 AiCandidate chooseAiCandidateForLevel(
@@ -2169,35 +2290,35 @@ class BoardPalette {
 const Map<BoardSkin, BoardPalette> boardPalettes = <BoardSkin, BoardPalette>{
   BoardSkin.royalWalnut: BoardPalette(
     label: 'Walnut',
-    light: Color(0xFFE9D5B7),
+    light: Color(0xFFD8C3A5),
     dark: Color(0xFF7A4F2A),
     frame: Color(0xFF342113),
     accent: Color(0xFFD6A84F),
   ),
   BoardSkin.jadeGlass: BoardPalette(
     label: 'Jade',
-    light: Color(0xFFD8EEE1),
+    light: Color(0xFFC4DCCF),
     dark: Color(0xFF2F7D66),
     frame: Color(0xFF12372E),
     accent: Color(0xFF63D2B8),
   ),
   BoardSkin.tournament: BoardPalette(
     label: 'Classic',
-    light: Color(0xFFF0D9B5),
+    light: Color(0xFFDEC6A2),
     dark: Color(0xFFB58863),
     frame: Color(0xFF30251E),
     accent: Color(0xFFE2B458),
   ),
   BoardSkin.marble: BoardPalette(
     label: 'Marble',
-    light: Color(0xFFF2F0EA),
+    light: Color(0xFFD9D8D3),
     dark: Color(0xFF667078),
     frame: Color(0xFF252A2D),
     accent: Color(0xFFB9E4EE),
   ),
   BoardSkin.sapphire: BoardPalette(
     label: 'Sapphire',
-    light: Color(0xFFDCE7EA),
+    light: Color(0xFFC6D3D6),
     dark: Color(0xFF28546A),
     frame: Color(0xFF142B35),
     accent: Color(0xFF60D6D0),
@@ -2378,24 +2499,33 @@ class ChessRules {
   }
 
   static bool isKingInCheck(bool white, Map<String, ChessPiece> pieces) {
-    String? kingSquare;
+    return checkingAttackers(white, pieces).isNotEmpty;
+  }
+
+  static String? kingSquare(bool white, Map<String, ChessPiece> pieces) {
     for (final MapEntry<String, ChessPiece> entry in pieces.entries) {
       if (entry.value.white == white && entry.value.code == 'K') {
-        kingSquare = entry.key;
-        break;
+        return entry.key;
       }
     }
-    if (kingSquare == null) {
-      return false;
-    }
+    return null;
+  }
 
+  static List<String> checkingAttackers(
+    bool white,
+    Map<String, ChessPiece> pieces,
+  ) {
+    final String? target = kingSquare(white, pieces);
+    if (target == null) return <String>[];
+
+    final List<String> attackers = <String>[];
     for (final MapEntry<String, ChessPiece> entry in pieces.entries) {
       if (entry.value.white != white &&
-          attacksSquare(entry.key, kingSquare, pieces)) {
-        return true;
+          attacksSquare(entry.key, target, pieces)) {
+        attackers.add(entry.key);
       }
     }
-    return false;
+    return attackers;
   }
 
   static bool attacksSquare(
@@ -2408,15 +2538,47 @@ class ChessRules {
       return false;
     }
 
-    if (piece.code == 'P') {
-      final SquarePosition origin = positionOf(from);
-      final SquarePosition attacked = positionOf(target);
-      final int direction = piece.white ? 1 : -1;
-      return attacked.rank == origin.rank + direction &&
-          (attacked.file - origin.file).abs() == 1;
-    }
+    final SquarePosition origin = positionOf(from);
+    final SquarePosition attacked = positionOf(target);
+    final int fileDelta = attacked.file - origin.file;
+    final int rankDelta = attacked.rank - origin.rank;
 
-    return pseudoLegalTargets(from, pieces).contains(target);
+    return switch (piece.code) {
+      'P' => rankDelta == (piece.white ? 1 : -1) && fileDelta.abs() == 1,
+      'N' => (fileDelta.abs() == 1 && rankDelta.abs() == 2) ||
+          (fileDelta.abs() == 2 && rankDelta.abs() == 1),
+      'K' => fileDelta.abs() <= 1 &&
+          rankDelta.abs() <= 1 &&
+          (fileDelta != 0 || rankDelta != 0),
+      'B' => (fileDelta != 0 || rankDelta != 0) &&
+          fileDelta.abs() == rankDelta.abs() &&
+          _rayIsClear(origin, attacked, pieces),
+      'R' => (fileDelta == 0 || rankDelta == 0) &&
+          (fileDelta != 0 || rankDelta != 0) &&
+          _rayIsClear(origin, attacked, pieces),
+      'Q' => ((fileDelta == 0 || rankDelta == 0) ||
+              fileDelta.abs() == rankDelta.abs()) &&
+          (fileDelta != 0 || rankDelta != 0) &&
+          _rayIsClear(origin, attacked, pieces),
+      _ => false,
+    };
+  }
+
+  static bool _rayIsClear(
+    SquarePosition origin,
+    SquarePosition target,
+    Map<String, ChessPiece> pieces,
+  ) {
+    final int fileStep = (target.file - origin.file).sign;
+    final int rankStep = (target.rank - origin.rank).sign;
+    int file = origin.file + fileStep;
+    int rank = origin.rank + rankStep;
+    while (file != target.file || rank != target.rank) {
+      if (pieces.containsKey(squareOf(file, rank))) return false;
+      file += fileStep;
+      rank += rankStep;
+    }
+    return true;
   }
 
   static Map<String, ChessPiece> applyMove(
@@ -2895,10 +3057,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String? _lastPlayerMove;
   String? _lastPlayerCoachNote;
   String? _moveQualityText;
+  bool _moveQualityIsWeak = false;
   int _hintStage = 0;
   String? _coachArrowFrom;
   String? _coachArrowTo;
   int _coachRequestEpoch = 0;
+  int _moveReviewEpoch = 0;
   double _engineEvaluationPawns = 0;
   final List<int> _playerMoveScores = <int>[];
   final List<String> _importantMistakes = <String>[];
@@ -3125,7 +3289,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _preferences.readBool('coordinates', fallback: true),
       _preferences.readString('boardTheme', fallback: 'Royal Walnut'),
       _preferences.readString('pieceStyle', fallback: 'Premium 3D'),
-      _preferences.readString('pieceSize', fallback: 'Large'),
+      _preferences.readString('pieceSize', fallback: 'Extra Large'),
     ]);
     if (!mounted) return;
     final String boardTheme = values[4] as String;
@@ -3403,8 +3567,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   2 => 'Exact move',
                   _ => 'Piece hint',
                 },
-                analyzeLabel:
-                    _moveQualityText == null ? 'Analyze' : 'Why weak?',
+                analyzeLabel: _moveQualityText == null
+                    ? 'Analyze'
+                    : _moveQualityIsWeak
+                        ? 'Why weak?'
+                        : 'Analyze move',
                 onHint: _showHint,
                 onAnalyze: _showAnalysis,
                 onTryAgain: _gameMode == GameMode.online
@@ -3769,9 +3936,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                   ).withValues(alpha: 0.92),
                                   borderRadius: BorderRadius.circular(999),
                                   border: Border.all(
-                                    color: const Color(
-                                      0xFFD6A84F,
-                                    ).withValues(alpha: 0.72),
+                                    color: (_moveQualityIsWeak
+                                            ? const Color(0xFFD6A84F)
+                                            : const Color(0xFF55D6B9))
+                                        .withValues(alpha: 0.78),
                                   ),
                                   boxShadow: <BoxShadow>[
                                     BoxShadow(
@@ -3790,9 +3958,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: <Widget>[
-                                      const Icon(
-                                        Icons.psychology_alt_rounded,
-                                        color: Color(0xFFD6A84F),
+                                      Icon(
+                                        _moveQualityIsWeak
+                                            ? Icons.warning_amber_rounded
+                                            : Icons.check_circle_rounded,
+                                        color: _moveQualityIsWeak
+                                            ? const Color(0xFFD6A84F)
+                                            : const Color(0xFF55D6B9),
                                         size: 20,
                                       ),
                                       const SizedBox(width: 8),
@@ -4697,6 +4869,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     int? onlineExpectedPly;
     String? engineReviewFen;
     String? engineReviewMove;
+    int? engineReviewLocalScore;
 
     setState(() {
       final bool whitesTurn =
@@ -4833,6 +5006,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         );
         if (_gameMode == GameMode.computer) {
           final int score = _scoreForMoveFeedback(moveFeedback);
+          engineReviewLocalScore = score;
           _playerMoveScores.add(score);
           if (score < 60) {
             _turningPoint = '$move — $moveFeedback';
@@ -4840,9 +5014,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           }
         }
         if (_gameMode == GameMode.computer) {
-          _moveQualityText = _scoreForMoveFeedback(moveFeedback) < 60
-              ? '$moveFeedback Tap “Why is this weak?” in AI Coach to understand the safer plan.'
-              : null;
+          final bool locallyWeak = _scoreForMoveFeedback(moveFeedback) < 60;
+          _moveQualityIsWeak = locallyWeak;
+          _moveQualityText = locallyWeak
+              ? '$moveFeedback Tap “Why is this weak?” to understand the safer plan.'
+              : 'Move review • $moveFeedback';
         }
         _hintStage = 0;
         _lastPlayerMove = move;
@@ -4909,9 +5085,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         promotionWhite!,
       ).then((_) => _scheduleAiMove());
     } else if (moveCommitted) {
-      if (engineReviewFen != null && engineReviewMove != null) {
+      if (engineReviewFen != null &&
+          engineReviewMove != null &&
+          engineReviewLocalScore != null) {
         unawaited(
-          _reviewPlayerMoveWithEngine(engineReviewFen!, engineReviewMove!),
+          _reviewPlayerMoveWithEngine(
+            engineReviewFen!,
+            engineReviewMove!,
+            engineReviewLocalScore!,
+          ),
         );
       }
       if (_moveQualityText != null) {
@@ -4962,16 +5144,19 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Future<void> _reviewPlayerMoveWithEngine(
     String fen,
     String playedMove,
+    int localScore,
   ) async {
+    final int reviewEpoch = ++_moveReviewEpoch;
     try {
       final Map<String, dynamic> engine = await _engineApi.analyze(
         fen: fen,
         level: math.max(5, _aiLevel.round()),
       );
-      if (!mounted) return;
+      if (!mounted || reviewEpoch != _moveReviewEpoch) return;
       final String bestMove = engine['bestMove'] as String? ?? '';
       if (bestMove.length < 4) return;
       final bool best = bestMove.toLowerCase() == playedMove.toLowerCase();
+      final bool isWeak = !best && localScore < 60;
       final String recommendation =
           '${bestMove.substring(0, 2)} to ${bestMove.substring(2, 4)}';
       final int cp = (engine['evaluationCp'] as num?)?.toInt() ?? 0;
@@ -4983,20 +5168,26 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _coachArrowFrom = null;
         _coachArrowTo = null;
         if (_playerMoveScores.isNotEmpty) {
-          _playerMoveScores[_playerMoveScores.length - 1] = best ? 100 : 68;
+          _playerMoveScores[_playerMoveScores.length - 1] =
+              best ? 100 : localScore;
         }
-        _moveQualityText = best
-            ? null
-            : 'Weak move alert • $recommendation was safer. Tap Analyze to see why.';
-        if (!best) {
+        _moveQualityText = isWeak
+            ? 'Weak move alert • $recommendation was safer. Tap Analyze to see why.'
+            : 'Move review • Good step confirmed by AI analysis.';
+        _moveQualityIsWeak = isWeak;
+        if (isWeak) {
+          final String explanation =
+              _engineEvaluationExplanation(engine, _moves.length.isOdd);
+          _lastPlayerCoachNote =
+              'Weak step — $recommendation was safer. $explanation';
+          _coachNote = _lastPlayerCoachNote!;
           _turningPoint ??= '$playedMove — $recommendation was stronger.';
           _recordImportantMistake(
-            '$playedMove • Prefer $recommendation. '
-            '${_engineEvaluationExplanation(engine, _moves.length.isOdd)}',
+            '$playedMove • Prefer $recommendation. $explanation',
           );
         }
       });
-      if (!best) _scheduleMoveQualityDismiss();
+      _scheduleMoveQualityDismiss();
     } on EngineApiException {
       // Keep the immediate on-device coach feedback when analysis is offline.
     }
@@ -5139,7 +5330,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         final String plannedTo = plannedMove.substring(2, 4);
         for (final AiCandidate candidate in replies) {
           if (candidate.from == plannedFrom && candidate.to == plannedTo) {
-            reply = candidate;
+            reply = AiCandidate(
+              candidate.from,
+              candidate.to,
+              candidate.score,
+              promotion: plannedMove.length >= 5
+                  ? plannedMove.substring(4, 5).toUpperCase()
+                  : null,
+            );
             break;
           }
         }
@@ -5153,8 +5351,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _lastFromSquare = from;
       _lastToSquare = to;
       _lastCaptureSquare = null;
+      final bool castleMove = _isCastleMove(from, to);
+      final String? enPassantCaptureSquare = _enPassantCaptureSquare(from, to);
       final ChessPiece piece = _pieces.remove(from)!;
-      final ChessPiece? captured = _pieces[to];
+      final ChessPiece? captured = enPassantCaptureSquare == null
+          ? _pieces[to]
+          : _pieces.remove(enPassantCaptureSquare);
       _lastMovedPiece = piece;
       _lastCapturedPiece = captured;
       if (captured != null) {
@@ -5164,7 +5366,21 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _lastCaptureSquare = to;
       }
       _pieces[to] = piece;
-      _moves.insert(0, captured == null ? '$from$to' : '$from x $to');
+      if (castleMove) {
+        _moveCastlingRook(to, piece.white);
+      }
+      final bool promotes = piece.code == 'P' &&
+          ((piece.white && to.endsWith('8')) ||
+              (!piece.white && to.endsWith('1')));
+      if (promotes) {
+        _pieces[to] = ChessPiece(reply.promotion ?? 'Q', piece.white);
+      }
+      final String notation = castleMove
+          ? (to.startsWith('g') ? 'O-O' : 'O-O-O')
+          : captured == null
+              ? '$from$to${promotes ? '=${reply.promotion ?? 'Q'}' : ''}'
+              : '$from x $to${promotes ? '=${reply.promotion ?? 'Q'}' : ''}';
+      _moves.insert(0, notation);
       unawaited(
         ChessSoundService.instance.pieceMove(
           piece.code,
@@ -5209,7 +5425,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           final String from = uci.substring(0, 2);
           final String to = uci.substring(2, 4);
           if (_isLegalMove(from, to, whiteToMove: aiPlaysWhite)) {
-            engineMove = AiCandidate(from, to, 1000);
+            engineMove = AiCandidate(
+              from,
+              to,
+              1000,
+              promotion: uci.length >= 5 ? uci[4].toUpperCase() : null,
+            );
           }
         }
       } on Object {
@@ -5314,13 +5535,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (piece.code == 'P' &&
           ((piece.white && move.to.endsWith('8')) ||
               (!piece.white && move.to.endsWith('1')))) {
-        _pieces[move.to] = ChessPiece('Q', piece.white);
+        _pieces[move.to] = ChessPiece(move.promotion ?? 'Q', piece.white);
       }
       final String notation = castleMove
           ? (move.to.startsWith('g') ? 'O-O' : 'O-O-O')
           : captured == null
-              ? '${move.from}${move.to}'
-              : '${move.from} x ${move.to}';
+              ? '${move.from}${move.to}${move.promotion == null ? '' : '=${move.promotion}'}'
+              : '${move.from} x ${move.to}${move.promotion == null ? '' : '=${move.promotion}'}';
       _moves.insert(0, notation);
       unawaited(
         ChessSoundService.instance.pieceMove(
@@ -5593,9 +5814,26 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   bool _hasMovedFrom(String square) {
-    for (final String move in _moves) {
+    for (int index = 0; index < _moves.length; index++) {
+      final String move = _moves[index];
+      if (move.startsWith('O-O')) {
+        final int chronologicalPly = _moves.length - 1 - index;
+        final bool whiteCastled = chronologicalPly.isEven;
+        final String homeRank = whiteCastled ? '1' : '8';
+        final String rookSquare =
+            move.startsWith('O-O-O') ? 'a$homeRank' : 'h$homeRank';
+        if (square == 'e$homeRank' || square == rookSquare) {
+          return true;
+        }
+        continue;
+      }
       final ParsedMove? parsed = _parseMove(move);
-      if (parsed?.from == square) {
+      if (parsed?.from == square ||
+          ((square == 'a1' ||
+                  square == 'h1' ||
+                  square == 'a8' ||
+                  square == 'h8') &&
+              parsed?.to == square)) {
         return true;
       }
     }
@@ -5760,6 +5998,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         playedAt: DateTime.now(),
         whitePlayer: _whitePlayerName,
         blackPlayer: _blackPlayerName,
+        playerOutcome: playerOutcomeForResult(
+          _gameResultTitle!,
+          humanPlaysWhite: _humanPlaysWhite,
+          tracksPlayer: _gameMode != GameMode.local,
+        ),
       ),
     );
   }
@@ -6805,7 +7048,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     required String to,
     required ChessPiece? captured,
   }) {
-    final String pieceName = switch (piece.code) {
+    final String movedPieceName = switch (piece.code) {
       'P' => 'Pawn',
       'N' => 'Knight',
       'B' => 'Bishop',
@@ -6815,6 +7058,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _ => 'Piece',
     };
     final bool givesCheck = ChessRules.isKingInCheck(!piece.white, _pieces);
+    final String? enemyKingSquare = ChessRules.kingSquare(
+      !piece.white,
+      _pieces,
+    );
+    final bool movedPieceGivesCheck = enemyKingSquare != null &&
+        ChessRules.attacksSquare(to, enemyKingSquare, _pieces);
     final SquarePosition target = ChessRules.positionOf(to);
     final bool controlsCenter = target.file >= 2 &&
         target.file <= 5 &&
@@ -6823,8 +7072,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final String sourceSquare = from.toLowerCase();
     final String targetSquare = to.toLowerCase();
     final String action = captured == null
-        ? '$pieceName moved from $sourceSquare to $targetSquare.'
-        : '$pieceName captured ${_pieceName(captured.code)} on $targetSquare.';
+        ? '$movedPieceName moved from $sourceSquare to $targetSquare.'
+        : '$movedPieceName captured ${_pieceName(captured.code)} on $targetSquare.';
     final String piecePurpose = switch (piece.code) {
       'P' => controlsCenter
           ? 'The pawn claims central space and opens lines for your pieces.'
@@ -6844,6 +7093,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return '$action Strong forcing move: it wins material and checks the king, so the opponent must respond to the check. $piecePurpose';
     }
     if (givesCheck) {
+      if (!movedPieceGivesCheck && enemyKingSquare != null) {
+        final List<String> attackers = ChessRules.checkingAttackers(
+          !piece.white,
+          _pieces,
+        );
+        if (attackers.isNotEmpty) {
+          final String attackerSquare = attackers.first;
+          final ChessPiece attacker = _pieces[attackerSquare]!;
+          final String attackerName = pieceName(attacker.code);
+          return '$action Discovered check: moving the ${pieceName(piece.code)} opened the $attackerName attack from $attackerSquare onto the king at $enemyKingSquare. The opponent must answer that revealed check. $piecePurpose';
+        }
+      }
       return '$action This is a forcing check. Now calculate every legal king escape, capture, and blocking move. $piecePurpose';
     }
     if (captured != null) {
@@ -7963,10 +8224,12 @@ class ChessCoin extends StatelessWidget {
           );
           final bool classic2d =
               appearance.style == ChessPieceVisualStyle.classic2d;
-          final double pieceSize = size *
-              (appearance.size == ChessPieceVisualSize.extraLarge
-                  ? (classic2d ? 1.44 : 1.58)
-                  : (classic2d ? 1.31 : 1.43));
+          final double pieceScale = switch (appearance.size) {
+            ChessPieceVisualSize.large => classic2d ? 1.31 : 1.43,
+            ChessPieceVisualSize.extraLarge => classic2d ? 1.44 : 1.58,
+            ChessPieceVisualSize.doubleExtraLarge => classic2d ? 1.56 : 1.72,
+          };
+          final double pieceSize = size * pieceScale;
           final double silhouetteScale = switch (piece.code) {
             'K' => 1.00,
             'Q' => .98,
@@ -8138,14 +8401,15 @@ class ChessCoin extends StatelessWidget {
         ),
       );
     }
-    final Widget image = Image.asset(
-      pieceAsset(piece),
-      fit: BoxFit.contain,
-      filterQuality: FilterQuality.high,
-      semanticLabel: label,
-    );
+    Widget pieceImage({String? semanticLabel}) => Image.asset(
+          pieceAsset(piece),
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+          semanticLabel: semanticLabel,
+        );
+    Widget image = pieceImage(semanticLabel: label);
     if (appearance.style == ChessPieceVisualStyle.highContrast) {
-      return ColorFiltered(
+      image = ColorFiltered(
         colorFilter: ColorFilter.mode(
           piece.white ? const Color(0xFFFFF0B8) : const Color(0xFF89BFFF),
           BlendMode.modulate,
@@ -8153,7 +8417,10 @@ class ChessCoin extends StatelessWidget {
         child: image,
       );
     }
-    return image;
+    return Semantics(
+      label: label,
+      child: image,
+    );
   }
 }
 

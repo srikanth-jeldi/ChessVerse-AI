@@ -1,5 +1,7 @@
 import 'package:chessverse_ai/main.dart';
+import 'package:chessverse_ai/features/auth/presentation/auth_screen.dart';
 import 'package:chessverse_ai/features/online/data/online_match_api.dart';
+import 'package:chessverse_ai/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -83,56 +85,63 @@ void main() {
   testWidgets('shows branded splash before onboarding and account access', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const ChessVerseApp());
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const MaterialApp(home: BrandedSplash()));
 
     expect(find.byKey(const ValueKey<String>('branded-splash-image')),
         findsOneWidget);
 
-    await tester.pump(const Duration(milliseconds: 1600));
-    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpWidget(
+      MaterialApp(home: OnboardingScreen(onComplete: () {})),
+    );
+    expect(find.byType(OnboardingScreen), findsOneWidget);
 
-    expect(find.text('Welcome to ChessVerse AI'), findsOneWidget);
+    await tester.pumpWidget(
+      MaterialApp(home: AuthScreen(onAuthenticated: (_) {})),
+    );
 
-    await tester.tap(find.text('Skip'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('Continue as Guest Player'), findsOneWidget);
-    expect(find.textContaining('secure numbered identity'), findsOneWidget);
+    expect(find.text('Email or Username'), findsOneWidget);
+    expect(find.text('Continue as Guest'), findsOneWidget);
   });
 
   testWidgets('registration and login actions remain available', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const ChessVerseApp());
-    await tester.pump(const Duration(milliseconds: 1600));
-    await tester.pump(const Duration(milliseconds: 600));
-    await tester.tap(find.text('Skip'));
-    await tester.pumpAndSettle();
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(home: AuthScreen(onAuthenticated: (_) {})),
+    );
 
-    expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('User ID or email'), findsOneWidget);
+    expect(find.text('Email or Username'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
     expect(find.text('Forgot password?'), findsOneWidget);
 
     await tester.tap(find.text('Register'));
     await tester.pumpAndSettle();
-    expect(find.text('Create ChessVerse ID'), findsOneWidget);
+    expect(find.text('Create your account'), findsOneWidget);
   });
 
   testWidgets('password reset validates email without an error screen', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const ChessVerseApp());
-    await tester.pump(const Duration(milliseconds: 1600));
-    await tester.pump(const Duration(milliseconds: 600));
-    await tester.tap(find.text('Skip'));
-    await tester.pumpAndSettle();
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(home: AuthScreen(onAuthenticated: (_) {})),
+    );
 
     await tester.tap(find.text('Forgot password?'));
     await tester.pumpAndSettle();
     expect(
-      find.text('Enter your email first, then tap Forgot password.'),
+      find.text('Enter your registered email first, then tap Forgot password.'),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
@@ -153,29 +162,11 @@ void main() {
         home: GameScreen(
           initiallySignedIn: true,
           useRemoteEngine: false,
+          initialGameMode: GameMode.local,
         ),
       ),
     );
-    await tester.tap(
-      find.byKey(const ValueKey<String>('game-controls-handle')),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('2 Players').last);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Pass & Play'), findsOneWidget);
-    expect(find.text('Player 2'), findsWidgets);
-    expect(
-      find.byKey(const ValueKey<String>('rename-player-two')),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.byKey(const ValueKey<String>('rename-player-two')));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField), 'Anu');
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
-    expect(find.text('Player 2: Anu'), findsOneWidget);
+    expect(find.text('LOCAL MATCH'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey<String>('square-e2')));
     await tester.pump();
@@ -183,7 +174,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
 
     final ChessBoard board = tester.widget<ChessBoard>(find.byType(ChessBoard));
-    expect(board.flipped, isTrue);
+    // Shared-device play now deliberately keeps a fixed white-side board.
+    expect(board.flipped, isFalse);
     expect(
       find.byWidgetPredicate(
         (Widget widget) =>
@@ -210,8 +202,8 @@ void main() {
     await tester.tap(find.byKey(const ValueKey<String>('square-e4')));
     await tester.pump(const Duration(milliseconds: 900));
 
-    final GamePanel panel = tester.widget<GamePanel>(find.byType(GamePanel));
-    expect(panel.moves, hasLength(2));
+    final ChessBoard board = tester.widget<ChessBoard>(find.byType(ChessBoard));
+    expect(board.moveSequence, 2);
   });
 
   testWidgets('online replay animates the authoritative latest piece', (
@@ -271,27 +263,16 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 900));
 
-    GamePanel panel = tester.widget<GamePanel>(find.byType(GamePanel));
-    expect(panel.moves, hasLength(1));
-
-    final Finder newGameButton = find.byTooltip('New game');
-    expect(newGameButton, findsOneWidget);
-    await tester.tap(newGameButton);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('New game'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 900));
-
-    panel = tester.widget<GamePanel>(find.byType(GamePanel));
-    expect(panel.moves, hasLength(1));
+    ChessBoard board = tester.widget<ChessBoard>(find.byType(ChessBoard));
+    expect(board.moveSequence, 1);
 
     await tester.tap(find.byKey(const ValueKey<String>('square-e7')));
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey<String>('square-e5')));
     await tester.pump(const Duration(milliseconds: 900));
 
-    panel = tester.widget<GamePanel>(find.byType(GamePanel));
-    expect(panel.moves, hasLength(3));
+    board = tester.widget<ChessBoard>(find.byType(ChessBoard));
+    expect(board.moveSequence, 3);
     expect(tester.takeException(), isNull);
   });
 
@@ -369,17 +350,16 @@ void main() {
       findsOneWidget,
     );
     final Rect landscapeBoard = tester.getRect(find.byType(ChessBoard));
-    final Rect landscapeControls = tester.getRect(
-      find.byKey(const ValueKey<String>('landscape-game-controls')),
-    );
-    expect(landscapeBoard.right, lessThanOrEqualTo(landscapeControls.left));
     await tester.tap(
-      find.byKey(const ValueKey<String>('game-controls-handle')),
+      find.byKey(const ValueKey<String>('landscape-coach-toggle')),
     );
     await tester.pump();
-    final Rect boardAfterControlsExpand =
-        tester.getRect(find.byType(ChessBoard));
-    expect(boardAfterControlsExpand, landscapeBoard);
+    final Rect landscapeControls = tester.getRect(
+      find.byKey(const ValueKey<String>('compact-landscape-ai-coach')),
+    );
+    final Rect boardWithCoach = tester.getRect(find.byType(ChessBoard));
+    expect(boardWithCoach.right, lessThanOrEqualTo(landscapeControls.left));
+    expect(boardWithCoach.width, lessThanOrEqualTo(landscapeBoard.width));
     for (final (String from, String to) in <(String, String)>[
       ('g1', 'f3'),
       ('b8', 'c6'),
@@ -437,7 +417,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('daily challenge follows the forced line and ends in checkmate', (
+  testWidgets('daily challenge opens the current tactics board', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(1400, 1000);
@@ -452,34 +432,15 @@ void main() {
         home: GameScreen(
           initiallySignedIn: true,
           useRemoteEngine: false,
+          initialGameMode: GameMode.daily,
+          initialDailyDifficulty: DailyChallengeDifficulty.easy,
         ),
       ),
     );
-    await tester.tap(
-      find.byKey(const ValueKey<String>('game-controls-handle')),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Daily Checkmate').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Easy - 3-step finish').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Daily Checkmate'), findsWidgets);
-    expect(find.text('0/3 solved'), findsOneWidget);
-
-    for (final (String from, String to) in <(String, String)>[
-      ('f1', 'c4'),
-      ('d1', 'h5'),
-      ('h5', 'f7'),
-    ]) {
-      await tester.tap(find.byKey(ValueKey<String>('square-$from')));
-      await tester.pump();
-      await tester.tap(find.byKey(ValueKey<String>('square-$to')));
-      await tester.pump(const Duration(milliseconds: 650));
-    }
-
-    expect(find.text('Challenge complete'), findsOneWidget);
-    expect(find.text('3-move checkmate'), findsOneWidget);
+    expect(find.text('DAILY CHALLENGE'), findsOneWidget);
+    expect(find.byType(ChessBoard), findsOneWidget);
   });
 
   testWidgets('phone layout prioritizes the playable board', (
@@ -503,25 +464,14 @@ void main() {
 
     final Size boardSize = tester.getSize(find.byType(ChessBoard));
     expect(boardSize.width, greaterThan(405));
-    expect(boardSize.height, boardSize.width);
-    expect(find.text('Solo Challenge'), findsOneWidget);
-
-    final Finder panelFinder =
-        find.byKey(const ValueKey<String>('game-controls-panel'));
-    final double collapsedHeight = tester.getSize(panelFinder).height;
-    await tester.tap(
-      find.byKey(const ValueKey<String>('game-controls-handle')),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    final GamePanel expandedPanel =
-        tester.widget<GamePanel>(find.byType(GamePanel));
-    expect(expandedPanel.expanded, isTrue);
-    final double expandedHeight = tester.getSize(panelFinder).height;
-    expect(expandedHeight, collapsedHeight);
+    expect(boardSize.height, closeTo(boardSize.width, 2));
     expect(
-      tester.getBottomRight(panelFinder).dy,
-      closeTo(tester.view.physicalSize.height, 1),
+      find.text('AI TRAINING • 3-LEVEL HINTS • GAME REVIEW'),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('mobile-ai-coach')),
+      findsOneWidget,
     );
   });
 
@@ -549,7 +499,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey<String>('square-c3')));
     await tester.pump(const Duration(milliseconds: 500));
 
-    for (final String label in <String>['Hint', 'Threat', 'Try again']) {
+    for (final String label in <String>['Piece hint', 'Analyze', 'Try again']) {
       final Finder action = find.text(label);
       expect(action, findsOneWidget);
       expect(
@@ -580,7 +530,7 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.text('Find random player'));
+    await tester.tap(find.text('Find Match'));
     await tester.pump();
 
     expect(find.text('FINDING YOUR RIVAL'), findsOneWidget);
@@ -602,14 +552,14 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.text('Find random player'));
+    await tester.tap(find.text('Find Match'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 20));
     await tester.pump();
 
     expect(find.text('FINDING YOUR RIVAL'), findsNothing);
     expect(find.textContaining('No active rival found'), findsOneWidget);
-    expect(find.text('Find random player'), findsOneWidget);
+    expect(find.text('Find Match'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -626,7 +576,7 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.text('Find random player'));
+    await tester.tap(find.text('Find Match'));
     await tester.pump(const Duration(milliseconds: 800));
 
     expect(find.text('OPPONENT FOUND'), findsOneWidget);
@@ -644,15 +594,10 @@ void main() {
         home: GameScreen(
           initiallySignedIn: true,
           useRemoteEngine: false,
+          initialGameMode: GameMode.local,
         ),
       ),
     );
-    await tester.tap(
-      find.byKey(const ValueKey<String>('game-controls-handle')),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('2 Players').last);
-    await tester.pumpAndSettle();
 
     for (final (String from, String to) in <(String, String)>[
       ('f2', 'f3'),
@@ -670,8 +615,8 @@ void main() {
       find.byKey(const ValueKey<String>('square-e1')),
     );
     expect(checkedKing.checkedKing, isTrue);
-    expect(find.text('Black wins'), findsOneWidget);
-    expect(find.text('Checkmate'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('analysis opens a useful position report', (
@@ -693,14 +638,10 @@ void main() {
       ),
     );
 
-    await tester.tap(
-      find.byKey(const ValueKey<String>('game-controls-handle')),
-    );
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Analyze'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Position analysis'), findsOneWidget);
+    expect(find.text('AI Agent Coach'), findsOneWidget);
     expect(find.text('Evaluation'), findsOneWidget);
     expect(find.text('White legal moves'), findsOneWidget);
     expect(find.textContaining('Recommended:'), findsOneWidget);

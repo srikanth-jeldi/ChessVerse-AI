@@ -46,7 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _deletingAccount = false;
   String _boardTheme = 'Royal Walnut';
   String _pieceStyle = 'Premium 3D';
-  String _pieceSize = 'Large';
+  String _pieceSize = 'Extra Large';
   String _appTheme = 'Dark premium';
   bool _loading = true;
 
@@ -66,7 +66,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _preferences.readBool('dailyReminder', fallback: false),
       _preferences.readString('boardTheme', fallback: 'Royal Walnut'),
       _preferences.readString('pieceStyle', fallback: 'Premium 3D'),
-      _preferences.readString('pieceSize', fallback: 'Large'),
+      _preferences.readString('pieceSize', fallback: 'Extra Large'),
       _preferences.readString('appTheme', fallback: 'Dark premium'),
     ]);
     if (!mounted) return;
@@ -201,6 +201,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         label: 'APPEARANCE',
                       ),
                       const SizedBox(height: 12),
+                      _AppearancePreview(
+                        boardTheme: _boardTheme,
+                        pieceStyle: _pieceStyle,
+                        pieceSize: _pieceSize,
+                      ),
+                      const SizedBox(height: 12),
                       ChessVerseCard(
                         padding: EdgeInsets.symmetric(
                           horizontal: desktop ? 26 : 16,
@@ -225,6 +231,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     'Sapphire',
                                   ],
                                   selected: _boardTheme,
+                                  previewBuilder: (String value) =>
+                                      _AppearancePreview(
+                                    key: const ValueKey<String>(
+                                        'appearance-choice-preview'),
+                                    boardTheme: value,
+                                    pieceStyle: _pieceStyle,
+                                    pieceSize: _pieceSize,
+                                  ),
                                   onSelected: (String value) {
                                     setState(() => _boardTheme = value);
                                     _preferences.writeString(
@@ -251,6 +265,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   values: ChessPieceAppearanceController
                                       .styleLabels,
                                   selected: _pieceStyle,
+                                  previewBuilder: (String value) =>
+                                      _AppearancePreview(
+                                    key: const ValueKey<String>(
+                                        'appearance-choice-preview'),
+                                    boardTheme: _boardTheme,
+                                    pieceStyle: value,
+                                    pieceSize: _pieceSize,
+                                  ),
                                   onSelected: (String value) {
                                     setState(() => _pieceStyle = value);
                                     _preferences.writeString(
@@ -285,6 +307,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   values:
                                       ChessPieceAppearanceController.sizeLabels,
                                   selected: _pieceSize,
+                                  previewBuilder: (String value) =>
+                                      _AppearancePreview(
+                                    key: const ValueKey<String>(
+                                        'appearance-choice-preview'),
+                                    boardTheme: _boardTheme,
+                                    pieceStyle: _pieceStyle,
+                                    pieceSize: value,
+                                  ),
                                   onSelected: (String value) {
                                     setState(() => _pieceSize = value);
                                     _preferences.writeString(
@@ -604,27 +634,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required List<String> values,
     required String selected,
     required ValueChanged<String> onSelected,
+    Widget Function(String value)? previewBuilder,
   }) async {
     final String? value = await showModalBottomSheet<String>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
-      builder: (BuildContext context) => SafeArea(
-        child: RadioGroup<String>(
-          groupValue: selected,
-          onChanged: (String? value) => Navigator.pop(context, value),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              ListTile(title: Text(title)),
-              for (final String option in values)
-                RadioListTile<String>(
-                  value: option,
-                  title: Text(option),
+      builder: (BuildContext sheetContext) {
+        String pendingValue = selected;
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setSheetState) =>
+              SafeArea(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 760),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                    child: RadioGroup<String>(
+                      groupValue: pendingValue,
+                      onChanged: (String? value) {
+                        if (value != null) {
+                          setSheetState(() => pendingValue = value);
+                        }
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(title),
+                            subtitle: previewBuilder == null
+                                ? null
+                                : const Text(
+                                    'Select an option to preview it live.'),
+                          ),
+                          if (previewBuilder != null) ...<Widget>[
+                            previewBuilder(pendingValue),
+                            const SizedBox(height: 10),
+                          ],
+                          for (final String option in values)
+                            RadioListTile<String>(
+                              value: option,
+                              title: Text(option),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          const SizedBox(height: 8),
+                          FilledButton.icon(
+                            key: const ValueKey<String>(
+                                'apply-appearance-choice'),
+                            onPressed: () =>
+                                Navigator.pop(sheetContext, pendingValue),
+                            icon: const Icon(Icons.check_rounded),
+                            label: const Text('Apply'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-            ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
     if (value != null) onSelected(value);
   }
@@ -636,6 +713,239 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+}
+
+class _AppearancePreview extends StatelessWidget {
+  const _AppearancePreview({
+    required this.boardTheme,
+    required this.pieceStyle,
+    required this.pieceSize,
+    super.key,
+  });
+
+  final String boardTheme;
+  final String pieceStyle;
+  final String pieceSize;
+
+  static const List<String> _pieces = <String>[
+    'pawn',
+    'knight',
+    'bishop',
+    'rook',
+    'queen',
+    'king',
+  ];
+  static const List<String> _whiteGlyphs = <String>[
+    '♙',
+    '♘',
+    '♗',
+    '♖',
+    '♕',
+    '♔',
+  ];
+  static const List<String> _blackGlyphs = <String>[
+    '♟',
+    '♞',
+    '♝',
+    '♜',
+    '♛',
+    '♚',
+  ];
+
+  _PreviewPalette get _palette {
+    switch (boardTheme) {
+      case 'Jade Glass':
+        return const _PreviewPalette(
+          light: Color(0xFFC4DCCF),
+          dark: Color(0xFF2F7D66),
+          frame: Color(0xFF184D40),
+        );
+      case 'Tournament':
+        return const _PreviewPalette(
+          light: Color(0xFFDEC6A2),
+          dark: Color(0xFFB58863),
+          frame: Color(0xFF70452D),
+        );
+      case 'Marble':
+        return const _PreviewPalette(
+          light: Color(0xFFD9D8D3),
+          dark: Color(0xFF667078),
+          frame: Color(0xFF3C454C),
+        );
+      case 'Sapphire':
+        return const _PreviewPalette(
+          light: Color(0xFFC6D3D6),
+          dark: Color(0xFF28546A),
+          frame: Color(0xFF123647),
+        );
+      default:
+        return const _PreviewPalette(
+          light: Color(0xFFD8C3A5),
+          dark: Color(0xFF7A4F2A),
+          frame: Color(0xFF342113),
+        );
+    }
+  }
+
+  double get _pieceScale {
+    switch (pieceSize) {
+      case 'Double Extra Large':
+        return 0.96;
+      case 'Extra Large':
+        return 0.84;
+      default:
+        return 0.72;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final _PreviewPalette palette = _palette;
+    return ChessVerseCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              const _GoldIcon(Icons.visibility_rounded),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'LIVE BOARD & PIECE PREVIEW',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: AppColors.accentGold,
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$boardTheme  •  $pieceStyle  •  $pieceSize',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 620),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: palette.frame,
+                    border: Border.all(color: palette.frame, width: 4),
+                  ),
+                  child: AspectRatio(
+                    aspectRatio: 3,
+                    child: Column(
+                      children: <Widget>[
+                        _pieceRow(white: false, palette: palette),
+                        _pieceRow(white: true, palette: palette),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pieceRow({
+    required bool white,
+    required _PreviewPalette palette,
+  }) {
+    return Expanded(
+      child: Row(
+        children: List<Widget>.generate(_pieces.length, (int index) {
+          final Color squareColor =
+              index.isEven == white ? palette.light : palette.dark;
+          return Expanded(
+            child: ColoredBox(
+              color: squareColor,
+              child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+                  final double size = constraints.biggest.shortestSide;
+                  return Center(
+                    child: SizedBox.square(
+                      dimension: size * _pieceScale,
+                      child: _piece(
+                        white: white,
+                        index: index,
+                        size: size * _pieceScale,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _piece({
+    required bool white,
+    required int index,
+    required double size,
+  }) {
+    final String glyph = white ? _whiteGlyphs[index] : _blackGlyphs[index];
+    if (pieceStyle != 'Premium 3D') {
+      final bool highContrast = pieceStyle == 'High Contrast';
+      final Color color = white ? Colors.white : Colors.black;
+      return FittedBox(
+        fit: BoxFit.contain,
+        child: Text(
+          glyph,
+          style: TextStyle(
+            color: color,
+            fontSize: size,
+            height: 1,
+            shadows: <Shadow>[
+              Shadow(
+                color: white ? Colors.black : Colors.white,
+                blurRadius: highContrast ? 3 : 1.5,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    final String side = white ? 'white' : 'black';
+    return Image.asset(
+      'assets/pieces/staunton_${side}_${_pieces[index]}.png',
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
+      errorBuilder: (_, __, ___) => FittedBox(
+        fit: BoxFit.contain,
+        child: Text(glyph, style: TextStyle(fontSize: size, height: 1)),
+      ),
+    );
+  }
+}
+
+class _PreviewPalette {
+  const _PreviewPalette({
+    required this.light,
+    required this.dark,
+    required this.frame,
+  });
+
+  final Color light;
+  final Color dark;
+  final Color frame;
 }
 
 class _SettingSwitch extends StatelessWidget {
