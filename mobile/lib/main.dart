@@ -11333,24 +11333,24 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
             Expanded(
               child: SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(compactDesktop ? 24 : 38,
-                    compactDesktop ? 22 : 30, compactDesktop ? 24 : 42, 40),
+                    compactDesktop ? 18 : 22, compactDesktop ? 24 : 36, 32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     Row(
                       children: <Widget>[
                         Container(
-                          width: 78,
-                          height: 78,
+                          width: 62,
+                          height: 62,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: const Color(0xFF082431),
                             border: Border.all(color: teal),
                           ),
-                          child: const Icon(Icons.sports_martial_arts_rounded,
-                              color: teal, size: 43),
+                          child: const Icon(Icons.language_rounded,
+                              color: teal, size: 34),
                         ),
-                        const SizedBox(width: 22),
+                        const SizedBox(width: 18),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -11358,12 +11358,12 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                               Text('Online 2 Players',
                                   style: textTheme.headlineLarge?.copyWith(
                                       fontWeight: FontWeight.w900,
-                                      fontSize: 38)),
-                              const SizedBox(height: 8),
+                                      fontSize: 32)),
+                              const SizedBox(height: 5),
                               const Text(
                                 'Play online with a random opponent or invite a friend to a private room.',
                                 style: TextStyle(
-                                    color: Color(0xFFB8C3D1), fontSize: 18),
+                                    color: Color(0xFFB8C3D1), fontSize: 16),
                               ),
                             ],
                           ),
@@ -11371,9 +11371,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                         IconButton.filled(
                           style: IconButton.styleFrom(
                               backgroundColor: const Color(0xFF0A1A2B),
-                              padding: const EdgeInsets.all(16)),
+                              padding: const EdgeInsets.all(12)),
                           onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.close_rounded, size: 30),
+                          icon: const Icon(Icons.close_rounded, size: 26),
                         ),
                       ],
                     ),
@@ -11382,9 +11382,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                       Text(_error!,
                           style: const TextStyle(color: Color(0xFFFF6B6B))),
                     ],
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 20),
                     Container(
-                      height: 288,
+                      height: 250,
                       decoration: BoxDecoration(
                         image: const DecorationImage(
                           image: AssetImage(
@@ -11399,32 +11399,32 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                         ],
                       ),
                       child: Padding(
-                        padding: EdgeInsets.fromLTRB(compactDesktop ? 175 : 305,
-                            38, compactDesktop ? 28 : 410, 30),
+                        padding: EdgeInsets.fromLTRB(compactDesktop ? 210 : 365,
+                            30, compactDesktop ? 22 : 340, 24),
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: SizedBox(
-                            width: compactDesktop ? 360 : 455,
+                            width: compactDesktop ? 340 : 410,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
                                 Text('Random Match',
                                     maxLines: 1,
                                     style: textTheme.headlineMedium?.copyWith(
-                                        fontSize: 34,
+                                        fontSize: 30,
                                         fontWeight: FontWeight.w900)),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 8),
                                 const Text(
                                   'We’ll find a player for you\nfrom around the world.',
                                   style: TextStyle(
                                       color: Color(0xFFC8D1DD),
-                                      fontSize: 20,
-                                      height: 1.45),
+                                      fontSize: 17,
+                                      height: 1.35),
                                 ),
                                 const Spacer(),
                                 SizedBox(
-                                  width: compactDesktop ? 250 : 290,
-                                  height: 54,
+                                  width: compactDesktop ? 230 : 260,
+                                  height: 48,
                                   child: FilledButton.icon(
                                     style: FilledButton.styleFrom(
                                       backgroundColor: gold,
@@ -11433,7 +11433,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                         horizontal: 20,
                                       ),
                                       textStyle: const TextStyle(
-                                        fontSize: 18,
+                                        fontSize: 16,
                                         fontWeight: FontWeight.w800,
                                       ),
                                     ),
@@ -11445,7 +11445,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                             randomSearch: true),
                                     icon: const Icon(
                                       Icons.bolt_rounded,
-                                      size: 24,
+                                      size: 21,
                                     ),
                                     label: const Text('Find Match'),
                                   ),
@@ -11458,8 +11458,8 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                     ),
                     const SizedBox(height: 18),
                     Container(
-                      height: 280,
-                      padding: const EdgeInsets.all(28),
+                      height: 242,
+                      padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
                         color: const Color(0xD9071A29),
                         borderRadius: BorderRadius.circular(24),
@@ -11475,34 +11475,34 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                               children: <Widget>[
                                 Row(children: <Widget>[
                                   Container(
-                                    width: 68,
-                                    height: 68,
+                                    width: 56,
+                                    height: 56,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       border: Border.all(
                                           color: const Color(0xFF267D72)),
                                     ),
                                     child: const Icon(Icons.group_rounded,
-                                        color: teal, size: 38),
+                                        color: teal, size: 31),
                                   ),
-                                  const SizedBox(width: 20),
+                                  const SizedBox(width: 16),
                                   const Text('Play with Friend',
                                       style: TextStyle(
-                                          fontSize: 28,
+                                          fontSize: 24,
                                           fontWeight: FontWeight.w900)),
                                 ]),
                                 const SizedBox(height: 8),
                                 const Padding(
-                                  padding: EdgeInsets.only(left: 88),
+                                  padding: EdgeInsets.only(left: 72),
                                   child: Text(
                                     'Create a private room or join\none using a room code.',
                                     style: TextStyle(
                                         color: Color(0xFFB8C3D1),
-                                        fontSize: 18,
+                                        fontSize: 16,
                                         height: 1.4),
                                   ),
                                 ),
-                                const SizedBox(height: 22),
+                                const SizedBox(height: 16),
                                 TextField(
                                   controller: _roomController,
                                   onChanged: (_) => setState(() {}),
@@ -11518,23 +11518,23 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 32),
+                          const SizedBox(width: 26),
                           const VerticalDivider(color: Color(0xFF244257)),
-                          const SizedBox(width: 32),
+                          const SizedBox(width: 26),
                           Expanded(
                             flex: 2,
                             child: Column(
                               children: <Widget>[
                                 SizedBox(
                                   width: double.infinity,
-                                  height: 76,
+                                  height: 62,
                                   child: OutlinedButton.icon(
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: Colors.white,
                                       side: const BorderSide(
                                           color: Color(0xFF23D8C2)),
                                       textStyle: const TextStyle(
-                                          fontSize: 22,
+                                          fontSize: 18,
                                           fontWeight: FontWeight.w800),
                                     ),
                                     onPressed: _loading
@@ -11542,14 +11542,14 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                         : () => _run(() => widget.api
                                             .createRoom(widget.token)),
                                     icon: const Icon(Icons.person_add_rounded,
-                                        color: teal, size: 32),
+                                        color: teal, size: 27),
                                     label: const Text('Create Room'),
                                   ),
                                 ),
-                                const SizedBox(height: 18),
+                                const SizedBox(height: 14),
                                 SizedBox(
                                   width: double.infinity,
-                                  height: 76,
+                                  height: 62,
                                   child: OutlinedButton.icon(
                                     onPressed: _loading ||
                                             _roomController.text.trim().isEmpty
@@ -11559,7 +11559,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                             _roomController.text)),
                                     icon: const Icon(
                                         Icons.sports_esports_rounded,
-                                        size: 32),
+                                        size: 27),
                                     label: const Text('Join Room'),
                                   ),
                                 ),
