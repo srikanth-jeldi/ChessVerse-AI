@@ -190,8 +190,22 @@ class OnlineMatchApi {
     }
   }
 
-  Future<OnlineMatchDto> randomMatch(String token) =>
-      _request(token, 'POST', '/api/v1/online/queue');
+  Future<OnlineMatchDto> randomMatch(
+    String token, {
+    int timeControlMinutes = 10,
+    String region = 'WORLDWIDE',
+    int ratingRange = 0,
+  }) =>
+      _request(
+        token,
+        'POST',
+        '/api/v1/online/queue',
+        body: <String, Object?>{
+          'timeControlMinutes': timeControlMinutes,
+          'region': region,
+          'ratingRange': ratingRange,
+        },
+      );
 
   Future<OnlineMatchDto> createRoom(String token) =>
       _request(token, 'POST', '/api/v1/online/rooms');

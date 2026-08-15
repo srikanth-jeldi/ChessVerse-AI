@@ -205,50 +205,49 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
               slivers: <Widget>[
                 SliverAppBar(
                   pinned: true,
-                  toolbarHeight: 74,
-                  expandedHeight: 116,
+                  toolbarHeight: 64,
+                  expandedHeight: 88,
                   backgroundColor: const Color(0xD9071827),
                   surfaceTintColor: Colors.transparent,
                   elevation: 4,
                   scrolledUnderElevation: 4,
                   shadowColor: Colors.black87,
-                  centerTitle: true,
+                  centerTitle: false,
                   leading: const BackButton(color: Color(0xFFF4C65B)),
                   title: const Column(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Icon(
-                        Icons.workspace_premium_rounded,
-                        color: Color(0xFFF4C65B),
-                        size: 20,
-                      ),
-                      SizedBox(height: 2),
                       Text(
                         'PUZZLE ACADEMY',
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Color(0xFFF4C65B),
-                          fontFamily: 'serif',
-                          fontSize: 23,
-                          letterSpacing: 1.5,
+                          color: Colors.white,
+                          fontSize: 21,
+                          letterSpacing: .8,
                           fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Train tactics and sharpen pattern recognition',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Color(0xFF9FB0C1),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
                   flexibleSpace: const FlexibleSpaceBar(
                     background: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Padding(
-                        padding: EdgeInsets.only(bottom: 10),
-                        child: Text(
-                          'Train tactics and sharpen pattern recognition',
-                          style: TextStyle(
-                            color: Color(0xFF91A9BC),
-                            fontSize: 11,
-                            letterSpacing: .2,
-                          ),
-                        ),
+                      alignment: Alignment.bottomLeft,
+                      child: SizedBox(
+                        height: 3,
+                        width: 116,
+                        child: ColoredBox(color: Color(0xFFF4C65B)),
                       ),
                     ),
                   ),
@@ -360,36 +359,47 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
     return SafeArea(
       key: const ValueKey<String>('puzzle-wide-layout'),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 14, 24, 20),
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
         child: Column(
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        'PUZZLE ACADEMY',
-                        style: TextStyle(
-                          color: Color(0xFFF4C65B),
-                          fontFamily: 'serif',
-                          fontSize: 34,
-                          letterSpacing: 1.2,
-                          fontWeight: FontWeight.w900,
-                        ),
+            const SizedBox(
+              height: 78,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'PUZZLE ACADEMY',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 23,
+                        letterSpacing: .7,
+                        fontWeight: FontWeight.w900,
                       ),
-                      Text(
-                        'Train tactics and sharpen pattern recognition',
-                        style:
-                            TextStyle(color: Color(0xFFA7B7CA), fontSize: 15),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Train tactics and sharpen pattern recognition',
+                      style: TextStyle(
+                        color: Color(0xFFA7B7CA),
+                        fontSize: 14,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-            const SizedBox(height: 14),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                width: 116,
+                height: 3,
+                child: ColoredBox(color: Color(0xFFF4C65B)),
+              ),
+            ),
+            const SizedBox(height: 12),
             _PuzzleHero(solved: stats.puzzlesSolved, onStart: onStart),
             const SizedBox(height: 18),
             Expanded(

@@ -3493,6 +3493,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     ? math.min(boardWidth, boardHeight)
                     : boardWidth,
               );
+              final bool terminalCheckmate = _gameMode == GameMode.online
+                  ? _onlineMatch?.resultReason == 'CHECKMATE'
+                  : _gameResultDetail == 'Checkmate';
+              final bool losingKingWhite = _gameMode == GameMode.online &&
+                      _onlineMatch?.resultReason == 'CHECKMATE'
+                  ? _onlineMatch!.result == '0-1'
+                  : sideToMoveWhite;
 
               final Widget board = ChessBoard(
                 pieces: _pieces,
@@ -3505,15 +3512,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 lastCapturedPiece: _lastCapturedPiece,
                 moveSequence: _moves.length,
                 checkedKingSquare: checkedKingSquare,
-                decisiveSquare:
-                    _gameResultDetail == 'Checkmate' ? _lastToSquare : null,
-                fallenKingSquare: _gameResultDetail == 'Checkmate'
-                    ? (_kingSquare(sideToMoveWhite) ??
+                decisiveSquare: terminalCheckmate ? _lastToSquare : null,
+                fallenKingSquare: terminalCheckmate
+                    ? (_kingSquare(losingKingWhite) ??
                         (_lastCapturedPiece?.code == 'K'
                             ? _lastCaptureSquare
                             : null))
                     : null,
-                fallenKingWhite: sideToMoveWhite,
+                fallenKingWhite: losingKingWhite,
                 coachArrowFrom: _coachArrowFrom,
                 coachArrowTo: _coachArrowTo,
                 flipped: _shouldFlipBoard(sideToMoveWhite),
@@ -6849,9 +6855,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (firstPresentation) {
         _onlineResultPresentationTimer?.cancel();
         _onlineResultPresentationTimer = Timer(
-          draw
-              ? const Duration(milliseconds: 900)
-              : const Duration(seconds: 10),
+          draw ? const Duration(milliseconds: 900) : const Duration(seconds: 3),
           () {
             if (!mounted || _onlineCelebrationMatchId != match.id) return;
             setState(() {
@@ -10646,6 +10650,12 @@ class AnalysisMetric extends StatelessWidget {
 
 enum OnlineLobbyMode { random, friends }
 
+typedef _SearchPreferences = ({
+  int timeControlMinutes,
+  String region,
+  int ratingRange,
+});
+
 class OnlineMatchmakingSheet extends StatefulWidget {
   const OnlineMatchmakingSheet({
     required this.api,
@@ -10677,6 +10687,10 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
   bool _randomSearch = false;
   int _elapsedSeconds = 0;
   int? _onlinePlayerCount;
+  final Set<String> _closedWaitingMatchIds = <String>{};
+  int _timeControlMinutes = 10;
+  String _searchRegion = 'WORLDWIDE';
+  int _ratingRange = 0;
   String? _error;
 
   @override
@@ -10731,7 +10745,43 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     }
   }
 
+  Future<OnlineMatchDto> _requestRandomMatch() => widget.api.randomMatch(
+        widget.token,
+        timeControlMinutes: _timeControlMinutes,
+        region: _searchRegion,
+        ratingRange: _ratingRange,
+      );
+
+  Future<void> _applySearchPreferences(_SearchPreferences preferences) async {
+    final OnlineMatchDto? waiting = _match;
+    if (waiting != null) {
+      _closedWaitingMatchIds.add(waiting.id);
+      _pollTimer?.cancel();
+      _elapsedTimer?.cancel();
+      _socketReconnectTimer?.cancel();
+      await _socketSubscription?.cancel();
+      await _channel?.sink.close();
+      try {
+        await widget.api.cancelWaiting(widget.token, waiting.id);
+      } on OnlineMatchException {
+        // The server may have already expired the old queue entry.
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _match = null;
+      _elapsedSeconds = 0;
+      _timeControlMinutes = preferences.timeControlMinutes;
+      _searchRegion = preferences.region;
+      _ratingRange = preferences.ratingRange;
+    });
+    await _run(_requestRandomMatch, randomSearch: true);
+  }
+
   void _accept(OnlineMatchDto match) {
+    // A poll or websocket event may complete after the 20-second expiry or a
+    // manual cancellation. Never let that stale response revive the search.
+    if (_closedWaitingMatchIds.contains(match.id)) return;
     if (match.isActive) {
       if (_foundMatch != null) return;
       _pollTimer?.cancel();
@@ -10743,7 +10793,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
         _foundMatch = match;
         _match = match;
       });
-      _foundTimer = Timer(const Duration(milliseconds: 1800), () {
+      // Give the premium rival-found reveal enough time to complete its
+      // three-second countdown before opening the board.
+      _foundTimer = Timer(const Duration(milliseconds: 3600), () {
         if (mounted) Navigator.of(context).pop(match);
       });
       return;
@@ -10783,6 +10835,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     _pollTimer?.cancel();
     _elapsedTimer?.cancel();
     _socketReconnectTimer?.cancel();
+    _closedWaitingMatchIds.add(waiting.id);
     await _socketSubscription?.cancel();
     await _channel?.sink.close();
     try {
@@ -10850,6 +10903,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     unawaited(_channel?.sink.close());
     _socketReconnectTimer?.cancel();
     if (waiting != null) {
+      _closedWaitingMatchIds.add(waiting.id);
       try {
         await widget.api.cancelWaiting(widget.token, waiting.id);
       } on OnlineMatchException {
@@ -10900,6 +10954,12 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
               elapsedSeconds: _elapsedSeconds,
               onlinePlayerCount: _onlinePlayerCount,
               wideLayout: wideLayout,
+              preferences: (
+                timeControlMinutes: _timeControlMinutes,
+                region: _searchRegion,
+                ratingRange: _ratingRange,
+              ),
+              onPreferencesChanged: _applySearchPreferences,
               onCopyCode: () {
                 Clipboard.setData(ClipboardData(text: waiting.roomCode));
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -11083,8 +11143,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                   onPressed: _loading
                                       ? null
                                       : () => _run(
-                                            () => widget.api
-                                                .randomMatch(widget.token),
+                                            _requestRandomMatch,
                                             randomSearch: true,
                                           ),
                                   icon: Icon(
@@ -11456,9 +11515,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                     ),
                                     onPressed: _loading
                                         ? null
-                                        : () => _run(
-                                            () => widget.api
-                                                .randomMatch(widget.token),
+                                        : () => _run(_requestRandomMatch,
                                             randomSearch: true),
                                     icon: const Icon(
                                       Icons.bolt_rounded,
@@ -11699,6 +11756,8 @@ class _MatchSearchingView extends StatefulWidget {
     required this.elapsedSeconds,
     required this.onlinePlayerCount,
     required this.wideLayout,
+    required this.preferences,
+    required this.onPreferencesChanged,
     required this.onCopyCode,
     required this.onCancel,
   });
@@ -11709,6 +11768,8 @@ class _MatchSearchingView extends StatefulWidget {
   final int elapsedSeconds;
   final int? onlinePlayerCount;
   final bool wideLayout;
+  final _SearchPreferences preferences;
+  final ValueChanged<_SearchPreferences> onPreferencesChanged;
   final VoidCallback onCopyCode;
   final VoidCallback onCancel;
 
@@ -11721,7 +11782,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
   late final AnimationController _pulse = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
-  )..repeat(reverse: true);
+  )..repeat();
 
   @override
   void dispose() {
@@ -11735,9 +11796,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
         '${(widget.elapsedSeconds ~/ 60).toString().padLeft(2, '0')}:'
         '${(widget.elapsedSeconds % 60).toString().padLeft(2, '0')}';
     if (widget.randomSearch) {
-      return widget.wideLayout
-          ? _buildAdvancedSearch(context, timer)
-          : _buildMobileAdvancedSearch(context, timer);
+      return _buildMobileAdvancedSearch(context, timer);
     }
     return Material(
       color: Colors.transparent,
@@ -11889,6 +11948,8 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
     );
   }
 
+  // Kept as a compact fallback while the shared composition is rolled out.
+  // ignore: unused_element
   Widget _buildAdvancedSearch(BuildContext context, String timer) {
     const Color teal = Color(0xFF58DFC9);
     const Color gold = Color(0xFFE7B64F);
@@ -12173,9 +12234,9 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                           icon: const Icon(Icons.arrow_back_ios_new_rounded,
                               color: gold),
                         ),
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'RANKED RAPID • 10 MIN',
+                            'RANKED RAPID • ${widget.preferences.timeControlMinutes} MIN',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: gold,
@@ -12272,29 +12333,40 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                         final double value =
                             Curves.easeInOut.transform(_pulse.value);
                         return SizedBox.square(
-                          dimension: 174,
+                          dimension: 212,
                           child: Stack(
                             alignment: Alignment.center,
                             children: <Widget>[
                               for (int index = 0; index < 4; index++)
-                                Transform.rotate(
-                                  angle: (value + index / 4) * math.pi * 2,
-                                  child: Container(
-                                    width: 88.0 + index * 23,
-                                    height: 88.0 + index * 23,
+                                Builder(builder: (BuildContext context) {
+                                  final double wave = (value + index / 4) % 1.0;
+                                  return Container(
+                                    width: 106 + wave * 104,
+                                    height: 106 + wave * 104,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       border: Border.all(
                                         color: (index.isEven ? teal : gold)
                                             .withValues(
-                                                alpha: .18 + value * .15),
+                                          alpha: (.52 * (1 - wave)) + .04,
+                                        ),
+                                        width: 1.2 + (1 - wave),
                                       ),
+                                      boxShadow: <BoxShadow>[
+                                        BoxShadow(
+                                          color: (index.isEven ? teal : gold)
+                                              .withValues(
+                                            alpha: .13 * (1 - wave),
+                                          ),
+                                          blurRadius: 14,
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                ),
+                                  );
+                                }),
                               Container(
-                                width: 116,
-                                height: 116,
+                                width: 158,
+                                height: 158,
                                 alignment: Alignment.center,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
@@ -12313,16 +12385,13 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                     ),
                                   ],
                                 ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: <Widget>[
-                                    Text('♘',
-                                        style: TextStyle(
-                                            color: teal, fontSize: 43)),
-                                    Text('♞',
-                                        style: TextStyle(
-                                            color: gold, fontSize: 43)),
-                                  ],
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Image.asset(
+                                    'assets/matchmaking/neon_rival_knights.png',
+                                    fit: BoxFit.contain,
+                                    filterQuality: FilterQuality.high,
+                                  ),
                                 ),
                               ),
                             ],
@@ -12371,10 +12440,12 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                             ),
                           ),
                           const _MobileFactDivider(),
-                          const Expanded(
+                          Expanded(
                             child: _MobileSearchFact(
                               icon: Icons.gps_fixed_rounded,
-                              value: 'Open',
+                              value: widget.preferences.ratingRange == 0
+                                  ? 'Open'
+                                  : '±${widget.preferences.ratingRange}',
                               label: 'Range',
                             ),
                           ),
@@ -12418,43 +12489,105 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
     );
   }
 
-  void _showMobileSearchSettings(BuildContext context) {
-    showModalBottomSheet<void>(
+  Future<void> _showMobileSearchSettings(BuildContext context) async {
+    int minutes = widget.preferences.timeControlMinutes;
+    String region = widget.preferences.region;
+    int range = widget.preferences.ratingRange;
+    final _SearchPreferences? selected =
+        await showModalBottomSheet<_SearchPreferences>(
       context: context,
       backgroundColor: const Color(0xFF071725),
       showDragHandle: true,
-      builder: (BuildContext context) => const SafeArea(
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(24, 8, 24, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text('Search settings',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-              SizedBox(height: 18),
-              _SearchSettingRow(
-                  icon: Icons.speed_rounded,
-                  label: 'Time control',
-                  value: 'Rapid • 10 min'),
-              _SearchSettingRow(
-                  icon: Icons.public_rounded,
-                  label: 'Region',
-                  value: 'Worldwide'),
-              _SearchSettingRow(
-                  icon: Icons.tune_rounded,
-                  label: 'Rating pool',
-                  value: 'Open pool'),
-              SizedBox(height: 12),
-              Text(
-                'More matchmaking filters will appear when the server supports them.',
-                style: TextStyle(color: Color(0xFF93A5B6), height: 1.4),
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) => StatefulBuilder(
+        builder: (BuildContext context, StateSetter setSheetState) =>
+            MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.1,
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                24,
+                8,
+                24,
+                28 + MediaQuery.viewInsetsOf(context).bottom,
               ),
-            ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  const Text('Search settings',
+                      style:
+                          TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<int>(
+                    initialValue: minutes,
+                    decoration: const InputDecoration(
+                      labelText: 'Time control',
+                      prefixIcon: Icon(Icons.speed_rounded),
+                    ),
+                    items: const <DropdownMenuItem<int>>[
+                      DropdownMenuItem(value: 3, child: Text('Blitz • 3 min')),
+                      DropdownMenuItem(value: 5, child: Text('Blitz • 5 min')),
+                      DropdownMenuItem(
+                          value: 10, child: Text('Rapid • 10 min')),
+                      DropdownMenuItem(
+                          value: 15, child: Text('Rapid • 15 min')),
+                    ],
+                    onChanged: (int? value) =>
+                        setSheetState(() => minutes = value ?? 10),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: region,
+                    decoration: const InputDecoration(
+                      labelText: 'Region',
+                      prefixIcon: Icon(Icons.public_rounded),
+                    ),
+                    items: const <DropdownMenuItem<String>>[
+                      DropdownMenuItem(
+                          value: 'WORLDWIDE', child: Text('Worldwide')),
+                      DropdownMenuItem(
+                          value: 'COUNTRY', child: Text('My country')),
+                    ],
+                    onChanged: (String? value) =>
+                        setSheetState(() => region = value ?? 'WORLDWIDE'),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    initialValue: range,
+                    decoration: const InputDecoration(
+                      labelText: 'Rating range',
+                      prefixIcon: Icon(Icons.tune_rounded),
+                    ),
+                    items: const <DropdownMenuItem<int>>[
+                      DropdownMenuItem(value: 100, child: Text('±100 rating')),
+                      DropdownMenuItem(value: 250, child: Text('±250 rating')),
+                      DropdownMenuItem(value: 500, child: Text('±500 rating')),
+                      DropdownMenuItem(value: 0, child: Text('Open pool')),
+                    ],
+                    onChanged: (int? value) =>
+                        setSheetState(() => range = value ?? 0),
+                  ),
+                  const SizedBox(height: 18),
+                  FilledButton.icon(
+                    onPressed: () => Navigator.of(sheetContext).pop((
+                      timeControlMinutes: minutes,
+                      region: region,
+                      ratingRange: range,
+                    )),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('APPLY & RESTART SEARCH'),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
     );
+    if (selected != null && selected != widget.preferences) {
+      widget.onPreferencesChanged(selected);
+    }
   }
 }
 
@@ -12548,6 +12681,7 @@ class _MobileFactDivider extends StatelessWidget {
       );
 }
 
+// ignore: unused_element
 class _SearchSettingRow extends StatelessWidget {
   const _SearchSettingRow({
     required this.icon,
@@ -12687,21 +12821,52 @@ class _SearchDivider extends StatelessWidget {
       );
 }
 
-class _OpponentFoundView extends StatelessWidget {
+class _OpponentFoundView extends StatefulWidget {
   const _OpponentFoundView({required this.match});
 
   final OnlineMatchDto match;
 
   @override
+  State<_OpponentFoundView> createState() => _OpponentFoundViewState();
+}
+
+class _OpponentFoundViewState extends State<_OpponentFoundView> {
+  int _countdown = 3;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
+      if (!mounted || _countdown <= 1) {
+        timer.cancel();
+        return;
+      }
+      setState(() => _countdown--);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final OnlineMatchDto match = widget.match;
     final String you = match.yourColor == 'WHITE'
         ? (match.whitePlayerName ?? 'You')
         : (match.blackPlayerName ?? 'You');
     final String rival = match.yourColor == 'WHITE'
         ? (match.blackPlayerName ?? 'Online Rival')
         : (match.whitePlayerName ?? 'Online Rival');
+    const Color teal = Color(0xFF55E5D0);
+    const Color gold = Color(0xFFF1B94C);
+    final bool wide = MediaQuery.sizeOf(context).width >= 760;
+    final String rating = match.ratingBefore?.toString() ?? 'Unrated';
     return Material(
-      color: Colors.transparent,
+      color: const Color(0xFF010A13),
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(begin: 0, end: 1),
         duration: const Duration(milliseconds: 700),
@@ -12712,19 +12877,22 @@ class _OpponentFoundView extends StatelessWidget {
             child: Transform.scale(
               scale: 0.86 + value * 0.14,
               child: Container(
-                margin: const EdgeInsets.all(18),
-                padding: const EdgeInsets.fromLTRB(18, 28, 18, 24),
+                constraints: BoxConstraints(maxWidth: wide ? 1160 : 540),
+                margin: EdgeInsets.all(wide ? 22 : 10),
+                padding: EdgeInsets.fromLTRB(
+                  wide ? 34 : 16,
+                  wide ? 28 : 16,
+                  wide ? 34 : 16,
+                  wide ? 24 : 18,
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: <Color>[Color(0xFF123A42), Color(0xFF071A2C)],
+                    colors: <Color>[Color(0xFF061B2A), Color(0xFF010A13)],
                   ),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: const Color(0xFFE5B856),
-                    width: 1.5,
-                  ),
+                  borderRadius: BorderRadius.circular(wide ? 32 : 24),
+                  border: Border.all(color: gold.withValues(alpha: .7)),
                   boxShadow: <BoxShadow>[
                     BoxShadow(
                       color: const Color(
@@ -12735,70 +12903,150 @@ class _OpponentFoundView extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    const Icon(
-                      Icons.check_circle_rounded,
-                      color: Color(0xFF63D2B8),
-                      size: 42,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'OPPONENT FOUND',
-                      style: TextStyle(
-                        color: Color(0xFF63D2B8),
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.4,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text(
+                        'RANKED RAPID • ${(match.whiteTimeMs ~/ 60000).clamp(1, 60)} MIN',
+                        style: const TextStyle(
+                            color: gold,
+                            fontSize: 12,
+                            letterSpacing: 2,
+                            fontWeight: FontWeight.w900),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: _VersusPlayerCard(
-                            name: you,
-                            color: const Color(0xFF3D9FFF),
-                            label: 'YOU',
-                          ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'RIVAL FOUND',
+                        style: TextStyle(
+                          color: Color(0xFFF4EFE5),
+                          fontSize: wide ? 38 : 29,
+                          fontFamily: 'serif',
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.6,
                         ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Transform.scale(
-                            scale: value,
-                            child: const Text(
-                              'VS',
-                              style: TextStyle(
-                                color: Color(0xFFE5B856),
-                                fontSize: 30,
-                                fontWeight: FontWeight.w900,
-                                fontStyle: FontStyle.italic,
-                              ),
+                      ),
+                      const Text('Your match is ready',
+                          style: TextStyle(
+                              color: Color(0xFFB7C1CB), fontSize: 15)),
+                      SizedBox(height: wide ? 20 : 15),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: _VersusPlayerCard(
+                              name: you,
+                              color: teal,
+                              label: 'YOU • ${match.yourColor}',
+                              rating: rating,
+                              rival: false,
                             ),
                           ),
-                        ),
-                        Expanded(
-                          child: _VersusPlayerCard(
-                            name: rival,
-                            color: const Color(0xFFFF5577),
-                            label: 'RIVAL',
+                          Padding(
+                            padding:
+                                EdgeInsets.symmetric(horizontal: wide ? 28 : 7),
+                            child: Container(
+                              width: wide ? 88 : 54,
+                              height: wide ? 88 : 54,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color(0xFF061522),
+                                  border: Border.all(color: gold, width: 1.4),
+                                  boxShadow: <BoxShadow>[
+                                    BoxShadow(
+                                        color: gold.withValues(alpha: .28),
+                                        blurRadius: 28)
+                                  ]),
+                              child: Text('VS',
+                                  style: TextStyle(
+                                      color: gold,
+                                      fontFamily: 'serif',
+                                      fontSize: wide ? 30 : 20,
+                                      fontWeight: FontWeight.w900)),
+                            ),
+                          ),
+                          Expanded(
+                            child: _VersusPlayerCard(
+                              name: rival,
+                              color: gold,
+                              label:
+                                  'RIVAL • ${match.yourColor == 'WHITE' ? 'BLACK' : 'WHITE'}',
+                              rating: 'Ready',
+                              rival: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: wide ? 18 : 15),
+                      TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0, end: 1),
+                        duration: const Duration(seconds: 3),
+                        builder: (BuildContext context, double progress,
+                                Widget? child) =>
+                            SizedBox.square(
+                          dimension: wide ? 210 : 164,
+                          child: CustomPaint(
+                            painter: _CountdownRingPainter(progress: progress),
+                            child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: <Widget>[
+                                  const Text('MATCH STARTS IN',
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          letterSpacing: 1.2,
+                                          color: Color(0xFFB4BEC8))),
+                                  Text('$_countdown',
+                                      style: TextStyle(
+                                          color: teal,
+                                          fontSize: wide ? 76 : 62,
+                                          height: 1.05,
+                                          fontWeight: FontWeight.w900,
+                                          shadows: const <Shadow>[
+                                            Shadow(color: teal, blurRadius: 22)
+                                          ])),
+                                ]),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    const LinearProgressIndicator(
-                      minHeight: 5,
-                      color: Color(0xFF63D2B8),
-                      backgroundColor: Color(0xFF163344),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Preparing the board...',
-                      style: TextStyle(color: Color(0xFFD7D4CC)),
-                    ),
-                  ],
+                      ),
+                      SizedBox(height: wide ? 16 : 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                            color: const Color(0xD9071928),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFF314A5C))),
+                        child: Row(children: <Widget>[
+                          Expanded(
+                              child: _FoundFact(
+                                  icon: Icons.schedule_rounded,
+                                  label:
+                                      'Rapid • ${(match.whiteTimeMs ~/ 60000).clamp(1, 60)} min')),
+                          const _MobileFactDivider(),
+                          const Expanded(
+                              child: _FoundFact(
+                                  icon: Icons.shield_outlined,
+                                  label: 'Rated Match')),
+                          const _MobileFactDivider(),
+                          const Expanded(
+                              child: _FoundFact(
+                                  icon: Icons.wifi_rounded,
+                                  label: 'Live server')),
+                        ]),
+                      ),
+                      const SizedBox(height: 13),
+                      const Text(
+                          'Preparing the board and synchronizing clocks...',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: Color(0xFFB4BEC8), fontSize: 12)),
+                      const SizedBox(height: 8),
+                      const LinearProgressIndicator(
+                          minHeight: 4,
+                          color: teal,
+                          backgroundColor: Color(0xFF173344)),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -12814,47 +13062,128 @@ class _VersusPlayerCard extends StatelessWidget {
     required this.name,
     required this.color,
     required this.label,
+    required this.rating,
+    required this.rival,
   });
 
   final String name;
   final Color color;
   final String label;
+  final String rating;
+  final bool rival;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: <Widget>[
-        Container(
-          width: 76,
-          height: 76,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color, width: 2),
+    return Container(
+      padding: EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: MediaQuery.sizeOf(context).width >= 760 ? 16 : 10),
+      decoration: BoxDecoration(
+          color: const Color(0xC9071928),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: .8))),
+      child: Column(
+        children: <Widget>[
+          Container(
+            width: MediaQuery.sizeOf(context).width >= 760 ? 96 : 66,
+            height: MediaQuery.sizeOf(context).width >= 760 ? 96 : 66,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+              border: Border.all(color: color, width: 2),
+            ),
+            child: Icon(
+                rival ? Icons.person_search_rounded : Icons.person_rounded,
+                color: color,
+                size: MediaQuery.sizeOf(context).width >= 760 ? 58 : 40),
           ),
-          child: Icon(Icons.person_rounded, color: color, size: 48),
-        ),
-        const SizedBox(height: 9),
-        Text(
-          name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.1,
+          const SizedBox(height: 9),
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.w900),
           ),
-        ),
-      ],
+          const SizedBox(height: 3),
+          Text(rating,
+              style: TextStyle(
+                  color: color, fontSize: 12, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.1,
+            ),
+          ),
+        ],
+      ),
     );
   }
+}
+
+class _FoundFact extends StatelessWidget {
+  const _FoundFact({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+  @override
+  Widget build(BuildContext context) =>
+      Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+        Icon(icon, color: const Color(0xFF55E5D0), size: 21),
+        const SizedBox(height: 4),
+        Text(label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                fontSize: 11,
+                color: Color(0xFFD9D5CC),
+                fontWeight: FontWeight.w700)),
+      ]);
+}
+
+class _CountdownRingPainter extends CustomPainter {
+  const _CountdownRingPainter({required this.progress});
+  final double progress;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Offset center = size.center(Offset.zero);
+    final double radius = size.shortestSide / 2 - 10;
+    final Paint track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = const Color(0xFF193A45);
+    final Paint glow = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 9
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xFF55E5D0)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9);
+    final Paint arc = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round
+      ..shader = const SweepGradient(colors: <Color>[
+        Color(0xFF55E5D0),
+        Color(0xFFF1B94C),
+        Color(0xFF55E5D0)
+      ]).createShader(Rect.fromCircle(center: center, radius: radius));
+    canvas.drawCircle(center, radius, track);
+    final double sweep = math.pi * 2 * progress;
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2, sweep, false, glow);
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2, sweep, false, arc);
+    canvas.drawCircle(
+        center, radius - 15, track..color = const Color(0xFF27606A));
+  }
+
+  @override
+  bool shouldRepaint(covariant _CountdownRingPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 class MoveHistorySheet extends StatelessWidget {

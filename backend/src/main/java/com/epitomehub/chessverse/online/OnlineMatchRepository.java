@@ -23,12 +23,22 @@ interface OnlineMatchRepository extends JpaRepository<OnlineMatch, UUID> {
             where match.randomQueue = true and match.status = 'WAITING'
               and match.whitePlayerId <> :playerId
               and match.updatedAt >= :activeAfter
+              and match.timeControlMinutes = :timeControlMinutes
+              and match.queueRegion = :region
+              and (:region = 'WORLDWIDE' or match.queueCountry = :country)
+              and (:ratingRange = 0 or abs(match.queueRating - :rating) <= :ratingRange)
+              and (match.ratingRange = 0 or abs(match.queueRating - :rating) <= match.ratingRange)
             order by match.createdAt
             limit 1
             """)
     Optional<OnlineMatch> lockOldestRandomOpponent(
             @Param("playerId") UUID playerId,
-            @Param("activeAfter") Instant activeAfter);
+            @Param("activeAfter") Instant activeAfter,
+            @Param("timeControlMinutes") int timeControlMinutes,
+            @Param("region") String region,
+            @Param("country") String country,
+            @Param("rating") int rating,
+            @Param("ratingRange") int ratingRange);
 
     @Query("""
             select count(match) from OnlineMatch match

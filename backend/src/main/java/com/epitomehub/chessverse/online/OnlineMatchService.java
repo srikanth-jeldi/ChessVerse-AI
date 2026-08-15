@@ -45,6 +45,12 @@ public class OnlineMatchService {
 
     @Transactional
     public OnlineDtos.MatchDto randomMatch(AuthenticatedPlayer player) {
+        return randomMatch(player, new OnlineDtos.QueueRequest(10, "WORLDWIDE", 0));
+    }
+
+    @Transactional
+    public OnlineDtos.MatchDto randomMatch(
+            AuthenticatedPlayer player, OnlineDtos.QueueRequest preferences) {
         OnlineMatch current = current(player.id());
         if (current != null) {
             if (current.status == OnlineMatchStatus.WAITING && current.randomQueue) {
@@ -53,12 +59,21 @@ public class OnlineMatchService {
             }
             return OnlineDtos.MatchDto.from(current, player.id());
         }
+        LeaderboardDtos.PlayerRatingDto profile = ratings.profile(player);
         Instant now = Instant.now();
         OnlineMatch opponent = matches
-                .lockOldestRandomOpponent(player.id(), now.minus(RANDOM_QUEUE_LEASE))
+                .lockOldestRandomOpponent(
+                        player.id(),
+                        now.minus(RANDOM_QUEUE_LEASE),
+                        preferences.timeControlMinutes(),
+                        preferences.region(),
+                        profile.country(),
+                        profile.rating(),
+                        preferences.ratingRange())
                 .orElse(null);
         if (opponent == null) {
-            return OnlineDtos.MatchDto.from(createWaiting(player, true), player.id());
+            return OnlineDtos.MatchDto.from(
+                    createWaiting(player, true, preferences, profile), player.id());
         }
         activate(opponent, player);
         return OnlineDtos.MatchDto.from(matches.save(opponent), player.id());
@@ -385,6 +400,25 @@ public class OnlineMatchService {
                 player.displayName(),
                 player.photoUrl(),
                 randomQueue));
+    }
+
+    private OnlineMatch createWaiting(
+            AuthenticatedPlayer player,
+            boolean randomQueue,
+            OnlineDtos.QueueRequest preferences,
+            LeaderboardDtos.PlayerRatingDto profile) {
+        return matches.save(new OnlineMatch(
+                UUID.randomUUID(),
+                newRoomCode(),
+                player.id(),
+                player.displayName(),
+                player.photoUrl(),
+                randomQueue,
+                preferences.timeControlMinutes(),
+                preferences.region(),
+                profile.country(),
+                profile.rating(),
+                preferences.ratingRange()));
     }
 
     private void activate(OnlineMatch match, AuthenticatedPlayer player) {

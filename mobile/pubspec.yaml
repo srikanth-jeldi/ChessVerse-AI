@@ -37,6 +37,7 @@ flutter:
     - assets/audio/
     - assets/backgrounds/
     - assets/branding/
+    - assets/matchmaking/
     - assets/pieces/
 
 flutter_launcher_icons:

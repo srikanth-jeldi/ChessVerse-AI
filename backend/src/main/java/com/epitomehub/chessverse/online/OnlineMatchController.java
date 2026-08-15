@@ -46,8 +46,12 @@ public class OnlineMatchController {
     }
 
     @PostMapping("/queue")
-    OnlineDtos.MatchDto queue(@RequestHeader("Authorization") String authorization) {
-        OnlineDtos.MatchDto match = matches.randomMatch(player(authorization));
+    OnlineDtos.MatchDto queue(
+            @RequestHeader("Authorization") String authorization,
+            @Valid @RequestBody(required = false) OnlineDtos.QueueRequest request) {
+        OnlineDtos.QueueRequest preferences = request == null
+                ? new OnlineDtos.QueueRequest(10, "WORLDWIDE", 0) : request;
+        OnlineDtos.MatchDto match = matches.randomMatch(player(authorization), preferences);
         socket.publish(match.id());
         return match;
     }

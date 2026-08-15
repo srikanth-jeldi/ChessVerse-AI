@@ -3,6 +3,8 @@ package com.epitomehub.chessverse.online;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.AssertTrue;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +27,22 @@ final class OnlineDtos {
     }
 
     record DrawResponseRequest(boolean accept) {
+    }
+
+    record QueueRequest(
+            @Min(3) @Max(15) int timeControlMinutes,
+            @Pattern(regexp = "^(WORLDWIDE|COUNTRY)$") String region,
+            @Min(0) @Max(800) int ratingRange) {
+        QueueRequest {
+            if (timeControlMinutes == 0) timeControlMinutes = 10;
+            if (region == null || region.isBlank()) region = "WORLDWIDE";
+        }
+
+        @AssertTrue(message = "Time control must be 3, 5, 10 or 15 minutes.")
+        boolean supportedTimeControl() {
+            return timeControlMinutes == 3 || timeControlMinutes == 5
+                    || timeControlMinutes == 10 || timeControlMinutes == 15;
+        }
     }
 
     record PresenceDto(long onlinePlayers) {

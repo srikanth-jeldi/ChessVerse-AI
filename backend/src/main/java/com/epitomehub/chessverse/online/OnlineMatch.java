@@ -51,6 +51,21 @@ class OnlineMatch {
     @Column(name = "random_queue", nullable = false)
     boolean randomQueue;
 
+    @Column(name = "time_control_minutes", nullable = false)
+    int timeControlMinutes;
+
+    @Column(name = "queue_region", nullable = false, length = 16)
+    String queueRegion;
+
+    @Column(name = "queue_country", nullable = false, length = 64)
+    String queueCountry;
+
+    @Column(name = "queue_rating", nullable = false)
+    int queueRating;
+
+    @Column(name = "rating_range", nullable = false)
+    int ratingRange;
+
     @Column(name = "active_color", nullable = false, length = 8)
     String activeColor;
 
@@ -133,6 +148,22 @@ class OnlineMatch {
             String playerName,
             String playerPhotoUrl,
             boolean randomQueue) {
+        this(id, roomCode, playerId, playerName, playerPhotoUrl, randomQueue,
+                10, "WORLDWIDE", "Unknown", 1200, 0);
+    }
+
+    OnlineMatch(
+            UUID id,
+            String roomCode,
+            UUID playerId,
+            String playerName,
+            String playerPhotoUrl,
+            boolean randomQueue,
+            int timeControlMinutes,
+            String queueRegion,
+            String queueCountry,
+            int queueRating,
+            int ratingRange) {
         this.id = id;
         this.roomCode = roomCode;
         this.status = OnlineMatchStatus.WAITING;
@@ -140,12 +171,17 @@ class OnlineMatch {
         this.whitePlayerName = playerName;
         this.whitePlayerPhotoUrl = playerPhotoUrl;
         this.randomQueue = randomQueue;
+        this.timeControlMinutes = timeControlMinutes;
+        this.queueRegion = queueRegion;
+        this.queueCountry = queueCountry;
+        this.queueRating = queueRating;
+        this.ratingRange = ratingRange;
         this.activeColor = "white";
         this.fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         this.createdAt = Instant.now();
         this.updatedAt = createdAt;
-        this.whiteTimeMs = 10 * 60 * 1000L;
-        this.blackTimeMs = 10 * 60 * 1000L;
+        this.whiteTimeMs = timeControlMinutes * 60 * 1000L;
+        this.blackTimeMs = timeControlMinutes * 60 * 1000L;
     }
 
     boolean contains(UUID playerId) {

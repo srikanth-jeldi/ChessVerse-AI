@@ -416,9 +416,12 @@ class _PersonalizedPathCard extends StatelessWidget {
               )),
           const SizedBox(height: 9),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: pieceLessons
-                .map((AcademyLesson item) => _PieceQuickLesson(lesson: item))
+                .map(
+                  (AcademyLesson item) => Expanded(
+                    child: _PieceQuickLesson(lesson: item),
+                  ),
+                )
                 .toList(growable: false),
           ),
         ],
@@ -456,64 +459,79 @@ class _PieceQuickLesson extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: () => _openAcademyLesson(context, lesson),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-          child: Column(children: <Widget>[
-            ValueListenableBuilder<ChessPieceAppearance>(
-              valueListenable: ChessPieceAppearanceController.current,
-              builder:
-                  (BuildContext context, ChessPieceAppearance appearance, _) {
-                if (appearance.style == ChessPieceVisualStyle.classic2d) {
-                  const Map<String, String> glyphs = <String, String>{
-                    'Pawn': '\u2659',
-                    'Rook': '\u2656',
-                    'Knight': '\u2658',
-                    'Bishop': '\u2657',
-                    'Queen': '\u2655',
-                    'King': '\u2654',
-                  };
-                  return Text(
-                    glyphs[name]!,
-                    style: const TextStyle(
-                      fontFamily: 'serif',
-                      fontSize: 38,
-                      height: 1,
-                      color: Color(0xFFFFF4D0),
-                    ),
-                  );
-                }
-                Widget image = Image.asset(
-                  'assets/pieces/staunton_white_${name.toLowerCase()}.png',
-                  width: 42,
-                  height: 42,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.high,
-                );
-                if (appearance.style == ChessPieceVisualStyle.highContrast) {
-                  image = ColorFiltered(
-                    colorFilter: const ColorFilter.mode(
-                      Color(0xFFFFF0B8),
-                      BlendMode.modulate,
-                    ),
-                    child: image,
-                  );
-                }
-                return Transform.scale(
-                  scale: switch (appearance.size) {
-                    ChessPieceVisualSize.large => 1.05,
-                    ChessPieceVisualSize.extraLarge => 1.18,
-                    ChessPieceVisualSize.doubleExtraLarge => 1.30,
-                  },
-                  child: image,
-                );
-              },
-            ),
-            const SizedBox(height: 3),
-            Text(name,
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              SizedBox(
+                height: 60,
+                child: Center(
+                  child: ValueListenableBuilder<ChessPieceAppearance>(
+                    valueListenable: ChessPieceAppearanceController.current,
+                    builder: (BuildContext context,
+                        ChessPieceAppearance appearance, _) {
+                      if (appearance.style == ChessPieceVisualStyle.classic2d) {
+                        const Map<String, String> glyphs = <String, String>{
+                          'Pawn': '\u2659',
+                          'Rook': '\u2656',
+                          'Knight': '\u2658',
+                          'Bishop': '\u2657',
+                          'Queen': '\u2655',
+                          'King': '\u2654',
+                        };
+                        return Text(
+                          glyphs[name]!,
+                          style: const TextStyle(
+                            fontFamily: 'serif',
+                            fontSize: 48,
+                            height: 1,
+                            color: Color(0xFFFFF4D0),
+                          ),
+                        );
+                      }
+                      Widget image = Image.asset(
+                        'assets/pieces/staunton_white_${name.toLowerCase()}.png',
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                      );
+                      if (appearance.style ==
+                          ChessPieceVisualStyle.highContrast) {
+                        image = ColorFiltered(
+                          colorFilter: const ColorFilter.mode(
+                            Color(0xFFFFF0B8),
+                            BlendMode.modulate,
+                          ),
+                          child: image,
+                        );
+                      }
+                      return Transform.scale(
+                        scale: switch (appearance.size) {
+                          ChessPieceVisualSize.large => 1.05,
+                          ChessPieceVisualSize.extraLarge => 1.18,
+                          ChessPieceVisualSize.doubleExtraLarge => 1.30,
+                        },
+                        child: image,
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                name,
+                maxLines: 1,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 8,
-                    fontWeight: FontWeight.w800)),
-          ]),
+                  color: Color(0xFFF2F5F8),
+                  fontSize: 12,
+                  height: 1.1,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
