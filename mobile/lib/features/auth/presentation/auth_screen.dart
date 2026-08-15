@@ -105,7 +105,6 @@ class _AuthScreenState extends State<AuthScreen> {
     final Size viewport = MediaQuery.sizeOf(context);
     final bool compactLandscape =
         viewport.width > viewport.height && viewport.shortestSide < 600;
-    final bool keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       backgroundColor: const Color(0xFF020914),
       body: DecoratedBox(
@@ -119,22 +118,25 @@ class _AuthScreenState extends State<AuthScreen> {
         child: SafeArea(
           child: compactLandscape
               ? _premiumCompactLandscapeBody(context)
-              : keyboardVisible
-                  ? Center(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(12),
-                        child: _premiumResponsiveBody(context),
-                      ),
-                    )
-                  : Padding(
+              : LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints constraints) {
+                    return SingleChildScrollView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: const EdgeInsets.all(12),
-                      child: Center(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: (constraints.maxHeight - 24)
+                              .clamp(0.0, double.infinity),
+                        ),
+                        child: Align(
+                          alignment: Alignment.center,
                           child: _premiumResponsiveBody(context),
                         ),
                       ),
-                    ),
+                    );
+                  },
+                ),
         ),
       ),
     );
