@@ -37,6 +37,9 @@ class AuthControllerTest {
     @MockitoBean
     GoogleIdentityVerifier googleIdentityVerifier;
 
+    @MockitoBean
+    FacebookIdentityVerifier facebookIdentityVerifier;
+
     @Test
     void registrationCreatesPendingAccountAndSendsOtp() throws Exception {
         mockMvc.perform(post("/api/auth/register")
@@ -159,6 +162,65 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.player.username").value(existingUsername))
                 .andExpect(jsonPath("$.player.guest").value(false))
                 .andExpect(jsonPath("$.player.email").value("existing-google@example.com"));
+    }
+
+    @Test
+    void facebookLoginDoesNotSilentlyLinkAnExistingEmailAccount() throws Exception {
+        when(googleIdentityVerifier.verify("existing-email-google-token"))
+                .thenReturn(new GoogleIdentityVerifier.VerifiedGoogleIdentity(
+                        "google-existing-email-subject",
+                        "shared-oauth-email@example.com",
+                        "Existing Player",
+                        "https://example.com/google-avatar.png"));
+        mockMvc.perform(post("/api/auth/google")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"idToken\":\"existing-email-google-token\"}"))
+                .andExpect(status().isOk());
+
+        when(facebookIdentityVerifier.verify("unlinked-facebook-token"))
+                .thenReturn(new FacebookIdentityVerifier.VerifiedFacebookIdentity(
+                        "facebook-unlinked-subject",
+                        "shared-oauth-email@example.com",
+                        "Facebook Player",
+                        "https://example.com/facebook-avatar.png"));
+
+        mockMvc.perform(post("/api/auth/facebook")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"accessToken\":\"unlinked-facebook-token\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(
+                        "An account already exists for this email. Sign in to that account before linking Facebook."));
+    }
+
+    @Test
+    void existingFacebookIdentityRemainsBoundWhenProviderEmailChanges() throws Exception {
+        when(facebookIdentityVerifier.verify("first-facebook-token"))
+                .thenReturn(new FacebookIdentityVerifier.VerifiedFacebookIdentity(
+                        "stable-facebook-subject",
+                        "first-facebook-email@example.com",
+                        "Facebook Player",
+                        "https://example.com/first-avatar.png"));
+        MvcResult firstLogin = mockMvc.perform(post("/api/auth/facebook")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"accessToken\":\"first-facebook-token\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String playerId = objectMapper.readTree(firstLogin.getResponse().getContentAsString())
+                .path("player").path("id").asText();
+
+        when(facebookIdentityVerifier.verify("changed-facebook-token"))
+                .thenReturn(new FacebookIdentityVerifier.VerifiedFacebookIdentity(
+                        "stable-facebook-subject",
+                        "changed-facebook-email@example.com",
+                        "Facebook Player",
+                        "https://example.com/changed-avatar.png"));
+
+        mockMvc.perform(post("/api/auth/facebook")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"accessToken\":\"changed-facebook-token\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.player.id").value(playerId))
+                .andExpect(jsonPath("$.player.email").value("first-facebook-email@example.com"));
     }
 
     @Test

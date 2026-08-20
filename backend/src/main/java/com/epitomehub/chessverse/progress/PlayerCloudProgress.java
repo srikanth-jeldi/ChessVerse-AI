@@ -69,6 +69,11 @@ class PlayerCloudProgress {
     @Column(name = "challenge_id", nullable = false, length = 64)
     Set<String> completedDailyChallengeIds = new HashSet<>();
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "player_completed_academy_lesson", joinColumns = @JoinColumn(name = "player_id"))
+    @Column(name = "lesson_id", nullable = false, length = 64)
+    Set<String> completedAcademyLessonIds = new HashSet<>();
+
     @Column(name = "created_at", nullable = false)
     Instant createdAt;
 

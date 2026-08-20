@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/local_game_archive.dart';
+
 @immutable
 class AiMoveInsight {
   const AiMoveInsight({
@@ -9,6 +11,11 @@ class AiMoveInsight {
     required this.phase,
     required this.label,
     required this.explanation,
+    this.bestMove,
+    this.opponentThreat,
+    this.fenBefore,
+    this.centipawnLoss,
+    this.coachingTheme,
   });
 
   final int number;
@@ -17,6 +24,13 @@ class AiMoveInsight {
   final String phase;
   final String label;
   final String explanation;
+  final String? bestMove;
+  final String? opponentThreat;
+  final String? fenBefore;
+  final int? centipawnLoss;
+  final String? coachingTheme;
+
+  bool get hasEngineEvidence => fenBefore?.isNotEmpty == true;
 }
 
 @immutable
@@ -50,6 +64,7 @@ class AiReviewReport {
     int? knownAccuracy,
     String? knownTurningPoint,
     List<String>? knownMistakes,
+    List<SavedMoveReview> knownReviews = const <SavedMoveReview>[],
   }) {
     final List<String> chronological = newestFirst
         ? moves.reversed.toList(growable: false)
@@ -61,6 +76,11 @@ class AiReviewReport {
     int quietMoves = 0;
     for (int index = 0; index < chronological.length; index++) {
       final String move = chronological[index].trim();
+      final SavedMoveReview? reviewed =
+          knownReviews.cast<SavedMoveReview?>().firstWhere(
+                (SavedMoveReview? item) => item!.ply == index + 1,
+                orElse: () => null,
+              );
       final String lower = move.toLowerCase();
       final bool check = move.contains('+') || lower.contains('check');
       final bool capture = move.contains('x');
@@ -70,7 +90,10 @@ class AiReviewReport {
           .hasMatch(move.replaceAll(RegExp(r'[^a-zA-Z0-9]'), ''));
       final String label;
       final String explanation;
-      if (check) {
+      if (reviewed != null) {
+        label = reviewed.classification;
+        explanation = reviewed.explanation;
+      } else if (check) {
         forcingMoves++;
         label = 'Power move';
         explanation =
@@ -107,27 +130,78 @@ class AiReviewReport {
                 : 'Endgame',
         label: label,
         explanation: explanation,
+        bestMove: reviewed?.bestMove,
+        opponentThreat: reviewed?.opponentThreat,
+        fenBefore: reviewed?.fenBefore,
+        centipawnLoss: reviewed?.centipawnLoss,
+        coachingTheme: reviewed?.coachingTheme,
       ));
     }
 
     final String lowerResult = (result ?? '').toLowerCase();
-    final int calculated = (62 +
-            forcingMoves * 3 +
-            developmentMoves * 2 +
-            captures -
-            quietMoves ~/ 3 -
-            (lowerResult.contains('loss') ? 7 : 0))
-        .clamp(38, 96);
+    final int calculated = knownReviews.isNotEmpty
+        ? (knownReviews
+                    .map((SavedMoveReview review) =>
+                        (100 - (review.centipawnLoss / 3).round())
+                            .clamp(0, 100))
+                    .reduce((int left, int right) => left + right) /
+                knownReviews.length)
+            .round()
+        : (62 +
+                forcingMoves * 3 +
+                developmentMoves * 2 +
+                captures -
+                quietMoves ~/ 3 -
+                (lowerResult.contains('loss') ? 7 : 0))
+            .clamp(38, 96);
     final int accuracy = (knownAccuracy ?? calculated).clamp(0, 100);
-    final AiMoveInsight? pivotal = insights.cast<AiMoveInsight?>().firstWhere(
-          (AiMoveInsight? item) =>
-              item!.label == 'Power move' || item.label == 'Tactical',
-          orElse: () =>
-              insights.isEmpty ? null : insights[insights.length ~/ 2],
-        );
+    final List<AiMoveInsight> reviewedByLoss = insights
+        .where((AiMoveInsight item) => item.centipawnLoss != null)
+        .toList()
+      ..sort((AiMoveInsight a, AiMoveInsight b) =>
+          b.centipawnLoss!.compareTo(a.centipawnLoss!));
+    final AiMoveInsight? pivotal = reviewedByLoss.isNotEmpty
+        ? reviewedByLoss.first
+        : insights.cast<AiMoveInsight?>().firstWhere(
+              (AiMoveInsight? item) =>
+                  item!.label == 'Power move' || item.label == 'Tactical',
+              orElse: () =>
+                  insights.isEmpty ? null : insights[insights.length ~/ 2],
+            );
     final String focus;
     final String lesson;
-    if (lowerResult.contains('loss') && chronological.length < 24) {
+    final Map<String, int> themeCounts = <String, int>{};
+    for (final AiMoveInsight item in reviewedByLoss.where(
+      (AiMoveInsight item) => const <String>{'Inaccuracy', 'Mistake', 'Blunder'}
+          .contains(item.label),
+    )) {
+      final String theme = item.coachingTheme ?? 'calculation';
+      themeCounts[theme] = (themeCounts[theme] ?? 0) + 1;
+    }
+    final String? dominantTheme = themeCounts.isEmpty
+        ? null
+        : themeCounts.entries
+            .reduce((MapEntry<String, int> a, MapEntry<String, int> b) =>
+                b.value > a.value ? b : a)
+            .key;
+    if (dominantTheme == 'kingSafety') {
+      focus =
+          'King safety: your engine-reviewed mistakes repeatedly exposed checks or mating threats. Secure the king before attacking.';
+      lesson = 'King Safety • Castling safely';
+    } else if (dominantTheme == 'hangingPieces') {
+      focus =
+          'Piece safety: run a final opponent-captures scan before every move so loose pieces stop deciding your games.';
+      lesson = 'Tactics • Hanging pieces';
+    } else if (dominantTheme == 'endgame') {
+      focus =
+          'Endgame conversion: activate the king, improve the worst piece, and calculate pawn races before exchanging.';
+      lesson = 'Endgames • Promoting a pawn';
+    } else if (dominantTheme == 'tactics') {
+      focus =
+          'Tactical vision: pause on every move and scan checks, captures, forks, and direct threats in order.';
+      lesson = 'Tactics • Knight forks';
+    } else if (dominantTheme == 'opening' ||
+        (lowerResult.contains('loss') && chronological.length < 24)) {
       focus =
           'Opening survival: develop pieces once, fight for the centre, and castle before starting an attack.';
       lesson = 'King Safety • Castling safely';
@@ -147,10 +221,14 @@ class AiReviewReport {
     final List<String> importantMistakes = knownMistakes == null ||
             knownMistakes.isEmpty
         ? insights
-            .where((AiMoveInsight insight) => insight.label == 'Playable')
+            .where((AiMoveInsight insight) => const <String>{
+                  'Inaccuracy',
+                  'Mistake',
+                  'Blunder'
+                }.contains(insight.label))
             .take(3)
             .map((AiMoveInsight insight) =>
-                'Move ${insight.number}: ${insight.notation} • Compare forcing checks, captures, and threats.')
+                'Move ${insight.number}: ${insight.notation} • ${insight.explanation}')
             .toList(growable: false)
         : knownMistakes.take(3).toList(growable: false);
     return AiReviewReport(
@@ -163,11 +241,16 @@ class AiReviewReport {
       summary: chronological.isEmpty
           ? 'No recorded moves are available yet.'
           : '${chronological.length} half-moves reviewed across opening, middlegame, and endgame decisions.',
-      strength: forcingMoves > 0
-          ? 'You recognised $forcingMoves forcing move${forcingMoves == 1 ? '' : 's'} and created concrete problems.'
-          : developmentMoves > 0
-              ? 'Your strongest habit was central control and piece development.'
-              : 'You kept the position playable and created a base for deeper calculation.',
+      strength: knownReviews.isNotEmpty
+          ? '${knownReviews.where((SavedMoveReview review) => const <String>{
+                'Best',
+                'Great'
+              }.contains(review.classification)).length} of ${knownReviews.length} reviewed moves were Best or Great.'
+          : forcingMoves > 0
+              ? 'You recognised $forcingMoves forcing move${forcingMoves == 1 ? '' : 's'} and created concrete problems.'
+              : developmentMoves > 0
+                  ? 'Your strongest habit was central control and piece development.'
+                  : 'You kept the position playable and created a base for deeper calculation.',
       trainingFocus: focus,
       turningPoint: knownTurningPoint ??
           (pivotal == null

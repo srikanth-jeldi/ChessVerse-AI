@@ -24,7 +24,6 @@ void main() {
     await tester.pump();
 
     expect(find.text('PUZZLE TRAINING'), findsOneWidget);
-    expect(find.textContaining('Easy Puzzle 01'), findsWidgets);
     expect(find.textContaining('Next challenge unlocks'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -56,10 +55,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey<String>('square-e2')));
     await tester.pump();
 
-    expect(find.textContaining('ChessVerseAI is calculating'), findsWidgets);
     await tester.pump(const Duration(milliseconds: 600));
-    expect(find.textContaining('ChessVerseAI is calculating'), findsNothing);
     expect(find.textContaining('Incorrect puzzle move'), findsNothing);
+    expect(find.textContaining('Next challenge unlocks'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

@@ -127,11 +127,12 @@ public class OnlineRatingService {
 
     private LeaderboardDtos.PlayerRatingDto profileDto(OnlinePlayerRating rating) {
         long globalRank = rating.gamesPlayed == 0 ? 0
-                : ratings.countByGamesPlayedGreaterThanAndRatingGreaterThan(
-                        0, rating.rating) + 1;
+                : ratings.countGlobalPlayersAhead(
+                        rating.rating, rating.wins, rating.gamesPlayed, rating.playerId) + 1;
         long countryRank = rating.gamesPlayed == 0 ? 0
-                : ratings.countByCountryIgnoreCaseAndGamesPlayedGreaterThanAndRatingGreaterThan(
-                        rating.country, 0, rating.rating) + 1;
+                : ratings.countCountryPlayersAhead(
+                        rating.country, rating.rating, rating.wins,
+                        rating.gamesPlayed, rating.playerId) + 1;
         return new LeaderboardDtos.PlayerRatingDto(
                 rating.playerId, rating.displayName, rating.country, rating.rating,
                 rating.peakRating, rating.gamesPlayed, rating.wins, rating.draws, rating.losses,

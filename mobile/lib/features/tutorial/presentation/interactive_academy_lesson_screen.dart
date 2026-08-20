@@ -3,10 +3,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../../core/app_preferences.dart';
 import '../../../core/chess_piece_appearance.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
+import '../data/academy_progress_store.dart';
 import '../domain/academy_lesson.dart';
 
 enum _LessonPhase { demonstration, practice, success }
@@ -27,7 +27,7 @@ class InteractiveAcademyLessonScreen extends StatefulWidget {
 class _InteractiveAcademyLessonScreenState
     extends State<InteractiveAcademyLessonScreen>
     with SingleTickerProviderStateMixin {
-  static const AppPreferences _preferences = AppPreferences();
+  static const AcademyProgressStore _progressStore = AcademyProgressStore();
   late final AnimationController _controller;
   late final Animation<double> _movement;
   _LessonPhase _phase = _LessonPhase.demonstration;
@@ -55,22 +55,14 @@ class _InteractiveAcademyLessonScreenState
   }
 
   Future<void> _loadProgress() async {
-    String stored = '';
     try {
-      stored = await _preferences.readString(
-        'academy.completed',
-        fallback: '',
-      );
+      _completed = await _progressStore.readCompleted();
     } on Object {
       // Lessons remain fully usable in privacy-restricted browsers and test
       // environments where secure storage is unavailable.
     }
     if (!mounted) return;
     setState(() {
-      _completed = stored
-          .split(',')
-          .where((String value) => value.trim().isNotEmpty)
-          .toSet();
       _loadingProgress = false;
     });
   }
@@ -99,14 +91,11 @@ class _InteractiveAcademyLessonScreenState
   }
 
   Future<void> _completeLesson() async {
-    _completed.add(widget.lesson.id);
     try {
-      await _preferences.writeString(
-        'academy.completed',
-        (_completed.toList()..sort()).join(','),
-      );
+      _completed = await _progressStore.markCompleted(widget.lesson.id);
     } on Object {
       // Keep the current-session completion state even if persistence fails.
+      _completed.add(widget.lesson.id);
     }
   }
 
@@ -699,8 +688,11 @@ class _PieceGlyph extends StatelessWidget {
       ValueListenableBuilder<ChessPieceAppearance>(
         valueListenable: ChessPieceAppearanceController.current,
         builder: (BuildContext context, ChessPieceAppearance appearance, _) {
-          final double scale =
-              appearance.size == ChessPieceVisualSize.extraLarge ? 1.28 : 1.14;
+          final double scale = switch (appearance.size) {
+            ChessPieceVisualSize.large => 1.14,
+            ChessPieceVisualSize.extraLarge => 1.28,
+            ChessPieceVisualSize.doubleExtraLarge => 1.40,
+          };
           final Widget visual;
           if (appearance.style == ChessPieceVisualStyle.classic2d) {
             visual = Text(

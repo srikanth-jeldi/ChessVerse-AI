@@ -42,12 +42,8 @@ class DesktopAppSidebar extends StatelessWidget {
       (icon: Icons.extension_rounded, label: 'Puzzles', onTap: onPuzzles),
       (icon: Icons.school_rounded, label: 'Learn', onTap: onLearn),
       (icon: Icons.person_rounded, label: 'Profile', onTap: onProfile),
-      (icon: Icons.analytics_rounded, label: 'Analysis', onTap: onAnalysis),
-      (icon: Icons.emoji_events_rounded, label: 'Rankings', onTap: onRankings),
-      (icon: Icons.people_alt_rounded, label: 'Friends', onTap: onFriends),
-      (icon: Icons.event_rounded, label: 'Events', onTap: onEvents),
-      (icon: Icons.storefront_rounded, label: 'Store', onTap: onStore),
-      (icon: Icons.settings_rounded, label: 'Settings', onTap: onSettings),
+      if (onFriends != null)
+        (icon: Icons.groups_2_rounded, label: 'Community', onTap: onFriends),
     ];
     return Container(
       width: 258,
@@ -117,22 +113,15 @@ class _DesktopNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool homeSelected = selected && label == 'Home';
-    final Color activeColor =
-        homeSelected ? const Color(0xFF4DA8FF) : AppColors.accentGold;
+    final Color activeColor = AppColors.accentGold;
     return Padding(
       padding: const EdgeInsets.only(bottom: 5),
       child: Material(
-        color: selected
-            ? (homeSelected ? const Color(0xFF123E70) : const Color(0xFF102C45))
-            : Colors.transparent,
+        color: selected ? const Color(0xFF102C45) : Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: selected
-              ? BorderSide(
-                  color: homeSelected
-                      ? const Color(0xFF2F91ED)
-                      : const Color(0xFFC28A24))
+              ? const BorderSide(color: Color(0xFFC28A24))
               : BorderSide.none,
         ),
         child: InkWell(

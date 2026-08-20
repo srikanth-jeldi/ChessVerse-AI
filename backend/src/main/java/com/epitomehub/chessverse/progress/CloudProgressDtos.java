@@ -28,7 +28,8 @@ final class CloudProgressDtos {
             @Min(0) Integer endgameWeakness,
             Instant lastDailyCompletedAt,
             @Size(max = 150) List<@Pattern(regexp = "^(easy|medium|hard)-[0-9]{1,3}$") String> completedPuzzleIds,
-            @Size(max = 400) List<@Size(min = 1, max = 64) String> completedDailyChallengeIds) {
+            @Size(max = 400) List<@Size(min = 1, max = 64) String> completedDailyChallengeIds,
+            @Size(max = 64) List<@Pattern(regexp = "^[a-z0-9-]{1,64}$") String> completedAcademyLessonIds) {
     }
 
     record ProgressResponse(
@@ -47,6 +48,7 @@ final class CloudProgressDtos {
             Instant lastDailyCompletedAt,
             List<String> completedPuzzleIds,
             List<String> completedDailyChallengeIds,
+            List<String> completedAcademyLessonIds,
             Instant updatedAt) {
         static ProgressResponse from(PlayerCloudProgress progress) {
             return new ProgressResponse(
@@ -65,6 +67,7 @@ final class CloudProgressDtos {
                     progress.lastDailyCompletedAt,
                     progress.completedPuzzleIds.stream().sorted().toList(),
                     progress.completedDailyChallengeIds.stream().sorted().toList(),
+                    progress.completedAcademyLessonIds.stream().sorted().toList(),
                     progress.updatedAt);
         }
     }

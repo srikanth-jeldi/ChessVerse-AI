@@ -60,6 +60,30 @@ class EngineApi {
     return _decode(response);
   }
 
+  Future<Map<String, dynamic>> reviewMove({
+    required String fen,
+    required String playedMove,
+    required int level,
+  }) async {
+    final http.Response response;
+    try {
+      response = await http
+          .post(
+            Uri.parse('${AppConfig.apiBaseUrl}/api/v1/engine/review-move'),
+            headers: const <String, String>{'Content-Type': 'application/json'},
+            body: jsonEncode(<String, Object>{
+              'fen': fen,
+              'playedMove': playedMove,
+              'level': level,
+            }),
+          )
+          .timeout(const Duration(seconds: 12));
+    } catch (_) {
+      throw const EngineApiException('AI move review is unavailable.');
+    }
+    return _decode(response);
+  }
+
   Map<String, dynamic> _decode(http.Response response) {
     final Object? decoded;
     try {

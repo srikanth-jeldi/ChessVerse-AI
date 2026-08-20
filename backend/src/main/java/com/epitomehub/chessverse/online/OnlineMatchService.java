@@ -13,6 +13,7 @@ import java.util.Locale;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -26,25 +27,70 @@ public class OnlineMatchService {
 
     private final OnlineMatchRepository matches;
     private final OnlineRatingService ratings;
+    private final FairPlayService fairPlay;
     private final SecureRandom random = new SecureRandom();
 
+    @Autowired
     public OnlineMatchService(
-            OnlineMatchRepository matches, OnlineRatingService ratings) {
+            OnlineMatchRepository matches, OnlineRatingService ratings, FairPlayService fairPlay) {
         this.matches = matches;
         this.ratings = ratings;
+        this.fairPlay = fairPlay;
+    }
+
+    OnlineMatchService(OnlineMatchRepository matches, OnlineRatingService ratings) {
+        this(matches, ratings, null);
     }
 
     @Transactional
     public OnlineDtos.MatchDto createRoom(AuthenticatedPlayer player) {
+        return createRoom(player, 10);
+    }
+
+    @Transactional
+    public OnlineDtos.MatchDto createRoom(AuthenticatedPlayer player, int timeControlMinutes) {
         OnlineMatch current = current(player.id());
         if (current != null) {
             return OnlineDtos.MatchDto.from(current, player.id());
         }
-        return OnlineDtos.MatchDto.from(createWaiting(player, false), player.id());
+        int minutes = switch (timeControlMinutes) { case 3, 5, 10, 15 -> timeControlMinutes; default -> 10; };
+        LeaderboardDtos.PlayerRatingDto profile = ratings.profile(player);
+        OnlineDtos.QueueRequest settings = new OnlineDtos.QueueRequest(minutes, "WORLDWIDE", 0);
+        return OnlineDtos.MatchDto.from(createWaiting(player, false, settings, profile), player.id());
+    }
+
+    @Transactional
+    public OnlineDtos.MatchDto createChallengeRoom(
+            AuthenticatedPlayer player, int timeControlMinutes) {
+        OnlineMatch current = current(player.id());
+        if (current != null && current.status == OnlineMatchStatus.ACTIVE) {
+            throw new OnlineMatchException(
+                    HttpStatus.CONFLICT, "Finish your active match before sending a new challenge.");
+        }
+        if (current != null) {
+            current.status = OnlineMatchStatus.CANCELLED;
+            current.updatedAt = Instant.now();
+            matches.save(current);
+        }
+        int minutes = switch (timeControlMinutes) {
+            case 3, 5, 10, 15 -> timeControlMinutes;
+            default -> 10;
+        };
+        LeaderboardDtos.PlayerRatingDto profile = ratings.profile(player);
+        OnlineDtos.QueueRequest settings =
+                new OnlineDtos.QueueRequest(minutes, "WORLDWIDE", 0);
+        return OnlineDtos.MatchDto.from(
+                createWaiting(player, false, settings, profile), player.id());
     }
 
     @Transactional
     public OnlineDtos.MatchDto randomMatch(AuthenticatedPlayer player) {
+        return randomMatch(player, new OnlineDtos.QueueRequest(10, "WORLDWIDE", 0));
+    }
+
+    @Transactional
+    public OnlineDtos.MatchDto randomMatch(
+            AuthenticatedPlayer player, OnlineDtos.QueueRequest preferences) {
         OnlineMatch current = current(player.id());
         if (current != null) {
             if (current.status == OnlineMatchStatus.WAITING && current.randomQueue) {
@@ -53,12 +99,21 @@ public class OnlineMatchService {
             }
             return OnlineDtos.MatchDto.from(current, player.id());
         }
+        LeaderboardDtos.PlayerRatingDto profile = ratings.profile(player);
         Instant now = Instant.now();
         OnlineMatch opponent = matches
-                .lockOldestRandomOpponent(player.id(), now.minus(RANDOM_QUEUE_LEASE))
+                .lockOldestRandomOpponent(
+                        player.id(),
+                        now.minus(RANDOM_QUEUE_LEASE),
+                        preferences.timeControlMinutes(),
+                        preferences.region(),
+                        profile.country(),
+                        profile.rating(),
+                        preferences.ratingRange())
                 .orElse(null);
         if (opponent == null) {
-            return OnlineDtos.MatchDto.from(createWaiting(player, true), player.id());
+            return OnlineDtos.MatchDto.from(
+                    createWaiting(player, true, preferences, profile), player.id());
         }
         activate(opponent, player);
         return OnlineDtos.MatchDto.from(matches.save(opponent), player.id());
@@ -142,6 +197,8 @@ public class OnlineMatchService {
             throw new OnlineMatchException(HttpStatus.CONFLICT, "The match is not active.");
         }
         if (match.moves.size() != expectedPly) {
+            recordFairPlay(player.id(), match.id, "STALE_MOVE_BURST", 1,
+                    "Client submitted an outdated ply; reconnect or concurrent input may be responsible.");
             throw new OnlineMatchException(HttpStatus.CONFLICT, "The board changed. Sync the match and try again.");
         }
         String playerColor = match.whitePlayerId.equals(player.id()) ? "white" : "black";
@@ -163,6 +220,8 @@ public class OnlineMatchService {
             throw new OnlineMatchException(HttpStatus.BAD_REQUEST, "Move is not valid UCI notation.");
         }
         if (!board.legalMoves().contains(move)) {
+            recordFairPlay(player.id(), match.id, "ILLEGAL_MOVE_ATTEMPT", 2,
+                    "Server rejected " + uci + " for the authoritative position.");
             throw new OnlineMatchException(HttpStatus.UNPROCESSABLE_ENTITY, "That move is not legal in this position.");
         }
         board.doMove(move);
@@ -180,6 +239,10 @@ public class OnlineMatchService {
             }
         }
         return OnlineDtos.MatchDto.from(matches.save(match), player.id());
+    }
+
+    private void recordFairPlay(UUID playerId, UUID matchId, String type, int severity, String evidence) {
+        if (fairPlay != null) fairPlay.record(playerId, matchId, type, severity, evidence);
     }
 
     @Transactional
@@ -258,7 +321,12 @@ public class OnlineMatchService {
                 previous.blackPlayerId,
                 previous.blackPlayerName,
                 previous.blackPlayerPhotoUrl,
-                false);
+                false,
+                previous.timeControlMinutes,
+                previous.queueRegion,
+                previous.queueCountry,
+                previous.queueRating,
+                previous.ratingRange);
         rematch.blackPlayerId = previous.whitePlayerId;
         rematch.blackPlayerName = previous.whitePlayerName;
         rematch.blackPlayerPhotoUrl = previous.whitePlayerPhotoUrl;
@@ -385,6 +453,35 @@ public class OnlineMatchService {
                 player.displayName(),
                 player.photoUrl(),
                 randomQueue));
+    }
+
+    @Transactional
+    void cancelChallengeRoom(UUID ownerId, UUID matchId) {
+        OnlineMatch match = matches.lockById(matchId).orElse(null);
+        if (match == null || !match.whitePlayerId.equals(ownerId)
+                || match.status != OnlineMatchStatus.WAITING) return;
+        match.status = OnlineMatchStatus.CANCELLED;
+        match.updatedAt = Instant.now();
+        matches.save(match);
+    }
+
+    private OnlineMatch createWaiting(
+            AuthenticatedPlayer player,
+            boolean randomQueue,
+            OnlineDtos.QueueRequest preferences,
+            LeaderboardDtos.PlayerRatingDto profile) {
+        return matches.save(new OnlineMatch(
+                UUID.randomUUID(),
+                newRoomCode(),
+                player.id(),
+                player.displayName(),
+                player.photoUrl(),
+                randomQueue,
+                preferences.timeControlMinutes(),
+                preferences.region(),
+                profile.country(),
+                profile.rating(),
+                preferences.ratingRange()));
     }
 
     private void activate(OnlineMatch match, AuthenticatedPlayer player) {

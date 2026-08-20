@@ -105,7 +105,6 @@ class _AuthScreenState extends State<AuthScreen> {
     final Size viewport = MediaQuery.sizeOf(context);
     final bool compactLandscape =
         viewport.width > viewport.height && viewport.shortestSide < 600;
-    final bool keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       backgroundColor: const Color(0xFF020914),
       body: DecoratedBox(
@@ -119,22 +118,25 @@ class _AuthScreenState extends State<AuthScreen> {
         child: SafeArea(
           child: compactLandscape
               ? _premiumCompactLandscapeBody(context)
-              : keyboardVisible
-                  ? Center(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(12),
-                        child: _premiumResponsiveBody(context),
-                      ),
-                    )
-                  : Padding(
+              : LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints constraints) {
+                    return SingleChildScrollView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: const EdgeInsets.all(12),
-                      child: Center(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: (constraints.maxHeight - 24)
+                              .clamp(0.0, double.infinity),
+                        ),
+                        child: Align(
+                          alignment: Alignment.center,
                           child: _premiumResponsiveBody(context),
                         ),
                       ),
-                    ),
+                    );
+                  },
+                ),
         ),
       ),
     );
@@ -1122,8 +1124,10 @@ class _AuthScreenState extends State<AuthScreen> {
           if (mounted) {
             setState(() {
               _loading = false;
-              _error = 'Google sign-in failed. Please try again.';
-              _message = null;
+              // Google initializes in the background on web. A blocked popup,
+              // privacy extension or signed-out One Tap session must not show
+              // an error before the user asks to sign in with Google.
+              _googleInitialized = false;
             });
           }
         },
@@ -1131,8 +1135,9 @@ class _AuthScreenState extends State<AuthScreen> {
     } catch (_) {
       if (mounted) {
         setState(() {
-          _error = 'Google sign-in could not start. Please refresh and retry.';
-          _message = null;
+          // Keep Facebook/email login clean and usable. The explicit Google
+          // button retries initialization and reports an actionable error.
+          _googleInitialized = false;
         });
       }
     }
@@ -1234,6 +1239,8 @@ class _AuthScreenState extends State<AuthScreen> {
 
     final String? username = _nonBlankString(player['username']);
     final String? email = _nonBlankString(player['email']);
+    final String? resolvedPhotoUrl =
+        _nonBlankString(player['photoUrl']) ?? _nonBlankString(photoUrl);
     final bool isGuest = guestOverride ?? player['guest'] == true;
     final String name = _nonBlankString(player['displayName']) ??
         username ??
@@ -1247,7 +1254,7 @@ class _AuthScreenState extends State<AuthScreen> {
           displayName: name,
           username: username,
           email: email,
-          photoUrl: photoUrl,
+          photoUrl: resolvedPhotoUrl,
           isGuest: isGuest,
         ),
       );
@@ -1263,7 +1270,7 @@ class _AuthScreenState extends State<AuthScreen> {
         token: token,
         username: username,
         email: email,
-        photoUrl: photoUrl,
+        photoUrl: resolvedPhotoUrl,
       ),
     );
   }
@@ -1502,6 +1509,10 @@ class _AuthScreenState extends State<AuthScreen> {
       builder: (BuildContext dialogContext) => StatefulBuilder(
         builder: (BuildContext context, StateSetter setDialogState) =>
             AlertDialog(
+          scrollable: true,
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
           title: const Text('Reset password'),
           content: SizedBox(
             width: 420,
@@ -1532,11 +1543,29 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 if (dialogError != null) ...<Widget>[
                   const SizedBox(height: 12),
-                  Text(
-                    dialogError!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                      fontWeight: FontWeight.w700,
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.errorContainer.withValues(alpha: .5),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                    child: Text(
+                      dialogError!,
+                      softWrap: true,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                        fontWeight: FontWeight.w700,
+                        height: 1.3,
+                      ),
                     ),
                   ),
                 ],
@@ -1554,6 +1583,7 @@ class _AuthScreenState extends State<AuthScreen> {
               onPressed: submitting
                   ? null
                   : () async {
+                      FocusManager.instance.primaryFocus?.unfocus();
                       final String code = codeController.text.trim();
                       final String newPassword = newPasswordController.text;
                       if (!RegExp(r'^\d{6}$').hasMatch(code)) {

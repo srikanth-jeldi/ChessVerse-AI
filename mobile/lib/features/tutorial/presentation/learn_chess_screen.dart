@@ -7,10 +7,11 @@ import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../../analysis/domain/player_learning_profile.dart';
+import '../data/academy_progress_store.dart';
 import '../domain/academy_lesson.dart';
 import 'interactive_academy_lesson_screen.dart';
 
-class LearnChessScreen extends StatelessWidget {
+class LearnChessScreen extends StatefulWidget {
   const LearnChessScreen({super.key});
 
   static const List<_Lesson> _lessons = <_Lesson>[
@@ -20,8 +21,6 @@ class LearnChessScreen extends StatelessWidget {
       body: 'Learn how every piece moves and captures.',
       asset: 'assets/backgrounds/home-online-hero-v1.png',
       accent: Color(0xFF59E4C8),
-      progress: 0.35,
-      completed: '3 of 8 lessons',
       chapters: <String>[
         'Meet the chessboard',
         'How pawns move',
@@ -39,8 +38,6 @@ class LearnChessScreen extends StatelessWidget {
       body: 'Understand check, escape squares, and pins.',
       asset: 'assets/backgrounds/home-settings-hero-v1.png',
       accent: AppColors.info,
-      progress: 0.18,
-      completed: '1 of 6 lessons',
       chapters: <String>[
         'Check and checkmate',
         'Escaping from check',
@@ -56,8 +53,6 @@ class LearnChessScreen extends StatelessWidget {
       body: 'Forks, skewers, discovered attacks, and mates.',
       asset: 'assets/backgrounds/home-puzzles-hero-v1.png',
       accent: Color(0xFFE9B84C),
-      progress: 0.08,
-      completed: '1 of 12 lessons',
       chapters: <String>[
         'Hanging pieces',
         'Double attacks',
@@ -79,8 +74,6 @@ class LearnChessScreen extends StatelessWidget {
       body: 'Finish cleanly with rook, queen, and pawn endings.',
       asset: 'assets/backgrounds/home-rankings-hero-v1.png',
       accent: AppColors.accentGold,
-      progress: 0,
-      completed: '0 of 8 lessons',
       chapters: <String>[
         'King and pawn basics',
         'The opposition',
@@ -93,6 +86,29 @@ class LearnChessScreen extends StatelessWidget {
       ],
     ),
   ];
+
+  @override
+  State<LearnChessScreen> createState() => _LearnChessScreenState();
+}
+
+class _LearnChessScreenState extends State<LearnChessScreen> {
+  static const AcademyProgressStore _progressStore = AcademyProgressStore();
+  Set<String> _completed = <String>{};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProgress();
+  }
+
+  Future<void> _loadProgress() async {
+    try {
+      final Set<String> completed = await _progressStore.readCompleted();
+      if (mounted) setState(() => _completed = completed);
+    } on Object {
+      // The academy remains usable when browser secure storage is restricted.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +175,7 @@ class LearnChessScreen extends StatelessWidget {
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: _lessons.length,
+              itemCount: LearnChessScreen._lessons.length,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 // Phone cards need the same complete learning information as
                 // tablet/web. A single column keeps the artwork, lesson count,
@@ -169,8 +185,18 @@ class LearnChessScreen extends StatelessWidget {
                 mainAxisSpacing: 14,
                 childAspectRatio: wide ? 0.78 : (compact ? 1.22 : 0.78),
               ),
-              itemBuilder: (BuildContext context, int index) =>
-                  _LessonCard(lesson: _lessons[index]),
+              itemBuilder: (BuildContext context, int index) => _LessonCard(
+                lesson: LearnChessScreen._lessons[index],
+                locked: index > 0 &&
+                    LearnChessScreen._lessons
+                        .take(index)
+                        .expand((_Lesson course) => course.chapters)
+                        .map(AcademyCatalog.forChapter)
+                        .any((AcademyLesson lesson) =>
+                            !_completed.contains(lesson.id)),
+                completedLessonIds: _completed,
+                onProgressChanged: _loadProgress,
+              ),
             ),
             const SizedBox(height: 24),
             const _CoachEvaluationPanel(),
@@ -416,9 +442,12 @@ class _PersonalizedPathCard extends StatelessWidget {
               )),
           const SizedBox(height: 9),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: pieceLessons
-                .map((AcademyLesson item) => _PieceQuickLesson(lesson: item))
+                .map(
+                  (AcademyLesson item) => Expanded(
+                    child: _PieceQuickLesson(lesson: item),
+                  ),
+                )
                 .toList(growable: false),
           ),
         ],
@@ -456,62 +485,79 @@ class _PieceQuickLesson extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: () => _openAcademyLesson(context, lesson),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-          child: Column(children: <Widget>[
-            ValueListenableBuilder<ChessPieceAppearance>(
-              valueListenable: ChessPieceAppearanceController.current,
-              builder:
-                  (BuildContext context, ChessPieceAppearance appearance, _) {
-                if (appearance.style == ChessPieceVisualStyle.classic2d) {
-                  const Map<String, String> glyphs = <String, String>{
-                    'Pawn': '\u2659',
-                    'Rook': '\u2656',
-                    'Knight': '\u2658',
-                    'Bishop': '\u2657',
-                    'Queen': '\u2655',
-                    'King': '\u2654',
-                  };
-                  return Text(
-                    glyphs[name]!,
-                    style: const TextStyle(
-                      fontFamily: 'serif',
-                      fontSize: 38,
-                      height: 1,
-                      color: Color(0xFFFFF4D0),
-                    ),
-                  );
-                }
-                Widget image = Image.asset(
-                  'assets/pieces/staunton_white_${name.toLowerCase()}.png',
-                  width: 42,
-                  height: 42,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.high,
-                );
-                if (appearance.style == ChessPieceVisualStyle.highContrast) {
-                  image = ColorFiltered(
-                    colorFilter: const ColorFilter.mode(
-                      Color(0xFFFFF0B8),
-                      BlendMode.modulate,
-                    ),
-                    child: image,
-                  );
-                }
-                return Transform.scale(
-                  scale: appearance.size == ChessPieceVisualSize.extraLarge
-                      ? 1.18
-                      : 1.05,
-                  child: image,
-                );
-              },
-            ),
-            const SizedBox(height: 3),
-            Text(name,
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              SizedBox(
+                height: 60,
+                child: Center(
+                  child: ValueListenableBuilder<ChessPieceAppearance>(
+                    valueListenable: ChessPieceAppearanceController.current,
+                    builder: (BuildContext context,
+                        ChessPieceAppearance appearance, _) {
+                      if (appearance.style == ChessPieceVisualStyle.classic2d) {
+                        const Map<String, String> glyphs = <String, String>{
+                          'Pawn': '\u2659',
+                          'Rook': '\u2656',
+                          'Knight': '\u2658',
+                          'Bishop': '\u2657',
+                          'Queen': '\u2655',
+                          'King': '\u2654',
+                        };
+                        return Text(
+                          glyphs[name]!,
+                          style: const TextStyle(
+                            fontFamily: 'serif',
+                            fontSize: 48,
+                            height: 1,
+                            color: Color(0xFFFFF4D0),
+                          ),
+                        );
+                      }
+                      Widget image = Image.asset(
+                        'assets/pieces/staunton_white_${name.toLowerCase()}.png',
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                      );
+                      if (appearance.style ==
+                          ChessPieceVisualStyle.highContrast) {
+                        image = ColorFiltered(
+                          colorFilter: const ColorFilter.mode(
+                            Color(0xFFFFF0B8),
+                            BlendMode.modulate,
+                          ),
+                          child: image,
+                        );
+                      }
+                      return Transform.scale(
+                        scale: switch (appearance.size) {
+                          ChessPieceVisualSize.large => 1.05,
+                          ChessPieceVisualSize.extraLarge => 1.18,
+                          ChessPieceVisualSize.doubleExtraLarge => 1.30,
+                        },
+                        child: image,
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                name,
+                maxLines: 1,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 8,
-                    fontWeight: FontWeight.w800)),
-          ]),
+                  color: Color(0xFFF2F5F8),
+                  fontSize: 12,
+                  height: 1.1,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -636,15 +682,43 @@ class _SectionHeading extends StatelessWidget {
 }
 
 class _LessonCard extends StatelessWidget {
-  const _LessonCard({required this.lesson});
+  const _LessonCard({
+    required this.lesson,
+    required this.completedLessonIds,
+    required this.onProgressChanged,
+    required this.locked,
+  });
   final _Lesson lesson;
+  final Set<String> completedLessonIds;
+  final Future<void> Function() onProgressChanged;
+  final bool locked;
+
+  int get completedCount => lesson.chapters.where((String chapter) {
+        return completedLessonIds
+            .contains(AcademyCatalog.forChapter(chapter).id);
+      }).length;
+
+  double get progress =>
+      lesson.chapters.isEmpty ? 0 : completedCount / lesson.chapters.length;
 
   @override
   Widget build(BuildContext context) => Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(22),
-          onTap: () => _openLesson(context, lesson),
+          onTap: () async {
+            if (locked) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                      'Complete the previous academy stage to unlock this course.'),
+                ),
+              );
+              return;
+            }
+            await _openLesson(context, lesson);
+            await onProgressChanged();
+          },
           child: Ink(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(22),
@@ -682,8 +756,8 @@ class _LessonCard extends StatelessWidget {
                           color: const Color(0xCC071A29),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child:
-                            Icon(lesson.icon, color: lesson.accent, size: 21),
+                        child: Icon(locked ? Icons.lock_rounded : lesson.icon,
+                            color: lesson.accent, size: 21),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -704,7 +778,10 @@ class _LessonCard extends StatelessWidget {
                           fontSize: 12,
                           height: 1.35)),
                   const SizedBox(height: 12),
-                  Text(lesson.completed,
+                  Text(
+                      locked
+                          ? 'LOCKED • Finish the previous stage'
+                          : '$completedCount of ${lesson.chapters.length} lessons',
                       style: TextStyle(
                           color: lesson.accent,
                           fontWeight: FontWeight.w700,
@@ -713,7 +790,7 @@ class _LessonCard extends StatelessWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(99),
                     child: LinearProgressIndicator(
-                      value: lesson.progress,
+                      value: progress,
                       minHeight: 5,
                       backgroundColor: const Color(0xFF263948),
                       valueColor: AlwaysStoppedAnimation<Color>(lesson.accent),
@@ -723,7 +800,7 @@ class _LessonCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: <Widget>[
-                      Text(lesson.progress == 0 ? 'START LESSON' : 'CONTINUE',
+                      Text(progress == 0 ? 'START LESSON' : 'CONTINUE',
                           style: const TextStyle(
                               fontWeight: FontWeight.w900, fontSize: 11)),
                       Icon(Icons.arrow_forward_rounded,
@@ -808,9 +885,41 @@ class _QualityChip extends StatelessWidget {
       );
 }
 
-class _CourseScreen extends StatelessWidget {
+class _CourseScreen extends StatefulWidget {
   const _CourseScreen({required this.course});
   final _Lesson course;
+
+  @override
+  State<_CourseScreen> createState() => _CourseScreenState();
+}
+
+class _CourseScreenState extends State<_CourseScreen> {
+  static const AcademyProgressStore _progressStore = AcademyProgressStore();
+  Set<String> _completed = <String>{};
+
+  _Lesson get course => widget.course;
+
+  int get completedCount => course.chapters.where((String chapter) {
+        return _completed.contains(AcademyCatalog.forChapter(chapter).id);
+      }).length;
+
+  double get progress =>
+      course.chapters.isEmpty ? 0 : completedCount / course.chapters.length;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProgress();
+  }
+
+  Future<void> _loadProgress() async {
+    try {
+      final Set<String> completed = await _progressStore.readCompleted();
+      if (mounted) setState(() => _completed = completed);
+    } on Object {
+      // Course navigation remains available without persistent storage.
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -854,12 +963,12 @@ class _CourseScreen extends StatelessWidget {
                             fontSize: 17,
                             height: 1.4)),
                     const SizedBox(height: 16),
-                    Text(course.completed,
+                    Text('$completedCount of ${course.chapters.length} lessons',
                         style: TextStyle(
                             color: course.accent, fontWeight: FontWeight.w900)),
                     const SizedBox(height: 8),
                     LinearProgressIndicator(
-                      value: course.progress,
+                      value: progress,
                       minHeight: 7,
                       borderRadius: BorderRadius.circular(99),
                       backgroundColor: const Color(0xFF263948),
@@ -876,10 +985,11 @@ class _CourseScreen extends StatelessWidget {
                       letterSpacing: 1.1)),
               const SizedBox(height: 12),
               ...List<Widget>.generate(course.chapters.length, (int index) {
-                final int completedCount =
-                    (course.progress * course.chapters.length).floor();
-                final bool done = index < completedCount;
-                final bool active = index == completedCount;
+                final AcademyLesson academyLesson =
+                    AcademyCatalog.forChapter(course.chapters[index]);
+                final bool done = _completed.contains(academyLesson.id);
+                final bool active = !done && index == completedCount;
+                final bool locked = !done && index > completedCount;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: ChessVerseCard(
@@ -887,23 +997,29 @@ class _CourseScreen extends StatelessWidget {
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 7),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => InteractiveAcademyLessonScreen(
-                            lesson: AcademyCatalog.forChapter(
-                              course.chapters[index],
-                            ),
-                          ),
-                        ),
-                      ),
+                      onTap: locked
+                          ? null
+                          : () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) =>
+                                      InteractiveAcademyLessonScreen(
+                                    lesson: academyLesson,
+                                  ),
+                                ),
+                              );
+                              await _loadProgress();
+                            },
                       leading: CircleAvatar(
                         backgroundColor: course.accent.withValues(alpha: .16),
                         foregroundColor: course.accent,
                         child: done
                             ? const Icon(Icons.check_rounded)
-                            : Text('${index + 1}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w900)),
+                            : locked
+                                ? const Icon(Icons.lock_rounded, size: 18)
+                                : Text('${index + 1}',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w900)),
                       ),
                       title: Text(course.chapters[index],
                           style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -911,9 +1027,15 @@ class _CourseScreen extends StatelessWidget {
                           ? 'Continue this lesson'
                           : done
                               ? 'Completed'
-                              : 'Learn the idea, then try a position'),
-                      trailing: Icon(Icons.arrow_forward_rounded,
-                          color: course.accent),
+                              : locked
+                                  ? 'Complete the previous lesson to unlock'
+                                  : 'Learn the idea, then try a position'),
+                      trailing: Icon(
+                          locked
+                              ? Icons.lock_outline_rounded
+                              : Icons.arrow_forward_rounded,
+                          color:
+                              locked ? AppColors.textSecondary : course.accent),
                     ),
                   ),
                 );
@@ -931,8 +1053,6 @@ class _Lesson {
     required this.body,
     required this.asset,
     required this.accent,
-    required this.progress,
-    required this.completed,
     required this.chapters,
   });
   final IconData icon;
@@ -940,7 +1060,5 @@ class _Lesson {
   final String body;
   final String asset;
   final Color accent;
-  final double progress;
-  final String completed;
   final List<String> chapters;
 }

@@ -92,4 +92,27 @@ class OnlineRatingServiceTest {
         assertEquals(0, board.you().globalRank());
         assertEquals(0, board.entries().size());
     }
+
+    @Test
+    void profileRankUsesTheSameTieBreakOrderAsLeaderboardRows() {
+        OnlinePlayerRatingRepository repository = mock(OnlinePlayerRatingRepository.class);
+        OnlineRatingService service = new OnlineRatingService(repository);
+        UUID playerId = UUID.randomUUID();
+        OnlinePlayerRating player = new OnlinePlayerRating(playerId, "Player");
+        player.country = "India";
+        player.rating = 1216;
+        player.gamesPlayed = 1;
+        player.wins = 1;
+        when(repository.lockByPlayerId(playerId)).thenReturn(Optional.of(player));
+        when(repository.countGlobalPlayersAhead(1216, 1, 1, playerId)).thenReturn(5L);
+        when(repository.countCountryPlayersAhead("India", 1216, 1, 1, playerId))
+                .thenReturn(3L);
+
+        LeaderboardDtos.PlayerRatingDto profile = service.profile(
+                new com.epitomehub.chessverse.auth.AuthenticatedPlayer(
+                        playerId, "player", "Player", null));
+
+        assertEquals(6, profile.globalRank());
+        assertEquals(4, profile.countryRank());
+    }
 }

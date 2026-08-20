@@ -46,11 +46,14 @@ services:
       MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
       STOCKFISH_TIMEOUT_SECONDS: "12"
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70 -XX:+UseG1GC
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase-service-account.json
     depends_on:
       postgres:
         condition: service_healthy
     expose:
       - "8080"
+    volumes:
+      - ./secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
     healthcheck:
       test:
         - CMD-SHELL

@@ -17,6 +17,7 @@ import 'core/chess_piece_appearance.dart';
 import 'core/config/app_config.dart';
 import 'core/local_game_archive.dart';
 import 'core/notifications/daily_reminder_service.dart';
+import 'core/notifications/firebase_push_service.dart';
 import 'core/widgets/chessverse_app_backdrop.dart';
 import 'core/widgets/desktop_app_sidebar.dart';
 import 'features/auth/data/auth_api.dart';
@@ -31,15 +32,25 @@ import 'features/library/presentation/reference_screens.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/online/data/online_match_api.dart';
 import 'features/online/presentation/match_history_screen.dart';
+import 'features/notifications/data/notification_api.dart';
+import 'features/notifications/presentation/notification_center_screen.dart';
 import 'features/leaderboard/presentation/leaderboard_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/puzzles/domain/puzzle_catalog.dart';
 import 'features/progress/data/cloud_progress_api.dart';
 import 'features/settings/presentation/settings_screen.dart';
+import 'features/social/presentation/social_hub_screen.dart';
 import 'features/tutorial/presentation/learn_chess_screen.dart';
+import 'features/tutorial/data/academy_progress_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await FirebasePushService.instance.initialize();
+  if (!kIsWeb) {
+    await SystemChrome.setPreferredOrientations(
+      const <DeviceOrientation>[DeviceOrientation.portraitUp],
+    );
+  }
   if (kIsWeb) {
     try {
       await ensureFacebookSdkReady().timeout(const Duration(seconds: 8));
@@ -88,21 +99,130 @@ const List<NavigationDestination> _primaryNavigationDestinations =
   NavigationDestination(icon: Icon(Icons.extension_rounded), label: 'Puzzles'),
   NavigationDestination(icon: Icon(Icons.school_rounded), label: 'Learn'),
   NavigationDestination(icon: Icon(Icons.person_rounded), label: 'Profile'),
+  NavigationDestination(icon: Icon(Icons.groups_2_rounded), label: 'Community'),
 ];
 
-const List<NavigationRailDestination> _primaryRailDestinations =
-    <NavigationRailDestination>[
-  NavigationRailDestination(
-      icon: Icon(Icons.home_rounded), label: Text('Home')),
-  NavigationRailDestination(
-      icon: Icon(Icons.sports_esports_rounded), label: Text('Play')),
-  NavigationRailDestination(
-      icon: Icon(Icons.extension_rounded), label: Text('Puzzles')),
-  NavigationRailDestination(
-      icon: Icon(Icons.school_rounded), label: Text('Learn')),
-  NavigationRailDestination(
-      icon: Icon(Icons.person_rounded), label: Text('Profile')),
-];
+class _GlassBottomNavigation extends StatelessWidget {
+  const _GlassBottomNavigation({
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      minimum: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xC90A2233),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0x4262E1D0)),
+              boxShadow: const <BoxShadow>[
+                BoxShadow(
+                  color: Color(0x52000000),
+                  blurRadius: 24,
+                  offset: Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: Color(0x241E9BFF),
+                  blurRadius: 18,
+                  spreadRadius: -4,
+                ),
+              ],
+            ),
+            child: SizedBox(
+              height: 64,
+              child: Row(
+                children: List<Widget>.generate(
+                  _primaryNavigationDestinations.length,
+                  (int index) {
+                    final NavigationDestination destination =
+                        _primaryNavigationDestinations[index];
+                    final bool selected = index == selectedIndex;
+                    return Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 2,
+                          vertical: 5,
+                        ),
+                        child: Semantics(
+                          selected: selected,
+                          button: true,
+                          label: destination.label,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(18),
+                            onTap: () => onDestinationSelected(index),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 240),
+                              curve: Curves.easeOutCubic,
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? const Color(0x522C9DCF)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: selected
+                                    ? const <BoxShadow>[
+                                        BoxShadow(
+                                          color: Color(0x3828A9DF),
+                                          blurRadius: 12,
+                                          spreadRadius: -3,
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: <Widget>[
+                                  IconTheme(
+                                    data: IconThemeData(
+                                      color: selected
+                                          ? const Color(0xFFF7F1E5)
+                                          : const Color(0xFFC3D1DC),
+                                      size: selected ? 23 : 22,
+                                    ),
+                                    child: destination.icon,
+                                  ),
+                                  const SizedBox(height: 1),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      destination.label,
+                                      maxLines: 1,
+                                      style: TextStyle(
+                                        color: selected
+                                            ? const Color(0xFFF7F1E5)
+                                            : const Color(0xFFC3D1DC),
+                                        fontSize: 10.5,
+                                        fontWeight: selected
+                                            ? FontWeight.w800
+                                            : FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class SplashGate extends StatefulWidget {
   const SplashGate({super.key});
@@ -116,6 +236,9 @@ class _SplashGateState extends State<SplashGate> {
   static const AuthSessionStore _sessionStore = AuthSessionStore();
   static const CloudProgressApi _cloudProgressApi = CloudProgressApi();
   Timer? _timer;
+  Timer? _presenceTimer;
+  Timer? _notificationTimer;
+  final Set<String> _seenNotificationIds = <String>{};
   bool _splashArtworkLoadingStarted = false;
   _RootStage _stage = _RootStage.splash;
   String _playerName = 'Guest Player';
@@ -228,15 +351,56 @@ class _SplashGateState extends State<SplashGate> {
       unawaited(_restoreActiveOnlineMatch(restoredSession.token));
     });
     unawaited(_syncCloudProgress(restoredSession.token));
-    unawaited(_refreshOnlinePresence());
+    _startOnlinePresence(restoredSession.token);
+    _startNotificationPolling(restoredSession.token);
+    unawaited(FirebasePushService.instance.configureForSession(restoredSession.token));
   }
 
-  Future<void> _refreshOnlinePresence() async {
+  void _startOnlinePresence(String token) {
+    _presenceTimer?.cancel();
+    unawaited(_refreshOnlinePresence(token));
+    _presenceTimer = Timer.periodic(
+      const Duration(seconds: 20),
+      (_) => unawaited(_refreshOnlinePresence(token)),
+    );
+  }
+
+  Future<void> _refreshOnlinePresence(String token) async {
     try {
-      final int count = await const OnlineMatchApi().onlinePlayerCount();
+      final int count = await const OnlineMatchApi().onlinePlayerCount(token);
       if (mounted) setState(() => _onlinePlayerCount = count);
     } on OnlineMatchException {
       if (mounted) setState(() => _onlinePlayerCount = null);
+    }
+  }
+
+  void _startNotificationPolling(String token) {
+    _notificationTimer?.cancel();
+    unawaited(_pollNotifications(token, initial: true));
+    _notificationTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => unawaited(_pollNotifications(token)),
+    );
+  }
+
+  Future<void> _pollNotifications(String token, {bool initial = false}) async {
+    try {
+      final NotificationInboxDto inbox =
+          await const NotificationApi().load(token);
+      final List<PlayerNotificationDto> fresh = inbox.notifications
+          .where((value) => !value.read && !_seenNotificationIds.contains(value.id))
+          .toList();
+      _seenNotificationIds.addAll(inbox.notifications.map((value) => value.id));
+      if (initial) return;
+      for (final PlayerNotificationDto value in fresh.take(3)) {
+        await DailyReminderService.instance.showRealtime(
+          value.id.hashCode & 0x7fffffff,
+          value.title,
+          value.body,
+        );
+      }
+    } on NotificationException {
+      // The persistent inbox will catch up after connectivity is restored.
     }
   }
 
@@ -265,6 +429,8 @@ class _SplashGateState extends State<SplashGate> {
   @override
   void dispose() {
     _timer?.cancel();
+    _presenceTimer?.cancel();
+    _notificationTimer?.cancel();
     super.dispose();
   }
 
@@ -299,8 +465,9 @@ class _SplashGateState extends State<SplashGate> {
               if (result.token != null) {
                 _enableCloudSync(result.token!);
                 unawaited(_syncCloudProgress(result.token!));
+                _startOnlinePresence(result.token!);
+                _startNotificationPolling(result.token!);
               }
-              unawaited(_refreshOnlinePresence());
             },
           ),
         _RootStage.home => _buildPrimaryShell(context),
@@ -319,6 +486,7 @@ class _SplashGateState extends State<SplashGate> {
         onDailyChallenge: () => _openGame(context, GameMode.daily),
         onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
         onOnlineGame: () => _openOnlineGame(context),
+        onFriendsGame: () => _openFriendPlayChooser(context),
         onAnalysis: () => _push(context, const AnalysisScreen()),
         onPuzzles: () => setState(() => _primaryDestination = 2),
         onSavedGames: () => _push(context, const MatchHistoryScreen()),
@@ -326,6 +494,17 @@ class _SplashGateState extends State<SplashGate> {
           context,
           LeaderboardScreen(
             profilePhotoUrl: _photoUrl,
+            onOpenMatch: (OnlineMatchDto match) async {
+              final StoredAuthSession? session =
+                  await const AuthSessionStore().read();
+              if (!context.mounted || session == null) return;
+              await _openGame(
+                context,
+                GameMode.online,
+                initialOnlineMatch: match,
+                initialAuthToken: session.token,
+              );
+            },
             onHome: () => _closeSettingsAndSelect(context, 0),
             onPlay: () => _closeSettingsAndSelect(context, 1),
             onPuzzles: () => _closeSettingsAndSelect(context, 2),
@@ -333,6 +512,9 @@ class _SplashGateState extends State<SplashGate> {
             onProfile: () => _closeSettingsAndSelect(context, 4),
           ),
         ),
+        onCommunity: () => setState(() => _primaryDestination = 5),
+        onNotifications: () =>
+            _push(context, const NotificationCenterScreen()),
         onLearnChess: () => setState(() => _primaryDestination = 3),
         onProfile: () => setState(() => _primaryDestination = 4),
         onSettings: () => _push(
@@ -376,88 +558,66 @@ class _SplashGateState extends State<SplashGate> {
           setState(() => _username = value);
         },
       ),
+      SocialHubScreen(
+        onOpenMatch: (OnlineMatchDto match) async {
+          final StoredAuthSession? session =
+              await const AuthSessionStore().read();
+          if (!context.mounted || session == null) return;
+          await _openGame(
+            context,
+            GameMode.online,
+            initialOnlineMatch: match,
+            initialAuthToken: session.token,
+          );
+        },
+      ),
     ];
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints size) {
         final bool genuineWideLayout =
             size.maxWidth >= 700 && size.maxHeight >= 600;
-        final bool extendedRail = genuineWideLayout && size.maxWidth >= 900;
-        final bool compactRail =
-            genuineWideLayout && size.maxWidth >= 700 && !extendedRail;
-        final bool useRail = extendedRail || compactRail;
+        final bool useDesktopSidebar = genuineWideLayout;
         final Widget content = IndexedStack(
           index: _primaryDestination,
           children: destinations,
         );
-        if (useRail) {
+        if (useDesktopSidebar) {
+          const List<String> desktopSections = <String>[
+            'Home',
+            'Play',
+            'Puzzles',
+            'Learn',
+            'Profile',
+            'Community',
+          ];
+          void selectDestination(int value) {
+            setState(() => _primaryDestination = value);
+          }
+
           return Scaffold(
             backgroundColor: Colors.transparent,
             body: Row(children: <Widget>[
-              NavigationRail(
-                selectedIndex: _primaryDestination,
-                onDestinationSelected: (int value) =>
-                    setState(() => _primaryDestination = value),
-                labelType: extendedRail
-                    ? NavigationRailLabelType.none
-                    : NavigationRailLabelType.selected,
-                extended: extendedRail,
-                minWidth: 72,
-                minExtendedWidth: 232,
-                groupAlignment: -0.72,
-                indicatorColor: const Color(0xFF123E72),
-                selectedIconTheme:
-                    const IconThemeData(color: Color(0xFF55AFFF), size: 25),
-                selectedLabelTextStyle: const TextStyle(
-                  color: Color(0xFF78BFFF),
-                  fontWeight: FontWeight.w800,
-                ),
-                unselectedIconTheme:
-                    const IconThemeData(color: Color(0xFF8EA4B7), size: 24),
-                unselectedLabelTextStyle:
-                    const TextStyle(color: Color(0xFFB7C5D1)),
-                backgroundColor: const Color(0xE6071727),
-                leading: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    extendedRail ? 16 : 8,
-                    extendedRail ? 18 : 10,
-                    extendedRail ? 16 : 8,
-                    extendedRail ? 28 : 12,
-                  ),
-                  child: Column(children: <Widget>[
-                    ChessVerseMark(size: extendedRail ? 72 : 46),
-                    if (extendedRail) const SizedBox(height: 8),
-                    if (extendedRail)
-                      const Text.rich(
-                        TextSpan(children: <InlineSpan>[
-                          TextSpan(
-                              text: 'CHESSVERSE ',
-                              style: TextStyle(color: Colors.white)),
-                          TextSpan(
-                              text: 'AI',
-                              style: TextStyle(color: Color(0xFFE2AE49))),
-                        ]),
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w900),
-                      ),
-                  ]),
-                ),
-                destinations: _primaryRailDestinations,
+              DesktopAppSidebar(
+                selected: desktopSections[_primaryDestination],
+                onHome: () => selectDestination(0),
+                onPlay: () => selectDestination(1),
+                onPuzzles: () => selectDestination(2),
+                onLearn: () => selectDestination(3),
+                onProfile: () => selectDestination(4),
+                onFriends: () => selectDestination(5),
               ),
-              const VerticalDivider(width: 1, color: Color(0xFF19354A)),
               Expanded(child: content),
             ]),
           );
         }
         return Scaffold(
+          extendBody: true,
           backgroundColor: Colors.transparent,
           body: content,
-          bottomNavigationBar: NavigationBar(
+          bottomNavigationBar: _GlassBottomNavigation(
             selectedIndex: _primaryDestination,
             onDestinationSelected: (int value) =>
                 setState(() => _primaryDestination = value),
-            backgroundColor: const Color(0xF2071A29),
-            indicatorColor: const Color(0xFF124B77),
-            destinations: _primaryNavigationDestinations,
           ),
         );
       },
@@ -468,6 +628,94 @@ class _SplashGateState extends State<SplashGate> {
     Navigator.of(context).pop();
     if (!mounted) return;
     setState(() => _primaryDestination = destination);
+  }
+
+  Future<void> _openFriendPlayChooser(BuildContext context) async {
+    final _FriendPlayChoice? choice =
+        await showModalBottomSheet<_FriendPlayChoice>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext sheetContext) => SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Container(
+              margin: const EdgeInsets.all(14),
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+              decoration: BoxDecoration(
+                color: const Color(0xFA071827),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: const Color(0xFF29475C)),
+                boxShadow: const <BoxShadow>[
+                  BoxShadow(color: Colors.black54, blurRadius: 32),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              'Choose How to Play',
+                              style: TextStyle(
+                                color: Color(0xFFFFF8ED),
+                                fontSize: 27,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Play online with a friend or share this device.',
+                              style: TextStyle(color: Color(0xFFAFBCCB)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  _FriendPlayChoiceCard(
+                    icon: Icons.language_rounded,
+                    title: 'Online with Friend',
+                    subtitle: 'Create a private room or join with a room code.',
+                    accent: const Color(0xFF4FD9C5),
+                    onTap: () => Navigator.of(sheetContext)
+                        .pop(_FriendPlayChoice.online),
+                  ),
+                  const SizedBox(height: 12),
+                  _FriendPlayChoiceCard(
+                    icon: Icons.people_alt_rounded,
+                    title: 'Two Players — Same Device',
+                    subtitle:
+                        'Player 1 • White   /   Player 2 • Black. Board stays fixed.',
+                    accent: const Color(0xFFE2AE49),
+                    onTap: () =>
+                        Navigator.of(sheetContext).pop(_FriendPlayChoice.local),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    if (!mounted || !context.mounted || choice == null) return;
+    if (choice == _FriendPlayChoice.online) {
+      await _openOnlineGame(context, lobbyMode: OnlineLobbyMode.friends);
+    } else {
+      await _chooseSideAndOpen(context, GameMode.local);
+    }
   }
 
   Future<void> _chooseSideAndOpen(BuildContext context, GameMode mode) async {
@@ -726,7 +974,10 @@ class _SplashGateState extends State<SplashGate> {
     );
   }
 
-  Future<void> _openOnlineGame(BuildContext context) async {
+  Future<void> _openOnlineGame(
+    BuildContext context, {
+    OnlineLobbyMode lobbyMode = OnlineLobbyMode.random,
+  }) async {
     final StoredAuthSession? session = await const AuthSessionStore().read();
     if (!context.mounted) return;
     if (session == null || session.token.isEmpty) {
@@ -752,6 +1003,7 @@ class _SplashGateState extends State<SplashGate> {
             child: OnlineMatchmakingSheet(
               api: const OnlineMatchApi(),
               token: session.token,
+              initialMode: lobbyMode,
             ),
           ),
         ),
@@ -768,10 +1020,13 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   Future<void> _logout(BuildContext currentRouteContext) async {
+    _presenceTimer?.cancel();
+    _presenceTimer = null;
     const AuthSessionStore sessionStore = AuthSessionStore();
     const AuthApi authApi = AuthApi();
     final StoredAuthSession? session = await sessionStore.read();
     if (session != null) {
+      await FirebasePushService.instance.unregister(session.token);
       try {
         await authApi.logout(session.token);
       } on AuthApiException {
@@ -780,6 +1035,7 @@ class _SplashGateState extends State<SplashGate> {
     }
     await sessionStore.clear();
     LocalGameArchive.onCloudRelevantChange = null;
+    LocalGameArchive.clearAccountScopedCloudState();
     if (!mounted) return;
 
     if (currentRouteContext.mounted &&
@@ -790,19 +1046,25 @@ class _SplashGateState extends State<SplashGate> {
       _playerName = 'ChessVerseAI Player';
       _username = null;
       _email = null;
+      _photoUrl = null;
       _isGuest = true;
+      _onlinePlayerCount = null;
       _stage = _RootStage.auth;
     });
   }
 
   Future<void> _deleteAccount(BuildContext currentRouteContext) async {
+    _presenceTimer?.cancel();
+    _presenceTimer = null;
     final StoredAuthSession? session = await _sessionStore.read();
     if (session == null) {
       throw const AuthApiException('No signed-in account was found.');
     }
     await _authApi.deleteAccount(session.token);
+    await FirebasePushService.instance.unregister(session.token);
     await _sessionStore.clear();
     LocalGameArchive.onCloudRelevantChange = null;
+    LocalGameArchive.clearAccountScopedCloudState();
     if (!mounted) return;
     if (currentRouteContext.mounted) {
       Navigator.of(currentRouteContext)
@@ -814,6 +1076,7 @@ class _SplashGateState extends State<SplashGate> {
       _email = null;
       _photoUrl = null;
       _isGuest = true;
+      _onlinePlayerCount = null;
       _primaryDestination = 0;
       _stage = _RootStage.auth;
     });
@@ -870,11 +1133,17 @@ class _SplashGateState extends State<SplashGate> {
     }
     _cloudSyncInFlight = true;
     try {
+      const AcademyProgressStore academyStore = AcademyProgressStore();
+      final Set<String> localAcademy = await academyStore.readCompleted();
+      LocalGameArchive.replaceAcademyLessonProgress(localAcademy);
       final Map<String, dynamic> merged = await _cloudProgressApi.merge(
         token,
         LocalGameArchive.cloudSnapshot(),
       );
       await LocalGameArchive.mergeCloudSnapshot(merged);
+      await academyStore.writeCompleted(
+        LocalGameArchive.completedAcademyLessonIds,
+      );
     } on CloudProgressException {
       // Local progress stays authoritative until the next successful sync.
     } finally {
@@ -948,8 +1217,9 @@ class BrandedSplash extends StatelessWidget {
                   ),
                 ),
                 SafeArea(
+                  minimum: const EdgeInsets.only(bottom: 12),
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 54),
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
                     child: Column(
                       children: <Widget>[
                         const Spacer(flex: 7),
@@ -996,28 +1266,36 @@ class BrandedSplash extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 18),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color:
-                                const Color(0xFF02070D).withValues(alpha: 0.64),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: const Color(0xFFFFCE6A)
-                                  .withValues(alpha: 0.42),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 260),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
                             ),
-                          ),
-                          child: const Text(
-                            'Powered by EpitomeHub',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Color(0xFFFFD77D),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.7,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF02070D)
+                                  .withValues(alpha: 0.72),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: const Color(0xFFFFCE6A)
+                                    .withValues(alpha: 0.42),
+                              ),
+                            ),
+                            child: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'Powered by EpitomeHub',
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                style: TextStyle(
+                                  color: Color(0xFFFFD77D),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.7,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -1031,11 +1309,15 @@ class BrandedSplash extends StatelessWidget {
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
-              const Image(
-                image: AssetImage(wideAsset),
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
-                filterQuality: FilterQuality.high,
+              const ColoredBox(
+                color: Color(0xFF02070D),
+                child: Image(
+                  key: ValueKey<String>('branded-splash-image-wide'),
+                  image: AssetImage(wideAsset),
+                  fit: BoxFit.contain,
+                  alignment: Alignment.center,
+                  filterQuality: FilterQuality.high,
+                ),
               ),
               IgnorePointer(
                 child: DecoratedBox(
@@ -1714,6 +1996,83 @@ List<String> dailyChallengeSolutionFor(
 
 enum PlayerSideChoice { white, random, black }
 
+enum _FriendPlayChoice { online, local }
+
+class _FriendPlayChoiceCard extends StatelessWidget {
+  const _FriendPlayChoiceCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.accent,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color accent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0A2234),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: accent.withValues(alpha: .72)),
+          ),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: .12),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: accent.withValues(alpha: .7)),
+                ),
+                child: Icon(icon, color: accent, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Color(0xFFFFF8ED),
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Color(0xFFAFBCCB),
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.arrow_forward_rounded, color: accent),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _GameLaunchChoice {
   const _GameLaunchChoice(this.side, this.aiLevel);
 
@@ -1923,11 +2282,12 @@ class _SideChoiceArtwork extends StatelessWidget {
 }
 
 class AiCandidate {
-  const AiCandidate(this.from, this.to, this.score);
+  const AiCandidate(this.from, this.to, this.score, {this.promotion});
 
   final String from;
   final String to;
   final double score;
+  final String? promotion;
 }
 
 AiCandidate chooseAiCandidateForLevel(
@@ -2012,35 +2372,35 @@ class BoardPalette {
 const Map<BoardSkin, BoardPalette> boardPalettes = <BoardSkin, BoardPalette>{
   BoardSkin.royalWalnut: BoardPalette(
     label: 'Walnut',
-    light: Color(0xFFE9D5B7),
+    light: Color(0xFFD8C3A5),
     dark: Color(0xFF7A4F2A),
     frame: Color(0xFF342113),
     accent: Color(0xFFD6A84F),
   ),
   BoardSkin.jadeGlass: BoardPalette(
     label: 'Jade',
-    light: Color(0xFFD8EEE1),
+    light: Color(0xFFC4DCCF),
     dark: Color(0xFF2F7D66),
     frame: Color(0xFF12372E),
     accent: Color(0xFF63D2B8),
   ),
   BoardSkin.tournament: BoardPalette(
     label: 'Classic',
-    light: Color(0xFFF0D9B5),
+    light: Color(0xFFDEC6A2),
     dark: Color(0xFFB58863),
     frame: Color(0xFF30251E),
     accent: Color(0xFFE2B458),
   ),
   BoardSkin.marble: BoardPalette(
     label: 'Marble',
-    light: Color(0xFFF2F0EA),
+    light: Color(0xFFD9D8D3),
     dark: Color(0xFF667078),
     frame: Color(0xFF252A2D),
     accent: Color(0xFFB9E4EE),
   ),
   BoardSkin.sapphire: BoardPalette(
     label: 'Sapphire',
-    light: Color(0xFFDCE7EA),
+    light: Color(0xFFC6D3D6),
     dark: Color(0xFF28546A),
     frame: Color(0xFF142B35),
     accent: Color(0xFF60D6D0),
@@ -2221,24 +2581,33 @@ class ChessRules {
   }
 
   static bool isKingInCheck(bool white, Map<String, ChessPiece> pieces) {
-    String? kingSquare;
+    return checkingAttackers(white, pieces).isNotEmpty;
+  }
+
+  static String? kingSquare(bool white, Map<String, ChessPiece> pieces) {
     for (final MapEntry<String, ChessPiece> entry in pieces.entries) {
       if (entry.value.white == white && entry.value.code == 'K') {
-        kingSquare = entry.key;
-        break;
+        return entry.key;
       }
     }
-    if (kingSquare == null) {
-      return false;
-    }
+    return null;
+  }
 
+  static List<String> checkingAttackers(
+    bool white,
+    Map<String, ChessPiece> pieces,
+  ) {
+    final String? target = kingSquare(white, pieces);
+    if (target == null) return <String>[];
+
+    final List<String> attackers = <String>[];
     for (final MapEntry<String, ChessPiece> entry in pieces.entries) {
       if (entry.value.white != white &&
-          attacksSquare(entry.key, kingSquare, pieces)) {
-        return true;
+          attacksSquare(entry.key, target, pieces)) {
+        attackers.add(entry.key);
       }
     }
-    return false;
+    return attackers;
   }
 
   static bool attacksSquare(
@@ -2251,15 +2620,47 @@ class ChessRules {
       return false;
     }
 
-    if (piece.code == 'P') {
-      final SquarePosition origin = positionOf(from);
-      final SquarePosition attacked = positionOf(target);
-      final int direction = piece.white ? 1 : -1;
-      return attacked.rank == origin.rank + direction &&
-          (attacked.file - origin.file).abs() == 1;
-    }
+    final SquarePosition origin = positionOf(from);
+    final SquarePosition attacked = positionOf(target);
+    final int fileDelta = attacked.file - origin.file;
+    final int rankDelta = attacked.rank - origin.rank;
 
-    return pseudoLegalTargets(from, pieces).contains(target);
+    return switch (piece.code) {
+      'P' => rankDelta == (piece.white ? 1 : -1) && fileDelta.abs() == 1,
+      'N' => (fileDelta.abs() == 1 && rankDelta.abs() == 2) ||
+          (fileDelta.abs() == 2 && rankDelta.abs() == 1),
+      'K' => fileDelta.abs() <= 1 &&
+          rankDelta.abs() <= 1 &&
+          (fileDelta != 0 || rankDelta != 0),
+      'B' => (fileDelta != 0 || rankDelta != 0) &&
+          fileDelta.abs() == rankDelta.abs() &&
+          _rayIsClear(origin, attacked, pieces),
+      'R' => (fileDelta == 0 || rankDelta == 0) &&
+          (fileDelta != 0 || rankDelta != 0) &&
+          _rayIsClear(origin, attacked, pieces),
+      'Q' => ((fileDelta == 0 || rankDelta == 0) ||
+              fileDelta.abs() == rankDelta.abs()) &&
+          (fileDelta != 0 || rankDelta != 0) &&
+          _rayIsClear(origin, attacked, pieces),
+      _ => false,
+    };
+  }
+
+  static bool _rayIsClear(
+    SquarePosition origin,
+    SquarePosition target,
+    Map<String, ChessPiece> pieces,
+  ) {
+    final int fileStep = (target.file - origin.file).sign;
+    final int rankStep = (target.rank - origin.rank).sign;
+    int file = origin.file + fileStep;
+    int rank = origin.rank + rankStep;
+    while (file != target.file || rank != target.rank) {
+      if (pieces.containsKey(squareOf(file, rank))) return false;
+      file += fileStep;
+      rank += rankStep;
+    }
+    return true;
   }
 
   static Map<String, ChessPiece> applyMove(
@@ -2657,6 +3058,20 @@ class _PlayModeCard extends StatelessWidget {
   }
 }
 
+String engineMoveReviewText({
+  required bool isBestMove,
+  required bool isWeakMove,
+  required String recommendation,
+}) {
+  if (isBestMove) {
+    return 'Best move • Confirmed by AI analysis.';
+  }
+  if (isWeakMove) {
+    return 'Weak move alert • $recommendation was safer. Tap Analyze to see why.';
+  }
+  return 'Playable move • AI preferred $recommendation.';
+}
+
 class GameScreen extends StatefulWidget {
   const GameScreen({
     this.initiallySignedIn = false,
@@ -2719,6 +3134,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   WebSocketChannel? _onlineChannel;
   StreamSubscription<dynamic>? _onlineSocketSubscription;
   Timer? _onlineSocketReconnectTimer;
+  int _onlineSocketReconnectAttempts = 0;
   Timer? _onlineHeartbeatTimer;
   Timer? _onlineResultPresentationTimer;
   OnlineMatchDto? _onlineMatch;
@@ -2738,13 +3154,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String? _lastPlayerMove;
   String? _lastPlayerCoachNote;
   String? _moveQualityText;
+  bool _moveQualityIsWeak = false;
   int _hintStage = 0;
   String? _coachArrowFrom;
   String? _coachArrowTo;
   int _coachRequestEpoch = 0;
+  int _moveReviewEpoch = 0;
   double _engineEvaluationPawns = 0;
   final List<int> _playerMoveScores = <int>[];
   final List<String> _importantMistakes = <String>[];
+  final List<SavedMoveReview> _moveReviews = <SavedMoveReview>[];
   String? _turningPoint;
   String _coachNote = 'Select a coin to see legal moves.';
   BoardSkin _skin = BoardSkin.royalWalnut;
@@ -2968,7 +3387,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _preferences.readBool('coordinates', fallback: true),
       _preferences.readString('boardTheme', fallback: 'Royal Walnut'),
       _preferences.readString('pieceStyle', fallback: 'Premium 3D'),
-      _preferences.readString('pieceSize', fallback: 'Large'),
+      _preferences.readString('pieceSize', fallback: 'Extra Large'),
     ]);
     if (!mounted) return;
     final String boardTheme = values[4] as String;
@@ -3014,15 +3433,41 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed &&
-        _gameMode == GameMode.online &&
-        _onlineMatch != null &&
-        _authToken != null) {
-      _resumeOnlineSession();
+    if (state == AppLifecycleState.resumed) {
+      if (_gameMode == GameMode.online &&
+          _onlineMatch != null &&
+          _authToken != null) {
+        _resumeOnlineSession();
+      } else if (_gameMode == GameMode.computer && _gameResultTitle == null) {
+        // Android can suspend delayed callbacks while the app is backgrounded.
+        // Re-evaluate the position on resume so an interrupted AI turn never
+        // leaves the board waiting until the player starts a new game.
+        _recoverComputerTurnIfNeeded();
+      }
     } else if (state != AppLifecycleState.resumed) {
       _onlineHeartbeatTimer?.cancel();
       unawaited(_onlineChannel?.sink.close());
     }
+  }
+
+  void _recoverComputerTurnIfNeeded() {
+    if (!mounted ||
+        _gameMode != GameMode.computer ||
+        _gameResultTitle != null) {
+      return;
+    }
+    final bool aiPlaysWhite = !_humanPlaysWhite;
+    final bool aiTurn = _moves.length.isEven == aiPlaysWhite;
+    if (!aiTurn) return;
+
+    _aiWatchdogTimer?.cancel();
+    _aiMoveEpoch++;
+    if (_aiThinking) {
+      setState(() => _aiThinking = false);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scheduleAiMove();
+    });
   }
 
   @override
@@ -3110,7 +3555,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               );
               final double wideHeaderHeight = roomyLandscape ? 78 : 54;
               final double wideDockHeight = showWideDock ? 126 : 0;
-              final double portraitPanelMinimum = landscape ? 64 : 145;
               final bool showOnlineArena =
                   _gameMode == GameMode.online && _onlineMatch != null;
               // Phone landscape uses compact rails over the board. Reserving
@@ -3135,13 +3579,25 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       18
                   : compactLandscape
                       ? availableHeight - mobileHeaderHeight - 4
-                      : availableHeight -
-                          mobileHeaderHeight -
-                          portraitPanelMinimum -
-                          arenaRailsHeight -
-                          18;
-              final double boardDimension =
-                  math.max(0, math.min(boardWidth, boardHeight));
+                      : boardWidth;
+              // Portrait is a vertically scrolling composition. Limiting its
+              // board by the viewport height left only ~145px for the online
+              // AI Coach after the two player rails, so the action row was
+              // clipped. Keep the board at the full usable width and let the
+              // page scroll to a properly sized coach panel below it.
+              final double boardDimension = math.max(
+                0,
+                wide || compactLandscape
+                    ? math.min(boardWidth, boardHeight)
+                    : boardWidth,
+              );
+              final bool terminalCheckmate = _gameMode == GameMode.online
+                  ? _onlineMatch?.resultReason == 'CHECKMATE'
+                  : _gameResultDetail == 'Checkmate';
+              final bool losingKingWhite = _gameMode == GameMode.online &&
+                      _onlineMatch?.resultReason == 'CHECKMATE'
+                  ? _onlineMatch!.result == '0-1'
+                  : sideToMoveWhite;
 
               final Widget board = ChessBoard(
                 pieces: _pieces,
@@ -3154,15 +3610,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 lastCapturedPiece: _lastCapturedPiece,
                 moveSequence: _moves.length,
                 checkedKingSquare: checkedKingSquare,
-                decisiveSquare:
-                    _gameResultDetail == 'Checkmate' ? _lastToSquare : null,
-                fallenKingSquare: _gameResultDetail == 'Checkmate'
-                    ? (_kingSquare(sideToMoveWhite) ??
+                decisiveSquare: terminalCheckmate ? _lastToSquare : null,
+                fallenKingSquare: terminalCheckmate
+                    ? (_kingSquare(losingKingWhite) ??
                         (_lastCapturedPiece?.code == 'K'
                             ? _lastCaptureSquare
                             : null))
                     : null,
-                fallenKingWhite: sideToMoveWhite,
+                fallenKingWhite: losingKingWhite,
                 coachArrowFrom: _coachArrowFrom,
                 coachArrowTo: _coachArrowTo,
                 flipped: _shouldFlipBoard(sideToMoveWhite),
@@ -3216,8 +3671,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   2 => 'Exact move',
                   _ => 'Piece hint',
                 },
-                analyzeLabel:
-                    _moveQualityText == null ? 'Analyze' : 'Why weak?',
+                analyzeLabel: _moveQualityText == null
+                    ? 'Analyze'
+                    : _moveQualityIsWeak
+                        ? 'Why weak?'
+                        : 'Analyze move',
                 onHint: _showHint,
                 onAnalyze: _showAnalysis,
                 onTryAgain: _gameMode == GameMode.online
@@ -3243,7 +3701,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 padding: pagePadding,
                 child: KeyedSubtree(
                   key: ValueKey<String>(
-                    wide ? 'landscape-game-layout' : 'portrait-game-layout',
+                    wide || compactLandscape
+                        ? 'landscape-game-layout'
+                        : 'portrait-game-layout',
                   ),
                   child: Stack(
                     fit: StackFit.expand,
@@ -3402,32 +3862,46 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           ],
                         )
                       else
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            CompactHeader(
-                              onHome: () => Navigator.of(context).pop(),
-                              onProfile: _openProfile,
-                              onReset: _confirmNewGame,
-                              onLogout: _logout,
+                        SingleChildScrollView(
+                          key: const ValueKey<String>(
+                            'portrait-game-scroll-view',
+                          ),
+                          padding: EdgeInsets.only(
+                            bottom: math.max(
+                              12,
+                              MediaQuery.viewPaddingOf(context).bottom + 12,
                             ),
-                            const SizedBox(height: 8),
-                            Center(
-                              child: SizedBox(
-                                width: boardDimension,
-                                height: boardDimension + arenaRailsHeight,
-                                child: arenaBoard,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              CompactHeader(
+                                onHome: () => Navigator.of(context).pop(),
+                                onProfile: _openProfile,
+                                onReset: _confirmNewGame,
+                                onLogout: _logout,
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Expanded(
-                              key: const ValueKey<String>('mobile-ai-coach'),
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(6, 0, 6, 6),
-                                child: studioCoach,
+                              const SizedBox(height: 8),
+                              Center(
+                                child: SizedBox(
+                                  width: boardDimension,
+                                  height: boardDimension + arenaRailsHeight,
+                                  child: arenaBoard,
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                key: const ValueKey<String>('mobile-ai-coach'),
+                                height: (constraints.maxHeight * 0.46)
+                                    .clamp(360.0, 440.0),
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(6, 0, 6, 0),
+                                  child: studioCoach,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       if (_signedIn &&
                           _gameResultTitle == null &&
@@ -3437,7 +3911,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           top: wide ? wideHeaderHeight + 12 : 66,
                           left: wide ? 24 : 12,
                           right: wide ? widePanelWidth + 42 : 12,
-                          child: const _TurnBanner(),
+                          child: _TurnBanner(
+                            label: _gameMode == GameMode.local
+                                ? (_moves.length.isEven
+                                    ? 'PLAYER 1 • WHITE'
+                                    : 'PLAYER 2 • BLACK')
+                                : 'YOUR TURN',
+                          ),
                         ),
                       if (!_signedIn)
                         Positioned.fill(
@@ -3535,6 +4015,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             showTitle: true,
                           ),
                         ),
+                      if (_signedIn &&
+                          _gameResultTitle != null &&
+                          !_resultVisible &&
+                          _gameResultTitle!.toLowerCase().contains('draw'))
+                        Positioned.fill(
+                          child: _DrawResultBadge(
+                            detail: _gameResultDetail ?? 'Game drawn',
+                          ),
+                        ),
                       if (_moveQualityText != null &&
                           _gameMode == GameMode.computer &&
                           _gameResultTitle == null)
@@ -3551,9 +4040,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                   ).withValues(alpha: 0.92),
                                   borderRadius: BorderRadius.circular(999),
                                   border: Border.all(
-                                    color: const Color(
-                                      0xFFD6A84F,
-                                    ).withValues(alpha: 0.72),
+                                    color: (_moveQualityIsWeak
+                                            ? const Color(0xFFD6A84F)
+                                            : const Color(0xFF55D6B9))
+                                        .withValues(alpha: 0.78),
                                   ),
                                   boxShadow: <BoxShadow>[
                                     BoxShadow(
@@ -3572,9 +4062,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: <Widget>[
-                                      const Icon(
-                                        Icons.psychology_alt_rounded,
-                                        color: Color(0xFFD6A84F),
+                                      Icon(
+                                        _moveQualityIsWeak
+                                            ? Icons.warning_amber_rounded
+                                            : Icons.check_circle_rounded,
+                                        color: _moveQualityIsWeak
+                                            ? const Color(0xFFD6A84F)
+                                            : const Color(0xFF55D6B9),
                                         size: 20,
                                       ),
                                       const SizedBox(width: 8),
@@ -4038,6 +4532,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
     final String? token = _authToken;
     if (token != null) {
+      await FirebasePushService.instance.unregister(token);
       await _authApi.logout(token);
     }
     await _sessionStore.clear();
@@ -4479,6 +4974,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     int? onlineExpectedPly;
     String? engineReviewFen;
     String? engineReviewMove;
+    int? engineReviewPly;
 
     setState(() {
       final bool whitesTurn =
@@ -4587,6 +5083,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     ? '$from$square'
                     : '$from x $square';
         _moves.insert(0, move);
+        engineReviewPly = _moves.length;
         if (_gameMode == GameMode.online) {
           final bool promotes = piece.code == 'P' &&
               ((piece.white && square.endsWith('8')) ||
@@ -4622,9 +5119,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           }
         }
         if (_gameMode == GameMode.computer) {
-          _moveQualityText = _scoreForMoveFeedback(moveFeedback) < 60
-              ? '$moveFeedback Tap “Why is this weak?” in AI Coach to understand the safer plan.'
-              : null;
+          final bool locallyWeak = _scoreForMoveFeedback(moveFeedback) < 60;
+          _moveQualityIsWeak = locallyWeak;
+          _moveQualityText = widget.useRemoteEngine
+              ? 'AI review in progress…'
+              : locallyWeak
+                  ? '$moveFeedback Tap “Why is this weak?” to understand the safer plan.'
+                  : 'Move review • $moveFeedback';
         }
         _hintStage = 0;
         _lastPlayerMove = move;
@@ -4693,7 +5194,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     } else if (moveCommitted) {
       if (engineReviewFen != null && engineReviewMove != null) {
         unawaited(
-          _reviewPlayerMoveWithEngine(engineReviewFen!, engineReviewMove!),
+          _reviewPlayerMoveWithEngine(
+            engineReviewFen!,
+            engineReviewMove!,
+            engineReviewPly!,
+          ),
         );
       }
       if (_moveQualityText != null) {
@@ -4744,19 +5249,37 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Future<void> _reviewPlayerMoveWithEngine(
     String fen,
     String playedMove,
+    int ply,
   ) async {
+    final int reviewEpoch = ++_moveReviewEpoch;
     try {
-      final Map<String, dynamic> engine = await _engineApi.analyze(
+      final Map<String, dynamic> engine = await _engineApi.reviewMove(
         fen: fen,
+        playedMove: playedMove,
         level: math.max(5, _aiLevel.round()),
       );
-      if (!mounted) return;
+      if (!mounted || reviewEpoch != _moveReviewEpoch) return;
       final String bestMove = engine['bestMove'] as String? ?? '';
       if (bestMove.length < 4) return;
-      final bool best = bestMove.toLowerCase() == playedMove.toLowerCase();
+      final String classification =
+          engine['classification'] as String? ?? 'Playable';
+      final bool best = classification == 'Best';
+      final bool isWeak =
+          classification == 'Mistake' || classification == 'Blunder';
       final String recommendation =
           '${bestMove.substring(0, 2)} to ${bestMove.substring(2, 4)}';
-      final int cp = (engine['evaluationCp'] as num?)?.toInt() ?? 0;
+      final String explanation = engine['explanation'] as String? ??
+          (best
+              ? 'You found the strongest continuation.'
+              : '$recommendation was more accurate.');
+      final String reviewText = '$classification • $explanation';
+      final int cp = (engine['evaluationAfterCp'] as num?)?.toInt() ?? 0;
+      final int centipawnLoss = (engine['centipawnLoss'] as num?)?.toInt() ?? 0;
+      final String opponentThreat = engine['opponentThreat'] as String? ?? '';
+      final List<String> principalVariation =
+          (engine['principalVariation'] as List<dynamic>? ?? <dynamic>[])
+              .whereType<String>()
+              .toList(growable: false);
       setState(() {
         _engineEvaluationPawns = cp / 100;
         // Post-move review is textual. Board arrows are reserved for an
@@ -4765,20 +5288,39 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _coachArrowFrom = null;
         _coachArrowTo = null;
         if (_playerMoveScores.isNotEmpty) {
-          _playerMoveScores[_playerMoveScores.length - 1] = best ? 100 : 68;
+          _playerMoveScores[_playerMoveScores.length - 1] =
+              (100 - (centipawnLoss / 3).round()).clamp(0, 100);
         }
-        _moveQualityText = best
-            ? null
-            : 'Weak move alert • $recommendation was safer. Tap Analyze to see why.';
-        if (!best) {
+        // The coach card and the compact review label must have one verdict.
+        // Previously the immediate heuristic could remain "Superb" while the
+        // engine label changed to "Good", showing two grades for one move.
+        _moveQualityText = reviewText;
+        _moveQualityIsWeak = isWeak;
+        _lastPlayerCoachNote = reviewText;
+        _coachNote = reviewText;
+        _moveReviews.removeWhere((SavedMoveReview item) => item.ply == ply);
+        _moveReviews.add(
+          SavedMoveReview(
+            ply: ply,
+            fenBefore: fen,
+            playedMove: playedMove,
+            bestMove: bestMove,
+            classification: classification,
+            coachingTheme: engine['coachingTheme'] as String? ?? 'calculation',
+            centipawnLoss: centipawnLoss,
+            opponentThreat: opponentThreat,
+            explanation: explanation,
+            principalVariation: principalVariation,
+          ),
+        );
+        if (isWeak) {
           _turningPoint ??= '$playedMove — $recommendation was stronger.';
           _recordImportantMistake(
-            '$playedMove • Prefer $recommendation. '
-            '${_engineEvaluationExplanation(engine, _moves.length.isOdd)}',
+            '$playedMove • Prefer $recommendation. $explanation',
           );
         }
       });
-      if (!best) _scheduleMoveQualityDismiss();
+      _scheduleMoveQualityDismiss();
     } on EngineApiException {
       // Keep the immediate on-device coach feedback when analysis is offline.
     }
@@ -4921,7 +5463,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         final String plannedTo = plannedMove.substring(2, 4);
         for (final AiCandidate candidate in replies) {
           if (candidate.from == plannedFrom && candidate.to == plannedTo) {
-            reply = candidate;
+            reply = AiCandidate(
+              candidate.from,
+              candidate.to,
+              candidate.score,
+              promotion: plannedMove.length >= 5
+                  ? plannedMove.substring(4, 5).toUpperCase()
+                  : null,
+            );
             break;
           }
         }
@@ -4935,8 +5484,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _lastFromSquare = from;
       _lastToSquare = to;
       _lastCaptureSquare = null;
+      final bool castleMove = _isCastleMove(from, to);
+      final String? enPassantCaptureSquare = _enPassantCaptureSquare(from, to);
       final ChessPiece piece = _pieces.remove(from)!;
-      final ChessPiece? captured = _pieces[to];
+      final ChessPiece? captured = enPassantCaptureSquare == null
+          ? _pieces[to]
+          : _pieces.remove(enPassantCaptureSquare);
       _lastMovedPiece = piece;
       _lastCapturedPiece = captured;
       if (captured != null) {
@@ -4946,7 +5499,21 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _lastCaptureSquare = to;
       }
       _pieces[to] = piece;
-      _moves.insert(0, captured == null ? '$from$to' : '$from x $to');
+      if (castleMove) {
+        _moveCastlingRook(to, piece.white);
+      }
+      final bool promotes = piece.code == 'P' &&
+          ((piece.white && to.endsWith('8')) ||
+              (!piece.white && to.endsWith('1')));
+      if (promotes) {
+        _pieces[to] = ChessPiece(reply.promotion ?? 'Q', piece.white);
+      }
+      final String notation = castleMove
+          ? (to.startsWith('g') ? 'O-O' : 'O-O-O')
+          : captured == null
+              ? '$from$to${promotes ? '=${reply.promotion ?? 'Q'}' : ''}'
+              : '$from x $to${promotes ? '=${reply.promotion ?? 'Q'}' : ''}';
+      _moves.insert(0, notation);
       unawaited(
         ChessSoundService.instance.pieceMove(
           piece.code,
@@ -4991,7 +5558,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           final String from = uci.substring(0, 2);
           final String to = uci.substring(2, 4);
           if (_isLegalMove(from, to, whiteToMove: aiPlaysWhite)) {
-            engineMove = AiCandidate(from, to, 1000);
+            engineMove = AiCandidate(
+              from,
+              to,
+              1000,
+              promotion: uci.length >= 5 ? uci[4].toUpperCase() : null,
+            );
           }
         }
       } on Object {
@@ -5096,13 +5668,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (piece.code == 'P' &&
           ((piece.white && move.to.endsWith('8')) ||
               (!piece.white && move.to.endsWith('1')))) {
-        _pieces[move.to] = ChessPiece('Q', piece.white);
+        _pieces[move.to] = ChessPiece(move.promotion ?? 'Q', piece.white);
       }
       final String notation = castleMove
           ? (move.to.startsWith('g') ? 'O-O' : 'O-O-O')
           : captured == null
-              ? '${move.from}${move.to}'
-              : '${move.from} x ${move.to}';
+              ? '${move.from}${move.to}${move.promotion == null ? '' : '=${move.promotion}'}'
+              : '${move.from} x ${move.to}${move.promotion == null ? '' : '=${move.promotion}'}';
       _moves.insert(0, notation);
       unawaited(
         ChessSoundService.instance.pieceMove(
@@ -5375,9 +5947,26 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   bool _hasMovedFrom(String square) {
-    for (final String move in _moves) {
+    for (int index = 0; index < _moves.length; index++) {
+      final String move = _moves[index];
+      if (move.startsWith('O-O')) {
+        final int chronologicalPly = _moves.length - 1 - index;
+        final bool whiteCastled = chronologicalPly.isEven;
+        final String homeRank = whiteCastled ? '1' : '8';
+        final String rookSquare =
+            move.startsWith('O-O-O') ? 'a$homeRank' : 'h$homeRank';
+        if (square == 'e$homeRank' || square == rookSquare) {
+          return true;
+        }
+        continue;
+      }
       final ParsedMove? parsed = _parseMove(move);
-      if (parsed?.from == square) {
+      if (parsed?.from == square ||
+          ((square == 'a1' ||
+                  square == 'h1' ||
+                  square == 'a8' ||
+                  square == 'h8') &&
+              parsed?.to == square)) {
         return true;
       }
     }
@@ -5440,6 +6029,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _engineEvaluationPawns = 0;
       _playerMoveScores.clear();
       _importantMistakes.clear();
+      _moveReviews.clear();
       _turningPoint = null;
       _whiteSeconds = 10 * 60;
       _blackSeconds = 10 * 60;
@@ -5542,6 +6132,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         playedAt: DateTime.now(),
         whitePlayer: _whitePlayerName,
         blackPlayer: _blackPlayerName,
+        playerOutcome: playerOutcomeForResult(
+          _gameResultTitle!,
+          humanPlaysWhite: _humanPlaysWhite,
+          tracksPlayer: _gameMode != GameMode.local,
+        ),
+        moveReviews: List<SavedMoveReview>.from(_moveReviews)
+          ..sort((SavedMoveReview a, SavedMoveReview b) => a.ply - b.ply),
       ),
     );
   }
@@ -5562,8 +6159,92 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       knownAccuracy: _playerAccuracy,
       knownTurningPoint: _turningPoint,
       knownMistakes: _importantMistakes.reversed.toList(growable: false),
+      knownReviews: _moveReviews,
     );
-    showAdaptiveAiReview(context, report: report);
+    showAdaptiveAiReview(
+      context,
+      report: report,
+      onRetryPosition: _openReviewedPositionRetry,
+      onGeneratePuzzles: _generateMistakePuzzles,
+    );
+  }
+
+  void _openReviewedPositionRetry(AiMoveInsight insight) {
+    final String? fen = insight.fenBefore;
+    final String? bestMove = insight.bestMove;
+    if (fen == null || fen.isEmpty || bestMove == null || bestMove.length < 4) {
+      return;
+    }
+    final List<String> fenParts = fen.split(RegExp(r'\s+'));
+    Navigator.of(context).pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) => ReviewedPositionRetryDialog(
+          fen: fen,
+          initialPieces: _piecesFromFen(fen),
+          whiteToMove: fenParts.length < 2 || fenParts[1] != 'b',
+          bestMove: bestMove,
+          explanation: insight.explanation,
+        ),
+      );
+    });
+  }
+
+  void _generateMistakePuzzles() {
+    final List<SavedMoveReview> puzzles = _moveReviews
+        .where((SavedMoveReview review) =>
+            review.fenBefore.isNotEmpty &&
+            review.bestMove.length >= 4 &&
+            const <String>{'Inaccuracy', 'Mistake', 'Blunder'}
+                .contains(review.classification))
+        .toList(growable: false)
+        .reversed
+        .take(5)
+        .toList(growable: false)
+        .reversed
+        .toList(growable: false);
+    if (puzzles.isEmpty) return;
+    Navigator.of(context).pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _openMistakePuzzle(puzzles, 0);
+    });
+  }
+
+  void _openMistakePuzzle(List<SavedMoveReview> puzzles, int index) {
+    if (!mounted || index >= puzzles.length) return;
+    final SavedMoveReview puzzle = puzzles[index];
+    final List<String> fenParts = puzzle.fenBefore.split(RegExp(r'\s+'));
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) => ReviewedPositionRetryDialog(
+        fen: puzzle.fenBefore,
+        initialPieces: _piecesFromFen(puzzle.fenBefore),
+        whiteToMove: fenParts.length < 2 || fenParts[1] != 'b',
+        bestMove: puzzle.bestMove,
+        explanation: puzzle.explanation,
+        progressLabel: 'MISTAKE PUZZLE ${index + 1} OF ${puzzles.length}',
+        nextLabel: index + 1 < puzzles.length ? 'Next puzzle' : 'Finish set',
+        onNext: () {
+          Navigator.of(context).pop();
+          if (index + 1 < puzzles.length) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _openMistakePuzzle(puzzles, index + 1);
+            });
+          } else {
+            ScaffoldMessenger.of(this.context).showSnackBar(
+              SnackBar(
+                content: Text(
+                    'Training complete: ${puzzles.length} real game ${puzzles.length == 1 ? 'mistake' : 'mistakes'} reviewed.'),
+              ),
+            );
+          }
+        },
+      ),
+    );
   }
 
   void _saveSnapshot() {
@@ -5994,6 +6675,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _handledDrawOfferKey = null;
         _onlineConnectedPlayers = 0;
         _onlineSocketConnected = false;
+        _onlineSocketReconnectAttempts = 0;
       }
     });
     // A restored/reconnected match must always replay its authoritative move
@@ -6041,11 +6723,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _scheduleOnlineSocketReconnect(String token, String matchId) {
     if (!mounted || _onlineMatch?.id != matchId) return;
+    if (_onlineSocketReconnectTimer?.isActive == true) return;
     setState(() => _onlineSocketConnected = false);
     _onlineHeartbeatTimer?.cancel();
     _onlineSocketReconnectTimer?.cancel();
+    _onlineSocketReconnectAttempts++;
+    final int delaySeconds =
+        (2 * _onlineSocketReconnectAttempts).clamp(2, 12);
     _onlineSocketReconnectTimer = Timer(
-      const Duration(seconds: 3),
+      Duration(seconds: delaySeconds),
       () => _connectOnlineSocket(token, matchId),
     );
   }
@@ -6297,7 +6983,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         return;
       }
       if (mounted && !_onlineSocketConnected) {
-        setState(() => _onlineSocketConnected = true);
+        setState(() {
+          _onlineSocketConnected = true;
+          _onlineSocketReconnectAttempts = 0;
+        });
       }
       if (decoded['type'] != 'presence.updated') return;
       final int connected = (decoded['connectedPlayers'] as num?)?.toInt() ?? 0;
@@ -6305,6 +6994,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       setState(() {
         _onlineConnectedPlayers = connected;
         _onlineSocketConnected = true;
+        _onlineSocketReconnectAttempts = 0;
         if (_onlineMatch?.isActive == true && connected < 2) {
           _coachNote = 'Opponent connection lost. Waiting for reconnect...';
         }
@@ -6388,7 +7078,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (firstPresentation) {
         _onlineResultPresentationTimer?.cancel();
         _onlineResultPresentationTimer = Timer(
-          const Duration(seconds: 10),
+          draw ? const Duration(milliseconds: 900) : const Duration(seconds: 3),
           () {
             if (!mounted || _onlineCelebrationMatchId != match.id) return;
             setState(() {
@@ -6552,7 +7242,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (stalemate) {
       _gameResultTitle = 'Draw';
       _gameResultDetail = 'Stalemate';
-      _delayLocalResultOverlay();
+      _delayLocalResultOverlay(
+        delay: const Duration(milliseconds: 900),
+      );
       _archiveFinishedGame();
       unawaited(ChessSoundService.instance.draw());
       return 'Stalemate. No legal move for $side.';
@@ -6563,11 +7255,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     return fallback;
   }
 
-  void _delayLocalResultOverlay() {
+  void _delayLocalResultOverlay({
+    Duration delay = const Duration(seconds: 10),
+  }) {
     _onlineResultPresentationTimer?.cancel();
     _resultVisible = false;
     _onlineResultPresentationTimer = Timer(
-      const Duration(seconds: 10),
+      delay,
       () {
         if (!mounted || _gameMode == GameMode.online) return;
         setState(() => _resultVisible = true);
@@ -6581,7 +7275,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     required String to,
     required ChessPiece? captured,
   }) {
-    final String pieceName = switch (piece.code) {
+    final String movedPieceName = switch (piece.code) {
       'P' => 'Pawn',
       'N' => 'Knight',
       'B' => 'Bishop',
@@ -6591,6 +7285,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _ => 'Piece',
     };
     final bool givesCheck = ChessRules.isKingInCheck(!piece.white, _pieces);
+    final String? enemyKingSquare = ChessRules.kingSquare(
+      !piece.white,
+      _pieces,
+    );
+    final bool movedPieceGivesCheck = enemyKingSquare != null &&
+        ChessRules.attacksSquare(to, enemyKingSquare, _pieces);
     final SquarePosition target = ChessRules.positionOf(to);
     final bool controlsCenter = target.file >= 2 &&
         target.file <= 5 &&
@@ -6599,8 +7299,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final String sourceSquare = from.toLowerCase();
     final String targetSquare = to.toLowerCase();
     final String action = captured == null
-        ? '$pieceName moved from $sourceSquare to $targetSquare.'
-        : '$pieceName captured ${_pieceName(captured.code)} on $targetSquare.';
+        ? '$movedPieceName moved from $sourceSquare to $targetSquare.'
+        : '$movedPieceName captured ${_pieceName(captured.code)} on $targetSquare.';
     final String piecePurpose = switch (piece.code) {
       'P' => controlsCenter
           ? 'The pawn claims central space and opens lines for your pieces.'
@@ -6620,6 +7320,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return '$action Strong forcing move: it wins material and checks the king, so the opponent must respond to the check. $piecePurpose';
     }
     if (givesCheck) {
+      if (!movedPieceGivesCheck && enemyKingSquare != null) {
+        final List<String> attackers = ChessRules.checkingAttackers(
+          !piece.white,
+          _pieces,
+        );
+        if (attackers.isNotEmpty) {
+          final String attackerSquare = attackers.first;
+          final ChessPiece attacker = _pieces[attackerSquare]!;
+          final String attackerName = pieceName(attacker.code);
+          return '$action Discovered check: moving the ${pieceName(piece.code)} opened the $attackerName attack from $attackerSquare onto the king at $enemyKingSquare. The opponent must answer that revealed check. $piecePurpose';
+        }
+      }
       return '$action This is a forcing check. Now calculate every legal king escape, capture, and blocking move. $piecePurpose';
     }
     if (captured != null) {
@@ -6834,6 +7546,274 @@ class BoardStage extends StatelessWidget {
               ],
             ),
             child: Padding(padding: const EdgeInsets.all(1), child: child),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ReviewedPositionRetryDialog extends StatefulWidget {
+  const ReviewedPositionRetryDialog({
+    required this.fen,
+    required this.initialPieces,
+    required this.whiteToMove,
+    required this.bestMove,
+    required this.explanation,
+    this.progressLabel = 'RETRY THIS POSITION',
+    this.nextLabel = 'Back to review',
+    this.onNext,
+    super.key,
+  });
+
+  final String fen;
+  final Map<String, ChessPiece> initialPieces;
+  final bool whiteToMove;
+  final String bestMove;
+  final String explanation;
+  final String progressLabel;
+  final String nextLabel;
+  final VoidCallback? onNext;
+
+  @override
+  State<ReviewedPositionRetryDialog> createState() =>
+      _ReviewedPositionRetryDialogState();
+}
+
+class _ReviewedPositionRetryDialogState
+    extends State<ReviewedPositionRetryDialog> {
+  late Map<String, ChessPiece> _pieces;
+  String? _selected;
+  String? _lastFrom;
+  String? _lastTo;
+  String? _message;
+  bool _answered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pieces = Map<String, ChessPiece>.from(widget.initialPieces);
+  }
+
+  Set<String> get _legalTargets {
+    final String? selected = _selected;
+    if (selected == null || _answered) return <String>{};
+    final Set<String> targets =
+        ChessRules.safeLegalTargets(selected, _pieces).toSet();
+    if (widget.bestMove.startsWith(selected) && widget.bestMove.length >= 4) {
+      final String target = widget.bestMove.substring(2, 4);
+      if (_isLegalFenSpecialMove(selected, target)) targets.add(target);
+    }
+    return targets;
+  }
+
+  bool _isLegalFenSpecialMove(String from, String target) {
+    final List<String> parts = widget.fen.split(RegExp(r'\s+'));
+    final ChessPiece? piece = _pieces[from];
+    if (piece == null) return false;
+    if (piece.code == 'P' && parts.length > 3 && parts[3] == target) {
+      final SquarePosition a = ChessRules.positionOf(from);
+      final SquarePosition b = ChessRules.positionOf(target);
+      final String captured = ChessRules.squareOf(b.file, a.rank);
+      return (b.file - a.file).abs() == 1 &&
+          b.rank - a.rank == (piece.white ? 1 : -1) &&
+          !_pieces.containsKey(target) &&
+          _pieces[captured]?.code == 'P' &&
+          _pieces[captured]?.white != piece.white;
+    }
+    if (piece.code != 'K' || parts.length < 3) return false;
+    final bool kingSide = target == (piece.white ? 'g1' : 'g8');
+    final bool queenSide = target == (piece.white ? 'c1' : 'c8');
+    if (!kingSide && !queenSide) return false;
+    final String right =
+        piece.white ? (kingSide ? 'K' : 'Q') : (kingSide ? 'k' : 'q');
+    if (!parts[2].contains(right) ||
+        ChessRules.isKingInCheck(piece.white, _pieces)) {
+      return false;
+    }
+    final int rank = piece.white ? 1 : 8;
+    final List<String> empty = kingSide
+        ? <String>['f$rank', 'g$rank']
+        : <String>['b$rank', 'c$rank', 'd$rank'];
+    if (empty.any(_pieces.containsKey)) return false;
+    final String transit = kingSide ? 'f$rank' : 'd$rank';
+    final String rookSquare = kingSide ? 'h$rank' : 'a$rank';
+    if (_pieces[rookSquare]?.code != 'R' ||
+        _pieces[rookSquare]?.white != piece.white) {
+      return false;
+    }
+    final Map<String, ChessPiece> transitBoard =
+        ChessRules.applyMove(from, transit, _pieces);
+    if (ChessRules.isKingInCheck(piece.white, transitBoard)) return false;
+    final Map<String, ChessPiece> destinationBoard =
+        ChessRules.applyMove(transit, target, transitBoard);
+    return !ChessRules.isKingInCheck(piece.white, destinationBoard);
+  }
+
+  Map<String, ChessPiece> _applyReviewedMove(String from, String target) {
+    final ChessPiece? piece = _pieces[from];
+    final List<String> parts = widget.fen.split(RegExp(r'\s+'));
+    final Map<String, ChessPiece> next = Map<String, ChessPiece>.from(_pieces);
+    if (piece?.code == 'P' &&
+        parts.length > 3 &&
+        parts[3] == target &&
+        !next.containsKey(target)) {
+      final SquarePosition a = ChessRules.positionOf(from);
+      final SquarePosition b = ChessRules.positionOf(target);
+      next.remove(ChessRules.squareOf(b.file, a.rank));
+    }
+    next.remove(from);
+    if (piece != null) {
+      final bool promotion =
+          piece.code == 'P' && (target.endsWith('8') || target.endsWith('1'));
+      final String promoted =
+          widget.bestMove.length >= 5 ? widget.bestMove[4].toUpperCase() : 'Q';
+      next[target] = promotion ? ChessPiece(promoted, piece.white) : piece;
+      if (piece.code == 'K' &&
+          (from.codeUnitAt(0) - target.codeUnitAt(0)).abs() == 2) {
+        final int rank = piece.white ? 1 : 8;
+        final bool kingSide = target.startsWith('g');
+        final String rookFrom = kingSide ? 'h$rank' : 'a$rank';
+        final String rookTo = kingSide ? 'f$rank' : 'd$rank';
+        final ChessPiece? rook = next.remove(rookFrom);
+        if (rook != null) next[rookTo] = rook;
+      }
+    }
+    return next;
+  }
+
+  void _tapSquare(String square) {
+    if (_answered) return;
+    final ChessPiece? tapped = _pieces[square];
+    if (_selected == null) {
+      if (tapped?.white == widget.whiteToMove) {
+        setState(() => _selected = square);
+      }
+      return;
+    }
+    final String from = _selected!;
+    if (tapped?.white == widget.whiteToMove) {
+      setState(() => _selected = square);
+      return;
+    }
+    if (!_legalTargets.contains(square)) return;
+    final String attempted = '$from$square'.toLowerCase();
+    final bool correct = widget.bestMove.toLowerCase().startsWith(attempted);
+    setState(() {
+      _pieces = _applyReviewedMove(from, square);
+      _lastFrom = from;
+      _lastTo = square;
+      _selected = null;
+      _answered = true;
+      _message = correct
+          ? 'Best move found. ${widget.explanation}'
+          : 'Good try. The engine preferred ${widget.bestMove.substring(0, 2)} to ${widget.bestMove.substring(2, 4)}. ${widget.explanation}';
+    });
+  }
+
+  void _reset() {
+    setState(() {
+      _pieces = Map<String, ChessPiece>.from(widget.initialPieces);
+      _selected = null;
+      _lastFrom = null;
+      _lastTo = null;
+      _message = null;
+      _answered = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final BoardPalette palette = boardPalettes[BoardSkin.sapphire]!;
+    final bool inCheck = ChessRules.isKingInCheck(widget.whiteToMove, _pieces);
+    final String? checkedKing =
+        inCheck ? ChessRules.kingSquare(widget.whiteToMove, _pieces) : null;
+    return Dialog(
+      backgroundColor: const Color(0xFF061722),
+      insetPadding: const EdgeInsets.all(16),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 620, maxHeight: 850),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  const Icon(Icons.replay_circle_filled_rounded,
+                      color: Color(0xFF59E4C8)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      widget.progressLabel,
+                      style: const TextStyle(
+                          fontSize: 19, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              Text(
+                '${widget.whiteToMove ? 'White' : 'Black'} to move • Find the strongest continuation',
+                style: const TextStyle(color: Color(0xFF9DB0BE)),
+              ),
+              const SizedBox(height: 14),
+              AspectRatio(
+                aspectRatio: 1,
+                child: ChessBoard(
+                  pieces: _pieces,
+                  selectedSquare: _selected,
+                  legalTargets: _legalTargets,
+                  lastFromSquare: _lastFrom,
+                  lastToSquare: _lastTo,
+                  lastCaptureSquare: null,
+                  moveSequence: _answered ? 1 : 0,
+                  checkedKingSquare: checkedKing,
+                  decisiveSquare: null,
+                  coachArrowFrom:
+                      _answered ? widget.bestMove.substring(0, 2) : null,
+                  coachArrowTo:
+                      _answered ? widget.bestMove.substring(2, 4) : null,
+                  flipped: !widget.whiteToMove,
+                  showCoordinates: true,
+                  palette: palette,
+                  onSquareTap: _tapSquare,
+                ),
+              ),
+              if (_message != null) ...<Widget>[
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D2734),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFF59E4C8)),
+                  ),
+                  child: Text(_message!, style: const TextStyle(height: 1.4)),
+                ),
+              ],
+              const SizedBox(height: 14),
+              Row(
+                children: <Widget>[
+                  OutlinedButton.icon(
+                    onPressed: _reset,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Try again'),
+                  ),
+                  const Spacer(),
+                  FilledButton(
+                    onPressed:
+                        widget.onNext ?? () => Navigator.of(context).pop(),
+                    child: Text(widget.nextLabel),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -7739,10 +8719,12 @@ class ChessCoin extends StatelessWidget {
           );
           final bool classic2d =
               appearance.style == ChessPieceVisualStyle.classic2d;
-          final double pieceSize = size *
-              (appearance.size == ChessPieceVisualSize.extraLarge
-                  ? (classic2d ? 1.44 : 1.58)
-                  : (classic2d ? 1.31 : 1.43));
+          final double pieceScale = switch (appearance.size) {
+            ChessPieceVisualSize.large => classic2d ? 1.31 : 1.43,
+            ChessPieceVisualSize.extraLarge => classic2d ? 1.44 : 1.58,
+            ChessPieceVisualSize.doubleExtraLarge => classic2d ? 1.56 : 1.72,
+          };
+          final double pieceSize = size * pieceScale;
           final double silhouetteScale = switch (piece.code) {
             'K' => 1.00,
             'Q' => .98,
@@ -7863,18 +8845,14 @@ class ChessCoin extends StatelessWidget {
     final String label =
         '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}';
     if (appearance.style == ChessPieceVisualStyle.classic2d) {
-      final String solidGlyph = switch (piece.code) {
-        'K' => '♚',
-        'Q' => '♛',
-        'R' => '♜',
-        'B' => '♝',
-        'N' => '♞',
-        _ => '♟',
-      };
+      // Use the real white Unicode set for White. Re-colouring the solid
+      // black glyphs made the classic white pawn retain a black silhouette on
+      // several browser/Android serif fonts.
+      final String solidGlyph = pieceGlyph(piece);
       final Color fill =
-          piece.white ? const Color(0xFFFFD98A) : const Color(0xFF10243A);
+          piece.white ? const Color(0xFFFFF4D0) : const Color(0xFF10243A);
       final Color outline =
-          piece.white ? const Color(0xFF15283D) : const Color(0xFFE7C67E);
+          piece.white ? const Color(0xFF9A6A16) : const Color(0xFFE7C67E);
       return Semantics(
         label: label,
         child: Stack(
@@ -7914,14 +8892,15 @@ class ChessCoin extends StatelessWidget {
         ),
       );
     }
-    final Widget image = Image.asset(
-      pieceAsset(piece),
-      fit: BoxFit.contain,
-      filterQuality: FilterQuality.high,
-      semanticLabel: label,
-    );
+    Widget pieceImage({String? semanticLabel}) => Image.asset(
+          pieceAsset(piece),
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+          semanticLabel: semanticLabel,
+        );
+    Widget image = pieceImage(semanticLabel: label);
     if (appearance.style == ChessPieceVisualStyle.highContrast) {
-      return ColorFiltered(
+      image = ColorFiltered(
         colorFilter: ColorFilter.mode(
           piece.white ? const Color(0xFFFFF0B8) : const Color(0xFF89BFFF),
           BlendMode.modulate,
@@ -7929,7 +8908,10 @@ class ChessCoin extends StatelessWidget {
         child: image,
       );
     }
-    return image;
+    return Semantics(
+      label: label,
+      child: image,
+    );
   }
 }
 
@@ -10153,15 +11135,25 @@ class AnalysisMetric extends StatelessWidget {
   }
 }
 
+enum OnlineLobbyMode { random, friends }
+
+typedef _SearchPreferences = ({
+  int timeControlMinutes,
+  String region,
+  int ratingRange,
+});
+
 class OnlineMatchmakingSheet extends StatefulWidget {
   const OnlineMatchmakingSheet({
     required this.api,
     required this.token,
+    this.initialMode = OnlineLobbyMode.random,
     super.key,
   });
 
   final OnlineMatchApi api;
   final String token;
+  final OnlineLobbyMode initialMode;
 
   @override
   State<OnlineMatchmakingSheet> createState() => _OnlineMatchmakingSheetState();
@@ -10181,6 +11173,11 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
   bool _loading = false;
   bool _randomSearch = false;
   int _elapsedSeconds = 0;
+  int? _onlinePlayerCount;
+  final Set<String> _closedWaitingMatchIds = <String>{};
+  int _timeControlMinutes = 10;
+  String _searchRegion = 'WORLDWIDE';
+  int _ratingRange = 0;
   String? _error;
 
   @override
@@ -10213,6 +11210,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
       _randomSearch = randomSearch;
       _error = null;
     });
+    if (randomSearch) unawaited(_refreshOnlinePlayerCount());
     try {
       final OnlineMatchDto match = await operation();
       if (!mounted) return;
@@ -10224,7 +11222,53 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     }
   }
 
+  Future<void> _refreshOnlinePlayerCount() async {
+    try {
+      final int count = await widget.api.onlinePlayerCount(widget.token);
+      if (mounted) setState(() => _onlinePlayerCount = count);
+    } on OnlineMatchException {
+      // Presence is supporting context; matchmaking remains available when
+      // the count endpoint is temporarily unavailable.
+    }
+  }
+
+  Future<OnlineMatchDto> _requestRandomMatch() => widget.api.randomMatch(
+        widget.token,
+        timeControlMinutes: _timeControlMinutes,
+        region: _searchRegion,
+        ratingRange: _ratingRange,
+      );
+
+  Future<void> _applySearchPreferences(_SearchPreferences preferences) async {
+    final OnlineMatchDto? waiting = _match;
+    if (waiting != null) {
+      _closedWaitingMatchIds.add(waiting.id);
+      _pollTimer?.cancel();
+      _elapsedTimer?.cancel();
+      _socketReconnectTimer?.cancel();
+      await _socketSubscription?.cancel();
+      await _channel?.sink.close();
+      try {
+        await widget.api.cancelWaiting(widget.token, waiting.id);
+      } on OnlineMatchException {
+        // The server may have already expired the old queue entry.
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _match = null;
+      _elapsedSeconds = 0;
+      _timeControlMinutes = preferences.timeControlMinutes;
+      _searchRegion = preferences.region;
+      _ratingRange = preferences.ratingRange;
+    });
+    await _run(_requestRandomMatch, randomSearch: true);
+  }
+
   void _accept(OnlineMatchDto match) {
+    // A poll or websocket event may complete after the 20-second expiry or a
+    // manual cancellation. Never let that stale response revive the search.
+    if (_closedWaitingMatchIds.contains(match.id)) return;
     if (match.isActive) {
       if (_foundMatch != null) return;
       _pollTimer?.cancel();
@@ -10236,7 +11280,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
         _foundMatch = match;
         _match = match;
       });
-      _foundTimer = Timer(const Duration(milliseconds: 1800), () {
+      // Give the premium rival-found reveal enough time to complete its
+      // three-second countdown before opening the board.
+      _foundTimer = Timer(const Duration(milliseconds: 3600), () {
         if (mounted) Navigator.of(context).pop(match);
       });
       return;
@@ -10276,6 +11322,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     _pollTimer?.cancel();
     _elapsedTimer?.cancel();
     _socketReconnectTimer?.cancel();
+    _closedWaitingMatchIds.add(waiting.id);
     await _socketSubscription?.cancel();
     await _channel?.sink.close();
     try {
@@ -10343,6 +11390,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     unawaited(_channel?.sink.close());
     _socketReconnectTimer?.cancel();
     if (waiting != null) {
+      _closedWaitingMatchIds.add(waiting.id);
       try {
         await widget.api.cancelWaiting(widget.token, waiting.id);
       } on OnlineMatchException {
@@ -10360,7 +11408,10 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     final double maxHeight = size.height * (wideLayout ? 0.94 : 0.96);
     final OnlineMatchDto? found = _foundMatch;
 
-    if (wideLayout && found == null && _match == null) {
+    if (wideLayout &&
+        widget.initialMode == OnlineLobbyMode.random &&
+        found == null &&
+        _match == null) {
       return _buildDesktopLobby(context);
     }
 
@@ -10380,11 +11431,22 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
       return SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: math.min(maxWidth, 460)),
+            constraints: BoxConstraints(
+              maxWidth: math.min(maxWidth, wideLayout ? 980 : 460),
+            ),
             child: _MatchSearchingView(
+              match: waiting,
               randomSearch: _randomSearch,
               roomCode: waiting.roomCode,
               elapsedSeconds: _elapsedSeconds,
+              onlinePlayerCount: _onlinePlayerCount,
+              wideLayout: wideLayout,
+              preferences: (
+                timeControlMinutes: _timeControlMinutes,
+                region: _searchRegion,
+                ratingRange: _ratingRange,
+              ),
+              onPreferencesChanged: _applySearchPreferences,
               onCopyCode: () {
                 Clipboard.setData(ClipboardData(text: waiting.roomCode));
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -10443,7 +11505,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                       SizedBox(width: wideLayout ? 18 : 12),
                       Expanded(
                         child: Text(
-                          'Online 2 Players',
+                          widget.initialMode == OnlineLobbyMode.random
+                              ? 'Play Online'
+                              : 'Play with Friends',
                           style: (wideLayout
                                   ? Theme.of(context).textTheme.headlineMedium
                                   : Theme.of(context).textTheme.headlineSmall)
@@ -10457,8 +11521,10 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                     ],
                   ),
                   SizedBox(height: wideLayout ? 2 : 8),
-                  const Text(
-                    'Play online with a random opponent or invite a friend to a private room.',
+                  Text(
+                    widget.initialMode == OnlineLobbyMode.random
+                        ? 'Find a live opponent from around the world.'
+                        : 'Create a private room or join your friend with a code.',
                   ),
                   if (_error != null) ...<Widget>[
                     const SizedBox(height: 12),
@@ -10468,236 +11534,249 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                     ),
                   ],
                   SizedBox(height: wideLayout ? 22 : 16),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      image: const DecorationImage(
-                        image: AssetImage(
-                          'assets/backgrounds/online-matchmaking-hero-v1.png',
+                  if (widget.initialMode == OnlineLobbyMode.random)
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        image: const DecorationImage(
+                          image: AssetImage(
+                            'assets/backgrounds/online-matchmaking-hero-v1.png',
+                          ),
+                          // Preserve the complete wide composition on phones:
+                          // pawn at the left, copy in the centre and map at the
+                          // right. Cover was cropping both visual anchors.
+                          fit: BoxFit.contain,
+                          alignment: Alignment.center,
+                          opacity: .78,
                         ),
-                        fit: BoxFit.cover,
-                        alignment: Alignment.center,
-                        opacity: .78,
-                      ),
-                      gradient: const LinearGradient(
-                        colors: <Color>[Color(0xD9051B35), Color(0x77071936)],
-                      ),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(
-                        color: const Color(0xFF2F9CFF),
-                        width: 1.4,
-                      ),
-                      boxShadow: const <BoxShadow>[
-                        BoxShadow(color: Color(0x442F9CFF), blurRadius: 20),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        wideLayout ? 230 : 150,
-                        wideLayout ? 30 : 20,
-                        wideLayout ? 230 : 14,
-                        wideLayout ? 30 : 18,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          Row(
-                            children: <Widget>[
-                              const Icon(
-                                Icons.travel_explore_rounded,
-                                color: Color(0xFFD6A84F),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'Random Match',
-                                  maxLines: 1,
-                                  style: (wideLayout
-                                          ? Theme.of(context)
-                                              .textTheme
-                                              .headlineMedium
-                                          : Theme.of(context)
-                                              .textTheme
-                                              .titleLarge)
-                                      ?.copyWith(
-                                    fontSize: wideLayout ? null : 20,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                              if (_loading)
-                                const SizedBox.square(
-                                  dimension: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'We’ll find a player for you from around the world.',
-                          ),
-                          SizedBox(height: wideLayout ? 18 : 12),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: SizedBox(
-                              width: wideLayout ? 280 : 176,
-                              height: wideLayout ? 52 : 44,
-                              child: FilledButton.icon(
-                                style: FilledButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 18,
-                                  ),
-                                  textStyle: TextStyle(
-                                    fontSize: wideLayout ? 17 : 14,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                onPressed: _loading
-                                    ? null
-                                    : () => _run(
-                                          () => widget.api
-                                              .randomMatch(widget.token),
-                                          randomSearch: true,
-                                        ),
-                                icon: Icon(
-                                  Icons.bolt_rounded,
-                                  size: wideLayout ? 22 : 20,
-                                ),
-                                label: const Text('Find Match'),
-                              ),
-                            ),
-                          ),
+                        gradient: const LinearGradient(
+                          colors: <Color>[Color(0xD9051B35), Color(0x77071936)],
+                        ),
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: const Color(0xFF2F9CFF),
+                          width: 1.4,
+                        ),
+                        boxShadow: const <BoxShadow>[
+                          BoxShadow(color: Color(0x442F9CFF), blurRadius: 20),
                         ],
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF081D2A),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: const Color(0xFF267D72)),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(wideLayout ? 22 : 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          Row(
-                            children: <Widget>[
-                              Container(
-                                width: 54,
-                                height: 54,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: const Color(0xFF0A2630),
-                                  border: Border.all(
-                                    color: const Color(0xFF267D72),
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          wideLayout ? 230 : 92,
+                          wideLayout ? 30 : 20,
+                          wideLayout ? 230 : 92,
+                          wideLayout ? 30 : 18,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: wideLayout
+                              ? CrossAxisAlignment.stretch
+                              : CrossAxisAlignment.center,
+                          children: <Widget>[
+                            Row(
+                              children: <Widget>[
+                                const Icon(
+                                  Icons.travel_explore_rounded,
+                                  color: Color(0xFFD6A84F),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Random Match',
+                                    maxLines: 1,
+                                    style: (wideLayout
+                                            ? Theme.of(context)
+                                                .textTheme
+                                                .headlineMedium
+                                            : Theme.of(context)
+                                                .textTheme
+                                                .titleLarge)
+                                        ?.copyWith(
+                                      fontSize: wideLayout ? null : 20,
+                                      fontWeight: FontWeight.w900,
+                                    ),
                                   ),
                                 ),
-                                child: const Icon(
-                                  Icons.group_rounded,
-                                  color: Color(0xFF55D5C0),
-                                  size: 30,
+                                if (_loading)
+                                  const SizedBox.square(
+                                    dimension: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'We’ll find a player for you from around the world.',
+                            ),
+                            SizedBox(height: wideLayout ? 18 : 12),
+                            Align(
+                              alignment: wideLayout
+                                  ? Alignment.centerLeft
+                                  : Alignment.center,
+                              child: SizedBox(
+                                width: wideLayout ? 280 : 176,
+                                height: wideLayout ? 52 : 44,
+                                child: FilledButton.icon(
+                                  style: FilledButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                    ),
+                                    textStyle: TextStyle(
+                                      fontSize: wideLayout ? 17 : 14,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  onPressed: _loading
+                                      ? null
+                                      : () => _run(
+                                            _requestRandomMatch,
+                                            randomSearch: true,
+                                          ),
+                                  icon: Icon(
+                                    Icons.bolt_rounded,
+                                    size: wideLayout ? 22 : 20,
+                                  ),
+                                  label: const Text('Find Match'),
                                 ),
                               ),
-                              const SizedBox(width: 14),
-                              const Expanded(
-                                child: Text(
-                                  'Play with Friend',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          if (_match == null)
-                            const Text(
-                              'Create a private room or join one using a room code.',
-                            )
-                          else ...<Widget>[
-                            SelectableText(
-                              _match!.roomCode,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineMedium
-                                  ?.copyWith(
-                                    color: const Color(0xFFD6A84F),
-                                    letterSpacing: 2,
-                                    fontSize: wideLayout ? 30 : null,
-                                  ),
-                            ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              'Waiting for opponent… this screen reconnects automatically.',
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 10),
-                            FilledButton.icon(
-                              onPressed: () {
-                                Clipboard.setData(
-                                  ClipboardData(text: _match!.roomCode),
-                                );
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Invite code copied'),
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.copy_rounded),
-                              label: const Text('Copy invite code'),
                             ),
                           ],
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _roomController,
-                    onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      labelText: 'Enter room code',
-                      hintText: 'e.g. ABCD1234',
-                      suffixIcon: Icon(Icons.copy_rounded),
-                      border: OutlineInputBorder(),
-                    ),
-                    textCapitalization: TextCapitalization.characters,
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: <Widget>[
-                      OutlinedButton.icon(
-                        onPressed: _loading
-                            ? null
-                            : () => _run(
-                                  () => widget.api.createRoom(widget.token),
-                                ),
-                        icon: const Icon(Icons.group_add_rounded),
-                        label: const Text('Create Room'),
+                  if (widget.initialMode == OnlineLobbyMode.random)
+                    const SizedBox(height: 14),
+                  if (widget.initialMode == OnlineLobbyMode.friends)
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF081D2A),
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: const Color(0xFF267D72)),
                       ),
-                      FilledButton.icon(
-                        onPressed:
-                            _loading || _roomController.text.trim().isEmpty
-                                ? null
-                                : () => _run(
-                                      () => widget.api.joinRoom(
-                                        widget.token,
-                                        _roomController.text,
-                                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(wideLayout ? 22 : 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: <Widget>[
+                            Row(
+                              children: <Widget>[
+                                Container(
+                                  width: 54,
+                                  height: 54,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: const Color(0xFF0A2630),
+                                    border: Border.all(
+                                      color: const Color(0xFF267D72),
                                     ),
-                        icon: const Icon(Icons.sports_esports_rounded),
-                        label: const Text('Join Room'),
+                                  ),
+                                  child: const Icon(
+                                    Icons.group_rounded,
+                                    color: Color(0xFF55D5C0),
+                                    size: 30,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                const Expanded(
+                                  child: Text(
+                                    'Play with Friend',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            if (_match == null)
+                              const Text(
+                                'Create a private room or join one using a room code.',
+                              )
+                            else ...<Widget>[
+                              SelectableText(
+                                _match!.roomCode,
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium
+                                    ?.copyWith(
+                                      color: const Color(0xFFD6A84F),
+                                      letterSpacing: 2,
+                                      fontSize: wideLayout ? 30 : null,
+                                    ),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Waiting for opponent… this screen reconnects automatically.',
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 10),
+                              FilledButton.icon(
+                                onPressed: () {
+                                  Clipboard.setData(
+                                    ClipboardData(text: _match!.roomCode),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Invite code copied'),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.copy_rounded),
+                                label: const Text('Copy invite code'),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                  if (widget.initialMode == OnlineLobbyMode.friends)
+                    const SizedBox(height: 14),
+                  if (widget.initialMode == OnlineLobbyMode.friends)
+                    TextField(
+                      controller: _roomController,
+                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(
+                        labelText: 'Enter room code',
+                        hintText: 'e.g. ABCD1234',
+                        suffixIcon: Icon(Icons.copy_rounded),
+                        border: OutlineInputBorder(),
+                      ),
+                      textCapitalization: TextCapitalization.characters,
+                    ),
+                  if (widget.initialMode == OnlineLobbyMode.friends)
+                    const SizedBox(height: 12),
+                  if (widget.initialMode == OnlineLobbyMode.friends)
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: <Widget>[
+                        OutlinedButton.icon(
+                          onPressed: _loading
+                              ? null
+                              : () => _run(
+                                    () => widget.api.createRoom(widget.token),
+                                  ),
+                          icon: const Icon(Icons.group_add_rounded),
+                          label: const Text('Create Room'),
+                        ),
+                        FilledButton.icon(
+                          onPressed:
+                              _loading || _roomController.text.trim().isEmpty
+                                  ? null
+                                  : () => _run(
+                                        () => widget.api.joinRoom(
+                                          widget.token,
+                                          _roomController.text,
+                                        ),
+                                      ),
+                          icon: const Icon(Icons.sports_esports_rounded),
+                          label: const Text('Join Room'),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: 12),
                   InkWell(
                     borderRadius: BorderRadius.circular(18),
@@ -10817,24 +11896,24 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
             Expanded(
               child: SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(compactDesktop ? 24 : 38,
-                    compactDesktop ? 22 : 30, compactDesktop ? 24 : 42, 40),
+                    compactDesktop ? 18 : 22, compactDesktop ? 24 : 36, 32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     Row(
                       children: <Widget>[
                         Container(
-                          width: 78,
-                          height: 78,
+                          width: 62,
+                          height: 62,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: const Color(0xFF082431),
                             border: Border.all(color: teal),
                           ),
-                          child: const Icon(Icons.sports_martial_arts_rounded,
-                              color: teal, size: 43),
+                          child: const Icon(Icons.language_rounded,
+                              color: teal, size: 34),
                         ),
-                        const SizedBox(width: 22),
+                        const SizedBox(width: 18),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -10842,12 +11921,12 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                               Text('Online 2 Players',
                                   style: textTheme.headlineLarge?.copyWith(
                                       fontWeight: FontWeight.w900,
-                                      fontSize: 38)),
-                              const SizedBox(height: 8),
+                                      fontSize: 32)),
+                              const SizedBox(height: 5),
                               const Text(
                                 'Play online with a random opponent or invite a friend to a private room.',
                                 style: TextStyle(
-                                    color: Color(0xFFB8C3D1), fontSize: 18),
+                                    color: Color(0xFFB8C3D1), fontSize: 16),
                               ),
                             ],
                           ),
@@ -10855,9 +11934,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                         IconButton.filled(
                           style: IconButton.styleFrom(
                               backgroundColor: const Color(0xFF0A1A2B),
-                              padding: const EdgeInsets.all(16)),
+                              padding: const EdgeInsets.all(12)),
                           onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.close_rounded, size: 30),
+                          icon: const Icon(Icons.close_rounded, size: 26),
                         ),
                       ],
                     ),
@@ -10866,9 +11945,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                       Text(_error!,
                           style: const TextStyle(color: Color(0xFFFF6B6B))),
                     ],
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 20),
                     Container(
-                      height: 288,
+                      height: 250,
                       decoration: BoxDecoration(
                         image: const DecorationImage(
                           image: AssetImage(
@@ -10883,32 +11962,32 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                         ],
                       ),
                       child: Padding(
-                        padding: EdgeInsets.fromLTRB(compactDesktop ? 175 : 305,
-                            38, compactDesktop ? 28 : 410, 30),
+                        padding: EdgeInsets.fromLTRB(compactDesktop ? 210 : 365,
+                            30, compactDesktop ? 22 : 340, 24),
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: SizedBox(
-                            width: compactDesktop ? 360 : 455,
+                            width: compactDesktop ? 340 : 410,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
                                 Text('Random Match',
                                     maxLines: 1,
                                     style: textTheme.headlineMedium?.copyWith(
-                                        fontSize: 34,
+                                        fontSize: 30,
                                         fontWeight: FontWeight.w900)),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 8),
                                 const Text(
                                   'We’ll find a player for you\nfrom around the world.',
                                   style: TextStyle(
                                       color: Color(0xFFC8D1DD),
-                                      fontSize: 20,
-                                      height: 1.45),
+                                      fontSize: 17,
+                                      height: 1.35),
                                 ),
                                 const Spacer(),
                                 SizedBox(
-                                  width: compactDesktop ? 250 : 290,
-                                  height: 54,
+                                  width: compactDesktop ? 230 : 260,
+                                  height: 48,
                                   child: FilledButton.icon(
                                     style: FilledButton.styleFrom(
                                       backgroundColor: gold,
@@ -10917,19 +11996,17 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                         horizontal: 20,
                                       ),
                                       textStyle: const TextStyle(
-                                        fontSize: 18,
+                                        fontSize: 16,
                                         fontWeight: FontWeight.w800,
                                       ),
                                     ),
                                     onPressed: _loading
                                         ? null
-                                        : () => _run(
-                                            () => widget.api
-                                                .randomMatch(widget.token),
+                                        : () => _run(_requestRandomMatch,
                                             randomSearch: true),
                                     icon: const Icon(
                                       Icons.bolt_rounded,
-                                      size: 24,
+                                      size: 21,
                                     ),
                                     label: const Text('Find Match'),
                                   ),
@@ -10942,8 +12019,8 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                     ),
                     const SizedBox(height: 18),
                     Container(
-                      height: 280,
-                      padding: const EdgeInsets.all(28),
+                      height: 242,
+                      padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
                         color: const Color(0xD9071A29),
                         borderRadius: BorderRadius.circular(24),
@@ -10959,34 +12036,34 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                               children: <Widget>[
                                 Row(children: <Widget>[
                                   Container(
-                                    width: 68,
-                                    height: 68,
+                                    width: 56,
+                                    height: 56,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       border: Border.all(
                                           color: const Color(0xFF267D72)),
                                     ),
                                     child: const Icon(Icons.group_rounded,
-                                        color: teal, size: 38),
+                                        color: teal, size: 31),
                                   ),
-                                  const SizedBox(width: 20),
+                                  const SizedBox(width: 16),
                                   const Text('Play with Friend',
                                       style: TextStyle(
-                                          fontSize: 28,
+                                          fontSize: 24,
                                           fontWeight: FontWeight.w900)),
                                 ]),
                                 const SizedBox(height: 8),
                                 const Padding(
-                                  padding: EdgeInsets.only(left: 88),
+                                  padding: EdgeInsets.only(left: 72),
                                   child: Text(
                                     'Create a private room or join\none using a room code.',
                                     style: TextStyle(
                                         color: Color(0xFFB8C3D1),
-                                        fontSize: 18,
+                                        fontSize: 16,
                                         height: 1.4),
                                   ),
                                 ),
-                                const SizedBox(height: 22),
+                                const SizedBox(height: 16),
                                 TextField(
                                   controller: _roomController,
                                   onChanged: (_) => setState(() {}),
@@ -11002,23 +12079,23 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 32),
+                          const SizedBox(width: 26),
                           const VerticalDivider(color: Color(0xFF244257)),
-                          const SizedBox(width: 32),
+                          const SizedBox(width: 26),
                           Expanded(
                             flex: 2,
                             child: Column(
                               children: <Widget>[
                                 SizedBox(
                                   width: double.infinity,
-                                  height: 76,
+                                  height: 62,
                                   child: OutlinedButton.icon(
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: Colors.white,
                                       side: const BorderSide(
                                           color: Color(0xFF23D8C2)),
                                       textStyle: const TextStyle(
-                                          fontSize: 22,
+                                          fontSize: 18,
                                           fontWeight: FontWeight.w800),
                                     ),
                                     onPressed: _loading
@@ -11026,14 +12103,14 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                         : () => _run(() => widget.api
                                             .createRoom(widget.token)),
                                     icon: const Icon(Icons.person_add_rounded,
-                                        color: teal, size: 32),
+                                        color: teal, size: 27),
                                     label: const Text('Create Room'),
                                   ),
                                 ),
-                                const SizedBox(height: 18),
+                                const SizedBox(height: 14),
                                 SizedBox(
                                   width: double.infinity,
-                                  height: 76,
+                                  height: 62,
                                   child: OutlinedButton.icon(
                                     onPressed: _loading ||
                                             _roomController.text.trim().isEmpty
@@ -11043,7 +12120,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                             _roomController.text)),
                                     icon: const Icon(
                                         Icons.sports_esports_rounded,
-                                        size: 32),
+                                        size: 27),
                                     label: const Text('Join Room'),
                                   ),
                                 ),
@@ -11160,16 +12237,26 @@ class _DesktopOnlineValidationRow extends StatelessWidget {
 
 class _MatchSearchingView extends StatefulWidget {
   const _MatchSearchingView({
+    required this.match,
     required this.randomSearch,
     required this.roomCode,
     required this.elapsedSeconds,
+    required this.onlinePlayerCount,
+    required this.wideLayout,
+    required this.preferences,
+    required this.onPreferencesChanged,
     required this.onCopyCode,
     required this.onCancel,
   });
 
+  final OnlineMatchDto match;
   final bool randomSearch;
   final String roomCode;
   final int elapsedSeconds;
+  final int? onlinePlayerCount;
+  final bool wideLayout;
+  final _SearchPreferences preferences;
+  final ValueChanged<_SearchPreferences> onPreferencesChanged;
   final VoidCallback onCopyCode;
   final VoidCallback onCancel;
 
@@ -11182,7 +12269,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
   late final AnimationController _pulse = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
-  )..repeat(reverse: true);
+  )..repeat();
 
   @override
   void dispose() {
@@ -11195,6 +12282,12 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
     final String timer =
         '${(widget.elapsedSeconds ~/ 60).toString().padLeft(2, '0')}:'
         '${(widget.elapsedSeconds % 60).toString().padLeft(2, '0')}';
+    if (widget.randomSearch) {
+      if (widget.wideLayout) {
+        return _buildWideReferenceSearch(context, timer);
+      }
+      return _buildMobileAdvancedSearch(context, timer);
+    }
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -11344,23 +12437,1329 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
       ),
     );
   }
+
+  Widget _buildWideReferenceSearch(BuildContext context, String timer) {
+    const Color teal = Color(0xFF58DFC9);
+    const Color gold = Color(0xFFF0B84B);
+    final bool userIsWhite = widget.match.yourColor == 'WHITE';
+    final String? resolvedName = userIsWhite
+        ? widget.match.whitePlayerName
+        : widget.match.blackPlayerName;
+    final String playerName =
+        resolvedName?.trim().isNotEmpty == true ? resolvedName!.trim() : 'You';
+    final String rating = widget.match.ratingBefore?.toString() ?? 'Unrated';
+    final int remaining = math.max(0, 20 - widget.elapsedSeconds);
+
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.1,
+      child: Material(
+        color: const Color(0xFF020B14),
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            Image.asset(
+              'assets/backgrounds/grandmaster-table-v1.webp',
+              fit: BoxFit.cover,
+              color: const Color(0xFF02101C).withValues(alpha: .86),
+              colorBlendMode: BlendMode.srcATop,
+              filterQuality: FilterQuality.medium,
+            ),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment(0, -.2),
+                  radius: 1.05,
+                  colors: <Color>[Color(0x3316B6AE), Color(0xF0020B14)],
+                ),
+              ),
+            ),
+            const Positioned(
+              left: -48,
+              bottom: -74,
+              child: Icon(Icons.castle_rounded,
+                  size: 300, color: Color(0x1558DFC9)),
+            ),
+            const Positioned(
+              right: -38,
+              bottom: -52,
+              child: Icon(Icons.castle_outlined,
+                  size: 330, color: Color(0x14F0B84B)),
+            ),
+            SafeArea(
+              child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+                  final bool compactHeight = constraints.maxHeight < 760;
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                        30, compactHeight ? 16 : 24, 30, 24),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1320),
+                        child: Column(
+                          children: <Widget>[
+                            Text(
+                              'RANKED RAPID • ${widget.preferences.timeControlMinutes} MIN',
+                              style: const TextStyle(
+                                color: gold,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 2.1,
+                              ),
+                            ),
+                            SizedBox(height: compactHeight ? 8 : 12),
+                            const Text(
+                              'FINDING YOUR RIVAL',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: 'serif',
+                                color: Color(0xFFF1EDE4),
+                                fontSize: 38,
+                                height: 1,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 7),
+                            const Text(
+                              'Searching worldwide for the best available match',
+                              style: TextStyle(
+                                  color: Color(0xFFB5BEC8), fontSize: 15),
+                            ),
+                            SizedBox(height: compactHeight ? 18 : 28),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: <Widget>[
+                                SizedBox(
+                                  width: 236,
+                                  child: _WideSearchPlayerCard(
+                                    accent: teal,
+                                    icon: Icons.person_rounded,
+                                    title: playerName,
+                                    rating: rating,
+                                    detail: rating == 'Unrated'
+                                        ? 'Unrated'
+                                        : 'Gold II',
+                                    footer: 'Worldwide',
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _WideSearchCore(
+                                    pulse: _pulse,
+                                    timer: timer,
+                                    compact: compactHeight,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: 236,
+                                  child: _WideSearchPlayerCard(
+                                    accent: gold,
+                                    icon: Icons.person_search_rounded,
+                                    title: 'Searching…',
+                                    rating: '????',
+                                    detail: 'Best match',
+                                    footer: 'Worldwide',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: compactHeight ? 12 : 18),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 620),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 11),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xD9071725),
+                                  borderRadius: BorderRadius.circular(15),
+                                  border: Border.all(
+                                      color: const Color(0xFF655A3D)),
+                                ),
+                                child: Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: _MobileSearchFact(
+                                        icon: Icons.groups_rounded,
+                                        value: widget.onlinePlayerCount
+                                                ?.toString() ??
+                                            '—',
+                                        label: 'Players online',
+                                      ),
+                                    ),
+                                    const _MobileFactDivider(),
+                                    Expanded(
+                                      child: _MobileSearchFact(
+                                        icon: Icons.schedule_rounded,
+                                        value: '< ${remaining}s',
+                                        label: 'Estimated wait',
+                                      ),
+                                    ),
+                                    const _MobileFactDivider(),
+                                    Expanded(
+                                      child: _MobileSearchFact(
+                                        icon: Icons.gps_fixed_rounded,
+                                        value: widget.preferences.ratingRange ==
+                                                0
+                                            ? 'Open'
+                                            : '±${widget.preferences.ratingRange}',
+                                        label: 'Rating range',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 520),
+                              child: SizedBox(
+                                width: double.infinity,
+                                height: 52,
+                                child: OutlinedButton.icon(
+                                  onPressed: widget.onCancel,
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: gold,
+                                    side: const BorderSide(
+                                        color: gold, width: 1.4),
+                                    textStyle: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w900),
+                                  ),
+                                  icon: const Icon(Icons.close_rounded),
+                                  label: const Text('CANCEL SEARCH'),
+                                ),
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: () =>
+                                  _showMobileSearchSettings(context),
+                              icon: const Icon(Icons.settings_rounded),
+                              label: const Text('SEARCH SETTINGS'),
+                            ),
+                            const Text(
+                              'Keep this screen open. Your match starts automatically.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  color: Color(0xFF98A4B0), fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Kept as a compact fallback while the shared composition is rolled out.
+  // ignore: unused_element
+  Widget _buildAdvancedSearch(BuildContext context, String timer) {
+    const Color teal = Color(0xFF58DFC9);
+    const Color gold = Color(0xFFE7B64F);
+    final bool userIsWhite = widget.match.yourColor == 'WHITE';
+    final String playerName = (userIsWhite
+                    ? widget.match.whitePlayerName
+                    : widget.match.blackPlayerName)
+                ?.trim()
+                .isNotEmpty ==
+            true
+        ? (userIsWhite
+            ? widget.match.whitePlayerName!
+            : widget.match.blackPlayerName!)
+        : 'ChessVerse Player';
+    final String rating = widget.match.ratingBefore?.toString() ?? 'Unrated';
+    final int remaining = math.max(0, 20 - widget.elapsedSeconds);
+
+    return Material(
+      color: const Color(0xFF020C16),
+      child: Container(
+        margin: const EdgeInsets.all(18),
+        padding: const EdgeInsets.fromLTRB(34, 26, 34, 24),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[Color(0xFF061B2B), Color(0xFF020B15)],
+          ),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: const Color(0xFF28475B)),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(color: Color(0x332FD9C4), blurRadius: 34),
+          ],
+        ),
+        child: Stack(
+          children: <Widget>[
+            const Positioned(
+              left: 18,
+              bottom: -46,
+              child: Icon(Icons.castle_rounded,
+                  size: 210, color: Color(0x0D58DFC9)),
+            ),
+            const Positioned(
+              right: 12,
+              top: -48,
+              child: Icon(Icons.castle_outlined,
+                  size: 230, color: Color(0x0DE7B64F)),
+            ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: teal.withValues(alpha: .12),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: teal.withValues(alpha: .65)),
+                      ),
+                      child: const Icon(Icons.language_rounded,
+                          color: teal, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text('CHESSVERSE AI MATCHMAKING',
+                              style: TextStyle(
+                                  color: gold,
+                                  fontSize: 13,
+                                  letterSpacing: 1.35,
+                                  fontWeight: FontWeight.w900)),
+                          SizedBox(height: 2),
+                          Text('Finding the strongest available rival',
+                              style: TextStyle(
+                                  color: Color(0xFF9FB1C2), fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                    _SearchFact(
+                      icon: Icons.public_rounded,
+                      value: widget.onlinePlayerCount?.toString() ?? '—',
+                      label: 'Online now',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: <Widget>[
+                    Expanded(
+                      child: _MatchPlayerCard(
+                        accent: teal,
+                        icon: Icons.person_rounded,
+                        eyebrow: 'YOU',
+                        name: playerName,
+                        rating: rating,
+                        detail: 'Worldwide pool',
+                        active: true,
+                      ),
+                    ),
+                    SizedBox(
+                      width: 210,
+                      child: Column(
+                        children: <Widget>[
+                          AnimatedBuilder(
+                            animation: _pulse,
+                            builder: (BuildContext context, Widget? child) {
+                              final double value =
+                                  Curves.easeInOut.transform(_pulse.value);
+                              return Transform.scale(
+                                scale: .94 + value * .08,
+                                child: Container(
+                                  width: 112,
+                                  height: 112,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: SweepGradient(
+                                      transform:
+                                          GradientRotation(value * math.pi * 2),
+                                      colors: const <Color>[
+                                        Color(0x0058DFC9),
+                                        teal,
+                                        Color(0x00E7B64F),
+                                        gold,
+                                        Color(0x0058DFC9),
+                                      ],
+                                    ),
+                                    boxShadow: <BoxShadow>[
+                                      BoxShadow(
+                                        color: teal.withValues(
+                                            alpha: .18 + value * .16),
+                                        blurRadius: 26,
+                                        spreadRadius: 4,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Container(
+                                    width: 94,
+                                    height: 94,
+                                    alignment: Alignment.center,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF071A2A),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Text('VS',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 28,
+                                            fontWeight: FontWeight.w900)),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          const Text('SEARCHING',
+                              style: TextStyle(
+                                  color: teal,
+                                  fontSize: 12,
+                                  letterSpacing: 1.8,
+                                  fontWeight: FontWeight.w900)),
+                          const SizedBox(height: 4),
+                          Text(timer,
+                              style: const TextStyle(
+                                  fontSize: 25,
+                                  fontWeight: FontWeight.w900,
+                                  fontFeatures: <ui.FontFeature>[
+                                    ui.FontFeature.tabularFigures(),
+                                  ])),
+                        ],
+                      ),
+                    ),
+                    const Expanded(
+                      child: _MatchPlayerCard(
+                        accent: gold,
+                        icon: Icons.person_search_rounded,
+                        eyebrow: 'RIVAL',
+                        name: 'Searching…',
+                        rating: 'Best match',
+                        detail: 'Worldwide pool',
+                        active: false,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 22),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xAA071725),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF233D50)),
+                  ),
+                  child: Row(
+                    children: <Widget>[
+                      _SearchFact(
+                        icon: Icons.timer_outlined,
+                        value: '${remaining}s',
+                        label: 'Search window',
+                      ),
+                      const _SearchDivider(),
+                      const _SearchFact(
+                        icon: Icons.speed_rounded,
+                        value: '10 min',
+                        label: 'Rapid chess',
+                      ),
+                      const _SearchDivider(),
+                      const _SearchFact(
+                        icon: Icons.tune_rounded,
+                        value: 'Open pool',
+                        label: 'Rating range',
+                      ),
+                      const Spacer(),
+                      OutlinedButton.icon(
+                        onPressed: widget.onCancel,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Color(0xFF806B45)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 16),
+                        ),
+                        icon: const Icon(Icons.close_rounded, size: 19),
+                        label: const Text('Cancel search'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileAdvancedSearch(BuildContext context, String timer) {
+    const Color teal = Color(0xFF58DFC9);
+    const Color gold = Color(0xFFF0B84B);
+    final bool userIsWhite = widget.match.yourColor == 'WHITE';
+    final String? resolvedName = userIsWhite
+        ? widget.match.whitePlayerName
+        : widget.match.blackPlayerName;
+    final String playerName =
+        resolvedName?.trim().isNotEmpty == true ? resolvedName!.trim() : 'You';
+    final String rating = widget.match.ratingBefore?.toString() ?? 'Unrated';
+    final int remaining = math.max(0, 20 - widget.elapsedSeconds);
+
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.1,
+      child: Material(
+        color: const Color(0xFF020B14),
+        child: Stack(
+          children: <Widget>[
+            const Positioned(
+              left: -64,
+              bottom: 80,
+              child: Icon(Icons.castle_rounded,
+                  size: 220, color: Color(0x0C58DFC9)),
+            ),
+            const Positioned(
+              right: -66,
+              bottom: 130,
+              child: Icon(Icons.castle_outlined,
+                  size: 220, color: Color(0x0CF0B84B)),
+            ),
+            SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(18, 6, 18, 18),
+                child: Column(
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        IconButton(
+                          tooltip: 'Cancel search',
+                          onPressed: widget.onCancel,
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                              color: gold),
+                        ),
+                        Expanded(
+                          child: Text(
+                            'RANKED RAPID • ${widget.preferences.timeControlMinutes} MIN',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: gold,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.7,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Search settings',
+                          onPressed: () => _showMobileSearchSettings(context),
+                          icon: const Icon(Icons.tune_rounded, color: gold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    const Text(
+                      'FINDING YOUR RIVAL',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .7,
+                        fontFamily: 'serif',
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    const Text(
+                      'Searching worldwide for the best available match',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xFFA8B4C1), fontSize: 12),
+                    ),
+                    const SizedBox(height: 13),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: _MobileMatchPlayerCard(
+                            accent: teal,
+                            icon: Icons.person_rounded,
+                            title: playerName,
+                            rating: rating,
+                            subtitle: 'Worldwide',
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 7),
+                          child: AnimatedBuilder(
+                            animation: _pulse,
+                            builder: (BuildContext context, Widget? child) {
+                              final double value =
+                                  Curves.easeInOut.transform(_pulse.value);
+                              return Container(
+                                width: 50 + value * 4,
+                                height: 50 + value * 4,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF071725),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: gold),
+                                  boxShadow: <BoxShadow>[
+                                    BoxShadow(
+                                      color: gold.withValues(
+                                          alpha: .13 + value * .16),
+                                      blurRadius: 18,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                                child: const Text('VS',
+                                    style: TextStyle(
+                                        color: gold,
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w900)),
+                              );
+                            },
+                          ),
+                        ),
+                        const Expanded(
+                          child: _MobileMatchPlayerCard(
+                            accent: gold,
+                            icon: Icons.person_search_rounded,
+                            title: 'Searching…',
+                            rating: 'Best match',
+                            subtitle: 'Worldwide',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    AnimatedBuilder(
+                      animation: _pulse,
+                      builder: (BuildContext context, Widget? child) {
+                        final double value =
+                            Curves.easeInOut.transform(_pulse.value);
+                        return SizedBox.square(
+                          dimension: 212,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: <Widget>[
+                              for (int index = 0; index < 4; index++)
+                                Builder(builder: (BuildContext context) {
+                                  final double wave = (value + index / 4) % 1.0;
+                                  return Container(
+                                    width: 106 + wave * 104,
+                                    height: 106 + wave * 104,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: (index.isEven ? teal : gold)
+                                            .withValues(
+                                          alpha: (.52 * (1 - wave)) + .04,
+                                        ),
+                                        width: 1.2 + (1 - wave),
+                                      ),
+                                      boxShadow: <BoxShadow>[
+                                        BoxShadow(
+                                          color: (index.isEven ? teal : gold)
+                                              .withValues(
+                                            alpha: .13 * (1 - wave),
+                                          ),
+                                          blurRadius: 14,
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              Container(
+                                width: 158,
+                                height: 158,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: RadialGradient(
+                                    colors: <Color>[
+                                      teal.withValues(alpha: .2),
+                                      const Color(0xFF03111D),
+                                    ],
+                                  ),
+                                  border: Border.all(
+                                      color: teal.withValues(alpha: .7)),
+                                  boxShadow: <BoxShadow>[
+                                    BoxShadow(
+                                      color: teal.withValues(alpha: .2),
+                                      blurRadius: 26,
+                                    ),
+                                  ],
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Image.asset(
+                                    'assets/matchmaking/neon_rival_knights.png',
+                                    fit: BoxFit.contain,
+                                    filterQuality: FilterQuality.high,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                    const Text('SEARCH TIME',
+                        style: TextStyle(
+                            color: Color(0xFFAAB5C1),
+                            fontSize: 12,
+                            letterSpacing: 1.4)),
+                    Text(timer,
+                        style: const TextStyle(
+                            color: teal,
+                            fontSize: 34,
+                            fontWeight: FontWeight.w900,
+                            fontFeatures: <ui.FontFeature>[
+                              ui.FontFeature.tabularFigures(),
+                            ])),
+                    const SizedBox(height: 9),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 9),
+                      decoration: BoxDecoration(
+                        color: const Color(0xD9071725),
+                        borderRadius: BorderRadius.circular(17),
+                        border: Border.all(color: const Color(0xFF46503F)),
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: _MobileSearchFact(
+                              icon: Icons.groups_rounded,
+                              value:
+                                  widget.onlinePlayerCount?.toString() ?? '—',
+                              label: 'Online',
+                            ),
+                          ),
+                          const _MobileFactDivider(),
+                          Expanded(
+                            child: _MobileSearchFact(
+                              icon: Icons.schedule_rounded,
+                              value: '${remaining}s',
+                              label: 'Window',
+                            ),
+                          ),
+                          const _MobileFactDivider(),
+                          Expanded(
+                            child: _MobileSearchFact(
+                              icon: Icons.gps_fixed_rounded,
+                              value: widget.preferences.ratingRange == 0
+                                  ? 'Open'
+                                  : '±${widget.preferences.ratingRange}',
+                              label: 'Range',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 9),
+                    const Text(
+                      'Keep this screen open. Your match starts automatically.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Color(0xFF94A2AF), fontSize: 12),
+                    ),
+                    const SizedBox(height: 11),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: OutlinedButton.icon(
+                        onPressed: widget.onCancel,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: gold,
+                          side: const BorderSide(color: gold, width: 1.4),
+                          textStyle: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w900),
+                        ),
+                        icon: const Icon(Icons.close_rounded),
+                        label: const Text('CANCEL SEARCH'),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _showMobileSearchSettings(context),
+                      icon: const Icon(Icons.tune_rounded),
+                      label: const Text('SEARCH SETTINGS'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showMobileSearchSettings(BuildContext context) async {
+    int minutes = widget.preferences.timeControlMinutes;
+    String region = widget.preferences.region;
+    int range = widget.preferences.ratingRange;
+    final _SearchPreferences? selected =
+        await showModalBottomSheet<_SearchPreferences>(
+      context: context,
+      backgroundColor: const Color(0xFF071725),
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) => StatefulBuilder(
+        builder: (BuildContext context, StateSetter setSheetState) =>
+            MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.1,
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                24,
+                8,
+                24,
+                28 + MediaQuery.viewInsetsOf(context).bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  const Text('Search settings',
+                      style:
+                          TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<int>(
+                    initialValue: minutes,
+                    decoration: const InputDecoration(
+                      labelText: 'Time control',
+                      prefixIcon: Icon(Icons.speed_rounded),
+                    ),
+                    items: const <DropdownMenuItem<int>>[
+                      DropdownMenuItem(value: 3, child: Text('Blitz • 3 min')),
+                      DropdownMenuItem(value: 5, child: Text('Blitz • 5 min')),
+                      DropdownMenuItem(
+                          value: 10, child: Text('Rapid • 10 min')),
+                      DropdownMenuItem(
+                          value: 15, child: Text('Rapid • 15 min')),
+                    ],
+                    onChanged: (int? value) =>
+                        setSheetState(() => minutes = value ?? 10),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: region,
+                    decoration: const InputDecoration(
+                      labelText: 'Region',
+                      prefixIcon: Icon(Icons.public_rounded),
+                    ),
+                    items: const <DropdownMenuItem<String>>[
+                      DropdownMenuItem(
+                          value: 'WORLDWIDE', child: Text('Worldwide')),
+                      DropdownMenuItem(
+                          value: 'COUNTRY', child: Text('My country')),
+                    ],
+                    onChanged: (String? value) =>
+                        setSheetState(() => region = value ?? 'WORLDWIDE'),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    initialValue: range,
+                    decoration: const InputDecoration(
+                      labelText: 'Rating range',
+                      prefixIcon: Icon(Icons.tune_rounded),
+                    ),
+                    items: const <DropdownMenuItem<int>>[
+                      DropdownMenuItem(value: 100, child: Text('±100 rating')),
+                      DropdownMenuItem(value: 250, child: Text('±250 rating')),
+                      DropdownMenuItem(value: 500, child: Text('±500 rating')),
+                      DropdownMenuItem(value: 0, child: Text('Open pool')),
+                    ],
+                    onChanged: (int? value) =>
+                        setSheetState(() => range = value ?? 0),
+                  ),
+                  const SizedBox(height: 18),
+                  FilledButton.icon(
+                    onPressed: () => Navigator.of(sheetContext).pop((
+                      timeControlMinutes: minutes,
+                      region: region,
+                      ratingRange: range,
+                    )),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('APPLY & RESTART SEARCH'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    if (selected != null && selected != widget.preferences) {
+      widget.onPreferencesChanged(selected);
+    }
+  }
 }
 
-class _OpponentFoundView extends StatelessWidget {
+class _WideSearchPlayerCard extends StatelessWidget {
+  const _WideSearchPlayerCard({
+    required this.accent,
+    required this.icon,
+    required this.title,
+    required this.rating,
+    required this.detail,
+    required this.footer,
+  });
+
+  final Color accent;
+  final IconData icon;
+  final String title;
+  final String rating;
+  final String detail;
+  final String footer;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 318,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      decoration: BoxDecoration(
+        color: const Color(0xE8071A2A),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accent.withValues(alpha: .85), width: 1.25),
+        boxShadow: <BoxShadow>[
+          BoxShadow(color: accent.withValues(alpha: .09), blurRadius: 28),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Container(
+            width: 104,
+            height: 104,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(colors: <Color>[
+                accent.withValues(alpha: .27),
+                const Color(0xFF061522),
+              ]),
+              border: Border.all(color: accent, width: 1.5),
+              boxShadow: <BoxShadow>[
+                BoxShadow(color: accent.withValues(alpha: .2), blurRadius: 20),
+              ],
+            ),
+            child: Icon(icon, color: accent, size: 58),
+          ),
+          const SizedBox(height: 14),
+          Text(title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 8),
+          Text('🏆  $rating',
+              style:
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 7),
+          Text(detail,
+              style: TextStyle(
+                  color: accent, fontSize: 16, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          Text(footer,
+              style: const TextStyle(color: Color(0xFFA6B2BE), fontSize: 13)),
+        ],
+      ),
+    );
+  }
+}
+
+class _WideSearchCore extends StatelessWidget {
+  const _WideSearchCore({
+    required this.pulse,
+    required this.timer,
+    required this.compact,
+  });
+
+  final Animation<double> pulse;
+  final String timer;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    const Color teal = Color(0xFF58DFC9);
+    const Color gold = Color(0xFFF0B84B);
+    final double dimension = compact ? 270 : 318;
+    return Column(
+      children: <Widget>[
+        AnimatedBuilder(
+          animation: pulse,
+          builder: (BuildContext context, Widget? child) {
+            final double value = Curves.easeInOut.transform(pulse.value);
+            return SizedBox.square(
+              dimension: dimension,
+              child: Stack(
+                alignment: Alignment.center,
+                children: <Widget>[
+                  for (int index = 0; index < 5; index++)
+                    Builder(builder: (BuildContext context) {
+                      final double wave = (value + index / 5) % 1;
+                      return Container(
+                        width: dimension * (.5 + wave * .48),
+                        height: dimension * (.5 + wave * .48),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: (index.isEven ? teal : gold)
+                                .withValues(alpha: .5 * (1 - wave) + .03),
+                            width: 1.2,
+                          ),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: (index.isEven ? teal : gold)
+                                  .withValues(alpha: .12 * (1 - wave)),
+                              blurRadius: 18,
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  Container(
+                    width: dimension * .72,
+                    height: dimension * .72,
+                    padding: EdgeInsets.all(dimension * .055),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(colors: <Color>[
+                        teal.withValues(alpha: .22),
+                        const Color(0xFF03111D),
+                      ]),
+                      border: Border.all(color: teal.withValues(alpha: .72)),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                            color: teal.withValues(alpha: .22), blurRadius: 34),
+                      ],
+                    ),
+                    child: Image.asset(
+                      'assets/matchmaking/neon_rival_knights.png',
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
+                    ),
+                  ),
+                  Container(
+                    width: 68,
+                    height: 68,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xF2071725),
+                      border: Border.all(color: gold, width: 1.4),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                            color: gold.withValues(alpha: .25), blurRadius: 22),
+                      ],
+                    ),
+                    child: const Text('VS',
+                        style: TextStyle(
+                            color: gold,
+                            fontFamily: 'serif',
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900)),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        const Text('SEARCH TIME',
+            style: TextStyle(
+                color: Color(0xFFAAB5C1), fontSize: 12, letterSpacing: 1.6)),
+        Text(timer,
+            style: const TextStyle(
+                color: teal,
+                fontSize: 38,
+                height: 1.1,
+                fontWeight: FontWeight.w900,
+                fontFeatures: <ui.FontFeature>[
+                  ui.FontFeature.tabularFigures(),
+                ])),
+      ],
+    );
+  }
+}
+
+class _MobileMatchPlayerCard extends StatelessWidget {
+  const _MobileMatchPlayerCard({
+    required this.accent,
+    required this.icon,
+    required this.title,
+    required this.rating,
+    required this.subtitle,
+  });
+
+  final Color accent;
+  final IconData icon;
+  final String title;
+  final String rating;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 112,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xD9071928),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: accent.withValues(alpha: .75)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Container(
+              width: 39,
+              height: 39,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: accent.withValues(alpha: .13),
+                border: Border.all(color: accent.withValues(alpha: .7)),
+              ),
+              child: Icon(icon, color: accent, size: 24),
+            ),
+            const SizedBox(height: 3),
+            Text(title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 2),
+            Text(rating,
+                maxLines: 1,
+                style: TextStyle(
+                    color: accent, fontSize: 12, fontWeight: FontWeight.w800)),
+            Text(subtitle,
+                style: const TextStyle(color: Color(0xFF91A3B4), fontSize: 10)),
+          ],
+        ),
+      );
+}
+
+class _MobileSearchFact extends StatelessWidget {
+  const _MobileSearchFact({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: <Widget>[
+          Icon(icon, color: const Color(0xFF58DFC9), size: 22),
+          const SizedBox(height: 3),
+          Text(value,
+              maxLines: 1, style: const TextStyle(fontWeight: FontWeight.w900)),
+          Text(label,
+              style: const TextStyle(color: Color(0xFF94A5B5), fontSize: 10)),
+        ],
+      );
+}
+
+class _MobileFactDivider extends StatelessWidget {
+  const _MobileFactDivider();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 1,
+        height: 48,
+        color: const Color(0xFF334A5B),
+      );
+}
+
+// ignore: unused_element
+class _SearchSettingRow extends StatelessWidget {
+  const _SearchSettingRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        child: Row(
+          children: <Widget>[
+            Icon(icon, color: const Color(0xFF58DFC9)),
+            const SizedBox(width: 14),
+            Expanded(child: Text(label)),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
+          ],
+        ),
+      );
+}
+
+class _MatchPlayerCard extends StatelessWidget {
+  const _MatchPlayerCard({
+    required this.accent,
+    required this.icon,
+    required this.eyebrow,
+    required this.name,
+    required this.rating,
+    required this.detail,
+    required this.active,
+  });
+
+  final Color accent;
+  final IconData icon;
+  final String eyebrow;
+  final String name;
+  final String rating;
+  final String detail;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: const Color(0xD9071929),
+          borderRadius: BorderRadius.circular(22),
+          border:
+              Border.all(color: accent.withValues(alpha: active ? .75 : .4)),
+        ),
+        child: Column(
+          children: <Widget>[
+            Text(eyebrow,
+                style: TextStyle(
+                    color: accent,
+                    fontSize: 12,
+                    letterSpacing: 1.6,
+                    fontWeight: FontWeight.w900)),
+            const SizedBox(height: 14),
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: accent.withValues(alpha: .11),
+                border: Border.all(color: accent.withValues(alpha: .72)),
+              ),
+              child: Icon(icon, color: accent, size: 38),
+            ),
+            const SizedBox(height: 13),
+            Text(name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 7),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 7,
+              children: <Widget>[
+                Icon(Icons.military_tech_rounded, color: accent, size: 17),
+                Text(rating,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+              ],
+            ),
+            const SizedBox(height: 5),
+            Text(detail,
+                style: const TextStyle(color: Color(0xFF95A8BA), fontSize: 12)),
+          ],
+        ),
+      );
+}
+
+class _SearchFact extends StatelessWidget {
+  const _SearchFact({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 21, color: const Color(0xFF58DFC9)),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
+              Text(label,
+                  style:
+                      const TextStyle(color: Color(0xFF8FA3B6), fontSize: 11)),
+            ],
+          ),
+        ],
+      );
+}
+
+class _SearchDivider extends StatelessWidget {
+  const _SearchDivider();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 1,
+        height: 32,
+        margin: const EdgeInsets.symmetric(horizontal: 20),
+        color: const Color(0xFF294255),
+      );
+}
+
+class _OpponentFoundView extends StatefulWidget {
   const _OpponentFoundView({required this.match});
 
   final OnlineMatchDto match;
 
   @override
+  State<_OpponentFoundView> createState() => _OpponentFoundViewState();
+}
+
+class _OpponentFoundViewState extends State<_OpponentFoundView> {
+  int _countdown = 3;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
+      if (!mounted || _countdown <= 1) {
+        timer.cancel();
+        return;
+      }
+      setState(() => _countdown--);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final OnlineMatchDto match = widget.match;
     final String you = match.yourColor == 'WHITE'
         ? (match.whitePlayerName ?? 'You')
         : (match.blackPlayerName ?? 'You');
     final String rival = match.yourColor == 'WHITE'
         ? (match.blackPlayerName ?? 'Online Rival')
         : (match.whitePlayerName ?? 'Online Rival');
+    const Color teal = Color(0xFF55E5D0);
+    const Color gold = Color(0xFFF1B94C);
+    final bool wide = MediaQuery.sizeOf(context).width >= 760;
+    final String rating = match.ratingBefore?.toString() ?? 'Unrated';
     return Material(
-      color: Colors.transparent,
+      color: const Color(0xFF010A13),
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(begin: 0, end: 1),
         duration: const Duration(milliseconds: 700),
@@ -11371,19 +13770,22 @@ class _OpponentFoundView extends StatelessWidget {
             child: Transform.scale(
               scale: 0.86 + value * 0.14,
               child: Container(
-                margin: const EdgeInsets.all(18),
-                padding: const EdgeInsets.fromLTRB(18, 28, 18, 24),
+                constraints: BoxConstraints(maxWidth: wide ? 1160 : 540),
+                margin: EdgeInsets.all(wide ? 22 : 10),
+                padding: EdgeInsets.fromLTRB(
+                  wide ? 34 : 16,
+                  wide ? 28 : 16,
+                  wide ? 34 : 16,
+                  wide ? 24 : 18,
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: <Color>[Color(0xFF123A42), Color(0xFF071A2C)],
+                    colors: <Color>[Color(0xFF061B2A), Color(0xFF010A13)],
                   ),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: const Color(0xFFE5B856),
-                    width: 1.5,
-                  ),
+                  borderRadius: BorderRadius.circular(wide ? 32 : 24),
+                  border: Border.all(color: gold.withValues(alpha: .7)),
                   boxShadow: <BoxShadow>[
                     BoxShadow(
                       color: const Color(
@@ -11394,70 +13796,150 @@ class _OpponentFoundView extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    const Icon(
-                      Icons.check_circle_rounded,
-                      color: Color(0xFF63D2B8),
-                      size: 42,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'OPPONENT FOUND',
-                      style: TextStyle(
-                        color: Color(0xFF63D2B8),
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.4,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text(
+                        'RANKED RAPID • ${(match.whiteTimeMs ~/ 60000).clamp(1, 60)} MIN',
+                        style: const TextStyle(
+                            color: gold,
+                            fontSize: 12,
+                            letterSpacing: 2,
+                            fontWeight: FontWeight.w900),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: _VersusPlayerCard(
-                            name: you,
-                            color: const Color(0xFF3D9FFF),
-                            label: 'YOU',
-                          ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'RIVAL FOUND',
+                        style: TextStyle(
+                          color: Color(0xFFF4EFE5),
+                          fontSize: wide ? 38 : 29,
+                          fontFamily: 'serif',
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.6,
                         ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Transform.scale(
-                            scale: value,
-                            child: const Text(
-                              'VS',
-                              style: TextStyle(
-                                color: Color(0xFFE5B856),
-                                fontSize: 30,
-                                fontWeight: FontWeight.w900,
-                                fontStyle: FontStyle.italic,
-                              ),
+                      ),
+                      const Text('Your match is ready',
+                          style: TextStyle(
+                              color: Color(0xFFB7C1CB), fontSize: 15)),
+                      SizedBox(height: wide ? 20 : 15),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: _VersusPlayerCard(
+                              name: you,
+                              color: teal,
+                              label: 'YOU • ${match.yourColor}',
+                              rating: rating,
+                              rival: false,
                             ),
                           ),
-                        ),
-                        Expanded(
-                          child: _VersusPlayerCard(
-                            name: rival,
-                            color: const Color(0xFFFF5577),
-                            label: 'RIVAL',
+                          Padding(
+                            padding:
+                                EdgeInsets.symmetric(horizontal: wide ? 28 : 7),
+                            child: Container(
+                              width: wide ? 88 : 54,
+                              height: wide ? 88 : 54,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color(0xFF061522),
+                                  border: Border.all(color: gold, width: 1.4),
+                                  boxShadow: <BoxShadow>[
+                                    BoxShadow(
+                                        color: gold.withValues(alpha: .28),
+                                        blurRadius: 28)
+                                  ]),
+                              child: Text('VS',
+                                  style: TextStyle(
+                                      color: gold,
+                                      fontFamily: 'serif',
+                                      fontSize: wide ? 30 : 20,
+                                      fontWeight: FontWeight.w900)),
+                            ),
+                          ),
+                          Expanded(
+                            child: _VersusPlayerCard(
+                              name: rival,
+                              color: gold,
+                              label:
+                                  'RIVAL • ${match.yourColor == 'WHITE' ? 'BLACK' : 'WHITE'}',
+                              rating: 'Ready',
+                              rival: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: wide ? 18 : 15),
+                      TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0, end: 1),
+                        duration: const Duration(seconds: 3),
+                        builder: (BuildContext context, double progress,
+                                Widget? child) =>
+                            SizedBox.square(
+                          dimension: wide ? 210 : 164,
+                          child: CustomPaint(
+                            painter: _CountdownRingPainter(progress: progress),
+                            child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: <Widget>[
+                                  const Text('MATCH STARTS IN',
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          letterSpacing: 1.2,
+                                          color: Color(0xFFB4BEC8))),
+                                  Text('$_countdown',
+                                      style: TextStyle(
+                                          color: teal,
+                                          fontSize: wide ? 76 : 62,
+                                          height: 1.05,
+                                          fontWeight: FontWeight.w900,
+                                          shadows: const <Shadow>[
+                                            Shadow(color: teal, blurRadius: 22)
+                                          ])),
+                                ]),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    const LinearProgressIndicator(
-                      minHeight: 5,
-                      color: Color(0xFF63D2B8),
-                      backgroundColor: Color(0xFF163344),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Preparing the board...',
-                      style: TextStyle(color: Color(0xFFD7D4CC)),
-                    ),
-                  ],
+                      ),
+                      SizedBox(height: wide ? 16 : 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                            color: const Color(0xD9071928),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFF314A5C))),
+                        child: Row(children: <Widget>[
+                          Expanded(
+                              child: _FoundFact(
+                                  icon: Icons.schedule_rounded,
+                                  label:
+                                      'Rapid • ${(match.whiteTimeMs ~/ 60000).clamp(1, 60)} min')),
+                          const _MobileFactDivider(),
+                          const Expanded(
+                              child: _FoundFact(
+                                  icon: Icons.shield_outlined,
+                                  label: 'Rated Match')),
+                          const _MobileFactDivider(),
+                          const Expanded(
+                              child: _FoundFact(
+                                  icon: Icons.wifi_rounded,
+                                  label: 'Live server')),
+                        ]),
+                      ),
+                      const SizedBox(height: 13),
+                      const Text(
+                          'Preparing the board and synchronizing clocks...',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: Color(0xFFB4BEC8), fontSize: 12)),
+                      const SizedBox(height: 8),
+                      const LinearProgressIndicator(
+                          minHeight: 4,
+                          color: teal,
+                          backgroundColor: Color(0xFF173344)),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -11473,47 +13955,128 @@ class _VersusPlayerCard extends StatelessWidget {
     required this.name,
     required this.color,
     required this.label,
+    required this.rating,
+    required this.rival,
   });
 
   final String name;
   final Color color;
   final String label;
+  final String rating;
+  final bool rival;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: <Widget>[
-        Container(
-          width: 76,
-          height: 76,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color, width: 2),
+    return Container(
+      padding: EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: MediaQuery.sizeOf(context).width >= 760 ? 16 : 10),
+      decoration: BoxDecoration(
+          color: const Color(0xC9071928),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: .8))),
+      child: Column(
+        children: <Widget>[
+          Container(
+            width: MediaQuery.sizeOf(context).width >= 760 ? 96 : 66,
+            height: MediaQuery.sizeOf(context).width >= 760 ? 96 : 66,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+              border: Border.all(color: color, width: 2),
+            ),
+            child: Icon(
+                rival ? Icons.person_search_rounded : Icons.person_rounded,
+                color: color,
+                size: MediaQuery.sizeOf(context).width >= 760 ? 58 : 40),
           ),
-          child: Icon(Icons.person_rounded, color: color, size: 48),
-        ),
-        const SizedBox(height: 9),
-        Text(
-          name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.1,
+          const SizedBox(height: 9),
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.w900),
           ),
-        ),
-      ],
+          const SizedBox(height: 3),
+          Text(rating,
+              style: TextStyle(
+                  color: color, fontSize: 12, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.1,
+            ),
+          ),
+        ],
+      ),
     );
   }
+}
+
+class _FoundFact extends StatelessWidget {
+  const _FoundFact({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+  @override
+  Widget build(BuildContext context) =>
+      Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+        Icon(icon, color: const Color(0xFF55E5D0), size: 21),
+        const SizedBox(height: 4),
+        Text(label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                fontSize: 11,
+                color: Color(0xFFD9D5CC),
+                fontWeight: FontWeight.w700)),
+      ]);
+}
+
+class _CountdownRingPainter extends CustomPainter {
+  const _CountdownRingPainter({required this.progress});
+  final double progress;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Offset center = size.center(Offset.zero);
+    final double radius = size.shortestSide / 2 - 10;
+    final Paint track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..color = const Color(0xFF193A45);
+    final Paint glow = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 9
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xFF55E5D0)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9);
+    final Paint arc = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round
+      ..shader = const SweepGradient(colors: <Color>[
+        Color(0xFF55E5D0),
+        Color(0xFFF1B94C),
+        Color(0xFF55E5D0)
+      ]).createShader(Rect.fromCircle(center: center, radius: radius));
+    canvas.drawCircle(center, radius, track);
+    final double sweep = math.pi * 2 * progress;
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2, sweep, false, glow);
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2, sweep, false, arc);
+    canvas.drawCircle(
+        center, radius - 15, track..color = const Color(0xFF27606A));
+  }
+
+  @override
+  bool shouldRepaint(covariant _CountdownRingPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 class MoveHistorySheet extends StatelessWidget {
@@ -12123,7 +14686,9 @@ class AuthOverlay extends StatelessWidget {
 }
 
 class _TurnBanner extends StatelessWidget {
-  const _TurnBanner();
+  const _TurnBanner({required this.label});
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -12132,7 +14697,7 @@ class _TurnBanner extends StatelessWidget {
         alignment: const Alignment(0, -0.72),
         child: Semantics(
           liveRegion: true,
-          label: 'Your turn',
+          label: label,
           child: TweenAnimationBuilder<double>(
             key: const ValueKey<String>('prominent-turn-banner'),
             tween: Tween<double>(begin: 0, end: 1),
@@ -12147,8 +14712,8 @@ class _TurnBanner extends StatelessWidget {
                 ),
               );
             },
-            child: const Text(
-              'YOUR TURN',
+            child: Text(
+              label,
               style: TextStyle(
                 color: Color(0xFF4DA8FF),
                 fontSize: 22,
@@ -12233,6 +14798,67 @@ class OnlineReconnectCountdown extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DrawResultBadge extends StatelessWidget {
+  const _DrawResultBadge({required this.detail});
+
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: Center(
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: .72, end: 1),
+            duration: const Duration(milliseconds: 360),
+            curve: Curves.easeOutBack,
+            builder: (BuildContext context, double scale, Widget? child) =>
+                Transform.scale(scale: scale, child: child),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: const Color(0xF2071827),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: const Color(0xFF65C9F4),
+                  width: 1.5,
+                ),
+                boxShadow: const <BoxShadow>[
+                  BoxShadow(color: Color(0x663CA6FF), blurRadius: 28),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 16,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    const Text(
+                      'DRAW',
+                      style: TextStyle(
+                        color: Color(0xFF65C9F4),
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      detail,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
 }
 
 class OnlineVictoryCelebration extends StatefulWidget {
@@ -12561,19 +15187,10 @@ class GameResultOverlay extends StatelessWidget {
         ),
       ),
     );
-    if (draw || missed) return resultCard;
-    return Stack(
-      fit: StackFit.expand,
-      children: <Widget>[
-        resultCard,
-        Positioned.fill(
-          child: OnlineVictoryCelebration(
-            winnerAtTop: true,
-            title: title,
-          ),
-        ),
-      ],
-    );
+    // The board already presents the cinematic king-fall/title/fireworks
+    // sequence before this result sheet is revealed. Keep the sheet calm and
+    // fully readable instead of starting a second celebration over its CTAs.
+    return resultCard;
   }
 }
 

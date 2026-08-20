@@ -32,13 +32,21 @@ class OnlineMatchServiceTest {
         white = new AuthenticatedPlayer(UUID.randomUUID(), "white", "White Player", "https://example.com/white.png");
         black = new AuthenticatedPlayer(UUID.randomUUID(), "black", "Black Player", "https://example.com/black.png");
         when(repository.save(any(OnlineMatch.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(ratings.profile(any(AuthenticatedPlayer.class))).thenAnswer(invocation -> {
+            AuthenticatedPlayer player = invocation.getArgument(0);
+            return new LeaderboardDtos.PlayerRatingDto(
+                    player.id(), player.displayName(), "India", 1200, 1200,
+                    0, 0, 0, 0, 1, 1);
+        });
     }
 
     @Test
     void secondRandomPlayerActivatesOldestWaitingMatch() {
         OnlineMatch waiting = waitingMatch();
         when(repository.findCurrentForPlayer(black.id())).thenReturn(Optional.empty());
-        when(repository.lockOldestRandomOpponent(eq(black.id()), any()))
+        when(repository.lockOldestRandomOpponent(
+                eq(black.id()), any(), eq(10), eq("WORLDWIDE"),
+                eq("India"), eq(1200), eq(0)))
                 .thenReturn(Optional.of(waiting));
 
         OnlineDtos.MatchDto result = service.randomMatch(black);
@@ -207,6 +215,9 @@ class OnlineMatchServiceTest {
     @Test
     void secondRematchRequestCreatesColorSwappedMatch() {
         OnlineMatch match = activeMatch();
+        match.timeControlMinutes = 5;
+        match.whiteTimeMs = 5 * 60 * 1000L;
+        match.blackTimeMs = 5 * 60 * 1000L;
         match.status = OnlineMatchStatus.FINISHED;
         match.result = "1-0";
         when(repository.lockById(match.id)).thenReturn(Optional.of(match));
@@ -218,6 +229,8 @@ class OnlineMatchServiceTest {
         assertEquals(OnlineMatchStatus.ACTIVE, rematch.status());
         assertEquals("Black Player", rematch.whitePlayerName());
         assertEquals("white", rematch.yourColor());
+        assertEquals(5 * 60 * 1000L, rematch.whiteTimeMs());
+        assertEquals(5 * 60 * 1000L, rematch.blackTimeMs());
     }
 
     @Test
@@ -258,6 +271,32 @@ class OnlineMatchServiceTest {
         assertEquals("1-0", match.result);
         assertEquals("OPPONENT_LEFT", match.resultReason);
         verify(ratings).settle(match);
+    }
+
+    @Test
+    void challengeCannotReplaceAnActiveMatch() {
+        OnlineMatch match = activeMatch();
+        when(repository.findCurrentForPlayer(white.id())).thenReturn(Optional.of(match));
+
+        OnlineMatchException error = assertThrows(
+                OnlineMatchException.class,
+                () -> service.createChallengeRoom(white, 10));
+
+        assertEquals(HttpStatus.CONFLICT, error.status());
+        assertEquals(OnlineMatchStatus.ACTIVE, match.status);
+    }
+
+    @Test
+    void challengeReplacesAStaleWaitingQueueWithPrivateTimedRoom() {
+        OnlineMatch queued = waitingMatch();
+        when(repository.findCurrentForPlayer(white.id())).thenReturn(Optional.of(queued));
+        when(repository.findByRoomCodeIgnoreCase(any())).thenReturn(Optional.empty());
+
+        OnlineDtos.MatchDto result = service.createChallengeRoom(white, 5);
+
+        assertEquals(OnlineMatchStatus.CANCELLED, queued.status);
+        assertEquals(OnlineMatchStatus.WAITING, result.status());
+        assertEquals(5 * 60 * 1000L, result.whiteTimeMs());
     }
 
     private OnlineMatch waitingMatch() {

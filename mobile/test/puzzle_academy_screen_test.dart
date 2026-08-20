@@ -5,6 +5,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('rotated phone keeps the mobile puzzle composition', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(932, 430);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.darkTheme,
+        home: const PuzzleAcademyScreen(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('puzzle-mobile-layout')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('puzzle-wide-layout')),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('puzzle academy launches the selected difficulty', (
     WidgetTester tester,
   ) async {
@@ -60,6 +87,39 @@ void main() {
     expect(find.text('FEATURED PUZZLE'), findsOneWidget);
     expect(find.text('Easy Tactics'), findsOneWidget);
     expect(find.text('0/50'), findsNWidgets(3));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop training CTA opens real progress insights', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.darkTheme,
+        home: const PuzzleAcademyScreen(showPrimaryNavigation: false),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('VIEW INSIGHTS'), findsOneWidget);
+    expect(find.text('Accuracy'), findsNothing);
+    await tester.tap(
+      find.byKey(const ValueKey<String>('view-training-insights')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('TRAINING INSIGHTS'), findsOneWidget);
+    expect(find.text('COMPLETION'), findsOneWidget);
+    expect(find.text('REMAINING'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('continue-recommended-puzzles')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 

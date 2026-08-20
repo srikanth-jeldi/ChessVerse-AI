@@ -66,13 +66,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('CHESSVERSEAI'), findsOneWidget);
+      expect(find.text('ChessVerse AI', findRichText: true), findsOneWidget);
       expect(find.text('Register'), findsOneWidget);
       expect(find.text('Login'), findsAtLeastNWidgets(1));
       expect(find.byType(TextField), findsAtLeastNWidgets(2));
+      expect(
+        find.byKey(const ValueKey<String>('auth-landscape-split')),
+        name == 'landscape' ? findsOneWidget : findsNothing,
+      );
       expect(tester.takeException(), isNull);
 
-      final Finder guest = find.text('Continue as Guest Player');
+      final Finder guest = find.text('Continue as Guest');
       await tester.scrollUntilVisible(
         guest,
         180,

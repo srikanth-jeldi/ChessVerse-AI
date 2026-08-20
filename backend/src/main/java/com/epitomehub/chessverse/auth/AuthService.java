@@ -381,14 +381,18 @@ class AuthService {
 
         String email = normalizeEmail(rawEmail);
         PlayerAccount player = players.findByEmailIgnoreCase(email).orElse(null);
-        if (player == null) {
-            String displayName = oauthDisplayName(rawDisplayName, email);
-            player = new PlayerAccount(
-                    availableGoogleUsername(email),
-                    displayName,
-                    email,
-                    passwordEncoder.encode(UUID.randomUUID().toString()));
+        if (player != null) {
+            throw new AuthException(
+                    HttpStatus.CONFLICT,
+                    "An account already exists for this email. Sign in to that account before linking "
+                            + providerDisplayName(provider) + ".");
         }
+        String displayName = oauthDisplayName(rawDisplayName, email);
+        player = new PlayerAccount(
+                availableGoogleUsername(email),
+                displayName,
+                email,
+                passwordEncoder.encode(UUID.randomUUID().toString()));
         player.verified = true;
         player.failedLoginAttempts = 0;
         player.lockedUntil = null;
@@ -397,6 +401,11 @@ class AuthService {
         players.save(player);
         oauthIdentities.save(new OAuthIdentity(provider, subject, player));
         return createSession(player);
+    }
+
+    private String providerDisplayName(String provider) {
+        if (provider == null || provider.isBlank()) return "the social provider";
+        return Character.toUpperCase(provider.charAt(0)) + provider.substring(1).toLowerCase(Locale.ROOT);
     }
 
     private AuthResponse upgradeGuestWithOAuth(

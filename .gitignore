@@ -31,6 +31,15 @@ patchbase/
 patchwork/
 release/
 mobile/test/failures/
+.dart-localappdata/
+.dart-state/
+mobile/.dart-localappdata/
+mobile/.dart-state/
+mobile/.dartServer/
+mobile/.qa-appdata/
+mobile/.qa-auth/
+mobile/build-corrupt-*/
+mobile/build-jni-corrupt-*/
 
 # Local release artifacts and scratch patches.
 *.apk
@@ -46,3 +55,9 @@ mobile/android/keystore/
 *.keystore
 *.p12
 *.mobileprovision
+
+# Firebase Admin credentials are server secrets. Client platform configuration
+# files are intentionally not ignored because they contain public app metadata.
+firebase-service-account*.json
+service-account*.json
+infrastructure/vps/secrets/

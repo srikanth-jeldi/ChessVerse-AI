@@ -1,13 +1,15 @@
 name: chessverse_ai
 description: Cross-platform ChessVerse AI application.
 publish_to: "none"
-version: 0.1.68+69
+version: 0.1.81+82
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
 
 dependencies:
   audioplayers: ^6.8.0
+  firebase_core: ^4.2.1
+  firebase_messaging: ^16.0.4
   flutter:
     sdk: flutter
 
@@ -40,6 +42,7 @@ flutter:
     - assets/audio/
     - assets/backgrounds/
     - assets/branding/
+    - assets/matchmaking/
     - assets/pieces/
 
 flutter_launcher_icons:

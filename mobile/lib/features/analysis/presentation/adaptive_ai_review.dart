@@ -7,6 +7,8 @@ import '../domain/ai_review_report.dart';
 Future<void> showAdaptiveAiReview(
   BuildContext context, {
   required AiReviewReport report,
+  ValueChanged<AiMoveInsight>? onRetryPosition,
+  VoidCallback? onGeneratePuzzles,
 }) {
   final Size viewport = MediaQuery.sizeOf(context);
   if (viewport.width >= 900 && viewport.height >= 620) {
@@ -17,7 +19,12 @@ Future<void> showAdaptiveAiReview(
         backgroundColor: const Color(0xFF061722),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1180, maxHeight: 760),
-          child: _AiReviewWorkspace(report: report, desktop: true),
+          child: _AiReviewWorkspace(
+            report: report,
+            desktop: true,
+            onRetryPosition: onRetryPosition,
+            onGeneratePuzzles: onGeneratePuzzles,
+          ),
         ),
       ),
     );
@@ -28,21 +35,50 @@ Future<void> showAdaptiveAiReview(
     backgroundColor: const Color(0xFF061722),
     builder: (BuildContext context) => FractionallySizedBox(
       heightFactor: .94,
-      child: _AiReviewWorkspace(report: report, desktop: false),
+      child: _AiReviewWorkspace(
+        report: report,
+        desktop: false,
+        onRetryPosition: onRetryPosition,
+        onGeneratePuzzles: onGeneratePuzzles,
+      ),
     ),
   );
 }
 
 class _AiReviewWorkspace extends StatelessWidget {
-  const _AiReviewWorkspace({required this.report, required this.desktop});
+  const _AiReviewWorkspace({
+    required this.report,
+    required this.desktop,
+    this.onRetryPosition,
+    this.onGeneratePuzzles,
+  });
 
   final AiReviewReport report;
   final bool desktop;
+  final ValueChanged<AiMoveInsight>? onRetryPosition;
+  final VoidCallback? onGeneratePuzzles;
 
   @override
   Widget build(BuildContext context) {
     final Widget overview = _ReviewOverview(report: report);
-    final Widget timeline = _MoveTimeline(report: report);
+    final Widget timeline = _MoveTimeline(
+      report: report,
+      onRetryPosition: onRetryPosition,
+    );
+    final int puzzleCount = report.insights
+        .where((AiMoveInsight item) =>
+            item.hasEngineEvidence &&
+            const <String>{'Inaccuracy', 'Mistake', 'Blunder'}
+                .contains(item.label))
+        .take(5)
+        .length;
+    final Widget puzzleAction = FilledButton.icon(
+      onPressed: puzzleCount == 0 ? null : onGeneratePuzzles,
+      icon: const Icon(Icons.extension_rounded),
+      label: Text(puzzleCount == 0
+          ? 'No reviewed mistakes to train'
+          : 'Train $puzzleCount mistake ${puzzleCount == 1 ? 'position' : 'positions'}'),
+    );
     return Padding(
       padding: EdgeInsets.all(desktop ? 24 : 16),
       child: Column(children: <Widget>[
@@ -69,12 +105,22 @@ class _AiReviewWorkspace extends StatelessWidget {
               ? Row(children: <Widget>[
                   SizedBox(
                       width: 390,
-                      child: SingleChildScrollView(child: overview)),
+                      child: SingleChildScrollView(
+                        child: Column(children: <Widget>[
+                          overview,
+                          const SizedBox(height: 12),
+                          SizedBox(width: double.infinity, child: puzzleAction),
+                        ]),
+                      )),
                   const SizedBox(width: 22),
                   Expanded(child: timeline),
                 ])
               : ListView(children: <Widget>[
                   overview,
+                  if (puzzleCount > 0) ...<Widget>[
+                    const SizedBox(height: 12),
+                    puzzleAction,
+                  ],
                   const SizedBox(height: 18),
                   SizedBox(height: 430, child: timeline),
                 ]),
@@ -204,8 +250,9 @@ class _InsightCard extends StatelessWidget {
 }
 
 class _MoveTimeline extends StatelessWidget {
-  const _MoveTimeline({required this.report});
+  const _MoveTimeline({required this.report, this.onRetryPosition});
   final AiReviewReport report;
+  final ValueChanged<AiMoveInsight>? onRetryPosition;
 
   @override
   Widget build(BuildContext context) {
@@ -268,6 +315,42 @@ class _MoveTimeline extends StatelessWidget {
                                 style: const TextStyle(
                                     color: AppColors.textSecondary,
                                     height: 1.35)),
+                            if (insight.hasEngineEvidence) ...<Widget>[
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: <Widget>[
+                                  _ReviewAction(
+                                    icon: Icons.lightbulb_outline_rounded,
+                                    label: 'Explain simply',
+                                    onTap: () => _showReviewDetail(
+                                      context,
+                                      'Why this move?',
+                                      insight.explanation,
+                                    ),
+                                  ),
+                                  _ReviewAction(
+                                    icon: Icons.warning_amber_rounded,
+                                    label: 'Show threat',
+                                    onTap: () => _showReviewDetail(
+                                      context,
+                                      'Opponent threat',
+                                      insight.opponentThreat?.isNotEmpty == true
+                                          ? 'The immediate reply is ${insight.opponentThreat}.\n\nEngine line: ${insight.bestMove ?? '—'}.'
+                                          : 'No forcing opponent threat was returned for this position.',
+                                    ),
+                                  ),
+                                  _ReviewAction(
+                                    icon: Icons.replay_circle_filled_rounded,
+                                    label: 'Retry position',
+                                    onTap: onRetryPosition == null
+                                        ? null
+                                        : () => onRetryPosition!(insight),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ]),
                     ),
                   ]),
@@ -277,4 +360,43 @@ class _MoveTimeline extends StatelessWidget {
           ),
         ]);
   }
+}
+
+class _ReviewAction extends StatelessWidget {
+  const _ReviewAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 16),
+        label: Text(label),
+      );
+}
+
+Future<void> _showReviewDetail(
+  BuildContext context,
+  String title,
+  String message,
+) {
+  return showDialog<void>(
+    context: context,
+    builder: (BuildContext context) => AlertDialog(
+      title: Text(title),
+      content: Text(message),
+      actions: <Widget>[
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Got it'),
+        ),
+      ],
+    ),
+  );
 }

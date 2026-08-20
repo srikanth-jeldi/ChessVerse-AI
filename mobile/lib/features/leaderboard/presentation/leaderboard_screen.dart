@@ -5,6 +5,8 @@ import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../auth/data/auth_session_store.dart';
+import '../../online/data/online_match_api.dart';
+import '../../social/presentation/social_hub_screen.dart';
 import '../data/leaderboard_api.dart';
 
 class LeaderboardScreen extends StatefulWidget {
@@ -15,6 +17,7 @@ class LeaderboardScreen extends StatefulWidget {
     this.onPuzzles,
     this.onLearn,
     this.onProfile,
+    this.onOpenMatch,
     super.key,
   });
 
@@ -24,6 +27,7 @@ class LeaderboardScreen extends StatefulWidget {
   final VoidCallback? onPuzzles;
   final VoidCallback? onLearn;
   final VoidCallback? onProfile;
+  final ValueChanged<OnlineMatchDto>? onOpenMatch;
 
   @override
   State<LeaderboardScreen> createState() => _LeaderboardScreenState();
@@ -47,9 +51,12 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       }
       return await _api.load(session.token,
           scope: _scope, country: _scope == 'country' ? country : null);
+    } on LeaderboardException {
+      rethrow;
     } catch (_) {
-      // Keep the web/tablet preview complete when the local backend is offline.
-      return _previewLeaderboard();
+      throw const LeaderboardException(
+        'Rankings are temporarily unavailable. Pull to retry.',
+      );
     }
   }
 
@@ -122,11 +129,18 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       appBar: AppBar(
         title: const Text('RANKINGS',
             style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-        actions: const <Widget>[
-          Padding(
-            padding: EdgeInsets.only(right: 14),
-            child: Icon(Icons.info_outline_rounded, color: Color(0xFF9EB0BA)),
+        actions: <Widget>[
+          TextButton.icon(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => SocialHubScreen(onOpenMatch: (OnlineMatchDto match) {
+                Navigator.of(context).pop();
+                widget.onOpenMatch?.call(match);
+              }),
+            )),
+            icon: const Icon(Icons.groups_rounded, color: Color(0xFF56DEC8)),
+            label: const Text('Friends', style: TextStyle(color: Color(0xFF56DEC8), fontWeight: FontWeight.w900)),
           ),
+          const SizedBox(width: 8),
         ],
         backgroundColor: const Color(0xE6071827),
       ),
@@ -245,7 +259,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                                     itemBuilder: (_, int index) =>
                                         _LeaderboardTile(
                                       board.entries[index],
-                                      profilePhotoUrl: widget.profilePhotoUrl,
+                                      profilePhotoUrl: board.entries[index].you
+                                          ? widget.profilePhotoUrl
+                                          : null,
                                     ),
                                   );
                                 }),
@@ -371,18 +387,43 @@ class _RatingHero extends StatelessWidget {
           Text('${player.rating}',
               style: const TextStyle(
                   fontSize: 64, height: 1.05, fontWeight: FontWeight.w900)),
+          if (player.gamesPlayed == 0) ...<Widget>[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                color: const Color(0xD90A1D2B),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF5FE3C6)),
+              ),
+              child: const Text(
+                'PROVISIONAL • Play 1 rated online game to earn your rank',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF70E8D4),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .35,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           Row(children: <Widget>[
             Expanded(
                 child: _Metric(
                     'GLOBAL',
-                    player.globalRank == 0 ? '—' : '#${player.globalRank}',
+                    player.globalRank == 0
+                        ? 'UNRANKED'
+                        : '#${player.globalRank}',
                     const Color(0xFF5FE3C6))),
             const _MetricDivider(),
             Expanded(
                 child: _Metric(
                     player.country.toUpperCase(),
-                    player.countryRank == 0 ? '—' : '#${player.countryRank}',
+                    player.countryRank == 0
+                        ? 'UNRANKED'
+                        : '#${player.countryRank}',
                     AppColors.accentGold)),
             const _MetricDivider(),
             Expanded(
@@ -418,7 +459,9 @@ class _Metric extends StatelessWidget {
   Widget build(BuildContext context) => Column(children: <Widget>[
         Text(value,
             style: TextStyle(
-                color: color, fontSize: 25, fontWeight: FontWeight.w900)),
+                color: color,
+                fontSize: value == 'UNRANKED' ? 13 : 25,
+                fontWeight: FontWeight.w900)),
         Text(label,
             style: const TextStyle(
                 color: Color(0xFF91A3AE), fontSize: 10, letterSpacing: 1.1)),

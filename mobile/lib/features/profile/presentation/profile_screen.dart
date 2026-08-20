@@ -44,6 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final LocalGameStats stats = LocalGameArchive.stats();
     final RewardSnapshot rewards = LocalGameArchive.rewards();
+    final String? accountEmail = _publicAccountEmail(widget.email);
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -52,7 +53,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: const Color(0xD9071827),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 36),
+        // The root navigation floats over this page. Keep enough scrollable
+        // space below the account action so it can always clear the glass bar.
+        padding: EdgeInsets.fromLTRB(
+          16,
+          8,
+          16,
+          124 + MediaQuery.paddingOf(context).bottom,
+        ),
         children: <Widget>[
           _ProfileHero(
             playerName: widget.playerName,
@@ -110,27 +118,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  key: const ValueKey<String>('view-rewards-and-badges'),
+                  onPressed: () => _showRewards(rewards),
+                  icon: const Icon(Icons.redeem_rounded),
+                  label: const Text('VIEW REWARDS & BADGES'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF62E4D1),
+                    side: const BorderSide(color: Color(0x8062E4D1)),
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 18),
-          const _SectionLabel('CAREER STATS'),
+          const _SectionLabel('DEVICE ACTIVITY'),
           const SizedBox(height: 10),
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
             crossAxisCount: MediaQuery.sizeOf(context).width >= 700 ? 4 : 2,
             mainAxisSpacing: 10,
             crossAxisSpacing: 10,
             childAspectRatio: 1.55,
             children: <Widget>[
-              _Stat('Games', '${stats.gamesPlayed}', Icons.sports_esports),
-              _Stat('Wins', '${stats.wins}', Icons.emoji_events_rounded),
+              _Stat('All games', '${stats.gamesPlayed}', Icons.sports_esports),
+              _Stat('All wins', '${stats.wins}', Icons.emoji_events_rounded),
               _Stat('Win rate', '${stats.winRate}%', Icons.insights_rounded),
               _Stat('Puzzles', '${stats.puzzlesSolved}', Icons.extension),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 10),
           _SectionCard(
             title: 'ACCOUNT',
             asset: 'assets/backgrounds/home-settings-hero-v1.png',
@@ -143,7 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Text(
                   widget.isGuest
                       ? 'Guest identity and online progress are safe on this device. Secure with Google to restore them after reinstalling or changing devices.'
-                      : '${widget.email ?? 'Verified ChessVerseAI player'}\nYour identity and training progress are ready across ChessVerseAI.',
+                      : '${accountEmail ?? 'Email not shared'}\nYour identity and training progress are ready across ChessVerseAI.',
                   style:
                       const TextStyle(color: Color(0xFFA9BBC4), height: 1.45),
                 ),
@@ -164,6 +184,101 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+
+  String? _publicAccountEmail(String? value) {
+    final String email = value?.trim() ?? '';
+    if (email.isEmpty || email.toLowerCase().endsWith('.invalid')) return null;
+    return email;
+  }
+
+  Future<void> _showRewards(RewardSnapshot rewards) =>
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (BuildContext context) => DraggableScrollableSheet(
+          initialChildSize: 0.76,
+          minChildSize: 0.55,
+          maxChildSize: 0.92,
+          expand: false,
+          builder: (BuildContext context, ScrollController controller) =>
+              Container(
+            decoration: const BoxDecoration(
+              color: Color(0xF2071827),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              border: Border(top: BorderSide(color: Color(0x8062E4D1))),
+            ),
+            child: ListView(
+              controller: controller,
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+              children: <Widget>[
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF526778),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'REWARDS & BADGES',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${rewards.coins} coins  •  ${rewards.xp} XP  •  Level ${rewards.level}',
+                  style: const TextStyle(
+                    color: AppColors.accentGold,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const _RewardInfoTile(
+                  icon: Icons.sports_esports_rounded,
+                  title: 'Finish a match',
+                  subtitle: '+8 coins and +25 XP',
+                ),
+                const _RewardInfoTile(
+                  icon: Icons.emoji_events_rounded,
+                  title: 'Win a match',
+                  subtitle: '+18 bonus coins and +45 bonus XP',
+                ),
+                const _RewardInfoTile(
+                  icon: Icons.extension_rounded,
+                  title: 'Solve a puzzle',
+                  subtitle: '+12 coins and +35 XP',
+                ),
+                const _RewardInfoTile(
+                  icon: Icons.today_rounded,
+                  title: 'Complete the daily challenge',
+                  subtitle: '+35 coins and +80 XP; keep your streak alive',
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'BADGE COLLECTION',
+                  style: TextStyle(
+                    color: AppColors.accentGold,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ...rewards.badges.map(
+                  (RewardBadge badge) => _BadgeProgressTile(badge: badge),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
 
   Future<void> _editProfile() async {
     final _EditableProfile? value =
@@ -191,6 +306,86 @@ class _ProfileScreenState extends State<ProfileScreen> {
       const SnackBar(content: Text('Player profile saved')),
     );
   }
+}
+
+class _RewardInfoTile extends StatelessWidget {
+  const _RewardInfoTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(
+          color: const Color(0xB30B2032),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF294457)),
+        ),
+        child: Row(
+          children: <Widget>[
+            Icon(icon, color: const Color(0xFF62E4D1)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(title,
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      style: const TextStyle(color: Color(0xFFA9BBC4))),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _BadgeProgressTile extends StatelessWidget {
+  const _BadgeProgressTile({required this.badge});
+
+  final RewardBadge badge;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+        leading: CircleAvatar(
+          backgroundColor: badge.unlocked
+              ? const Color(0x3362E4D1)
+              : const Color(0x33263645),
+          child: Icon(
+            badge.unlocked
+                ? Icons.workspace_premium_rounded
+                : Icons.lock_rounded,
+            color: badge.unlocked
+                ? const Color(0xFF62E4D1)
+                : const Color(0xFF718291),
+          ),
+        ),
+        title: Text(
+          badge.title,
+          style: TextStyle(
+            color: badge.unlocked ? Colors.white : const Color(0xFF91A1AE),
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        subtitle: Text(
+          badge.description,
+          style: const TextStyle(color: Color(0xFFA9BBC4)),
+        ),
+        trailing: badge.unlocked
+            ? const Icon(Icons.check_circle_rounded, color: Color(0xFF62E4D1))
+            : null,
+      );
 }
 
 class _ProfileHero extends StatelessWidget {
@@ -296,7 +491,8 @@ class _ProfileHero extends StatelessWidget {
                   label: 'STATUS',
                   value: isGuest ? 'GUEST ONLINE' : 'VERIFIED'),
               const _Divider(),
-              _HeroMetric(label: 'CHESS LEVEL', value: '${_elo(level)} ELO'),
+              _HeroMetric(
+                  label: 'EST. STRENGTH', value: '${_elo(level)} PRACTICE'),
               const _Divider(),
               const _HeroMetric(label: 'ARENA', value: 'READY'),
             ],
@@ -777,6 +973,7 @@ class _Avatar extends StatelessWidget {
                 width: size,
                 height: size,
                 fit: BoxFit.cover,
+                webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
                 errorBuilder: (_, __, ___) =>
                     Icon(icons[index], color: Colors.white, size: size * 0.5),
               ),

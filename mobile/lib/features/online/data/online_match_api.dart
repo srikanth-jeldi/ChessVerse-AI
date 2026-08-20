@@ -159,11 +159,13 @@ class OnlineMatchDto {
 class OnlineMatchApi {
   const OnlineMatchApi();
 
-  Future<int> onlinePlayerCount() async {
+  Future<int> onlinePlayerCount(String token) async {
     final Uri uri = Uri.parse('${AppConfig.apiBaseUrl}/api/v1/online/presence');
     try {
-      final http.Response response =
-          await http.get(uri).timeout(const Duration(seconds: 10));
+      final http.Response response = await http.post(
+        uri,
+        headers: <String, String>{'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 10));
       final Object? decoded =
           response.body.isEmpty ? null : jsonDecode(response.body);
       final Map<String, dynamic> json =
@@ -188,8 +190,22 @@ class OnlineMatchApi {
     }
   }
 
-  Future<OnlineMatchDto> randomMatch(String token) =>
-      _request(token, 'POST', '/api/v1/online/queue');
+  Future<OnlineMatchDto> randomMatch(
+    String token, {
+    int timeControlMinutes = 10,
+    String region = 'WORLDWIDE',
+    int ratingRange = 0,
+  }) =>
+      _request(
+        token,
+        'POST',
+        '/api/v1/online/queue',
+        body: <String, Object?>{
+          'timeControlMinutes': timeControlMinutes,
+          'region': region,
+          'ratingRange': ratingRange,
+        },
+      );
 
   Future<OnlineMatchDto> createRoom(String token) =>
       _request(token, 'POST', '/api/v1/online/rooms');
