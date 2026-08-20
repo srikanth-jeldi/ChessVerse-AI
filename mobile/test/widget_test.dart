@@ -89,6 +89,39 @@ class _FinishedOnlineApi extends OnlineMatchApi {
 }
 
 void main() {
+  testWidgets('review retry board validates the stored engine move',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ReviewedPositionRetryDialog(
+            fen: '8/8/8/8/8/8/4P3/4K2k w - - 0 1',
+            initialPieces: <String, ChessPiece>{
+              'e1': ChessPiece('K', true),
+              'e2': ChessPiece('P', true),
+              'e8': ChessPiece('K', false),
+            },
+            whiteToMove: true,
+            bestMove: 'e2e4',
+            explanation: 'This claims the centre and opens development.',
+          ),
+        ),
+      ),
+    );
+
+    final Finder e2 = find.byKey(const ValueKey<String>('square-e2'));
+    final Finder e4 = find.byKey(const ValueKey<String>('square-e4'));
+    await tester.ensureVisible(e2);
+    await tester.tap(e2);
+    await tester.pump();
+    await tester.ensureVisible(e4);
+    await tester.tap(e4);
+    await tester.pump();
+
+    expect(find.textContaining('Best move found'), findsOneWidget);
+    expect(find.textContaining('opens development'), findsOneWidget);
+  });
+
   setUp(() {
     FlutterSecureStorage.setMockInitialValues(<String, String>{});
   });

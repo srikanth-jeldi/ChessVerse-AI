@@ -42,6 +42,8 @@ class DesktopAppSidebar extends StatelessWidget {
       (icon: Icons.extension_rounded, label: 'Puzzles', onTap: onPuzzles),
       (icon: Icons.school_rounded, label: 'Learn', onTap: onLearn),
       (icon: Icons.person_rounded, label: 'Profile', onTap: onProfile),
+      if (onFriends != null)
+        (icon: Icons.groups_2_rounded, label: 'Community', onTap: onFriends),
     ];
     return Container(
       width: 258,

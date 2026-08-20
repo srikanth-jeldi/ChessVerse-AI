@@ -1509,6 +1509,10 @@ class _AuthScreenState extends State<AuthScreen> {
       builder: (BuildContext dialogContext) => StatefulBuilder(
         builder: (BuildContext context, StateSetter setDialogState) =>
             AlertDialog(
+          scrollable: true,
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
           title: const Text('Reset password'),
           content: SizedBox(
             width: 420,
@@ -1539,11 +1543,29 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 if (dialogError != null) ...<Widget>[
                   const SizedBox(height: 12),
-                  Text(
-                    dialogError!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                      fontWeight: FontWeight.w700,
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.errorContainer.withValues(alpha: .5),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                    child: Text(
+                      dialogError!,
+                      softWrap: true,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                        fontWeight: FontWeight.w700,
+                        height: 1.3,
+                      ),
                     ),
                   ),
                 ],
@@ -1561,6 +1583,7 @@ class _AuthScreenState extends State<AuthScreen> {
               onPressed: submitting
                   ? null
                   : () async {
+                      FocusManager.instance.primaryFocus?.unfocus();
                       final String code = codeController.text.trim();
                       final String newPassword = newPasswordController.text;
                       if (!RegExp(r'^\d{6}$').hasMatch(code)) {

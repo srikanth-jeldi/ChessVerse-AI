@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../../leaderboard/data/leaderboard_api.dart';
+import '../../analysis/domain/player_learning_profile.dart';
 
 void _noOnlineAction() {}
 
@@ -28,6 +29,8 @@ class HomeDashboardScreen extends StatelessWidget {
     required this.onLearnChess,
     required this.onProfile,
     this.onRankings = _noOnlineAction,
+    this.onCommunity = _noOnlineAction,
+    this.onNotifications = _noOnlineAction,
     required this.onSettings,
     this.showPrimaryNavigation = true,
     super.key,
@@ -48,6 +51,8 @@ class HomeDashboardScreen extends StatelessWidget {
   final VoidCallback onLearnChess;
   final VoidCallback onProfile;
   final VoidCallback onRankings;
+  final VoidCallback onCommunity;
+  final VoidCallback onNotifications;
   final VoidCallback onSettings;
   final bool showPrimaryNavigation;
 
@@ -75,6 +80,8 @@ class HomeDashboardScreen extends StatelessWidget {
                 onLearnChess: onLearnChess,
                 onProfile: onProfile,
                 onRankings: onRankings,
+                onCommunity: onCommunity,
+                onNotifications: onNotifications,
                 onSettings: onSettings,
                 showPrimaryNavigation: showPrimaryNavigation,
               );
@@ -83,6 +90,7 @@ class HomeDashboardScreen extends StatelessWidget {
               playerName: playerName,
               profilePhotoUrl: profilePhotoUrl,
               onlinePlayerCount: onlinePlayerCount,
+              activityGames: activityGames,
               onPlayVsAi: onPlayVsAi,
               onDailyChallenge: onDailyChallenge,
               onLocalGame: onLocalGame,
@@ -94,6 +102,8 @@ class HomeDashboardScreen extends StatelessWidget {
               onLearnChess: onLearnChess,
               onProfile: onProfile,
               onRankings: onRankings,
+              onCommunity: onCommunity,
+              onNotifications: onNotifications,
               onSettings: onSettings,
               showPrimaryNavigation: showPrimaryNavigation,
             );
@@ -109,6 +119,7 @@ class _MobileHome extends StatefulWidget {
     required this.playerName,
     this.profilePhotoUrl,
     this.onlinePlayerCount,
+    this.activityGames,
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onLocalGame,
@@ -120,6 +131,8 @@ class _MobileHome extends StatefulWidget {
     required this.onLearnChess,
     required this.onProfile,
     required this.onRankings,
+    required this.onCommunity,
+    required this.onNotifications,
     required this.onSettings,
     required this.showPrimaryNavigation,
   });
@@ -127,6 +140,7 @@ class _MobileHome extends StatefulWidget {
   final String playerName;
   final String? profilePhotoUrl;
   final int? onlinePlayerCount;
+  final List<SavedGameRecord>? activityGames;
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
@@ -138,6 +152,8 @@ class _MobileHome extends StatefulWidget {
   final VoidCallback onLearnChess;
   final VoidCallback onProfile;
   final VoidCallback onRankings;
+  final VoidCallback onCommunity;
+  final VoidCallback onNotifications;
   final VoidCallback onSettings;
   final bool showPrimaryNavigation;
 
@@ -172,9 +188,12 @@ class _MobileHomeState extends State<_MobileHome> {
                       profilePhotoUrl: widget.profilePhotoUrl,
                       onProfile: widget.onProfile,
                       onSettings: widget.onSettings,
+                      onNotifications: widget.onNotifications,
                     ),
                     const SizedBox(height: 8),
                     const _BrandHero(compact: true),
+                    const SizedBox(height: 10),
+                    _ProgressPulse(games: widget.activityGames),
                     const SizedBox(height: 10),
                     _HomeHeroCarousel(
                       controller: _heroController,
@@ -291,6 +310,14 @@ class _MobileHomeState extends State<_MobileHome> {
                           onTap: widget.onRankings,
                         ),
                         _MiniCard(
+                          keyName: 'community',
+                          icon: Icons.groups_2_rounded,
+                          label: 'Community',
+                          color: const Color(0xFF55E1CF),
+                          asset: 'assets/backgrounds/home-friends-hero-v1.png',
+                          onTap: widget.onCommunity,
+                        ),
+                        _MiniCard(
                           keyName: 'analysis',
                           icon: Icons.trending_up_rounded,
                           label: 'Analysis',
@@ -307,6 +334,14 @@ class _MobileHomeState extends State<_MobileHome> {
                           onTap: widget.onLearnChess,
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 12),
+                    ValueListenableBuilder<int>(
+                      valueListenable: LocalGameArchive.activityRevision,
+                      builder: (_, __, ___) => _PersonalTrainingCard(
+                        onTrain: widget.onPuzzles,
+                        games: widget.activityGames,
+                      ),
                     ),
                   ],
                 ),
@@ -342,6 +377,8 @@ class _WideHome extends StatefulWidget {
     required this.onLearnChess,
     required this.onProfile,
     required this.onRankings,
+    required this.onCommunity,
+    required this.onNotifications,
     required this.onSettings,
     required this.showPrimaryNavigation,
   });
@@ -360,6 +397,8 @@ class _WideHome extends StatefulWidget {
   final VoidCallback onLearnChess;
   final VoidCallback onProfile;
   final VoidCallback onRankings;
+  final VoidCallback onCommunity;
+  final VoidCallback onNotifications;
   final VoidCallback onSettings;
   final bool showPrimaryNavigation;
 
@@ -408,8 +447,11 @@ class _WideHomeState extends State<_WideHome> {
                           profilePhotoUrl: widget.profilePhotoUrl,
                           onProfile: widget.onProfile,
                           onSettings: widget.onSettings,
+                          onNotifications: widget.onNotifications,
                           wide: true,
                         ),
+                        SizedBox(height: compact ? 10 : 16),
+                        _ProgressPulse(wide: true, games: widget.activityGames),
                         SizedBox(height: compact ? 10 : 16),
                         _HomeHeroCarousel(
                           controller: _heroController,
@@ -537,6 +579,17 @@ class _WideHomeState extends State<_WideHome> {
                             const SizedBox(width: 14),
                             Expanded(
                                 child: _MiniCard(
+                                    keyName: 'community',
+                                    icon: Icons.groups_2_rounded,
+                                    label: 'Community',
+                                    subtitle: 'Friends, clubs & events',
+                                    color: const Color(0xFF55E1CF),
+                                    asset:
+                                        'assets/backgrounds/home-friends-hero-v1.png',
+                                    onTap: widget.onCommunity)),
+                            const SizedBox(width: 14),
+                            Expanded(
+                                child: _MiniCard(
                                     keyName: 'analysis',
                                     icon: Icons.trending_up_rounded,
                                     label: 'Analysis',
@@ -559,6 +612,14 @@ class _WideHomeState extends State<_WideHome> {
                           ],
                         ),
                         const SizedBox(height: 18),
+                        ValueListenableBuilder<int>(
+                          valueListenable: LocalGameArchive.activityRevision,
+                          builder: (_, __, ___) => _PersonalTrainingCard(
+                            onTrain: widget.onPuzzles,
+                            games: widget.activityGames,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
                         _WideDashboardRow(
                           onDailyChallenge: widget.onDailyChallenge,
                           onPuzzles: widget.onPuzzles,
@@ -576,6 +637,155 @@ class _WideHomeState extends State<_WideHome> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ProgressPulse extends StatelessWidget {
+  const _ProgressPulse({this.wide = false, this.games});
+  final bool wide;
+  final List<SavedGameRecord>? games;
+
+  @override
+  Widget build(BuildContext context) {
+    final RewardSnapshot rewards = games == null
+        ? LocalGameArchive.rewards()
+        : _rewardsForGames(games!);
+    return Semantics(
+      label: 'Level ${rewards.level}, ${rewards.xp} XP, ${rewards.streak} day streak',
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: wide ? 20 : 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xD90A1B2B),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0x664BDAC7)),
+        ),
+        child: Row(children: <Widget>[
+          const Icon(Icons.workspace_premium_rounded, color: Color(0xFFE7B54D)),
+          const SizedBox(width: 10),
+          Text('LEVEL ${rewards.level}', style: const TextStyle(fontWeight: FontWeight.w900)),
+          const SizedBox(width: 12),
+          Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: rewards.levelProgress, minHeight: 7, backgroundColor: const Color(0xFF263C4D), color: const Color(0xFF54DECA)))),
+          const SizedBox(width: 12),
+          Text('${rewards.xp} XP', style: const TextStyle(color: Color(0xFF54DECA), fontWeight: FontWeight.w800)),
+          if (wide || rewards.streak > 0) ...<Widget>[
+            const SizedBox(width: 12),
+            const Icon(Icons.local_fire_department_rounded, color: Color(0xFFFF9B45), size: 19),
+            Text('${rewards.streak}', style: const TextStyle(fontWeight: FontWeight.w900)),
+          ],
+        ]),
+      ),
+    );
+  }
+
+  RewardSnapshot _rewardsForGames(List<SavedGameRecord> games) {
+    final int wins = games.where((game) => game.playerOutcome == 'win').length;
+    final int draws = games.where((game) => game.playerOutcome == 'draw').length;
+    final int xp = games.length * 25 + wins * 45 + draws * 15;
+    final int level = xp ~/ 120 + 1;
+    return RewardSnapshot(
+      xp: xp,
+      coins: games.length * 8 + wins * 18,
+      level: level,
+      levelProgress: ((xp - (level - 1) * 120) / 120).clamp(0, 1),
+      streak: 0,
+      badges: const <RewardBadge>[],
+    );
+  }
+}
+
+class _PersonalTrainingCard extends StatelessWidget {
+  const _PersonalTrainingCard({required this.onTrain, this.games});
+
+  final VoidCallback onTrain;
+  final List<SavedGameRecord>? games;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<SavedGameRecord> sourceGames = games ?? LocalGameArchive.games;
+    final PlayerLearningProfile profile = PlayerLearningProfile.fromGames(
+      sourceGames,
+      cloudScores: LocalGameArchive.cloudWeaknessScores,
+    );
+    final bool activated = sourceGames.any(
+      (SavedGameRecord game) => game.moveReviews.isNotEmpty,
+    );
+    final String focus =
+        PlayerLearningProfile.labelFor(profile.primaryWeakness);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          colors: <Color>[Color(0xFF0C2E39), Color(0xFF091827)],
+        ),
+        border: Border.all(color: const Color(0x8059E4C8)),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(color: Color(0x2800D7C0), blurRadius: 24),
+        ],
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            padding: const EdgeInsets.all(11),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0x2259E4C8),
+              border: Border.all(color: const Color(0xFF59E4C8)),
+            ),
+            child: const Icon(Icons.psychology_alt_rounded,
+                color: Color(0xFF59E4C8)),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'TODAY’S AI TRAINING',
+                  style: TextStyle(
+                    color: AppColors.accentGold,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .9,
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  activated
+                      ? '$focus • 60% targeted practice'
+                      : 'Balanced starter sprint',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  activated
+                      ? profile.recommendationReason
+                      : 'Complete an AI-reviewed game and tomorrow’s set will adapt to your recurring mistakes.',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFFA8BAC7),
+                    fontSize: 12,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          FilledButton.icon(
+            onPressed: onTrain,
+            icon: const Icon(Icons.play_arrow_rounded, size: 18),
+            label: const Text('TRAIN'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1103,11 +1313,13 @@ class _PlayerHeader extends StatelessWidget {
       this.profilePhotoUrl,
       required this.onProfile,
       required this.onSettings,
+      required this.onNotifications,
       this.wide = false});
   final String playerName;
   final String? profilePhotoUrl;
   final VoidCallback onProfile;
   final VoidCallback onSettings;
+  final VoidCallback onNotifications;
   final bool wide;
 
   @override
@@ -1139,14 +1351,11 @@ class _PlayerHeader extends StatelessWidget {
             ],
           ),
         ),
-        if (wide) ...<Widget>[
+        ...<Widget>[
           IconButton(
+            key: const ValueKey<String>('home-notifications'),
             tooltip: 'Notifications',
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('You are all caught up. No new notifications.'),
-              ),
-            ),
+            onPressed: onNotifications,
             style: IconButton.styleFrom(
               backgroundColor: const Color(0xFF102A40),
               foregroundColor: const Color(0xFFD9E7F0),

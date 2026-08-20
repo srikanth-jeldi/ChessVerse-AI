@@ -31,6 +31,7 @@ class AnalysisScreen extends StatelessWidget {
             latest.moves,
             newestFirst: false,
             result: latest.result,
+            knownReviews: latest.moveReviews,
           );
     final String focus = _trainingFocus(games, averageMoves, losses);
     return Scaffold(
@@ -99,7 +100,8 @@ class AnalysisScreen extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             ChessVerseButton(
-              label: games.isEmpty ? 'No saved game yet' : 'Open full AI review',
+              label:
+                  games.isEmpty ? 'No saved game yet' : 'Open full AI review',
               icon: Icons.auto_graph_rounded,
               onPressed: games.isEmpty
                   ? null

@@ -141,6 +141,8 @@ void main() {
   });
 
   testWidgets('screen gallery - home', (WidgetTester tester) async {
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
     await _setPhone(tester);
     await tester.pumpWidget(
       _app(
@@ -168,6 +170,8 @@ void main() {
   });
 
   testWidgets('screen gallery - home landscape', (WidgetTester tester) async {
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
     await _setLandscape(tester);
     await tester.pumpWidget(
       _app(
@@ -195,6 +199,8 @@ void main() {
   });
 
   testWidgets('screen gallery - game portrait', (WidgetTester tester) async {
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
     await _setPhone(tester);
     await tester.pumpWidget(
       _app(
@@ -213,6 +219,8 @@ void main() {
   });
 
   testWidgets('screen gallery - game landscape', (WidgetTester tester) async {
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
     await _setLandscape(tester);
     await tester.pumpWidget(
       _app(

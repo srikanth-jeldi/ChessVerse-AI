@@ -4,6 +4,63 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+class SavedMoveReview {
+  const SavedMoveReview({
+    required this.ply,
+    required this.fenBefore,
+    required this.playedMove,
+    required this.bestMove,
+    required this.classification,
+    this.coachingTheme = 'calculation',
+    required this.centipawnLoss,
+    required this.opponentThreat,
+    required this.explanation,
+    required this.principalVariation,
+  });
+
+  final int ply;
+  final String fenBefore;
+  final String playedMove;
+  final String bestMove;
+  final String classification;
+  final String coachingTheme;
+  final int centipawnLoss;
+  final String opponentThreat;
+  final String explanation;
+  final List<String> principalVariation;
+
+  factory SavedMoveReview.fromJson(Map<String, dynamic> json) {
+    return SavedMoveReview(
+      ply: (json['ply'] as num?)?.toInt() ?? 0,
+      fenBefore: json['fenBefore'] as String? ?? '',
+      playedMove: json['playedMove'] as String? ?? '',
+      bestMove: json['bestMove'] as String? ?? '',
+      classification: json['classification'] as String? ?? 'Unreviewed',
+      coachingTheme: json['coachingTheme'] as String? ?? 'calculation',
+      centipawnLoss: (json['centipawnLoss'] as num?)?.toInt() ?? 0,
+      opponentThreat: json['opponentThreat'] as String? ?? '',
+      explanation: json['explanation'] as String? ?? '',
+      principalVariation:
+          (json['principalVariation'] as List<dynamic>? ?? <dynamic>[])
+              .whereType<String>()
+              .toList(growable: false),
+    );
+  }
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'ply': ply,
+        'fenBefore': fenBefore,
+        'playedMove': playedMove,
+        'bestMove': bestMove,
+        'classification': classification,
+        'coachingTheme': coachingTheme,
+        'centipawnLoss': centipawnLoss,
+        'opponentThreat': opponentThreat,
+        'explanation': explanation,
+        'principalVariation': principalVariation,
+      };
+}
+
 class SavedGameRecord {
   const SavedGameRecord({
     required this.mode,
@@ -14,6 +71,7 @@ class SavedGameRecord {
     required this.whitePlayer,
     required this.blackPlayer,
     this.playerOutcome,
+    this.moveReviews = const <SavedMoveReview>[],
   });
 
   final String mode;
@@ -24,6 +82,7 @@ class SavedGameRecord {
   final String whitePlayer;
   final String blackPlayer;
   final String? playerOutcome;
+  final List<SavedMoveReview> moveReviews;
 
   String get summary => '$whitePlayer vs $blackPlayer';
 }
@@ -165,6 +224,7 @@ class LocalGameArchive {
   static final Map<String, int> _cloudWeaknessScores = <String, int>{};
   static final Set<String> _completedDailyChallengeIds = <String>{};
   static final Set<String> _completedPuzzleIds = <String>{};
+  static final Set<String> _completedAcademyLessonIds = <String>{};
   static DateTime? _lastDailyCompletedAt;
   static int _dailySolved = 0;
   static int _puzzlesSolved = 0;
@@ -208,6 +268,11 @@ class LocalGameArchive {
                 whitePlayer: game['whitePlayer'] as String? ?? 'White',
                 blackPlayer: game['blackPlayer'] as String? ?? 'Black',
                 playerOutcome: game['playerOutcome'] as String?,
+                moveReviews:
+                    (game['moveReviews'] as List<dynamic>? ?? <dynamic>[])
+                        .whereType<Map<String, dynamic>>()
+                        .map(SavedMoveReview.fromJson)
+                        .toList(growable: false),
               );
             }),
           );
@@ -279,6 +344,9 @@ class LocalGameArchive {
               'whitePlayer': game.whitePlayer,
               'blackPlayer': game.blackPlayer,
               'playerOutcome': game.playerOutcome,
+              'moveReviews': game.moveReviews
+                  .map((SavedMoveReview review) => review.toJson())
+                  .toList(growable: false),
             },
           )
           .toList(growable: false),
@@ -349,6 +417,28 @@ class LocalGameArchive {
 
   static Set<String> get completedPuzzleIds =>
       Set<String>.unmodifiable(_completedPuzzleIds);
+
+  static Set<String> get completedAcademyLessonIds =>
+      Set<String>.unmodifiable(_completedAcademyLessonIds);
+
+  static void replaceAcademyLessonProgress(
+    Iterable<String> lessonIds, {
+    bool notify = false,
+  }) {
+    _completedAcademyLessonIds
+      ..clear()
+      ..addAll(lessonIds.where((String id) => id.isNotEmpty));
+    if (notify) _notifyCloudChange();
+  }
+
+  static void markAcademyLessonComplete(String lessonId) {
+    if (_completedAcademyLessonIds.add(lessonId)) _notifyCloudChange();
+  }
+
+  static void clearAccountScopedCloudState() {
+    _completedAcademyLessonIds.clear();
+    _cloudWeaknessScores.clear();
+  }
 
   static String get profileCountry => _profileCountry;
   static String? get profileUsername => _profileUsername;
@@ -424,6 +514,7 @@ class LocalGameArchive {
       'completedPuzzleIds': _completedPuzzleIds.toList()..sort(),
       'completedDailyChallengeIds': _completedDailyChallengeIds.toList()
         ..sort(),
+      'completedAcademyLessonIds': _completedAcademyLessonIds.toList()..sort(),
     };
   }
 
@@ -480,8 +571,12 @@ class LocalGameArchive {
       final Iterable<dynamic> daily =
           cloud['completedDailyChallengeIds'] as Iterable<dynamic>? ??
               const <dynamic>[];
+      final Iterable<dynamic> academy =
+          cloud['completedAcademyLessonIds'] as Iterable<dynamic>? ??
+              const <dynamic>[];
       _completedPuzzleIds.addAll(puzzles.whereType<String>());
       _completedDailyChallengeIds.addAll(daily.whereType<String>());
+      _completedAcademyLessonIds.addAll(academy.whereType<String>());
       _puzzlesSolved = _completedPuzzleIds.length;
       _dailySolved = _completedDailyChallengeIds.length;
       _dailyStreak = mathMax(

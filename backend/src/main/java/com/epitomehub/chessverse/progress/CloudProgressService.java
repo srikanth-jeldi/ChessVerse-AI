@@ -56,6 +56,9 @@ class CloudProgressService {
         if (request.completedDailyChallengeIds() != null) {
             progress.completedDailyChallengeIds.addAll(request.completedDailyChallengeIds());
         }
+        if (request.completedAcademyLessonIds() != null) {
+            progress.completedAcademyLessonIds.addAll(request.completedAcademyLessonIds());
+        }
         progress.updatedAt = Instant.now();
         return ProgressResponse.from(progressRepository.save(progress));
     }

@@ -7,6 +7,8 @@ enum ChessWeakness {
   missedCaptures,
   timeManagement,
   endgame,
+  tactics,
+  calculation,
 }
 
 class PlayerLearningProfile {
@@ -23,6 +25,26 @@ class PlayerLearningProfile {
     };
     for (final SavedGameRecord game in games.take(20)) {
       final List<String> moves = game.moves;
+      final List<SavedMoveReview> reviewedMistakes = game.moveReviews
+          .where((SavedMoveReview review) => const <String>{
+                'Inaccuracy',
+                'Mistake',
+                'Blunder'
+              }.contains(review.classification))
+          .toList(growable: false);
+      if (reviewedMistakes.isNotEmpty) {
+        for (final SavedMoveReview review in reviewedMistakes) {
+          final ChessWeakness weakness =
+              _weaknessForTheme(review.coachingTheme);
+          final int weight = review.centipawnLoss >= 160
+              ? 4
+              : review.centipawnLoss >= 70
+                  ? 2
+                  : 1;
+          scores[weakness] = scores[weakness]! + weight;
+        }
+        continue;
+      }
       final String result = game.result.toLowerCase();
       final bool loss = result.contains('opponent') ||
           result.contains('black wins') ||
@@ -89,6 +111,8 @@ class PlayerLearningProfile {
         ChessWeakness.missedCaptures => 'Capture scan',
         ChessWeakness.timeManagement => 'Time management',
         ChessWeakness.endgame => 'Endgame',
+        ChessWeakness.tactics => 'Tactical vision',
+        ChessWeakness.calculation => 'Calculation',
       };
 
   String get recommendedLesson => switch (primaryWeakness) {
@@ -98,6 +122,8 @@ class PlayerLearningProfile {
         ChessWeakness.missedCaptures => 'Checks, captures and threats',
         ChessWeakness.timeManagement => 'Choose candidate moves',
         ChessWeakness.endgame => 'Promoting a pawn',
+        ChessWeakness.tactics => 'Knight forks',
+        ChessWeakness.calculation => 'Checks, captures and threats',
       };
 
   String get recommendationReason => switch (primaryWeakness) {
@@ -113,5 +139,20 @@ class PlayerLearningProfile {
           'Time pressure affected your results. Learn a short candidate-move routine for faster decisions.',
         ChessWeakness.endgame =>
           'Your longest games need a cleaner finish. Activate the king and learn pawn promotion technique.',
+        ChessWeakness.tactics =>
+          'Engine-reviewed mistakes show missed tactical resources. Train forcing checks, captures, forks, and pins.',
+        ChessWeakness.calculation =>
+          'Your positions need a more consistent candidate-move check. Compare two forcing lines before committing.',
+      };
+
+  static ChessWeakness _weaknessForTheme(String theme) => switch (theme) {
+        'opening' => ChessWeakness.opening,
+        'kingSafety' => ChessWeakness.kingSafety,
+        'hangingPieces' => ChessWeakness.hangingPieces,
+        'missedCaptures' => ChessWeakness.missedCaptures,
+        'timeManagement' => ChessWeakness.timeManagement,
+        'endgame' => ChessWeakness.endgame,
+        'tactics' => ChessWeakness.tactics,
+        _ => ChessWeakness.calculation,
       };
 }

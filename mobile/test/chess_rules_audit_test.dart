@@ -2,6 +2,41 @@ import 'package:chessverse_ai/main.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  group('engine move review copy', () {
+    test('uses one authoritative verdict for the best move', () {
+      expect(
+        engineMoveReviewText(
+          isBestMove: true,
+          isWeakMove: false,
+          recommendation: 'e2 to e4',
+        ),
+        'Best move • Confirmed by AI analysis.',
+      );
+    });
+
+    test('does not falsely confirm a non-best playable move', () {
+      expect(
+        engineMoveReviewText(
+          isBestMove: false,
+          isWeakMove: false,
+          recommendation: 'e2 to e4',
+        ),
+        'Playable move • AI preferred e2 to e4.',
+      );
+    });
+
+    test('shows a single actionable warning for a weak move', () {
+      expect(
+        engineMoveReviewText(
+          isBestMove: false,
+          isWeakMove: true,
+          recommendation: 'e2 to e4',
+        ),
+        'Weak move alert • e2 to e4 was safer. Tap Analyze to see why.',
+      );
+    });
+  });
+
   group('attack map', () {
     test('pawns attack diagonally only and in their own direction', () {
       final Map<String, ChessPiece> board = <String, ChessPiece>{
@@ -110,6 +145,94 @@ void main() {
       expect(ChessRules.safeLegalTargets('a2', board), contains('e2'));
       expect(ChessRules.isCheckmate(true, board), isFalse);
     });
+
+    test('stalemate is a draw and is never reported as checkmate', () {
+      final Map<String, ChessPiece> board = <String, ChessPiece>{
+        'h8': const ChessPiece('K', false),
+        'f7': const ChessPiece('K', true),
+        'g6': const ChessPiece('Q', true),
+      };
+
+      expect(ChessRules.isKingInCheck(false, board), isFalse);
+      expect(ChessRules.hasAnySafeMove(false, board), isFalse);
+      expect(ChessRules.isStalemate(false, board), isTrue);
+      expect(ChessRules.isCheckmate(false, board), isFalse);
+    });
+
+    test('a king cannot move into an enemy pawn attack', () {
+      final Map<String, ChessPiece> board = <String, ChessPiece>{
+        'e3': const ChessPiece('K', true),
+        'e8': const ChessPiece('K', false),
+        'd5': const ChessPiece('P', false),
+      };
+
+      expect(ChessRules.safeLegalTargets('e3', board), isNot(contains('e4')));
+    });
+  });
+
+  group('piece movement boundaries', () {
+    test('pawn double-step requires both forward squares to be empty', () {
+      final Map<String, ChessPiece> board = <String, ChessPiece>{
+        'e2': const ChessPiece('P', true),
+        'e3': const ChessPiece('N', false),
+      };
+      expect(ChessRules.legalTargets('e2', board), isEmpty);
+    });
+
+    test('pawns capture enemies diagonally but never move onto them forward',
+        () {
+      final Map<String, ChessPiece> board = <String, ChessPiece>{
+        'd4': const ChessPiece('P', true),
+        'd5': const ChessPiece('R', false),
+        'c5': const ChessPiece('N', false),
+        'e5': const ChessPiece('B', true),
+      };
+      expect(ChessRules.legalTargets('d4', board), contains('c5'));
+      expect(ChessRules.legalTargets('d4', board), isNot(contains('d5')));
+      expect(ChessRules.legalTargets('d4', board), isNot(contains('e5')));
+    });
+
+    test('recorded g4xf3 black-pawn capture is a legal diagonal capture', () {
+      final Map<String, ChessPiece> board = <String, ChessPiece>{
+        'e1': const ChessPiece('K', true),
+        'e8': const ChessPiece('K', false),
+        'f3': const ChessPiece('P', true),
+        'g4': const ChessPiece('P', false),
+      };
+
+      expect(ChessRules.safeLegalTargets('g4', board), contains('f3'));
+      final Map<String, ChessPiece> after =
+          ChessRules.applyMove('g4', 'f3', board);
+      expect(after['g4'], isNull);
+      expect(after['f3']?.code, 'P');
+      expect(after['f3']?.white, isFalse);
+    });
+
+    test('a pawn cannot ignore check to make the same g4xf3 capture', () {
+      final Map<String, ChessPiece> board = <String, ChessPiece>{
+        'a1': const ChessPiece('K', true),
+        'e1': const ChessPiece('R', true),
+        'e8': const ChessPiece('K', false),
+        'f3': const ChessPiece('P', true),
+        'g4': const ChessPiece('P', false),
+      };
+
+      expect(ChessRules.isKingInCheck(false, board), isTrue);
+      expect(ChessRules.legalTargets('g4', board), contains('f3'));
+      expect(ChessRules.safeLegalTargets('g4', board), isNot(contains('f3')));
+    });
+
+    test('knights jump blockers but cannot capture a friendly piece', () {
+      final Map<String, ChessPiece> board = <String, ChessPiece>{
+        'b1': const ChessPiece('N', true),
+        'b2': const ChessPiece('P', true),
+        'c2': const ChessPiece('P', true),
+        'a3': const ChessPiece('P', true),
+        'c3': const ChessPiece('P', false),
+      };
+      expect(ChessRules.legalTargets('b1', board), contains('c3'));
+      expect(ChessRules.legalTargets('b1', board), isNot(contains('a3')));
+    });
   });
 
   test('standard starting position matches depth 1-3 perft counts', () {
@@ -118,6 +241,10 @@ void main() {
     expect(_perft(board, true, 1), 20);
     expect(_perft(board, true, 2), 400);
     expect(_perft(board, true, 3), 8902);
+  });
+
+  test('standard position also matches the depth-4 perft reference', () {
+    expect(_perft(_startingPosition(), true, 4), 197281);
   });
 }
 

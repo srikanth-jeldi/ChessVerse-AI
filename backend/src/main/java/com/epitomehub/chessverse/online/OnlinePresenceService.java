@@ -22,4 +22,9 @@ class OnlinePresenceService {
                 .filter(entry -> !entry.getValue().isBefore(cutoff))
                 .count();
     }
+
+    boolean isOnline(UUID playerId) {
+        Instant seen = lastSeen.get(playerId);
+        return seen != null && !seen.isBefore(Instant.now().minus(PRESENCE_LEASE));
+    }
 }

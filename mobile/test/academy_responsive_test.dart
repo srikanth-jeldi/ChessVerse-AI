@@ -2,6 +2,7 @@ import 'package:chessverse_ai/features/tutorial/domain/academy_lesson.dart';
 import 'package:chessverse_ai/features/tutorial/presentation/interactive_academy_lesson_screen.dart';
 import 'package:chessverse_ai/features/tutorial/presentation/learn_chess_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -79,5 +80,26 @@ void main() {
     expect(find.text('AI COACH'), findsOneWidget);
     expect(find.text('1  AI DEMO'), findsOneWidget);
     expect(find.text('LESSON FLOW'), findsNothing);
+  });
+
+  testWidgets('academy mastery gate blocks later courses for a new account',
+      (WidgetTester tester) async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{});
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const MaterialApp(home: LearnChessScreen()));
+    await tester.pumpAndSettle();
+
+    final Finder lockedCourse = find.text('King Safety');
+    await tester.ensureVisible(lockedCourse);
+    await tester.tap(lockedCourse);
+    await tester.pump();
+
+    expect(
+      find.text('Complete the previous academy stage to unlock this course.'),
+      findsOneWidget,
+    );
   });
 }

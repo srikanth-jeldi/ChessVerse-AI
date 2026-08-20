@@ -17,6 +17,7 @@ import 'core/chess_piece_appearance.dart';
 import 'core/config/app_config.dart';
 import 'core/local_game_archive.dart';
 import 'core/notifications/daily_reminder_service.dart';
+import 'core/notifications/firebase_push_service.dart';
 import 'core/widgets/chessverse_app_backdrop.dart';
 import 'core/widgets/desktop_app_sidebar.dart';
 import 'features/auth/data/auth_api.dart';
@@ -31,15 +32,20 @@ import 'features/library/presentation/reference_screens.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/online/data/online_match_api.dart';
 import 'features/online/presentation/match_history_screen.dart';
+import 'features/notifications/data/notification_api.dart';
+import 'features/notifications/presentation/notification_center_screen.dart';
 import 'features/leaderboard/presentation/leaderboard_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/puzzles/domain/puzzle_catalog.dart';
 import 'features/progress/data/cloud_progress_api.dart';
 import 'features/settings/presentation/settings_screen.dart';
+import 'features/social/presentation/social_hub_screen.dart';
 import 'features/tutorial/presentation/learn_chess_screen.dart';
+import 'features/tutorial/data/academy_progress_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await FirebasePushService.instance.initialize();
   if (!kIsWeb) {
     await SystemChrome.setPreferredOrientations(
       const <DeviceOrientation>[DeviceOrientation.portraitUp],
@@ -93,6 +99,7 @@ const List<NavigationDestination> _primaryNavigationDestinations =
   NavigationDestination(icon: Icon(Icons.extension_rounded), label: 'Puzzles'),
   NavigationDestination(icon: Icon(Icons.school_rounded), label: 'Learn'),
   NavigationDestination(icon: Icon(Icons.person_rounded), label: 'Profile'),
+  NavigationDestination(icon: Icon(Icons.groups_2_rounded), label: 'Community'),
 ];
 
 class _GlassBottomNavigation extends StatelessWidget {
@@ -230,6 +237,8 @@ class _SplashGateState extends State<SplashGate> {
   static const CloudProgressApi _cloudProgressApi = CloudProgressApi();
   Timer? _timer;
   Timer? _presenceTimer;
+  Timer? _notificationTimer;
+  final Set<String> _seenNotificationIds = <String>{};
   bool _splashArtworkLoadingStarted = false;
   _RootStage _stage = _RootStage.splash;
   String _playerName = 'Guest Player';
@@ -343,6 +352,8 @@ class _SplashGateState extends State<SplashGate> {
     });
     unawaited(_syncCloudProgress(restoredSession.token));
     _startOnlinePresence(restoredSession.token);
+    _startNotificationPolling(restoredSession.token);
+    unawaited(FirebasePushService.instance.configureForSession(restoredSession.token));
   }
 
   void _startOnlinePresence(String token) {
@@ -360,6 +371,36 @@ class _SplashGateState extends State<SplashGate> {
       if (mounted) setState(() => _onlinePlayerCount = count);
     } on OnlineMatchException {
       if (mounted) setState(() => _onlinePlayerCount = null);
+    }
+  }
+
+  void _startNotificationPolling(String token) {
+    _notificationTimer?.cancel();
+    unawaited(_pollNotifications(token, initial: true));
+    _notificationTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => unawaited(_pollNotifications(token)),
+    );
+  }
+
+  Future<void> _pollNotifications(String token, {bool initial = false}) async {
+    try {
+      final NotificationInboxDto inbox =
+          await const NotificationApi().load(token);
+      final List<PlayerNotificationDto> fresh = inbox.notifications
+          .where((value) => !value.read && !_seenNotificationIds.contains(value.id))
+          .toList();
+      _seenNotificationIds.addAll(inbox.notifications.map((value) => value.id));
+      if (initial) return;
+      for (final PlayerNotificationDto value in fresh.take(3)) {
+        await DailyReminderService.instance.showRealtime(
+          value.id.hashCode & 0x7fffffff,
+          value.title,
+          value.body,
+        );
+      }
+    } on NotificationException {
+      // The persistent inbox will catch up after connectivity is restored.
     }
   }
 
@@ -389,6 +430,7 @@ class _SplashGateState extends State<SplashGate> {
   void dispose() {
     _timer?.cancel();
     _presenceTimer?.cancel();
+    _notificationTimer?.cancel();
     super.dispose();
   }
 
@@ -424,6 +466,7 @@ class _SplashGateState extends State<SplashGate> {
                 _enableCloudSync(result.token!);
                 unawaited(_syncCloudProgress(result.token!));
                 _startOnlinePresence(result.token!);
+                _startNotificationPolling(result.token!);
               }
             },
           ),
@@ -451,6 +494,17 @@ class _SplashGateState extends State<SplashGate> {
           context,
           LeaderboardScreen(
             profilePhotoUrl: _photoUrl,
+            onOpenMatch: (OnlineMatchDto match) async {
+              final StoredAuthSession? session =
+                  await const AuthSessionStore().read();
+              if (!context.mounted || session == null) return;
+              await _openGame(
+                context,
+                GameMode.online,
+                initialOnlineMatch: match,
+                initialAuthToken: session.token,
+              );
+            },
             onHome: () => _closeSettingsAndSelect(context, 0),
             onPlay: () => _closeSettingsAndSelect(context, 1),
             onPuzzles: () => _closeSettingsAndSelect(context, 2),
@@ -458,6 +512,9 @@ class _SplashGateState extends State<SplashGate> {
             onProfile: () => _closeSettingsAndSelect(context, 4),
           ),
         ),
+        onCommunity: () => setState(() => _primaryDestination = 5),
+        onNotifications: () =>
+            _push(context, const NotificationCenterScreen()),
         onLearnChess: () => setState(() => _primaryDestination = 3),
         onProfile: () => setState(() => _primaryDestination = 4),
         onSettings: () => _push(
@@ -501,6 +558,19 @@ class _SplashGateState extends State<SplashGate> {
           setState(() => _username = value);
         },
       ),
+      SocialHubScreen(
+        onOpenMatch: (OnlineMatchDto match) async {
+          final StoredAuthSession? session =
+              await const AuthSessionStore().read();
+          if (!context.mounted || session == null) return;
+          await _openGame(
+            context,
+            GameMode.online,
+            initialOnlineMatch: match,
+            initialAuthToken: session.token,
+          );
+        },
+      ),
     ];
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints size) {
@@ -518,6 +588,7 @@ class _SplashGateState extends State<SplashGate> {
             'Puzzles',
             'Learn',
             'Profile',
+            'Community',
           ];
           void selectDestination(int value) {
             setState(() => _primaryDestination = value);
@@ -533,6 +604,7 @@ class _SplashGateState extends State<SplashGate> {
                 onPuzzles: () => selectDestination(2),
                 onLearn: () => selectDestination(3),
                 onProfile: () => selectDestination(4),
+                onFriends: () => selectDestination(5),
               ),
               Expanded(child: content),
             ]),
@@ -954,6 +1026,7 @@ class _SplashGateState extends State<SplashGate> {
     const AuthApi authApi = AuthApi();
     final StoredAuthSession? session = await sessionStore.read();
     if (session != null) {
+      await FirebasePushService.instance.unregister(session.token);
       try {
         await authApi.logout(session.token);
       } on AuthApiException {
@@ -962,6 +1035,7 @@ class _SplashGateState extends State<SplashGate> {
     }
     await sessionStore.clear();
     LocalGameArchive.onCloudRelevantChange = null;
+    LocalGameArchive.clearAccountScopedCloudState();
     if (!mounted) return;
 
     if (currentRouteContext.mounted &&
@@ -987,8 +1061,10 @@ class _SplashGateState extends State<SplashGate> {
       throw const AuthApiException('No signed-in account was found.');
     }
     await _authApi.deleteAccount(session.token);
+    await FirebasePushService.instance.unregister(session.token);
     await _sessionStore.clear();
     LocalGameArchive.onCloudRelevantChange = null;
+    LocalGameArchive.clearAccountScopedCloudState();
     if (!mounted) return;
     if (currentRouteContext.mounted) {
       Navigator.of(currentRouteContext)
@@ -1057,11 +1133,17 @@ class _SplashGateState extends State<SplashGate> {
     }
     _cloudSyncInFlight = true;
     try {
+      const AcademyProgressStore academyStore = AcademyProgressStore();
+      final Set<String> localAcademy = await academyStore.readCompleted();
+      LocalGameArchive.replaceAcademyLessonProgress(localAcademy);
       final Map<String, dynamic> merged = await _cloudProgressApi.merge(
         token,
         LocalGameArchive.cloudSnapshot(),
       );
       await LocalGameArchive.mergeCloudSnapshot(merged);
+      await academyStore.writeCompleted(
+        LocalGameArchive.completedAcademyLessonIds,
+      );
     } on CloudProgressException {
       // Local progress stays authoritative until the next successful sync.
     } finally {
@@ -2976,6 +3058,20 @@ class _PlayModeCard extends StatelessWidget {
   }
 }
 
+String engineMoveReviewText({
+  required bool isBestMove,
+  required bool isWeakMove,
+  required String recommendation,
+}) {
+  if (isBestMove) {
+    return 'Best move • Confirmed by AI analysis.';
+  }
+  if (isWeakMove) {
+    return 'Weak move alert • $recommendation was safer. Tap Analyze to see why.';
+  }
+  return 'Playable move • AI preferred $recommendation.';
+}
+
 class GameScreen extends StatefulWidget {
   const GameScreen({
     this.initiallySignedIn = false,
@@ -3038,6 +3134,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   WebSocketChannel? _onlineChannel;
   StreamSubscription<dynamic>? _onlineSocketSubscription;
   Timer? _onlineSocketReconnectTimer;
+  int _onlineSocketReconnectAttempts = 0;
   Timer? _onlineHeartbeatTimer;
   Timer? _onlineResultPresentationTimer;
   OnlineMatchDto? _onlineMatch;
@@ -3066,6 +3163,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   double _engineEvaluationPawns = 0;
   final List<int> _playerMoveScores = <int>[];
   final List<String> _importantMistakes = <String>[];
+  final List<SavedMoveReview> _moveReviews = <SavedMoveReview>[];
   String? _turningPoint;
   String _coachNote = 'Select a coin to see legal moves.';
   BoardSkin _skin = BoardSkin.royalWalnut;
@@ -4434,6 +4532,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
     final String? token = _authToken;
     if (token != null) {
+      await FirebasePushService.instance.unregister(token);
       await _authApi.logout(token);
     }
     await _sessionStore.clear();
@@ -4875,7 +4974,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     int? onlineExpectedPly;
     String? engineReviewFen;
     String? engineReviewMove;
-    int? engineReviewLocalScore;
+    int? engineReviewPly;
 
     setState(() {
       final bool whitesTurn =
@@ -4984,6 +5083,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     ? '$from$square'
                     : '$from x $square';
         _moves.insert(0, move);
+        engineReviewPly = _moves.length;
         if (_gameMode == GameMode.online) {
           final bool promotes = piece.code == 'P' &&
               ((piece.white && square.endsWith('8')) ||
@@ -5012,7 +5112,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         );
         if (_gameMode == GameMode.computer) {
           final int score = _scoreForMoveFeedback(moveFeedback);
-          engineReviewLocalScore = score;
           _playerMoveScores.add(score);
           if (score < 60) {
             _turningPoint = '$move — $moveFeedback';
@@ -5022,9 +5121,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         if (_gameMode == GameMode.computer) {
           final bool locallyWeak = _scoreForMoveFeedback(moveFeedback) < 60;
           _moveQualityIsWeak = locallyWeak;
-          _moveQualityText = locallyWeak
-              ? '$moveFeedback Tap “Why is this weak?” to understand the safer plan.'
-              : 'Move review • $moveFeedback';
+          _moveQualityText = widget.useRemoteEngine
+              ? 'AI review in progress…'
+              : locallyWeak
+                  ? '$moveFeedback Tap “Why is this weak?” to understand the safer plan.'
+                  : 'Move review • $moveFeedback';
         }
         _hintStage = 0;
         _lastPlayerMove = move;
@@ -5091,14 +5192,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         promotionWhite!,
       ).then((_) => _scheduleAiMove());
     } else if (moveCommitted) {
-      if (engineReviewFen != null &&
-          engineReviewMove != null &&
-          engineReviewLocalScore != null) {
+      if (engineReviewFen != null && engineReviewMove != null) {
         unawaited(
           _reviewPlayerMoveWithEngine(
             engineReviewFen!,
             engineReviewMove!,
-            engineReviewLocalScore!,
+            engineReviewPly!,
           ),
         );
       }
@@ -5150,22 +5249,37 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Future<void> _reviewPlayerMoveWithEngine(
     String fen,
     String playedMove,
-    int localScore,
+    int ply,
   ) async {
     final int reviewEpoch = ++_moveReviewEpoch;
     try {
-      final Map<String, dynamic> engine = await _engineApi.analyze(
+      final Map<String, dynamic> engine = await _engineApi.reviewMove(
         fen: fen,
+        playedMove: playedMove,
         level: math.max(5, _aiLevel.round()),
       );
       if (!mounted || reviewEpoch != _moveReviewEpoch) return;
       final String bestMove = engine['bestMove'] as String? ?? '';
       if (bestMove.length < 4) return;
-      final bool best = bestMove.toLowerCase() == playedMove.toLowerCase();
-      final bool isWeak = !best && localScore < 60;
+      final String classification =
+          engine['classification'] as String? ?? 'Playable';
+      final bool best = classification == 'Best';
+      final bool isWeak =
+          classification == 'Mistake' || classification == 'Blunder';
       final String recommendation =
           '${bestMove.substring(0, 2)} to ${bestMove.substring(2, 4)}';
-      final int cp = (engine['evaluationCp'] as num?)?.toInt() ?? 0;
+      final String explanation = engine['explanation'] as String? ??
+          (best
+              ? 'You found the strongest continuation.'
+              : '$recommendation was more accurate.');
+      final String reviewText = '$classification • $explanation';
+      final int cp = (engine['evaluationAfterCp'] as num?)?.toInt() ?? 0;
+      final int centipawnLoss = (engine['centipawnLoss'] as num?)?.toInt() ?? 0;
+      final String opponentThreat = engine['opponentThreat'] as String? ?? '';
+      final List<String> principalVariation =
+          (engine['principalVariation'] as List<dynamic>? ?? <dynamic>[])
+              .whereType<String>()
+              .toList(growable: false);
       setState(() {
         _engineEvaluationPawns = cp / 100;
         // Post-move review is textual. Board arrows are reserved for an
@@ -5175,18 +5289,31 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _coachArrowTo = null;
         if (_playerMoveScores.isNotEmpty) {
           _playerMoveScores[_playerMoveScores.length - 1] =
-              best ? 100 : localScore;
+              (100 - (centipawnLoss / 3).round()).clamp(0, 100);
         }
-        _moveQualityText = isWeak
-            ? 'Weak move alert • $recommendation was safer. Tap Analyze to see why.'
-            : 'Move review • Good step confirmed by AI analysis.';
+        // The coach card and the compact review label must have one verdict.
+        // Previously the immediate heuristic could remain "Superb" while the
+        // engine label changed to "Good", showing two grades for one move.
+        _moveQualityText = reviewText;
         _moveQualityIsWeak = isWeak;
+        _lastPlayerCoachNote = reviewText;
+        _coachNote = reviewText;
+        _moveReviews.removeWhere((SavedMoveReview item) => item.ply == ply);
+        _moveReviews.add(
+          SavedMoveReview(
+            ply: ply,
+            fenBefore: fen,
+            playedMove: playedMove,
+            bestMove: bestMove,
+            classification: classification,
+            coachingTheme: engine['coachingTheme'] as String? ?? 'calculation',
+            centipawnLoss: centipawnLoss,
+            opponentThreat: opponentThreat,
+            explanation: explanation,
+            principalVariation: principalVariation,
+          ),
+        );
         if (isWeak) {
-          final String explanation =
-              _engineEvaluationExplanation(engine, _moves.length.isOdd);
-          _lastPlayerCoachNote =
-              'Weak step — $recommendation was safer. $explanation';
-          _coachNote = _lastPlayerCoachNote!;
           _turningPoint ??= '$playedMove — $recommendation was stronger.';
           _recordImportantMistake(
             '$playedMove • Prefer $recommendation. $explanation',
@@ -5902,6 +6029,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _engineEvaluationPawns = 0;
       _playerMoveScores.clear();
       _importantMistakes.clear();
+      _moveReviews.clear();
       _turningPoint = null;
       _whiteSeconds = 10 * 60;
       _blackSeconds = 10 * 60;
@@ -6009,6 +6137,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           humanPlaysWhite: _humanPlaysWhite,
           tracksPlayer: _gameMode != GameMode.local,
         ),
+        moveReviews: List<SavedMoveReview>.from(_moveReviews)
+          ..sort((SavedMoveReview a, SavedMoveReview b) => a.ply - b.ply),
       ),
     );
   }
@@ -6029,8 +6159,92 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       knownAccuracy: _playerAccuracy,
       knownTurningPoint: _turningPoint,
       knownMistakes: _importantMistakes.reversed.toList(growable: false),
+      knownReviews: _moveReviews,
     );
-    showAdaptiveAiReview(context, report: report);
+    showAdaptiveAiReview(
+      context,
+      report: report,
+      onRetryPosition: _openReviewedPositionRetry,
+      onGeneratePuzzles: _generateMistakePuzzles,
+    );
+  }
+
+  void _openReviewedPositionRetry(AiMoveInsight insight) {
+    final String? fen = insight.fenBefore;
+    final String? bestMove = insight.bestMove;
+    if (fen == null || fen.isEmpty || bestMove == null || bestMove.length < 4) {
+      return;
+    }
+    final List<String> fenParts = fen.split(RegExp(r'\s+'));
+    Navigator.of(context).pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) => ReviewedPositionRetryDialog(
+          fen: fen,
+          initialPieces: _piecesFromFen(fen),
+          whiteToMove: fenParts.length < 2 || fenParts[1] != 'b',
+          bestMove: bestMove,
+          explanation: insight.explanation,
+        ),
+      );
+    });
+  }
+
+  void _generateMistakePuzzles() {
+    final List<SavedMoveReview> puzzles = _moveReviews
+        .where((SavedMoveReview review) =>
+            review.fenBefore.isNotEmpty &&
+            review.bestMove.length >= 4 &&
+            const <String>{'Inaccuracy', 'Mistake', 'Blunder'}
+                .contains(review.classification))
+        .toList(growable: false)
+        .reversed
+        .take(5)
+        .toList(growable: false)
+        .reversed
+        .toList(growable: false);
+    if (puzzles.isEmpty) return;
+    Navigator.of(context).pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _openMistakePuzzle(puzzles, 0);
+    });
+  }
+
+  void _openMistakePuzzle(List<SavedMoveReview> puzzles, int index) {
+    if (!mounted || index >= puzzles.length) return;
+    final SavedMoveReview puzzle = puzzles[index];
+    final List<String> fenParts = puzzle.fenBefore.split(RegExp(r'\s+'));
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) => ReviewedPositionRetryDialog(
+        fen: puzzle.fenBefore,
+        initialPieces: _piecesFromFen(puzzle.fenBefore),
+        whiteToMove: fenParts.length < 2 || fenParts[1] != 'b',
+        bestMove: puzzle.bestMove,
+        explanation: puzzle.explanation,
+        progressLabel: 'MISTAKE PUZZLE ${index + 1} OF ${puzzles.length}',
+        nextLabel: index + 1 < puzzles.length ? 'Next puzzle' : 'Finish set',
+        onNext: () {
+          Navigator.of(context).pop();
+          if (index + 1 < puzzles.length) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _openMistakePuzzle(puzzles, index + 1);
+            });
+          } else {
+            ScaffoldMessenger.of(this.context).showSnackBar(
+              SnackBar(
+                content: Text(
+                    'Training complete: ${puzzles.length} real game ${puzzles.length == 1 ? 'mistake' : 'mistakes'} reviewed.'),
+              ),
+            );
+          }
+        },
+      ),
+    );
   }
 
   void _saveSnapshot() {
@@ -6461,6 +6675,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _handledDrawOfferKey = null;
         _onlineConnectedPlayers = 0;
         _onlineSocketConnected = false;
+        _onlineSocketReconnectAttempts = 0;
       }
     });
     // A restored/reconnected match must always replay its authoritative move
@@ -6508,11 +6723,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _scheduleOnlineSocketReconnect(String token, String matchId) {
     if (!mounted || _onlineMatch?.id != matchId) return;
+    if (_onlineSocketReconnectTimer?.isActive == true) return;
     setState(() => _onlineSocketConnected = false);
     _onlineHeartbeatTimer?.cancel();
     _onlineSocketReconnectTimer?.cancel();
+    _onlineSocketReconnectAttempts++;
+    final int delaySeconds =
+        (2 * _onlineSocketReconnectAttempts).clamp(2, 12);
     _onlineSocketReconnectTimer = Timer(
-      const Duration(seconds: 3),
+      Duration(seconds: delaySeconds),
       () => _connectOnlineSocket(token, matchId),
     );
   }
@@ -6764,7 +6983,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         return;
       }
       if (mounted && !_onlineSocketConnected) {
-        setState(() => _onlineSocketConnected = true);
+        setState(() {
+          _onlineSocketConnected = true;
+          _onlineSocketReconnectAttempts = 0;
+        });
       }
       if (decoded['type'] != 'presence.updated') return;
       final int connected = (decoded['connectedPlayers'] as num?)?.toInt() ?? 0;
@@ -6772,6 +6994,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       setState(() {
         _onlineConnectedPlayers = connected;
         _onlineSocketConnected = true;
+        _onlineSocketReconnectAttempts = 0;
         if (_onlineMatch?.isActive == true && connected < 2) {
           _coachNote = 'Opponent connection lost. Waiting for reconnect...';
         }
@@ -7323,6 +7546,274 @@ class BoardStage extends StatelessWidget {
               ],
             ),
             child: Padding(padding: const EdgeInsets.all(1), child: child),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ReviewedPositionRetryDialog extends StatefulWidget {
+  const ReviewedPositionRetryDialog({
+    required this.fen,
+    required this.initialPieces,
+    required this.whiteToMove,
+    required this.bestMove,
+    required this.explanation,
+    this.progressLabel = 'RETRY THIS POSITION',
+    this.nextLabel = 'Back to review',
+    this.onNext,
+    super.key,
+  });
+
+  final String fen;
+  final Map<String, ChessPiece> initialPieces;
+  final bool whiteToMove;
+  final String bestMove;
+  final String explanation;
+  final String progressLabel;
+  final String nextLabel;
+  final VoidCallback? onNext;
+
+  @override
+  State<ReviewedPositionRetryDialog> createState() =>
+      _ReviewedPositionRetryDialogState();
+}
+
+class _ReviewedPositionRetryDialogState
+    extends State<ReviewedPositionRetryDialog> {
+  late Map<String, ChessPiece> _pieces;
+  String? _selected;
+  String? _lastFrom;
+  String? _lastTo;
+  String? _message;
+  bool _answered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pieces = Map<String, ChessPiece>.from(widget.initialPieces);
+  }
+
+  Set<String> get _legalTargets {
+    final String? selected = _selected;
+    if (selected == null || _answered) return <String>{};
+    final Set<String> targets =
+        ChessRules.safeLegalTargets(selected, _pieces).toSet();
+    if (widget.bestMove.startsWith(selected) && widget.bestMove.length >= 4) {
+      final String target = widget.bestMove.substring(2, 4);
+      if (_isLegalFenSpecialMove(selected, target)) targets.add(target);
+    }
+    return targets;
+  }
+
+  bool _isLegalFenSpecialMove(String from, String target) {
+    final List<String> parts = widget.fen.split(RegExp(r'\s+'));
+    final ChessPiece? piece = _pieces[from];
+    if (piece == null) return false;
+    if (piece.code == 'P' && parts.length > 3 && parts[3] == target) {
+      final SquarePosition a = ChessRules.positionOf(from);
+      final SquarePosition b = ChessRules.positionOf(target);
+      final String captured = ChessRules.squareOf(b.file, a.rank);
+      return (b.file - a.file).abs() == 1 &&
+          b.rank - a.rank == (piece.white ? 1 : -1) &&
+          !_pieces.containsKey(target) &&
+          _pieces[captured]?.code == 'P' &&
+          _pieces[captured]?.white != piece.white;
+    }
+    if (piece.code != 'K' || parts.length < 3) return false;
+    final bool kingSide = target == (piece.white ? 'g1' : 'g8');
+    final bool queenSide = target == (piece.white ? 'c1' : 'c8');
+    if (!kingSide && !queenSide) return false;
+    final String right =
+        piece.white ? (kingSide ? 'K' : 'Q') : (kingSide ? 'k' : 'q');
+    if (!parts[2].contains(right) ||
+        ChessRules.isKingInCheck(piece.white, _pieces)) {
+      return false;
+    }
+    final int rank = piece.white ? 1 : 8;
+    final List<String> empty = kingSide
+        ? <String>['f$rank', 'g$rank']
+        : <String>['b$rank', 'c$rank', 'd$rank'];
+    if (empty.any(_pieces.containsKey)) return false;
+    final String transit = kingSide ? 'f$rank' : 'd$rank';
+    final String rookSquare = kingSide ? 'h$rank' : 'a$rank';
+    if (_pieces[rookSquare]?.code != 'R' ||
+        _pieces[rookSquare]?.white != piece.white) {
+      return false;
+    }
+    final Map<String, ChessPiece> transitBoard =
+        ChessRules.applyMove(from, transit, _pieces);
+    if (ChessRules.isKingInCheck(piece.white, transitBoard)) return false;
+    final Map<String, ChessPiece> destinationBoard =
+        ChessRules.applyMove(transit, target, transitBoard);
+    return !ChessRules.isKingInCheck(piece.white, destinationBoard);
+  }
+
+  Map<String, ChessPiece> _applyReviewedMove(String from, String target) {
+    final ChessPiece? piece = _pieces[from];
+    final List<String> parts = widget.fen.split(RegExp(r'\s+'));
+    final Map<String, ChessPiece> next = Map<String, ChessPiece>.from(_pieces);
+    if (piece?.code == 'P' &&
+        parts.length > 3 &&
+        parts[3] == target &&
+        !next.containsKey(target)) {
+      final SquarePosition a = ChessRules.positionOf(from);
+      final SquarePosition b = ChessRules.positionOf(target);
+      next.remove(ChessRules.squareOf(b.file, a.rank));
+    }
+    next.remove(from);
+    if (piece != null) {
+      final bool promotion =
+          piece.code == 'P' && (target.endsWith('8') || target.endsWith('1'));
+      final String promoted =
+          widget.bestMove.length >= 5 ? widget.bestMove[4].toUpperCase() : 'Q';
+      next[target] = promotion ? ChessPiece(promoted, piece.white) : piece;
+      if (piece.code == 'K' &&
+          (from.codeUnitAt(0) - target.codeUnitAt(0)).abs() == 2) {
+        final int rank = piece.white ? 1 : 8;
+        final bool kingSide = target.startsWith('g');
+        final String rookFrom = kingSide ? 'h$rank' : 'a$rank';
+        final String rookTo = kingSide ? 'f$rank' : 'd$rank';
+        final ChessPiece? rook = next.remove(rookFrom);
+        if (rook != null) next[rookTo] = rook;
+      }
+    }
+    return next;
+  }
+
+  void _tapSquare(String square) {
+    if (_answered) return;
+    final ChessPiece? tapped = _pieces[square];
+    if (_selected == null) {
+      if (tapped?.white == widget.whiteToMove) {
+        setState(() => _selected = square);
+      }
+      return;
+    }
+    final String from = _selected!;
+    if (tapped?.white == widget.whiteToMove) {
+      setState(() => _selected = square);
+      return;
+    }
+    if (!_legalTargets.contains(square)) return;
+    final String attempted = '$from$square'.toLowerCase();
+    final bool correct = widget.bestMove.toLowerCase().startsWith(attempted);
+    setState(() {
+      _pieces = _applyReviewedMove(from, square);
+      _lastFrom = from;
+      _lastTo = square;
+      _selected = null;
+      _answered = true;
+      _message = correct
+          ? 'Best move found. ${widget.explanation}'
+          : 'Good try. The engine preferred ${widget.bestMove.substring(0, 2)} to ${widget.bestMove.substring(2, 4)}. ${widget.explanation}';
+    });
+  }
+
+  void _reset() {
+    setState(() {
+      _pieces = Map<String, ChessPiece>.from(widget.initialPieces);
+      _selected = null;
+      _lastFrom = null;
+      _lastTo = null;
+      _message = null;
+      _answered = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final BoardPalette palette = boardPalettes[BoardSkin.sapphire]!;
+    final bool inCheck = ChessRules.isKingInCheck(widget.whiteToMove, _pieces);
+    final String? checkedKing =
+        inCheck ? ChessRules.kingSquare(widget.whiteToMove, _pieces) : null;
+    return Dialog(
+      backgroundColor: const Color(0xFF061722),
+      insetPadding: const EdgeInsets.all(16),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 620, maxHeight: 850),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  const Icon(Icons.replay_circle_filled_rounded,
+                      color: Color(0xFF59E4C8)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      widget.progressLabel,
+                      style: const TextStyle(
+                          fontSize: 19, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              Text(
+                '${widget.whiteToMove ? 'White' : 'Black'} to move • Find the strongest continuation',
+                style: const TextStyle(color: Color(0xFF9DB0BE)),
+              ),
+              const SizedBox(height: 14),
+              AspectRatio(
+                aspectRatio: 1,
+                child: ChessBoard(
+                  pieces: _pieces,
+                  selectedSquare: _selected,
+                  legalTargets: _legalTargets,
+                  lastFromSquare: _lastFrom,
+                  lastToSquare: _lastTo,
+                  lastCaptureSquare: null,
+                  moveSequence: _answered ? 1 : 0,
+                  checkedKingSquare: checkedKing,
+                  decisiveSquare: null,
+                  coachArrowFrom:
+                      _answered ? widget.bestMove.substring(0, 2) : null,
+                  coachArrowTo:
+                      _answered ? widget.bestMove.substring(2, 4) : null,
+                  flipped: !widget.whiteToMove,
+                  showCoordinates: true,
+                  palette: palette,
+                  onSquareTap: _tapSquare,
+                ),
+              ),
+              if (_message != null) ...<Widget>[
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D2734),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFF59E4C8)),
+                  ),
+                  child: Text(_message!, style: const TextStyle(height: 1.4)),
+                ),
+              ],
+              const SizedBox(height: 14),
+              Row(
+                children: <Widget>[
+                  OutlinedButton.icon(
+                    onPressed: _reset,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Try again'),
+                  ),
+                  const Spacer(),
+                  FilledButton(
+                    onPressed:
+                        widget.onNext ?? () => Navigator.of(context).pop(),
+                    child: Text(widget.nextLabel),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -8354,18 +8845,14 @@ class ChessCoin extends StatelessWidget {
     final String label =
         '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}';
     if (appearance.style == ChessPieceVisualStyle.classic2d) {
-      final String solidGlyph = switch (piece.code) {
-        'K' => '♚',
-        'Q' => '♛',
-        'R' => '♜',
-        'B' => '♝',
-        'N' => '♞',
-        _ => '♟',
-      };
+      // Use the real white Unicode set for White. Re-colouring the solid
+      // black glyphs made the classic white pawn retain a black silhouette on
+      // several browser/Android serif fonts.
+      final String solidGlyph = pieceGlyph(piece);
       final Color fill =
-          piece.white ? const Color(0xFFFFD98A) : const Color(0xFF10243A);
+          piece.white ? const Color(0xFFFFF4D0) : const Color(0xFF10243A);
       final Color outline =
-          piece.white ? const Color(0xFF15283D) : const Color(0xFFE7C67E);
+          piece.white ? const Color(0xFF9A6A16) : const Color(0xFFE7C67E);
       return Semantics(
         label: label,
         child: Stack(

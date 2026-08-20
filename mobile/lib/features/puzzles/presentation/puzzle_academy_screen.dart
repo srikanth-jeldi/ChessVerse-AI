@@ -4,6 +4,7 @@ import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
+import '../../analysis/domain/player_learning_profile.dart';
 import '../domain/puzzle_catalog.dart';
 
 typedef PuzzleLauncher = Future<void> Function(String puzzleId);
@@ -162,6 +163,24 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
   Widget build(BuildContext context) {
     final LocalGameStats stats = LocalGameArchive.stats();
     final RewardSnapshot rewards = LocalGameArchive.rewards();
+    final PlayerLearningProfile learningProfile =
+        PlayerLearningProfile.fromGames(
+      LocalGameArchive.games,
+      cloudScores: LocalGameArchive.cloudWeaknessScores,
+    );
+    final List<ChessPuzzle> adaptivePlan = PuzzleCatalog.adaptivePlan(
+      learningProfile.primaryWeakness.name,
+      LocalGameArchive.completedPuzzleIds,
+    );
+    final ChessPuzzle adaptiveStart = adaptivePlan.isNotEmpty
+        ? adaptivePlan.first
+        : PuzzleCatalog.nextUnsolved(
+            PuzzleDifficulty.medium,
+            LocalGameArchive.completedPuzzleIds,
+          );
+    final String adaptiveFocus = LocalGameArchive.games.isEmpty
+        ? 'Balanced tactical warm-up'
+        : '${PlayerLearningProfile.labelFor(learningProfile.primaryWeakness)} focus • 60% targeted';
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: LayoutBuilder(
@@ -185,12 +204,8 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                   child: _DesktopPuzzleAcademy(
                     stats: stats,
                     rewards: rewards,
-                    onStart: () => _launchPuzzle(
-                      PuzzleCatalog.nextUnsolved(
-                        PuzzleDifficulty.medium,
-                        LocalGameArchive.completedPuzzleIds,
-                      ).id,
-                    ),
+                    adaptiveFocus: adaptiveFocus,
+                    onStart: () => _launchPuzzle(adaptiveStart.id),
                     onDifficulty: (PuzzleDifficulty difficulty) =>
                         _openPuzzlePicker(context, difficulty),
                     onViewStats: () => _showTrainingInsights(stats, rewards),
@@ -263,12 +278,8 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                           children: <Widget>[
                             _PuzzleHero(
                               solved: stats.puzzlesSolved,
-                              onStart: () => _launchPuzzle(
-                                PuzzleCatalog.nextUnsolved(
-                                  PuzzleDifficulty.medium,
-                                  LocalGameArchive.completedPuzzleIds,
-                                ).id,
-                              ),
+                              adaptiveFocus: adaptiveFocus,
+                              onStart: () => _launchPuzzle(adaptiveStart.id),
                             ),
                             const SizedBox(height: 28),
                             const _SectionHeading(
@@ -346,6 +357,7 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
     required this.onStart,
     required this.onDifficulty,
     required this.onViewStats,
+    required this.adaptiveFocus,
   });
 
   final LocalGameStats stats;
@@ -353,6 +365,7 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
   final VoidCallback onStart;
   final ValueChanged<PuzzleDifficulty> onDifficulty;
   final VoidCallback onViewStats;
+  final String adaptiveFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -400,7 +413,11 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            _PuzzleHero(solved: stats.puzzlesSolved, onStart: onStart),
+            _PuzzleHero(
+              solved: stats.puzzlesSolved,
+              adaptiveFocus: adaptiveFocus,
+              onStart: onStart,
+            ),
             const SizedBox(height: 18),
             Expanded(
               child: SingleChildScrollView(
@@ -491,10 +508,12 @@ class _PuzzleHero extends StatelessWidget {
   const _PuzzleHero({
     required this.solved,
     required this.onStart,
+    required this.adaptiveFocus,
   });
 
   final int solved;
   final VoidCallback onStart;
+  final String adaptiveFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -587,19 +606,18 @@ class _PuzzleHero extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 18),
-                        const Expanded(
+                        Expanded(
                             child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: <Widget>[
-                              Text('Tactical Sprint',
+                              const Text('Your Adaptive Sprint',
                                   style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 27,
                                       fontWeight: FontWeight.w900)),
-                              SizedBox(height: 5),
-                              Text(
-                                  'Find the forcing line before the defense escapes.',
-                                  style: TextStyle(
+                              const SizedBox(height: 5),
+                              Text(adaptiveFocus,
+                                  style: const TextStyle(
                                       color: Color(0xFFAFBFCA), height: 1.35)),
                             ])),
                       ]),

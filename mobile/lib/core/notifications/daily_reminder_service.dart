@@ -112,4 +112,24 @@ class DailyReminderService {
     await _plugin.cancel(_notificationId);
     await _plugin.cancel(_weeklyReportNotificationId);
   }
+
+  Future<void> showRealtime(int id, String title, String body) async {
+    if (kIsWeb) return;
+    await initialize();
+    await _plugin.show(
+      id,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'social_and_match_alerts',
+          'Friends, challenges and community',
+          channelDescription: 'Time-sensitive ChessVerseAI social and match alerts',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+    );
+  }
 }

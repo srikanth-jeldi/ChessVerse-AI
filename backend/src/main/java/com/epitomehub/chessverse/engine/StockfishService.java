@@ -4,6 +4,8 @@ import static com.epitomehub.chessverse.engine.EngineController.BestMoveRequest;
 import static com.epitomehub.chessverse.engine.EngineController.BestMoveResponse;
 import static com.epitomehub.chessverse.engine.EngineController.AnalyzeRequest;
 import static com.epitomehub.chessverse.engine.EngineController.AnalyzeResponse;
+import static com.epitomehub.chessverse.engine.EngineController.MoveReviewRequest;
+import static com.epitomehub.chessverse.engine.EngineController.MoveReviewResponse;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -20,6 +22,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
+import java.util.Locale;
+import com.github.bhlangonijr.chesslib.Board;
+import com.github.bhlangonijr.chesslib.Piece;
+import com.github.bhlangonijr.chesslib.Side;
+import com.github.bhlangonijr.chesslib.Square;
+import com.github.bhlangonijr.chesslib.move.Move;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -28,6 +36,7 @@ import org.springframework.stereotype.Service;
 class StockfishService {
     private static final Pattern SAFE_FEN =
             Pattern.compile("^[prnbqkPRNBQK1-8/]+ [wb] (?:-|[KQkq]+) (?:-|[a-h][36]) \\d+ \\d+$");
+    private static final Pattern SAFE_UCI_MOVE = Pattern.compile("^[a-h][1-8][a-h][1-8][qrbn]?$", Pattern.CASE_INSENSITIVE);
     private static final List<Integer> ELO_LEVELS =
             List.of(1320, 1400, 1500, 1600, 1750, 1900, 2100, 2300, 2600, 3000);
     private static final List<Integer> MOVE_TIMES_MS =
@@ -131,6 +140,131 @@ class StockfishService {
         } finally {
             process.destroyForcibly();
         }
+    }
+
+    MoveReviewResponse reviewMove(MoveReviewRequest request) {
+        String fen = request.fen().trim();
+        String playedMove = request.playedMove().trim().toLowerCase();
+        if (!SAFE_FEN.matcher(fen).matches()) {
+            throw new EngineException(HttpStatus.BAD_REQUEST, "The supplied chess position is invalid.");
+        }
+        if (!SAFE_UCI_MOVE.matcher(playedMove).matches()) {
+            throw new EngineException(HttpStatus.BAD_REQUEST, "The supplied chess move is invalid.");
+        }
+        if (!isLegalMove(fen, playedMove)) {
+            throw new EngineException(HttpStatus.UNPROCESSABLE_ENTITY, "That move is not legal in this position.");
+        }
+
+        int depth = ANALYSIS_DEPTHS.get(request.level() - 1);
+        AnalysisLine before = analyzeLine(fen, depth, List.of());
+        AnalysisLine after = analyzeLine(fen, depth, List.of(playedMove));
+        if (before.bestMove() == null || after.bestMove() == null) {
+            throw new EngineException(HttpStatus.UNPROCESSABLE_ENTITY, "The move could not be reviewed.");
+        }
+
+        int moverEvaluationAfter = -after.evaluationCp();
+        int centipawnLoss = Math.max(0, before.evaluationCp() - moverEvaluationAfter);
+        boolean bestMove = before.bestMove().equalsIgnoreCase(playedMove);
+        String classification = classifyMove(bestMove, centipawnLoss);
+        String threat = after.principalVariation().isEmpty()
+                ? after.bestMove()
+                : after.principalVariation().getFirst();
+        String explanation = explainMove(classification, before.bestMove(), threat, centipawnLoss);
+        String coachingTheme = coachingTheme(fen, after, centipawnLoss);
+        return new MoveReviewResponse(
+                playedMove,
+                before.bestMove(),
+                classification,
+                centipawnLoss,
+                before.evaluationCp(),
+                moverEvaluationAfter,
+                coachingTheme,
+                threat,
+                explanation,
+                before.principalVariation(),
+                depth);
+    }
+
+    private AnalysisLine analyzeLine(String fen, int depth, List<String> moves) {
+        Process process = startEngine();
+        try (BufferedWriter input = new BufferedWriter(new OutputStreamWriter(
+                process.getOutputStream(), StandardCharsets.UTF_8));
+                BufferedReader output = new BufferedReader(new InputStreamReader(
+                        process.getInputStream(), StandardCharsets.UTF_8))) {
+            send(input, "uci");
+            send(input, "setoption name Threads value 1");
+            send(input, "setoption name Hash value 32");
+            send(input, "isready");
+            send(input, "position fen " + fen + (moves.isEmpty() ? "" : " moves " + String.join(" ", moves)));
+            send(input, "go depth " + depth);
+            return CompletableFuture.supplyAsync(() -> readAnalysis(output))
+                    .get(responseTimeout.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (TimeoutException exception) {
+            throw new EngineException(HttpStatus.GATEWAY_TIMEOUT, "Stockfish move review took too long.");
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new EngineException(HttpStatus.SERVICE_UNAVAILABLE, "Stockfish move review was interrupted.");
+        } catch (ExecutionException | IOException exception) {
+            throw new EngineException(HttpStatus.SERVICE_UNAVAILABLE, "Stockfish could not review the move.");
+        } finally {
+            process.destroyForcibly();
+        }
+    }
+
+    static String classifyMove(boolean bestMove, int centipawnLoss) {
+        if (bestMove || centipawnLoss <= 10) return "Best";
+        if (centipawnLoss <= 30) return "Great";
+        if (centipawnLoss <= 70) return "Inaccuracy";
+        if (centipawnLoss <= 160) return "Mistake";
+        return "Blunder";
+    }
+
+    static String explainMove(String classification, String bestMove, String threat, int centipawnLoss) {
+        if (classification.equals("Best")) {
+            return "You found the engine's strongest continuation and kept control of the position.";
+        }
+        String impact = centipawnLoss >= 160
+                ? "This gives the opponent a major tactical opportunity."
+                : centipawnLoss >= 70
+                        ? "This concedes a clear advantage that can be avoided."
+                        : "The move is playable, but it misses a more accurate continuation.";
+        return impact + " " + bestMove + " was stronger; the immediate opponent threat is " + threat + ".";
+    }
+
+    static String coachingTheme(String fen, AnalysisLine after, int centipawnLoss) {
+        String[] fields = fen.split("\\s+");
+        int fullMove = fields.length > 5 ? Integer.parseInt(fields[5]) : 1;
+        if (after.mateIn() != null || Math.abs(after.evaluationCp()) >= 800) return "kingSafety";
+        if (fullMove <= 10) return "opening";
+        if (fullMove >= 30) return "endgame";
+        if (centipawnLoss >= 160) return "hangingPieces";
+        if (centipawnLoss >= 70) return "tactics";
+        return "calculation";
+    }
+
+    static boolean isLegalMove(String fen, String uci) {
+        try {
+            Board board = new Board();
+            board.loadFromFen(fen);
+            Square from = Square.valueOf(uci.substring(0, 2).toUpperCase(Locale.ROOT));
+            Square to = Square.valueOf(uci.substring(2, 4).toUpperCase(Locale.ROOT));
+            Move move = uci.length() == 5
+                    ? new Move(from, to, promotion(uci.charAt(4), board.getSideToMove()))
+                    : new Move(from, to);
+            return board.legalMoves().contains(move);
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
+
+    private static Piece promotion(char code, Side side) {
+        return switch (Character.toLowerCase(code)) {
+            case 'q' -> side == Side.WHITE ? Piece.WHITE_QUEEN : Piece.BLACK_QUEEN;
+            case 'r' -> side == Side.WHITE ? Piece.WHITE_ROOK : Piece.BLACK_ROOK;
+            case 'b' -> side == Side.WHITE ? Piece.WHITE_BISHOP : Piece.BLACK_BISHOP;
+            case 'n' -> side == Side.WHITE ? Piece.WHITE_KNIGHT : Piece.BLACK_KNIGHT;
+            default -> throw new IllegalArgumentException("Invalid promotion piece");
+        };
     }
 
     private Process startEngine() {

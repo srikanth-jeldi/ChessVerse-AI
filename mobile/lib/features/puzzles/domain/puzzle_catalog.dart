@@ -77,4 +77,61 @@ class PuzzleCatalog {
     }
     return puzzles[index + 1];
   }
+
+  /// Builds a ten-position training block where six positions target the
+  /// player's strongest engine-reviewed weakness and four keep the session
+  /// varied. Only curated catalogue positions are returned.
+  static List<ChessPuzzle> adaptivePlan(
+    String coachingTheme,
+    Set<String> completedIds,
+  ) {
+    final Set<String> focusTags = switch (coachingTheme) {
+      'kingSafety' => <String>{
+          'mate',
+          'backRankMate',
+          'kingsideAttack',
+          'defensiveMove',
+        },
+      'hangingPieces' => <String>{
+          'hangingPiece',
+          'trappedPiece',
+          'overloading',
+          'deflection',
+        },
+      'endgame' => <String>{
+          'endgame',
+          'pawnEndgame',
+          'rookEndgame',
+          'queenEndgame',
+        },
+      'opening' => <String>{'opening', 'development', 'advantage'},
+      'calculation' => <String>{
+          'long',
+          'sacrifice',
+          'discoveredAttack',
+          'interference',
+        },
+      _ => <String>{
+          'fork',
+          'pin',
+          'skewer',
+          'discoveredAttack',
+          'doubleCheck',
+        },
+    };
+    final List<ChessPuzzle> available = all
+        .where((ChessPuzzle puzzle) => !completedIds.contains(puzzle.id))
+        .toList(growable: false);
+    final List<ChessPuzzle> focused = available
+        .where((ChessPuzzle puzzle) =>
+            puzzle.themes.any((String theme) => focusTags.contains(theme)))
+        .take(6)
+        .toList();
+    final Set<String> used = focused.map((ChessPuzzle item) => item.id).toSet();
+    final List<ChessPuzzle> mixed = available
+        .where((ChessPuzzle puzzle) => !used.contains(puzzle.id))
+        .take(10 - focused.length)
+        .toList(growable: false);
+    return <ChessPuzzle>[...focused, ...mixed];
+  }
 }

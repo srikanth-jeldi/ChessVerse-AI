@@ -133,7 +133,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          const _SectionLabel('CAREER STATS'),
+          const _SectionLabel('DEVICE ACTIVITY'),
           const SizedBox(height: 10),
           GridView.count(
             shrinkWrap: true,
@@ -144,8 +144,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisSpacing: 10,
             childAspectRatio: 1.55,
             children: <Widget>[
-              _Stat('Games', '${stats.gamesPlayed}', Icons.sports_esports),
-              _Stat('Wins', '${stats.wins}', Icons.emoji_events_rounded),
+              _Stat('All games', '${stats.gamesPlayed}', Icons.sports_esports),
+              _Stat('All wins', '${stats.wins}', Icons.emoji_events_rounded),
               _Stat('Win rate', '${stats.winRate}%', Icons.insights_rounded),
               _Stat('Puzzles', '${stats.puzzlesSolved}', Icons.extension),
             ],
@@ -491,7 +491,8 @@ class _ProfileHero extends StatelessWidget {
                   label: 'STATUS',
                   value: isGuest ? 'GUEST ONLINE' : 'VERIFIED'),
               const _Divider(),
-              _HeroMetric(label: 'CHESS LEVEL', value: '${_elo(level)} ELO'),
+              _HeroMetric(
+                  label: 'EST. STRENGTH', value: '${_elo(level)} PRACTICE'),
               const _Divider(),
               const _HeroMetric(label: 'ARENA', value: 'READY'),
             ],

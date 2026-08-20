@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "823774384869",
+    "project_id": "chessverseai-7ae27",
+    "storage_bucket": "chessverseai-7ae27.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:823774384869:android:c51c219ac91ce82e4f3a0c",
+        "android_client_info": {
+          "package_name": "com.epitomehub.chessverse"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkD_rh-c7qLMwyAMizoQXF-9TdPdEJPMU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -215,6 +215,9 @@ class OnlineMatchServiceTest {
     @Test
     void secondRematchRequestCreatesColorSwappedMatch() {
         OnlineMatch match = activeMatch();
+        match.timeControlMinutes = 5;
+        match.whiteTimeMs = 5 * 60 * 1000L;
+        match.blackTimeMs = 5 * 60 * 1000L;
         match.status = OnlineMatchStatus.FINISHED;
         match.result = "1-0";
         when(repository.lockById(match.id)).thenReturn(Optional.of(match));
@@ -226,6 +229,8 @@ class OnlineMatchServiceTest {
         assertEquals(OnlineMatchStatus.ACTIVE, rematch.status());
         assertEquals("Black Player", rematch.whitePlayerName());
         assertEquals("white", rematch.yourColor());
+        assertEquals(5 * 60 * 1000L, rematch.whiteTimeMs());
+        assertEquals(5 * 60 * 1000L, rematch.blackTimeMs());
     }
 
     @Test
@@ -266,6 +271,32 @@ class OnlineMatchServiceTest {
         assertEquals("1-0", match.result);
         assertEquals("OPPONENT_LEFT", match.resultReason);
         verify(ratings).settle(match);
+    }
+
+    @Test
+    void challengeCannotReplaceAnActiveMatch() {
+        OnlineMatch match = activeMatch();
+        when(repository.findCurrentForPlayer(white.id())).thenReturn(Optional.of(match));
+
+        OnlineMatchException error = assertThrows(
+                OnlineMatchException.class,
+                () -> service.createChallengeRoom(white, 10));
+
+        assertEquals(HttpStatus.CONFLICT, error.status());
+        assertEquals(OnlineMatchStatus.ACTIVE, match.status);
+    }
+
+    @Test
+    void challengeReplacesAStaleWaitingQueueWithPrivateTimedRoom() {
+        OnlineMatch queued = waitingMatch();
+        when(repository.findCurrentForPlayer(white.id())).thenReturn(Optional.of(queued));
+        when(repository.findByRoomCodeIgnoreCase(any())).thenReturn(Optional.empty());
+
+        OnlineDtos.MatchDto result = service.createChallengeRoom(white, 5);
+
+        assertEquals(OnlineMatchStatus.CANCELLED, queued.status);
+        assertEquals(OnlineMatchStatus.WAITING, result.status());
+        assertEquals(5 * 60 * 1000L, result.whiteTimeMs());
     }
 
     private OnlineMatch waitingMatch() {

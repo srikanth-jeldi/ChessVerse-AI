@@ -62,7 +62,8 @@ abstract final class AcademyCatalog {
       explanation:
           'Every square has an address. Files use letters a-h and ranks use numbers 1-8.',
       coachPrompt: 'Move the highlighted rook from a1 to a8.',
-      successMessage: 'Perfect. You travelled up the a-file from rank 1 to rank 8.',
+      successMessage:
+          'Perfect. You travelled up the a-file from rank 1 to rank 8.',
       pieces: <String, AcademyPiece>{'a1': whiteRook, 'e1': whiteKing},
       from: 'a1',
       to: 'a8',
@@ -77,7 +78,8 @@ abstract final class AcademyCatalog {
       explanation:
           'A pawn moves straight ahead, normally one square. From its starting rank it may move two squares.',
       coachPrompt: 'Advance the pawn from e2 to e4.',
-      successMessage: 'Great start. The two-square first move claims central space.',
+      successMessage:
+          'Great start. The two-square first move claims central space.',
       pieces: <String, AcademyPiece>{'e2': whitePawn, 'e8': blackKing},
       from: 'e2',
       to: 'e4',
@@ -107,7 +109,8 @@ abstract final class AcademyCatalog {
       explanation:
           'A bishop glides diagonally and always stays on the same square colour.',
       coachPrompt: 'Develop the bishop from c1 to g5.',
-      successMessage: 'Correct. The bishop crossed one long light-square diagonal.',
+      successMessage:
+          'Correct. The bishop crossed one long light-square diagonal.',
       pieces: <String, AcademyPiece>{'c1': whiteBishop, 'e8': blackKing},
       from: 'c1',
       to: 'g5',
@@ -122,7 +125,8 @@ abstract final class AcademyCatalog {
       explanation:
           'The knight moves two squares in one direction and one sideways. It is the only piece that jumps over pieces.',
       coachPrompt: 'Jump the knight from g1 to f3.',
-      successMessage: 'Nice jump. The knight now attacks the central e5 and d4 squares.',
+      successMessage:
+          'Nice jump. The knight now attacks the central e5 and d4 squares.',
       pieces: <String, AcademyPiece>{
         'g1': whiteKnight,
         'f2': whitePawn,
@@ -142,7 +146,8 @@ abstract final class AcademyCatalog {
       explanation:
           'The queen combines rook and bishop movement: straight or diagonal across any clear distance.',
       coachPrompt: 'Move the queen diagonally from d1 to h5.',
-      successMessage: 'Correct. From h5 the queen sees both the diagonal and the fifth rank.',
+      successMessage:
+          'Correct. From h5 the queen sees both the diagonal and the fifth rank.',
       pieces: <String, AcademyPiece>{'d1': whiteQueen, 'e8': blackKing},
       from: 'd1',
       to: 'h5',
@@ -157,7 +162,8 @@ abstract final class AcademyCatalog {
       explanation:
           'The king moves one square in any direction, but may never move onto an attacked square.',
       coachPrompt: 'Move the king safely from e1 to f2.',
-      successMessage: 'Safe move. Always check the opponent attacks before moving your king.',
+      successMessage:
+          'Safe move. Always check the opponent attacks before moving your king.',
       pieces: <String, AcademyPiece>{'e1': whiteKing, 'a8': blackKing},
       from: 'e1',
       to: 'f2',
@@ -171,7 +177,8 @@ abstract final class AcademyCatalog {
       explanation:
           'Capture by moving onto an opponent piece. Compare value before every trade: queen 9, rook 5, bishop or knight 3, pawn 1.',
       coachPrompt: 'Use the bishop on c4 to capture the loose rook on f7.',
-      successMessage: 'Strong capture. A bishop traded for a rook wins material.',
+      successMessage:
+          'Strong capture. A bishop traded for a rook wins material.',
       pieces: <String, AcademyPiece>{
         'c4': whiteBishop,
         'f7': blackRook,
@@ -191,8 +198,13 @@ abstract final class AcademyCatalog {
       explanation:
           'Check attacks the king. Checkmate is check with no legal escape, block, or capture.',
       coachPrompt: 'Give check by moving the rook from a1 to e1.',
-      successMessage: 'Check! The rook now attacks the black king along the e-file.',
-      pieces: <String, AcademyPiece>{'a1': whiteRook, 'g1': whiteKing, 'e8': blackKing},
+      successMessage:
+          'Check! The rook now attacks the black king along the e-file.',
+      pieces: <String, AcademyPiece>{
+        'a1': whiteRook,
+        'g1': whiteKing,
+        'e8': blackKing
+      },
       from: 'a1',
       to: 'e1',
       path: <String>['b1', 'c1', 'd1'],
@@ -207,7 +219,11 @@ abstract final class AcademyCatalog {
           'When checked, move the king, capture the attacker, or block the checking line.',
       coachPrompt: 'Escape the rook check by moving the king from e1 to f2.',
       successMessage: 'Safe escape. The king left the attacked e-file.',
-      pieces: <String, AcademyPiece>{'e1': whiteKing, 'e8': blackRook, 'a8': blackKing},
+      pieces: <String, AcademyPiece>{
+        'e1': whiteKing,
+        'e8': blackRook,
+        'a8': blackKing
+      },
       from: 'e1',
       to: 'f2',
       highlighted: <String>['d2', 'f2'],
@@ -221,7 +237,11 @@ abstract final class AcademyCatalog {
           'Castling moves the king two squares toward a rook, then places that rook beside the king.',
       coachPrompt: 'Castle kingside: move the king from e1 to g1.',
       successMessage: 'Castled. Your king is safer and the rook is activated.',
-      pieces: <String, AcademyPiece>{'e1': whiteKing, 'h1': whiteRook, 'e8': blackKing},
+      pieces: <String, AcademyPiece>{
+        'e1': whiteKing,
+        'h1': whiteRook,
+        'e8': blackKing
+      },
       from: 'e1',
       to: 'g1',
       path: <String>['f1'],
@@ -235,7 +255,8 @@ abstract final class AcademyCatalog {
       explanation:
           'A fork attacks multiple valuable targets at once. Knights are especially dangerous fork creators.',
       coachPrompt: 'Jump the knight from e5 to f7 and fork the king and queen.',
-      successMessage: 'Brilliant fork. The king must respond, so the queen can be won next.',
+      successMessage:
+          'Brilliant fork. The king must respond, so the queen can be won next.',
       pieces: <String, AcademyPiece>{
         'e5': whiteKnight,
         'e8': blackKing,
@@ -276,8 +297,13 @@ abstract final class AcademyCatalog {
       explanation:
           'When a pawn reaches the last rank it promotes, usually to a queen.',
       coachPrompt: 'Advance the pawn from e7 to e8 and promote.',
-      successMessage: 'Promotion! Converting passed pawns is the heart of many endgames.',
-      pieces: <String, AcademyPiece>{'e7': whitePawn, 'a1': whiteKing, 'h8': blackKing},
+      successMessage:
+          'Promotion! Converting passed pawns is the heart of many endgames.',
+      pieces: <String, AcademyPiece>{
+        'e7': whitePawn,
+        'a1': whiteKing,
+        'h8': blackKing
+      },
       from: 'e7',
       to: 'e8',
       highlighted: <String>['e7', 'e8'],
@@ -290,8 +316,13 @@ abstract final class AcademyCatalog {
       explanation:
           'The queen restricts the enemy king while your king approaches to support the final check.',
       coachPrompt: 'Move the queen from f6 to g7 for checkmate.',
-      successMessage: 'Checkmate. Your king protects the queen and seals the escape squares.',
-      pieces: <String, AcademyPiece>{'f6': whiteQueen, 'f7': whiteKing, 'h8': blackKing},
+      successMessage:
+          'Checkmate. Your king protects the queen and seals the escape squares.',
+      pieces: <String, AcademyPiece>{
+        'f6': whiteQueen,
+        'f7': whiteKing,
+        'h8': blackKing
+      },
       from: 'f6',
       to: 'g7',
       highlighted: <String>['g7', 'h8'],
@@ -304,7 +335,8 @@ abstract final class AcademyCatalog {
       explanation:
           'Two rooks can alternate checks, cutting off one rank at a time until the king reaches the edge.',
       coachPrompt: 'Move the rook from a6 to h6 for the final ladder check.',
-      successMessage: 'Checkmate. The other rook blocks the entire seventh rank.',
+      successMessage:
+          'Checkmate. The other rook blocks the entire seventh rank.',
       pieces: <String, AcademyPiece>{
         'a6': whiteRook,
         'a7': whiteRook,
@@ -324,7 +356,8 @@ abstract final class AcademyCatalog {
       explanation:
           'Immediately after an enemy pawn advances two squares beside yours, your pawn may capture it as if it moved only one square.',
       coachPrompt: 'Capture en passant by moving the pawn from e5 to d6.',
-      successMessage: 'Correct. En passant is available only on the very next move.',
+      successMessage:
+          'Correct. En passant is available only on the very next move.',
       pieces: <String, AcademyPiece>{
         'e5': whitePawn,
         'd5': blackPawn,
@@ -342,8 +375,10 @@ abstract final class AcademyCatalog {
       eyebrow: 'FREEZE THE DEFENDER',
       explanation:
           'A pinned piece cannot move without exposing a more valuable piece behind it. A king pin is absolute.',
-      coachPrompt: 'Move the bishop from b5 to c6 and pin the knight to the king.',
-      successMessage: 'Strong pin. The knight cannot leave while its king is on e8.',
+      coachPrompt:
+          'Move the bishop from b5 to c6 and pin the knight to the king.',
+      successMessage:
+          'Strong pin. The knight cannot leave while its king is on e8.',
       pieces: <String, AcademyPiece>{
         'b5': whiteBishop,
         'd7': blackPawn,
@@ -362,7 +397,8 @@ abstract final class AcademyCatalog {
       explanation:
           'A skewer attacks a valuable piece first; when it moves, the piece behind it is captured.',
       coachPrompt: 'Move the rook from a1 to e1 and skewer the king and queen.',
-      successMessage: 'Skewer found. The king must move, leaving the queen behind it.',
+      successMessage:
+          'Skewer found. The king must move, leaving the queen behind it.',
       pieces: <String, AcademyPiece>{
         'a1': whiteRook,
         'e8': blackKing,
@@ -381,8 +417,10 @@ abstract final class AcademyCatalog {
       eyebrow: 'UNMASK A HIDDEN ATTACK',
       explanation:
           'Move one piece away to reveal an attack from the rook, bishop, or queen behind it.',
-      coachPrompt: 'Move the knight from d4 to f5 and uncover the bishop on c3.',
-      successMessage: 'Excellent. One move created a knight threat and opened the bishop line.',
+      coachPrompt:
+          'Move the knight from d4 to f5 and uncover the bishop on c3.',
+      successMessage:
+          'Excellent. One move created a knight threat and opened the bishop line.',
       pieces: <String, AcademyPiece>{
         'c3': whiteBishop,
         'd4': whiteKnight,
@@ -402,7 +440,8 @@ abstract final class AcademyCatalog {
       explanation:
           'Search checks first, then confirm every king escape, capture, and block is covered.',
       coachPrompt: 'Move the queen from f6 to g7 for immediate checkmate.',
-      successMessage: 'Mate in one solved. The protected queen covers every escape square.',
+      successMessage:
+          'Mate in one solved. The protected queen covers every escape square.',
       pieces: <String, AcademyPiece>{
         'f6': whiteQueen,
         'f7': whiteKing,
@@ -438,7 +477,8 @@ abstract final class AcademyCatalog {
       explanation:
           'Use the rook to shrink the enemy king box, then bring your king close enough to support the final check.',
       coachPrompt: 'Move the rook from a7 to h7 to complete the edge mate.',
-      successMessage: 'Checkmate. Your king protects the rook and blocks the escape squares.',
+      successMessage:
+          'Checkmate. Your king protects the rook and blocks the escape squares.',
       pieces: <String, AcademyPiece>{
         'a7': whiteRook,
         'f6': whiteKing,
@@ -457,7 +497,8 @@ abstract final class AcademyCatalog {
       explanation:
           'Stalemate is a draw when the player to move has no legal move but is not in check. Keep a safe waiting square.',
       coachPrompt: 'Move the queen from b6 to c6 without trapping the king.',
-      successMessage: 'Patient move. The king still has a legal square, so you can finish safely.',
+      successMessage:
+          'Patient move. The king still has a legal square, so you can finish safely.',
       pieces: <String, AcademyPiece>{
         'b6': whiteQueen,
         'f6': whiteKing,
@@ -475,7 +516,8 @@ abstract final class AcademyCatalog {
       explanation:
           'Force a defending piece away from its duty, then capture the target it was protecting.',
       coachPrompt: 'Move the rook from d1 to d8 and deflect the queen from f8.',
-      successMessage: 'Deflection found. The defender must respond and its protected piece falls next.',
+      successMessage:
+          'Deflection found. The defender must respond and its protected piece falls next.',
       pieces: <String, AcademyPiece>{
         'd1': whiteRook,
         'f8': blackQueen,
@@ -496,7 +538,8 @@ abstract final class AcademyCatalog {
       explanation:
           'Offer a forcing target that pulls an enemy piece onto a square where your next tactic works.',
       coachPrompt: 'Move the queen from g5 to d8 and lure the rook away.',
-      successMessage: 'Powerful decoy. The forced capture places the defender on your tactical square.',
+      successMessage:
+          'Powerful decoy. The forced capture places the defender on your tactical square.',
       pieces: <String, AcademyPiece>{
         'g5': whiteQueen,
         'd8': blackRook,
@@ -516,7 +559,8 @@ abstract final class AcademyCatalog {
       explanation:
           'Find a first move that forces one reply, then prepare the unavoidable mating move.',
       coachPrompt: 'Start the forced line by moving the queen from h5 to e8.',
-      successMessage: 'Correct first move. After the forced reply, Qh8 completes the mating net.',
+      successMessage:
+          'Correct first move. After the forced reply, Qh8 completes the mating net.',
       pieces: <String, AcademyPiece>{
         'h5': whiteQueen,
         'f6': whiteKing,
@@ -538,19 +582,36 @@ abstract final class AcademyCatalog {
     if (normalized.contains('en passant')) {
       return lessons.firstWhere((l) => l.id == 'en-passant');
     }
-    if (normalized.contains('pawn')) return lessons.firstWhere((l) => l.id == 'pawn');
+    if (normalized.contains('hanging') ||
+        normalized.contains('protect') ||
+        normalized.contains('capture scan') ||
+        normalized.contains('checks, captures')) {
+      return lessons.firstWhere((l) => l.id == 'capture');
+    }
+    if (normalized.contains('candidate')) {
+      return lessons.firstWhere((l) => l.id == 'knight-fork');
+    }
+    if (normalized.contains('pawn')) {
+      return lessons.firstWhere((l) => l.id == 'pawn');
+    }
     if (normalized.contains('rook') && normalized.contains('king')) {
       return lessons.firstWhere((l) => l.id == 'rook-king-mate');
     }
-    if (normalized.contains('rook')) return lessons.firstWhere((l) => l.id == 'rook');
+    if (normalized.contains('rook')) {
+      return lessons.firstWhere((l) => l.id == 'rook');
+    }
     if (normalized.contains('bishop') || normalized.contains('diagonal')) {
       return lessons.firstWhere((l) => l.id == 'bishop');
     }
     if (normalized.contains('knight') || normalized.contains('fork')) {
       return lessons.firstWhere((l) => l.id == 'knight-fork');
     }
-    if (normalized.contains('pin')) return lessons.firstWhere((l) => l.id == 'pin');
-    if (normalized.contains('skewer')) return lessons.firstWhere((l) => l.id == 'skewer');
+    if (normalized.contains('pin')) {
+      return lessons.firstWhere((l) => l.id == 'pin');
+    }
+    if (normalized.contains('skewer')) {
+      return lessons.firstWhere((l) => l.id == 'skewer');
+    }
     if (normalized.contains('discover')) {
       return lessons.firstWhere((l) => l.id == 'discovered-attack');
     }
@@ -560,7 +621,8 @@ abstract final class AcademyCatalog {
     if (normalized.contains('decoy')) {
       return lessons.firstWhere((l) => l.id == 'decoy');
     }
-    if (normalized.contains('mate in two') || normalized.contains('mate-in-2')) {
+    if (normalized.contains('mate in two') ||
+        normalized.contains('mate-in-2')) {
       return lessons.firstWhere((l) => l.id == 'mate-two');
     }
     if (normalized.contains('opposition')) {
@@ -569,7 +631,9 @@ abstract final class AcademyCatalog {
     if (normalized.contains('stalemate') || normalized.contains('drawing')) {
       return lessons.firstWhere((l) => l.id == 'stalemate');
     }
-    if (normalized.contains('queen')) return lessons.firstWhere((l) => l.id == 'queen-mate');
+    if (normalized.contains('queen')) {
+      return lessons.firstWhere((l) => l.id == 'queen-mate');
+    }
     if (normalized.contains('mate') || normalized.contains('check')) {
       return lessons.firstWhere((l) => l.id == 'back-rank');
     }
