@@ -3,6 +3,7 @@ package com.epitomehub.chessverse.online;
 import com.epitomehub.chessverse.auth.AuthenticatedPlayer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -65,7 +66,7 @@ class CommunityService {
     CommunityDtos.HubDto joinClub(AuthenticatedPlayer player, UUID clubId, boolean join) {
         requireExists("chess_club", clubId, "Club");
         if (join) {
-            int added=jdbc.update("insert into chess_club_member(club_id,player_id,role,joined_at) values(?,?,'MEMBER',?) on conflict do nothing",clubId,player.id(),Instant.now());
+            int added=jdbc.update("insert into chess_club_member(club_id,player_id,role,joined_at) values(?,?,'MEMBER',?) on conflict do nothing",clubId,player.id(),Timestamp.from(Instant.now()));
             if(added>0) notifications.create(player.id(),"CLUB_JOINED","Welcome to your new club","You joined a ChessVerseAI community club.","CLUB",clubId);
         }
         else jdbc.update("delete from chess_club_member where club_id=? and player_id=?",clubId,player.id());
@@ -76,7 +77,7 @@ class CommunityService {
     CommunityDtos.HubDto joinTournament(AuthenticatedPlayer player, UUID tournamentId, boolean join) {
         requireExists("chess_tournament", tournamentId, "Tournament");
         if (join) {
-            int added=jdbc.update("insert into chess_tournament_entry(tournament_id,player_id,joined_at) values(?,?,?) on conflict do nothing",tournamentId,player.id(),Instant.now());
+            int added=jdbc.update("insert into chess_tournament_entry(tournament_id,player_id,joined_at) values(?,?,?) on conflict do nothing",tournamentId,player.id(),Timestamp.from(Instant.now()));
             if(added>0) notifications.create(player.id(),"TOURNAMENT_REGISTERED","Tournament registration confirmed","We will remind you before your ChessVerseAI tournament starts.","TOURNAMENT",tournamentId);
         }
         else jdbc.update("delete from chess_tournament_entry where tournament_id=? and player_id=?",tournamentId,player.id());
@@ -88,7 +89,7 @@ class CommunityService {
         FriendConnection link = friends.between(player.id(), recipientId).orElse(null);
         if (link == null || !"ACCEPTED".equals(link.status)) throw new OnlineMatchException(HttpStatus.FORBIDDEN,"Messages are available between accepted friends only.");
         UUID id=UUID.randomUUID(); Instant now=Instant.now(); String clean=body.trim();
-        jdbc.update("insert into direct_message(id,sender_id,recipient_id,body,sent_at) values(?,?,?,?,?)",id,player.id(),recipientId,clean,now);
+        jdbc.update("insert into direct_message(id,sender_id,recipient_id,body,sent_at) values(?,?,?,?,?)",id,player.id(),recipientId,clean,Timestamp.from(now));
         notifications.create(recipientId,"MESSAGE_RECEIVED","New message from "+player.displayName(),clean,"CHAT",player.id());
         return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true);
     }
@@ -97,7 +98,7 @@ class CommunityService {
     List<CommunityDtos.MessageDto> messages(AuthenticatedPlayer player, UUID friendId) {
         FriendConnection link = friends.between(player.id(), friendId).orElse(null);
         if (link == null || !"ACCEPTED".equals(link.status)) throw new OnlineMatchException(HttpStatus.FORBIDDEN,"This conversation is not available.");
-        jdbc.update("update direct_message set read_at=? where sender_id=? and recipient_id=? and read_at is null",Instant.now(),friendId,player.id());
+        jdbc.update("update direct_message set read_at=? where sender_id=? and recipient_id=? and read_at is null",Timestamp.from(Instant.now()),friendId,player.id());
         return jdbc.query("select * from direct_message where (sender_id=? and recipient_id=?) or (sender_id=? and recipient_id=?) order by sent_at desc limit 100",
                 (rs,row)->new CommunityDtos.MessageDto(uuid(rs,"id"),uuid(rs,"sender_id"),uuid(rs,"recipient_id"),rs.getString("body"),rs.getTimestamp("sent_at").toInstant(),uuid(rs,"sender_id").equals(player.id())),
                 player.id(),friendId,friendId,player.id()).reversed();

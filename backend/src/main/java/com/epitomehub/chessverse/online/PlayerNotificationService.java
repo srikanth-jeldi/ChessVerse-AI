@@ -3,6 +3,7 @@ package com.epitomehub.chessverse.online;
 import com.epitomehub.chessverse.auth.AuthenticatedPlayer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -19,7 +20,8 @@ class PlayerNotificationService {
     void create(UUID playerId, String type, String title, String body,
                 String actionType, UUID actionId) {
         jdbc.update("insert into player_notification(id,player_id,type,title,body,action_type,action_id,created_at) values(?,?,?,?,?,?,?,?)",
-                UUID.randomUUID(), playerId, type, title, body, actionType, actionId, Instant.now());
+                UUID.randomUUID(), playerId, type, title, body, actionType, actionId,
+                Timestamp.from(Instant.now()));
         push.send(playerId, title, body, actionType, actionId);
     }
 
@@ -35,13 +37,15 @@ class PlayerNotificationService {
 
     @Transactional
     PlayerNotificationDtos.InboxDto read(AuthenticatedPlayer player, UUID id) {
-        jdbc.update("update player_notification set read_at=coalesce(read_at,?) where id=? and player_id=?", Instant.now(), id, player.id());
+        jdbc.update("update player_notification set read_at=coalesce(read_at,?) where id=? and player_id=?",
+                Timestamp.from(Instant.now()), id, player.id());
         return inbox(player, 50);
     }
 
     @Transactional
     PlayerNotificationDtos.InboxDto readAll(AuthenticatedPlayer player) {
-        jdbc.update("update player_notification set read_at=? where player_id=? and read_at is null", Instant.now(), player.id());
+        jdbc.update("update player_notification set read_at=? where player_id=? and read_at is null",
+                Timestamp.from(Instant.now()), player.id());
         return inbox(player, 50);
     }
 

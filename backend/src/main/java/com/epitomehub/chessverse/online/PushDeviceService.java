@@ -1,6 +1,7 @@
 package com.epitomehub.chessverse.online;
 
 import com.epitomehub.chessverse.auth.AuthenticatedPlayer;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -22,12 +23,13 @@ class PushDeviceService {
         jdbc.update("insert into push_notification_device(id,player_id,installation_id,platform,token,enabled,created_at,updated_at) " +
                         "values(?,?,?,?,?,true,?,?) on conflict(player_id,installation_id) do update set " +
                         "platform=excluded.platform,token=excluded.token,enabled=true,updated_at=excluded.updated_at",
-                UUID.randomUUID(), player.id(), installationId.trim(), normalized(platform), token.trim(), now, now);
+                UUID.randomUUID(), player.id(), installationId.trim(), normalized(platform), token.trim(),
+                Timestamp.from(now), Timestamp.from(now));
     }
 
     void unregister(AuthenticatedPlayer player, String installationId) {
         jdbc.update("update push_notification_device set enabled=false,updated_at=? where player_id=? and installation_id=?",
-                Instant.now(), player.id(), installationId);
+                Timestamp.from(Instant.now()), player.id(), installationId);
     }
 
     private String normalized(String platform) {
