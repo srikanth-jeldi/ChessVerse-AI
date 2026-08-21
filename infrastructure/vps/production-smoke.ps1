@@ -5,6 +5,8 @@ $endpoints = @(
     'https://chessverseai.com/privacy',
     'https://chessverseai.com/terms',
     'https://chessverseai.com/data-deletion',
+    'https://chessverseai.com/community-guidelines',
+    'https://chessverseai.com/child-safety',
     'https://api.chessverseai.com/api/v1/health',
     'https://api.chessverseai.com/actuator/health/readiness'
 )

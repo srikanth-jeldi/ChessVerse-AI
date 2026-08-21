@@ -239,6 +239,8 @@ class _SplashGateState extends State<SplashGate> {
   Timer? _presenceTimer;
   Timer? _notificationTimer;
   final Set<String> _seenNotificationIds = <String>{};
+  final Set<String> _openedNotificationMatchIds = <String>{};
+  bool _openingNotificationMatch = false;
   bool _splashArtworkLoadingStarted = false;
   _RootStage _stage = _RootStage.splash;
   String _playerName = 'Guest Player';
@@ -353,7 +355,8 @@ class _SplashGateState extends State<SplashGate> {
     unawaited(_syncCloudProgress(restoredSession.token));
     _startOnlinePresence(restoredSession.token);
     _startNotificationPolling(restoredSession.token);
-    unawaited(FirebasePushService.instance.configureForSession(restoredSession.token));
+    unawaited(FirebasePushService.instance
+        .configureForSession(restoredSession.token));
   }
 
   void _startOnlinePresence(String token) {
@@ -378,7 +381,7 @@ class _SplashGateState extends State<SplashGate> {
     _notificationTimer?.cancel();
     unawaited(_pollNotifications(token, initial: true));
     _notificationTimer = Timer.periodic(
-      const Duration(seconds: 15),
+      const Duration(seconds: 4),
       (_) => unawaited(_pollNotifications(token)),
     );
   }
@@ -388,7 +391,8 @@ class _SplashGateState extends State<SplashGate> {
       final NotificationInboxDto inbox =
           await const NotificationApi().load(token);
       final List<PlayerNotificationDto> fresh = inbox.notifications
-          .where((value) => !value.read && !_seenNotificationIds.contains(value.id))
+          .where((value) =>
+              !value.read && !_seenNotificationIds.contains(value.id))
           .toList();
       _seenNotificationIds.addAll(inbox.notifications.map((value) => value.id));
       if (initial) return;
@@ -398,9 +402,38 @@ class _SplashGateState extends State<SplashGate> {
           value.title,
           value.body,
         );
+        if (value.actionType == 'MATCH' && value.actionId != null) {
+          unawaited(_openAcceptedChallenge(token, value.actionId!));
+        }
       }
     } on NotificationException {
       // The persistent inbox will catch up after connectivity is restored.
+    }
+  }
+
+  Future<void> _openAcceptedChallenge(String token, String matchId) async {
+    if (_openingNotificationMatch ||
+        _openedNotificationMatchIds.contains(matchId) ||
+        !mounted ||
+        _stage != _RootStage.home) {
+      return;
+    }
+    _openingNotificationMatch = true;
+    _openedNotificationMatchIds.add(matchId);
+    try {
+      final OnlineMatchDto match =
+          await const OnlineMatchApi().getMatch(token, matchId);
+      if (!mounted || !match.isActive) return;
+      await _openGame(
+        context,
+        GameMode.online,
+        initialOnlineMatch: match,
+        initialAuthToken: token,
+      );
+    } on OnlineMatchException {
+      _openedNotificationMatchIds.remove(matchId);
+    } finally {
+      _openingNotificationMatch = false;
     }
   }
 
@@ -513,8 +546,7 @@ class _SplashGateState extends State<SplashGate> {
           ),
         ),
         onCommunity: () => setState(() => _primaryDestination = 5),
-        onNotifications: () =>
-            _push(context, const NotificationCenterScreen()),
+        onNotifications: () => _openNotificationCenter(context),
         onLearnChess: () => setState(() => _primaryDestination = 3),
         onProfile: () => setState(() => _primaryDestination = 4),
         onSettings: () => _push(
@@ -628,6 +660,33 @@ class _SplashGateState extends State<SplashGate> {
     Navigator.of(context).pop();
     if (!mounted) return;
     setState(() => _primaryDestination = destination);
+  }
+
+  Future<void> _openNotificationCenter(BuildContext context) async {
+    await _push(
+      context,
+      NotificationCenterScreen(onAction: _handleNotificationAction),
+    );
+  }
+
+  Future<void> _handleNotificationAction(PlayerNotificationDto item) async {
+    final StoredAuthSession? session = await const AuthSessionStore().read();
+    if (!mounted || session == null) return;
+    final String action = (item.actionType ?? '').toUpperCase();
+    if (action == 'MATCH' && item.actionId != null) {
+      await _openAcceptedChallenge(session.token, item.actionId!);
+      return;
+    }
+    final int? communitySection = switch (action) {
+      'CLUB' => 1,
+      'TOURNAMENT' => 2,
+      'CHAT' => 3,
+      'CHALLENGE' || 'COMMUNITY' || 'FRIEND' => 0,
+      _ => null,
+    };
+    if (communitySection != null) {
+      setState(() => _primaryDestination = 5);
+    }
   }
 
   Future<void> _openFriendPlayChooser(BuildContext context) async {
@@ -1866,6 +1925,14 @@ class ChessVerseTheme {
         backgroundColor: Color(0xD9071827),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
+        centerTitle: false,
+        toolbarHeight: 64,
+        titleTextStyle: TextStyle(
+          color: Color(0xFFF6F1E8),
+          fontSize: 20,
+          fontWeight: FontWeight.w900,
+          letterSpacing: .8,
+        ),
       ),
       fontFamily: 'Roboto',
       textTheme: const TextTheme(
@@ -1898,7 +1965,8 @@ class ChessVerseTheme {
           backgroundColor: brass,
           foregroundColor: ink,
           minimumSize: const Size(48, 46),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -1906,13 +1974,15 @@ class ChessVerseTheme {
           foregroundColor: const Color(0xFFF6F1E8),
           side: const BorderSide(color: Color(0xFF61553F)),
           minimumSize: const Size(48, 46),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
           foregroundColor: const Color(0xFFF6F1E8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
     );
@@ -6728,8 +6798,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _onlineHeartbeatTimer?.cancel();
     _onlineSocketReconnectTimer?.cancel();
     _onlineSocketReconnectAttempts++;
-    final int delaySeconds =
-        (2 * _onlineSocketReconnectAttempts).clamp(2, 12);
+    final int delaySeconds = (2 * _onlineSocketReconnectAttempts).clamp(2, 12);
     _onlineSocketReconnectTimer = Timer(
       Duration(seconds: delaySeconds),
       () => _connectOnlineSocket(token, matchId),

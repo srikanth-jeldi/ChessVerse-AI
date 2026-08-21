@@ -9,6 +9,7 @@ import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../../leaderboard/data/leaderboard_api.dart';
 import '../../analysis/domain/player_learning_profile.dart';
+import '../../notifications/presentation/notification_bell_button.dart';
 
 void _noOnlineAction() {}
 
@@ -648,11 +649,11 @@ class _ProgressPulse extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final RewardSnapshot rewards = games == null
-        ? LocalGameArchive.rewards()
-        : _rewardsForGames(games!);
+    final RewardSnapshot rewards =
+        games == null ? LocalGameArchive.rewards() : _rewardsForGames(games!);
     return Semantics(
-      label: 'Level ${rewards.level}, ${rewards.xp} XP, ${rewards.streak} day streak',
+      label:
+          'Level ${rewards.level}, ${rewards.xp} XP, ${rewards.streak} day streak',
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: wide ? 20 : 14, vertical: 12),
         decoration: BoxDecoration(
@@ -663,15 +664,27 @@ class _ProgressPulse extends StatelessWidget {
         child: Row(children: <Widget>[
           const Icon(Icons.workspace_premium_rounded, color: Color(0xFFE7B54D)),
           const SizedBox(width: 10),
-          Text('LEVEL ${rewards.level}', style: const TextStyle(fontWeight: FontWeight.w900)),
+          Text('LEVEL ${rewards.level}',
+              style: const TextStyle(fontWeight: FontWeight.w900)),
           const SizedBox(width: 12),
-          Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: rewards.levelProgress, minHeight: 7, backgroundColor: const Color(0xFF263C4D), color: const Color(0xFF54DECA)))),
+          Expanded(
+              child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                      value: rewards.levelProgress,
+                      minHeight: 7,
+                      backgroundColor: const Color(0xFF263C4D),
+                      color: const Color(0xFF54DECA)))),
           const SizedBox(width: 12),
-          Text('${rewards.xp} XP', style: const TextStyle(color: Color(0xFF54DECA), fontWeight: FontWeight.w800)),
+          Text('${rewards.xp} XP',
+              style: const TextStyle(
+                  color: Color(0xFF54DECA), fontWeight: FontWeight.w800)),
           if (wide || rewards.streak > 0) ...<Widget>[
             const SizedBox(width: 12),
-            const Icon(Icons.local_fire_department_rounded, color: Color(0xFFFF9B45), size: 19),
-            Text('${rewards.streak}', style: const TextStyle(fontWeight: FontWeight.w900)),
+            const Icon(Icons.local_fire_department_rounded,
+                color: Color(0xFFFF9B45), size: 19),
+            Text('${rewards.streak}',
+                style: const TextStyle(fontWeight: FontWeight.w900)),
           ],
         ]),
       ),
@@ -680,7 +693,8 @@ class _ProgressPulse extends StatelessWidget {
 
   RewardSnapshot _rewardsForGames(List<SavedGameRecord> games) {
     final int wins = games.where((game) => game.playerOutcome == 'win').length;
-    final int draws = games.where((game) => game.playerOutcome == 'draw').length;
+    final int draws =
+        games.where((game) => game.playerOutcome == 'draw').length;
     final int xp = games.length * 25 + wins * 45 + draws * 15;
     final int level = xp ~/ 120 + 1;
     return RewardSnapshot(
@@ -1352,15 +1366,10 @@ class _PlayerHeader extends StatelessWidget {
           ),
         ),
         ...<Widget>[
-          IconButton(
+          NotificationBellButton(
             key: const ValueKey<String>('home-notifications'),
-            tooltip: 'Notifications',
             onPressed: onNotifications,
-            style: IconButton.styleFrom(
-              backgroundColor: const Color(0xFF102A40),
-              foregroundColor: const Color(0xFFD9E7F0),
-            ),
-            icon: const Icon(Icons.notifications_rounded),
+            filled: true,
           ),
           const SizedBox(width: 6),
         ],

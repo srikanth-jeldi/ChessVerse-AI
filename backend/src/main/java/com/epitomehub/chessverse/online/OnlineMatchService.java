@@ -241,6 +241,19 @@ public class OnlineMatchService {
         return OnlineDtos.MatchDto.from(matches.save(match), player.id());
     }
 
+    @Transactional
+    void prepareForChallengeAcceptance(UUID playerId, UUID targetMatchId) {
+        OnlineMatch current = current(playerId);
+        if (current == null || current.id.equals(targetMatchId)) return;
+        if (current.status == OnlineMatchStatus.ACTIVE) {
+            throw new OnlineMatchException(
+                    HttpStatus.CONFLICT, "Finish your active match before accepting this challenge.");
+        }
+        current.status = OnlineMatchStatus.CANCELLED;
+        current.updatedAt = Instant.now();
+        matches.save(current);
+    }
+
     private void recordFairPlay(UUID playerId, UUID matchId, String type, int severity, String evidence) {
         if (fairPlay != null) fairPlay.record(playerId, matchId, type, severity, evidence);
     }
