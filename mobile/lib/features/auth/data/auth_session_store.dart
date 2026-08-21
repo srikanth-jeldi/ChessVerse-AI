@@ -116,5 +116,15 @@ class AuthSessionStore {
     return created;
   }
 
+  Future<String> progressIdentity(StoredAuthSession session) async {
+    if (session.isGuest) {
+      return 'guest:${await installationId()}';
+    }
+    final String account = session.email?.trim().toLowerCase() ??
+        session.username?.trim().toLowerCase() ??
+        session.displayName.trim().toLowerCase();
+    return 'account:$account';
+  }
+
   Future<void> clear() => clearSession();
 }

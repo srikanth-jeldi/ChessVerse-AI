@@ -38,17 +38,15 @@ class AcademyProgressStore {
     await preferences.writeString(await _storageKey(), completed.join(','));
   }
 
+  Future<void> clearCurrentIdentity() async {
+    await preferences.writeString(await _storageKey(), '');
+  }
+
   Future<String> _storageKey() async {
     final StoredAuthSession? session = await sessions.read();
-    String identity;
-    if (session == null) {
-      identity = 'signed-out';
-    } else if (session.isGuest) {
-      identity = 'guest:${await sessions.installationId()}';
-    } else {
-      identity =
-          'account:${session.email?.trim().toLowerCase() ?? session.username?.trim().toLowerCase() ?? session.displayName.trim().toLowerCase()}';
-    }
+    final String identity = session == null
+        ? 'signed-out'
+        : await sessions.progressIdentity(session);
     return 'academy.completed.v2.${identityHash(identity)}';
   }
 

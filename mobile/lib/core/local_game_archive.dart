@@ -220,6 +220,8 @@ class LocalGameArchive {
   static const String _profileUsernameKey = 'chessverse_profile_username';
   static const String _profileUpdatedAtKey = 'chessverse_profile_updated_at';
   static const String _savedGamesKey = 'chessverse_saved_games_v1';
+  static const String _activeIdentityKey =
+      'chessverse_active_archive_identity_v2';
   static final List<SavedGameRecord> _games = <SavedGameRecord>[];
   static final Map<String, int> _cloudWeaknessScores = <String, int>{};
   static final Set<String> _completedDailyChallengeIds = <String>{};
@@ -245,6 +247,7 @@ class LocalGameArchive {
       Map<String, int>.unmodifiable(_cloudWeaknessScores);
 
   static Future<void> init() async {
+    _resetMemory();
     final String? savedGamesRaw = await _storage.read(key: _savedGamesKey);
     if (savedGamesRaw != null && savedGamesRaw.trim().isNotEmpty) {
       try {
@@ -320,6 +323,54 @@ class LocalGameArchive {
     _profileUpdatedAt = DateTime.tryParse(
       await _storage.read(key: _profileUpdatedAtKey) ?? '',
     )?.toUtc();
+  }
+
+  /// Prevents games, rewards and puzzle completion from one account being
+  /// shown or uploaded for another account on the same device.
+  ///
+  /// The cloud remains the durable source for signed-in/guest progress. When
+  /// the authenticated identity changes we discard the old device cache
+  /// before the new identity is merged from the server.
+  static Future<void> activateIdentity(String identity) async {
+    final String normalized = identity.trim().toLowerCase();
+    final String? active = await _storage.read(key: _activeIdentityKey);
+    if (active == normalized) return;
+
+    _resetMemory();
+    await Future.wait(<Future<void>>[
+      for (final String key in <String>[
+        _completedDailyKey,
+        _lastDailyCompletionKey,
+        _dailyStreakKey,
+        _completedPuzzlesKey,
+        _profileCountryKey,
+        _profileLevelKey,
+        _profileAvatarKey,
+        _profileUsernameKey,
+        _profileUpdatedAtKey,
+        _savedGamesKey,
+      ])
+        _storage.delete(key: key),
+      _storage.write(key: _activeIdentityKey, value: normalized),
+    ]);
+    activityRevision.value++;
+  }
+
+  static void _resetMemory() {
+    _games.clear();
+    _cloudWeaknessScores.clear();
+    _completedDailyChallengeIds.clear();
+    _completedPuzzleIds.clear();
+    _completedAcademyLessonIds.clear();
+    _lastDailyCompletedAt = null;
+    _dailySolved = 0;
+    _puzzlesSolved = 0;
+    _dailyStreak = 0;
+    _profileCountry = 'India';
+    _profileUsername = null;
+    _profileLevel = 0;
+    _profileAvatar = 0;
+    _profileUpdatedAt = null;
   }
 
   static void addGame(SavedGameRecord record) {
@@ -436,8 +487,32 @@ class LocalGameArchive {
   }
 
   static void clearAccountScopedCloudState() {
-    _completedAcademyLessonIds.clear();
-    _cloudWeaknessScores.clear();
+    _resetMemory();
+    activityRevision.value++;
+  }
+
+  /// Removes all cached player data from this device during logout. The
+  /// installation identifier is intentionally owned by AuthSessionStore and
+  /// retained so an unsecured guest can resume on the same installation.
+  static Future<void> clearDeviceUserData() async {
+    _resetMemory();
+    await Future.wait(<Future<void>>[
+      for (final String key in <String>[
+        _completedDailyKey,
+        _lastDailyCompletionKey,
+        _dailyStreakKey,
+        _completedPuzzlesKey,
+        _profileCountryKey,
+        _profileLevelKey,
+        _profileAvatarKey,
+        _profileUsernameKey,
+        _profileUpdatedAtKey,
+        _savedGamesKey,
+        _activeIdentityKey,
+      ])
+        _storage.delete(key: key),
+    ]);
+    activityRevision.value++;
   }
 
   static String get profileCountry => _profileCountry;

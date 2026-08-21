@@ -337,6 +337,10 @@ class _SplashGateState extends State<SplashGate> {
       // network is temporarily unavailable.
     }
     if (!mounted) return;
+    await LocalGameArchive.activateIdentity(
+      await _sessionStore.progressIdentity(restoredSession),
+    );
+    if (!mounted) return;
     _enableCloudSync(restoredSession.token);
     setState(() {
       _playerName = playerName;
@@ -486,7 +490,13 @@ class _SplashGateState extends State<SplashGate> {
           ),
         _RootStage.auth => AuthScreen(
             key: const ValueKey<String>('auth'),
-            onAuthenticated: (ChessVerseAuthResult result) {
+            onAuthenticated: (ChessVerseAuthResult result) async {
+              final StoredAuthSession? session = await _sessionStore.read();
+              if (session == null || !mounted) return;
+              await LocalGameArchive.activateIdentity(
+                await _sessionStore.progressIdentity(session),
+              );
+              if (!mounted) return;
               setState(() {
                 _playerName = result.playerName;
                 _username = result.username;
@@ -1092,9 +1102,10 @@ class _SplashGateState extends State<SplashGate> {
         // A local logout must still succeed if the remote session expired.
       }
     }
+    await const AcademyProgressStore().clearCurrentIdentity();
+    await LocalGameArchive.clearDeviceUserData();
     await sessionStore.clear();
     LocalGameArchive.onCloudRelevantChange = null;
-    LocalGameArchive.clearAccountScopedCloudState();
     if (!mounted) return;
 
     if (currentRouteContext.mounted &&
@@ -1121,9 +1132,10 @@ class _SplashGateState extends State<SplashGate> {
     }
     await _authApi.deleteAccount(session.token);
     await FirebasePushService.instance.unregister(session.token);
+    await const AcademyProgressStore().clearCurrentIdentity();
+    await LocalGameArchive.clearDeviceUserData();
     await _sessionStore.clear();
     LocalGameArchive.onCloudRelevantChange = null;
-    LocalGameArchive.clearAccountScopedCloudState();
     if (!mounted) return;
     if (currentRouteContext.mounted) {
       Navigator.of(currentRouteContext)
@@ -4605,6 +4617,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       await FirebasePushService.instance.unregister(token);
       await _authApi.logout(token);
     }
+    await const AcademyProgressStore().clearCurrentIdentity();
+    await LocalGameArchive.clearDeviceUserData();
     await _sessionStore.clear();
     if (!mounted) return;
     setState(() {
