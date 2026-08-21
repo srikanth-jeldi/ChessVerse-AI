@@ -54,6 +54,7 @@ services:
       - "8080"
     volumes:
       - ./secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
+      - attachments-data:/app/data/chat-attachments
     healthcheck:
       test:
         - CMD-SHELL
@@ -107,6 +108,7 @@ volumes:
   postgres-data:
   caddy-data:
   caddy-config:
+  attachments-data:
 
 networks:
   internal:
