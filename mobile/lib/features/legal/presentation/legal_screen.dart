@@ -19,19 +19,23 @@ class LegalScreen extends StatelessWidget {
         ? const <_LegalSection>[
             _LegalSection(
               'Data we collect',
-              'ChessVerseAI stores account details, guest/local stats, saved games, puzzle progress, device/session metadata, and support information needed to run the service.',
+              'ChessVerseAI processes account and profile details, authentication records, games and ratings, puzzle and lesson progress, social activity, chat messages and user-selected attachments, notification tokens, preferences, security signals and diagnostics needed to operate the service.',
             ),
             _LegalSection(
               'How we use data',
-              'We use data to authenticate users, save games, improve AI coaching, protect accounts, prevent abuse, and provide support.',
+              'We use data to authenticate users, save progress, provide AI coaching and online play, connect friends, deliver chat and notifications, prevent cheating and abuse, diagnose failures and provide support. We do not sell personal information.',
             ),
             _LegalSection(
               'Third-party services',
-              'Production builds may use Google, Apple, Meta/Facebook login, Gmail/SMTP or email delivery, hosting, analytics, and crash reporting services.',
+              'Hosting, authentication, email and notification service providers process information only as needed to operate ChessVerseAI. Data is transmitted using HTTPS/TLS.',
             ),
             _LegalSection(
               'Data deletion',
-              'Users can permanently delete their account in Settings. Deletion removes the account and associated server data; the public deletion page also explains the available request process.',
+              'Users can request permanent deletion from Settings or the public deletion page. Verified deletion covers the account and associated server data, subject to limited security, legal and backup retention.',
+            ),
+            _LegalSection(
+              'Social and attachment safety',
+              'Only share content you have the right to share. Images and files are chosen through the system picker without broad storage access. Abuse, cheating and child-safety concerns can be reported to chessverseai@gmail.com.',
             ),
           ]
         : const <_LegalSection>[
@@ -48,8 +52,16 @@ class LegalScreen extends StatelessWidget {
               'Online play should be fair. Engine assistance may be restricted in competitive modes when real-time online matchmaking is enabled.',
             ),
             _LegalSection(
+              'Community and chat',
+              'Do not harass, threaten, impersonate, spam, exploit others, share illegal or unsafe content, or make repeated unwanted contact. Violations may result in content removal, feature restrictions or account suspension.',
+            ),
+            _LegalSection(
+              'User content',
+              'You retain rights in content you lawfully provide and grant EpitomeHub the limited permission needed to host and transmit it through ChessVerseAI. You must have the right to share it.',
+            ),
+            _LegalSection(
               'Service changes',
-              'Features such as online rooms, random matchmaking, cloud saves, and AI analysis may change as the MVP evolves.',
+              'Features may change or be interrupted. AI coaching can be incomplete or inaccurate and is provided for chess learning and entertainment.',
             ),
           ];
 
@@ -67,7 +79,7 @@ class LegalScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Effective August 10, 2026',
+              'Effective August 21, 2026',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.textSecondary,
                   ),
