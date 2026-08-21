@@ -105,6 +105,16 @@ class SocialService {
             throw new OnlineMatchException(HttpStatus.FORBIDDEN, "Add this player as a friend before challenging them.");
         }
         int supported = switch (minutes) { case 3, 5, 10, 15 -> minutes; default -> 10; };
+        SocialChallenge pendingBetween = challenges.recentFor(player.id()).stream()
+                .filter(value -> "PENDING".equals(value.status) && value.expiresAt.isAfter(Instant.now()))
+                .filter(value -> (value.challengerId.equals(player.id()) && value.challengedId.equals(friendId))
+                        || (value.challengerId.equals(friendId) && value.challengedId.equals(player.id())))
+                .findFirst().orElse(null);
+        if (pendingBetween != null) {
+            if (pendingBetween.challengerId.equals(player.id())) return challenge(pendingBetween, player.id());
+            throw new OnlineMatchException(HttpStatus.CONFLICT,
+                    "This player already challenged you. Accept their pending challenge.");
+        }
         normalizeChallenges(player.id(), true);
         OnlineDtos.MatchDto room = matches.createChallengeRoom(player, supported);
         SocialChallenge value = challenges.save(
@@ -126,6 +136,7 @@ class SocialService {
             value.status = "EXPIRED"; value.updatedAt = Instant.now(); challenges.save(value);
             throw new OnlineMatchException(HttpStatus.GONE, "This challenge has expired.");
         }
+        matches.prepareForChallengeAcceptance(player.id(), value.matchId);
         OnlineDtos.MatchDto match = matches.joinRoom(player, value.roomCode);
         value.status = "ACCEPTED"; value.updatedAt = Instant.now(); challenges.save(value);
         notifications.create(value.challengerId, "CHALLENGE_ACCEPTED", "Challenge accepted",

@@ -4,7 +4,8 @@ import '../../auth/data/auth_session_store.dart';
 import '../data/notification_api.dart';
 
 class NotificationCenterScreen extends StatefulWidget {
-  const NotificationCenterScreen({super.key});
+  const NotificationCenterScreen({this.onAction, super.key});
+  final Future<void> Function(PlayerNotificationDto item)? onAction;
   @override
   State<NotificationCenterScreen> createState() => _NotificationCenterScreenState();
 }
@@ -30,9 +31,15 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   }
 
   Future<void> _read(PlayerNotificationDto item) async {
-    if (_session == null || item.read) return;
-    final value = await _api.read(_session!.token, item.id);
-    if (mounted) setState(() => _inbox = value);
+    if (_session == null) return;
+    if (!item.read) {
+      final value = await _api.read(_session!.token, item.id);
+      if (mounted) setState(() => _inbox = value);
+    }
+    if (widget.onAction != null) {
+      if (mounted) Navigator.of(context).pop();
+      await widget.onAction!(item);
+    }
   }
 
   Future<void> _readAll() async {

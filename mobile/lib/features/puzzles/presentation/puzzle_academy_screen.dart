@@ -228,7 +228,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                   scrolledUnderElevation: 4,
                   shadowColor: Colors.black87,
                   centerTitle: false,
-                  leading: const BackButton(color: Color(0xFFF4C65B)),
+                  automaticallyImplyLeading: false,
                   title: const Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -255,16 +255,6 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                         ),
                       ),
                     ],
-                  ),
-                  flexibleSpace: const FlexibleSpaceBar(
-                    background: Align(
-                      alignment: Alignment.bottomLeft,
-                      child: SizedBox(
-                        height: 3,
-                        width: 116,
-                        child: ColoredBox(color: Color(0xFFF4C65B)),
-                      ),
-                    ),
                   ),
                 ),
                 SliverPadding(
@@ -404,15 +394,7 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
                 ),
               ),
             ),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: SizedBox(
-                width: 116,
-                height: 3,
-                child: ColoredBox(color: Color(0xFFF4C65B)),
-              ),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
             _PuzzleHero(
               solved: stats.puzzlesSolved,
               adaptiveFocus: adaptiveFocus,

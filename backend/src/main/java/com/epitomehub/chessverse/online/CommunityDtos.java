@@ -17,7 +17,8 @@ final class CommunityDtos {
     record ConversationDto(UUID playerId, String displayName, String photoUrl,
                            boolean online, String lastMessage, Instant sentAt, int unread) {}
     record MessageDto(UUID id, UUID senderId, UUID recipientId, String body,
-                      Instant sentAt, boolean mine) {}
+                      Instant sentAt, boolean mine, boolean delivered, boolean seen,
+                      String attachmentName, String attachmentType, Long attachmentSize) {}
     record HubDto(List<ClubDto> clubs, List<TournamentDto> tournaments,
                   List<ConversationDto> conversations, int fairPlayScore) {}
     record MessageRequest(@NotNull UUID recipientId,

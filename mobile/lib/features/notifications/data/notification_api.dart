@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/config/app_config.dart';
 
@@ -25,6 +26,10 @@ class NotificationApi {
     final response=await http.delete(Uri.parse('${AppConfig.apiBaseUrl}/api/v1/notifications/devices/$installationId'),headers:<String,String>{'Authorization':'Bearer $authToken'}).timeout(const Duration(seconds:12));
     if(response.statusCode<200||response.statusCode>=300) throw const NotificationException('Push sign-out is temporarily unavailable.');
   }
-  Future<NotificationInboxDto> _request(String token,String method,String path)async{try{final uri=Uri.parse('${AppConfig.apiBaseUrl}$path');final headers=<String,String>{'Authorization':'Bearer $token'};final response=method=='PUT'?await http.put(uri,headers:headers).timeout(const Duration(seconds:12)):await http.get(uri,headers:headers).timeout(const Duration(seconds:12));final data=response.body.isEmpty?<String,dynamic>{}:jsonDecode(response.body) as Map<String,dynamic>;if(response.statusCode<200||response.statusCode>=300)throw const NotificationException('Notifications are temporarily unavailable.');return NotificationInboxDto.fromJson(data);}on NotificationException{rethrow;}catch(_){throw const NotificationException('Cannot reach ChessVerseAI notifications.');}}
+  Future<NotificationInboxDto> _request(String token,String method,String path)async{try{final uri=Uri.parse('${AppConfig.apiBaseUrl}$path');final headers=<String,String>{'Authorization':'Bearer $token'};final response=method=='PUT'?await http.put(uri,headers:headers).timeout(const Duration(seconds:12)):await http.get(uri,headers:headers).timeout(const Duration(seconds:12));final data=response.body.isEmpty?<String,dynamic>{}:jsonDecode(response.body) as Map<String,dynamic>;if(response.statusCode<200||response.statusCode>=300)throw const NotificationException('Notifications are temporarily unavailable.');final inbox=NotificationInboxDto.fromJson(data);NotificationBadgeState.unread.value=inbox.unreadCount;return inbox;}on NotificationException{rethrow;}catch(_){throw const NotificationException('Cannot reach ChessVerseAI notifications.');}}
+}
+
+class NotificationBadgeState {
+  static final ValueNotifier<int> unread = ValueNotifier<int>(0);
 }
 class NotificationException implements Exception {const NotificationException(this.message);final String message;}
