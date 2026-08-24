@@ -7,11 +7,36 @@
 	encode zstd gzip
 
 	root * /srv
-	try_files {path} {path}.html /index.html
-	file_server
 
-	@app_shell path / /index.html /flutter_bootstrap.js /flutter_service_worker.js /version.json
+	@app_entry path /play /play/ /login
+	redir @app_entry /?app=1 temporary
+
+	@app_query {
+		path /
+		query app=1
+	}
+	handle @app_query {
+		header Cache-Control "no-cache, no-store, must-revalidate"
+		rewrite * /app.html
+		file_server
+	}
+
+	@homepage path /
+	handle @homepage {
+		rewrite * /landing.html
+		file_server
+	}
+
+	handle {
+		try_files {path} {path}.html /app.html
+		file_server
+	}
+
+	@app_shell path /play /play/ /app.html /flutter_bootstrap.js /flutter_service_worker.js /version.json
 	header @app_shell Cache-Control "no-cache, no-store, must-revalidate"
+
+	@landing path / /landing.html
+	header @landing Cache-Control "no-cache, no-store, must-revalidate"
 
 	header {
 		-Server
