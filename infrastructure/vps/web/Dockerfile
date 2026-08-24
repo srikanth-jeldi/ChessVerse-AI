@@ -19,4 +19,12 @@ RUN test -n "${API_BASE_URL}" \
 FROM caddy:2-alpine
 COPY infrastructure/vps/web/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /workspace/build/web /srv
+RUN mv /srv/index.html /srv/app.html
+COPY infrastructure/vps/web/landing/index.html /srv/landing.html
+COPY infrastructure/vps/web/landing/robots.txt /srv/robots.txt
+COPY infrastructure/vps/web/landing/sitemap.xml /srv/sitemap.xml
+COPY mobile/assets/branding/app_icon.png /srv/landing-assets/app-icon.png
+COPY mobile/assets/backgrounds/home-analysis-hero-v1.png /srv/landing-assets/analysis.png
+COPY mobile/assets/backgrounds/home-online-hero-v1.png /srv/landing-assets/online.png
+COPY mobile/assets/backgrounds/home-puzzles-hero-v1.png /srv/landing-assets/puzzles.png
 COPY infrastructure/vps/web/legal/ /srv/

@@ -81,118 +81,147 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
     final String? username = await showDialog<String>(
         context: context,
         barrierColor: const Color(0xDD00070D),
-        builder: (context) => Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding:
-                  const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+        builder: (context) {
+          final MediaQueryData media = MediaQuery.of(context);
+          final bool keyboardVisible = media.viewInsets.bottom > 0;
+          final double availableHeight = media.size.height -
+              media.viewInsets.bottom -
+              media.padding.top -
+              media.padding.bottom -
+              24;
+          final double dialogHeight = availableHeight
+              .clamp(280.0, keyboardVisible ? 500.0 : 650.0)
+              .toDouble();
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: EdgeInsets.symmetric(
+                horizontal: 18, vertical: keyboardVisible ? 8 : 20),
+            child: SizedBox(
+              width: 520,
+              height: dialogHeight,
               child: Container(
-                constraints: const BoxConstraints(maxWidth: 520),
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: <Color>[
-                    Color(0xFF0C2536),
-                    Color(0xFF071725),
-                  ]),
-                  borderRadius: BorderRadius.circular(26),
-                  border: Border.all(color: const Color(0xFF68D9C8)),
-                  boxShadow: const <BoxShadow>[
-                    BoxShadow(color: Color(0x553DE0CB), blurRadius: 28),
-                  ],
-                ),
-                child:
-                    Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: IconButton.outlined(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close_rounded),
-                    ),
-                  ),
-                  Container(
-                    width: 58,
-                    height: 58,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(0xFF103941),
-                      boxShadow: <BoxShadow>[
-                        BoxShadow(color: Color(0x7748E5D1), blurRadius: 24),
-                      ],
-                    ),
-                    child: const Icon(Icons.person_add_alt_1_rounded,
-                        size: 29, color: Color(0xFFF0B74B)),
-                  ),
-                  const SizedBox(height: 22),
-                  const Text.rich(
-                    TextSpan(children: <InlineSpan>[
-                      TextSpan(text: 'Add a '),
-                      TextSpan(
-                          text: 'ChessVerseAI',
-                          style: TextStyle(color: Color(0xFFE8B54D))),
-                      TextSpan(text: ' friend'),
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: <Color>[
+                      Color(0xFF0C2536),
+                      Color(0xFF071725),
                     ]),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
+                    borderRadius: BorderRadius.circular(26),
+                    border: Border.all(color: const Color(0xFF68D9C8)),
+                    boxShadow: const <BoxShadow>[
+                      BoxShadow(color: Color(0x553DE0CB), blurRadius: 28),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Search by username or player ID to\nsend a friend request.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Color(0xFFAAB7C2), height: 1.4),
-                  ),
-                  const SizedBox(height: 24),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text('Username or Player ID',
-                        style: TextStyle(color: Color(0xFF68DFC9))),
-                  ),
-                  const SizedBox(height: 7),
-                  TextField(
-                    controller: controller,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter username',
-                      prefixIcon: Icon(Icons.person_outline_rounded,
-                          color: Color(0xFF62DDC8)),
-                    ),
-                  ),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: EdgeInsets.only(top: 8),
-                      child: Text('Example: MagnusAI',
-                          style: TextStyle(color: Color(0xFF71828E))),
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  Row(children: <Widget>[
-                    Expanded(
-                      child: OutlinedButton(
+                  child: Column(children: <Widget>[
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: IconButton.outlined(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
+                        icon: const Icon(Icons.close_rounded),
                       ),
                     ),
-                    const SizedBox(width: 12),
                     Expanded(
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFFE2AD45),
-                          foregroundColor: const Color(0xFF15120B),
-                          minimumSize: const Size.fromHeight(52),
-                        ),
-                        onPressed: () =>
-                            Navigator.pop(context, controller.text.trim()),
-                        child: const FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text('Send Request',
-                              maxLines: 1,
-                              style: TextStyle(fontWeight: FontWeight.w900)),
-                        ),
+                      child: SingleChildScrollView(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        child: Column(children: <Widget>[
+                          Container(
+                            width: 58,
+                            height: 58,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color(0xFF103941),
+                              boxShadow: <BoxShadow>[
+                                BoxShadow(
+                                    color: Color(0x7748E5D1), blurRadius: 24),
+                              ],
+                            ),
+                            child: const Icon(Icons.person_add_alt_1_rounded,
+                                size: 29, color: Color(0xFFF0B74B)),
+                          ),
+                          SizedBox(height: keyboardVisible ? 12 : 22),
+                          const Text.rich(
+                            TextSpan(children: <InlineSpan>[
+                              TextSpan(text: 'Add a '),
+                              TextSpan(
+                                  text: 'ChessVerseAI',
+                                  style:
+                                      TextStyle(color: Color(0xFFE8B54D))),
+                              TextSpan(text: ' friend'),
+                            ]),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Search by username or player ID to\nsend a friend request.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: Color(0xFFAAB7C2), height: 1.4),
+                          ),
+                          SizedBox(height: keyboardVisible ? 16 : 24),
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text('Username or Player ID',
+                                style: TextStyle(color: Color(0xFF68DFC9))),
+                          ),
+                          const SizedBox(height: 7),
+                          TextField(
+                            controller: controller,
+                            autofocus: true,
+                            textInputAction: TextInputAction.send,
+                            onSubmitted: (_) => Navigator.pop(
+                                context, controller.text.trim()),
+                            decoration: const InputDecoration(
+                              hintText: 'Enter username',
+                              prefixIcon: Icon(Icons.person_outline_rounded,
+                                  color: Color(0xFF62DDC8)),
+                            ),
+                          ),
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: EdgeInsets.only(top: 8),
+                              child: Text('Example: MagnusAI',
+                                  style: TextStyle(color: Color(0xFF71828E))),
+                            ),
+                          ),
+                          SizedBox(height: keyboardVisible ? 10 : 16),
+                        ]),
                       ),
                     ),
+                    Row(children: <Widget>[
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFE2AD45),
+                            foregroundColor: const Color(0xFF15120B),
+                            minimumSize: const Size.fromHeight(52),
+                          ),
+                          onPressed: () =>
+                              Navigator.pop(context, controller.text.trim()),
+                          child: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('Send Request',
+                                maxLines: 1,
+                                style: TextStyle(fontWeight: FontWeight.w900)),
+                          ),
+                        ),
+                      ),
+                    ]),
                   ]),
-                ]),
-              ),
-            ));
+                ),
+            ),
+          );
+        });
     controller.dispose();
     if (username == null || username.isEmpty || _session == null) return;
     await _act(() => _api.addFriend(_session!.token, username));
@@ -916,6 +945,7 @@ class _ChatScreenState extends State<_ChatScreen> {
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic);
     }
+
     WidgetsBinding.instance.addPostFrameCallback((_) => move());
     Future<void>.delayed(const Duration(milliseconds: 90), move);
     Future<void>.delayed(const Duration(milliseconds: 280), move);
@@ -962,8 +992,8 @@ class _ChatScreenState extends State<_ChatScreen> {
       setState(() => _messages = <MessageDto>[..._messages, pending]);
     _scrollToLatest();
     try {
-      final m =
-          await widget.api.send(widget.token, widget.friend.playerId, outgoingBody);
+      final m = await widget.api
+          .send(widget.token, widget.friend.playerId, outgoingBody);
       if (mounted)
         setState(() => _messages =
             _messages.map((item) => item.id == pending.id ? m : item).toList());
@@ -999,13 +1029,19 @@ class _ChatScreenState extends State<_ChatScreen> {
     _text.clear();
     try {
       final MessageDto message = await widget.api.sendAttachment(
-          widget.token, widget.friend.playerId, file.name, bytes,
-          _mimeFor(file.name), caption);
-      if (mounted) setState(() => _messages = <MessageDto>[..._messages, message]);
+          widget.token,
+          widget.friend.playerId,
+          file.name,
+          bytes,
+          _mimeFor(file.name),
+          caption);
+      if (mounted)
+        setState(() => _messages = <MessageDto>[..._messages, message]);
       _scrollToLatest();
     } on SocialException catch (error) {
-      if (mounted) ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -1025,100 +1061,177 @@ class _ChatScreenState extends State<_ChatScreen> {
       isScrollControlled: true,
       builder: (sheetContext) {
         const emojis = <String>[
-          '😀','😃','😄','😁','😆','😂','🤣','😊','😇','😍','🥰','😘',
-          '😎','🤔','🤩','🥳','😏','😕','😢','😭','😡','😱','🤯','😴',
-          '👍','👎','👏','🙌','🤝','💪','🙏','✌️','🤞','👌','👋','🫡️',
-          '❤️','💛','💚','💙','💜','💔','💯','🔥','✨','🎉','🏆','🏅',
-          '♟️','♞️','♛️','♚️','🎯','⚡','🚀','🌍','✅','❌','❓','💡'
+          '😀',
+          '😃',
+          '😄',
+          '😁',
+          '😆',
+          '😂',
+          '🤣',
+          '😊',
+          '😇',
+          '😍',
+          '🥰',
+          '😘',
+          '😎',
+          '🤔',
+          '🤩',
+          '🥳',
+          '😏',
+          '😕',
+          '😢',
+          '😭',
+          '😡',
+          '😱',
+          '🤯',
+          '😴',
+          '👍',
+          '👎',
+          '👏',
+          '🙌',
+          '🤝',
+          '💪',
+          '🙏',
+          '✌️',
+          '🤞',
+          '👌',
+          '👋',
+          '🫡️',
+          '❤️',
+          '💛',
+          '💚',
+          '💙',
+          '💜',
+          '💔',
+          '💯',
+          '🔥',
+          '✨',
+          '🎉',
+          '🏆',
+          '🏅',
+          '♟️',
+          '♞️',
+          '♛️',
+          '♚️',
+          '🎯',
+          '⚡',
+          '🚀',
+          '🌍',
+          '✅',
+          '❌',
+          '❓',
+          '💡'
         ];
-        return SafeArea(child: SizedBox(
-          height: 330,
-          child: Column(children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 12, 8, 6),
-              child: Row(children: <Widget>[
-                const Expanded(child: Text('Choose emoji', style: TextStyle(fontWeight: FontWeight.w800))),
-                IconButton(onPressed: () => Navigator.pop(sheetContext), icon: const Icon(Icons.close_rounded))
-              ])),
-            Expanded(child: GridView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 8),
-              itemCount: emojis.length,
-              itemBuilder: (_, index) => InkWell(
-                borderRadius: BorderRadius.circular(18),
-                onTap: () {
-                  _text.text += emojis[index];
-                  _text.selection = TextSelection.collapsed(offset: _text.text.length);
-                  _composerFocus.requestFocus();
-                },
-                child: Center(child: Text(emojis[index], style: const TextStyle(fontSize: 26))))))
-          ])));
+        return SafeArea(
+            child: SizedBox(
+                height: 330,
+                child: Column(children: <Widget>[
+                  Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 12, 8, 6),
+                      child: Row(children: <Widget>[
+                        const Expanded(
+                            child: Text('Choose emoji',
+                                style: TextStyle(fontWeight: FontWeight.w800))),
+                        IconButton(
+                            onPressed: () => Navigator.pop(sheetContext),
+                            icon: const Icon(Icons.close_rounded))
+                      ])),
+                  Expanded(
+                      child: GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 8),
+                          itemCount: emojis.length,
+                          itemBuilder: (_, index) => InkWell(
+                              borderRadius: BorderRadius.circular(18),
+                              onTap: () {
+                                _text.text += emojis[index];
+                                _text.selection = TextSelection.collapsed(
+                                    offset: _text.text.length);
+                                _composerFocus.requestFocus();
+                              },
+                              child: Center(
+                                  child: Text(emojis[index],
+                                      style: const TextStyle(fontSize: 26))))))
+                ])));
       });
 
   Widget _buildComposer() {
     return Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
       if (_replyingTo != null)
         Container(
-          margin: const EdgeInsets.fromLTRB(46, 2, 54, 5),
-          padding: const EdgeInsets.fromLTRB(10, 7, 4, 7),
-          decoration: BoxDecoration(
-            color: const Color(0xF2102B37),
-            borderRadius: BorderRadius.circular(10),
-            border: const Border(
-              left: BorderSide(color: Color(0xFF45DCCB), width: 3))),
-          child: Row(children: <Widget>[
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(_replyingTo!.mine ? 'You' : widget.friend.displayName,
-                  style: const TextStyle(color: Color(0xFF45DCCB), fontSize: 11, fontWeight: FontWeight.w800)),
-                Text(_replyingTo!.body.replaceAll('\n', ' '), maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Color(0xFFB7C6CD), fontSize: 11)),
-              ])),
-            IconButton(
-              onPressed: () => setState(() => _replyingTo = null),
-              visualDensity: VisualDensity.compact,
-              icon: const Icon(Icons.close_rounded, size: 18)),
-          ])),
+            margin: const EdgeInsets.fromLTRB(46, 2, 54, 5),
+            padding: const EdgeInsets.fromLTRB(10, 7, 4, 7),
+            decoration: BoxDecoration(
+                color: const Color(0xF2102B37),
+                borderRadius: BorderRadius.circular(10),
+                border: const Border(
+                    left: BorderSide(color: Color(0xFF45DCCB), width: 3))),
+            child: Row(children: <Widget>[
+              Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                    Text(_replyingTo!.mine ? 'You' : widget.friend.displayName,
+                        style: const TextStyle(
+                            color: Color(0xFF45DCCB),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800)),
+                    Text(_replyingTo!.body.replaceAll('\n', ' '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Color(0xFFB7C6CD), fontSize: 11)),
+                  ])),
+              IconButton(
+                  onPressed: () => setState(() => _replyingTo = null),
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.close_rounded, size: 18)),
+            ])),
       Row(crossAxisAlignment: CrossAxisAlignment.end, children: <Widget>[
-        Expanded(child: Container(
-          constraints: const BoxConstraints(minHeight: 46),
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          decoration: BoxDecoration(
-            color: const Color(0xF2202C33),
-            borderRadius: BorderRadius.circular(24)),
-          child: Row(children: <Widget>[
-            IconButton(
-              tooltip: 'Attach image or file',
-              onPressed: _attach,
-              icon: const Icon(Icons.add_rounded, size: 20, color: Color(0xFF54DECD))),
-            Expanded(child: TextField(
-              controller: _text,
-              focusNode: _composerFocus,
-              maxLength: 500,
-              style: const TextStyle(fontSize: 14),
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _send(),
-              decoration: InputDecoration(
-                counterText: '',
-                border: InputBorder.none,
-                hintText: 'Message your friend…',
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                suffixIcon: IconButton(
-                  onPressed: _showEmojiPicker,
-                  icon: const Icon(Icons.sentiment_satisfied_alt_rounded,
-                    color: Color(0xFF42DACA)))))),
-          ]))),
+        Expanded(
+            child: Container(
+                constraints: const BoxConstraints(minHeight: 46),
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                decoration: BoxDecoration(
+                    color: const Color(0xF2202C33),
+                    borderRadius: BorderRadius.circular(24)),
+                child: Row(children: <Widget>[
+                  IconButton(
+                      tooltip: 'Attach image or file',
+                      onPressed: _attach,
+                      icon: const Icon(Icons.add_rounded,
+                          size: 20, color: Color(0xFF54DECD))),
+                  Expanded(
+                      child: TextField(
+                          controller: _text,
+                          focusNode: _composerFocus,
+                          maxLength: 500,
+                          style: const TextStyle(fontSize: 14),
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => _send(),
+                          decoration: InputDecoration(
+                              counterText: '',
+                              border: InputBorder.none,
+                              hintText: 'Message your friend…',
+                              contentPadding:
+                                  const EdgeInsets.symmetric(vertical: 10),
+                              suffixIcon: IconButton(
+                                  onPressed: _showEmojiPicker,
+                                  icon: const Icon(
+                                      Icons.sentiment_satisfied_alt_rounded,
+                                      color: Color(0xFF42DACA)))))),
+                ]))),
         const SizedBox(width: 8),
         IconButton.filled(
-          style: IconButton.styleFrom(
-            backgroundColor: const Color(0xFFE0AA42),
-            foregroundColor: const Color(0xFF151109),
-            minimumSize: const Size(48, 48),
-            shape: const CircleBorder()),
-          onPressed: _send,
-          icon: const Icon(Icons.send_rounded)),
+            style: IconButton.styleFrom(
+                backgroundColor: const Color(0xFFE0AA42),
+                foregroundColor: const Color(0xFF151109),
+                minimumSize: const Size(48, 48),
+                shape: const CircleBorder()),
+            onPressed: _send,
+            icon: const Icon(Icons.send_rounded)),
       ]),
     ]);
   }
@@ -1213,38 +1326,43 @@ class _ChatScreenState extends State<_ChatScreen> {
                             Expanded(child: Divider(color: Color(0xFF23645F))),
                             Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 16),
-                                child: Text('Today', style: TextStyle(
-                                  color: Color(0xFFB7C6CD), fontSize: 11,
-                                  fontWeight: FontWeight.w700))),
+                                child: Text('Today',
+                                    style: TextStyle(
+                                        color: Color(0xFFB7C6CD),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700))),
                             Expanded(child: Divider(color: Color(0xFF23645F)))
                           ]),
                           const SizedBox(height: 12),
                           ..._messages.map((m) => _MessageBubble(
-                            message: m,
-                            token: widget.token,
-                            api: widget.api,
-                            onReply: () {
-                              setState(() => _replyingTo = m);
-                              _composerFocus.requestFocus();
-                              _scrollToLatest();
-                            }))
+                              message: m,
+                              token: widget.token,
+                              api: widget.api,
+                              onReply: () {
+                                setState(() => _replyingTo = m);
+                                _composerFocus.requestFocus();
+                                _scrollToLatest();
+                              }))
                         ])),
           SafeArea(
-            top: false,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                MediaQuery.sizeOf(context).width > 800 ? 80 : 10,
-                6,
-                MediaQuery.sizeOf(context).width > 800 ? 80 : 10,
-                10),
-              child: _buildComposer()))
+              top: false,
+              child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                      MediaQuery.sizeOf(context).width > 800 ? 80 : 10,
+                      6,
+                      MediaQuery.sizeOf(context).width > 800 ? 80 : 10,
+                      10),
+                  child: _buildComposer()))
         ])
       ]));
 }
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.message, required this.onReply,
-    required this.token, required this.api});
+  const _MessageBubble(
+      {required this.message,
+      required this.onReply,
+      required this.token,
+      required this.api});
   final MessageDto message;
   final VoidCallback onReply;
   final String token;
@@ -1264,65 +1382,86 @@ class _MessageBubble extends StatelessWidget {
     return Align(
         alignment: message.mine ? Alignment.centerRight : Alignment.centerLeft,
         child: GestureDetector(
-          onLongPress: onReply,
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 3),
-            constraints:
-                BoxConstraints(maxWidth: width > 800 ? 430 : width * .78),
-            child: IntrinsicWidth(
-                child: CustomPaint(
-                    painter: _ChatBubblePainter(outgoing: message.mine),
-                    child: Padding(
-                        padding: EdgeInsets.fromLTRB(message.mine ? 9 : 14, 5,
-                            message.mine ? 14 : 9, 4),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: <Widget>[
-                          if (quoted != null)
-                            Container(
-                              width: double.infinity,
-                              margin: const EdgeInsets.only(bottom: 4),
-                              padding: const EdgeInsets.fromLTRB(7, 4, 6, 4),
-                              decoration: const BoxDecoration(
-                                color: Color(0x40101A22),
-                                border: Border(left: BorderSide(color: Color(0xFF42DACA), width: 2))),
-                              child: Text(quoted, maxLines: 2, overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 10, color: Color(0xFFB9C7CC)))),
-                          if (message.attachmentName != null)
-                            _ChatAttachment(message: message, token: token, api: api),
-                          if (message.attachmentName != null && visibleBody.isNotEmpty)
-                            const SizedBox(height: 4),
-                          Wrap(
-                            alignment: WrapAlignment.end,
-                            crossAxisAlignment: WrapCrossAlignment.end,
-                            spacing: 8,
-                            runSpacing: 2,
-                            children: <Widget>[
-                              Text(visibleBody,
-                                  style: const TextStyle(
-                                      fontSize: 15,
-                                      height: 1.22,
-                                      color: Color(0xFFF1EEE7))),
-                              Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: <Widget>[
-                                    Text(time,
-                                        style: const TextStyle(
-                                            color: Color(0xFFB2BEC5),
-                                            fontSize: 10)),
-                                    if (message.mine) ...<Widget>[
-                                      const SizedBox(width: 3),
-                                      _ReceiptTicks(
-                                          pending: message.pending,
-                                          delivered: message.delivered,
-                                          seen: message.seen)
-                                    ]
-                                  ])
-                            ])])))))));
+            onLongPress: onReply,
+            child: Container(
+                margin: const EdgeInsets.only(bottom: 3),
+                constraints:
+                    BoxConstraints(maxWidth: width > 800 ? 430 : width * .78),
+                child: IntrinsicWidth(
+                    child: CustomPaint(
+                        painter: _ChatBubblePainter(outgoing: message.mine),
+                        child: Padding(
+                            padding: EdgeInsets.fromLTRB(message.mine ? 9 : 14,
+                                5, message.mine ? 14 : 9, 4),
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  if (quoted != null)
+                                    Container(
+                                        width: double.infinity,
+                                        margin:
+                                            const EdgeInsets.only(bottom: 4),
+                                        padding: const EdgeInsets.fromLTRB(
+                                            7, 4, 6, 4),
+                                        decoration: const BoxDecoration(
+                                            color: Color(0x40101A22),
+                                            border: Border(
+                                                left: BorderSide(
+                                                    color: Color(0xFF42DACA),
+                                                    width: 2))),
+                                        child: Text(quoted,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                                fontSize: 10,
+                                                color: Color(0xFFB9C7CC)))),
+                                  if (message.attachmentName != null)
+                                    _ChatAttachment(
+                                        message: message,
+                                        token: token,
+                                        api: api),
+                                  if (message.attachmentName != null &&
+                                      visibleBody.isNotEmpty)
+                                    const SizedBox(height: 4),
+                                  Wrap(
+                                      alignment: WrapAlignment.end,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.end,
+                                      spacing: 8,
+                                      runSpacing: 2,
+                                      children: <Widget>[
+                                        Text(visibleBody,
+                                            style: const TextStyle(
+                                                fontSize: 15,
+                                                height: 1.22,
+                                                color: Color(0xFFF1EEE7))),
+                                        Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            children: <Widget>[
+                                              Text(time,
+                                                  style: const TextStyle(
+                                                      color: Color(0xFFB2BEC5),
+                                                      fontSize: 10)),
+                                              if (message.mine) ...<Widget>[
+                                                const SizedBox(width: 3),
+                                                _ReceiptTicks(
+                                                    pending: message.pending,
+                                                    delivered:
+                                                        message.delivered,
+                                                    seen: message.seen)
+                                              ]
+                                            ])
+                                      ])
+                                ])))))));
   }
 }
 
 class _ReceiptTicks extends StatelessWidget {
-  const _ReceiptTicks({required this.pending, required this.delivered, required this.seen});
+  const _ReceiptTicks(
+      {required this.pending, required this.delivered, required this.seen});
   final bool pending;
   final bool delivered;
   final bool seen;
@@ -1348,7 +1487,8 @@ class _ReceiptTicks extends StatelessWidget {
 }
 
 class _ChatAttachment extends StatefulWidget {
-  const _ChatAttachment({required this.message, required this.token, required this.api});
+  const _ChatAttachment(
+      {required this.message, required this.token, required this.api});
   final MessageDto message;
   final String token;
   final CommunityApi api;
@@ -1364,8 +1504,8 @@ class _ChatAttachmentState extends State<_ChatAttachment> {
     if (_saving) return;
     setState(() => _saving = true);
     try {
-      final List<int> bytes = await widget.api
-          .attachmentBytes(widget.token, widget.message.id);
+      final List<int> bytes =
+          await widget.api.attachmentBytes(widget.token, widget.message.id);
       await FilePicker.platform.saveFile(
         dialogTitle: 'Save chat attachment',
         fileName: widget.message.attachmentName,
@@ -1390,39 +1530,57 @@ class _ChatAttachmentState extends State<_ChatAttachment> {
       return InkWell(
           onTap: _save,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: FutureBuilder<List<int>>(
-              future: widget.api.attachmentBytes(widget.token, message.id),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) return Image.memory(Uint8List.fromList(snapshot.data!),
-                    width: 230, height: 170, fit: BoxFit.cover);
-                if (snapshot.hasError) return const SizedBox(width: 230, height: 90,
-                    child: Center(child: Icon(Icons.broken_image_outlined)));
-                return const SizedBox(width: 230, height: 90,
-                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
-              })));
+              borderRadius: BorderRadius.circular(10),
+              child: FutureBuilder<List<int>>(
+                  future: widget.api.attachmentBytes(widget.token, message.id),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData)
+                      return Image.memory(Uint8List.fromList(snapshot.data!),
+                          width: 230, height: 170, fit: BoxFit.cover);
+                    if (snapshot.hasError)
+                      return const SizedBox(
+                          width: 230,
+                          height: 90,
+                          child:
+                              Center(child: Icon(Icons.broken_image_outlined)));
+                    return const SizedBox(
+                        width: 230,
+                        height: 90,
+                        child: Center(
+                            child: CircularProgressIndicator(strokeWidth: 2)));
+                  })));
     }
     final double kb = (message.attachmentSize ?? 0) / 1024;
     return InkWell(
-      onTap: _save,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        constraints: const BoxConstraints(minWidth: 190),
-        padding: const EdgeInsets.all(9),
-        decoration: BoxDecoration(color: const Color(0x33203138),
-            borderRadius: BorderRadius.circular(10)),
-        child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
-          Icon(_saving ? Icons.downloading_rounded : Icons.insert_drive_file_outlined,
-              color: const Color(0xFF57DECD)),
-          const SizedBox(width: 8),
-          Flexible(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(message.attachmentName!, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w700)),
-              Text('${kb.toStringAsFixed(kb >= 100 ? 0 : 1)} KB · Tap to save',
-                style: const TextStyle(fontSize: 10, color: Color(0xFFB2BEC5)))
-            ]))
-        ])));
+        onTap: _save,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+            constraints: const BoxConstraints(minWidth: 190),
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+                color: const Color(0x33203138),
+                borderRadius: BorderRadius.circular(10)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+              Icon(
+                  _saving
+                      ? Icons.downloading_rounded
+                      : Icons.insert_drive_file_outlined,
+                  color: const Color(0xFF57DECD)),
+              const SizedBox(width: 8),
+              Flexible(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                    Text(message.attachmentName!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text(
+                        '${kb.toStringAsFixed(kb >= 100 ? 0 : 1)} KB · Tap to save',
+                        style: const TextStyle(
+                            fontSize: 10, color: Color(0xFFB2BEC5)))
+                  ]))
+            ])));
   }
 }
 
@@ -1489,46 +1647,46 @@ class _Hero extends StatelessWidget {
                         letterSpacing: 1.1)),
                 SizedBox(height: 5),
                 Text('Friends, private challenges and live rivals',
-                    style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.w900))
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900))
               ]));
-          final Widget metrics = Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          final Widget metrics =
+              Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
             _Metric('$friendCount', 'FRIENDS'),
             const SizedBox(width: 18),
             _Metric('$challengeCount', 'OPEN')
           ]);
           return Container(
-            padding: EdgeInsets.all(compact ? 18 : 24),
-            decoration: const BoxDecoration(
-                gradient: LinearGradient(colors: <Color>[
-              Color(0xF5073C42),
-              Color(0xE8071A2A),
-              Color(0x8A071A2A)
-            ])),
-            child: compact
-                ? Column(children: <Widget>[
-                    Row(children: <Widget>[
+              padding: EdgeInsets.all(compact ? 18 : 24),
+              decoration: const BoxDecoration(
+                  gradient: LinearGradient(colors: <Color>[
+                Color(0xF5073C42),
+                Color(0xE8071A2A),
+                Color(0x8A071A2A)
+              ])),
+              child: compact
+                  ? Column(children: <Widget>[
+                      Row(children: <Widget>[
+                        const CircleAvatar(
+                            radius: 28,
+                            backgroundColor: Color(0xFF0C5D59),
+                            child: Icon(Icons.groups_rounded,
+                                size: 30, color: Color(0xFF61E5D0))),
+                        const SizedBox(width: 14),
+                        identity,
+                      ]),
+                      const SizedBox(height: 14),
+                      Align(alignment: Alignment.centerRight, child: metrics)
+                    ])
+                  : Row(children: <Widget>[
                       const CircleAvatar(
-                          radius: 28,
+                          radius: 32,
                           backgroundColor: Color(0xFF0C5D59),
                           child: Icon(Icons.groups_rounded,
-                              size: 30, color: Color(0xFF61E5D0))),
-                      const SizedBox(width: 14),
+                              size: 35, color: Color(0xFF61E5D0))),
+                      const SizedBox(width: 18),
                       identity,
-                    ]),
-                    const SizedBox(height: 14),
-                    Align(alignment: Alignment.centerRight, child: metrics)
-                  ])
-                : Row(children: <Widget>[
-                    const CircleAvatar(
-                        radius: 32,
-                        backgroundColor: Color(0xFF0C5D59),
-                        child: Icon(Icons.groups_rounded,
-                            size: 35, color: Color(0xFF61E5D0))),
-                    const SizedBox(width: 18),
-                    identity,
-                    metrics
-                  ]));
+                      metrics
+                    ]));
         }),
       );
 }
