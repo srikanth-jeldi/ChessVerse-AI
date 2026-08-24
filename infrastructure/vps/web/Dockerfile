@@ -11,16 +11,16 @@ ARG FACEBOOK_CLIENT_TOKEN
 RUN test -n "${API_BASE_URL}" \
     && test -n "${FACEBOOK_APP_ID}" \
     && test -n "${FACEBOOK_CLIENT_TOKEN}" \
-    && flutter build web --release \
+    && flutter build web --release --base-href /play/ \
       --dart-define=API_BASE_URL="${API_BASE_URL}" \
       --dart-define=FACEBOOK_APP_ID="${FACEBOOK_APP_ID}" \
       --dart-define=FACEBOOK_CLIENT_TOKEN="${FACEBOOK_CLIENT_TOKEN}"
 
 FROM caddy:2-alpine
 COPY infrastructure/vps/web/Caddyfile /etc/caddy/Caddyfile
-COPY --from=build /workspace/build/web /srv
-RUN mv /srv/index.html /srv/app.html
-COPY infrastructure/vps/web/landing/index.html /srv/landing.html
+COPY --from=build /workspace/build/web /srv/play
+COPY infrastructure/vps/web/landing/index.html /srv/index.html
+COPY infrastructure/vps/web/landing/flutter_service_worker.js /srv/flutter_service_worker.js
 COPY infrastructure/vps/web/landing/robots.txt /srv/robots.txt
 COPY infrastructure/vps/web/landing/sitemap.xml /srv/sitemap.xml
 COPY mobile/assets/branding/app_icon.png /srv/landing-assets/app-icon.png
