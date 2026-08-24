@@ -13,6 +13,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'core/audio/chess_sound_service.dart';
 import 'core/auth/facebook_sdk_ready.dart';
 import 'core/app_preferences.dart';
+import 'core/web_launch_policy.dart';
 import 'core/chess_piece_appearance.dart';
 import 'core/config/app_config.dart';
 import 'core/local_game_archive.dart';
@@ -236,6 +237,7 @@ class _SplashGateState extends State<SplashGate> {
   static const AuthSessionStore _sessionStore = AuthSessionStore();
   static const CloudProgressApi _cloudProgressApi = CloudProgressApi();
   Timer? _timer;
+  late final bool _forceFreshWebLogin;
   Timer? _presenceTimer;
   Timer? _notificationTimer;
   final Set<String> _seenNotificationIds = <String>{};
@@ -256,6 +258,7 @@ class _SplashGateState extends State<SplashGate> {
   @override
   void initState() {
     super.initState();
+    _forceFreshWebLogin = consumeFreshWebLaunch();
   }
 
   @override
@@ -284,12 +287,24 @@ class _SplashGateState extends State<SplashGate> {
     _timer = Timer(const Duration(milliseconds: 2200), () {
       if (mounted) {
         setState(() => _stage = _RootStage.loading);
-        unawaited(_restoreSession());
+        unawaited(_restoreSession(forceFreshLogin: _forceFreshWebLogin));
       }
     });
   }
 
-  Future<void> _restoreSession() async {
+  Future<void> _restoreSession({required bool forceFreshLogin}) async {
+    if (forceFreshLogin) {
+      try {
+        await _sessionStore.clear();
+      } on Object {
+        // Continue to authentication even if browser storage cannot be cleared.
+      }
+      if (mounted) {
+        setState(() => _stage = _RootStage.auth);
+      }
+      return;
+    }
+
     StoredAuthSession? session;
     try {
       session = await _sessionStore.read();
