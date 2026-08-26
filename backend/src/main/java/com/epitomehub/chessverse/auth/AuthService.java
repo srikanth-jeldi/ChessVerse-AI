@@ -520,6 +520,11 @@ class AuthService {
     }
 
     private AuthResponse createSession(PlayerAccount player) {
+        // A ChessVerseAI account has exactly one active server session. Creating
+        // a new session (password, Google, Facebook, or guest restore) revokes
+        // every token previously issued for that player.
+        sessions.deleteByPlayerId(player.id);
+        sessions.flush();
         String token = UUID.randomUUID() + "." + UUID.randomUUID();
         Instant expiresAt = Instant.now().plus(sessionExpiry);
         sessions.save(new AuthSession(player, sha256(token), expiresAt));
