@@ -10,8 +10,8 @@ Play live chess, train with AI coaching, and master tactical puzzles.
 
 ## Full description
 
-Enter ChessVerse AI, a premium chess experience built for playing, learning
-and improving.
+ChessVerse AI is a premium chess experience built for playing, learning and
+improving.
 
 Challenge live opponents through random matchmaking, friend challenges or
 private rooms. Every online move is validated by the ChessVerse server, and
