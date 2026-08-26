@@ -214,7 +214,7 @@ class _MobileHomeState extends State<_MobileHome> {
                         ),
                         _HomeHeroData(
                           title: 'Play Computer',
-                          subtitle: 'Challenge the ChessVerse AI at any level',
+                          subtitle: 'Challenge ChessVerseAI at any level',
                           icon: Icons.computer_rounded,
                           buttonLabel: 'Choose Side',
                           asset: 'assets/backgrounds/home-computer-hero-v1.png',
@@ -476,8 +476,7 @@ class _WideHomeState extends State<_WideHome> {
                             ),
                             _HomeHeroData(
                               title: 'Play Computer',
-                              subtitle:
-                                  'Challenge the ChessVerse AI at any level',
+                              subtitle: 'Challenge ChessVerseAI at any level',
                               icon: Icons.computer_rounded,
                               buttonLabel: 'Choose Side',
                               asset:
@@ -1423,7 +1422,7 @@ class _BrandWordmark extends StatelessWidget {
         const TextSpan(
             text: 'AI', style: TextStyle(color: AppColors.accentGold)),
       ]),
-      semanticsLabel: 'ChessVerse AI',
+      semanticsLabel: 'ChessVerseAI',
       textAlign: TextAlign.center,
       style: TextStyle(
           fontSize: fontSize,

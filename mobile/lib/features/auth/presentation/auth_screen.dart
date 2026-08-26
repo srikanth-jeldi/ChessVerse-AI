@@ -336,7 +336,7 @@ class _AuthScreenState extends State<AuthScreen> {
         Text(
           _loginMode
               ? 'Login to continue your games,\nratings and progress'
-              : 'Create your ChessVerse AI identity\nand keep your progress secure',
+              : 'Create your ChessVerseAI identity\nand keep your progress secure',
           style: TextStyle(
             color: Color(0xFF9EACC2),
             fontSize: dense ? 13 : 16,
@@ -443,7 +443,7 @@ class _AuthScreenState extends State<AuthScreen> {
         Text.rich(
           TextSpan(
             children: <InlineSpan>[
-              const TextSpan(text: 'ChessVerse '),
+              const TextSpan(text: 'ChessVerse'),
               TextSpan(
                 text: 'AI',
                 style: TextStyle(color: AppColors.accentGold),

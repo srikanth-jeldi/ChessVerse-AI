@@ -276,7 +276,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                               eyebrow: 'TACTICAL TRAINING',
                               title: 'Choose your challenge',
                               subtitle:
-                                  'Every position is interactive and validated by the ChessVerse AI rules engine.',
+                                  'Every position is interactive and validated by the ChessVerseAI rules engine.',
                             ),
                             const SizedBox(height: 14),
                             _DifficultyCard(
@@ -416,7 +416,7 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
                             eyebrow: 'TACTICAL TRAINING',
                             title: 'Choose your challenge',
                             subtitle:
-                                'Every position is interactive and validated by the ChessVerse AI rules engine.',
+                                'Every position is interactive and validated by the ChessVerseAI rules engine.',
                           ),
                           const SizedBox(height: 12),
                           SizedBox(

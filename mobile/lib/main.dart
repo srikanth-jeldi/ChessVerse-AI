@@ -1088,6 +1088,10 @@ class _SplashGateState extends State<SplashGate> {
               api: const OnlineMatchApi(),
               token: session.token,
               initialMode: lobbyMode,
+              onProfile: () {
+                Navigator.of(context).pop();
+                if (mounted) setState(() => _primaryDestination = 4);
+              },
             ),
           ),
         ),
@@ -2934,7 +2938,7 @@ class _PlayDestination extends StatelessWidget {
                   _PlayModeCard(
                     icon: Icons.computer_rounded,
                     title: 'Play Computer',
-                    subtitle: 'Challenge the ChessVerse AI',
+                    subtitle: 'Challenge ChessVerseAI',
                     color: const Color(0xFF174A69),
                     asset: 'assets/backgrounds/play-computer-card-v2.png',
                     onTap: onComputer,
@@ -6729,6 +6733,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             child: OnlineMatchmakingSheet(
               api: _onlineApi,
               token: token!,
+              onProfile: _openProfile,
             ),
           ),
         ),
@@ -7519,7 +7524,7 @@ class CompactHeader extends StatelessWidget {
           child: Text.rich(
             const TextSpan(
               children: <InlineSpan>[
-                TextSpan(text: 'ChessVerse '),
+                TextSpan(text: 'ChessVerse'),
                 TextSpan(
                   text: 'AI',
                   style: TextStyle(color: Color(0xFFEABF61)),
@@ -11245,12 +11250,14 @@ class OnlineMatchmakingSheet extends StatefulWidget {
   const OnlineMatchmakingSheet({
     required this.api,
     required this.token,
+    required this.onProfile,
     this.initialMode = OnlineLobbyMode.random,
     super.key,
   });
 
   final OnlineMatchApi api;
   final String token;
+  final VoidCallback onProfile;
   final OnlineLobbyMode initialMode;
 
   @override
@@ -11942,7 +11949,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                         SizedBox(width: 14),
                         Expanded(
                           child: Text(
-                            'Moves are validated by ChessVerse AI servers.\n'
+                            'Moves are validated by ChessVerseAI servers.\n'
                             'Active matches restore after an app restart.',
                             style: TextStyle(
                               color: Color(0xFFAAAFC0),
@@ -11984,6 +11991,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
               onPlay: () {},
               onPuzzles: () => Navigator.of(context).pop(),
               onLearn: () => Navigator.of(context).pop(),
+              onProfile: widget.onProfile,
               onAnalysis: () => Navigator.of(context).pop(),
               onRankings: () => Navigator.of(context).pop(),
               onFriends: () {},
@@ -12325,7 +12333,7 @@ class _DesktopOnlineValidationRow extends StatelessWidget {
               color: Color(0xFF43D6C1), size: 48),
           SizedBox(width: 22),
           Text(
-            'Moves are validated by ChessVerse AI servers.\nActive matches restore after an app restart.',
+            'Moves are validated by ChessVerseAI servers.\nActive matches restore after an app restart.',
             style:
                 TextStyle(color: Color(0xFFB8C3D1), fontSize: 17, height: 1.45),
           ),
@@ -12768,7 +12776,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
         ? (userIsWhite
             ? widget.match.whitePlayerName!
             : widget.match.blackPlayerName!)
-        : 'ChessVerse Player';
+        : 'ChessVerseAI Player';
     final String rating = widget.match.ratingBefore?.toString() ?? 'Unrated';
     final int remaining = math.max(0, 20 - widget.elapsedSeconds);
 
@@ -12824,7 +12832,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Text('CHESSVERSE AI MATCHMAKING',
+                          Text('CHESSVERSEAI MATCHMAKING',
                               style: TextStyle(
                                   color: gold,
                                   fontSize: 13,

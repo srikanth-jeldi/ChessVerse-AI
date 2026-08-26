@@ -132,13 +132,16 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         actions: <Widget>[
           TextButton.icon(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-              builder: (_) => SocialHubScreen(onOpenMatch: (OnlineMatchDto match) {
+              builder: (_) =>
+                  SocialHubScreen(onOpenMatch: (OnlineMatchDto match) {
                 Navigator.of(context).pop();
                 widget.onOpenMatch?.call(match);
               }),
             )),
             icon: const Icon(Icons.groups_rounded, color: Color(0xFF56DEC8)),
-            label: const Text('Friends', style: TextStyle(color: Color(0xFF56DEC8), fontWeight: FontWeight.w900)),
+            label: const Text('Friends',
+                style: TextStyle(
+                    color: Color(0xFF56DEC8), fontWeight: FontWeight.w900)),
           ),
           const SizedBox(width: 8),
         ],
@@ -379,7 +382,7 @@ class _RatingHero extends StatelessWidget {
           const Icon(Icons.workspace_premium_rounded,
               size: 66, color: Color(0xFFFFD45D)),
           const SizedBox(height: 10),
-          const Text('CHESSVERSE AI ELO',
+          const Text('CHESSVERSEAI ELO',
               style: TextStyle(
                   color: AppColors.accentGold,
                   letterSpacing: 1.8,
