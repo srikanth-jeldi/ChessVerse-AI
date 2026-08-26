@@ -4,6 +4,7 @@ import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../../online/data/online_match_api.dart';
 import '../../social/presentation/social_hub_screen.dart';
@@ -132,13 +133,16 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         actions: <Widget>[
           TextButton.icon(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-              builder: (_) => SocialHubScreen(onOpenMatch: (OnlineMatchDto match) {
+              builder: (_) =>
+                  SocialHubScreen(onOpenMatch: (OnlineMatchDto match) {
                 Navigator.of(context).pop();
                 widget.onOpenMatch?.call(match);
               }),
             )),
             icon: const Icon(Icons.groups_rounded, color: Color(0xFF56DEC8)),
-            label: const Text('Friends', style: TextStyle(color: Color(0xFF56DEC8), fontWeight: FontWeight.w900)),
+            label: const Text('Friends',
+                style: TextStyle(
+                    color: Color(0xFF56DEC8), fontWeight: FontWeight.w900)),
           ),
           const SizedBox(width: 8),
         ],
@@ -148,7 +152,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         future: _leaderboard,
         builder: (BuildContext context, AsyncSnapshot<LeaderboardDto> snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const SkeletonPage(rows: 6);
           }
           if (snap.hasError || snap.data == null) {
             final Object error = snap.error ?? 'Unable to load rankings.';
@@ -379,7 +383,7 @@ class _RatingHero extends StatelessWidget {
           const Icon(Icons.workspace_premium_rounded,
               size: 66, color: Color(0xFFFFD45D)),
           const SizedBox(height: 10),
-          const Text('CHESSVERSE AI ELO',
+          const Text('CHESSVERSEAI ELO',
               style: TextStyle(
                   color: AppColors.accentGold,
                   letterSpacing: 1.8,

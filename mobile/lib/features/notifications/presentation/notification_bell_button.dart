@@ -43,36 +43,38 @@ class _NotificationBellButtonState extends State<NotificationBellButton> {
   @override
   Widget build(BuildContext context) => ValueListenableBuilder<int>(
       valueListenable: NotificationBadgeState.unread,
-      builder: (context, unread, _) => Stack(clipBehavior: Clip.none, children: <Widget>[
-        IconButton(
-          tooltip: 'Notifications',
-          onPressed: () {
-            widget.onPressed();
-            Future<void>.delayed(const Duration(milliseconds: 400), _load);
-          },
-          style: widget.filled
-              ? IconButton.styleFrom(
-                  backgroundColor: const Color(0xFF102A40),
-                  foregroundColor: const Color(0xFFD9E7F0))
-              : null,
-          icon: const Icon(Icons.notifications_rounded),
-        ),
-        if (unread > 0)
-          Positioned(
-              right: -2,
-              top: -3,
-              child: Container(
-                constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                    color: const Color(0xFFFF4F67),
-                    borderRadius: BorderRadius.circular(10),
-                    border:
-                        Border.all(color: const Color(0xFF061724), width: 2)),
-                alignment: Alignment.center,
-                child: Text(unread > 99 ? '99+' : '$unread',
-                    style: const TextStyle(
-                        fontSize: 9, fontWeight: FontWeight.w900)),
-              )),
-      ]));
+      builder: (context, unread, _) =>
+          Stack(clipBehavior: Clip.none, children: <Widget>[
+            IconButton(
+              tooltip: 'Notifications',
+              onPressed: () {
+                widget.onPressed();
+                Future<void>.delayed(const Duration(milliseconds: 400), _load);
+              },
+              style: widget.filled
+                  ? IconButton.styleFrom(
+                      backgroundColor: const Color(0xFF102A40),
+                      foregroundColor: const Color(0xFFD9E7F0))
+                  : null,
+              icon: const Icon(Icons.notifications_rounded),
+            ),
+            if (unread > 0)
+              Positioned(
+                  right: -2,
+                  top: -3,
+                  child: Container(
+                    constraints:
+                        const BoxConstraints(minWidth: 18, minHeight: 18),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                        color: const Color(0xFFFF4F67),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: const Color(0xFF061724), width: 2)),
+                    alignment: Alignment.center,
+                    child: Text(unread > 99 ? '99+' : '$unread',
+                        style: const TextStyle(
+                            fontSize: 9, fontWeight: FontWeight.w900)),
+                  )),
+          ]));
 }

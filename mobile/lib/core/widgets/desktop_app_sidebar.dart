@@ -60,7 +60,7 @@ class DesktopAppSidebar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               Flexible(
-                child: Text('CHESSVERSE ',
+                child: Text('CHESSVERSE',
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                     style: TextStyle(

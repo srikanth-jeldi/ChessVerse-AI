@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/auth/facebook_sdk_ready.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/diagnostics/app_diagnostics.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/auth_api.dart';
 import '../data/auth_session_store.dart';
@@ -52,6 +53,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _verificationMode = false;
   bool _loading = false;
   bool _facebookSigningIn = false;
+  bool _googleSigningIn = false;
   bool _rememberMe = true;
   bool _googleInitialized = false;
   String? _message;
@@ -108,8 +110,12 @@ class _AuthScreenState extends State<AuthScreen> {
         viewport.width > viewport.height && viewport.shortestSide < 600;
     return Scaffold(
       backgroundColor: const Color(0xFF020914),
-      body: _facebookSigningIn
-          ? const _FacebookSignInOverlay()
+      body: _facebookSigningIn || _googleSigningIn
+          ? _SocialSignInOverlay(
+              provider: _googleSigningIn
+                  ? _SocialSignInProvider.google
+                  : _SocialSignInProvider.facebook,
+            )
           : DecoratedBox(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -331,7 +337,7 @@ class _AuthScreenState extends State<AuthScreen> {
         Text(
           _loginMode
               ? 'Login to continue your games,\nratings and progress'
-              : 'Create your ChessVerse AI identity\nand keep your progress secure',
+              : 'Create your ChessVerseAI identity\nand keep your progress secure',
           style: TextStyle(
             color: Color(0xFF9EACC2),
             fontSize: dense ? 13 : 16,
@@ -438,7 +444,7 @@ class _AuthScreenState extends State<AuthScreen> {
         Text.rich(
           TextSpan(
             children: <InlineSpan>[
-              const TextSpan(text: 'ChessVerse '),
+              const TextSpan(text: 'ChessVerse'),
               TextSpan(
                 text: 'AI',
                 style: TextStyle(color: AppColors.accentGold),
@@ -1103,8 +1109,17 @@ class _AuthScreenState extends State<AuthScreen> {
             );
       await _completeAuthentication(data);
     } on AuthApiException catch (error) {
+      AppDiagnostics.log('facebook_sign_in_failed', <String, Object?>{
+        'type': 'api',
+        'status': error.statusCode,
+      });
       if (mounted) setState(() => _error = error.message);
-    } catch (_) {
+    } on Object catch (error, stack) {
+      unawaited(AppDiagnostics.recordError(
+        error,
+        stack,
+        reason: 'Facebook sign-in failed',
+      ));
       if (mounted) {
         setState(() => _error = 'Facebook sign-in failed. Please try again.');
       }
@@ -1156,6 +1171,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _signInWithGoogle() async {
     setState(() {
       _loading = true;
+      _googleSigningIn = true;
       _error = null;
       _message = null;
     });
@@ -1173,17 +1189,34 @@ class _AuthScreenState extends State<AuthScreen> {
       final GoogleSignInAccount account = await googleSignIn.authenticate();
       await _authenticateGoogleAccount(account, manageLoading: false);
     } on GoogleSignInException catch (error) {
+      AppDiagnostics.log('google_sign_in_failed', <String, Object?>{
+        'code': error.code.name,
+      });
       if (error.code != GoogleSignInExceptionCode.canceled && mounted) {
         setState(() => _error = 'Google sign-in failed. Please try again.');
       }
     } on AuthApiException catch (error) {
+      AppDiagnostics.log('google_sign_in_failed', <String, Object?>{
+        'type': 'api',
+        'status': error.statusCode,
+      });
       if (mounted) setState(() => _error = error.message);
-    } catch (_) {
+    } on Object catch (error, stack) {
+      unawaited(AppDiagnostics.recordError(
+        error,
+        stack,
+        reason: 'Google sign-in failed',
+      ));
       if (mounted) {
         setState(() => _error = 'Google sign-in failed. Please try again.');
       }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _googleSigningIn = false;
+        });
+      }
     }
   }
 
@@ -1194,6 +1227,7 @@ class _AuthScreenState extends State<AuthScreen> {
     if (manageLoading && mounted) {
       setState(() {
         _loading = true;
+        _googleSigningIn = true;
         _error = null;
         _message = null;
       });
@@ -1217,7 +1251,12 @@ class _AuthScreenState extends State<AuthScreen> {
         setState(() => _error = 'Google sign-in failed. Please try again.');
       }
     } finally {
-      if (manageLoading && mounted) setState(() => _loading = false);
+      if (manageLoading && mounted) {
+        setState(() {
+          _loading = false;
+          _googleSigningIn = false;
+        });
+      }
     }
   }
 
@@ -1915,32 +1954,40 @@ class _AuthFieldState extends State<_AuthField> {
   }
 }
 
-class _FacebookSignInOverlay extends StatelessWidget {
-  const _FacebookSignInOverlay();
+enum _SocialSignInProvider { facebook, google }
+
+class _SocialSignInOverlay extends StatelessWidget {
+  const _SocialSignInOverlay({required this.provider});
+
+  final _SocialSignInProvider provider;
 
   @override
   Widget build(BuildContext context) {
+    final bool isGoogle = provider == _SocialSignInProvider.google;
+    final String providerName = isGoogle ? 'Google' : 'Facebook';
     return ColoredBox(
       color: const Color(0xFF020914),
       child: SafeArea(
         child: Center(
           child: Semantics(
             liveRegion: true,
-            label: 'Signing in with Facebook',
+            label: 'Signing in with $providerName',
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Container(
                   width: 72,
                   height: 72,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1877F2),
+                  decoration: BoxDecoration(
+                    color: isGoogle ? Colors.white : const Color(0xFF1877F2),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.facebook_rounded,
+                  child: Icon(
+                    isGoogle
+                        ? Icons.g_mobiledata_rounded
+                        : Icons.facebook_rounded,
                     size: 50,
-                    color: Colors.white,
+                    color: isGoogle ? const Color(0xFF4285F4) : Colors.white,
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -1961,12 +2008,12 @@ class _FacebookSignInOverlay extends StatelessWidget {
                       ),
                 ),
                 const SizedBox(height: 8),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 32),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: Text(
-                    'Securely verifying your Facebook account.',
+                    'Securely verifying your $providerName account.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.textSecondary),
+                    style: const TextStyle(color: AppColors.textSecondary),
                   ),
                 ),
               ],

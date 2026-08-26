@@ -7,6 +7,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+void _noop() {}
+
 class _FakeOnlineApi extends OnlineMatchApi {
   const _FakeOnlineApi({required this.active});
 
@@ -657,6 +659,7 @@ void main() {
           body: OnlineMatchmakingSheet(
             api: _PreferenceOnlineApi(),
             token: 'test-token',
+            onProfile: _noop,
           ),
         ),
       ),
@@ -695,6 +698,7 @@ void main() {
           body: OnlineMatchmakingSheet(
             api: _FakeOnlineApi(active: false),
             token: 'test-token',
+            onProfile: _noop,
           ),
         ),
       ),
@@ -709,6 +713,34 @@ void main() {
     expect(find.text('Estimated wait'), findsOneWidget);
     expect(find.text('Open'), findsOneWidget);
     expect(find.text('SEARCH SETTINGS'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop matchmaking profile navigation remains enabled', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    bool profileOpened = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: OnlineMatchmakingSheet(
+            api: const _FakeOnlineApi(active: false),
+            token: 'test-token',
+            onProfile: () => profileOpened = true,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Profile'));
+
+    expect(profileOpened, isTrue);
     expect(tester.takeException(), isNull);
   });
 
@@ -727,6 +759,7 @@ void main() {
           body: OnlineMatchmakingSheet(
             api: _PreferenceOnlineApi(),
             token: 'test-token',
+            onProfile: _noop,
           ),
         ),
       ),
@@ -767,6 +800,7 @@ void main() {
           body: OnlineMatchmakingSheet(
             api: _FakeOnlineApi(active: false),
             token: 'test-token',
+            onProfile: _noop,
           ),
         ),
       ),
@@ -793,6 +827,7 @@ void main() {
           body: OnlineMatchmakingSheet(
             api: _FakeOnlineApi(active: true),
             token: 'test-token',
+            onProfile: _noop,
           ),
         ),
       ),
