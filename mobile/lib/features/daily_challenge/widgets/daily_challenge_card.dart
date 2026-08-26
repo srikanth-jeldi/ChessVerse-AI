@@ -99,7 +99,8 @@ class DailyChallengeCard extends StatelessWidget {
                     ),
                     _MetricChip(
                       icon: Icons.psychology_alt_rounded,
-                      label: '${challenge.difficulty.title} · ${challenge.difficulty.subtitle}',
+                      label:
+                          '${challenge.difficulty.title} · ${challenge.difficulty.subtitle}',
                     ),
                     _MetricChip(
                       icon: Icons.timer_rounded,
@@ -114,7 +115,8 @@ class DailyChallengeCard extends StatelessWidget {
                   children: <Widget>[
                     Expanded(
                       child: ChessVerseButton(
-                        label: challenge.completedToday ? 'Review' : 'Play today',
+                        label:
+                            challenge.completedToday ? 'Review' : 'Play today',
                         icon: Icons.play_arrow_rounded,
                         onPressed: onPlay,
                       ),
@@ -238,7 +240,8 @@ class _ProgressSection extends StatelessWidget {
             minHeight: 9,
             value: challenge.progress,
             backgroundColor: AppColors.backgroundDeep.withValues(alpha: 0.55),
-            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accentGold),
+            valueColor:
+                const AlwaysStoppedAnimation<Color>(AppColors.accentGold),
           ),
         ),
       ],

@@ -16,11 +16,13 @@ import 'core/app_preferences.dart';
 import 'core/web_launch_policy.dart';
 import 'core/chess_piece_appearance.dart';
 import 'core/config/app_config.dart';
+import 'core/diagnostics/app_diagnostics.dart';
 import 'core/local_game_archive.dart';
 import 'core/notifications/daily_reminder_service.dart';
 import 'core/notifications/firebase_push_service.dart';
 import 'core/widgets/chessverse_app_backdrop.dart';
 import 'core/widgets/desktop_app_sidebar.dart';
+import 'core/widgets/network_status_layer.dart';
 import 'features/auth/data/auth_api.dart';
 import 'features/auth/data/auth_session_store.dart';
 import 'features/auth/presentation/auth_screen.dart';
@@ -47,6 +49,7 @@ import 'features/tutorial/data/academy_progress_store.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await FirebasePushService.instance.initialize();
+  await AppDiagnostics.initialize();
   if (!kIsWeb) {
     await SystemChrome.setPreferredOrientations(
       const <DeviceOrientation>[DeviceOrientation.portraitUp],
@@ -83,8 +86,10 @@ class ChessVerseApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ChessVerseTheme.dark(),
       builder: (BuildContext context, Widget? child) {
-        return ChessVerseAppBackdrop(
-          child: child ?? const SizedBox.shrink(),
+        return NetworkStatusLayer(
+          child: ChessVerseAppBackdrop(
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
       home: const SplashGate(),

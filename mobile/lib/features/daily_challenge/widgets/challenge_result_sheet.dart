@@ -36,7 +36,8 @@ class DailyChallengeResultSheet extends StatelessWidget {
             ),
             child: Icon(
               solved ? Icons.emoji_events_rounded : Icons.refresh_rounded,
-              color: solved ? AppColors.backgroundDeep : AppColors.textSecondary,
+              color:
+                  solved ? AppColors.backgroundDeep : AppColors.textSecondary,
               size: 34,
             ),
           ),
@@ -65,7 +66,8 @@ class DailyChallengeResultSheet extends StatelessWidget {
             ),
             child: Column(
               children: <Widget>[
-                _ResultRow(label: 'Difficulty', value: challenge.difficulty.title),
+                _ResultRow(
+                    label: 'Difficulty', value: challenge.difficulty.title),
                 const SizedBox(height: 10),
                 _ResultRow(label: 'Moves', value: challenge.progressLabel),
                 const SizedBox(height: 10),
@@ -79,7 +81,8 @@ class DailyChallengeResultSheet extends StatelessWidget {
               Expanded(
                 child: ChessVerseButton(
                   label: solved ? 'Share result' : 'Try again',
-                  icon: solved ? Icons.ios_share_rounded : Icons.refresh_rounded,
+                  icon:
+                      solved ? Icons.ios_share_rounded : Icons.refresh_rounded,
                   onPressed: solved ? onShare : onReview,
                 ),
               ),

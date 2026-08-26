@@ -9,7 +9,9 @@ import '../../../core/notifications/daily_reminder_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../legal/presentation/legal_screen.dart';
+import 'help_support_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
@@ -125,7 +127,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: const Color(0xE6071727),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const SkeletonPage(rows: 4)
           : ResponsivePage(
               maxWidth: wide ? 1240 : null,
               child: LayoutBuilder(
@@ -194,6 +196,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   _dailyReminderSwitch(),
                                 ],
                               ),
+                      ),
+                      const SizedBox(height: 18),
+                      const _SettingsSectionTitle(
+                        icon: Icons.support_agent_rounded,
+                        label: 'HELP & SUPPORT',
+                      ),
+                      const SizedBox(height: 12),
+                      ChessVerseCard(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: desktop ? 26 : 16,
+                          vertical: desktop ? 8 : 6,
+                        ),
+                        child: _ActionRow(
+                          icon: Icons.help_outline_rounded,
+                          title: 'Help & Support',
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const HelpSupportScreen(),
+                            ),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 18),
                       const _SettingsSectionTitle(

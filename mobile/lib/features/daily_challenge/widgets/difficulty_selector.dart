@@ -18,7 +18,8 @@ class DailyChallengeDifficultySelector extends StatelessWidget {
     return Wrap(
       spacing: 10,
       runSpacing: 10,
-      children: DailyChallengeUiDifficulty.values.map((DailyChallengeUiDifficulty difficulty) {
+      children: DailyChallengeUiDifficulty.values
+          .map((DailyChallengeUiDifficulty difficulty) {
         final bool active = difficulty == selected;
         return ChoiceChip(
           selected: active,

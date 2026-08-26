@@ -239,7 +239,8 @@ class _OnboardingPage extends StatelessWidget {
                     border: Border.all(color: AppColors.border),
                   ),
                   child: Padding(
-                    padding: EdgeInsets.all(tightLandscape ? 9 : (landscape ? 14 : 18)),
+                    padding: EdgeInsets.all(
+                        tightLandscape ? 9 : (landscape ? 14 : 18)),
                     child: Text(
                       data.body,
                       textAlign: TextAlign.center,

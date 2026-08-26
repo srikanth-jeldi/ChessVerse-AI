@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../data/online_match_api.dart';
 
@@ -47,7 +48,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
             final List<SavedGameRecord> local = LocalGameArchive.games;
             if (snapshot.connectionState == ConnectionState.waiting &&
                 online.isEmpty) {
-              return const Center(child: CircularProgressIndicator());
+              return const SkeletonPage(rows: 5);
             }
             if (snapshot.hasError && online.isEmpty && local.isEmpty) {
               return _HistoryMessage(

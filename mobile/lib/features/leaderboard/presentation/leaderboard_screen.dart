@@ -4,6 +4,7 @@ import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../../online/data/online_match_api.dart';
 import '../../social/presentation/social_hub_screen.dart';
@@ -151,7 +152,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         future: _leaderboard,
         builder: (BuildContext context, AsyncSnapshot<LeaderboardDto> snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const SkeletonPage(rows: 6);
           }
           if (snap.hasError || snap.data == null) {
             final Object error = snap.error ?? 'Unable to load rankings.';

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../../online/data/online_match_api.dart';
 import '../data/social_api.dart';
@@ -100,125 +101,124 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
               width: 520,
               height: dialogHeight,
               child: Container(
-                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: <Color>[
-                      Color(0xFF0C2536),
-                      Color(0xFF071725),
-                    ]),
-                    borderRadius: BorderRadius.circular(26),
-                    border: Border.all(color: const Color(0xFF68D9C8)),
-                    boxShadow: const <BoxShadow>[
-                      BoxShadow(color: Color(0x553DE0CB), blurRadius: 28),
-                    ],
-                  ),
-                  child: Column(children: <Widget>[
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: IconButton.outlined(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded),
-                      ),
-                    ),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.onDrag,
-                        child: Column(children: <Widget>[
-                          Container(
-                            width: 58,
-                            height: 58,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Color(0xFF103941),
-                              boxShadow: <BoxShadow>[
-                                BoxShadow(
-                                    color: Color(0x7748E5D1), blurRadius: 24),
-                              ],
-                            ),
-                            child: const Icon(Icons.person_add_alt_1_rounded,
-                                size: 29, color: Color(0xFFF0B74B)),
-                          ),
-                          SizedBox(height: keyboardVisible ? 12 : 22),
-                          const Text.rich(
-                            TextSpan(children: <InlineSpan>[
-                              TextSpan(text: 'Add a '),
-                              TextSpan(
-                                  text: 'ChessVerseAI',
-                                  style:
-                                      TextStyle(color: Color(0xFFE8B54D))),
-                              TextSpan(text: ' friend'),
-                            ]),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.w900),
-                          ),
-                          const SizedBox(height: 10),
-                          const Text(
-                            'Search by username or player ID to\nsend a friend request.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                color: Color(0xFFAAB7C2), height: 1.4),
-                          ),
-                          SizedBox(height: keyboardVisible ? 16 : 24),
-                          const Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text('Username or Player ID',
-                                style: TextStyle(color: Color(0xFF68DFC9))),
-                          ),
-                          const SizedBox(height: 7),
-                          TextField(
-                            controller: controller,
-                            autofocus: true,
-                            textInputAction: TextInputAction.send,
-                            onSubmitted: (_) => Navigator.pop(
-                                context, controller.text.trim()),
-                            decoration: const InputDecoration(
-                              hintText: 'Enter username',
-                              prefixIcon: Icon(Icons.person_outline_rounded,
-                                  color: Color(0xFF62DDC8)),
-                            ),
-                          ),
-                          const Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
-                              padding: EdgeInsets.only(top: 8),
-                              child: Text('Example: MagnusAI',
-                                  style: TextStyle(color: Color(0xFF71828E))),
-                            ),
-                          ),
-                          SizedBox(height: keyboardVisible ? 10 : 16),
-                        ]),
-                      ),
-                    ),
-                    Row(children: <Widget>[
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFFE2AD45),
-                            foregroundColor: const Color(0xFF15120B),
-                            minimumSize: const Size.fromHeight(52),
-                          ),
-                          onPressed: () =>
-                              Navigator.pop(context, controller.text.trim()),
-                          child: const FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text('Send Request',
-                                maxLines: 1,
-                                style: TextStyle(fontWeight: FontWeight.w900)),
-                          ),
-                        ),
-                      ),
-                    ]),
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: <Color>[
+                    Color(0xFF0C2536),
+                    Color(0xFF071725),
                   ]),
+                  borderRadius: BorderRadius.circular(26),
+                  border: Border.all(color: const Color(0xFF68D9C8)),
+                  boxShadow: const <BoxShadow>[
+                    BoxShadow(color: Color(0x553DE0CB), blurRadius: 28),
+                  ],
                 ),
+                child: Column(children: <Widget>[
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton.outlined(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      child: Column(children: <Widget>[
+                        Container(
+                          width: 58,
+                          height: 58,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xFF103941),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                  color: Color(0x7748E5D1), blurRadius: 24),
+                            ],
+                          ),
+                          child: const Icon(Icons.person_add_alt_1_rounded,
+                              size: 29, color: Color(0xFFF0B74B)),
+                        ),
+                        SizedBox(height: keyboardVisible ? 12 : 22),
+                        const Text.rich(
+                          TextSpan(children: <InlineSpan>[
+                            TextSpan(text: 'Add a '),
+                            TextSpan(
+                                text: 'ChessVerseAI',
+                                style: TextStyle(color: Color(0xFFE8B54D))),
+                            TextSpan(text: ' friend'),
+                          ]),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Search by username or player ID to\nsend a friend request.',
+                          textAlign: TextAlign.center,
+                          style:
+                              TextStyle(color: Color(0xFFAAB7C2), height: 1.4),
+                        ),
+                        SizedBox(height: keyboardVisible ? 16 : 24),
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Username or Player ID',
+                              style: TextStyle(color: Color(0xFF68DFC9))),
+                        ),
+                        const SizedBox(height: 7),
+                        TextField(
+                          controller: controller,
+                          autofocus: true,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) =>
+                              Navigator.pop(context, controller.text.trim()),
+                          decoration: const InputDecoration(
+                            hintText: 'Enter username',
+                            prefixIcon: Icon(Icons.person_outline_rounded,
+                                color: Color(0xFF62DDC8)),
+                          ),
+                        ),
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: Text('Example: MagnusAI',
+                                style: TextStyle(color: Color(0xFF71828E))),
+                          ),
+                        ),
+                        SizedBox(height: keyboardVisible ? 10 : 16),
+                      ]),
+                    ),
+                  ),
+                  Row(children: <Widget>[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFE2AD45),
+                          foregroundColor: const Color(0xFF15120B),
+                          minimumSize: const Size.fromHeight(52),
+                        ),
+                        onPressed: () =>
+                            Navigator.pop(context, controller.text.trim()),
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('Send Request',
+                              maxLines: 1,
+                              style: TextStyle(fontWeight: FontWeight.w900)),
+                        ),
+                      ),
+                    ),
+                  ]),
+                ]),
+              ),
             ),
           );
         });
@@ -386,7 +386,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                     selected: _section,
                     onChanged: (value) => setState(() => _section = value)))),
         body: _busy
-            ? const Center(child: CircularProgressIndicator())
+            ? const SkeletonPage(rows: 6)
             : _error != null
                 ? _Error(message: _error!, retry: _refresh)
                 : _section == 0

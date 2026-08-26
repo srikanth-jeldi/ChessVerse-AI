@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/auth/facebook_sdk_ready.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/diagnostics/app_diagnostics.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/auth_api.dart';
 import '../data/auth_session_store.dart';
@@ -1108,8 +1109,17 @@ class _AuthScreenState extends State<AuthScreen> {
             );
       await _completeAuthentication(data);
     } on AuthApiException catch (error) {
+      AppDiagnostics.log('facebook_sign_in_failed', <String, Object?>{
+        'type': 'api',
+        'status': error.statusCode,
+      });
       if (mounted) setState(() => _error = error.message);
-    } catch (_) {
+    } on Object catch (error, stack) {
+      unawaited(AppDiagnostics.recordError(
+        error,
+        stack,
+        reason: 'Facebook sign-in failed',
+      ));
       if (mounted) {
         setState(() => _error = 'Facebook sign-in failed. Please try again.');
       }
@@ -1179,12 +1189,24 @@ class _AuthScreenState extends State<AuthScreen> {
       final GoogleSignInAccount account = await googleSignIn.authenticate();
       await _authenticateGoogleAccount(account, manageLoading: false);
     } on GoogleSignInException catch (error) {
+      AppDiagnostics.log('google_sign_in_failed', <String, Object?>{
+        'code': error.code.name,
+      });
       if (error.code != GoogleSignInExceptionCode.canceled && mounted) {
         setState(() => _error = 'Google sign-in failed. Please try again.');
       }
     } on AuthApiException catch (error) {
+      AppDiagnostics.log('google_sign_in_failed', <String, Object?>{
+        'type': 'api',
+        'status': error.statusCode,
+      });
       if (mounted) setState(() => _error = error.message);
-    } catch (_) {
+    } on Object catch (error, stack) {
+      unawaited(AppDiagnostics.recordError(
+        error,
+        stack,
+        reason: 'Google sign-in failed',
+      ));
       if (mounted) {
         setState(() => _error = 'Google sign-in failed. Please try again.');
       }

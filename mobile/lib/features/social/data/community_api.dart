@@ -153,15 +153,18 @@ class CommunityApi {
   Future<MessageDto> sendAttachment(String token, String recipientId,
       String name, List<int> bytes, String? mimeType, String body) async {
     try {
-      final request = http.MultipartRequest('POST',
-          Uri.parse('${AppConfig.apiBaseUrl}/api/v1/community/messages/attachments'))
+      final request = http.MultipartRequest(
+          'POST',
+          Uri.parse(
+              '${AppConfig.apiBaseUrl}/api/v1/community/messages/attachments'))
         ..headers['Authorization'] = 'Bearer $token'
         ..fields['recipientId'] = recipientId
         ..fields['body'] = body
         ..files.add(http.MultipartFile.fromBytes('file', bytes,
             filename: name,
             contentType: mimeType == null ? null : MediaType.parse(mimeType)));
-      final response = await request.send().timeout(const Duration(seconds: 30));
+      final response =
+          await request.send().timeout(const Duration(seconds: 30));
       final text = await response.stream.bytesToString();
       final decoded = text.isEmpty ? <String, dynamic>{} : jsonDecode(text);
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -179,9 +182,11 @@ class CommunityApi {
       throw const SocialException('Cannot upload this attachment.');
     }
   }
+
   Future<List<int>> attachmentBytes(String token, String messageId) async {
     final response = await http.get(
-      Uri.parse('${AppConfig.apiBaseUrl}/api/v1/community/messages/$messageId/attachment'),
+      Uri.parse(
+          '${AppConfig.apiBaseUrl}/api/v1/community/messages/$messageId/attachment'),
       headers: <String, String>{'Authorization': 'Bearer $token'},
     ).timeout(const Duration(seconds: 30));
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -189,6 +194,7 @@ class CommunityApi {
     }
     return response.bodyBytes;
   }
+
   Future<Map<String, dynamic>> _request(
       String token, String method, String path,
       {Map<String, Object?>? body}) async {
