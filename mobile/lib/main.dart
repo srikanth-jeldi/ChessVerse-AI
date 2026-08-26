@@ -655,10 +655,7 @@ class _SplashGateState extends State<SplashGate> {
         profilePhotoUrl: _photoUrl,
         isGuest: _isGuest,
         onSecureProgress: _isGuest ? () => _secureGuestProgress(context) : null,
-        onUsernameChanged: (String value) {
-          if (!mounted) return;
-          setState(() => _username = value);
-        },
+        onDisplayNameChanged: _updateDisplayName,
       ),
       SocialHubScreen(
         onOpenMatch: (OnlineMatchDto match) async {
@@ -1099,6 +1096,7 @@ class _SplashGateState extends State<SplashGate> {
         initialOnlineMatch: initialOnlineMatch,
         initialAuthToken: initialAuthToken,
         onLogout: () => _logout(context),
+        onDisplayNameChanged: _updateDisplayName,
       ),
     );
   }
@@ -1219,6 +1217,27 @@ class _SplashGateState extends State<SplashGate> {
       _primaryDestination = 0;
       _stage = _RootStage.auth;
     });
+  }
+
+  Future<void> _updateDisplayName(String displayName) async {
+    final StoredAuthSession? session = await _sessionStore.read();
+    if (session == null) {
+      throw const AuthApiException('Sign in to update your display name.');
+    }
+    final Map<String, dynamic> player =
+        await _authApi.updateProfile(session.token, displayName);
+    final String savedName = _profileValue(player['displayName']) ?? displayName;
+    await _sessionStore.write(StoredAuthSession(
+      token: session.token,
+      expiresAt: session.expiresAt,
+      displayName: savedName,
+      username: session.username,
+      email: session.email,
+      photoUrl: session.photoUrl,
+      isGuest: session.isGuest,
+    ));
+    if (!mounted) return;
+    setState(() => _playerName = savedName);
   }
 
   Future<void> _secureGuestProgress(BuildContext currentRouteContext) async {
@@ -3240,6 +3259,7 @@ class GameScreen extends StatefulWidget {
     this.initialAuthToken,
     this.onlineApi,
     this.onLogout,
+    this.onDisplayNameChanged,
     super.key,
   });
 
@@ -3259,6 +3279,7 @@ class GameScreen extends StatefulWidget {
   final String? initialAuthToken;
   final OnlineMatchApi? onlineApi;
   final Future<void> Function()? onLogout;
+  final Future<void> Function(String displayName)? onDisplayNameChanged;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -4259,6 +4280,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           username: widget.initialUsername,
           email: widget.initialEmail,
           isGuest: widget.initiallyGuest,
+          onDisplayNameChanged: widget.onDisplayNameChanged,
         ),
       ),
     );

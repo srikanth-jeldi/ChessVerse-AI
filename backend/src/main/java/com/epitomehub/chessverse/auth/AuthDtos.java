@@ -52,6 +52,13 @@ final class AuthDtos {
             String installationId) {
     }
 
+    record UpdateProfileRequest(
+            @NotBlank
+            @Size(min = 2, max = 80)
+            @Pattern(regexp = "^[^\\p{Cntrl}]+$", message = "must not contain control characters")
+            String displayName) {
+    }
+
     record MessageResponse(String message, Instant expiresAt, String developmentCode) {
     }
 

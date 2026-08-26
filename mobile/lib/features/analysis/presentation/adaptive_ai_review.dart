@@ -135,7 +135,12 @@ class _ReviewOverview extends StatelessWidget {
   final AiReviewReport report;
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) {
+    final Map<String, int> counts = <String, int>{};
+    for (final AiMoveInsight insight in report.insights) {
+      counts[insight.label] = (counts[insight.label] ?? 0) + 1;
+    }
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           ChessVerseCard(
@@ -170,6 +175,40 @@ class _ReviewOverview extends StatelessWidget {
                 ),
               ),
             ]),
+          ),
+          const SizedBox(height: 12),
+          ChessVerseCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text('MOVE QUALITY',
+                    style: TextStyle(
+                      color: AppColors.accentGold,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: .9,
+                    )),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: <Widget>[
+                    for (final String label in const <String>[
+                      'Best',
+                      'Great',
+                      'Inaccuracy',
+                      'Mistake',
+                      'Blunder',
+                    ])
+                      _QualityCount(
+                        label: label,
+                        count: counts[label] ?? 0,
+                        color: _qualityColor(label),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           _InsightCard(
@@ -209,7 +248,43 @@ class _ReviewOverview extends StatelessWidget {
           ),
         ],
       );
+  }
 }
+
+class _QualityCount extends StatelessWidget {
+  const _QualityCount({
+    required this.label,
+    required this.count,
+    required this.color,
+  });
+
+  final String label;
+  final int count;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(color: color.withValues(alpha: .5)),
+        ),
+        child: Text('$count $label',
+            style: TextStyle(
+                color: color, fontSize: 12, fontWeight: FontWeight.w900)),
+      );
+}
+
+Color _qualityColor(String label) => switch (label) {
+      'Best' || 'Power move' || 'Principled' => const Color(0xFF59E4C8),
+      'Great' || 'Excellent' => const Color(0xFF50B8FF),
+      'Inaccuracy' => const Color(0xFFFFC857),
+      'Mistake' => const Color(0xFFFF8A4C),
+      'Blunder' => const Color(0xFFFF5263),
+      'Tactical' => AppColors.accentGold,
+      _ => const Color(0xFF8EA4B7),
+    };
 
 class _InsightCard extends StatelessWidget {
   const _InsightCard({
@@ -276,13 +351,7 @@ class _MoveTimeline extends StatelessWidget {
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (BuildContext context, int index) {
                 final AiMoveInsight insight = report.insights[index];
-                final Color color = switch (insight.label) {
-                  'Power move' => const Color(0xFF59E4C8),
-                  'Excellent' => AppColors.info,
-                  'Tactical' => AppColors.accentGold,
-                  'Principled' => const Color(0xFF59E4C8),
-                  _ => const Color(0xFF8EA4B7),
-                };
+                final Color color = _qualityColor(insight.label);
                 return ChessVerseCard(
                   padding: const EdgeInsets.all(13),
                   child: Row(children: <Widget>[
@@ -315,6 +384,20 @@ class _MoveTimeline extends StatelessWidget {
                                 style: const TextStyle(
                                     color: AppColors.textSecondary,
                                     height: 1.35)),
+                            if (insight.centipawnLoss != null) ...<Widget>[
+                              const SizedBox(height: 7),
+                              Text(
+                                insight.centipawnLoss == 0
+                                    ? 'Engine: no evaluation lost'
+                                    : 'Engine loss: ${insight.centipawnLoss} centipawns'
+                                        '${insight.bestMove?.isNotEmpty == true ? ' • Best: ${insight.bestMove}' : ''}',
+                                style: TextStyle(
+                                  color: color,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
                             if (insight.hasEngineEvidence) ...<Widget>[
                               const SizedBox(height: 10),
                               Wrap(
