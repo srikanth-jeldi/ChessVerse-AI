@@ -245,6 +245,8 @@ class _SplashGateState extends State<SplashGate> {
   late final bool _forceFreshWebLogin;
   Timer? _presenceTimer;
   Timer? _notificationTimer;
+  Timer? _sessionValidationTimer;
+  bool _sessionValidationInFlight = false;
   final Set<String> _seenNotificationIds = <String>{};
   final Set<String> _openedNotificationMatchIds = <String>{};
   bool _openingNotificationMatch = false;
@@ -379,8 +381,45 @@ class _SplashGateState extends State<SplashGate> {
     unawaited(_syncCloudProgress(restoredSession.token));
     _startOnlinePresence(restoredSession.token);
     _startNotificationPolling(restoredSession.token);
+    _startSessionValidation(restoredSession.token);
     unawaited(FirebasePushService.instance
         .configureForSession(restoredSession.token));
+  }
+
+  void _startSessionValidation(String token) {
+    _sessionValidationTimer?.cancel();
+    _sessionValidationTimer = Timer.periodic(
+      const Duration(seconds: 45),
+      (_) => unawaited(_validateActiveSession(token)),
+    );
+  }
+
+  Future<void> _validateActiveSession(String token) async {
+    if (_sessionValidationInFlight || _stage != _RootStage.home) return;
+    _sessionValidationInFlight = true;
+    try {
+      await _authApi.currentPlayer(token);
+    } on AuthApiException catch (error) {
+      if (error.statusCode != 401 && error.statusCode != 403) return;
+      _sessionValidationTimer?.cancel();
+      _presenceTimer?.cancel();
+      _notificationTimer?.cancel();
+      await _sessionStore.clearSession();
+      if (!mounted) return;
+      setState(() => _stage = _RootStage.auth);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          const SnackBar(
+            content: Text(
+              'This account was signed in on another device. Please sign in again.',
+            ),
+          ),
+        );
+      });
+    } finally {
+      _sessionValidationInFlight = false;
+    }
   }
 
   void _startOnlinePresence(String token) {
@@ -488,6 +527,7 @@ class _SplashGateState extends State<SplashGate> {
     _timer?.cancel();
     _presenceTimer?.cancel();
     _notificationTimer?.cancel();
+    _sessionValidationTimer?.cancel();
     super.dispose();
   }
 
@@ -1113,6 +1153,8 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   Future<void> _logout(BuildContext currentRouteContext) async {
+    _sessionValidationTimer?.cancel();
+    _sessionValidationTimer = null;
     _presenceTimer?.cancel();
     _presenceTimer = null;
     const AuthSessionStore sessionStore = AuthSessionStore();
@@ -1148,6 +1190,8 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   Future<void> _deleteAccount(BuildContext currentRouteContext) async {
+    _sessionValidationTimer?.cancel();
+    _sessionValidationTimer = null;
     _presenceTimer?.cancel();
     _presenceTimer = null;
     final StoredAuthSession? session = await _sessionStore.read();

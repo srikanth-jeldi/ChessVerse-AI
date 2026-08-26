@@ -85,11 +85,25 @@ class AuthControllerTest {
         String firstPlayerId = objectMapper.readTree(first.getResponse().getContentAsString())
                 .path("player").path("id").asText();
 
-        mockMvc.perform(post("/api/auth/guest")
+        String firstToken = objectMapper.readTree(first.getResponse().getContentAsString())
+                .path("token").asText();
+
+        MvcResult second = mockMvc.perform(post("/api/auth/guest")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.player.id").value(firstPlayerId));
+                .andExpect(jsonPath("$.player.id").value(firstPlayerId))
+                .andReturn();
+        String secondToken = objectMapper.readTree(second.getResponse().getContentAsString())
+                .path("token").asText();
+
+        mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", "Bearer " + firstToken))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", "Bearer " + secondToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(firstPlayerId));
     }
 
     @Test
