@@ -12,7 +12,20 @@
           "package_name": "com.epitomehub.chessverse"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "823774384869-a820693rjfthu04ltg72b9a5jifkirt8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.epitomehub.chessverse",
+            "certificate_hash": "a0d2d7c85e3fbef24e2e3fd00f2a939cf53d9fb5"
+          }
+        },
+        {
+          "client_id": "823774384869-o7c4p4eqrsgaj7ejno7fddi27n6n9h2o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCkD_rh-c7qLMwyAMizoQXF-9TdPdEJPMU"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "823774384869-32hoj2oa79ftoe9geq78h4iklcnmd0rl.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "823774384869-ft3ilr8ghbj0b8kbvla991tapoe29g7c.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.epitomehub.chessverse"
+              }
+            }
+          ]
         }
       }
     }

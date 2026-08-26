@@ -27,13 +27,13 @@ abstract final class AppConfig {
   static const String googleWebClientId = String.fromEnvironment(
     'GOOGLE_WEB_CLIENT_ID',
     defaultValue:
-        '350170750275-tehk29bqp3o0718sp45lrtd7c2tep9n4.apps.googleusercontent.com',
+        '823774384869-32hoj2oa79ftoe9geq78h4iklcnmd0rl.apps.googleusercontent.com',
   );
 
   static const String googleAndroidClientId = String.fromEnvironment(
     'GOOGLE_ANDROID_CLIENT_ID',
     defaultValue:
-        '350170750275-07a58sihomisudj55gmuemhlmae2mm94.apps.googleusercontent.com',
+        '823774384869-a820693rjfthu04ltg72b9a5jifkirt8.apps.googleusercontent.com',
   );
 
   static const String googleIosClientId = String.fromEnvironment(

@@ -51,6 +51,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _loginMode = true;
   bool _verificationMode = false;
   bool _loading = false;
+  bool _facebookSigningIn = false;
   bool _rememberMe = true;
   bool _googleInitialized = false;
   String? _message;
@@ -107,38 +108,41 @@ class _AuthScreenState extends State<AuthScreen> {
         viewport.width > viewport.height && viewport.shortestSide < 600;
     return Scaffold(
       backgroundColor: const Color(0xFF020914),
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[Color(0xFF06172A), Color(0xFF020914)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: compactLandscape
-              ? _premiumCompactLandscapeBody(context)
-              : LayoutBuilder(
-                  builder: (BuildContext context, BoxConstraints constraints) {
-                    return SingleChildScrollView(
-                      keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
-                      padding: const EdgeInsets.all(12),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: (constraints.maxHeight - 24)
-                              .clamp(0.0, double.infinity),
-                        ),
-                        child: Align(
-                          alignment: Alignment.center,
-                          child: _premiumResponsiveBody(context),
-                        ),
-                      ),
-                    );
-                  },
+      body: _facebookSigningIn
+          ? const _FacebookSignInOverlay()
+          : DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: <Color>[Color(0xFF06172A), Color(0xFF020914)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
-        ),
-      ),
+              ),
+              child: SafeArea(
+                child: compactLandscape
+                    ? _premiumCompactLandscapeBody(context)
+                    : LayoutBuilder(
+                        builder:
+                            (BuildContext context, BoxConstraints constraints) {
+                          return SingleChildScrollView(
+                            keyboardDismissBehavior:
+                                ScrollViewKeyboardDismissBehavior.onDrag,
+                            padding: const EdgeInsets.all(12),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: (constraints.maxHeight - 24)
+                                    .clamp(0.0, double.infinity),
+                              ),
+                              child: Align(
+                                alignment: Alignment.center,
+                                child: _premiumResponsiveBody(context),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ),
     );
   }
 
@@ -1071,6 +1075,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _signInWithFacebook() async {
     setState(() {
       _loading = true;
+      _facebookSigningIn = true;
       _error = null;
       _message = null;
     });
@@ -1104,7 +1109,12 @@ class _AuthScreenState extends State<AuthScreen> {
         setState(() => _error = 'Facebook sign-in failed. Please try again.');
       }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _facebookSigningIn = false;
+        });
+      }
     }
   }
 
@@ -1899,6 +1909,69 @@ class _AuthFieldState extends State<_AuthField> {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(13),
           borderSide: const BorderSide(color: Color(0xFF5EEAD4)),
+        ),
+      ),
+    );
+  }
+}
+
+class _FacebookSignInOverlay extends StatelessWidget {
+  const _FacebookSignInOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: const Color(0xFF020914),
+      child: SafeArea(
+        child: Center(
+          child: Semantics(
+            liveRegion: true,
+            label: 'Signing in with Facebook',
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF1877F2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.facebook_rounded,
+                    size: 50,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                const SizedBox(
+                  width: 34,
+                  height: 34,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    color: Color(0xFF5EEAD4),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Signing you in…',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    'Securely verifying your Facebook account.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
