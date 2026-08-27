@@ -12,7 +12,7 @@ python -c "import zstandard, pathlib; source=open('${archive}','rb'); target=ope
 python /work/validate_game_analysis_corpus.py "${pgn}" \
   --stockfish /usr/games/stockfish \
   --games "${VALIDATION_GAMES:-100}" \
-  --positions-per-game "${VALIDATION_POSITIONS_PER_GAME:-1}" \
+  --positions-per-game "${VALIDATION_POSITIONS_PER_GAME:-3}" \
   --app-depth "${VALIDATION_APP_DEPTH:-16}" \
   --reference-depth "${VALIDATION_REFERENCE_DEPTH:-20}" \
   --report "${report}"
