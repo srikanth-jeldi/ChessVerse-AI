@@ -290,6 +290,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                   : () => showAdaptiveAiReview(
                         context,
                         report: latestReport!,
+                        openingEco: latest?.openingEco,
+                        timeControl:
+                            latest?.mode == 'Play vs AI' ? '10+0' : null,
                       ),
             ),
           ],

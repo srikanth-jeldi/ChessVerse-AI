@@ -49,13 +49,14 @@ class AnalysisTrendsService {
     }
 
     private List<RecommendationDimension> dimension(UUID playerId, String dimension, String expression) {
-        String sql = "select " + expression + " value, count(*), "
+        String sql = "select " + expression + " dimension_value, count(*), "
                 + "count(*) filter(where accepted), count(followup_centipawn_loss), "
                 + "count(*) filter(where followup_centipawn_loss < baseline_centipawn_loss), "
                 + "case when count(followup_centipawn_loss)=0 then 0 else round(100.0 * "
                 + "count(*) filter(where followup_centipawn_loss < baseline_centipawn_loss) / "
                 + "count(followup_centipawn_loss)) end "
-                + "from ai_recommendation_outcome where player_id=? group by value order by count(*) desc limit 20";
+                + "from ai_recommendation_outcome where player_id=? "
+                + "group by dimension_value order by count(*) desc limit 20";
         return jdbc.query(sql, (rs, row) -> new RecommendationDimension(
                 dimension, rs.getString(1), rs.getInt(2), rs.getInt(3),
                 rs.getInt(4), rs.getInt(5), rs.getInt(6)), playerId);

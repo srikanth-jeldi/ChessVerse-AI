@@ -13,6 +13,8 @@ import '../domain/personal_ai_coach.dart';
 Future<void> showAdaptiveAiReview(
   BuildContext context, {
   required AiReviewReport report,
+  String? openingEco,
+  String? timeControl,
   ValueChanged<AiMoveInsight>? onRetryPosition,
   VoidCallback? onGeneratePuzzles,
 }) {
@@ -29,6 +31,8 @@ Future<void> showAdaptiveAiReview(
           child: _AiReviewWorkspace(
             report: report,
             desktop: true,
+            openingEco: openingEco,
+            timeControl: timeControl,
             onRetryPosition: onRetryPosition,
             onGeneratePuzzles: onGeneratePuzzles,
           ),
@@ -47,6 +51,8 @@ Future<void> showAdaptiveAiReview(
       child: _AiReviewWorkspace(
         report: report,
         desktop: false,
+        openingEco: openingEco,
+        timeControl: timeControl,
         onRetryPosition: onRetryPosition,
         onGeneratePuzzles: onGeneratePuzzles,
       ),
@@ -58,12 +64,16 @@ class _AiReviewWorkspace extends StatelessWidget {
   const _AiReviewWorkspace({
     required this.report,
     required this.desktop,
+    this.openingEco,
+    this.timeControl,
     this.onRetryPosition,
     this.onGeneratePuzzles,
   });
 
   final AiReviewReport report;
   final bool desktop;
+  final String? openingEco;
+  final String? timeControl;
   final ValueChanged<AiMoveInsight>? onRetryPosition;
   final VoidCallback? onGeneratePuzzles;
 
@@ -75,6 +85,8 @@ class _AiReviewWorkspace extends StatelessWidget {
     );
     final Widget timeline = _MoveTimeline(
       report: report,
+      openingEco: openingEco,
+      timeControl: timeControl,
       onRetryPosition: onRetryPosition,
     );
     final int puzzleCount = report.insights
@@ -570,8 +582,15 @@ class _InsightCard extends StatelessWidget {
 }
 
 class _MoveTimeline extends StatelessWidget {
-  const _MoveTimeline({required this.report, this.onRetryPosition});
+  const _MoveTimeline({
+    required this.report,
+    this.openingEco,
+    this.timeControl,
+    this.onRetryPosition,
+  });
   final AiReviewReport report;
+  final String? openingEco;
+  final String? timeControl;
   final ValueChanged<AiMoveInsight>? onRetryPosition;
 
   @override
@@ -652,8 +671,12 @@ class _MoveTimeline extends StatelessWidget {
                                   _ReviewAction(
                                     icon: Icons.psychology_alt_rounded,
                                     label: 'Ask AI Coach',
-                                    onTap: () =>
-                                        _showInteractiveCoach(context, insight),
+                                    onTap: () => _showInteractiveCoach(
+                                      context,
+                                      insight,
+                                      openingEco: openingEco,
+                                      timeControl: timeControl,
+                                    ),
                                   ),
                                   _ReviewAction(
                                     icon: Icons.warning_amber_rounded,
@@ -694,17 +717,29 @@ String _variationText(AiMoveInsight insight) => insight
 
 Future<void> _showInteractiveCoach(
   BuildContext context,
-  AiMoveInsight insight,
-) {
+  AiMoveInsight insight, {
+  String? openingEco,
+  String? timeControl,
+}) {
   return showDialog<void>(
     context: context,
-    builder: (BuildContext context) => _InteractiveCoachDialog(insight),
+    builder: (BuildContext context) => _InteractiveCoachDialog(
+      insight,
+      openingEco: openingEco,
+      timeControl: timeControl,
+    ),
   );
 }
 
 class _InteractiveCoachDialog extends StatefulWidget {
-  const _InteractiveCoachDialog(this.insight);
+  const _InteractiveCoachDialog(
+    this.insight, {
+    this.openingEco,
+    this.timeControl,
+  });
   final AiMoveInsight insight;
+  final String? openingEco;
+  final String? timeControl;
 
   @override
   State<_InteractiveCoachDialog> createState() =>
@@ -784,7 +819,9 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
           token,
           answer.interactionId,
           recommendationType: widget.insight.coachingTheme ?? 'calculation',
+          openingEco: widget.openingEco,
           playerColor: widget.insight.side,
+          timeControl: widget.timeControl,
           accepted: helpful,
         ),
       ]);

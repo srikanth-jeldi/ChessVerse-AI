@@ -140,7 +140,7 @@ class AiCoachApi {
 
   Future<void> feedback(
       String token, String interactionId, bool helpful) async {
-    await http
+    final http.Response response = await http
         .patch(
           Uri.parse(
               '${AppConfig.apiBaseUrl}/api/v1/coach/interactions/$interactionId/feedback'),
@@ -151,6 +151,9 @@ class AiCoachApi {
           body: jsonEncode(<String, bool>{'helpful': helpful}),
         )
         .timeout(const Duration(seconds: 10));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw const AiCoachApiException('Coach feedback could not be saved.');
+    }
   }
 
   Future<void> recommendationOutcome(
@@ -159,9 +162,11 @@ class AiCoachApi {
     required String recommendationType,
     required String playerColor,
     required bool accepted,
+    String? openingEco,
+    String? timeControl,
     int? followupCentipawnLoss,
   }) async {
-    await http
+    final http.Response response = await http
         .post(
           Uri.parse(
               '${AppConfig.apiBaseUrl}/api/v1/coach/interactions/$interactionId/outcome'),
@@ -173,11 +178,19 @@ class AiCoachApi {
             'recommendationType': recommendationType,
             'playerColor': playerColor.toLowerCase(),
             'accepted': accepted,
+            if (openingEco != null && openingEco.isNotEmpty)
+              'openingEco': openingEco,
+            if (timeControl != null && timeControl.isNotEmpty)
+              'timeControl': timeControl,
             if (followupCentipawnLoss != null)
               'followupCentipawnLoss': followupCentipawnLoss,
           }),
         )
         .timeout(const Duration(seconds: 10));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw const AiCoachApiException(
+          'Coach recommendation outcome could not be saved.');
+    }
   }
 
   Future<AiCoachImpact> impact(String token) async {
