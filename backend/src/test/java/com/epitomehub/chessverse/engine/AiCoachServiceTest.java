@@ -16,6 +16,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.dao.EmptyResultDataAccessException;
 
 class AiCoachServiceTest {
     private StockfishService stockfish;
@@ -63,7 +64,8 @@ class AiCoachServiceTest {
 
     @Test
     void enforcesPerPlayerDailyQuotaBeforeRunningStockfish() {
-        when(jdbc.queryForObject(anyString(), any(Class.class), any(), any(), any())).thenReturn(null);
+        when(jdbc.queryForObject(anyString(), any(Class.class), any(), any(), any()))
+                .thenThrow(new EmptyResultDataAccessException(1));
         AiCoachService service = new AiCoachService(stockfish, cache, interactions, outcomes, jdbc,
                 List.of(), metrics, 3, 168);
 

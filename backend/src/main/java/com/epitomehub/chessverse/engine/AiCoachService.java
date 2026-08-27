@@ -26,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.dao.EmptyResultDataAccessException;
 
 @Service
 class AiCoachService {
@@ -68,13 +69,18 @@ class AiCoachService {
     @Transactional
     CoachResponse ask(UUID playerId, CoachRequest request) {
         metrics.request();
-        Integer used = jdbc.queryForObject(
-                "with usage as (insert into ai_coach_daily_usage(player_id, usage_date, used_count) "
-                        + "values (?, ?, 1) on conflict(player_id, usage_date) do update "
-                        + "set used_count=ai_coach_daily_usage.used_count+1 "
-                        + "where ai_coach_daily_usage.used_count < ? returning used_count) "
-                        + "select used_count from usage",
-                Integer.class, playerId, LocalDate.now(java.time.ZoneOffset.UTC), dailyQuota);
+        Integer used;
+        try {
+            used = jdbc.queryForObject(
+                    "with usage as (insert into ai_coach_daily_usage(player_id, usage_date, used_count) "
+                            + "values (?, ?, 1) on conflict(player_id, usage_date) do update "
+                            + "set used_count=ai_coach_daily_usage.used_count+1 "
+                            + "where ai_coach_daily_usage.used_count < ? returning used_count) "
+                            + "select used_count from usage",
+                    Integer.class, playerId, LocalDate.now(java.time.ZoneOffset.UTC), dailyQuota);
+        } catch (EmptyResultDataAccessException exhausted) {
+            used = null;
+        }
         if (used == null) {
             metrics.quotaRejected();
             throw new EngineException(HttpStatus.TOO_MANY_REQUESTS,
