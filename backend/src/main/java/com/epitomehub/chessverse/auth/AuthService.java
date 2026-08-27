@@ -492,6 +492,19 @@ class AuthService {
     }
 
     @Transactional
+    PlayerResponse updateProfile(String token, UpdateProfileRequest request) {
+        PlayerAccount player = requireSession(token).player;
+        String displayName = request.displayName().trim().replaceAll("\\s+", " ");
+        if (displayName.length() < 2) {
+            throw new AuthException(HttpStatus.BAD_REQUEST, "Display name must contain at least 2 characters.");
+        }
+        player.displayName = displayName;
+        player.updatedAt = Instant.now();
+        players.save(player);
+        return PlayerResponse.from(player);
+    }
+
+    @Transactional
     void logout(String token) {
         sessions.deleteByTokenHash(sha256(token));
     }

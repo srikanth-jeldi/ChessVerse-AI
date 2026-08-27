@@ -13,6 +13,8 @@ class SavedMoveReview {
     required this.classification,
     this.coachingTheme = 'calculation',
     required this.centipawnLoss,
+    this.evaluationBeforeCp,
+    this.evaluationAfterCp,
     required this.opponentThreat,
     required this.explanation,
     required this.principalVariation,
@@ -25,6 +27,8 @@ class SavedMoveReview {
   final String classification;
   final String coachingTheme;
   final int centipawnLoss;
+  final int? evaluationBeforeCp;
+  final int? evaluationAfterCp;
   final String opponentThreat;
   final String explanation;
   final List<String> principalVariation;
@@ -38,6 +42,8 @@ class SavedMoveReview {
       classification: json['classification'] as String? ?? 'Unreviewed',
       coachingTheme: json['coachingTheme'] as String? ?? 'calculation',
       centipawnLoss: (json['centipawnLoss'] as num?)?.toInt() ?? 0,
+      evaluationBeforeCp: (json['evaluationBeforeCp'] as num?)?.toInt(),
+      evaluationAfterCp: (json['evaluationAfterCp'] as num?)?.toInt(),
       opponentThreat: json['opponentThreat'] as String? ?? '',
       explanation: json['explanation'] as String? ?? '',
       principalVariation:
@@ -55,6 +61,8 @@ class SavedMoveReview {
         'classification': classification,
         'coachingTheme': coachingTheme,
         'centipawnLoss': centipawnLoss,
+        'evaluationBeforeCp': evaluationBeforeCp,
+        'evaluationAfterCp': evaluationAfterCp,
         'opponentThreat': opponentThreat,
         'explanation': explanation,
         'principalVariation': principalVariation,
@@ -171,12 +179,18 @@ class RewardBadge {
     required this.description,
     required this.icon,
     required this.unlocked,
+    required this.progress,
+    required this.target,
   });
 
   final String title;
   final String description;
   final String icon;
   final bool unlocked;
+  final int progress;
+  final int target;
+
+  double get completion => (progress / target).clamp(0, 1).toDouble();
 }
 
 class RewardSnapshot {
@@ -380,6 +394,27 @@ class LocalGameArchive {
     }
     unawaited(_persistGames());
     _notifyCloudChange();
+  }
+
+  /// Keeps late Stockfish responses durable when a game ends before the
+  /// network analysis request completes.
+  static void updateLatestGameReviews(List<SavedMoveReview> reviews) {
+    if (_games.isEmpty) return;
+    final SavedGameRecord current = _games.first;
+    _games[0] = SavedGameRecord(
+      mode: current.mode,
+      result: current.result,
+      detail: current.detail,
+      moves: current.moves,
+      playedAt: current.playedAt,
+      whitePlayer: current.whitePlayer,
+      blackPlayer: current.blackPlayer,
+      playerOutcome: current.playerOutcome,
+      moveReviews: List<SavedMoveReview>.from(reviews)
+        ..sort((SavedMoveReview a, SavedMoveReview b) => a.ply - b.ply),
+    );
+    unawaited(_persistGames());
+    activityRevision.value++;
   }
 
   static Future<void> _persistGames() async {
@@ -787,6 +822,9 @@ class LocalGameArchive {
         (localStats.dailySolved * 35) +
         (localStats.puzzlesSolved * 12) +
         (localStats.dailyStreak * 10);
+    final int reviewedGames = _games
+        .where((SavedGameRecord game) => game.moveReviews.isNotEmpty)
+        .length;
 
     return RewardSnapshot(
       xp: xp,
@@ -800,24 +838,80 @@ class LocalGameArchive {
           description: 'Finish your first ChessVerseAI match.',
           icon: '♟',
           unlocked: localStats.gamesPlayed >= 1,
+          progress: localStats.gamesPlayed,
+          target: 1,
         ),
         RewardBadge(
           title: 'Tactical Spark',
           description: 'Solve a daily checkmate.',
           icon: '🔥',
           unlocked: localStats.dailySolved >= 1,
+          progress: localStats.dailySolved,
+          target: 1,
         ),
         RewardBadge(
           title: 'Winner Mindset',
           description: 'Win three local/AI games.',
           icon: '🏆',
           unlocked: localStats.wins >= 3,
+          progress: localStats.wins,
+          target: 3,
         ),
         RewardBadge(
           title: 'Study Streak',
           description: 'Build a 3-day ChessVerseAI streak.',
           icon: '⚡',
           unlocked: localStats.dailyStreak >= 3,
+          progress: localStats.dailyStreak,
+          target: 3,
+        ),
+        RewardBadge(
+          title: 'Game Detective',
+          description: 'Complete your first engine-reviewed game.',
+          icon: '🔎',
+          unlocked: reviewedGames >= 1,
+          progress: reviewedGames,
+          target: 1,
+        ),
+        RewardBadge(
+          title: 'Deep Analyst',
+          description: 'Review five games with ChessVerseAI.',
+          icon: '🧠',
+          unlocked: reviewedGames >= 5,
+          progress: reviewedGames,
+          target: 5,
+        ),
+        RewardBadge(
+          title: 'Puzzle Hunter',
+          description: 'Solve ten academy puzzles.',
+          icon: '🧩',
+          unlocked: localStats.puzzlesSolved >= 10,
+          progress: localStats.puzzlesSolved,
+          target: 10,
+        ),
+        RewardBadge(
+          title: 'Arena Regular',
+          description: 'Finish twenty-five matches.',
+          icon: '🎯',
+          unlocked: localStats.gamesPlayed >= 25,
+          progress: localStats.gamesPlayed,
+          target: 25,
+        ),
+        RewardBadge(
+          title: 'Winning Habit',
+          description: 'Win ten tracked matches.',
+          icon: '👑',
+          unlocked: localStats.wins >= 10,
+          progress: localStats.wins,
+          target: 10,
+        ),
+        RewardBadge(
+          title: 'Century Club',
+          description: 'Finish one hundred matches.',
+          icon: '💯',
+          unlocked: localStats.gamesPlayed >= 100,
+          progress: localStats.gamesPlayed,
+          target: 100,
         ),
       ],
     );

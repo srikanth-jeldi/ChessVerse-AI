@@ -14,6 +14,8 @@ void main() {
       bestMove: 'd2d4',
       classification: 'Inaccuracy',
       centipawnLoss: 48,
+      evaluationBeforeCp: 22,
+      evaluationAfterCp: -26,
       opponentThreat: 'e7e5',
       explanation: 'The move is playable, but d2d4 was more accurate.',
       principalVariation: <String>['d2d4', 'd7d5'],
@@ -29,6 +31,10 @@ void main() {
     expect(report.insights.single.hasEngineEvidence, isTrue);
     expect(report.insights.single.bestMove, 'd2d4');
     expect(report.insights.single.opponentThreat, 'e7e5');
+    expect(report.insights.single.principalVariation, <String>['d2d4', 'd7d5']);
+    expect(report.insights.single.evaluationAfterCp, -26);
+    expect(report.openingName, "King's Pawn Opening");
+    expect(report.trainingRecommendations, hasLength(3));
   });
 
   test('saved move-review JSON round-trips production evidence', () {
@@ -39,6 +45,8 @@ void main() {
       bestMove: 'a1b2',
       classification: 'Mistake',
       centipawnLoss: 104,
+      evaluationBeforeCp: 35,
+      evaluationAfterCp: -69,
       opponentThreat: 'h1h2',
       explanation: 'King opposition was lost.',
       principalVariation: <String>['a1b2', 'h1g1'],
@@ -48,6 +56,8 @@ void main() {
     expect(restored.ply, source.ply);
     expect(restored.classification, source.classification);
     expect(restored.principalVariation, source.principalVariation);
+    expect(restored.evaluationBeforeCp, 35);
+    expect(restored.evaluationAfterCp, -69);
   });
 
   test('AI review builds chronological move insights and training plan', () {

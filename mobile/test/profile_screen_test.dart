@@ -7,7 +7,7 @@ void main() {
   testWidgets('rich player profile opens and saves editor', (
     WidgetTester tester,
   ) async {
-    String? savedUsername;
+    String? savedDisplayName;
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -20,7 +20,7 @@ void main() {
           playerName: 'Srikant',
           username: 'srikant',
           isGuest: false,
-          onUsernameChanged: (String value) => savedUsername = value,
+          onDisplayNameChanged: (String value) async => savedDisplayName = value,
         ),
       ),
     );
@@ -32,15 +32,16 @@ void main() {
     expect(find.text('CUSTOMIZE YOUR PLAYER'), findsOneWidget);
 
     await tester.enterText(
-      find.byKey(const ValueKey<String>('profile-username-field')),
-      'srikantjheldi',
+      find.byKey(const ValueKey<String>('profile-display-name-field')),
+      'Sri King',
     );
     await tester.tap(find.byKey(const ValueKey<String>('profile-avatar-2')));
     await tester.tap(find.byKey(const ValueKey<String>('save-player-profile')));
     await tester.pumpAndSettle();
 
-    expect(savedUsername, 'srikantjheldi');
-    expect(find.text('@srikantjheldi'), findsOneWidget);
+    expect(savedDisplayName, 'Sri King');
+    expect(find.text('Sri King'), findsOneWidget);
+    expect(find.text('@srikant'), findsOneWidget);
     expect(find.text('Player profile saved'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

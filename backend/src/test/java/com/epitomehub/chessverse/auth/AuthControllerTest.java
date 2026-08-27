@@ -323,6 +323,18 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("session_player"));
 
+        mockMvc.perform(post("/api/auth/profile")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"  Sri King  \"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("session_player"))
+                .andExpect(jsonPath("$.displayName").value("Sri King"));
+
+        mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName").value("Sri King"));
+
         mockMvc.perform(post("/api/auth/logout").header("Authorization", "Bearer " + token))
                 .andExpect(status().isNoContent());
 

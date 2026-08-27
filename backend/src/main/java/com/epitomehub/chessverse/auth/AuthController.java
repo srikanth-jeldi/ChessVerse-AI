@@ -89,6 +89,13 @@ class AuthController {
         return authService.currentPlayer(bearerToken(authorization));
     }
 
+    @PostMapping("/profile")
+    PlayerResponse updateProfile(
+            @RequestHeader(name = "Authorization", required = false) String authorization,
+            @Valid @RequestBody UpdateProfileRequest request) {
+        return authService.updateProfile(bearerToken(authorization), request);
+    }
+
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void logout(@RequestHeader(name = "Authorization", required = false) String authorization) {

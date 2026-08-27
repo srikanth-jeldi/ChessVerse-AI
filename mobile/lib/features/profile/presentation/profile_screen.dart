@@ -10,7 +10,7 @@ class ProfileScreen extends StatefulWidget {
     this.email,
     this.profilePhotoUrl,
     this.isGuest = true,
-    this.onUsernameChanged,
+    this.onDisplayNameChanged,
     this.onSecureProgress,
     super.key,
   });
@@ -20,7 +20,7 @@ class ProfileScreen extends StatefulWidget {
   final String? email;
   final String? profilePhotoUrl;
   final bool isGuest;
-  final ValueChanged<String>? onUsernameChanged;
+  final Future<void> Function(String displayName)? onDisplayNameChanged;
   final Future<void> Function()? onSecureProgress;
 
   @override
@@ -28,16 +28,14 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  late String _username;
+  late String _displayName;
 
   @override
   void initState() {
     super.initState();
-    final String saved = LocalGameArchive.profileUsername?.trim() ?? '';
-    final String account = widget.username?.trim() ?? '';
-    _username = saved.isNotEmpty
-        ? saved
-        : (account.isNotEmpty ? account : widget.playerName);
+    _displayName = widget.playerName.trim().isEmpty
+        ? 'ChessVerseAI Player'
+        : widget.playerName.trim();
   }
 
   @override
@@ -63,8 +61,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         children: <Widget>[
           _ProfileHero(
-            playerName: widget.playerName,
-            username: _username,
+            playerName: _displayName,
+            username: widget.username?.trim().isNotEmpty == true
+                ? widget.username!.trim()
+                : 'player',
             country: LocalGameArchive.profileCountry,
             level: LocalGameArchive.profileLevel,
             avatar: LocalGameArchive.profileAvatar,
@@ -287,24 +287,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) => _ProfileEditorSheet(
-        initialUsername: _username,
+        initialDisplayName: _displayName,
+        username: widget.username?.trim() ?? '',
         initialCountry: LocalGameArchive.profileCountry,
         initialLevel: LocalGameArchive.profileLevel,
         initialAvatar: LocalGameArchive.profileAvatar,
       ),
     );
     if (value == null || !mounted) return;
-    LocalGameArchive.savePlayerProfile(
-      username: value.username,
-      country: value.country,
-      level: value.level,
-      avatar: value.avatar,
-    );
-    setState(() => _username = value.username);
-    widget.onUsernameChanged?.call(value.username);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Player profile saved')),
-    );
+    try {
+      await widget.onDisplayNameChanged?.call(value.displayName);
+      LocalGameArchive.savePlayerProfile(
+        username: widget.username?.trim() ?? 'player',
+        country: value.country,
+        level: value.level,
+        avatar: value.avatar,
+      );
+      if (!mounted) return;
+      setState(() => _displayName = value.displayName);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Player profile saved')),
+      );
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
   }
 }
 
@@ -378,9 +387,25 @@ class _BadgeProgressTile extends StatelessWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
-        subtitle: Text(
-          badge.description,
-          style: const TextStyle(color: Color(0xFFA9BBC4)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(badge.description,
+                style: const TextStyle(color: Color(0xFFA9BBC4))),
+            if (!badge.unlocked) ...<Widget>[
+              const SizedBox(height: 7),
+              LinearProgressIndicator(
+                value: badge.completion,
+                minHeight: 5,
+                color: const Color(0xFF62E4D1),
+                backgroundColor: const Color(0xFF263645),
+              ),
+              const SizedBox(height: 3),
+              Text('${badge.progress.clamp(0, badge.target)}/${badge.target}',
+                  style:
+                      const TextStyle(color: Color(0xFF8198A5), fontSize: 11)),
+            ],
+          ],
         ),
         trailing: badge.unlocked
             ? const Icon(Icons.check_circle_rounded, color: Color(0xFF62E4D1))
@@ -504,13 +529,15 @@ class _ProfileHero extends StatelessWidget {
 
 class _ProfileEditorSheet extends StatefulWidget {
   const _ProfileEditorSheet({
-    required this.initialUsername,
+    required this.initialDisplayName,
+    required this.username,
     required this.initialCountry,
     required this.initialLevel,
     required this.initialAvatar,
   });
 
-  final String initialUsername;
+  final String initialDisplayName;
+  final String username;
   final String initialCountry;
   final int initialLevel;
   final int initialAvatar;
@@ -717,7 +744,7 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
     'Zambia',
     'Zimbabwe',
   ];
-  late final TextEditingController _username;
+  late final TextEditingController _displayName;
   late String _country;
   late int _level;
   late int _avatar;
@@ -725,7 +752,7 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
   @override
   void initState() {
     super.initState();
-    _username = TextEditingController(text: widget.initialUsername);
+    _displayName = TextEditingController(text: widget.initialDisplayName);
     _country = _countries.contains(widget.initialCountry)
         ? widget.initialCountry
         : _countries.first;
@@ -735,7 +762,7 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
 
   @override
   void dispose() {
-    _username.dispose();
+    _displayName.dispose();
     super.dispose();
   }
 
@@ -811,14 +838,26 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
               ),
               const SizedBox(height: 18),
               TextField(
-                key: const ValueKey<String>('profile-username-field'),
-                controller: _username,
-                maxLength: 24,
+                key: const ValueKey<String>('profile-display-name-field'),
+                controller: _displayName,
+                maxLength: 80,
                 decoration: const InputDecoration(
-                  labelText: 'Username',
-                  prefixIcon: Icon(Icons.alternate_email_rounded),
+                  labelText: 'Display name',
+                  helperText: 'This is the name other players will see.',
+                  prefixIcon: Icon(Icons.badge_rounded),
                 ),
               ),
+              if (widget.username.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 8),
+                InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Account username',
+                    helperText: 'Your unique sign-in and friend-search handle.',
+                    prefixIcon: Icon(Icons.alternate_email_rounded),
+                  ),
+                  child: Text('@${widget.username}'),
+                ),
+              ],
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
                 initialValue: _country,
@@ -878,12 +917,12 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
                   minimumSize: const Size.fromHeight(54),
                 ),
                 onPressed: () {
-                  final String name = _username.text.trim();
-                  if (!RegExp(r'^[A-Za-z0-9_.-]{3,24}$').hasMatch(name)) {
+                  final String name = _displayName.text.trim();
+                  if (name.length < 2 || name.length > 80) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text(
-                          'Use 3–24 letters, numbers, dot, dash or underscore.',
+                          'Display name must be between 2 and 80 characters.',
                         ),
                       ),
                     );
@@ -891,7 +930,7 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
                   }
                   Navigator.of(context).pop(
                     _EditableProfile(
-                      username: name,
+                      displayName: name,
                       country: _country,
                       level: _level,
                       avatar: _avatar,
@@ -914,13 +953,13 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
 
 class _EditableProfile {
   const _EditableProfile({
-    required this.username,
+    required this.displayName,
     required this.country,
     required this.level,
     required this.avatar,
   });
 
-  final String username;
+  final String displayName;
   final String country;
   final int level;
   final int avatar;

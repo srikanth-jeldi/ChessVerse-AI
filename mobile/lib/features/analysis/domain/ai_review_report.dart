@@ -15,7 +15,10 @@ class AiMoveInsight {
     this.opponentThreat,
     this.fenBefore,
     this.centipawnLoss,
+    this.evaluationBeforeCp,
+    this.evaluationAfterCp,
     this.coachingTheme,
+    this.principalVariation = const <String>[],
   });
 
   final int number;
@@ -28,7 +31,10 @@ class AiMoveInsight {
   final String? opponentThreat;
   final String? fenBefore;
   final int? centipawnLoss;
+  final int? evaluationBeforeCp;
+  final int? evaluationAfterCp;
   final String? coachingTheme;
+  final List<String> principalVariation;
 
   bool get hasEngineEvidence => fenBefore?.isNotEmpty == true;
 }
@@ -45,6 +51,8 @@ class AiReviewReport {
     required this.recommendedLesson,
     required this.importantMistakes,
     required this.insights,
+    required this.openingName,
+    required this.trainingRecommendations,
   });
 
   final int accuracy;
@@ -56,6 +64,8 @@ class AiReviewReport {
   final String recommendedLesson;
   final List<String> importantMistakes;
   final List<AiMoveInsight> insights;
+  final String openingName;
+  final List<String> trainingRecommendations;
 
   factory AiReviewReport.fromMoves(
     List<String> moves, {
@@ -134,7 +144,10 @@ class AiReviewReport {
         opponentThreat: reviewed?.opponentThreat,
         fenBefore: reviewed?.fenBefore,
         centipawnLoss: reviewed?.centipawnLoss,
+        evaluationBeforeCp: reviewed?.evaluationBeforeCp,
+        evaluationAfterCp: reviewed?.evaluationAfterCp,
         coachingTheme: reviewed?.coachingTheme,
+        principalVariation: reviewed?.principalVariation ?? const <String>[],
       ));
     }
 
@@ -259,6 +272,66 @@ class AiReviewReport {
       recommendedLesson: lesson,
       importantMistakes: importantMistakes,
       insights: insights,
+      openingName: _recognizeOpening(chronological),
+      trainingRecommendations: _recommendations(dominantTheme, accuracy),
     );
   }
+}
+
+List<String> _recommendations(String? theme, int accuracy) {
+  final List<String> focus = switch (theme) {
+    'opening' => <String>[
+        'Replay the first 10 moves and identify every repeated piece move.',
+        'Complete one centre-control lesson before the next rated game.',
+      ],
+    'kingSafety' => <String>[
+        'Train 5 positions where castling or meeting a check is urgent.',
+        'Use a king-safety scan before starting any attack.',
+      ],
+    'hangingPieces' => <String>[
+        'Solve 5 loose-piece and overloaded-defender puzzles.',
+        'After every candidate move, verify that each piece is defended.',
+      ],
+    'endgame' => <String>[
+        'Practice king activation and one pawn race today.',
+        'Replay the game from the first endgame mistake.',
+      ],
+    'tactics' => <String>[
+        'Solve 5 puzzles using checks, captures, and threats in order.',
+        'Retry the largest evaluation swing without a hint.',
+      ],
+    _ => <String>[
+        'Compare two candidate moves before every decision.',
+        'Retry each reviewed mistake until solved twice.',
+      ],
+  };
+  return <String>[
+    ...focus,
+    accuracy >= 85
+        ? 'Maintain form with one slow game and a full review.'
+        : 'Play one slower game and apply the same thinking routine.',
+  ];
+}
+
+String _recognizeOpening(List<String> moves) {
+  final String line = moves
+      .take(8)
+      .map((String move) =>
+          move.toLowerCase().replaceAll(RegExp(r'[^a-h1-8o-]'), ''))
+      .join(' ');
+  if (line.startsWith('e2e4 c7c5')) return 'Sicilian Defence';
+  if (line.startsWith('e2e4 e7e5 g1f3 b8c6 f1b5')) return 'Ruy Lopez';
+  if (line.startsWith('e2e4 e7e5 g1f3 b8c6 f1c4')) return 'Italian Game';
+  if (line.startsWith('e2e4 e7e6')) return 'French Defence';
+  if (line.startsWith('e2e4 c7c6')) return 'Caro-Kann Defence';
+  if (line.startsWith('d2d4 g8f6 c2c4 g7g6')) return "King's Indian Defence";
+  if (line.startsWith('d2d4 d7d5 c2c4')) return "Queen's Gambit";
+  if (line.startsWith('d2d4 g8f6 c2c4 e7e6')) return 'Nimzo/Indian setup';
+  if (line.startsWith('d2d4 d7d5')) return "Queen's Pawn Game";
+  if (line.startsWith('e2e4 e7e5')) return "King's Pawn Game";
+  if (line.startsWith('e2e4')) return "King's Pawn Opening";
+  if (line.startsWith('d2d4')) return "Queen's Pawn Opening";
+  if (line.startsWith('c2c4')) return 'English Opening';
+  if (line.startsWith('g1f3')) return 'Réti Opening';
+  return moves.isEmpty ? 'Opening not available' : 'Unclassified opening';
 }

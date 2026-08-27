@@ -655,10 +655,7 @@ class _SplashGateState extends State<SplashGate> {
         profilePhotoUrl: _photoUrl,
         isGuest: _isGuest,
         onSecureProgress: _isGuest ? () => _secureGuestProgress(context) : null,
-        onUsernameChanged: (String value) {
-          if (!mounted) return;
-          setState(() => _username = value);
-        },
+        onDisplayNameChanged: _updateDisplayName,
       ),
       SocialHubScreen(
         onOpenMatch: (OnlineMatchDto match) async {
@@ -1099,6 +1096,7 @@ class _SplashGateState extends State<SplashGate> {
         initialOnlineMatch: initialOnlineMatch,
         initialAuthToken: initialAuthToken,
         onLogout: () => _logout(context),
+        onDisplayNameChanged: _updateDisplayName,
       ),
     );
   }
@@ -1219,6 +1217,28 @@ class _SplashGateState extends State<SplashGate> {
       _primaryDestination = 0;
       _stage = _RootStage.auth;
     });
+  }
+
+  Future<void> _updateDisplayName(String displayName) async {
+    final StoredAuthSession? session = await _sessionStore.read();
+    if (session == null) {
+      throw const AuthApiException('Sign in to update your display name.');
+    }
+    final Map<String, dynamic> player =
+        await _authApi.updateProfile(session.token, displayName);
+    final String savedName =
+        _profileValue(player['displayName']) ?? displayName;
+    await _sessionStore.write(StoredAuthSession(
+      token: session.token,
+      expiresAt: session.expiresAt,
+      displayName: savedName,
+      username: session.username,
+      email: session.email,
+      photoUrl: session.photoUrl,
+      isGuest: session.isGuest,
+    ));
+    if (!mounted) return;
+    setState(() => _playerName = savedName);
   }
 
   Future<void> _secureGuestProgress(BuildContext currentRouteContext) async {
@@ -3240,6 +3260,7 @@ class GameScreen extends StatefulWidget {
     this.initialAuthToken,
     this.onlineApi,
     this.onLogout,
+    this.onDisplayNameChanged,
     super.key,
   });
 
@@ -3259,6 +3280,7 @@ class GameScreen extends StatefulWidget {
   final String? initialAuthToken;
   final OnlineMatchApi? onlineApi;
   final Future<void> Function()? onLogout;
+  final Future<void> Function(String displayName)? onDisplayNameChanged;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -4259,6 +4281,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           username: widget.initialUsername,
           email: widget.initialEmail,
           isGuest: widget.initiallyGuest,
+          onDisplayNameChanged: widget.onDisplayNameChanged,
         ),
       ),
     );
@@ -5403,7 +5426,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     String playedMove,
     int ply,
   ) async {
-    final int reviewEpoch = ++_moveReviewEpoch;
+    // Multiple half-moves can finish analysis out of order. They all belong
+    // to the same game epoch and must be retained; only a board reset makes
+    // an outstanding result stale.
+    final int reviewEpoch = _moveReviewEpoch;
     try {
       final Map<String, dynamic> engine = await _engineApi.reviewMove(
         fen: fen,
@@ -5426,6 +5452,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               : '$recommendation was more accurate.');
       final String reviewText = '$classification • $explanation';
       final int cp = (engine['evaluationAfterCp'] as num?)?.toInt() ?? 0;
+      final int evaluationBeforeCp =
+          (engine['evaluationBeforeCp'] as num?)?.toInt() ?? 0;
       final int centipawnLoss = (engine['centipawnLoss'] as num?)?.toInt() ?? 0;
       final String opponentThreat = engine['opponentThreat'] as String? ?? '';
       final List<String> principalVariation =
@@ -5460,6 +5488,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             classification: classification,
             coachingTheme: engine['coachingTheme'] as String? ?? 'calculation',
             centipawnLoss: centipawnLoss,
+            evaluationBeforeCp: evaluationBeforeCp,
+            evaluationAfterCp: cp,
             opponentThreat: opponentThreat,
             explanation: explanation,
             principalVariation: principalVariation,
@@ -5472,6 +5502,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           );
         }
       });
+      if (_resultSaved) {
+        LocalGameArchive.updateLatestGameReviews(_moveReviews);
+      }
       _scheduleMoveQualityDismiss();
     } on EngineApiException {
       // Keep the immediate on-device coach feedback when analysis is offline.
@@ -6157,6 +6190,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         : Map<String, ChessPiece>.from(_initialPieces);
     _aiWatchdogTimer?.cancel();
     _aiMoveEpoch++;
+    _moveReviewEpoch++;
     setState(() {
       _applyPlayerSideNames(_playerDisplayName);
       _dailyChallenge = challenge;
@@ -6339,7 +6373,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           initialPieces: _piecesFromFen(fen),
           whiteToMove: fenParts.length < 2 || fenParts[1] != 'b',
           bestMove: bestMove,
-          explanation: insight.explanation,
+          explanation: _reviewPracticeExplanation(insight),
+          progressLabel: 'POSITION BEFORE MOVE ${insight.number}',
         ),
       );
     });
@@ -6354,15 +6389,20 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 .contains(review.classification))
         .toList(growable: false)
         .reversed
-        .take(5)
-        .toList(growable: false)
-        .reversed
         .toList(growable: false);
     if (puzzles.isEmpty) return;
     Navigator.of(context).pop();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _openMistakePuzzle(puzzles, 0);
     });
+  }
+
+  String _reviewPracticeExplanation(AiMoveInsight insight) {
+    final String variation = insight.principalVariation.isEmpty
+        ? ''
+        : ' Continue with ${insight.principalVariation.take(5).join(' → ')}.';
+    return '${insight.explanation} The engine preferred ${insight.bestMove}. '
+        'The immediate threat was ${insight.opponentThreat ?? 'not forcing'}.$variation';
   }
 
   void _openMistakePuzzle(List<SavedMoveReview> puzzles, int index) {
@@ -7741,6 +7781,41 @@ class _ReviewedPositionRetryDialogState
   String? _message;
   bool _answered = false;
 
+  String _capturedPieces(bool white) {
+    const Map<String, int> starting = <String, int>{
+      'Q': 1,
+      'R': 2,
+      'B': 2,
+      'N': 2,
+      'P': 8,
+    };
+    const Map<String, String> whiteGlyphs = <String, String>{
+      'Q': '♕',
+      'R': '♖',
+      'B': '♗',
+      'N': '♘',
+      'P': '♙',
+    };
+    const Map<String, String> blackGlyphs = <String, String>{
+      'Q': '♛',
+      'R': '♜',
+      'B': '♝',
+      'N': '♞',
+      'P': '♟',
+    };
+    final StringBuffer missing = StringBuffer();
+    for (final MapEntry<String, int> entry in starting.entries) {
+      final int present = widget.initialPieces.values
+          .where((ChessPiece piece) =>
+              piece.white == white && piece.code == entry.key)
+          .length;
+      for (int count = present; count < entry.value; count++) {
+        missing.write((white ? whiteGlyphs : blackGlyphs)[entry.key]);
+      }
+    }
+    return missing.toString();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -7913,6 +7988,21 @@ class _ReviewedPositionRetryDialogState
                 '${widget.whiteToMove ? 'White' : 'Black'} to move • Find the strongest continuation',
                 style: const TextStyle(color: Color(0xFF9DB0BE)),
               ),
+              const SizedBox(height: 6),
+              Builder(builder: (BuildContext context) {
+                final String whiteCaptured = _capturedPieces(true);
+                final String blackCaptured = _capturedPieces(false);
+                return Text(
+                  whiteCaptured.isEmpty && blackCaptured.isEmpty
+                      ? 'Exact game snapshot restored • No captures yet'
+                      : 'Exact game snapshot restored • Missing White: ${whiteCaptured.isEmpty ? '—' : whiteCaptured}  Black: ${blackCaptured.isEmpty ? '—' : blackCaptured}',
+                  style: const TextStyle(
+                    color: Color(0xFF63D2B8),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                );
+              }),
               const SizedBox(height: 14),
               AspectRatio(
                 aspectRatio: 1,
