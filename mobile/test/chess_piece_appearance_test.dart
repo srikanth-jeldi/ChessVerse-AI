@@ -86,6 +86,6 @@ void main() {
     );
 
     expect(find.text('♙'), findsNWidgets(2));
-    expect(find.text('♟'), findsNWidgets(2));
+    expect(find.text('♟︎'), findsNWidgets(2));
   });
 }

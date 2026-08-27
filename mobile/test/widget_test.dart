@@ -611,6 +611,74 @@ void main() {
     );
   });
 
+  testWidgets('idle human turn reveals a two-square blue move hint', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+        ),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 9));
+    expect(
+      find.byKey(const ValueKey<String>('idle-hint-source')),
+      findsNothing,
+    );
+
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(
+      find.byKey(const ValueKey<String>('idle-hint-source')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('idle-hint-target')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Blue lights suggest'), findsOneWidget);
+  });
+
+  testWidgets('online turn also reveals the idle blue move hint', (
+    WidgetTester tester,
+  ) async {
+    const _FakeOnlineApi api = _FakeOnlineApi(active: true);
+    final OnlineMatchDto match = await api.randomMatch('test-token');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          initialGameMode: GameMode.online,
+          initialOnlineMatch: match,
+          initialAuthToken: 'test-token',
+          onlineApi: api,
+          useRemoteEngine: false,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 10));
+    await tester.pump(const Duration(milliseconds: 450));
+
+    expect(
+      find.byKey(const ValueKey<String>('idle-hint-source')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('idle-hint-target')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('compact phone keeps coach actions visible without overlap', (
     WidgetTester tester,
   ) async {
