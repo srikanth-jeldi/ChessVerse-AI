@@ -19,6 +19,8 @@ import java.util.Locale;
 import java.util.UUID;
 import java.util.List;
 import java.util.LinkedHashSet;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -36,6 +38,7 @@ class AiCoachService {
     private final AiCoachMetrics metrics;
     private final int dailyQuota;
     private final Duration cacheTtl;
+    private final Cache<String, EngineController.MoveReviewResponse> moveReviewCache;
 
     AiCoachService(
             StockfishService stockfish,
@@ -56,6 +59,10 @@ class AiCoachService {
         this.metrics = metrics;
         this.dailyQuota = Math.max(1, dailyQuota);
         this.cacheTtl = Duration.ofHours(Math.max(1, cacheHours));
+        this.moveReviewCache = Caffeine.newBuilder()
+                .maximumSize(10_000)
+                .expireAfterAccess(this.cacheTtl)
+                .build();
     }
 
     @Transactional
@@ -81,7 +88,7 @@ class AiCoachService {
         String latestQuestion = history.isEmpty() ? "" : history.getFirst().question;
         String candidate = cleanCandidate(request.candidateMove(), request.question());
         String moveToReview = candidate == null ? request.playedMove().toLowerCase(Locale.ROOT) : candidate;
-        var evidence = stockfish.reviewMove(new MoveReviewRequest(request.fen(), moveToReview, 8));
+        var evidence = reviewCached(request.fen(), moveToReview);
         String normalizedQuestion = normalizeQuestion(request.question());
         String key = sha256(request.fen().trim() + "|" + moveToReview + "|" + normalizedQuestion + "|" + context);
         Instant now = Instant.now();
@@ -246,10 +253,21 @@ class AiCoachService {
         return moves.stream().limit(3).map(move -> {
             EngineController.MoveReviewResponse reviewed = move.equalsIgnoreCase(primary.playedMove())
                     ? primary
-                    : stockfish.reviewMove(new MoveReviewRequest(request.fen(), move, 8));
+                    : reviewCached(request.fen(), move);
             return new CandidateComparison(move, reviewed.classification(), reviewed.centipawnLoss(),
                     reviewed.opponentThreat(), reviewed.principalVariation());
         }).toList();
+    }
+
+    private EngineController.MoveReviewResponse reviewCached(String fen, String move) {
+        String key = sha256(fen.trim() + "|" + move.toLowerCase(Locale.ROOT) + "|8");
+        EngineController.MoveReviewResponse existing = moveReviewCache.getIfPresent(key);
+        if (existing != null) {
+            metrics.engineReviewCacheHit();
+            return existing;
+        }
+        return moveReviewCache.get(key,
+                ignored -> stockfish.reviewMove(new MoveReviewRequest(fen, move, 8)));
     }
 
     private static List<BoardAnnotation> annotations(EngineController.MoveReviewResponse evidence, String candidate) {

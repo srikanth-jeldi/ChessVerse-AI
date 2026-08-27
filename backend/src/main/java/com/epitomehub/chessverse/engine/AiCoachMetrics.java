@@ -11,6 +11,7 @@ public class AiCoachMetrics {
     private final Counter requests;
     private final Counter quotaRejected;
     private final Counter cacheHits;
+    private final Counter engineReviewCacheHits;
     private final Counter structuredFallbacks;
     private final Counter languageSuccesses;
     private final Counter languageFailures;
@@ -21,6 +22,7 @@ public class AiCoachMetrics {
         requests = registry.counter("chessverse.ai.coach.requests");
         quotaRejected = registry.counter("chessverse.ai.coach.quota.rejected");
         cacheHits = registry.counter("chessverse.ai.coach.cache.hits");
+        engineReviewCacheHits = registry.counter("chessverse.ai.coach.engine.review.cache.hits");
         structuredFallbacks = registry.counter("chessverse.ai.coach.structured.fallbacks");
         languageSuccesses = registry.counter("chessverse.ai.coach.language.successes");
         languageFailures = registry.counter("chessverse.ai.coach.language.failures");
@@ -31,6 +33,7 @@ public class AiCoachMetrics {
     void request() { requests.increment(); }
     void quotaRejected() { quotaRejected.increment(); }
     void cacheHit() { cacheHits.increment(); }
+    void engineReviewCacheHit() { engineReviewCacheHits.increment(); }
     void structuredFallback() { structuredFallbacks.increment(); }
     void languageSuccess(long nanos) {
         languageSuccesses.increment();

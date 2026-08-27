@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
@@ -101,5 +102,19 @@ class AiCoachServiceTest {
                 .contains("Why develop first?", "Because active pieces control more squares.");
         assertThat(response.sessionId()).isEqualTo(sessionId);
         assertThat(response.conversationTurns()).isEqualTo(2);
+    }
+
+    @Test
+    void coalescesRepeatedEngineReviewsAcrossCoachRequests() {
+        AiCoachService service = new AiCoachService(stockfish, cache, interactions, outcomes, jdbc,
+                List.of(), metrics, 30, 168);
+        AiCoachController.CoachRequest request = new AiCoachController.CoachRequest(
+                "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                "e2e4", "Why?", null, null, List.of("e2e4"));
+
+        service.ask(playerId, request);
+        service.ask(playerId, request);
+
+        verify(stockfish, times(1)).reviewMove(any());
     }
 }

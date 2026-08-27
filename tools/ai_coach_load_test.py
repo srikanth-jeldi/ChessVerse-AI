@@ -11,6 +11,7 @@ import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 
 START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
@@ -47,19 +48,31 @@ def percentile(values: list[float], fraction: float) -> float:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", required=True)
-    parser.add_argument("--token", required=True)
+    credentials = parser.add_mutually_exclusive_group(required=True)
+    credentials.add_argument("--token")
+    credentials.add_argument("--token-file", help="UTF-8 file containing one bearer token per line")
     parser.add_argument("--requests", type=int, default=20)
     parser.add_argument("--concurrency", type=int, default=4)
     args = parser.parse_args()
+    tokens = ([args.token] if args.token else [
+        line.strip() for line in Path(args.token_file).read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ])
+    if not tokens:
+        parser.error("at least one token is required")
     results = []
     with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
-        futures = [pool.submit(request_once, args.base_url, args.token) for _ in range(args.requests)]
+        futures = [
+            pool.submit(request_once, args.base_url, tokens[index % len(tokens)])
+            for index in range(args.requests)
+        ]
         for future in as_completed(futures):
             results.append(future.result())
     latencies = [latency for _, latency in results]
     statuses = {status: sum(1 for actual, _ in results if actual == status) for status, _ in results}
     report = {
         "requests": len(results),
+        "users": len(tokens),
         "concurrency": args.concurrency,
         "statuses": statuses,
         "latencyMs": {
