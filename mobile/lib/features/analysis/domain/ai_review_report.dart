@@ -272,7 +272,7 @@ class AiReviewReport {
       recommendedLesson: lesson,
       importantMistakes: importantMistakes,
       insights: insights,
-      openingName: _recognizeOpening(chronological),
+      openingName: recognizeOpening(chronological),
       trainingRecommendations: _recommendations(dominantTheme, accuracy),
     );
   }
@@ -313,7 +313,7 @@ List<String> _recommendations(String? theme, int accuracy) {
   ];
 }
 
-String _recognizeOpening(List<String> moves) {
+String recognizeOpening(List<String> moves) {
   final String line = moves
       .take(8)
       .map((String move) =>

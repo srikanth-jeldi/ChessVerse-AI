@@ -76,7 +76,7 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Profile'), findsOneWidget);
-    expect(find.bySemanticsLabel('ChessVerse AI'), findsOneWidget);
+    expect(find.bySemanticsLabel('ChessVerseAI'), findsOneWidget);
   });
 
   testWidgets('home uses the navigation rail on tablet and web widths', (

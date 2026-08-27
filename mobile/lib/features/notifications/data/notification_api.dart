@@ -70,9 +70,10 @@ class NotificationApi {
               'platform': platform
             }))
         .timeout(const Duration(seconds: 12));
-    if (response.statusCode < 200 || response.statusCode >= 300)
+    if (response.statusCode < 200 || response.statusCode >= 300) {
       throw const NotificationException(
           'Push registration is temporarily unavailable.');
+    }
   }
 
   Future<void> unregisterDevice(String authToken, String installationId) async {
@@ -82,9 +83,10 @@ class NotificationApi {
         headers: <String, String>{
           'Authorization': 'Bearer $authToken'
         }).timeout(const Duration(seconds: 12));
-    if (response.statusCode < 200 || response.statusCode >= 300)
+    if (response.statusCode < 200 || response.statusCode >= 300) {
       throw const NotificationException(
           'Push sign-out is temporarily unavailable.');
+    }
   }
 
   Future<NotificationInboxDto> _request(
@@ -99,12 +101,14 @@ class NotificationApi {
           : await http
               .get(uri, headers: headers)
               .timeout(const Duration(seconds: 12));
-      final data = response.body.isEmpty
-          ? <String, dynamic>{}
-          : jsonDecode(response.body) as Map<String, dynamic>;
-      if (response.statusCode < 200 || response.statusCode >= 300)
+      final Object? decoded =
+          response.body.isEmpty ? null : jsonDecode(response.body);
+      final Map<String, dynamic> data =
+          decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+      if (response.statusCode < 200 || response.statusCode >= 300) {
         throw const NotificationException(
             'Notifications are temporarily unavailable.');
+      }
       final inbox = NotificationInboxDto.fromJson(data);
       NotificationBadgeState.unread.value = inbox.unreadCount;
       return inbox;
