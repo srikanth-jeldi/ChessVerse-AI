@@ -15,6 +15,8 @@ class SavedMoveReview {
     required this.centipawnLoss,
     this.evaluationBeforeCp,
     this.evaluationAfterCp,
+    this.mateBefore,
+    this.mateAfter,
     required this.opponentThreat,
     required this.explanation,
     required this.principalVariation,
@@ -29,6 +31,8 @@ class SavedMoveReview {
   final int centipawnLoss;
   final int? evaluationBeforeCp;
   final int? evaluationAfterCp;
+  final int? mateBefore;
+  final int? mateAfter;
   final String opponentThreat;
   final String explanation;
   final List<String> principalVariation;
@@ -44,6 +48,8 @@ class SavedMoveReview {
       centipawnLoss: (json['centipawnLoss'] as num?)?.toInt() ?? 0,
       evaluationBeforeCp: (json['evaluationBeforeCp'] as num?)?.toInt(),
       evaluationAfterCp: (json['evaluationAfterCp'] as num?)?.toInt(),
+      mateBefore: (json['mateBefore'] as num?)?.toInt(),
+      mateAfter: (json['mateAfter'] as num?)?.toInt(),
       opponentThreat: json['opponentThreat'] as String? ?? '',
       explanation: json['explanation'] as String? ?? '',
       principalVariation:
@@ -63,6 +69,8 @@ class SavedMoveReview {
         'centipawnLoss': centipawnLoss,
         'evaluationBeforeCp': evaluationBeforeCp,
         'evaluationAfterCp': evaluationAfterCp,
+        'mateBefore': mateBefore,
+        'mateAfter': mateAfter,
         'opponentThreat': opponentThreat,
         'explanation': explanation,
         'principalVariation': principalVariation,
@@ -80,6 +88,12 @@ class SavedGameRecord {
     required this.blackPlayer,
     this.playerOutcome,
     this.moveReviews = const <SavedMoveReview>[],
+    this.cloudAnalysisJobId,
+    this.cloudAnalysisStatus,
+    this.openingEco,
+    this.openingName,
+    this.bookPlies = 0,
+    this.firstDeviationPly,
   });
 
   final String mode;
@@ -91,6 +105,12 @@ class SavedGameRecord {
   final String blackPlayer;
   final String? playerOutcome;
   final List<SavedMoveReview> moveReviews;
+  final String? cloudAnalysisJobId;
+  final String? cloudAnalysisStatus;
+  final String? openingEco;
+  final String? openingName;
+  final int bookPlies;
+  final int? firstDeviationPly;
 
   String get summary => '$whitePlayer vs $blackPlayer';
 }
@@ -285,6 +305,12 @@ class LocalGameArchive {
                 whitePlayer: game['whitePlayer'] as String? ?? 'White',
                 blackPlayer: game['blackPlayer'] as String? ?? 'Black',
                 playerOutcome: game['playerOutcome'] as String?,
+                cloudAnalysisJobId: game['cloudAnalysisJobId'] as String?,
+                cloudAnalysisStatus: game['cloudAnalysisStatus'] as String?,
+                openingEco: game['openingEco'] as String?,
+                openingName: game['openingName'] as String?,
+                bookPlies: (game['bookPlies'] as num?)?.toInt() ?? 0,
+                firstDeviationPly: (game['firstDeviationPly'] as num?)?.toInt(),
                 moveReviews:
                     (game['moveReviews'] as List<dynamic>? ?? <dynamic>[])
                         .whereType<Map<String, dynamic>>()
@@ -401,6 +427,7 @@ class LocalGameArchive {
   static void updateLatestGameReviews(List<SavedMoveReview> reviews) {
     if (_games.isEmpty) return;
     final SavedGameRecord current = _games.first;
+    if (current.cloudAnalysisStatus == 'COMPLETED') return;
     _games[0] = SavedGameRecord(
       mode: current.mode,
       result: current.result,
@@ -410,8 +437,50 @@ class LocalGameArchive {
       whitePlayer: current.whitePlayer,
       blackPlayer: current.blackPlayer,
       playerOutcome: current.playerOutcome,
+      cloudAnalysisJobId: current.cloudAnalysisJobId,
+      cloudAnalysisStatus: current.cloudAnalysisStatus,
+      openingEco: current.openingEco,
+      openingName: current.openingName,
+      bookPlies: current.bookPlies,
+      firstDeviationPly: current.firstDeviationPly,
       moveReviews: List<SavedMoveReview>.from(reviews)
         ..sort((SavedMoveReview a, SavedMoveReview b) => a.ply - b.ply),
+    );
+    unawaited(_persistGames());
+    activityRevision.value++;
+  }
+
+  static void updateCloudAnalysisForGame({
+    required DateTime playedAt,
+    required String jobId,
+    required String status,
+    List<SavedMoveReview>? reviews,
+    String? openingEco,
+    String? openingName,
+    int? bookPlies,
+    int? firstDeviationPly,
+  }) {
+    final int index = _games.indexWhere((SavedGameRecord game) =>
+        game.playedAt.toUtc() == playedAt.toUtc() ||
+        game.cloudAnalysisJobId == jobId);
+    if (index < 0) return;
+    final SavedGameRecord current = _games[index];
+    _games[index] = SavedGameRecord(
+      mode: current.mode,
+      result: current.result,
+      detail: current.detail,
+      moves: current.moves,
+      playedAt: current.playedAt,
+      whitePlayer: current.whitePlayer,
+      blackPlayer: current.blackPlayer,
+      playerOutcome: current.playerOutcome,
+      cloudAnalysisJobId: jobId,
+      cloudAnalysisStatus: status,
+      openingEco: openingEco ?? current.openingEco,
+      openingName: openingName ?? current.openingName,
+      bookPlies: bookPlies ?? current.bookPlies,
+      firstDeviationPly: firstDeviationPly ?? current.firstDeviationPly,
+      moveReviews: reviews ?? current.moveReviews,
     );
     unawaited(_persistGames());
     activityRevision.value++;
@@ -430,6 +499,12 @@ class LocalGameArchive {
               'whitePlayer': game.whitePlayer,
               'blackPlayer': game.blackPlayer,
               'playerOutcome': game.playerOutcome,
+              'cloudAnalysisJobId': game.cloudAnalysisJobId,
+              'cloudAnalysisStatus': game.cloudAnalysisStatus,
+              'openingEco': game.openingEco,
+              'openingName': game.openingName,
+              'bookPlies': game.bookPlies,
+              'firstDeviationPly': game.firstDeviationPly,
               'moveReviews': game.moveReviews
                   .map((SavedMoveReview review) => review.toJson())
                   .toList(growable: false),

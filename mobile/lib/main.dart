@@ -28,6 +28,7 @@ import 'features/auth/data/auth_session_store.dart';
 import 'features/auth/presentation/auth_screen.dart';
 import 'features/engine/data/engine_api.dart';
 import 'features/analysis/domain/ai_review_report.dart';
+import 'features/analysis/data/game_analysis_api.dart';
 import 'features/analysis/presentation/analysis_screen.dart';
 import 'features/analysis/presentation/adaptive_ai_review.dart';
 import 'features/home/presentation/home_dashboard_screen.dart';
@@ -45,6 +46,29 @@ import 'features/settings/presentation/settings_screen.dart';
 import 'features/social/presentation/social_hub_screen.dart';
 import 'features/tutorial/presentation/learn_chess_screen.dart';
 import 'features/tutorial/data/academy_progress_store.dart';
+
+List<SavedMoveReview> _savedReviewsFromCloud(CloudAnalysisJob job) => job.plies
+    .map((CloudAnalysisPly ply) => SavedMoveReview(
+          ply: ply.ply,
+          fenBefore: ply.fenBefore,
+          playedMove: ply.playedMove,
+          bestMove: ply.bestMove,
+          classification: ply.classification,
+          coachingTheme: ply.coachingTheme,
+          centipawnLoss: ply.centipawnLoss,
+          evaluationBeforeCp: ply.evaluationBeforeCp,
+          evaluationAfterCp: ply.evaluationAfterCp,
+          mateBefore: ply.mateBefore,
+          mateAfter: ply.mateAfter,
+          opponentThreat: ply.principalVariation.length > 1
+              ? ply.principalVariation[1]
+              : '',
+          explanation: ply.classification == 'Best'
+              ? 'This matched Stockfish’s strongest continuation.'
+              : '${ply.bestMove} was stronger by ${ply.centipawnLoss} centipawns.',
+          principalVariation: ply.principalVariation,
+        ))
+    .toList(growable: false);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -241,6 +265,7 @@ class _SplashGateState extends State<SplashGate> {
   static const AuthApi _authApi = AuthApi();
   static const AuthSessionStore _sessionStore = AuthSessionStore();
   static const CloudProgressApi _cloudProgressApi = CloudProgressApi();
+  static const GameAnalysisApi _gameAnalysisApi = GameAnalysisApi();
   Timer? _timer;
   late final bool _forceFreshWebLogin;
   Timer? _presenceTimer;
@@ -379,11 +404,48 @@ class _SplashGateState extends State<SplashGate> {
       unawaited(_restoreActiveOnlineMatch(restoredSession.token));
     });
     unawaited(_syncCloudProgress(restoredSession.token));
+    unawaited(_resumeCloudAnalysisJobs(restoredSession.token));
     _startOnlinePresence(restoredSession.token);
     _startNotificationPolling(restoredSession.token);
     _startSessionValidation(restoredSession.token);
     unawaited(FirebasePushService.instance
         .configureForSession(restoredSession.token));
+  }
+
+  Future<void> _resumeCloudAnalysisJobs(String token) async {
+    final List<SavedGameRecord> pending = LocalGameArchive.games
+        .where((SavedGameRecord game) =>
+            game.cloudAnalysisJobId != null &&
+            game.cloudAnalysisStatus != 'COMPLETED')
+        .toList(growable: false);
+    for (final SavedGameRecord game in pending) {
+      final String jobId = game.cloudAnalysisJobId!;
+      try {
+        CloudAnalysisJob job = await _gameAnalysisApi.results(token, jobId);
+        for (int attempt = 0;
+            attempt < 600 &&
+                (job.status == 'QUEUED' || job.status == 'ANALYZING');
+            attempt++) {
+          await Future<void>.delayed(const Duration(seconds: 2));
+          job = await _gameAnalysisApi.results(token, jobId);
+        }
+        LocalGameArchive.updateCloudAnalysisForGame(
+          playedAt: game.playedAt,
+          jobId: job.id,
+          status: job.status,
+          openingEco: job.openingEco,
+          openingName: job.openingName,
+          bookPlies: job.bookPlies,
+          firstDeviationPly: job.firstDeviationPly,
+          reviews: job.status == 'COMPLETED'
+              ? _savedReviewsFromCloud(job)
+              : null,
+        );
+      } on GameAnalysisApiException catch (error, stackTrace) {
+        unawaited(AppDiagnostics.recordError(error, stackTrace,
+            reason: 'resume cloud game analysis'));
+      }
+    }
   }
 
   void _startSessionValidation(String token) {
@@ -3290,6 +3352,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   static const AuthApi _authApi = AuthApi();
   static const AuthSessionStore _sessionStore = AuthSessionStore();
   static const EngineApi _engineApi = EngineApi();
+  static const GameAnalysisApi _gameAnalysisApi = GameAnalysisApi();
   OnlineMatchApi get _onlineApi => widget.onlineApi ?? const OnlineMatchApi();
   static const AppPreferences _preferences = AppPreferences();
   final math.Random _random = math.Random();
@@ -6303,6 +6366,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
     _resultSaved = true;
+    final DateTime archivedAt = DateTime.now();
     LocalGameArchive.addGame(
       SavedGameRecord(
         mode: switch (_gameMode) {
@@ -6315,7 +6379,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         result: _gameResultTitle!,
         detail: _gameResultDetail ?? 'Game complete',
         moves: List<String>.from(_moves.reversed),
-        playedAt: DateTime.now(),
+        playedAt: archivedAt,
         whitePlayer: _whitePlayerName,
         blackPlayer: _blackPlayerName,
         playerOutcome: playerOutcomeForResult(
@@ -6327,6 +6391,93 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           ..sort((SavedMoveReview a, SavedMoveReview b) => a.ply - b.ply),
       ),
     );
+    unawaited(_submitFinishedGameForCloudAnalysis(archivedAt));
+  }
+
+  Future<void> _submitFinishedGameForCloudAnalysis(DateTime archivedAt) async {
+    final String? token = _authToken;
+    if (token == null || token.isEmpty || _gameMode != GameMode.computer) {
+      return;
+    }
+    final List<String>? uciMoves = _chronologicalUciMoves();
+    if (uciMoves == null || uciMoves.isEmpty) return;
+    try {
+      CloudAnalysisJob job = await _gameAnalysisApi.create(
+        token,
+        clientRequestId: archivedAt.toUtc().toIso8601String(),
+        initialFen:
+            'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+        moves: uciMoves,
+        depth: 16,
+        playerColor: _humanPlaysWhite ? 'WHITE' : 'BLACK',
+        timeControl: '10+0',
+      );
+      LocalGameArchive.updateCloudAnalysisForGame(
+        playedAt: archivedAt,
+        jobId: job.id,
+        status: job.status,
+        openingEco: job.openingEco,
+        openingName: job.openingName,
+        bookPlies: job.bookPlies,
+        firstDeviationPly: job.firstDeviationPly,
+      );
+      for (int attempt = 0;
+          attempt < 600 &&
+              (job.status == 'QUEUED' || job.status == 'ANALYZING');
+          attempt++) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+        job = await _gameAnalysisApi.results(token, job.id);
+        LocalGameArchive.updateCloudAnalysisForGame(
+          playedAt: archivedAt,
+          jobId: job.id,
+          status: job.status,
+          openingEco: job.openingEco,
+          openingName: job.openingName,
+          bookPlies: job.bookPlies,
+          firstDeviationPly: job.firstDeviationPly,
+        );
+      }
+      if (job.status == 'COMPLETED' && job.plies.length == job.totalPlies) {
+        LocalGameArchive.updateCloudAnalysisForGame(
+          playedAt: archivedAt,
+          jobId: job.id,
+          status: job.status,
+          openingEco: job.openingEco,
+          openingName: job.openingName,
+          bookPlies: job.bookPlies,
+          firstDeviationPly: job.firstDeviationPly,
+          reviews: _savedReviewsFromCloud(job),
+        );
+      }
+    } on GameAnalysisApiException catch (error, stackTrace) {
+      unawaited(AppDiagnostics.recordError(
+        error,
+        stackTrace,
+        reason: 'cloud game analysis submission',
+      ));
+    }
+  }
+
+  List<String>? _chronologicalUciMoves() {
+    final List<String> chronological = _moves.reversed.toList(growable: false);
+    final List<String> result = <String>[];
+    for (int index = 0; index < chronological.length; index++) {
+      final String notation = chronological[index];
+      if (notation.startsWith('O-O-O')) {
+        result.add(index.isEven ? 'e1c1' : 'e8c8');
+        continue;
+      }
+      if (notation.startsWith('O-O')) {
+        result.add(index.isEven ? 'e1g1' : 'e8g8');
+        continue;
+      }
+      final ParsedMove? parsed = _parseMove(notation);
+      if (parsed == null) return null;
+      final RegExpMatch? promotion = RegExp(r'=([QRBN])', caseSensitive: false)
+          .firstMatch(notation);
+      result.add('${parsed.from}${parsed.to}${promotion?.group(1)?.toLowerCase() ?? ''}');
+    }
+    return result;
   }
 
   void _showMoveHistory() {

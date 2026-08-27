@@ -47,6 +47,8 @@ void main() {
       centipawnLoss: 104,
       evaluationBeforeCp: 35,
       evaluationAfterCp: -69,
+      mateBefore: 3,
+      mateAfter: -2,
       opponentThreat: 'h1h2',
       explanation: 'King opposition was lost.',
       principalVariation: <String>['a1b2', 'h1g1'],
@@ -58,6 +60,8 @@ void main() {
     expect(restored.principalVariation, source.principalVariation);
     expect(restored.evaluationBeforeCp, 35);
     expect(restored.evaluationAfterCp, -69);
+    expect(restored.mateBefore, 3);
+    expect(restored.mateAfter, -2);
   });
 
   test('AI review builds chronological move insights and training plan', () {

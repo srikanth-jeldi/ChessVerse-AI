@@ -17,6 +17,8 @@ class AiMoveInsight {
     this.centipawnLoss,
     this.evaluationBeforeCp,
     this.evaluationAfterCp,
+    this.mateBefore,
+    this.mateAfter,
     this.coachingTheme,
     this.principalVariation = const <String>[],
   });
@@ -33,6 +35,8 @@ class AiMoveInsight {
   final int? centipawnLoss;
   final int? evaluationBeforeCp;
   final int? evaluationAfterCp;
+  final int? mateBefore;
+  final int? mateAfter;
   final String? coachingTheme;
   final List<String> principalVariation;
 
@@ -75,6 +79,7 @@ class AiReviewReport {
     String? knownTurningPoint,
     List<String>? knownMistakes,
     List<SavedMoveReview> knownReviews = const <SavedMoveReview>[],
+    String? knownOpeningName,
   }) {
     final List<String> chronological = newestFirst
         ? moves.reversed.toList(growable: false)
@@ -146,6 +151,8 @@ class AiReviewReport {
         centipawnLoss: reviewed?.centipawnLoss,
         evaluationBeforeCp: reviewed?.evaluationBeforeCp,
         evaluationAfterCp: reviewed?.evaluationAfterCp,
+        mateBefore: reviewed?.mateBefore,
+        mateAfter: reviewed?.mateAfter,
         coachingTheme: reviewed?.coachingTheme,
         principalVariation: reviewed?.principalVariation ?? const <String>[],
       ));
@@ -272,7 +279,7 @@ class AiReviewReport {
       recommendedLesson: lesson,
       importantMistakes: importantMistakes,
       insights: insights,
-      openingName: recognizeOpening(chronological),
+      openingName: knownOpeningName ?? recognizeOpening(chronological),
       trainingRecommendations: _recommendations(dominantTheme, accuracy),
     );
   }

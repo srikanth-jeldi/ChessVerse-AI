@@ -66,7 +66,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('ChessVerse AI', findRichText: true), findsOneWidget);
+      expect(find.text('ChessVerseAI', findRichText: true), findsOneWidget);
       expect(find.text('Register'), findsOneWidget);
       expect(find.text('Login'), findsAtLeastNWidgets(1));
       expect(find.byType(TextField), findsAtLeastNWidgets(2));
