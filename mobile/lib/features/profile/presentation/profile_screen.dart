@@ -68,7 +68,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             country: LocalGameArchive.profileCountry,
             level: LocalGameArchive.profileLevel,
             avatar: LocalGameArchive.profileAvatar,
-            profilePhotoUrl: widget.profilePhotoUrl,
             isGuest: widget.isGuest,
             onEdit: _editProfile,
           ),
@@ -420,7 +419,6 @@ class _ProfileHero extends StatelessWidget {
     required this.country,
     required this.level,
     required this.avatar,
-    required this.profilePhotoUrl,
     required this.isGuest,
     required this.onEdit,
   });
@@ -430,7 +428,6 @@ class _ProfileHero extends StatelessWidget {
   final String country;
   final int level;
   final int avatar;
-  final String? profilePhotoUrl;
   final bool isGuest;
   final VoidCallback onEdit;
 
@@ -465,7 +462,6 @@ class _ProfileHero extends StatelessWidget {
               _Avatar(
                 index: avatar,
                 size: 76,
-                photoUrl: profilePhotoUrl,
               ),
               const SizedBox(width: 15),
               Expanded(
@@ -966,10 +962,9 @@ class _EditableProfile {
 }
 
 class _Avatar extends StatelessWidget {
-  const _Avatar({required this.index, required this.size, this.photoUrl});
+  const _Avatar({required this.index, required this.size});
   final int index;
   final double size;
-  final String? photoUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -989,34 +984,26 @@ class _Avatar extends StatelessWidget {
       Color(0xFF466A9A),
       Color(0xFF9A4F63),
     ];
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[colors[index], const Color(0xFF071522)],
+    return Semantics(
+      label: 'Selected player avatar ${index + 1}',
+      image: true,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[colors[index], const Color(0xFF071522)],
+          ),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(
+                color: Color(0x66000000), blurRadius: 12, offset: Offset(0, 7)),
+          ],
         ),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-              color: Color(0x66000000), blurRadius: 12, offset: Offset(0, 7)),
-        ],
+        child: Icon(icons[index], color: Colors.white, size: size * 0.5),
       ),
-      child: photoUrl?.trim().isNotEmpty == true
-          ? ClipOval(
-              child: Image.network(
-                photoUrl!,
-                width: size,
-                height: size,
-                fit: BoxFit.cover,
-                webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
-                errorBuilder: (_, __, ___) =>
-                    Icon(icons[index], color: Colors.white, size: size * 0.5),
-              ),
-            )
-          : Icon(icons[index], color: Colors.white, size: size * 0.5),
     );
   }
 }

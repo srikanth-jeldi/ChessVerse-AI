@@ -1,4 +1,5 @@
 import 'package:chessverse_ai/core/theme/app_theme.dart';
+import 'package:chessverse_ai/core/local_game_archive.dart';
 import 'package:chessverse_ai/features/profile/presentation/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,7 +21,8 @@ void main() {
           playerName: 'Srikant',
           username: 'srikant',
           isGuest: false,
-          onDisplayNameChanged: (String value) async => savedDisplayName = value,
+          onDisplayNameChanged: (String value) async =>
+              savedDisplayName = value,
         ),
       ),
     );
@@ -43,6 +45,8 @@ void main() {
     expect(find.text('Sri King'), findsOneWidget);
     expect(find.text('@srikant'), findsOneWidget);
     expect(find.text('Player profile saved'), findsOneWidget);
+    expect(LocalGameArchive.profileAvatar, 2);
+    expect(find.byIcon(Icons.sports_esports_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
