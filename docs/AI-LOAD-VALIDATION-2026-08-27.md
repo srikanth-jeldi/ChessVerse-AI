@@ -20,10 +20,25 @@ below.
 
 ## Post-optimization
 
-Pending production deployment and repeat of the identical bounded scenario.
+- 4 isolated guest users
+- 12 requests, concurrency 4
+- HTTP results: 12/12 successful
+- Average: 1,683.0 ms (91.7% lower than baseline)
+- p50: 70.2 ms
+- p95: 4,934.9 ms (78.5% lower than baseline)
+- Maximum: 4,935.3 ms
+
+Production metrics reported 87 engine-review cache hits after the validation runs.
 
 ## Quota concurrency
 
-Pending a 35-request single-user concurrency run. The acceptance result is exactly
-30 successful requests and 5 HTTP 429 responses for the configured daily quota.
+- 1 isolated guest user
+- 35 requests, concurrency 8
+- HTTP results: exactly 30 successful and 5 HTTP 429 responses
+- No quota bypass and no unexpected HTTP response
+- Live quota-rejection metric: 5
 
+All disposable guest accounts created by both scenarios were deleted in a `finally`
+cleanup path. The first quota run correctly enforced 30 requests but exposed five
+incorrect HTTP 500 responses; that exception mapping was fixed and the acceptance
+scenario above was rerun successfully.
