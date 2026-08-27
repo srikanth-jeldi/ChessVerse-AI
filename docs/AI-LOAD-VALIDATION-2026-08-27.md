@@ -42,3 +42,16 @@ All disposable guest accounts created by both scenarios were deleted in a `final
 cleanup path. The first quota run correctly enforced 30 requests but exposed five
 incorrect HTTP 500 responses; that exception mapping was fixed and the acceptance
 scenario above was rerun successfully.
+
+## Abuse validation
+
+The disposable-account production probe passed all 7 rejection scenarios with no
+unexpected 5xx response: missing authentication, invalid FEN, illegal move,
+malformed move, excessive candidates, oversized question, and control-character
+FEN input.
+
+## Longitudinal monitoring
+
+`infrastructure/vps/capture-ai-snapshot.sh` records a PII-free readiness and AI
+metrics snapshot. Production schedules it every six hours and retains 60 days so
+multi-week reliability and usage evidence can be evaluated instead of inferred.
