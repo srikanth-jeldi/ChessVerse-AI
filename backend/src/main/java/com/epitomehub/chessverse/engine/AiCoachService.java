@@ -33,6 +33,7 @@ class AiCoachService {
     private final AiRecommendationOutcomeRepository outcomes;
     private final JdbcTemplate jdbc;
     private final List<CoachLanguageProvider> languageProviders;
+    private final AiCoachMetrics metrics;
     private final int dailyQuota;
     private final Duration cacheTtl;
 
@@ -43,6 +44,7 @@ class AiCoachService {
             AiRecommendationOutcomeRepository outcomes,
             JdbcTemplate jdbc,
             List<CoachLanguageProvider> languageProviders,
+            AiCoachMetrics metrics,
             @Value("${chessverse.coach.daily-quota:30}") int dailyQuota,
             @Value("${chessverse.coach.cache-hours:168}") long cacheHours) {
         this.stockfish = stockfish;
@@ -51,12 +53,14 @@ class AiCoachService {
         this.outcomes = outcomes;
         this.jdbc = jdbc;
         this.languageProviders = languageProviders;
+        this.metrics = metrics;
         this.dailyQuota = Math.max(1, dailyQuota);
         this.cacheTtl = Duration.ofHours(Math.max(1, cacheHours));
     }
 
     @Transactional
     CoachResponse ask(UUID playerId, CoachRequest request) {
+        metrics.request();
         Integer used = jdbc.queryForObject(
                 "with usage as (insert into ai_coach_daily_usage(player_id, usage_date, used_count) "
                         + "values (?, ?, 1) on conflict(player_id, usage_date) do update "
@@ -65,6 +69,7 @@ class AiCoachService {
                         + "select used_count from usage",
                 Integer.class, playerId, LocalDate.now(java.time.ZoneOffset.UTC), dailyQuota);
         if (used == null) {
+            metrics.quotaRejected();
             throw new EngineException(HttpStatus.TOO_MANY_REQUESTS,
                     "Your daily AI Coach limit is reached. Your saved analysis remains available.");
         }
@@ -72,7 +77,8 @@ class AiCoachService {
         UUID sessionId = request.sessionId() == null ? UUID.randomUUID() : request.sessionId();
         List<AiCoachInteraction> history = interactions
                 .findTop10ByPlayerIdAndSessionIdOrderByCreatedAtDesc(playerId, sessionId);
-        String context = history.isEmpty() ? "" : history.getFirst().question;
+        String context = conversationContext(history);
+        String latestQuestion = history.isEmpty() ? "" : history.getFirst().question;
         String candidate = cleanCandidate(request.candidateMove(), request.question());
         String moveToReview = candidate == null ? request.playedMove().toLowerCase(Locale.ROOT) : candidate;
         var evidence = stockfish.reviewMove(new MoveReviewRequest(request.fen(), moveToReview, 8));
@@ -83,8 +89,9 @@ class AiCoachService {
                 .filter(item -> item.expiresAt.isAfter(now))
                 .orElse(null);
         boolean cacheHit = cached != null;
+        if (cacheHit) metrics.cacheHit();
         String answer = cacheHit ? cached.answer : naturalAnswer(
-                request, normalizedQuestion, moveToReview, candidate, evidence, context);
+                request, normalizedQuestion, moveToReview, candidate, evidence, context, latestQuestion);
         if (!cacheHit) {
             String engineEvidence = String.join(" ", evidence.principalVariation());
             cache.save(new AiCoachResponseCache(key, answer, engineEvidence, now, now.plus(cacheTtl)));
@@ -101,7 +108,8 @@ class AiCoachService {
     }
 
     private String naturalAnswer(CoachRequest request, String normalizedQuestion, String move,
-            String candidate, EngineController.MoveReviewResponse evidence, String previousQuestion) {
+            String candidate, EngineController.MoveReviewResponse evidence, String conversationContext,
+            String latestQuestion) {
         CoachLanguageProvider provider = languageProviders.stream()
                 .filter(CoachLanguageProvider::enabled)
                 .findFirst()
@@ -109,7 +117,7 @@ class AiCoachService {
         if (provider != null) {
             try {
                 String generated = provider.explain(new CoachLanguageProvider.CoachLanguageContext(
-                        request.fen().trim(), request.question().trim(), previousQuestion, move, candidate,
+                        request.fen().trim(), request.question().trim(), conversationContext, move, candidate,
                         evidence.classification(), evidence.bestMove(), evidence.centipawnLoss(),
                         evidence.opponentThreat(), evidence.principalVariation()));
                 if (generated != null && !generated.isBlank()) {
@@ -119,7 +127,18 @@ class AiCoachService {
                 // A language provider is optional. Stockfish-grounded structured coaching remains available.
             }
         }
-        return answer(normalizedQuestion, move, candidate, evidence, previousQuestion);
+        metrics.structuredFallback();
+        return answer(normalizedQuestion, move, candidate, evidence, latestQuestion);
+    }
+
+    private static String conversationContext(List<AiCoachInteraction> history) {
+        if (history.isEmpty()) return "";
+        return history.reversed().stream().limit(6).map(turn -> {
+            String question = turn.question == null ? "" : turn.question.trim();
+            String response = turn.answer == null ? "" : turn.answer.trim();
+            return "User: " + question.substring(0, Math.min(question.length(), 180))
+                    + "\nCoach: " + response.substring(0, Math.min(response.length(), 280));
+        }).reduce((left, right) -> left + "\n" + right).orElse("");
     }
 
     @Transactional
