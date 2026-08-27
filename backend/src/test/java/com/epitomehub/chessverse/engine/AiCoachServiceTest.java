@@ -3,8 +3,12 @@ package com.epitomehub.chessverse.engine;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import org.mockito.ArgumentCaptor;
 
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +16,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.dao.EmptyResultDataAccessException;
 
 class AiCoachServiceTest {
     private StockfishService stockfish;
@@ -19,6 +24,8 @@ class AiCoachServiceTest {
     private AiCoachInteractionRepository interactions;
     private UUID playerId;
     private JdbcTemplate jdbc;
+    private AiRecommendationOutcomeRepository outcomes;
+    private AiCoachMetrics metrics;
 
     @BeforeEach
     void setUp() {
@@ -27,7 +34,11 @@ class AiCoachServiceTest {
         interactions = mock(AiCoachInteractionRepository.class);
         playerId = UUID.randomUUID();
         jdbc = mock(JdbcTemplate.class);
-        when(interactions.countByPlayerIdAndCreatedAtAfter(any(), any())).thenReturn(0L);
+        outcomes = mock(AiRecommendationOutcomeRepository.class);
+        metrics = mock(AiCoachMetrics.class);
+        when(jdbc.queryForObject(anyString(), any(Class.class), any(), any(), any())).thenReturn(1);
+        when(interactions.findTop10ByPlayerIdAndSessionIdOrderByCreatedAtDesc(any(), any()))
+                .thenReturn(List.of());
         when(interactions.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(cache.findById(any())).thenReturn(Optional.empty());
         when(cache.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -39,10 +50,11 @@ class AiCoachServiceTest {
 
     @Test
     void answersFreeTextWhatIfWithStockfishEvidence() {
-        AiCoachService service = new AiCoachService(stockfish, cache, interactions, jdbc, 30, 168);
+        AiCoachService service = new AiCoachService(stockfish, cache, interactions, outcomes, jdbc,
+                List.of(), metrics, 30, 168);
         var response = service.ask(playerId, new AiCoachController.CoachRequest(
                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                "e2e4", "What if I play f2f3 instead?", "f2f3"));
+                "e2e4", "What if I play f2f3 instead?", "f2f3", null, List.of("f2f3")));
 
         assertThat(response.answer()).contains("f2 → f3", "286 centipawn", "g1 → f3", "d8 → h4");
         assertThat(response.candidateMove()).isEqualTo("f2f3");
@@ -52,13 +64,59 @@ class AiCoachServiceTest {
 
     @Test
     void enforcesPerPlayerDailyQuotaBeforeRunningStockfish() {
-        when(interactions.countByPlayerIdAndCreatedAtAfter(any(), any())).thenReturn(3L);
-        AiCoachService service = new AiCoachService(stockfish, cache, interactions, jdbc, 3, 168);
+        when(jdbc.queryForObject(anyString(), any(Class.class), any(), any(), any()))
+                .thenThrow(new EmptyResultDataAccessException(1));
+        AiCoachService service = new AiCoachService(stockfish, cache, interactions, outcomes, jdbc,
+                List.of(), metrics, 3, 168);
 
         assertThatThrownBy(() -> service.ask(playerId, new AiCoachController.CoachRequest(
                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                "e2e4", "Why?", null)))
+                "e2e4", "Why?", null, null, List.of())))
                 .isInstanceOf(EngineException.class)
                 .hasMessageContaining("daily AI Coach limit");
+    }
+
+    @Test
+    void passesPriorQuestionsAndAnswersToTheOptionalLanguageProvider() {
+        UUID sessionId = UUID.randomUUID();
+        EngineController.MoveReviewResponse evidence = new EngineController.MoveReviewResponse(
+                "e2e4", "g1f3", "Inaccuracy", 45, 20, -25,
+                "development", "d7d5", "Develop a piece.", List.of("g1f3", "d7d5"), 16);
+        AiCoachInteraction prior = new AiCoachInteraction(
+                playerId, sessionId, "key", "Why develop first?", null, false,
+                "Because active pieces control more squares.", evidence);
+        when(interactions.findTop10ByPlayerIdAndSessionIdOrderByCreatedAtDesc(playerId, sessionId))
+                .thenReturn(List.of(prior));
+        CoachLanguageProvider language = mock(CoachLanguageProvider.class);
+        when(language.enabled()).thenReturn(true);
+        when(language.explain(any())).thenReturn("The follow-up uses the earlier development plan.");
+        AiCoachService service = new AiCoachService(
+                stockfish, cache, interactions, outcomes, jdbc, List.of(language), metrics, 30, 168);
+
+        var response = service.ask(playerId, new AiCoachController.CoachRequest(
+                "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                "e2e4", "What should I do next?", null, sessionId, List.of()));
+
+        ArgumentCaptor<CoachLanguageProvider.CoachLanguageContext> context =
+                ArgumentCaptor.forClass(CoachLanguageProvider.CoachLanguageContext.class);
+        verify(language).explain(context.capture());
+        assertThat(context.getValue().previousQuestion())
+                .contains("Why develop first?", "Because active pieces control more squares.");
+        assertThat(response.sessionId()).isEqualTo(sessionId);
+        assertThat(response.conversationTurns()).isEqualTo(2);
+    }
+
+    @Test
+    void coalescesRepeatedEngineReviewsAcrossCoachRequests() {
+        AiCoachService service = new AiCoachService(stockfish, cache, interactions, outcomes, jdbc,
+                List.of(), metrics, 30, 168);
+        AiCoachController.CoachRequest request = new AiCoachController.CoachRequest(
+                "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                "e2e4", "Why?", null, null, List.of("e2e4"));
+
+        service.ask(playerId, request);
+        service.ask(playerId, request);
+
+        verify(stockfish, times(1)).reviewMove(any());
     }
 }

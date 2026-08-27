@@ -37,6 +37,13 @@ chessverse:
   coach:
     daily-quota: ${AI_COACH_DAILY_QUOTA:30}
     cache-hours: ${AI_COACH_CACHE_HOURS:168}
+    language:
+      enabled: ${AI_COACH_LLM_ENABLED:false}
+      endpoint: ${AI_COACH_LLM_ENDPOINT:https://api.openai.com/v1/chat/completions}
+      api-key: ${AI_COACH_LLM_API_KEY:}
+      model: ${AI_COACH_LLM_MODEL:gpt-4.1-mini}
+      timeout-seconds: ${AI_COACH_LLM_TIMEOUT_SECONDS:8}
+      max-output-tokens: ${AI_COACH_LLM_MAX_OUTPUT_TOKENS:220}
   auth:
     otp-expiry-minutes: ${OTP_EXPIRY_MINUTES:10}
     session-expiry-days: ${SESSION_EXPIRY_DAYS:30}

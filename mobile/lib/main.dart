@@ -6580,6 +6580,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     showAdaptiveAiReview(
       context,
       report: report,
+      timeControl: _gameMode == GameMode.computer ? '10+0' : null,
       onRetryPosition: _openReviewedPositionRetry,
       onGeneratePuzzles: _generateMistakePuzzles,
     );

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -11,6 +13,8 @@ import '../domain/personal_ai_coach.dart';
 Future<void> showAdaptiveAiReview(
   BuildContext context, {
   required AiReviewReport report,
+  String? openingEco,
+  String? timeControl,
   ValueChanged<AiMoveInsight>? onRetryPosition,
   VoidCallback? onGeneratePuzzles,
 }) {
@@ -27,6 +31,8 @@ Future<void> showAdaptiveAiReview(
           child: _AiReviewWorkspace(
             report: report,
             desktop: true,
+            openingEco: openingEco,
+            timeControl: timeControl,
             onRetryPosition: onRetryPosition,
             onGeneratePuzzles: onGeneratePuzzles,
           ),
@@ -45,6 +51,8 @@ Future<void> showAdaptiveAiReview(
       child: _AiReviewWorkspace(
         report: report,
         desktop: false,
+        openingEco: openingEco,
+        timeControl: timeControl,
         onRetryPosition: onRetryPosition,
         onGeneratePuzzles: onGeneratePuzzles,
       ),
@@ -56,12 +64,16 @@ class _AiReviewWorkspace extends StatelessWidget {
   const _AiReviewWorkspace({
     required this.report,
     required this.desktop,
+    this.openingEco,
+    this.timeControl,
     this.onRetryPosition,
     this.onGeneratePuzzles,
   });
 
   final AiReviewReport report;
   final bool desktop;
+  final String? openingEco;
+  final String? timeControl;
   final ValueChanged<AiMoveInsight>? onRetryPosition;
   final VoidCallback? onGeneratePuzzles;
 
@@ -73,6 +85,8 @@ class _AiReviewWorkspace extends StatelessWidget {
     );
     final Widget timeline = _MoveTimeline(
       report: report,
+      openingEco: openingEco,
+      timeControl: timeControl,
       onRetryPosition: onRetryPosition,
     );
     final int puzzleCount = report.insights
@@ -325,7 +339,8 @@ class _EvaluationGraphState extends State<_EvaluationGraph> {
     final List<int> values = points
         .map((AiMoveInsight item) => item.evaluationAfterCp!.clamp(-1200, 1200))
         .toList(growable: false);
-    final int selected = (_selectedIndex ?? values.length - 1).clamp(0, values.length - 1);
+    final int selected =
+        (_selectedIndex ?? values.length - 1).clamp(0, values.length - 1);
     final AiMoveInsight insight = points[selected];
     final int evaluation = values[selected];
     return ChessVerseCard(
@@ -345,15 +360,17 @@ class _EvaluationGraphState extends State<_EvaluationGraph> {
           ]),
           const SizedBox(height: 10),
           Semantics(
-            label: 'Interactive Stockfish evaluation graph. Swipe or tap to inspect a move.',
+            label:
+                'Interactive Stockfish evaluation graph. Swipe or tap to inspect a move.',
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTapDown: (TapDownDetails details) {
                 final RenderBox box = context.findRenderObject()! as RenderBox;
                 final double width = box.size.width.clamp(1, double.infinity);
-                final int index = ((details.localPosition.dx / width) * (values.length - 1))
-                    .round()
-                    .clamp(0, values.length - 1);
+                final int index =
+                    ((details.localPosition.dx / width) * (values.length - 1))
+                        .round()
+                        .clamp(0, values.length - 1);
                 setState(() => _selectedIndex = index);
                 final AiMoveInsight selectedInsight = points[index];
                 if (selectedInsight.hasEngineEvidence &&
@@ -364,10 +381,13 @@ class _EvaluationGraphState extends State<_EvaluationGraph> {
               onHorizontalDragUpdate: (DragUpdateDetails details) {
                 final RenderBox box = context.findRenderObject()! as RenderBox;
                 final double width = box.size.width.clamp(1, double.infinity);
-                final int index = ((details.localPosition.dx / width) * (values.length - 1))
-                    .round()
-                    .clamp(0, values.length - 1);
-                if (index != _selectedIndex) setState(() => _selectedIndex = index);
+                final int index =
+                    ((details.localPosition.dx / width) * (values.length - 1))
+                        .round()
+                        .clamp(0, values.length - 1);
+                if (index != _selectedIndex) {
+                  setState(() => _selectedIndex = index);
+                }
               },
               child: SizedBox(
                 height: 150,
@@ -393,7 +413,9 @@ class _EvaluationGraphState extends State<_EvaluationGraph> {
                         ? 'Mate ${insight.mateAfter! > 0 ? '+' : ''}${insight.mateAfter}'
                         : '${evaluation >= 0 ? 'White' : 'Black'} advantage • ${(evaluation.abs() / 100).toStringAsFixed(2)}',
                     style: TextStyle(
-                      color: evaluation >= 0 ? const Color(0xFFE9EDF0) : AppColors.accentGold,
+                      color: evaluation >= 0
+                          ? const Color(0xFFE9EDF0)
+                          : AppColors.accentGold,
                       fontSize: 12,
                     ),
                   ),
@@ -407,7 +429,8 @@ class _EvaluationGraphState extends State<_EvaluationGraph> {
                 label: const Text('Retry'),
               ),
           ]),
-          const Text('Tap or drag across the graph to restore a reviewed position.',
+          const Text(
+              'Tap or drag across the graph to restore a reviewed position.',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
         ],
       ),
@@ -464,13 +487,17 @@ class _EvaluationGraphPainter extends CustomPainter {
     );
     for (int index = 1; index < values.length; index++) {
       if ((values[index] - values[index - 1]).abs() >= 120) {
-        canvas.drawCircle(offsets[index], 4,
-            Paint()..color = const Color(0xFFF0B94A));
+        canvas.drawCircle(
+            offsets[index], 4, Paint()..color = const Color(0xFFF0B94A));
       }
     }
     final Offset selected = offsets[selectedIndex.clamp(0, offsets.length - 1)];
-    canvas.drawLine(Offset(selected.dx, plot.top), Offset(selected.dx, plot.bottom),
-        Paint()..color = const Color(0x9959E4C8)..strokeWidth = 1);
+    canvas.drawLine(
+        Offset(selected.dx, plot.top),
+        Offset(selected.dx, plot.bottom),
+        Paint()
+          ..color = const Color(0x9959E4C8)
+          ..strokeWidth = 1);
     canvas.drawCircle(selected, 7, Paint()..color = const Color(0xFF061722));
     canvas.drawCircle(selected, 5, Paint()..color = const Color(0xFF59E4C8));
   }
@@ -555,8 +582,15 @@ class _InsightCard extends StatelessWidget {
 }
 
 class _MoveTimeline extends StatelessWidget {
-  const _MoveTimeline({required this.report, this.onRetryPosition});
+  const _MoveTimeline({
+    required this.report,
+    this.openingEco,
+    this.timeControl,
+    this.onRetryPosition,
+  });
   final AiReviewReport report;
+  final String? openingEco;
+  final String? timeControl;
   final ValueChanged<AiMoveInsight>? onRetryPosition;
 
   @override
@@ -637,8 +671,12 @@ class _MoveTimeline extends StatelessWidget {
                                   _ReviewAction(
                                     icon: Icons.psychology_alt_rounded,
                                     label: 'Ask AI Coach',
-                                    onTap: () =>
-                                        _showInteractiveCoach(context, insight),
+                                    onTap: () => _showInteractiveCoach(
+                                      context,
+                                      insight,
+                                      openingEco: openingEco,
+                                      timeControl: timeControl,
+                                    ),
                                   ),
                                   _ReviewAction(
                                     icon: Icons.warning_amber_rounded,
@@ -679,17 +717,29 @@ String _variationText(AiMoveInsight insight) => insight
 
 Future<void> _showInteractiveCoach(
   BuildContext context,
-  AiMoveInsight insight,
-) {
+  AiMoveInsight insight, {
+  String? openingEco,
+  String? timeControl,
+}) {
   return showDialog<void>(
     context: context,
-    builder: (BuildContext context) => _InteractiveCoachDialog(insight),
+    builder: (BuildContext context) => _InteractiveCoachDialog(
+      insight,
+      openingEco: openingEco,
+      timeControl: timeControl,
+    ),
   );
 }
 
 class _InteractiveCoachDialog extends StatefulWidget {
-  const _InteractiveCoachDialog(this.insight);
+  const _InteractiveCoachDialog(
+    this.insight, {
+    this.openingEco,
+    this.timeControl,
+  });
   final AiMoveInsight insight;
+  final String? openingEco;
+  final String? timeControl;
 
   @override
   State<_InteractiveCoachDialog> createState() =>
@@ -699,10 +749,12 @@ class _InteractiveCoachDialog extends StatefulWidget {
 class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
   CoachQuestion _question = CoachQuestion.whyBad;
   final TextEditingController _controller = TextEditingController();
+  final TextEditingController _candidatesController = TextEditingController();
   bool _loading = false;
   String? _answer;
   AiCoachAnswer? _cloudAnswer;
   String? _token;
+  String? _sessionId;
 
   @override
   void initState() {
@@ -728,16 +780,26 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
     }
     setState(() => _loading = true);
     try {
+      final List<String> candidates = _candidatesController.text
+          .split(RegExp(r'[,\s]+'))
+          .map((String value) => value.trim().toLowerCase())
+          .where((String value) =>
+              RegExp(r'^[a-h][1-8][a-h][1-8][qrbn]?$').hasMatch(value))
+          .take(3)
+          .toList(growable: false);
       final AiCoachAnswer result = await const AiCoachApi().ask(
         token,
         fen: fen,
         playedMove: widget.insight.playedMove ?? widget.insight.notation,
         question: question,
+        sessionId: _sessionId,
+        candidateMoves: candidates,
       );
       if (!mounted) return;
       setState(() {
         _answer = result.answer;
         _cloudAnswer = result;
+        _sessionId = result.sessionId;
       });
     } on AiCoachApiException catch (error) {
       if (mounted) setState(() => _answer = error.message);
@@ -746,9 +808,45 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
     }
   }
 
+  Future<void> _sendFeedback(bool helpful) async {
+    final AiCoachAnswer? answer = _cloudAnswer;
+    final String? token = _token;
+    if (answer == null || token == null) return;
+    try {
+      await Future.wait(<Future<void>>[
+        const AiCoachApi().feedback(token, answer.interactionId, helpful),
+        const AiCoachApi().recommendationOutcome(
+          token,
+          answer.interactionId,
+          recommendationType: widget.insight.coachingTheme ?? 'calculation',
+          openingEco: widget.openingEco,
+          playerColor: widget.insight.side,
+          timeControl: widget.timeControl,
+          accepted: helpful,
+        ),
+      ]);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(helpful
+                  ? 'Coach recommendation saved for improvement tracking.'
+                  : 'Feedback saved. This recommendation will be recalibrated.')),
+        );
+      }
+    } on Object {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Feedback could not be saved. Try again.')),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _controller.dispose();
+    _candidatesController.dispose();
     super.dispose();
   }
 
@@ -792,22 +890,53 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
                           ),
                   ),
                 ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _candidatesController,
+                  decoration: const InputDecoration(
+                    labelText: 'Compare up to 3 moves (optional)',
+                    hintText: 'e2e4, d2d4, g1f3',
+                    prefixIcon: Icon(Icons.compare_arrows_rounded),
+                  ),
+                ),
                 if (_cloudAnswer != null) ...<Widget>[
-                  Text('${_cloudAnswer!.remainingToday} coach questions remaining today',
+                  const SizedBox(height: 12),
+                  _CoachPositionBoard(
+                    fen: widget.insight.fenBefore!,
+                    annotations: _cloudAnswer!.annotations,
+                  ),
+                  if (_cloudAnswer!.comparisons.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 9),
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 7,
+                      children: <Widget>[
+                        for (final AiCandidateComparison item
+                            in _cloudAnswer!.comparisons)
+                          Chip(
+                            avatar:
+                                const Icon(Icons.analytics_rounded, size: 16),
+                            label: Text(
+                                '${item.move} • ${item.classification} • ${item.centipawnLoss}cp'),
+                          ),
+                      ],
+                    ),
+                  ],
+                  Text(
+                      '${_cloudAnswer!.remainingToday} coach questions remaining today',
                       style: const TextStyle(
                           color: AppColors.textSecondary, fontSize: 11)),
                   Row(children: <Widget>[
-                    const Text('Was this useful?', style: TextStyle(fontSize: 12)),
+                    const Text('Was this useful?',
+                        style: TextStyle(fontSize: 12)),
                     IconButton(
                       tooltip: 'Helpful',
-                      onPressed: () => const AiCoachApi().feedback(
-                          _token!, _cloudAnswer!.interactionId, true),
+                      onPressed: () => _sendFeedback(true),
                       icon: const Icon(Icons.thumb_up_alt_outlined, size: 18),
                     ),
                     IconButton(
                       tooltip: 'Not helpful',
-                      onPressed: () => const AiCoachApi().feedback(
-                          _token!, _cloudAnswer!.interactionId, false),
+                      onPressed: () => _sendFeedback(false),
                       icon: const Icon(Icons.thumb_down_alt_outlined, size: 18),
                     ),
                   ]),
@@ -831,7 +960,8 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
                         selected: _question == question,
                         onSelected: (_) => setState(() {
                           _question = question;
-                          _answer = PersonalAiCoach.answer(widget.insight, question);
+                          _answer =
+                              PersonalAiCoach.answer(widget.insight, question);
                           _cloudAnswer = null;
                         }),
                       ),
@@ -848,6 +978,128 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
           ),
         ],
       );
+}
+
+class _CoachPositionBoard extends StatelessWidget {
+  const _CoachPositionBoard({required this.fen, required this.annotations});
+  final String fen;
+  final List<AiBoardAnnotation> annotations;
+
+  @override
+  Widget build(BuildContext context) {
+    final Map<String, String> pieces = _fenPieces(fen);
+    return Semantics(
+      label: 'Board explanation with best-move, threat, and candidate arrows',
+      child: AspectRatio(
+        aspectRatio: 1,
+        child:
+            LayoutBuilder(builder: (BuildContext context, BoxConstraints box) {
+          return Stack(children: <Widget>[
+            GridView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 8),
+              itemCount: 64,
+              itemBuilder: (BuildContext context, int index) {
+                final int rank = 7 - index ~/ 8;
+                final int file = index % 8;
+                final String square =
+                    '${String.fromCharCode(97 + file)}${rank + 1}';
+                return ColoredBox(
+                  color: (rank + file).isEven
+                      ? const Color(0xFFBDD0D8)
+                      : const Color(0xFF416A7C),
+                  child: Center(
+                    child: Text(pieces[square] ?? '',
+                        style: TextStyle(fontSize: box.maxWidth / 12.5)),
+                  ),
+                );
+              },
+            ),
+            Positioned.fill(
+                child: CustomPaint(painter: _CoachArrowPainter(annotations))),
+          ]);
+        }),
+      ),
+    );
+  }
+
+  static Map<String, String> _fenPieces(String fen) {
+    const Map<String, String> glyph = <String, String>{
+      'K': '♔',
+      'Q': '♕',
+      'R': '♖',
+      'B': '♗',
+      'N': '♘',
+      'P': '♙',
+      'k': '♚',
+      'q': '♛',
+      'r': '♜',
+      'b': '♝',
+      'n': '♞',
+      'p': '♟',
+    };
+    final Map<String, String> result = <String, String>{};
+    final List<String> ranks = fen.split(' ').first.split('/');
+    for (int row = 0; row < ranks.length && row < 8; row++) {
+      int file = 0;
+      for (final int rune in ranks[row].runes) {
+        final String token = String.fromCharCode(rune);
+        final int? empty = int.tryParse(token);
+        if (empty != null) {
+          file += empty;
+        } else if (file < 8) {
+          result['${String.fromCharCode(97 + file)}${8 - row}'] =
+              glyph[token] ?? '';
+          file++;
+        }
+      }
+    }
+    return result;
+  }
+}
+
+class _CoachArrowPainter extends CustomPainter {
+  const _CoachArrowPainter(this.annotations);
+  final List<AiBoardAnnotation> annotations;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double cell = size.width / 8;
+    for (final AiBoardAnnotation annotation in annotations) {
+      final Color color = switch (annotation.kind) {
+        'threat' => const Color(0xE6FF5263),
+        'candidate' => const Color(0xE650B8FF),
+        _ => const Color(0xE659E4C8),
+      };
+      final Offset from = _center(annotation.from, cell);
+      final Offset to = _center(annotation.to, cell);
+      final Paint paint = Paint()
+        ..color = color
+        ..strokeWidth = cell * .16
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(from, to, paint);
+      final double angle = (to - from).direction;
+      final Path head = Path()
+        ..moveTo(to.dx, to.dy)
+        ..lineTo(to.dx - cell * .35 * math.cos(angle - .55),
+            to.dy - cell * .35 * math.sin(angle - .55))
+        ..lineTo(to.dx - cell * .35 * math.cos(angle + .55),
+            to.dy - cell * .35 * math.sin(angle + .55))
+        ..close();
+      canvas.drawPath(head, paint);
+    }
+  }
+
+  Offset _center(String square, double cell) {
+    final int file = square.codeUnitAt(0) - 97;
+    final int rank = int.parse(square[1]) - 1;
+    return Offset((file + .5) * cell, (7 - rank + .5) * cell);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CoachArrowPainter oldDelegate) =>
+      !listEquals(oldDelegate.annotations, annotations);
 }
 
 class _ReviewAction extends StatelessWidget {

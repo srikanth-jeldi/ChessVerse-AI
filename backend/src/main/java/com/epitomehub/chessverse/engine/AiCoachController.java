@@ -4,6 +4,8 @@ import com.epitomehub.chessverse.auth.AuthenticatedPlayer;
 import com.epitomehub.chessverse.auth.PlayerAuthenticationService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.List;
@@ -50,16 +52,38 @@ class AiCoachController {
         return coach.impact(authentication.requireBearer(authorization).id());
     }
 
+    @PostMapping("/interactions/{id}/outcome")
+    void outcome(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @PathVariable UUID id,
+            @Valid @RequestBody RecommendationOutcomeRequest request) {
+        coach.recordOutcome(authentication.requireBearer(authorization).id(), id, request);
+    }
+
     record CoachRequest(
             @NotBlank @Size(max = 120) String fen,
             @NotBlank @Pattern(regexp = "^[a-h][1-8][a-h][1-8][qrbn]?$", flags = Pattern.Flag.CASE_INSENSITIVE)
             String playedMove,
             @NotBlank @Size(max = 500) String question,
             @Pattern(regexp = "^$|^[a-h][1-8][a-h][1-8][qrbn]?$", flags = Pattern.Flag.CASE_INSENSITIVE)
-            String candidateMove) {}
+            String candidateMove,
+            UUID sessionId,
+            @Size(max = 3) List<@Pattern(
+                    regexp = "^[a-h][1-8][a-h][1-8][qrbn]?$",
+                    flags = Pattern.Flag.CASE_INSENSITIVE) String> candidateMoves) {}
+
+    record CandidateComparison(
+            String move,
+            String classification,
+            int centipawnLoss,
+            String opponentThreat,
+            List<String> principalVariation) {}
+
+    record BoardAnnotation(String from, String to, String kind, String label) {}
 
     record CoachResponse(
             UUID interactionId,
+            UUID sessionId,
             String answer,
             String classification,
             String bestMove,
@@ -67,10 +91,21 @@ class AiCoachController {
             int centipawnLoss,
             String opponentThreat,
             List<String> principalVariation,
+            List<CandidateComparison> comparisons,
+            List<BoardAnnotation> annotations,
+            int conversationTurns,
             boolean cacheHit,
             int remainingToday) {}
 
     record CoachFeedback(boolean helpful) {}
+
+    record RecommendationOutcomeRequest(
+            @NotBlank @Size(max = 40) String recommendationType,
+            @Size(max = 3) String openingEco,
+            @Pattern(regexp = "^$|white|black", flags = Pattern.Flag.CASE_INSENSITIVE) String playerColor,
+            @Size(max = 20) String timeControl,
+            boolean accepted,
+            @Min(0) @Max(10000) Integer followupCentipawnLoss) {}
 
     record CoachImpact(
             int analyzedGames,

@@ -1,0 +1,1 @@
+17 */6 * * * root /root/ChessVerse-AI/infrastructure/vps/capture-ai-snapshot.sh >> /var/log/chessverse-ai-monitor.log 2>&1

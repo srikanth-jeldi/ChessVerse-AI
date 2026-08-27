@@ -24,10 +24,13 @@ import org.springframework.web.bind.annotation.RestController;
 class GameAnalysisController {
     private final PlayerAuthenticationService authentication;
     private final GameAnalysisService analysis;
+    private final AnalysisTrendsService trends;
 
-    GameAnalysisController(PlayerAuthenticationService authentication, GameAnalysisService analysis) {
+    GameAnalysisController(PlayerAuthenticationService authentication, GameAnalysisService analysis,
+            AnalysisTrendsService trends) {
         this.authentication = authentication;
         this.analysis = analysis;
+        this.trends = trends;
     }
 
     @PostMapping
@@ -58,6 +61,11 @@ class GameAnalysisController {
             @RequestHeader("Authorization") String authorization,
             @RequestParam(defaultValue = "100") @Min(1) @Max(500) int limit) {
         return analysis.weaknessHistory(authentication.requireBearer(authorization).id(), limit);
+    }
+
+    @GetMapping("/trends")
+    AnalysisTrendsResponse trends(@RequestHeader("Authorization") String authorization) {
+        return trends.trends(authentication.requireBearer(authorization).id());
     }
 
     @PostMapping("/{id}/retry")
