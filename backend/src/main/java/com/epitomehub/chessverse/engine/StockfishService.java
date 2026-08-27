@@ -23,6 +23,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 import java.util.Locale;
+import com.epitomehub.chessverse.analysis.GamePositionAnalyzer;
+import com.epitomehub.chessverse.analysis.PositionAnalysis;
 import com.github.bhlangonijr.chesslib.Board;
 import com.github.bhlangonijr.chesslib.Piece;
 import com.github.bhlangonijr.chesslib.Side;
@@ -33,7 +35,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
-class StockfishService {
+public class StockfishService implements GamePositionAnalyzer {
     private static final Pattern SAFE_FEN =
             Pattern.compile("^[prnbqkPRNBQK1-8/]+ [wb] (?:-|[KQkq]+) (?:-|[a-h][36]) \\d+ \\d+$");
     private static final Pattern SAFE_UCI_MOVE = Pattern.compile("^[a-h][1-8][a-h][1-8][qrbn]?$", Pattern.CASE_INSENSITIVE);
@@ -182,6 +184,42 @@ class StockfishService {
                 threat,
                 explanation,
                 before.principalVariation(),
+                depth);
+    }
+
+    @Override
+    public PositionAnalysis analyze(String fen, String playedMove, int requestedDepth) {
+        String cleanFen = fen.trim();
+        String cleanMove = playedMove.trim().toLowerCase();
+        if (!SAFE_FEN.matcher(cleanFen).matches() || !SAFE_UCI_MOVE.matcher(cleanMove).matches()) {
+            throw new EngineException(HttpStatus.BAD_REQUEST, "The supplied game evidence is invalid.");
+        }
+        if (!isLegalMove(cleanFen, cleanMove)) {
+            throw new EngineException(HttpStatus.UNPROCESSABLE_ENTITY, "The recorded move is not legal in this position.");
+        }
+        int depth = Math.max(8, Math.min(22, requestedDepth));
+        AnalysisLine before = analyzeLine(cleanFen, depth, List.of());
+        AnalysisLine after = analyzeLine(cleanFen, depth, List.of(cleanMove));
+        if (before.bestMove() == null || after.bestMove() == null) {
+            throw new EngineException(HttpStatus.UNPROCESSABLE_ENTITY, "The recorded move could not be analyzed.");
+        }
+        int evaluationAfter = -after.evaluationCp();
+        int loss = Math.max(0, before.evaluationCp() - evaluationAfter);
+        boolean whiteMover = cleanFen.split("\\s+")[1].equals("w");
+        int whiteEvaluationBefore = whiteMover ? before.evaluationCp() : -before.evaluationCp();
+        int whiteEvaluationAfter = whiteMover ? evaluationAfter : -evaluationAfter;
+        Integer moverMateBefore = before.mateIn();
+        Integer moverMateAfter = after.mateIn() == null ? null : -after.mateIn();
+        return new PositionAnalysis(
+                before.bestMove(),
+                classifyMove(before.bestMove().equalsIgnoreCase(cleanMove), loss),
+                loss,
+                whiteEvaluationBefore,
+                whiteEvaluationAfter,
+                moverMateBefore == null ? null : (whiteMover ? moverMateBefore : -moverMateBefore),
+                moverMateAfter == null ? null : (whiteMover ? moverMateAfter : -moverMateAfter),
+                before.principalVariation(),
+                coachingTheme(cleanFen, after, loss),
                 depth);
     }
 

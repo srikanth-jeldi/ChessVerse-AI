@@ -62,7 +62,10 @@ class _AiReviewWorkspace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Widget overview = _ReviewOverview(report: report);
+    final Widget overview = _ReviewOverview(
+      report: report,
+      onRetryPosition: onRetryPosition,
+    );
     final Widget timeline = _MoveTimeline(
       report: report,
       onRetryPosition: onRetryPosition,
@@ -132,8 +135,9 @@ class _AiReviewWorkspace extends StatelessWidget {
 }
 
 class _ReviewOverview extends StatelessWidget {
-  const _ReviewOverview({required this.report});
+  const _ReviewOverview({required this.report, this.onRetryPosition});
   final AiReviewReport report;
+  final ValueChanged<AiMoveInsight>? onRetryPosition;
 
   @override
   Widget build(BuildContext context) {
@@ -189,7 +193,10 @@ class _ReviewOverview extends StatelessWidget {
                 .length >=
             2) ...<Widget>[
           const SizedBox(height: 12),
-          _EvaluationGraph(report: report),
+          _EvaluationGraph(
+            report: report,
+            onRetryPosition: onRetryPosition,
+          ),
         ],
         const SizedBox(height: 12),
         ChessVerseCard(
@@ -292,17 +299,30 @@ class _ReviewOverview extends StatelessWidget {
   }
 }
 
-class _EvaluationGraph extends StatelessWidget {
-  const _EvaluationGraph({required this.report});
+class _EvaluationGraph extends StatefulWidget {
+  const _EvaluationGraph({required this.report, this.onRetryPosition});
 
   final AiReviewReport report;
+  final ValueChanged<AiMoveInsight>? onRetryPosition;
+
+  @override
+  State<_EvaluationGraph> createState() => _EvaluationGraphState();
+}
+
+class _EvaluationGraphState extends State<_EvaluationGraph> {
+  int? _selectedIndex;
 
   @override
   Widget build(BuildContext context) {
-    final List<int> values = report.insights
+    final List<AiMoveInsight> points = widget.report.insights
         .where((AiMoveInsight item) => item.evaluationAfterCp != null)
-        .map((AiMoveInsight item) => item.evaluationAfterCp!.clamp(-1000, 1000))
         .toList(growable: false);
+    final List<int> values = points
+        .map((AiMoveInsight item) => item.evaluationAfterCp!.clamp(-1200, 1200))
+        .toList(growable: false);
+    final int selected = (_selectedIndex ?? values.length - 1).clamp(0, values.length - 1);
+    final AiMoveInsight insight = points[selected];
+    final int evaluation = values[selected];
     return ChessVerseCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -319,13 +339,70 @@ class _EvaluationGraph extends StatelessWidget {
                 )),
           ]),
           const SizedBox(height: 10),
-          SizedBox(
-            height: 112,
-            width: double.infinity,
-            child: CustomPaint(painter: _EvaluationGraphPainter(values)),
+          Semantics(
+            label: 'Interactive Stockfish evaluation graph. Swipe or tap to inspect a move.',
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (TapDownDetails details) {
+                final RenderBox box = context.findRenderObject()! as RenderBox;
+                final double width = box.size.width.clamp(1, double.infinity);
+                final int index = ((details.localPosition.dx / width) * (values.length - 1))
+                    .round()
+                    .clamp(0, values.length - 1);
+                setState(() => _selectedIndex = index);
+                final AiMoveInsight selectedInsight = points[index];
+                if (selectedInsight.hasEngineEvidence &&
+                    widget.onRetryPosition != null) {
+                  widget.onRetryPosition!(selectedInsight);
+                }
+              },
+              onHorizontalDragUpdate: (DragUpdateDetails details) {
+                final RenderBox box = context.findRenderObject()! as RenderBox;
+                final double width = box.size.width.clamp(1, double.infinity);
+                final int index = ((details.localPosition.dx / width) * (values.length - 1))
+                    .round()
+                    .clamp(0, values.length - 1);
+                if (index != _selectedIndex) setState(() => _selectedIndex = index);
+              },
+              child: SizedBox(
+                height: 150,
+                width: double.infinity,
+                child: CustomPaint(
+                  painter: _EvaluationGraphPainter(values, selected),
+                ),
+              ),
+            ),
           ),
-          const SizedBox(height: 6),
-          const Text('Stockfish score after each reviewed player move',
+          const SizedBox(height: 8),
+          Row(children: <Widget>[
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'Ply ${insight.number} • ${insight.side} ${insight.notation}',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  Text(
+                    insight.mateAfter != null
+                        ? 'Mate ${insight.mateAfter! > 0 ? '+' : ''}${insight.mateAfter}'
+                        : '${evaluation >= 0 ? 'White' : 'Black'} advantage • ${(evaluation.abs() / 100).toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: evaluation >= 0 ? const Color(0xFFE9EDF0) : AppColors.accentGold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (insight.hasEngineEvidence && widget.onRetryPosition != null)
+              TextButton.icon(
+                onPressed: () => widget.onRetryPosition!(insight),
+                icon: const Icon(Icons.replay_rounded, size: 17),
+                label: const Text('Retry'),
+              ),
+          ]),
+          const Text('Tap or drag across the graph to restore a reviewed position.',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
         ],
       ),
@@ -334,22 +411,37 @@ class _EvaluationGraph extends StatelessWidget {
 }
 
 class _EvaluationGraphPainter extends CustomPainter {
-  const _EvaluationGraphPainter(this.values);
+  const _EvaluationGraphPainter(this.values, this.selectedIndex);
   final List<int> values;
+  final int selectedIndex;
 
   @override
   void paint(Canvas canvas, Size size) {
+    final Rect plot = Rect.fromLTWH(0, 8, size.width, size.height - 18);
+    canvas.drawRect(plot, Paint()..color = const Color(0x14FFFFFF));
+    canvas.drawRect(
+      Rect.fromLTRB(plot.left, plot.top, plot.right, plot.center.dy),
+      Paint()..color = const Color(0x10FFFFFF),
+    );
+    canvas.drawRect(
+      Rect.fromLTRB(plot.left, plot.center.dy, plot.right, plot.bottom),
+      Paint()..color = const Color(0x142F89B8),
+    );
     final Paint grid = Paint()
-      ..color = const Color(0xFF38505F)
+      ..color = const Color(0x664B6473)
       ..strokeWidth = 1;
-    canvas.drawLine(
-        Offset(0, size.height / 2), Offset(size.width, size.height / 2), grid);
+    for (final double fraction in <double>[.25, .5, .75]) {
+      final double y = plot.top + plot.height * fraction;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
+    }
     if (values.length < 2) return;
     final Path path = Path();
+    final List<Offset> offsets = <Offset>[];
     for (int index = 0; index < values.length; index++) {
       final double x = size.width * index / (values.length - 1);
-      final double normalized = (values[index] / 1000).clamp(-1, 1);
-      final double y = size.height / 2 - normalized * (size.height * .44);
+      final double normalized = (values[index] / 1200).clamp(-1, 1);
+      final double y = plot.center.dy - normalized * (plot.height * .46);
+      offsets.add(Offset(x, y));
       if (index == 0) {
         path.moveTo(x, y);
       } else {
@@ -365,10 +457,22 @@ class _EvaluationGraphPainter extends CustomPainter {
         ..strokeJoin = StrokeJoin.round
         ..style = PaintingStyle.stroke,
     );
+    for (int index = 1; index < values.length; index++) {
+      if ((values[index] - values[index - 1]).abs() >= 120) {
+        canvas.drawCircle(offsets[index], 4,
+            Paint()..color = const Color(0xFFF0B94A));
+      }
+    }
+    final Offset selected = offsets[selectedIndex.clamp(0, offsets.length - 1)];
+    canvas.drawLine(Offset(selected.dx, plot.top), Offset(selected.dx, plot.bottom),
+        Paint()..color = const Color(0x9959E4C8)..strokeWidth = 1);
+    canvas.drawCircle(selected, 7, Paint()..color = const Color(0xFF061722));
+    canvas.drawCircle(selected, 5, Paint()..color = const Color(0xFF59E4C8));
   }
 
   @override
   bool shouldRepaint(covariant _EvaluationGraphPainter oldDelegate) =>
+      oldDelegate.selectedIndex != selectedIndex ||
       !listEquals(oldDelegate.values, values);
 }
 

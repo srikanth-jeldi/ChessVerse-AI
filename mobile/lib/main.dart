@@ -28,6 +28,7 @@ import 'features/auth/data/auth_session_store.dart';
 import 'features/auth/presentation/auth_screen.dart';
 import 'features/engine/data/engine_api.dart';
 import 'features/analysis/domain/ai_review_report.dart';
+import 'features/analysis/data/game_analysis_api.dart';
 import 'features/analysis/presentation/analysis_screen.dart';
 import 'features/analysis/presentation/adaptive_ai_review.dart';
 import 'features/home/presentation/home_dashboard_screen.dart';
@@ -45,6 +46,29 @@ import 'features/settings/presentation/settings_screen.dart';
 import 'features/social/presentation/social_hub_screen.dart';
 import 'features/tutorial/presentation/learn_chess_screen.dart';
 import 'features/tutorial/data/academy_progress_store.dart';
+
+List<SavedMoveReview> _savedReviewsFromCloud(CloudAnalysisJob job) => job.plies
+    .map((CloudAnalysisPly ply) => SavedMoveReview(
+          ply: ply.ply,
+          fenBefore: ply.fenBefore,
+          playedMove: ply.playedMove,
+          bestMove: ply.bestMove,
+          classification: ply.classification,
+          coachingTheme: ply.coachingTheme,
+          centipawnLoss: ply.centipawnLoss,
+          evaluationBeforeCp: ply.evaluationBeforeCp,
+          evaluationAfterCp: ply.evaluationAfterCp,
+          mateBefore: ply.mateBefore,
+          mateAfter: ply.mateAfter,
+          opponentThreat: ply.principalVariation.length > 1
+              ? ply.principalVariation[1]
+              : '',
+          explanation: ply.classification == 'Best'
+              ? 'This matched Stockfish’s strongest continuation.'
+              : '${ply.bestMove} was stronger by ${ply.centipawnLoss} centipawns.',
+          principalVariation: ply.principalVariation,
+        ))
+    .toList(growable: false);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -241,6 +265,7 @@ class _SplashGateState extends State<SplashGate> {
   static const AuthApi _authApi = AuthApi();
   static const AuthSessionStore _sessionStore = AuthSessionStore();
   static const CloudProgressApi _cloudProgressApi = CloudProgressApi();
+  static const GameAnalysisApi _gameAnalysisApi = GameAnalysisApi();
   Timer? _timer;
   late final bool _forceFreshWebLogin;
   Timer? _presenceTimer;
@@ -379,11 +404,47 @@ class _SplashGateState extends State<SplashGate> {
       unawaited(_restoreActiveOnlineMatch(restoredSession.token));
     });
     unawaited(_syncCloudProgress(restoredSession.token));
+    unawaited(_resumeCloudAnalysisJobs(restoredSession.token));
     _startOnlinePresence(restoredSession.token);
     _startNotificationPolling(restoredSession.token);
     _startSessionValidation(restoredSession.token);
     unawaited(FirebasePushService.instance
         .configureForSession(restoredSession.token));
+  }
+
+  Future<void> _resumeCloudAnalysisJobs(String token) async {
+    final List<SavedGameRecord> pending = LocalGameArchive.games
+        .where((SavedGameRecord game) =>
+            game.cloudAnalysisJobId != null &&
+            game.cloudAnalysisStatus != 'COMPLETED')
+        .toList(growable: false);
+    for (final SavedGameRecord game in pending) {
+      final String jobId = game.cloudAnalysisJobId!;
+      try {
+        CloudAnalysisJob job = await _gameAnalysisApi.results(token, jobId);
+        for (int attempt = 0;
+            attempt < 600 &&
+                (job.status == 'QUEUED' || job.status == 'ANALYZING');
+            attempt++) {
+          await Future<void>.delayed(const Duration(seconds: 2));
+          job = await _gameAnalysisApi.results(token, jobId);
+        }
+        LocalGameArchive.updateCloudAnalysisForGame(
+          playedAt: game.playedAt,
+          jobId: job.id,
+          status: job.status,
+          openingEco: job.openingEco,
+          openingName: job.openingName,
+          bookPlies: job.bookPlies,
+          firstDeviationPly: job.firstDeviationPly,
+          reviews:
+              job.status == 'COMPLETED' ? _savedReviewsFromCloud(job) : null,
+        );
+      } on GameAnalysisApiException catch (error, stackTrace) {
+        unawaited(AppDiagnostics.recordError(error, stackTrace,
+            reason: 'resume cloud game analysis'));
+      }
+    }
   }
 
   void _startSessionValidation(String token) {
@@ -3290,6 +3351,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   static const AuthApi _authApi = AuthApi();
   static const AuthSessionStore _sessionStore = AuthSessionStore();
   static const EngineApi _engineApi = EngineApi();
+  static const GameAnalysisApi _gameAnalysisApi = GameAnalysisApi();
   OnlineMatchApi get _onlineApi => widget.onlineApi ?? const OnlineMatchApi();
   static const AppPreferences _preferences = AppPreferences();
   final math.Random _random = math.Random();
@@ -3302,6 +3364,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Timer? _moveQualityTimer;
   Timer? _aiWatchdogTimer;
   Timer? _turnReminderTimer;
+  Timer? _idleMoveHintTimer;
   Timer? _onlinePollTimer;
   WebSocketChannel? _onlineChannel;
   StreamSubscription<dynamic>? _onlineSocketSubscription;
@@ -3330,6 +3393,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   int _hintStage = 0;
   String? _coachArrowFrom;
   String? _coachArrowTo;
+  String? _idleHintFrom;
+  String? _idleHintTo;
   int _coachRequestEpoch = 0;
   int _moveReviewEpoch = 0;
   double _engineEvaluationPawns = 0;
@@ -3590,6 +3655,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _moveQualityTimer?.cancel();
     _aiWatchdogTimer?.cancel();
     _turnReminderTimer?.cancel();
+    _idleMoveHintTimer?.cancel();
     _onlinePollTimer?.cancel();
     unawaited(_onlineSocketSubscription?.cancel());
     unawaited(_onlineChannel?.sink.close());
@@ -3792,6 +3858,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 fallenKingWhite: losingKingWhite,
                 coachArrowFrom: _coachArrowFrom,
                 coachArrowTo: _coachArrowTo,
+                idleHintFrom: _idleHintFrom,
+                idleHintTo: _idleHintTo,
                 flipped: _shouldFlipBoard(sideToMoveWhite),
                 showCoordinates: _showCoordinates,
                 palette: palette,
@@ -5395,12 +5463,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void _dismissTurnReminder() {
     _boardTouchedThisTurn = true;
     _turnReminderTimer?.cancel();
+    _scheduleIdleMoveHint(clearVisibleHint: true);
     if (_turnBannerVisible && mounted) {
       setState(() => _turnBannerVisible = false);
     }
   }
 
   void _restartTurnReminder() {
+    _scheduleIdleMoveHint(clearVisibleHint: true);
     _turnReminderTimer?.cancel();
     _boardTouchedThisTurn = false;
     if (!mounted || _gameResultTitle != null) return;
@@ -6212,6 +6282,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _moveQualityText = null;
       _coachArrowFrom = null;
       _coachArrowTo = null;
+      _idleHintFrom = null;
+      _idleHintTo = null;
       _engineEvaluationPawns = 0;
       _playerMoveScores.clear();
       _importantMistakes.clear();
@@ -6303,6 +6375,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
     _resultSaved = true;
+    final DateTime archivedAt = DateTime.now();
     LocalGameArchive.addGame(
       SavedGameRecord(
         mode: switch (_gameMode) {
@@ -6315,7 +6388,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         result: _gameResultTitle!,
         detail: _gameResultDetail ?? 'Game complete',
         moves: List<String>.from(_moves.reversed),
-        playedAt: DateTime.now(),
+        playedAt: archivedAt,
         whitePlayer: _whitePlayerName,
         blackPlayer: _blackPlayerName,
         playerOutcome: playerOutcomeForResult(
@@ -6327,6 +6400,163 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           ..sort((SavedMoveReview a, SavedMoveReview b) => a.ply - b.ply),
       ),
     );
+    unawaited(_submitFinishedGameForCloudAnalysis(archivedAt));
+  }
+
+  bool get _isHumanTurnForIdleHint {
+    if (!_showMoveHints || _gameResultTitle != null || _aiThinking) {
+      return false;
+    }
+    if (_isTacticsMode && _dailyPlyIndex.isOdd) return false;
+    return switch (_gameMode) {
+      GameMode.computer => _moves.length.isEven == _humanPlaysWhite,
+      GameMode.online => _onlineMatch?.isActive == true &&
+          _onlineMatch?.isYourTurn == true &&
+          !_onlineSubmitting,
+      _ => true,
+    };
+  }
+
+  void _scheduleIdleMoveHint({bool clearVisibleHint = false}) {
+    _idleMoveHintTimer?.cancel();
+    if (clearVisibleHint && (_idleHintFrom != null || _idleHintTo != null)) {
+      if (mounted) {
+        setState(() {
+          _idleHintFrom = null;
+          _idleHintTo = null;
+        });
+      } else {
+        _idleHintFrom = null;
+        _idleHintTo = null;
+      }
+    }
+    if (!mounted || !_isHumanTurnForIdleHint) return;
+    final int scheduledPly = _gameMode == GameMode.online
+        ? (_onlineMatch?.plyCount ?? -1)
+        : _moves.length;
+    _idleMoveHintTimer = Timer(const Duration(seconds: 10), () {
+      if (!mounted || !_isHumanTurnForIdleHint) return;
+      final int currentPly = _gameMode == GameMode.online
+          ? (_onlineMatch?.plyCount ?? -1)
+          : _moves.length;
+      if (currentPly != scheduledPly) return;
+      final ({String from, String to})? hint = _bestLocalHintMove(
+          _gameMode == GameMode.online
+              ? (_onlineMatch?.whiteToMove ?? _moves.length.isEven)
+              : (_isTacticsMode ? true : _moves.length.isEven));
+      if (hint == null) return;
+      setState(() {
+        _idleHintFrom = hint.from;
+        _idleHintTo = hint.to;
+        _coachNote =
+            'Need a nudge? Blue lights suggest ${hint.from} → ${hint.to}. You can still choose any legal move.';
+      });
+    });
+  }
+
+  ({String from, String to})? _bestLocalHintMove(bool whiteToMove) {
+    String? bestFrom;
+    String? bestTo;
+    double bestScore = -double.infinity;
+    for (final MapEntry<String, ChessPiece> entry in _pieces.entries) {
+      if (entry.value.white != whiteToMove) continue;
+      for (final String target in _legalTargetsFor(entry.key)) {
+        final double score = _analysisMoveScore(entry.key, target, entry.value);
+        if (score > bestScore) {
+          bestScore = score;
+          bestFrom = entry.key;
+          bestTo = target;
+        }
+      }
+    }
+    if (bestFrom == null || bestTo == null) return null;
+    return (from: bestFrom, to: bestTo);
+  }
+
+  Future<void> _submitFinishedGameForCloudAnalysis(DateTime archivedAt) async {
+    final String? token = _authToken;
+    if (token == null || token.isEmpty || _gameMode != GameMode.computer) {
+      return;
+    }
+    final List<String>? uciMoves = _chronologicalUciMoves();
+    if (uciMoves == null || uciMoves.isEmpty) return;
+    try {
+      CloudAnalysisJob job = await _gameAnalysisApi.create(
+        token,
+        clientRequestId: archivedAt.toUtc().toIso8601String(),
+        initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+        moves: uciMoves,
+        depth: 16,
+        playerColor: _humanPlaysWhite ? 'WHITE' : 'BLACK',
+        timeControl: '10+0',
+      );
+      LocalGameArchive.updateCloudAnalysisForGame(
+        playedAt: archivedAt,
+        jobId: job.id,
+        status: job.status,
+        openingEco: job.openingEco,
+        openingName: job.openingName,
+        bookPlies: job.bookPlies,
+        firstDeviationPly: job.firstDeviationPly,
+      );
+      for (int attempt = 0;
+          attempt < 600 &&
+              (job.status == 'QUEUED' || job.status == 'ANALYZING');
+          attempt++) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+        job = await _gameAnalysisApi.results(token, job.id);
+        LocalGameArchive.updateCloudAnalysisForGame(
+          playedAt: archivedAt,
+          jobId: job.id,
+          status: job.status,
+          openingEco: job.openingEco,
+          openingName: job.openingName,
+          bookPlies: job.bookPlies,
+          firstDeviationPly: job.firstDeviationPly,
+        );
+      }
+      if (job.status == 'COMPLETED' && job.plies.length == job.totalPlies) {
+        LocalGameArchive.updateCloudAnalysisForGame(
+          playedAt: archivedAt,
+          jobId: job.id,
+          status: job.status,
+          openingEco: job.openingEco,
+          openingName: job.openingName,
+          bookPlies: job.bookPlies,
+          firstDeviationPly: job.firstDeviationPly,
+          reviews: _savedReviewsFromCloud(job),
+        );
+      }
+    } on GameAnalysisApiException catch (error, stackTrace) {
+      unawaited(AppDiagnostics.recordError(
+        error,
+        stackTrace,
+        reason: 'cloud game analysis submission',
+      ));
+    }
+  }
+
+  List<String>? _chronologicalUciMoves() {
+    final List<String> chronological = _moves.reversed.toList(growable: false);
+    final List<String> result = <String>[];
+    for (int index = 0; index < chronological.length; index++) {
+      final String notation = chronological[index];
+      if (notation.startsWith('O-O-O')) {
+        result.add(index.isEven ? 'e1c1' : 'e8c8');
+        continue;
+      }
+      if (notation.startsWith('O-O')) {
+        result.add(index.isEven ? 'e1g1' : 'e8g8');
+        continue;
+      }
+      final ParsedMove? parsed = _parseMove(notation);
+      if (parsed == null) return null;
+      final RegExpMatch? promotion =
+          RegExp(r'=([QRBN])', caseSensitive: false).firstMatch(notation);
+      result.add(
+          '${parsed.from}${parsed.to}${promotion?.group(1)?.toLowerCase() ?? ''}');
+    }
+    return result;
   }
 
   void _showMoveHistory() {
@@ -6979,6 +7209,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     bool forceBoardReplay = false,
   }) {
     final OnlineMatchDto? previous = _onlineMatch;
+    final bool shouldRestartIdleHint = forceBoardReplay ||
+        previous == null ||
+        previous.id != match.id ||
+        previous.plyCount != match.plyCount ||
+        previous.isYourTurn != match.isYourTurn;
     final bool sameBoard = !forceBoardReplay &&
         previous != null &&
         previous.id == match.id &&
@@ -6993,6 +7228,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _coachNote = _onlineStatusText(match);
       });
       _applyOnlineLifecycle(match);
+      if (shouldRestartIdleHint) {
+        _scheduleIdleMoveHint(clearVisibleHint: true);
+      }
       return;
     }
     final Map<String, ChessPiece> board =
@@ -7077,6 +7315,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
     });
     _applyOnlineLifecycle(match);
+    if (shouldRestartIdleHint) {
+      _scheduleIdleMoveHint(clearVisibleHint: true);
+    }
     if (match.status == 'ACTIVE' && match.moves.isNotEmpty) {
       final bool sideToMoveWhite = match.whiteToMove;
       final String stateNote = _gameStateNote(
@@ -8020,6 +8261,8 @@ class _ReviewedPositionRetryDialogState
                       _answered ? widget.bestMove.substring(0, 2) : null,
                   coachArrowTo:
                       _answered ? widget.bestMove.substring(2, 4) : null,
+                  idleHintFrom: null,
+                  idleHintTo: null,
                   flipped: !widget.whiteToMove,
                   showCoordinates: true,
                   palette: palette,
@@ -8080,6 +8323,8 @@ class ChessBoard extends StatefulWidget {
     this.fallenKingWhite,
     required this.coachArrowFrom,
     required this.coachArrowTo,
+    this.idleHintFrom,
+    this.idleHintTo,
     required this.flipped,
     required this.showCoordinates,
     required this.palette,
@@ -8102,6 +8347,8 @@ class ChessBoard extends StatefulWidget {
   final bool? fallenKingWhite;
   final String? coachArrowFrom;
   final String? coachArrowTo;
+  final String? idleHintFrom;
+  final String? idleHintTo;
   final bool flipped;
   final bool showCoordinates;
   final BoardPalette palette;
@@ -8228,6 +8475,8 @@ class _ChessBoardState extends State<ChessBoard> {
                 final bool lastCapture = square == lastCaptureSquare;
                 final bool checkedKing = square == checkedKingSquare;
                 final bool decisiveMove = square == decisiveSquare;
+                final bool idleHintSource = square == widget.idleHintFrom;
+                final bool idleHintTarget = square == widget.idleHintTo;
                 return BoardSquare(
                   key: ValueKey<String>('square-$square'),
                   square: square,
@@ -8239,6 +8488,8 @@ class _ChessBoardState extends State<ChessBoard> {
                   lastCapture: lastCapture,
                   checkedKing: checkedKing,
                   decisiveMove: decisiveMove,
+                  idleHintSource: idleHintSource,
+                  idleHintTarget: idleHintTarget,
                   kingFallen: kingFallen,
                   palette: palette,
                   piece: piece,
@@ -8573,6 +8824,8 @@ class BoardSquare extends StatelessWidget {
     required this.lastCapture,
     required this.checkedKing,
     required this.decisiveMove,
+    required this.idleHintSource,
+    required this.idleHintTarget,
     this.kingFallen = false,
     required this.palette,
     required this.showRank,
@@ -8591,6 +8844,8 @@ class BoardSquare extends StatelessWidget {
   final bool lastCapture;
   final bool checkedKing;
   final bool decisiveMove;
+  final bool idleHintSource;
+  final bool idleHintTarget;
   final bool kingFallen;
   final BoardPalette palette;
   final bool showRank;
@@ -8627,7 +8882,14 @@ class BoardSquare extends StatelessWidget {
                           )
                         : base;
 
+    final bool idleHint = idleHintSource || idleHintTarget;
+
     return InkWell(
+      key: idleHintSource
+          ? const ValueKey<String>('idle-hint-source')
+          : idleHintTarget
+              ? const ValueKey<String>('idle-hint-target')
+              : null,
       onTap: onTap,
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(
@@ -8636,7 +8898,8 @@ class BoardSquare extends StatelessWidget {
                   legalTarget ||
                   lastCapture ||
                   checkedKing ||
-                  decisiveMove
+                  decisiveMove ||
+                  idleHint
               ? 1
               : 0,
         ),
@@ -8664,14 +8927,27 @@ class BoardSquare extends StatelessWidget {
                 stops: const <double>[0, 0.48, 1],
               ),
               border: Border.all(
-                color: selected
-                    ? const Color(0xFFF8E7B0)
-                    : (dark ? Colors.black : Colors.white).withValues(
-                        alpha: 0.08,
-                      ),
-                width: selected ? 3 : 1,
+                color: idleHint
+                    ? const Color(0xFF68C8FF)
+                    : selected
+                        ? const Color(0xFFF8E7B0)
+                        : (dark ? Colors.black : Colors.white).withValues(
+                            alpha: 0.08,
+                          ),
+                width: idleHint
+                    ? 3.2
+                    : selected
+                        ? 3
+                        : 1,
               ),
               boxShadow: <BoxShadow>[
+                if (idleHint)
+                  BoxShadow(
+                    color:
+                        const Color(0xFF42B8FF).withValues(alpha: 0.9 * glow),
+                    blurRadius: 26,
+                    spreadRadius: 5,
+                  ),
                 if (legalTarget)
                   BoxShadow(
                     color: const Color(
@@ -9189,7 +9465,10 @@ String pieceGlyph(ChessPiece piece) {
     'R' => '\u265C',
     'B' => '\u265D',
     'N' => '\u265E',
-    _ => '\u265F',
+    // U+265F defaults to an emoji-style 3D pawn on some Android fonts while
+    // the other chess symbols stay as outlined text. VS15 forces the same
+    // text presentation as the rest of the Classic 2D black set.
+    _ => '\u265F\uFE0E',
   };
 }
 

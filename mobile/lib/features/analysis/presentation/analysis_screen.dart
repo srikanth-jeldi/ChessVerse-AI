@@ -5,12 +5,31 @@ import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_button.dart';
 import '../../../core/widgets/chessverse_card.dart';
+import '../../auth/data/auth_session_store.dart';
+import '../data/game_analysis_api.dart';
 import '../domain/ai_review_report.dart';
 import '../domain/learning_intelligence.dart';
 import 'adaptive_ai_review.dart';
 
-class AnalysisScreen extends StatelessWidget {
+class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({super.key});
+
+  @override
+  State<AnalysisScreen> createState() => _AnalysisScreenState();
+}
+
+class _AnalysisScreenState extends State<AnalysisScreen> {
+  late final Future<Map<String, int>> _cloudHistory = _loadCloudHistory();
+
+  Future<Map<String, int>> _loadCloudHistory() async {
+    final StoredAuthSession? session = await const AuthSessionStore().read();
+    if (session == null || session.token.isEmpty) return <String, int>{};
+    try {
+      return await const GameAnalysisApi().weaknessHistory(session.token);
+    } on GameAnalysisApiException {
+      return <String, int>{};
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +52,9 @@ class AnalysisScreen extends StatelessWidget {
             newestFirst: false,
             result: latest.result,
             knownReviews: latest.moveReviews,
+            knownOpeningName: latest.openingName == null
+                ? null
+                : '${latest.openingEco ?? 'ECO'} • ${latest.openingName} • ${latest.bookPlies} book plies${latest.firstDeviationPly == null ? '' : ' • first deviation ply ${latest.firstDeviationPly}'}',
           );
     final String focus = _trainingFocus(games, averageMoves, losses);
     final LearningIntelligence intelligence = LearningIntelligence.fromGames(
@@ -137,6 +159,26 @@ class AnalysisScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
+            FutureBuilder<Map<String, int>>(
+              future: _cloudHistory,
+              builder: (BuildContext context,
+                  AsyncSnapshot<Map<String, int>> snapshot) {
+                final Map<String, int> history = snapshot.data ?? <String, int>{};
+                if (history.isEmpty) return const SizedBox.shrink();
+                final List<MapEntry<String, int>> ranked = history.entries.toList()
+                  ..sort((MapEntry<String, int> a, MapEntry<String, int> b) =>
+                      b.value.compareTo(a.value));
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _AnalysisFeatureCard(
+                    icon: Icons.cloud_done_rounded,
+                    title: 'Cloud weakness history • ${history.values.fold<int>(0, (int a, int b) => a + b)} events',
+                    subtitle: ranked.take(3).map((MapEntry<String, int> item) =>
+                        '${item.key}: ${item.value}').join(' • '),
+                  ),
+                );
+              },
+            ),
             _WeaknessHistory(history: intelligence.weaknessHistory),
             const SizedBox(height: 18),
             ChessVerseButton(
