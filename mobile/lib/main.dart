@@ -5426,7 +5426,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     String playedMove,
     int ply,
   ) async {
-    final int reviewEpoch = ++_moveReviewEpoch;
+    // Multiple half-moves can finish analysis out of order. They all belong
+    // to the same game epoch and must be retained; only a board reset makes
+    // an outstanding result stale.
+    final int reviewEpoch = _moveReviewEpoch;
     try {
       final Map<String, dynamic> engine = await _engineApi.reviewMove(
         fen: fen,
@@ -5449,6 +5452,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               : '$recommendation was more accurate.');
       final String reviewText = '$classification • $explanation';
       final int cp = (engine['evaluationAfterCp'] as num?)?.toInt() ?? 0;
+      final int evaluationBeforeCp =
+          (engine['evaluationBeforeCp'] as num?)?.toInt() ?? 0;
       final int centipawnLoss = (engine['centipawnLoss'] as num?)?.toInt() ?? 0;
       final String opponentThreat = engine['opponentThreat'] as String? ?? '';
       final List<String> principalVariation =
@@ -5483,6 +5488,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             classification: classification,
             coachingTheme: engine['coachingTheme'] as String? ?? 'calculation',
             centipawnLoss: centipawnLoss,
+            evaluationBeforeCp: evaluationBeforeCp,
+            evaluationAfterCp: cp,
             opponentThreat: opponentThreat,
             explanation: explanation,
             principalVariation: principalVariation,
@@ -5495,6 +5502,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           );
         }
       });
+      if (_resultSaved) {
+        LocalGameArchive.updateLatestGameReviews(_moveReviews);
+      }
       _scheduleMoveQualityDismiss();
     } on EngineApiException {
       // Keep the immediate on-device coach feedback when analysis is offline.
@@ -6180,6 +6190,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         : Map<String, ChessPiece>.from(_initialPieces);
     _aiWatchdogTimer?.cancel();
     _aiMoveEpoch++;
+    _moveReviewEpoch++;
     setState(() {
       _applyPlayerSideNames(_playerDisplayName);
       _dailyChallenge = challenge;

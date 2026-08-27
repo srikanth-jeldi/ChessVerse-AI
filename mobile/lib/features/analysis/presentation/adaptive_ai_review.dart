@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -176,6 +177,20 @@ class _ReviewOverview extends StatelessWidget {
           ]),
         ),
         const SizedBox(height: 12),
+        _InsightCard(
+          icon: Icons.menu_book_rounded,
+          label: 'OPENING',
+          body: report.openingName,
+          color: const Color(0xFF50B8FF),
+        ),
+        if (report.insights
+                .where((AiMoveInsight item) => item.evaluationAfterCp != null)
+                .length >=
+            2) ...<Widget>[
+          const SizedBox(height: 12),
+          _EvaluationGraph(report: report),
+        ],
+        const SizedBox(height: 12),
         ChessVerseCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,6 +263,86 @@ class _ReviewOverview extends StatelessWidget {
       ],
     );
   }
+}
+
+class _EvaluationGraph extends StatelessWidget {
+  const _EvaluationGraph({required this.report});
+
+  final AiReviewReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<int> values = report.insights
+        .where((AiMoveInsight item) => item.evaluationAfterCp != null)
+        .map((AiMoveInsight item) => item.evaluationAfterCp!.clamp(-1000, 1000))
+        .toList(growable: false);
+    return ChessVerseCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Row(children: <Widget>[
+            Icon(Icons.show_chart_rounded, color: Color(0xFF59E4C8), size: 18),
+            SizedBox(width: 8),
+            Text('EVALUATION GRAPH',
+                style: TextStyle(
+                  color: Color(0xFF59E4C8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .9,
+                )),
+          ]),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 112,
+            width: double.infinity,
+            child: CustomPaint(painter: _EvaluationGraphPainter(values)),
+          ),
+          const SizedBox(height: 6),
+          const Text('Stockfish score after each reviewed player move',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+        ],
+      ),
+    );
+  }
+}
+
+class _EvaluationGraphPainter extends CustomPainter {
+  const _EvaluationGraphPainter(this.values);
+  final List<int> values;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint grid = Paint()
+      ..color = const Color(0xFF38505F)
+      ..strokeWidth = 1;
+    canvas.drawLine(
+        Offset(0, size.height / 2), Offset(size.width, size.height / 2), grid);
+    if (values.length < 2) return;
+    final Path path = Path();
+    for (int index = 0; index < values.length; index++) {
+      final double x = size.width * index / (values.length - 1);
+      final double normalized = (values[index] / 1000).clamp(-1, 1);
+      final double y = size.height / 2 - normalized * (size.height * .44);
+      if (index == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = const Color(0xFF59E4C8)
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..style = PaintingStyle.stroke,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _EvaluationGraphPainter oldDelegate) =>
+      !listEquals(oldDelegate.values, values);
 }
 
 class _QualityCount extends StatelessWidget {

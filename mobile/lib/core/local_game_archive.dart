@@ -13,6 +13,8 @@ class SavedMoveReview {
     required this.classification,
     this.coachingTheme = 'calculation',
     required this.centipawnLoss,
+    this.evaluationBeforeCp,
+    this.evaluationAfterCp,
     required this.opponentThreat,
     required this.explanation,
     required this.principalVariation,
@@ -25,6 +27,8 @@ class SavedMoveReview {
   final String classification;
   final String coachingTheme;
   final int centipawnLoss;
+  final int? evaluationBeforeCp;
+  final int? evaluationAfterCp;
   final String opponentThreat;
   final String explanation;
   final List<String> principalVariation;
@@ -38,6 +42,8 @@ class SavedMoveReview {
       classification: json['classification'] as String? ?? 'Unreviewed',
       coachingTheme: json['coachingTheme'] as String? ?? 'calculation',
       centipawnLoss: (json['centipawnLoss'] as num?)?.toInt() ?? 0,
+      evaluationBeforeCp: (json['evaluationBeforeCp'] as num?)?.toInt(),
+      evaluationAfterCp: (json['evaluationAfterCp'] as num?)?.toInt(),
       opponentThreat: json['opponentThreat'] as String? ?? '',
       explanation: json['explanation'] as String? ?? '',
       principalVariation:
@@ -55,6 +61,8 @@ class SavedMoveReview {
         'classification': classification,
         'coachingTheme': coachingTheme,
         'centipawnLoss': centipawnLoss,
+        'evaluationBeforeCp': evaluationBeforeCp,
+        'evaluationAfterCp': evaluationAfterCp,
         'opponentThreat': opponentThreat,
         'explanation': explanation,
         'principalVariation': principalVariation,
@@ -386,6 +394,27 @@ class LocalGameArchive {
     }
     unawaited(_persistGames());
     _notifyCloudChange();
+  }
+
+  /// Keeps late Stockfish responses durable when a game ends before the
+  /// network analysis request completes.
+  static void updateLatestGameReviews(List<SavedMoveReview> reviews) {
+    if (_games.isEmpty) return;
+    final SavedGameRecord current = _games.first;
+    _games[0] = SavedGameRecord(
+      mode: current.mode,
+      result: current.result,
+      detail: current.detail,
+      moves: current.moves,
+      playedAt: current.playedAt,
+      whitePlayer: current.whitePlayer,
+      blackPlayer: current.blackPlayer,
+      playerOutcome: current.playerOutcome,
+      moveReviews: List<SavedMoveReview>.from(reviews)
+        ..sort((SavedMoveReview a, SavedMoveReview b) => a.ply - b.ply),
+    );
+    unawaited(_persistGames());
+    activityRevision.value++;
   }
 
   static Future<void> _persistGames() async {
