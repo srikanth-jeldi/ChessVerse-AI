@@ -63,4 +63,15 @@ final class GameAnalysisDtos {
             java.util.Map<String, Integer> categoryCounts,
             List<WeaknessEventResponse> events) {
     }
+
+    record WindowTrend(int games, int moves, int averageAccuracy,
+            int averageCentipawnLoss, int mistakes, int blunders) {}
+
+    record RecommendationDimension(String dimension, String value,
+            int recommendations, int accepted, int resolved,
+            int improved, int successPercent) {}
+
+    record AnalysisTrendsResponse(
+            java.util.Map<String, WindowTrend> windows,
+            List<RecommendationDimension> recommendationOutcomes) {}
 }

@@ -11,19 +11,61 @@ class AiCoachAnswer {
     required this.answer,
     required this.remainingToday,
     required this.cacheHit,
+    required this.sessionId,
+    required this.comparisons,
+    required this.annotations,
+    required this.conversationTurns,
   });
 
   final String interactionId;
   final String answer;
   final int remainingToday;
   final bool cacheHit;
+  final String sessionId;
+  final List<AiCandidateComparison> comparisons;
+  final List<AiBoardAnnotation> annotations;
+  final int conversationTurns;
 
   factory AiCoachAnswer.fromJson(Map<String, dynamic> json) => AiCoachAnswer(
         interactionId: json['interactionId'] as String,
         answer: json['answer'] as String,
         remainingToday: (json['remainingToday'] as num).toInt(),
         cacheHit: json['cacheHit'] as bool? ?? false,
+        sessionId: json['sessionId'] as String,
+        comparisons: (json['comparisons'] as List<dynamic>? ?? <dynamic>[])
+            .whereType<Map<String, dynamic>>()
+            .map(AiCandidateComparison.fromJson)
+            .toList(growable: false),
+        annotations: (json['annotations'] as List<dynamic>? ?? <dynamic>[])
+            .whereType<Map<String, dynamic>>()
+            .map(AiBoardAnnotation.fromJson)
+            .toList(growable: false),
+        conversationTurns: (json['conversationTurns'] as num?)?.toInt() ?? 1,
       );
+}
+
+class AiCandidateComparison {
+  const AiCandidateComparison(
+      this.move, this.classification, this.centipawnLoss);
+  final String move;
+  final String classification;
+  final int centipawnLoss;
+  factory AiCandidateComparison.fromJson(Map<String, dynamic> json) =>
+      AiCandidateComparison(
+          json['move'] as String,
+          json['classification'] as String,
+          (json['centipawnLoss'] as num).toInt());
+}
+
+class AiBoardAnnotation {
+  const AiBoardAnnotation(this.from, this.to, this.kind, this.label);
+  final String from;
+  final String to;
+  final String kind;
+  final String label;
+  factory AiBoardAnnotation.fromJson(Map<String, dynamic> json) =>
+      AiBoardAnnotation(json['from'] as String, json['to'] as String,
+          json['kind'] as String, json['label'] as String);
 }
 
 class AiCoachImpact {
@@ -60,6 +102,8 @@ class AiCoachApi {
     required String fen,
     required String playedMove,
     required String question,
+    String? sessionId,
+    List<String> candidateMoves = const <String>[],
   }) async {
     try {
       final http.Response response = await http
@@ -69,10 +113,12 @@ class AiCoachApi {
               'Authorization': 'Bearer $token',
               'Content-Type': 'application/json',
             },
-            body: jsonEncode(<String, String>{
+            body: jsonEncode(<String, Object>{
               'fen': fen,
               'playedMove': playedMove,
               'question': question,
+              if (sessionId != null) 'sessionId': sessionId,
+              if (candidateMoves.isNotEmpty) 'candidateMoves': candidateMoves,
             }),
           )
           .timeout(const Duration(seconds: 20));
@@ -92,15 +138,44 @@ class AiCoachApi {
     }
   }
 
-  Future<void> feedback(String token, String interactionId, bool helpful) async {
+  Future<void> feedback(
+      String token, String interactionId, bool helpful) async {
     await http
         .patch(
-          Uri.parse('${AppConfig.apiBaseUrl}/api/v1/coach/interactions/$interactionId/feedback'),
+          Uri.parse(
+              '${AppConfig.apiBaseUrl}/api/v1/coach/interactions/$interactionId/feedback'),
           headers: <String, String>{
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
           },
           body: jsonEncode(<String, bool>{'helpful': helpful}),
+        )
+        .timeout(const Duration(seconds: 10));
+  }
+
+  Future<void> recommendationOutcome(
+    String token,
+    String interactionId, {
+    required String recommendationType,
+    required String playerColor,
+    required bool accepted,
+    int? followupCentipawnLoss,
+  }) async {
+    await http
+        .post(
+          Uri.parse(
+              '${AppConfig.apiBaseUrl}/api/v1/coach/interactions/$interactionId/outcome'),
+          headers: <String, String>{
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(<String, Object>{
+            'recommendationType': recommendationType,
+            'playerColor': playerColor.toLowerCase(),
+            'accepted': accepted,
+            if (followupCentipawnLoss != null)
+              'followupCentipawnLoss': followupCentipawnLoss,
+          }),
         )
         .timeout(const Duration(seconds: 10));
   }
@@ -111,9 +186,11 @@ class AiCoachApi {
       headers: <String, String>{'Authorization': 'Bearer $token'},
     ).timeout(const Duration(seconds: 15));
     final Object? decoded = jsonDecode(response.body);
-    if (response.statusCode < 200 || response.statusCode >= 300 ||
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
         decoded is! Map<String, dynamic>) {
-      throw const AiCoachApiException('AI improvement evidence is unavailable.');
+      throw const AiCoachApiException(
+          'AI improvement evidence is unavailable.');
     }
     return AiCoachImpact.fromJson(decoded);
   }

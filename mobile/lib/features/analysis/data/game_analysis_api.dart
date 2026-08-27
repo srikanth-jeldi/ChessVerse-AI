@@ -106,6 +106,71 @@ class CloudAnalysisJob {
   }
 }
 
+class AnalysisWindowTrend {
+  const AnalysisWindowTrend(
+      {required this.games,
+      required this.moves,
+      required this.averageAccuracy,
+      required this.averageCentipawnLoss,
+      required this.mistakes,
+      required this.blunders});
+  final int games;
+  final int moves;
+  final int averageAccuracy;
+  final int averageCentipawnLoss;
+  final int mistakes;
+  final int blunders;
+  factory AnalysisWindowTrend.fromJson(Map<String, dynamic> json) =>
+      AnalysisWindowTrend(
+          games: (json['games'] as num).toInt(),
+          moves: (json['moves'] as num).toInt(),
+          averageAccuracy: (json['averageAccuracy'] as num).toInt(),
+          averageCentipawnLoss: (json['averageCentipawnLoss'] as num).toInt(),
+          mistakes: (json['mistakes'] as num).toInt(),
+          blunders: (json['blunders'] as num).toInt());
+}
+
+class RecommendationDimension {
+  const RecommendationDimension(
+      {required this.dimension,
+      required this.value,
+      required this.recommendations,
+      required this.accepted,
+      required this.resolved,
+      required this.improved,
+      required this.successPercent});
+  final String dimension;
+  final String value;
+  final int recommendations;
+  final int accepted;
+  final int resolved;
+  final int improved;
+  final int successPercent;
+  factory RecommendationDimension.fromJson(Map<String, dynamic> json) =>
+      RecommendationDimension(
+          dimension: json['dimension'] as String,
+          value: json['value'] as String,
+          recommendations: (json['recommendations'] as num).toInt(),
+          accepted: (json['accepted'] as num).toInt(),
+          resolved: (json['resolved'] as num).toInt(),
+          improved: (json['improved'] as num).toInt(),
+          successPercent: (json['successPercent'] as num).toInt());
+}
+
+class AnalysisTrends {
+  const AnalysisTrends(this.windows, this.recommendationOutcomes);
+  final Map<String, AnalysisWindowTrend> windows;
+  final List<RecommendationDimension> recommendationOutcomes;
+  factory AnalysisTrends.fromJson(Map<String, dynamic> json) => AnalysisTrends(
+      (json['windows'] as Map<String, dynamic>).map(
+          (String key, dynamic value) => MapEntry(key,
+              AnalysisWindowTrend.fromJson(value as Map<String, dynamic>))),
+      (json['recommendationOutcomes'] as List<dynamic>? ?? <dynamic>[])
+          .whereType<Map<String, dynamic>>()
+          .map(RecommendationDimension.fromJson)
+          .toList(growable: false));
+}
+
 class GameAnalysisApi {
   const GameAnalysisApi();
 
@@ -117,7 +182,8 @@ class GameAnalysisApi {
     int depth = 16,
     String? playerColor,
     String? timeControl,
-  }) => _request(
+  }) =>
+      _request(
         'POST',
         '/api/v1/analysis/jobs',
         token,
@@ -137,25 +203,51 @@ class GameAnalysisApi {
   Future<CloudAnalysisJob> retry(String token, String id) =>
       _request('POST', '/api/v1/analysis/jobs/$id/retry', token);
 
-  Future<Map<String, int>> weaknessHistory(String token, {int limit = 100}) async {
+  Future<Map<String, int>> weaknessHistory(String token,
+      {int limit = 100}) async {
     try {
       final http.Response response = await http.get(
-        Uri.parse('${AppConfig.apiBaseUrl}/api/v1/analysis/jobs/weakness-history?limit=$limit'),
+        Uri.parse(
+            '${AppConfig.apiBaseUrl}/api/v1/analysis/jobs/weakness-history?limit=$limit'),
         headers: <String, String>{'Authorization': 'Bearer $token'},
       ).timeout(const Duration(seconds: 15));
       final Object? decoded = jsonDecode(response.body);
-      if (response.statusCode < 200 || response.statusCode >= 300 ||
+      if (response.statusCode < 200 ||
+          response.statusCode >= 300 ||
           decoded is! Map<String, dynamic>) {
-        throw const GameAnalysisApiException('Weakness history could not be loaded.');
+        throw const GameAnalysisApiException(
+            'Weakness history could not be loaded.');
       }
       final Map<String, dynamic> counts =
-          decoded['categoryCounts'] as Map<String, dynamic>? ?? <String, dynamic>{};
+          decoded['categoryCounts'] as Map<String, dynamic>? ??
+              <String, dynamic>{};
       return counts.map((String key, dynamic value) =>
           MapEntry<String, int>(key, (value as num).toInt()));
     } on GameAnalysisApiException {
       rethrow;
     } catch (_) {
       throw const GameAnalysisApiException('Could not reach weakness history.');
+    }
+  }
+
+  Future<AnalysisTrends> trends(String token) async {
+    try {
+      final http.Response response = await http.get(
+        Uri.parse('${AppConfig.apiBaseUrl}/api/v1/analysis/jobs/trends'),
+        headers: <String, String>{'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 15));
+      final Object? decoded = jsonDecode(response.body);
+      if (response.statusCode < 200 ||
+          response.statusCode >= 300 ||
+          decoded is! Map<String, dynamic>) {
+        throw const GameAnalysisApiException(
+            'Analysis trends could not be loaded.');
+      }
+      return AnalysisTrends.fromJson(decoded);
+    } on GameAnalysisApiException {
+      rethrow;
+    } catch (_) {
+      throw const GameAnalysisApiException('Could not reach analysis trends.');
     }
   }
 
@@ -172,9 +264,13 @@ class GameAnalysisApi {
         'Content-Type': 'application/json',
       };
       final http.Response response = method == 'GET'
-          ? await http.get(uri, headers: headers).timeout(const Duration(seconds: 20))
+          ? await http
+              .get(uri, headers: headers)
+              .timeout(const Duration(seconds: 20))
           : await http
-              .post(uri, headers: headers, body: body == null ? null : jsonEncode(body))
+              .post(uri,
+                  headers: headers,
+                  body: body == null ? null : jsonEncode(body))
               .timeout(const Duration(seconds: 20));
       final Object? decoded = jsonDecode(response.body);
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -189,7 +285,8 @@ class GameAnalysisApi {
     } on GameAnalysisApiException {
       rethrow;
     } catch (_) {
-      throw const GameAnalysisApiException('Could not reach the analysis service.');
+      throw const GameAnalysisApiException(
+          'Could not reach the analysis service.');
     }
   }
 }

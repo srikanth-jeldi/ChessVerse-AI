@@ -19,15 +19,18 @@ class GameAnalysisWorker {
     private final GamePositionAnalyzer analyzer;
     private final EcoOpeningBook openings;
     private final PlayerWeaknessEventRepository weaknessEvents;
+    private final RecommendationOutcomeResolver outcomeResolver;
 
     GameAnalysisWorker(GameAnalysisJobRepository jobs, GameAnalysisPlyRepository plies,
             GamePositionAnalyzer analyzer, EcoOpeningBook openings,
-            PlayerWeaknessEventRepository weaknessEvents) {
+            PlayerWeaknessEventRepository weaknessEvents,
+            RecommendationOutcomeResolver outcomeResolver) {
         this.jobs = jobs;
         this.plies = plies;
         this.analyzer = analyzer;
         this.openings = openings;
         this.weaknessEvents = weaknessEvents;
+        this.outcomeResolver = outcomeResolver;
     }
 
     @Async("gameAnalysisExecutor")
@@ -75,6 +78,7 @@ class GameAnalysisWorker {
                 weaknessEvents.saveAll(gameEvents);
             }
             job.complete();
+            outcomeResolver.resolveFromCompletedGame(job);
         } catch (EngineException exception) {
             job.fail("ENGINE_UNAVAILABLE", exception.getMessage());
         } catch (Exception exception) {

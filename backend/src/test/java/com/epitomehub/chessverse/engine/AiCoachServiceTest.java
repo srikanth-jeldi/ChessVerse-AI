@@ -3,6 +3,7 @@ package com.epitomehub.chessverse.engine;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -19,6 +20,7 @@ class AiCoachServiceTest {
     private AiCoachInteractionRepository interactions;
     private UUID playerId;
     private JdbcTemplate jdbc;
+    private AiRecommendationOutcomeRepository outcomes;
 
     @BeforeEach
     void setUp() {
@@ -27,7 +29,10 @@ class AiCoachServiceTest {
         interactions = mock(AiCoachInteractionRepository.class);
         playerId = UUID.randomUUID();
         jdbc = mock(JdbcTemplate.class);
-        when(interactions.countByPlayerIdAndCreatedAtAfter(any(), any())).thenReturn(0L);
+        outcomes = mock(AiRecommendationOutcomeRepository.class);
+        when(jdbc.queryForObject(anyString(), any(Class.class), any(), any(), any())).thenReturn(1);
+        when(interactions.findTop10ByPlayerIdAndSessionIdOrderByCreatedAtDesc(any(), any()))
+                .thenReturn(List.of());
         when(interactions.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(cache.findById(any())).thenReturn(Optional.empty());
         when(cache.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -39,10 +44,10 @@ class AiCoachServiceTest {
 
     @Test
     void answersFreeTextWhatIfWithStockfishEvidence() {
-        AiCoachService service = new AiCoachService(stockfish, cache, interactions, jdbc, 30, 168);
+        AiCoachService service = new AiCoachService(stockfish, cache, interactions, outcomes, jdbc, List.of(), 30, 168);
         var response = service.ask(playerId, new AiCoachController.CoachRequest(
                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                "e2e4", "What if I play f2f3 instead?", "f2f3"));
+                "e2e4", "What if I play f2f3 instead?", "f2f3", null, List.of("f2f3")));
 
         assertThat(response.answer()).contains("f2 → f3", "286 centipawn", "g1 → f3", "d8 → h4");
         assertThat(response.candidateMove()).isEqualTo("f2f3");
@@ -52,12 +57,12 @@ class AiCoachServiceTest {
 
     @Test
     void enforcesPerPlayerDailyQuotaBeforeRunningStockfish() {
-        when(interactions.countByPlayerIdAndCreatedAtAfter(any(), any())).thenReturn(3L);
-        AiCoachService service = new AiCoachService(stockfish, cache, interactions, jdbc, 3, 168);
+        when(jdbc.queryForObject(anyString(), any(Class.class), any(), any(), any())).thenReturn(null);
+        AiCoachService service = new AiCoachService(stockfish, cache, interactions, outcomes, jdbc, List.of(), 3, 168);
 
         assertThatThrownBy(() -> service.ask(playerId, new AiCoachController.CoachRequest(
                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                "e2e4", "Why?", null)))
+                "e2e4", "Why?", null, null, List.of())))
                 .isInstanceOf(EngineException.class)
                 .hasMessageContaining("daily AI Coach limit");
     }

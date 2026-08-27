@@ -22,6 +22,7 @@ class AnalysisScreen extends StatefulWidget {
 class _AnalysisScreenState extends State<AnalysisScreen> {
   late final Future<Map<String, int>> _cloudHistory = _loadCloudHistory();
   late final Future<AiCoachImpact?> _coachImpact = _loadCoachImpact();
+  late final Future<AnalysisTrends?> _serverTrends = _loadServerTrends();
 
   Future<Map<String, int>> _loadCloudHistory() async {
     final StoredAuthSession? session = await const AuthSessionStore().read();
@@ -38,6 +39,16 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     if (session == null || session.token.isEmpty) return null;
     try {
       return await const AiCoachApi().impact(session.token);
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<AnalysisTrends?> _loadServerTrends() async {
+    final StoredAuthSession? session = await const AuthSessionStore().read();
+    if (session == null || session.token.isEmpty) return null;
+    try {
+      return await const GameAnalysisApi().trends(session.token);
     } on Object {
       return null;
     }
@@ -166,6 +177,56 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             ),
             _ProgressTrend(points: intelligence.trend),
             const SizedBox(height: 12),
+            FutureBuilder<AnalysisTrends?>(
+              future: _serverTrends,
+              builder: (BuildContext context,
+                  AsyncSnapshot<AnalysisTrends?> snapshot) {
+                final AnalysisTrends? trends = snapshot.data;
+                if (trends == null) return const SizedBox.shrink();
+                return Column(children: <Widget>[
+                  ChessVerseCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        const Text('SERVER-VERIFIED 10 / 30 / 100 GAME TRENDS',
+                            style: TextStyle(
+                                color: AppColors.accentGold,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 10),
+                        for (final MapEntry<String, AnalysisWindowTrend> item
+                            in trends.windows.entries)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 7),
+                            child: Text(
+                              '${item.key.replaceFirst('last', 'Last ')} games: '
+                              '${item.value.averageAccuracy}% accuracy • '
+                              '${item.value.averageCentipawnLoss}cp average loss • '
+                              '${item.value.blunders} blunders',
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (trends.recommendationOutcomes.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 12),
+                    _AnalysisFeatureCard(
+                      icon: Icons.fact_check_rounded,
+                      title:
+                          'Recommendation outcomes by opening, colour and clock',
+                      subtitle: trends.recommendationOutcomes
+                          .take(6)
+                          .map(
+                            (RecommendationDimension item) =>
+                                '${item.dimension} ${item.value}: ${item.successPercent}% improved (${item.resolved} measured)',
+                          )
+                          .join(' • '),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                ]);
+              },
+            ),
             _AnalysisFeatureCard(
               icon: Icons.menu_book_rounded,
               title: 'Opening recommendation',
@@ -196,18 +257,24 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               future: _cloudHistory,
               builder: (BuildContext context,
                   AsyncSnapshot<Map<String, int>> snapshot) {
-                final Map<String, int> history = snapshot.data ?? <String, int>{};
+                final Map<String, int> history =
+                    snapshot.data ?? <String, int>{};
                 if (history.isEmpty) return const SizedBox.shrink();
-                final List<MapEntry<String, int>> ranked = history.entries.toList()
+                final List<MapEntry<String, int>> ranked = history.entries
+                    .toList()
                   ..sort((MapEntry<String, int> a, MapEntry<String, int> b) =>
                       b.value.compareTo(a.value));
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: _AnalysisFeatureCard(
                     icon: Icons.cloud_done_rounded,
-                    title: 'Cloud weakness history • ${history.values.fold<int>(0, (int a, int b) => a + b)} events',
-                    subtitle: ranked.take(3).map((MapEntry<String, int> item) =>
-                        '${item.key}: ${item.value}').join(' • '),
+                    title:
+                        'Cloud weakness history • ${history.values.fold<int>(0, (int a, int b) => a + b)} events',
+                    subtitle: ranked
+                        .take(3)
+                        .map((MapEntry<String, int> item) =>
+                            '${item.key}: ${item.value}')
+                        .join(' • '),
                   ),
                 );
               },

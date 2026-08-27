@@ -3,6 +3,9 @@ package com.epitomehub.chessverse.engine;
 import static com.epitomehub.chessverse.engine.AiCoachController.CoachRequest;
 import static com.epitomehub.chessverse.engine.AiCoachController.CoachResponse;
 import static com.epitomehub.chessverse.engine.AiCoachController.CoachImpact;
+import static com.epitomehub.chessverse.engine.AiCoachController.CandidateComparison;
+import static com.epitomehub.chessverse.engine.AiCoachController.BoardAnnotation;
+import static com.epitomehub.chessverse.engine.AiCoachController.RecommendationOutcomeRequest;
 import static com.epitomehub.chessverse.engine.EngineController.MoveReviewRequest;
 
 import java.nio.charset.StandardCharsets;
@@ -11,10 +14,11 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.List;
+import java.util.LinkedHashSet;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -26,7 +30,9 @@ class AiCoachService {
     private final StockfishService stockfish;
     private final AiCoachResponseCacheRepository cache;
     private final AiCoachInteractionRepository interactions;
+    private final AiRecommendationOutcomeRepository outcomes;
     private final JdbcTemplate jdbc;
+    private final List<CoachLanguageProvider> languageProviders;
     private final int dailyQuota;
     private final Duration cacheTtl;
 
@@ -34,48 +40,86 @@ class AiCoachService {
             StockfishService stockfish,
             AiCoachResponseCacheRepository cache,
             AiCoachInteractionRepository interactions,
+            AiRecommendationOutcomeRepository outcomes,
             JdbcTemplate jdbc,
+            List<CoachLanguageProvider> languageProviders,
             @Value("${chessverse.coach.daily-quota:30}") int dailyQuota,
             @Value("${chessverse.coach.cache-hours:168}") long cacheHours) {
         this.stockfish = stockfish;
         this.cache = cache;
         this.interactions = interactions;
+        this.outcomes = outcomes;
         this.jdbc = jdbc;
+        this.languageProviders = languageProviders;
         this.dailyQuota = Math.max(1, dailyQuota);
         this.cacheTtl = Duration.ofHours(Math.max(1, cacheHours));
     }
 
     @Transactional
     CoachResponse ask(UUID playerId, CoachRequest request) {
-        Instant startOfDay = LocalDate.now(ZoneOffset.UTC).atStartOfDay().toInstant(ZoneOffset.UTC);
-        long used = interactions.countByPlayerIdAndCreatedAtAfter(playerId, startOfDay);
-        if (used >= dailyQuota) {
+        Integer used = jdbc.queryForObject(
+                "with usage as (insert into ai_coach_daily_usage(player_id, usage_date, used_count) "
+                        + "values (?, ?, 1) on conflict(player_id, usage_date) do update "
+                        + "set used_count=ai_coach_daily_usage.used_count+1 "
+                        + "where ai_coach_daily_usage.used_count < ? returning used_count) "
+                        + "select used_count from usage",
+                Integer.class, playerId, LocalDate.now(java.time.ZoneOffset.UTC), dailyQuota);
+        if (used == null) {
             throw new EngineException(HttpStatus.TOO_MANY_REQUESTS,
                     "Your daily AI Coach limit is reached. Your saved analysis remains available.");
         }
 
+        UUID sessionId = request.sessionId() == null ? UUID.randomUUID() : request.sessionId();
+        List<AiCoachInteraction> history = interactions
+                .findTop10ByPlayerIdAndSessionIdOrderByCreatedAtDesc(playerId, sessionId);
+        String context = history.isEmpty() ? "" : history.getFirst().question;
         String candidate = cleanCandidate(request.candidateMove(), request.question());
         String moveToReview = candidate == null ? request.playedMove().toLowerCase(Locale.ROOT) : candidate;
         var evidence = stockfish.reviewMove(new MoveReviewRequest(request.fen(), moveToReview, 8));
         String normalizedQuestion = normalizeQuestion(request.question());
-        String key = sha256(request.fen().trim() + "|" + moveToReview + "|" + normalizedQuestion);
+        String key = sha256(request.fen().trim() + "|" + moveToReview + "|" + normalizedQuestion + "|" + context);
         Instant now = Instant.now();
         AiCoachResponseCache cached = cache.findById(key)
                 .filter(item -> item.expiresAt.isAfter(now))
                 .orElse(null);
         boolean cacheHit = cached != null;
-        String answer = cacheHit ? cached.answer : answer(normalizedQuestion, moveToReview, candidate, evidence);
+        String answer = cacheHit ? cached.answer : naturalAnswer(
+                request, normalizedQuestion, moveToReview, candidate, evidence, context);
         if (!cacheHit) {
             String engineEvidence = String.join(" ", evidence.principalVariation());
             cache.save(new AiCoachResponseCache(key, answer, engineEvidence, now, now.plus(cacheTtl)));
         }
-        AiCoachInteraction interaction = interactions.save(
-                new AiCoachInteraction(playerId, key, request.question().trim(), candidate, cacheHit));
-        int remaining = Math.max(0, dailyQuota - (int) used - 1);
+        List<CandidateComparison> comparisons = compareCandidates(request, evidence);
+        List<BoardAnnotation> annotations = annotations(evidence, candidate);
+        AiCoachInteraction interaction = interactions.save(new AiCoachInteraction(
+                playerId, sessionId, key, request.question().trim(), candidate, cacheHit, answer, evidence));
+        int remaining = Math.max(0, dailyQuota - used);
         return new CoachResponse(
-                interaction.id, answer, evidence.classification(), evidence.bestMove(), candidate,
+                interaction.id, sessionId, answer, evidence.classification(), evidence.bestMove(), candidate,
                 evidence.centipawnLoss(), evidence.opponentThreat(), evidence.principalVariation(),
-                cacheHit, remaining);
+                comparisons, annotations, history.size() + 1, cacheHit, remaining);
+    }
+
+    private String naturalAnswer(CoachRequest request, String normalizedQuestion, String move,
+            String candidate, EngineController.MoveReviewResponse evidence, String previousQuestion) {
+        CoachLanguageProvider provider = languageProviders.stream()
+                .filter(CoachLanguageProvider::enabled)
+                .findFirst()
+                .orElse(null);
+        if (provider != null) {
+            try {
+                String generated = provider.explain(new CoachLanguageProvider.CoachLanguageContext(
+                        request.fen().trim(), request.question().trim(), previousQuestion, move, candidate,
+                        evidence.classification(), evidence.bestMove(), evidence.centipawnLoss(),
+                        evidence.opponentThreat(), evidence.principalVariation()));
+                if (generated != null && !generated.isBlank()) {
+                    return generated.trim();
+                }
+            } catch (RuntimeException ignored) {
+                // A language provider is optional. Stockfish-grounded structured coaching remains available.
+            }
+        }
+        return answer(normalizedQuestion, move, candidate, evidence, previousQuestion);
     }
 
     @Transactional
@@ -84,6 +128,25 @@ class AiCoachService {
                 .filter(item -> item.playerId.equals(playerId))
                 .orElseThrow(() -> new EngineException(HttpStatus.NOT_FOUND, "Coach interaction was not found."));
         interaction.helpful = helpful;
+    }
+
+    @Transactional
+    void recordOutcome(UUID playerId, UUID interactionId, RecommendationOutcomeRequest request) {
+        AiCoachInteraction interaction = interactions.findById(interactionId)
+                .filter(item -> item.playerId.equals(playerId))
+                .orElseThrow(() -> new EngineException(HttpStatus.NOT_FOUND, "Coach interaction was not found."));
+        AiRecommendationOutcome outcome = outcomes.findByInteractionIdAndPlayerId(interactionId, playerId)
+                .orElseGet(() -> new AiRecommendationOutcome(
+                        playerId, interactionId, request.recommendationType(), request.openingEco(),
+                        request.playerColor(), request.timeControl(), request.accepted(),
+                        interaction.centipawnLoss == null ? 0 : interaction.centipawnLoss,
+                        request.followupCentipawnLoss()));
+        outcome.accepted = request.accepted();
+        if (request.followupCentipawnLoss() != null) {
+            outcome.followupCentipawnLoss = request.followupCentipawnLoss();
+            outcome.resolvedAt = Instant.now();
+        }
+        outcomes.save(outcome);
     }
 
     @Transactional(readOnly = true)
@@ -120,33 +183,68 @@ class AiCoachService {
                         : "Complete at least 10 analyzed games and 100 reviewed moves before improvement is claimed.");
     }
 
-    private String answer(String question, String move, String candidate, EngineController.MoveReviewResponse evidence) {
+    private String answer(String question, String move, String candidate,
+            EngineController.MoveReviewResponse evidence, String previousQuestion) {
         String best = pretty(evidence.bestMove());
         String played = pretty(move);
         String line = evidence.principalVariation().isEmpty()
                 ? "No forcing continuation was returned."
                 : "A concrete line is " + evidence.principalVariation().stream().limit(6).map(AiCoachService::pretty)
                         .reduce((a, b) -> a + " → " + b).orElse("") + ".";
+        String memory = previousQuestion.isBlank() ? "" : "Following your earlier question, \""
+                + previousQuestion.substring(0, Math.min(90, previousQuestion.length())) + "\": ";
         if (candidate != null || question.contains("what if") || question.contains("instead")) {
-            return "If you play " + played + ", Stockfish grades it " + evidence.classification().toLowerCase(Locale.ROOT)
+            return memory + "If you play " + played + ", Stockfish grades it " + evidence.classification().toLowerCase(Locale.ROOT)
                     + " with a " + evidence.centipawnLoss() + " centipawn loss. "
                     + (evidence.centipawnLoss() <= 30 ? "It is a sound practical choice. " : "The stronger move is " + best + ". ")
                     + "The opponent's most forcing reply is " + pretty(evidence.opponentThreat()) + ". " + line;
         }
         if (question.contains("threat") || question.contains("opponent")) {
-            return "The immediate engine threat is " + pretty(evidence.opponentThreat()) + ". " + line;
+            return memory + "The immediate engine threat is " + pretty(evidence.opponentThreat()) + ". " + line;
         }
         if (question.contains("simple") || question.contains("easy")) {
-            return evidence.centipawnLoss() <= 30
+            return memory + (evidence.centipawnLoss() <= 30
                     ? played + " is a good move. It keeps the position under control."
-                    : played + " gives the opponent a stronger reply. Prefer " + best + " and check their forcing move first.";
+                    : played + " gives the opponent a stronger reply. Prefer " + best + " and check their forcing move first.");
         }
         if (question.contains("best") || question.contains("play") || question.contains("plan")) {
-            return "Play " + best + ". It preserves more of your position and meets the immediate reply "
+            return memory + "Play " + best + ". It preserves more of your position and meets the immediate reply "
                     + pretty(evidence.opponentThreat()) + ". " + line;
         }
-        return played + " was graded " + evidence.classification().toLowerCase(Locale.ROOT) + ". "
+        return memory + played + " was graded " + evidence.classification().toLowerCase(Locale.ROOT) + ". "
                 + evidence.explanation() + " " + line;
+    }
+
+    private List<CandidateComparison> compareCandidates(CoachRequest request,
+            EngineController.MoveReviewResponse primary) {
+        LinkedHashSet<String> moves = new LinkedHashSet<>();
+        if (request.candidateMoves() != null) {
+            request.candidateMoves().stream().map(value -> value.toLowerCase(Locale.ROOT)).forEach(moves::add);
+        }
+        if (request.candidateMove() != null && !request.candidateMove().isBlank()) {
+            moves.add(request.candidateMove().toLowerCase(Locale.ROOT));
+        }
+        return moves.stream().limit(3).map(move -> {
+            EngineController.MoveReviewResponse reviewed = move.equalsIgnoreCase(primary.playedMove())
+                    ? primary
+                    : stockfish.reviewMove(new MoveReviewRequest(request.fen(), move, 8));
+            return new CandidateComparison(move, reviewed.classification(), reviewed.centipawnLoss(),
+                    reviewed.opponentThreat(), reviewed.principalVariation());
+        }).toList();
+    }
+
+    private static List<BoardAnnotation> annotations(EngineController.MoveReviewResponse evidence, String candidate) {
+        java.util.ArrayList<BoardAnnotation> result = new java.util.ArrayList<>();
+        addArrow(result, evidence.bestMove(), "best", "Best move");
+        addArrow(result, evidence.opponentThreat(), "threat", "Opponent threat");
+        if (candidate != null) addArrow(result, candidate, "candidate", "Your candidate");
+        return List.copyOf(result);
+    }
+
+    private static void addArrow(List<BoardAnnotation> target, String move, String kind, String label) {
+        if (move != null && move.length() >= 4) {
+            target.add(new BoardAnnotation(move.substring(0, 2), move.substring(2, 4), kind, label));
+        }
     }
 
     private static String cleanCandidate(String explicit, String question) {

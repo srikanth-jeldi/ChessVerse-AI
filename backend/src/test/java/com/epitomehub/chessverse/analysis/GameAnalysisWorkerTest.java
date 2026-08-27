@@ -42,7 +42,8 @@ class GameAnalysisWorkerTest {
                 .thenReturn(result());
         when(openings.find(any(String.class))).thenReturn(Optional.empty());
 
-        new GameAnalysisWorker(repository, plies, analyzer, openings, weaknessEvents).process(job.id);
+        RecommendationOutcomeResolver outcomes = mock(RecommendationOutcomeResolver.class);
+        new GameAnalysisWorker(repository, plies, analyzer, openings, weaknessEvents, outcomes).process(job.id);
 
         assertEquals(AnalysisJobStatus.COMPLETED, job.status);
         assertEquals(3, job.analyzedPlies);
@@ -57,6 +58,7 @@ class GameAnalysisWorkerTest {
         assertEquals("e2e4", evidence.getAllValues().get(0).playedMove);
         assertEquals(1, evidence.getAllValues().get(0).ply);
         assertEquals(3, evidence.getAllValues().get(2).ply);
+        verify(outcomes).resolveFromCompletedGame(job);
     }
 
     @Test
@@ -78,7 +80,8 @@ class GameAnalysisWorkerTest {
         when(analyzer.analyze(any(String.class), any(String.class), any(Integer.class))).thenReturn(result());
         when(openings.find(any(String.class))).thenReturn(Optional.empty());
 
-        new GameAnalysisWorker(repository, plies, analyzer, openings, weaknessEvents).process(job.id);
+        new GameAnalysisWorker(repository, plies, analyzer, openings, weaknessEvents,
+                mock(RecommendationOutcomeResolver.class)).process(job.id);
 
         assertEquals(AnalysisJobStatus.COMPLETED, job.status);
         verify(analyzer, times(1)).analyze(
@@ -105,12 +108,14 @@ class GameAnalysisWorkerTest {
                 .thenReturn(result());
         when(openings.find(any(String.class))).thenReturn(Optional.empty());
 
-        new GameAnalysisWorker(repository, plies, analyzer, openings, weaknessEvents).process(job.id);
+        RecommendationOutcomeResolver outcomes = mock(RecommendationOutcomeResolver.class);
+        new GameAnalysisWorker(repository, plies, analyzer, openings, weaknessEvents, outcomes).process(job.id);
 
         assertEquals(AnalysisJobStatus.FAILED, job.status);
         assertEquals("INVALID_GAME", job.errorCode);
         assertEquals("Illegal move at ply 3.", job.errorMessage);
         assertEquals(2, job.analyzedPlies);
+        verify(outcomes, times(0)).resolveFromCompletedGame(job);
 
         job.queueForRetry();
         assertEquals(AnalysisJobStatus.QUEUED, job.status);
