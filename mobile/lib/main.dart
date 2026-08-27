@@ -6592,7 +6592,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
     final List<String> fenParts = fen.split(RegExp(r'\s+'));
-    Navigator.of(context).pop();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       showDialog<void>(
@@ -6621,7 +6620,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         .reversed
         .toList(growable: false);
     if (puzzles.isEmpty) return;
-    Navigator.of(context).pop();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _openMistakePuzzle(puzzles, 0);
     });
@@ -8235,7 +8233,7 @@ class _ReviewedPositionRetryDialogState
                 final String blackCaptured = _capturedPieces(false);
                 return Text(
                   whiteCaptured.isEmpty && blackCaptured.isEmpty
-                      ? 'Exact game snapshot restored • No captures yet'
+                      ? 'Starting position restored • All pieces on board'
                       : 'Exact game snapshot restored • Missing White: ${whiteCaptured.isEmpty ? '—' : whiteCaptured}  Black: ${blackCaptured.isEmpty ? '—' : blackCaptured}',
                   style: const TextStyle(
                     color: Color(0xFF63D2B8),

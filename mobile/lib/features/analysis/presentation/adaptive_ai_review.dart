@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
+import '../../auth/data/auth_session_store.dart';
+import '../data/ai_coach_api.dart';
 import '../domain/ai_review_report.dart';
 import '../domain/personal_ai_coach.dart';
 
@@ -16,6 +18,7 @@ Future<void> showAdaptiveAiReview(
   if (viewport.width >= 900 && viewport.height >= 620) {
     return showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (BuildContext context) => Dialog(
         insetPadding: const EdgeInsets.all(28),
         backgroundColor: const Color(0xFF061722),
@@ -34,6 +37,8 @@ Future<void> showAdaptiveAiReview(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
+    isDismissible: false,
+    enableDrag: false,
     backgroundColor: const Color(0xFF061722),
     builder: (BuildContext context) => FractionallySizedBox(
       heightFactor: .94,
@@ -693,6 +698,59 @@ class _InteractiveCoachDialog extends StatefulWidget {
 
 class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
   CoachQuestion _question = CoachQuestion.whyBad;
+  final TextEditingController _controller = TextEditingController();
+  bool _loading = false;
+  String? _answer;
+  AiCoachAnswer? _cloudAnswer;
+  String? _token;
+
+  @override
+  void initState() {
+    super.initState();
+    _answer = PersonalAiCoach.answer(widget.insight, _question);
+    _loadSession();
+  }
+
+  Future<void> _loadSession() async {
+    final session = await const AuthSessionStore().read();
+    if (mounted) setState(() => _token = session?.token);
+  }
+
+  Future<void> _ask() async {
+    final String question = _controller.text.trim();
+    final String? fen = widget.insight.fenBefore;
+    if (question.isEmpty || fen == null || fen.isEmpty || _loading) return;
+    final String? token = _token;
+    if (token == null || token.isEmpty) {
+      setState(() => _answer =
+          'Sign in to ask free-text and “what if” questions. The engine-backed quick questions below remain available.');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final AiCoachAnswer result = await const AiCoachApi().ask(
+        token,
+        fen: fen,
+        playedMove: widget.insight.playedMove ?? widget.insight.notation,
+        question: question,
+      );
+      if (!mounted) return;
+      setState(() {
+        _answer = result.answer;
+        _cloudAnswer = result;
+      });
+    } on AiCoachApiException catch (error) {
+      if (mounted) setState(() => _answer = error.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => AlertDialog(
@@ -709,10 +767,52 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Text(
-                  PersonalAiCoach.answer(widget.insight, _question),
+                  _answer!,
                   style: const TextStyle(height: 1.45),
                 ),
                 const SizedBox(height: 18),
+                TextField(
+                  controller: _controller,
+                  minLines: 1,
+                  maxLines: 3,
+                  maxLength: 500,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _ask(),
+                  decoration: InputDecoration(
+                    labelText: 'Ask about this exact position',
+                    hintText: 'Example: What if I play f2f3 instead?',
+                    suffixIcon: _loading
+                        ? const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : IconButton(
+                            onPressed: _ask,
+                            icon: const Icon(Icons.send_rounded),
+                          ),
+                  ),
+                ),
+                if (_cloudAnswer != null) ...<Widget>[
+                  Text('${_cloudAnswer!.remainingToday} coach questions remaining today',
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 11)),
+                  Row(children: <Widget>[
+                    const Text('Was this useful?', style: TextStyle(fontSize: 12)),
+                    IconButton(
+                      tooltip: 'Helpful',
+                      onPressed: () => const AiCoachApi().feedback(
+                          _token!, _cloudAnswer!.interactionId, true),
+                      icon: const Icon(Icons.thumb_up_alt_outlined, size: 18),
+                    ),
+                    IconButton(
+                      tooltip: 'Not helpful',
+                      onPressed: () => const AiCoachApi().feedback(
+                          _token!, _cloudAnswer!.interactionId, false),
+                      icon: const Icon(Icons.thumb_down_alt_outlined, size: 18),
+                    ),
+                  ]),
+                ],
+                const SizedBox(height: 8),
                 const Text('ASK A FOLLOW-UP',
                     style: TextStyle(
                       color: AppColors.accentGold,
@@ -729,7 +829,11 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
                       ChoiceChip(
                         label: Text(PersonalAiCoach.label(question)),
                         selected: _question == question,
-                        onSelected: (_) => setState(() => _question = question),
+                        onSelected: (_) => setState(() {
+                          _question = question;
+                          _answer = PersonalAiCoach.answer(widget.insight, question);
+                          _cloudAnswer = null;
+                        }),
                       ),
                   ],
                 ),
