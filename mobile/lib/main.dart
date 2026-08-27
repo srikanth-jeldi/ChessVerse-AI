@@ -2521,6 +2521,72 @@ class AiCandidate {
   final String? promotion;
 }
 
+double _aiPieceValue(String code) => switch (code) {
+      'P' => 1.0,
+      'N' => 3.2,
+      'B' => 3.3,
+      'R' => 5.0,
+      'Q' => 9.0,
+      'K' => 100.0,
+      _ => 0.0,
+    };
+
+/// Scores a local AI move defensively when Stockfish cannot be reached.
+/// The previous offline fallback ignored the opponent's next reply and could
+/// hang major pieces. This one-ply safety pass prevents those obvious blunders.
+double scoreOfflineAiCandidate(
+  AiCandidate candidate,
+  Map<String, ChessPiece> pieces, {
+  required bool aiPlaysWhite,
+}) {
+  final ChessPiece? moving = pieces[candidate.from];
+  if (moving == null || moving.white != aiPlaysWhite) {
+    return double.negativeInfinity;
+  }
+  final ChessPiece? captured = pieces[candidate.to];
+  final Map<String, ChessPiece> after = ChessRules.applyMove(
+    candidate.from,
+    candidate.to,
+    pieces,
+  );
+  if (!ChessRules.hasOneKingPerSide(after)) {
+    return double.negativeInfinity;
+  }
+
+  double material(Map<String, ChessPiece> board) => board.values.fold<double>(
+        0,
+        (double total, ChessPiece piece) =>
+            total +
+            (piece.white == aiPlaysWhite ? 1 : -1) * _aiPieceValue(piece.code),
+      );
+
+  double worstReply = material(after);
+  bool opponentHasReply = false;
+  for (final MapEntry<String, ChessPiece> entry in after.entries) {
+    if (entry.value.white == aiPlaysWhite) continue;
+    for (final String target in ChessRules.safeLegalTargets(entry.key, after)) {
+      opponentHasReply = true;
+      final Map<String, ChessPiece> replied = ChessRules.applyMove(
+        entry.key,
+        target,
+        after,
+      );
+      worstReply = math.min(worstReply, material(replied));
+    }
+  }
+
+  final bool givesCheck = ChessRules.isKingInCheck(!aiPlaysWhite, after);
+  final bool checkmate = givesCheck && !opponentHasReply;
+  final SquarePosition target = ChessRules.positionOf(candidate.to);
+  final double centre =
+      3.5 - (target.file - 3.5).abs() + 3.5 - (target.rank - 4.5).abs();
+  return worstReply * 100 +
+      (captured == null ? 0 : _aiPieceValue(captured.code) * 12) +
+      centre +
+      (givesCheck ? 8 : 0) +
+      (checkmate ? 100000 : 0);
+}
+
 AiCandidate chooseAiCandidateForLevel(
   List<AiCandidate> sortedCandidates,
   int level,
@@ -2709,6 +2775,16 @@ class ChessRules {
 
   static bool isInside(int file, int rank) {
     return file >= 0 && file < 8 && rank >= 1 && rank <= 8;
+  }
+
+  static bool hasOneKingPerSide(Map<String, ChessPiece> pieces) {
+    int whiteKings = 0;
+    int blackKings = 0;
+    for (final ChessPiece piece in pieces.values) {
+      if (piece.code != 'K') continue;
+      piece.white ? whiteKings++ : blackKings++;
+    }
+    return whiteKings == 1 && blackKings == 1;
   }
 
   static List<String> legalTargets(
@@ -5113,6 +5189,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         throw StateError('Invalid curated puzzle FEN: $fen');
       }
     }
+    if (!ChessRules.hasOneKingPerSide(pieces)) {
+      throw StateError('Invalid chess FEN (expected one king per side): $fen');
+    }
     return pieces;
   }
 
@@ -5177,6 +5256,20 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _handleSquareTap(String square) {
+    // A playable game must always contain exactly one king per side. Never
+    // let a malformed/restored state continue accepting moves as seen in the
+    // reported king-less board recording.
+    if (!ChessRules.hasOneKingPerSide(_pieces)) {
+      _reset();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _coachNote =
+              'Invalid board detected and safely reset. Kings cannot be captured.';
+        });
+      });
+      return;
+    }
     // Hint/Analyze results belong to one exact board position. Invalidate
     // in-flight work before processing a touch so a late engine response
     // cannot paint an old move on the current board.
@@ -5837,6 +5930,21 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
 
+    if (!ChessRules.hasOneKingPerSide(_pieces)) {
+      _aiWatchdogTimer?.cancel();
+      setState(() {
+        _aiThinking = false;
+        _pieces = Map<String, ChessPiece>.from(_initialPieces);
+        _moves.clear();
+        _history.clear();
+        _capturedWhite.clear();
+        _capturedBlack.clear();
+        _coachNote =
+            'An invalid board was detected and safely reset. No king can be captured.';
+      });
+      return;
+    }
+
     final List<AiCandidate> candidates = <AiCandidate>[];
     for (final MapEntry<String, ChessPiece> entry in _pieces.entries) {
       if (entry.value.white != aiPlaysWhite) {
@@ -5849,23 +5957,23 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             (targetPosition.file - 3.5).abs() +
             3.5 -
             (targetPosition.rank - 4.5).abs();
-        final double captureScore = captured == null
-            ? 0
-            : <String, double>{
-                  'P': 1,
-                  'N': 3.2,
-                  'B': 3.3,
-                  'R': 5,
-                  'Q': 9,
-                  'K': 100,
-                }[captured.code] ??
-                0;
+        double captureScore = 0.0;
+        if (captured != null) {
+          captureScore = _aiPieceValue(captured.code);
+        }
+        final AiCandidate candidate = AiCandidate(
+          entry.key,
+          target,
+          captureScore * 10 + centerBonus + _random.nextDouble(),
+        );
+        final double safeScore = scoreOfflineAiCandidate(
+          candidate,
+          _pieces,
+          aiPlaysWhite: aiPlaysWhite,
+        );
         candidates.add(
-          AiCandidate(
-            entry.key,
-            target,
-            captureScore * 10 + centerBonus + _random.nextDouble(),
-          ),
+          AiCandidate(entry.key, target, safeScore,
+              promotion: candidate.promotion),
         );
       }
     }
@@ -5885,9 +5993,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     candidates.sort(
       (AiCandidate a, AiCandidate b) => b.score.compareTo(a.score),
     );
+    final int selectionLevel =
+        widget.useRemoteEngine && level >= 4 && engineMove == null ? 10 : level;
     final AiCandidate move = chooseAiCandidateForLevel(
       candidates,
-      level,
+      selectionLevel,
       _random,
       engineMove: engineMove,
     );

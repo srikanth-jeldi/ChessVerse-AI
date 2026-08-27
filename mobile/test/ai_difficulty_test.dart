@@ -4,6 +4,48 @@ import 'package:chessverse_ai/main.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('offline safety score rejects a one-move queen blunder', () {
+    const Map<String, ChessPiece> board = <String, ChessPiece>{
+      'e1': ChessPiece('K', true),
+      'a1': ChessPiece('R', true),
+      'e8': ChessPiece('K', false),
+      'a8': ChessPiece('Q', false),
+    };
+    const AiCandidate hangingQueen = AiCandidate('a8', 'a2', 0);
+    const AiCandidate safeQueen = AiCandidate('a8', 'b8', 0);
+
+    expect(
+      scoreOfflineAiCandidate(
+        safeQueen,
+        board,
+        aiPlaysWhite: false,
+      ),
+      greaterThan(
+        scoreOfflineAiCandidate(
+          hangingQueen,
+          board,
+          aiPlaysWhite: false,
+        ),
+      ),
+    );
+  });
+
+  test('board integrity requires exactly one king for each side', () {
+    expect(
+      ChessRules.hasOneKingPerSide(const <String, ChessPiece>{
+        'e1': ChessPiece('K', true),
+        'e8': ChessPiece('K', false),
+      }),
+      isTrue,
+    );
+    expect(
+      ChessRules.hasOneKingPerSide(const <String, ChessPiece>{
+        'e1': ChessPiece('K', true),
+      }),
+      isFalse,
+    );
+  });
+
   test('beginner thinks more slowly than grandmaster', () {
     expect(aiThinkDelayFor(1), greaterThan(aiThinkDelayFor(10)));
   });
