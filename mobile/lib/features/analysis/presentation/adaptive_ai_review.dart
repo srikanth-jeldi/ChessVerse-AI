@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../domain/ai_review_report.dart';
+import '../domain/personal_ai_coach.dart';
 
 Future<void> showAdaptiveAiReview(
   BuildContext context, {
@@ -260,6 +261,32 @@ class _ReviewOverview extends StatelessWidget {
               '${report.trainingFocus}\n\nRecommended: ${report.recommendedLesson}',
           color: const Color(0xFF59E4C8),
         ),
+        const SizedBox(height: 12),
+        ChessVerseCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Text('PERSONAL TRAINING PLAN',
+                  style: TextStyle(
+                    color: Color(0xFF59E4C8),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .9,
+                  )),
+              const SizedBox(height: 9),
+              for (int index = 0;
+                  index < report.trainingRecommendations.length;
+                  index++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 7),
+                  child: Text(
+                    '${index + 1}. ${report.trainingRecommendations[index]}',
+                    style: const TextStyle(height: 1.35),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -499,13 +526,10 @@ class _MoveTimeline extends StatelessWidget {
                                 runSpacing: 8,
                                 children: <Widget>[
                                   _ReviewAction(
-                                    icon: Icons.lightbulb_outline_rounded,
-                                    label: 'Explain simply',
-                                    onTap: () => _showReviewDetail(
-                                      context,
-                                      'Why this move?',
-                                      _detailedExplanation(insight),
-                                    ),
+                                    icon: Icons.psychology_alt_rounded,
+                                    label: 'Ask AI Coach',
+                                    onTap: () =>
+                                        _showInteractiveCoach(context, insight),
                                   ),
                                   _ReviewAction(
                                     icon: Icons.warning_amber_rounded,
@@ -544,16 +568,78 @@ String _variationText(AiMoveInsight insight) => insight
     ? 'No additional principal variation was returned.'
     : 'Engine continuation: ${insight.principalVariation.take(6).join(' → ')}';
 
-String _detailedExplanation(AiMoveInsight insight) {
-  final String loss = insight.centipawnLoss == null
-      ? 'Evaluation change unavailable.'
-      : insight.centipawnLoss == 0
-          ? 'The engine found no measurable evaluation loss.'
-          : 'This move lost ${insight.centipawnLoss} centipawns compared with the best continuation.';
-  final String theme = (insight.coachingTheme ?? 'calculation')
-      .replaceAllMapped(
-          RegExp(r'([A-Z])'), (Match match) => ' ${match[1]!.toLowerCase()}');
-  return '${insight.explanation}\n\n$loss\n\nBest move: ${insight.bestMove ?? '—'}\nOpponent threat: ${insight.opponentThreat ?? 'No forcing threat detected'}\nTraining theme: $theme\n\n${_variationText(insight)}';
+Future<void> _showInteractiveCoach(
+  BuildContext context,
+  AiMoveInsight insight,
+) {
+  return showDialog<void>(
+    context: context,
+    builder: (BuildContext context) => _InteractiveCoachDialog(insight),
+  );
+}
+
+class _InteractiveCoachDialog extends StatefulWidget {
+  const _InteractiveCoachDialog(this.insight);
+  final AiMoveInsight insight;
+
+  @override
+  State<_InteractiveCoachDialog> createState() =>
+      _InteractiveCoachDialogState();
+}
+
+class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
+  CoachQuestion _question = CoachQuestion.whyBad;
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Row(children: <Widget>[
+          Icon(Icons.auto_awesome_rounded, color: Color(0xFF59E4C8)),
+          SizedBox(width: 9),
+          Text('Personal AI Coach'),
+        ]),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  PersonalAiCoach.answer(widget.insight, _question),
+                  style: const TextStyle(height: 1.45),
+                ),
+                const SizedBox(height: 18),
+                const Text('ASK A FOLLOW-UP',
+                    style: TextStyle(
+                      color: AppColors.accentGold,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: .8,
+                    )),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: <Widget>[
+                    for (final CoachQuestion question in CoachQuestion.values)
+                      ChoiceChip(
+                        label: Text(PersonalAiCoach.label(question)),
+                        selected: _question == question,
+                        onSelected: (_) => setState(() => _question = question),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: <Widget>[
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Back to review'),
+          ),
+        ],
+      );
 }
 
 class _ReviewAction extends StatelessWidget {

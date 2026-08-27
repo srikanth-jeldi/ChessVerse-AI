@@ -34,6 +34,7 @@ void main() {
     expect(report.insights.single.principalVariation, <String>['d2d4', 'd7d5']);
     expect(report.insights.single.evaluationAfterCp, -26);
     expect(report.openingName, "King's Pawn Opening");
+    expect(report.trainingRecommendations, hasLength(3));
   });
 
   test('saved move-review JSON round-trips production evidence', () {

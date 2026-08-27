@@ -52,6 +52,7 @@ class AiReviewReport {
     required this.importantMistakes,
     required this.insights,
     required this.openingName,
+    required this.trainingRecommendations,
   });
 
   final int accuracy;
@@ -64,6 +65,7 @@ class AiReviewReport {
   final List<String> importantMistakes;
   final List<AiMoveInsight> insights;
   final String openingName;
+  final List<String> trainingRecommendations;
 
   factory AiReviewReport.fromMoves(
     List<String> moves, {
@@ -271,8 +273,44 @@ class AiReviewReport {
       importantMistakes: importantMistakes,
       insights: insights,
       openingName: _recognizeOpening(chronological),
+      trainingRecommendations: _recommendations(dominantTheme, accuracy),
     );
   }
+}
+
+List<String> _recommendations(String? theme, int accuracy) {
+  final List<String> focus = switch (theme) {
+    'opening' => <String>[
+        'Replay the first 10 moves and identify every repeated piece move.',
+        'Complete one centre-control lesson before the next rated game.',
+      ],
+    'kingSafety' => <String>[
+        'Train 5 positions where castling or meeting a check is urgent.',
+        'Use a king-safety scan before starting any attack.',
+      ],
+    'hangingPieces' => <String>[
+        'Solve 5 loose-piece and overloaded-defender puzzles.',
+        'After every candidate move, verify that each piece is defended.',
+      ],
+    'endgame' => <String>[
+        'Practice king activation and one pawn race today.',
+        'Replay the game from the first endgame mistake.',
+      ],
+    'tactics' => <String>[
+        'Solve 5 puzzles using checks, captures, and threats in order.',
+        'Retry the largest evaluation swing without a hint.',
+      ],
+    _ => <String>[
+        'Compare two candidate moves before every decision.',
+        'Retry each reviewed mistake until solved twice.',
+      ],
+  };
+  return <String>[
+    ...focus,
+    accuracy >= 85
+        ? 'Maintain form with one slow game and a full review.'
+        : 'Play one slower game and apply the same thinking routine.',
+  ];
 }
 
 String _recognizeOpening(List<String> moves) {
