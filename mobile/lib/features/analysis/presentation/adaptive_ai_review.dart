@@ -70,14 +70,13 @@ class _AiReviewWorkspace extends StatelessWidget {
             item.hasEngineEvidence &&
             const <String>{'Inaccuracy', 'Mistake', 'Blunder'}
                 .contains(item.label))
-        .take(5)
         .length;
     final Widget puzzleAction = FilledButton.icon(
       onPressed: puzzleCount == 0 ? null : onGeneratePuzzles,
       icon: const Icon(Icons.extension_rounded),
       label: Text(puzzleCount == 0
           ? 'No reviewed mistakes to train'
-          : 'Train $puzzleCount mistake ${puzzleCount == 1 ? 'position' : 'positions'}'),
+          : 'Resume all $puzzleCount mistake ${puzzleCount == 1 ? 'position' : 'positions'}'),
     );
     return Padding(
       padding: EdgeInsets.all(desktop ? 24 : 16),
@@ -141,113 +140,113 @@ class _ReviewOverview extends StatelessWidget {
       counts[insight.label] = (counts[insight.label] ?? 0) + 1;
     }
     return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          ChessVerseCard(
-            child: Row(children: <Widget>[
-              SizedBox(
-                width: 82,
-                height: 82,
-                child: Stack(alignment: Alignment.center, children: <Widget>[
-                  CircularProgressIndicator(
-                    value: report.accuracy / 100,
-                    strokeWidth: 8,
-                    backgroundColor: const Color(0xFF263A46),
-                    color: const Color(0xFF59E4C8),
-                  ),
-                  Text('${report.accuracy}%',
-                      style: const TextStyle(fontWeight: FontWeight.w900)),
-                ]),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(report.headline,
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 5),
-                    Text(report.summary,
-                        style: const TextStyle(
-                            color: AppColors.textSecondary, height: 1.35)),
-                  ],
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        ChessVerseCard(
+          child: Row(children: <Widget>[
+            SizedBox(
+              width: 82,
+              height: 82,
+              child: Stack(alignment: Alignment.center, children: <Widget>[
+                CircularProgressIndicator(
+                  value: report.accuracy / 100,
+                  strokeWidth: 8,
+                  backgroundColor: const Color(0xFF263A46),
+                  color: const Color(0xFF59E4C8),
                 ),
-              ),
-            ]),
-          ),
-          const SizedBox(height: 12),
-          ChessVerseCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                const Text('MOVE QUALITY',
-                    style: TextStyle(
-                      color: AppColors.accentGold,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: .9,
-                    )),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: <Widget>[
-                    for (final String label in const <String>[
-                      'Best',
-                      'Great',
-                      'Inaccuracy',
-                      'Mistake',
-                      'Blunder',
-                    ])
-                      _QualityCount(
-                        label: label,
-                        count: counts[label] ?? 0,
-                        color: _qualityColor(label),
-                      ),
-                  ],
-                ),
-              ],
+                Text('${report.accuracy}%',
+                    style: const TextStyle(fontWeight: FontWeight.w900)),
+              ]),
             ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(report.headline,
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 5),
+                  Text(report.summary,
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, height: 1.35)),
+                ],
+              ),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 12),
+        ChessVerseCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Text('MOVE QUALITY',
+                  style: TextStyle(
+                    color: AppColors.accentGold,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .9,
+                  )),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: <Widget>[
+                  for (final String label in const <String>[
+                    'Best',
+                    'Great',
+                    'Inaccuracy',
+                    'Mistake',
+                    'Blunder',
+                  ])
+                    _QualityCount(
+                      label: label,
+                      count: counts[label] ?? 0,
+                      color: _qualityColor(label),
+                    ),
+                ],
+              ),
+            ],
           ),
+        ),
+        const SizedBox(height: 12),
+        _InsightCard(
+          icon: Icons.workspace_premium_rounded,
+          label: 'YOUR STRENGTH',
+          body: report.strength,
+          color: const Color(0xFF59E4C8),
+        ),
+        const SizedBox(height: 12),
+        _InsightCard(
+          icon: Icons.route_rounded,
+          label: 'TURNING POINT',
+          body: report.turningPoint,
+          color: AppColors.accentGold,
+        ),
+        if (report.importantMistakes.isNotEmpty) ...<Widget>[
           const SizedBox(height: 12),
           _InsightCard(
-            icon: Icons.workspace_premium_rounded,
-            label: 'YOUR STRENGTH',
-            body: report.strength,
-            color: const Color(0xFF59E4C8),
-          ),
-          const SizedBox(height: 12),
-          _InsightCard(
-            icon: Icons.route_rounded,
-            label: 'TURNING POINT',
-            body: report.turningPoint,
+            icon: Icons.priority_high_rounded,
+            label: '3 IMPORTANT MOMENTS',
+            body: report.importantMistakes
+                .asMap()
+                .entries
+                .map((MapEntry<int, String> item) =>
+                    '${item.key + 1}. ${item.value}')
+                .join('\n\n'),
             color: AppColors.accentGold,
           ),
-          if (report.importantMistakes.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 12),
-            _InsightCard(
-              icon: Icons.priority_high_rounded,
-              label: '3 IMPORTANT MOMENTS',
-              body: report.importantMistakes
-                  .asMap()
-                  .entries
-                  .map((MapEntry<int, String> item) =>
-                      '${item.key + 1}. ${item.value}')
-                  .join('\n\n'),
-              color: AppColors.accentGold,
-            ),
-          ],
-          const SizedBox(height: 12),
-          _InsightCard(
-            icon: Icons.psychology_alt_rounded,
-            label: 'NEXT TRAINING FOCUS',
-            body:
-                '${report.trainingFocus}\n\nRecommended: ${report.recommendedLesson}',
-            color: const Color(0xFF59E4C8),
-          ),
         ],
-      );
+        const SizedBox(height: 12),
+        _InsightCard(
+          icon: Icons.psychology_alt_rounded,
+          label: 'NEXT TRAINING FOCUS',
+          body:
+              '${report.trainingFocus}\n\nRecommended: ${report.recommendedLesson}',
+          color: const Color(0xFF59E4C8),
+        ),
+      ],
+    );
   }
 }
 
@@ -410,7 +409,7 @@ class _MoveTimeline extends StatelessWidget {
                                     onTap: () => _showReviewDetail(
                                       context,
                                       'Why this move?',
-                                      insight.explanation,
+                                      _detailedExplanation(insight),
                                     ),
                                   ),
                                   _ReviewAction(
@@ -420,7 +419,7 @@ class _MoveTimeline extends StatelessWidget {
                                       context,
                                       'Opponent threat',
                                       insight.opponentThreat?.isNotEmpty == true
-                                          ? 'The immediate reply is ${insight.opponentThreat}.\n\nEngine line: ${insight.bestMove ?? '—'}.'
+                                          ? 'Immediate opponent reply: ${insight.opponentThreat}.\n\nBest alternative: ${insight.bestMove ?? '—'}.\n\n${_variationText(insight)}'
                                           : 'No forcing opponent threat was returned for this position.',
                                     ),
                                   ),
@@ -443,6 +442,23 @@ class _MoveTimeline extends StatelessWidget {
           ),
         ]);
   }
+}
+
+String _variationText(AiMoveInsight insight) => insight
+        .principalVariation.isEmpty
+    ? 'No additional principal variation was returned.'
+    : 'Engine continuation: ${insight.principalVariation.take(6).join(' → ')}';
+
+String _detailedExplanation(AiMoveInsight insight) {
+  final String loss = insight.centipawnLoss == null
+      ? 'Evaluation change unavailable.'
+      : insight.centipawnLoss == 0
+          ? 'The engine found no measurable evaluation loss.'
+          : 'This move lost ${insight.centipawnLoss} centipawns compared with the best continuation.';
+  final String theme = (insight.coachingTheme ?? 'calculation')
+      .replaceAllMapped(
+          RegExp(r'([A-Z])'), (Match match) => ' ${match[1]!.toLowerCase()}');
+  return '${insight.explanation}\n\n$loss\n\nBest move: ${insight.bestMove ?? '—'}\nOpponent threat: ${insight.opponentThreat ?? 'No forcing threat detected'}\nTraining theme: $theme\n\n${_variationText(insight)}';
 }
 
 class _ReviewAction extends StatelessWidget {

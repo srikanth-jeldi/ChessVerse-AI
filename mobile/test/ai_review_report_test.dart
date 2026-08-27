@@ -29,6 +29,7 @@ void main() {
     expect(report.insights.single.hasEngineEvidence, isTrue);
     expect(report.insights.single.bestMove, 'd2d4');
     expect(report.insights.single.opponentThreat, 'e7e5');
+    expect(report.insights.single.principalVariation, <String>['d2d4', 'd7d5']);
   });
 
   test('saved move-review JSON round-trips production evidence', () {

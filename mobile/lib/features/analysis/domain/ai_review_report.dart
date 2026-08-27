@@ -16,6 +16,7 @@ class AiMoveInsight {
     this.fenBefore,
     this.centipawnLoss,
     this.coachingTheme,
+    this.principalVariation = const <String>[],
   });
 
   final int number;
@@ -29,6 +30,7 @@ class AiMoveInsight {
   final String? fenBefore;
   final int? centipawnLoss;
   final String? coachingTheme;
+  final List<String> principalVariation;
 
   bool get hasEngineEvidence => fenBefore?.isNotEmpty == true;
 }
@@ -135,6 +137,7 @@ class AiReviewReport {
         fenBefore: reviewed?.fenBefore,
         centipawnLoss: reviewed?.centipawnLoss,
         coachingTheme: reviewed?.coachingTheme,
+        principalVariation: reviewed?.principalVariation ?? const <String>[],
       ));
     }
 

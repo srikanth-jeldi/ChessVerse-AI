@@ -111,6 +111,9 @@ void main() {
       ),
     );
 
+    expect(find.textContaining('Exact game snapshot restored'), findsOneWidget);
+    expect(find.textContaining('Missing White:'), findsOneWidget);
+
     final Finder e2 = find.byKey(const ValueKey<String>('square-e2'));
     final Finder e4 = find.byKey(const ValueKey<String>('square-e4'));
     await tester.ensureVisible(e2);

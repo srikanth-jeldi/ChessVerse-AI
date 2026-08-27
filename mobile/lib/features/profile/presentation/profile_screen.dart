@@ -387,9 +387,25 @@ class _BadgeProgressTile extends StatelessWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
-        subtitle: Text(
-          badge.description,
-          style: const TextStyle(color: Color(0xFFA9BBC4)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(badge.description,
+                style: const TextStyle(color: Color(0xFFA9BBC4))),
+            if (!badge.unlocked) ...<Widget>[
+              const SizedBox(height: 7),
+              LinearProgressIndicator(
+                value: badge.completion,
+                minHeight: 5,
+                color: const Color(0xFF62E4D1),
+                backgroundColor: const Color(0xFF263645),
+              ),
+              const SizedBox(height: 3),
+              Text('${badge.progress.clamp(0, badge.target)}/${badge.target}',
+                  style:
+                      const TextStyle(color: Color(0xFF8198A5), fontSize: 11)),
+            ],
+          ],
         ),
         trailing: badge.unlocked
             ? const Icon(Icons.check_circle_rounded, color: Color(0xFF62E4D1))

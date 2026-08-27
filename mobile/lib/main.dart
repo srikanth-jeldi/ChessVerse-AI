@@ -1226,7 +1226,8 @@ class _SplashGateState extends State<SplashGate> {
     }
     final Map<String, dynamic> player =
         await _authApi.updateProfile(session.token, displayName);
-    final String savedName = _profileValue(player['displayName']) ?? displayName;
+    final String savedName =
+        _profileValue(player['displayName']) ?? displayName;
     await _sessionStore.write(StoredAuthSession(
       token: session.token,
       expiresAt: session.expiresAt,
@@ -6361,7 +6362,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           initialPieces: _piecesFromFen(fen),
           whiteToMove: fenParts.length < 2 || fenParts[1] != 'b',
           bestMove: bestMove,
-          explanation: insight.explanation,
+          explanation: _reviewPracticeExplanation(insight),
+          progressLabel: 'POSITION BEFORE MOVE ${insight.number}',
         ),
       );
     });
@@ -6376,15 +6378,20 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 .contains(review.classification))
         .toList(growable: false)
         .reversed
-        .take(5)
-        .toList(growable: false)
-        .reversed
         .toList(growable: false);
     if (puzzles.isEmpty) return;
     Navigator.of(context).pop();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _openMistakePuzzle(puzzles, 0);
     });
+  }
+
+  String _reviewPracticeExplanation(AiMoveInsight insight) {
+    final String variation = insight.principalVariation.isEmpty
+        ? ''
+        : ' Continue with ${insight.principalVariation.take(5).join(' → ')}.';
+    return '${insight.explanation} The engine preferred ${insight.bestMove}. '
+        'The immediate threat was ${insight.opponentThreat ?? 'not forcing'}.$variation';
   }
 
   void _openMistakePuzzle(List<SavedMoveReview> puzzles, int index) {
@@ -7763,6 +7770,41 @@ class _ReviewedPositionRetryDialogState
   String? _message;
   bool _answered = false;
 
+  String _capturedPieces(bool white) {
+    const Map<String, int> starting = <String, int>{
+      'Q': 1,
+      'R': 2,
+      'B': 2,
+      'N': 2,
+      'P': 8,
+    };
+    const Map<String, String> whiteGlyphs = <String, String>{
+      'Q': '♕',
+      'R': '♖',
+      'B': '♗',
+      'N': '♘',
+      'P': '♙',
+    };
+    const Map<String, String> blackGlyphs = <String, String>{
+      'Q': '♛',
+      'R': '♜',
+      'B': '♝',
+      'N': '♞',
+      'P': '♟',
+    };
+    final StringBuffer missing = StringBuffer();
+    for (final MapEntry<String, int> entry in starting.entries) {
+      final int present = widget.initialPieces.values
+          .where((ChessPiece piece) =>
+              piece.white == white && piece.code == entry.key)
+          .length;
+      for (int count = present; count < entry.value; count++) {
+        missing.write((white ? whiteGlyphs : blackGlyphs)[entry.key]);
+      }
+    }
+    return missing.toString();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -7935,6 +7977,21 @@ class _ReviewedPositionRetryDialogState
                 '${widget.whiteToMove ? 'White' : 'Black'} to move • Find the strongest continuation',
                 style: const TextStyle(color: Color(0xFF9DB0BE)),
               ),
+              const SizedBox(height: 6),
+              Builder(builder: (BuildContext context) {
+                final String whiteCaptured = _capturedPieces(true);
+                final String blackCaptured = _capturedPieces(false);
+                return Text(
+                  whiteCaptured.isEmpty && blackCaptured.isEmpty
+                      ? 'Exact game snapshot restored • No captures yet'
+                      : 'Exact game snapshot restored • Missing White: ${whiteCaptured.isEmpty ? '—' : whiteCaptured}  Black: ${blackCaptured.isEmpty ? '—' : blackCaptured}',
+                  style: const TextStyle(
+                    color: Color(0xFF63D2B8),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                );
+              }),
               const SizedBox(height: 14),
               AspectRatio(
                 aspectRatio: 1,
