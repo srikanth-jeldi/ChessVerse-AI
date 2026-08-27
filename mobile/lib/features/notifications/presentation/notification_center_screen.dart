@@ -27,15 +27,17 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   Future<void> _load() async {
     try {
       final StoredAuthSession? session = await const AuthSessionStore().read();
-      if (session == null)
+      if (session == null) {
         throw const NotificationException('Sign in to view notifications.');
+      }
       final NotificationInboxDto value = await _api.load(session.token);
-      if (mounted)
+      if (mounted) {
         setState(() {
           _session = session;
           _inbox = value;
           _error = null;
         });
+      }
     } on NotificationException catch (error) {
       if (mounted) setState(() => _error = error.message);
     }

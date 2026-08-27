@@ -1343,7 +1343,11 @@ class _PlayerHeader extends StatelessWidget {
           key: const ValueKey<String>('home-profile'),
           onTap: onProfile,
           borderRadius: BorderRadius.circular(999),
-          child: _Avatar(photoUrl: profilePhotoUrl, size: wide ? 58 : 42),
+          child: _Avatar(
+            photoUrl: profilePhotoUrl,
+            size: wide ? 58 : 42,
+            useSavedPlayerAvatar: true,
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -2054,29 +2058,62 @@ class _NavItem extends StatelessWidget {
 }
 
 class _Avatar extends StatelessWidget {
-  const _Avatar({this.photoUrl, required this.size});
+  const _Avatar({
+    this.photoUrl,
+    required this.size,
+    this.useSavedPlayerAvatar = false,
+  });
   final String? photoUrl;
   final double size;
+  final bool useSavedPlayerAvatar;
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: const Color(0xFF124468),
-          border: Border.all(color: const Color(0xFF49A8F5), width: 1.5),
-          boxShadow: const <BoxShadow>[
-            BoxShadow(color: Color(0x553C9FF0), blurRadius: 12)
-          ]),
-      child: ClipOval(
-          child: photoUrl?.trim().isNotEmpty == true
-              ? Image.network(photoUrl!,
-                  fit: BoxFit.cover,
-                  webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
-                  errorBuilder: (_, __, ___) =>
-                      const Icon(Icons.person_rounded, color: Colors.white))
-              : const Icon(Icons.person_rounded, color: Colors.white)),
+    const List<IconData> playerIcons = <IconData>[
+      Icons.person_rounded,
+      Icons.psychology_rounded,
+      Icons.sports_esports_rounded,
+      Icons.workspace_premium_rounded,
+      Icons.shield_rounded,
+      Icons.auto_awesome_rounded,
+    ];
+    const List<Color> playerColors = <Color>[
+      Color(0xFF1E88A8),
+      Color(0xFF3E8E72),
+      Color(0xFF8057B8),
+      Color(0xFFB47A2B),
+      Color(0xFF466A9A),
+      Color(0xFF9A4F63),
+    ];
+    final int avatarIndex = LocalGameArchive.profileAvatar;
+    return Semantics(
+      label: useSavedPlayerAvatar
+          ? 'Selected player avatar ${avatarIndex + 1}'
+          : null,
+      image: true,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: useSavedPlayerAvatar
+                ? playerColors[avatarIndex]
+                : const Color(0xFF124468),
+            border: Border.all(color: const Color(0xFF49A8F5), width: 1.5),
+            boxShadow: const <BoxShadow>[
+              BoxShadow(color: Color(0x553C9FF0), blurRadius: 12)
+            ]),
+        child: ClipOval(
+            child: useSavedPlayerAvatar
+                ? Icon(playerIcons[avatarIndex], color: Colors.white)
+                : photoUrl?.trim().isNotEmpty == true
+                    ? Image.network(photoUrl!,
+                        fit: BoxFit.cover,
+                        webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+                        errorBuilder: (_, __, ___) => const Icon(
+                            Icons.person_rounded,
+                            color: Colors.white))
+                    : const Icon(Icons.person_rounded, color: Colors.white)),
+      ),
     );
   }
 }
