@@ -48,7 +48,7 @@ class OpenAiCompatibleCoachLanguageProvider implements CoachLanguageProvider {
         this.timeout = Duration.ofSeconds(Math.max(2, Math.min(20, timeoutSeconds)));
         this.maxTokens = Math.max(80, Math.min(500, maxTokens));
         this.metrics = metrics;
-        this.configured = enabled && this.endpoint != null && !this.model.isBlank()
+        this.configured = enabled && this.endpoint != null && !this.apiKey.isBlank() && !this.model.isBlank()
                 && isSafeEndpoint(this.endpoint);
     }
 
@@ -67,7 +67,7 @@ class OpenAiCompatibleCoachLanguageProvider implements CoachLanguageProvider {
                     "temperature", 0.2,
                     "max_tokens", maxTokens,
                     "messages", List.of(
-                            Map.of("role", "system", "content", SYSTEM_PROMPT),
+                            Map.of("role", "developer", "content", SYSTEM_PROMPT),
                             Map.of("role", "user", "content", evidencePrompt(context))));
             HttpRequest.Builder request = HttpRequest.newBuilder(endpoint)
                     .timeout(timeout)

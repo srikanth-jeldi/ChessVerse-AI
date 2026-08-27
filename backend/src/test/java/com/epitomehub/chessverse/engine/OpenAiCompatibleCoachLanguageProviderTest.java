@@ -28,6 +28,14 @@ class OpenAiCompatibleCoachLanguageProviderTest {
     }
 
     @Test
+    void staysDisabledWhenApiKeyIsMissing() {
+        var provider = new OpenAiCompatibleCoachLanguageProvider(
+                new ObjectMapper(), true, "https://api.openai.com/v1/chat/completions", "", "gpt-4.1-mini",
+                8, 220, org.mockito.Mockito.mock(AiCoachMetrics.class));
+        assertThat(provider.enabled()).isFalse();
+    }
+
+    @Test
     void masksTokensEmailsAndLongSecretsBeforeExternalUse() {
         String value = OpenAiCompatibleCoachLanguageProvider.sanitize(
                 "mail me at player@example.com Bearer abc.def.ghi "
@@ -40,9 +48,11 @@ class OpenAiCompatibleCoachLanguageProviderTest {
     @Test
     void callsConfiguredCompatibleEndpointWithChessEvidenceOnly() throws Exception {
         AtomicReference<String> received = new AtomicReference<>();
+        AtomicReference<String> authorization = new AtomicReference<>();
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/chat", exchange -> {
             received.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
             byte[] response = "{\"choices\":[{\"message\":{\"content\":\"Develop first, then castle.\"}}]}"
                     .getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
@@ -64,6 +74,8 @@ class OpenAiCompatibleCoachLanguageProviderTest {
             assertThat(answer).isEqualTo("Develop first, then castle.");
             assertThat(received.get()).contains("test-model", "e2e4", "[redacted-email]")
                     .doesNotContain("player@example.com", "test-key");
+            assertThat(received.get()).contains("\"role\":\"developer\"");
+            assertThat(authorization.get()).isEqualTo("Bearer test-key");
         } finally {
             server.stop(0);
         }

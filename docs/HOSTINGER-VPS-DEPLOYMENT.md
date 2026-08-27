@@ -56,6 +56,11 @@ Put the generated value in `POSTGRES_PASSWORD`. Set the real application/API
 domains, ACME contact email, Gmail account, Gmail app password and sender.
 Never commit `vps.env`.
 
+For the optional conversational AI Coach, create a restricted OpenAI project
+API key and add it only to `vps.env`. Do not put it in Flutter, Git, screenshots,
+chat, or shell history. Keep `AI_COACH_LLM_ENABLED=false` until the key is set;
+then enable it and recreate only the backend container.
+
 ## 4. Validate and deploy
 
 ```bash
