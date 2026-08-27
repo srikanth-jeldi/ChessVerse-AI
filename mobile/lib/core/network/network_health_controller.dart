@@ -65,7 +65,10 @@ class NetworkHealthController extends ChangeNotifier {
       }
       final Stopwatch watch = Stopwatch()..start();
       final http.Response response = await http
-          .get(Uri.parse('${AppConfig.apiBaseUrl}/actuator/health/readiness'))
+          // Actuator is intentionally outside the backend's browser CORS
+          // mapping. Use the public API health route so Flutter Web can read
+          // the response instead of treating a healthy server as unavailable.
+          .get(Uri.parse('${AppConfig.apiBaseUrl}/api/v1/health'))
           .timeout(const Duration(seconds: 8));
       watch.stop();
       _lastLatency = watch.elapsed;

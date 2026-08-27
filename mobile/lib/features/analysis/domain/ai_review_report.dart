@@ -12,6 +12,7 @@ class AiMoveInsight {
     required this.label,
     required this.explanation,
     this.bestMove,
+    this.playedMove,
     this.opponentThreat,
     this.fenBefore,
     this.centipawnLoss,
@@ -30,6 +31,7 @@ class AiMoveInsight {
   final String label;
   final String explanation;
   final String? bestMove;
+  final String? playedMove;
   final String? opponentThreat;
   final String? fenBefore;
   final int? centipawnLoss;
@@ -146,6 +148,7 @@ class AiReviewReport {
         label: label,
         explanation: explanation,
         bestMove: reviewed?.bestMove,
+        playedMove: reviewed?.playedMove,
         opponentThreat: reviewed?.opponentThreat,
         fenBefore: reviewed?.fenBefore,
         centipawnLoss: reviewed?.centipawnLoss,

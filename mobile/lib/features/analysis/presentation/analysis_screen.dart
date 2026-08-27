@@ -7,6 +7,7 @@ import '../../../core/widgets/chessverse_button.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../data/game_analysis_api.dart';
+import '../data/ai_coach_api.dart';
 import '../domain/ai_review_report.dart';
 import '../domain/learning_intelligence.dart';
 import 'adaptive_ai_review.dart';
@@ -20,6 +21,7 @@ class AnalysisScreen extends StatefulWidget {
 
 class _AnalysisScreenState extends State<AnalysisScreen> {
   late final Future<Map<String, int>> _cloudHistory = _loadCloudHistory();
+  late final Future<AiCoachImpact?> _coachImpact = _loadCoachImpact();
 
   Future<Map<String, int>> _loadCloudHistory() async {
     final StoredAuthSession? session = await const AuthSessionStore().read();
@@ -28,6 +30,16 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       return await const GameAnalysisApi().weaknessHistory(session.token);
     } on GameAnalysisApiException {
       return <String, int>{};
+    }
+  }
+
+  Future<AiCoachImpact?> _loadCoachImpact() async {
+    final StoredAuthSession? session = await const AuthSessionStore().read();
+    if (session == null || session.token.isEmpty) return null;
+    try {
+      return await const AiCoachApi().impact(session.token);
+    } on Object {
+      return null;
     }
   }
 
@@ -131,6 +143,27 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             const SizedBox(height: 12),
             _WeeklyDashboard(report: intelligence.weekly),
             const SizedBox(height: 12),
+            FutureBuilder<AiCoachImpact?>(
+              future: _coachImpact,
+              builder: (BuildContext context,
+                  AsyncSnapshot<AiCoachImpact?> snapshot) {
+                final AiCoachImpact? impact = snapshot.data;
+                if (impact == null) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _AnalysisFeatureCard(
+                    icon: impact.enoughEvidence
+                        ? Icons.verified_rounded
+                        : Icons.hourglass_bottom_rounded,
+                    title: impact.enoughEvidence
+                        ? '${impact.improvementPercent >= 0 ? '+' : ''}${impact.improvementPercent}% measured move-quality change'
+                        : 'AI impact measurement in progress',
+                    subtitle:
+                        '${impact.analyzedGames} analyzed games • ${impact.measuredMoves} measured moves • ${impact.helpfulPercent}% helpful feedback. ${impact.evidenceMessage}',
+                  ),
+                );
+              },
+            ),
             _ProgressTrend(points: intelligence.trend),
             const SizedBox(height: 12),
             _AnalysisFeatureCard(
