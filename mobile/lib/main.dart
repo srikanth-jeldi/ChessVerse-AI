@@ -1135,6 +1135,7 @@ class _SplashGateState extends State<SplashGate> {
     String? puzzleId,
     OnlineMatchDto? initialOnlineMatch,
     String? initialAuthToken,
+    String? aiOpponentName,
   }) {
     return _push(
       context,
@@ -1143,7 +1144,7 @@ class _SplashGateState extends State<SplashGate> {
         // Computer games use the production Stockfish service. The game
         // already falls back to its offline move generator if the API is
         // unavailable, so genuine AI strength never sacrifices playability.
-        useRemoteEngine: mode == GameMode.computer,
+        useRemoteEngine: mode == GameMode.computer || mode == GameMode.online,
         initialGameMode: mode,
         initialPlayerName: _playerName,
         initialUsername: _username,
@@ -1156,6 +1157,7 @@ class _SplashGateState extends State<SplashGate> {
         initialPuzzleId: puzzleId,
         initialOnlineMatch: initialOnlineMatch,
         initialAuthToken: initialAuthToken,
+        aiOpponentName: aiOpponentName,
         onLogout: () => _logout(context),
         onDisplayNameChanged: _updateDisplayName,
       ),
@@ -1195,6 +1197,15 @@ class _SplashGateState extends State<SplashGate> {
               onProfile: () {
                 Navigator.of(context).pop();
                 if (mounted) setState(() => _primaryDestination = 4);
+              },
+              onAiFallback: (String rivalName) async {
+                if (!context.mounted) return;
+                await _openGame(
+                  context,
+                  GameMode.computer,
+                  aiLevel: 5,
+                  aiOpponentName: rivalName,
+                );
               },
             ),
           ),
@@ -3395,6 +3406,7 @@ class GameScreen extends StatefulWidget {
     this.initialPuzzleId,
     this.initialOnlineMatch,
     this.initialAuthToken,
+    this.aiOpponentName,
     this.onlineApi,
     this.onLogout,
     this.onDisplayNameChanged,
@@ -3415,6 +3427,7 @@ class GameScreen extends StatefulWidget {
   final String? initialPuzzleId;
   final OnlineMatchDto? initialOnlineMatch;
   final String? initialAuthToken;
+  final String? aiOpponentName;
   final OnlineMatchApi? onlineApi;
   final Future<void> Function()? onLogout;
   final Future<void> Function(String displayName)? onDisplayNameChanged;
@@ -4905,8 +4918,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void _applyPlayerSideNames(String playerName) {
     switch (_gameMode) {
       case GameMode.computer:
-        _whitePlayerName = _humanPlaysWhite ? playerName : 'ChessVerseAI';
-        _blackPlayerName = _humanPlaysWhite ? 'ChessVerseAI' : playerName;
+        final String rivalName =
+            widget.aiOpponentName?.trim().isNotEmpty == true
+                ? '${widget.aiOpponentName!.trim()} • AI Rival'
+                : 'ChessVerseAI';
+        _whitePlayerName = _humanPlaysWhite ? playerName : rivalName;
+        _blackPlayerName = _humanPlaysWhite ? rivalName : playerName;
       case GameMode.daily:
       case GameMode.puzzle:
         _whitePlayerName = 'Guest Player';
@@ -5378,7 +5395,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           _puzzleExplorationMode = true;
         }
       }
-      if (_gameMode == GameMode.computer && widget.useRemoteEngine) {
+      if ((_gameMode == GameMode.computer || _gameMode == GameMode.online) &&
+          widget.useRemoteEngine) {
         engineReviewFen = _toFen();
         engineReviewMove = '$from$square';
       }
@@ -7162,6 +7180,21 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               api: _onlineApi,
               token: token!,
               onProfile: _openProfile,
+              onAiFallback: (String rivalName) async {
+                if (!mounted) return;
+                _onlinePollTimer?.cancel();
+                _onlineMatch = null;
+                setState(() {
+                  _gameMode = GameMode.computer;
+                  _humanPlaysWhite = true;
+                  _whitePlayerName = _playerDisplayName;
+                  _blackPlayerName = '$rivalName • AI Rival';
+                });
+                _reset();
+                if (mounted) {
+                  setState(() => _blackPlayerName = '$rivalName • AI Rival');
+                }
+              },
             ),
           ),
         ),
@@ -11778,6 +11811,7 @@ class OnlineMatchmakingSheet extends StatefulWidget {
     required this.api,
     required this.token,
     required this.onProfile,
+    this.onAiFallback,
     this.initialMode = OnlineLobbyMode.random,
     super.key,
   });
@@ -11785,6 +11819,7 @@ class OnlineMatchmakingSheet extends StatefulWidget {
   final OnlineMatchApi api;
   final String token;
   final VoidCallback onProfile;
+  final Future<void> Function(String rivalName)? onAiFallback;
   final OnlineLobbyMode initialMode;
 
   @override
@@ -11793,6 +11828,16 @@ class OnlineMatchmakingSheet extends StatefulWidget {
 
 class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
   static const int _randomSearchLimitSeconds = 20;
+  static const List<String> _aiRivalNames = <String>[
+    'Arjun Knight',
+    'Maya Bishop',
+    'Ravi Rook',
+    'Tara Queen',
+    'Vikram Pawn',
+    'Nisha Gambit',
+    'Kabir Castle',
+    'Anaya Tactics',
+  ];
   final TextEditingController _roomController = TextEditingController();
   Timer? _pollTimer;
   Timer? _elapsedTimer;
@@ -11963,13 +12008,23 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
       // The lobby may already have expired server-side.
     }
     if (!mounted || _match?.id != waiting.id || _foundMatch != null) return;
-    setState(() {
-      _match = null;
-      _randomSearch = false;
-      _loading = false;
-      _elapsedSeconds = 0;
-      _error =
-          'No active rival found in 20 seconds. Try again or play ChessVerseAI.';
+    final String rivalName = _aiRivalNames[
+        DateTime.now().millisecondsSinceEpoch % _aiRivalNames.length];
+    final Future<void> Function(String rivalName)? fallback =
+        widget.onAiFallback;
+    if (fallback == null) {
+      setState(() {
+        _match = null;
+        _randomSearch = false;
+        _loading = false;
+        _elapsedSeconds = 0;
+        _error = 'No active rival found. Try searching again.';
+      });
+      return;
+    }
+    Navigator.of(context).pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(fallback(rivalName));
     });
   }
 

@@ -555,7 +555,6 @@ Color _qualityColor(String label) => switch (label) {
       'Inaccuracy' => const Color(0xFFFFC857),
       'Mistake' => const Color(0xFFFF8A4C),
       'Blunder' => const Color(0xFFFF5263),
-      'Tactical' => AppColors.accentGold,
       _ => const Color(0xFF8EA4B7),
     };
 
@@ -678,43 +677,44 @@ class _MoveTimeline extends StatelessWidget {
                                 ),
                               ),
                             ],
-                            if (insight.hasEngineEvidence) ...<Widget>[
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: <Widget>[
-                                  _ReviewAction(
-                                    icon: Icons.psychology_alt_rounded,
-                                    label: 'Ask AI Coach',
-                                    onTap: () => _showInteractiveCoach(
-                                      context,
-                                      insight,
-                                      openingEco: openingEco,
-                                      timeControl: timeControl,
-                                    ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: <Widget>[
+                                _ReviewAction(
+                                  icon: Icons.psychology_alt_rounded,
+                                  label: 'Explain simply',
+                                  onTap: () => _showInteractiveCoach(
+                                    context,
+                                    insight,
+                                    openingEco: openingEco,
+                                    timeControl: timeControl,
                                   ),
-                                  _ReviewAction(
-                                    icon: Icons.warning_amber_rounded,
-                                    label: 'Show threat',
-                                    onTap: () => _showReviewDetail(
-                                      context,
-                                      'Opponent threat',
-                                      insight.opponentThreat?.isNotEmpty == true
-                                          ? 'Immediate opponent reply: ${insight.opponentThreat}.\n\nBest alternative: ${insight.bestMove ?? '—'}.\n\n${_variationText(insight)}'
-                                          : 'No forcing opponent threat was returned for this position.',
-                                    ),
+                                ),
+                                _ReviewAction(
+                                  icon: Icons.warning_amber_rounded,
+                                  label: 'Show threat',
+                                  onTap: () => _showReviewDetail(
+                                    context,
+                                    'Opponent threat',
+                                    insight.opponentThreat?.isNotEmpty == true
+                                        ? 'Immediate opponent reply: ${insight.opponentThreat}.\n\nBest alternative: ${insight.bestMove ?? '—'}.\n\n${_variationText(insight)}'
+                                        : 'No forcing opponent threat was found in the available review. Run engine analysis for a deeper forcing line.',
                                   ),
-                                  _ReviewAction(
-                                    icon: Icons.replay_circle_filled_rounded,
-                                    label: 'Retry position',
-                                    onTap: onRetryPosition == null
-                                        ? null
-                                        : () => onRetryPosition!(insight),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                ),
+                                _ReviewAction(
+                                  icon: Icons.replay_circle_filled_rounded,
+                                  label: 'Retry position',
+                                  onTap: insight.hasEngineEvidence &&
+                                          insight.bestMove?.isNotEmpty ==
+                                              true &&
+                                          onRetryPosition != null
+                                      ? () => onRetryPosition!(insight)
+                                      : null,
+                                ),
+                              ],
+                            ),
                           ]),
                     ),
                   ]),
