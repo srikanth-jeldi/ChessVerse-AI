@@ -32,8 +32,11 @@ class FirebasePushService {
       _foregroundMessages ??= FirebaseMessaging.onMessage.listen((message) {
         final RemoteNotification? notification = message.notification;
         if (notification == null) return;
+        final String stableId = message.data['notificationId'] ??
+            message.messageId ??
+            '${notification.title}|${notification.body}';
         unawaited(DailyReminderService.instance.showRealtime(
-          message.messageId?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
+          stableId.hashCode,
           notification.title ?? 'ChessVerseAI',
           notification.body ?? 'You have a new update.',
         ));

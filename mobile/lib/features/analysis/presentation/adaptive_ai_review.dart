@@ -162,7 +162,8 @@ class _ReviewOverview extends StatelessWidget {
   Widget build(BuildContext context) {
     final Map<String, int> counts = <String, int>{};
     for (final AiMoveInsight insight in report.insights) {
-      counts[insight.label] = (counts[insight.label] ?? 0) + 1;
+      final String quality = reviewQualityBucket(insight.label);
+      counts[quality] = (counts[quality] ?? 0) + 1;
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,6 +238,7 @@ class _ReviewOverview extends StatelessWidget {
                   for (final String label in const <String>[
                     'Best',
                     'Great',
+                    'Good',
                     'Inaccuracy',
                     'Mistake',
                     'Blunder',
@@ -317,6 +319,19 @@ class _ReviewOverview extends StatelessWidget {
     );
   }
 }
+
+/// Converts both Stockfish verdicts and on-device coaching labels into the
+/// same public quality scale. Without this normalization a fully populated
+/// timeline made every summary counter display zero.
+String reviewQualityBucket(String label) => switch (label.trim()) {
+      'Best' => 'Best',
+      'Great' || 'Excellent' || 'Power move' => 'Great',
+      'Good' || 'Principled' || 'Tactical' || 'Playable' => 'Good',
+      'Inaccuracy' => 'Inaccuracy',
+      'Mistake' => 'Mistake',
+      'Blunder' => 'Blunder',
+      _ => 'Good',
+    };
 
 class _EvaluationGraph extends StatefulWidget {
   const _EvaluationGraph({required this.report, this.onRetryPosition});
@@ -536,6 +551,7 @@ class _QualityCount extends StatelessWidget {
 Color _qualityColor(String label) => switch (label) {
       'Best' || 'Power move' || 'Principled' => const Color(0xFF59E4C8),
       'Great' || 'Excellent' => const Color(0xFF50B8FF),
+      'Good' || 'Playable' || 'Tactical' => const Color(0xFF7FD6A6),
       'Inaccuracy' => const Color(0xFFFFC857),
       'Mistake' => const Color(0xFFFF8A4C),
       'Blunder' => const Color(0xFFFF5263),

@@ -4,6 +4,8 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.AndroidConfig;
+import com.google.firebase.messaging.AndroidNotification;
 import com.google.firebase.messaging.Message;
 import java.io.FileInputStream;
 import java.util.Map;
@@ -37,7 +39,8 @@ class FirebasePushService {
         }
     }
 
-    void send(UUID playerId, String title, String body, String actionType, UUID actionId) {
+    void send(UUID playerId, UUID notificationId, String title, String body,
+              String actionType, UUID actionId) {
         if (messaging == null) return;
         for (String token : jdbc.queryForList(
                 "select token from push_notification_device where player_id=? and enabled=true",
@@ -46,7 +49,14 @@ class FirebasePushService {
                 Message.Builder builder = Message.builder().setToken(token)
                         .setNotification(com.google.firebase.messaging.Notification.builder()
                                 .setTitle(title).setBody(body).build())
+                        .setAndroidConfig(AndroidConfig.builder()
+                                .setCollapseKey(notificationId.toString())
+                                .setNotification(AndroidNotification.builder()
+                                        .setTag(notificationId.toString())
+                                        .build())
+                                .build())
                         .putAllData(Map.of(
+                                "notificationId", notificationId.toString(),
                                 "actionType", actionType == null ? "notifications" : actionType,
                                 "actionId", actionId == null ? "" : actionId.toString()));
                 messaging.send(builder.build());
