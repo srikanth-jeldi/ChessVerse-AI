@@ -11,7 +11,7 @@ interface FriendConnectionRepository extends JpaRepository<FriendConnection, UUI
     @Query("""
             select link from FriendConnection link
             where (link.requesterId = :playerId or link.addresseeId = :playerId)
-              and link.status in ('PENDING', 'ACCEPTED')
+              and link.status in ('PENDING', 'ACCEPTED', 'DECLINED')
             order by link.updatedAt desc
             """)
     List<FriendConnection> activeFor(@Param("playerId") UUID playerId);

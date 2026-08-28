@@ -14387,6 +14387,12 @@ class _OpponentFoundViewState extends State<_OpponentFoundView> {
     final String rival = match.yourColor == 'WHITE'
         ? (match.blackPlayerName ?? 'Online Rival')
         : (match.whitePlayerName ?? 'Online Rival');
+    final String? yourPhotoUrl = match.yourColor == 'WHITE'
+        ? match.whitePlayerPhotoUrl
+        : match.blackPlayerPhotoUrl;
+    final String? rivalPhotoUrl = match.yourColor == 'WHITE'
+        ? match.blackPlayerPhotoUrl
+        : match.whitePlayerPhotoUrl;
     const Color teal = Color(0xFF55E5D0);
     const Color gold = Color(0xFFF1B94C);
     final bool wide = MediaQuery.sizeOf(context).width >= 760;
@@ -14465,6 +14471,7 @@ class _OpponentFoundViewState extends State<_OpponentFoundView> {
                               label: 'YOU • ${match.yourColor}',
                               rating: rating,
                               rival: false,
+                              photoUrl: yourPhotoUrl,
                             ),
                           ),
                           Padding(
@@ -14499,6 +14506,7 @@ class _OpponentFoundViewState extends State<_OpponentFoundView> {
                                   'RIVAL • ${match.yourColor == 'WHITE' ? 'BLACK' : 'WHITE'}',
                               rating: 'Ready',
                               rival: true,
+                              photoUrl: rivalPhotoUrl,
                             ),
                           ),
                         ],
@@ -14590,6 +14598,7 @@ class _VersusPlayerCard extends StatelessWidget {
     required this.label,
     required this.rating,
     required this.rival,
+    this.photoUrl,
   });
 
   final String name;
@@ -14597,6 +14606,7 @@ class _VersusPlayerCard extends StatelessWidget {
   final String label;
   final String rating;
   final bool rival;
+  final String? photoUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -14618,10 +14628,21 @@ class _VersusPlayerCard extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(color: color, width: 2),
             ),
-            child: Icon(
-                rival ? Icons.person_search_rounded : Icons.person_rounded,
-                color: color,
-                size: MediaQuery.sizeOf(context).width >= 760 ? 58 : 40),
+            child: ClipOval(
+              child: photoUrl == null
+                  ? Icon(Icons.person_rounded,
+                      color: color,
+                      size: MediaQuery.sizeOf(context).width >= 760 ? 58 : 40)
+                  : Image.network(
+                      photoUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(Icons.person_rounded,
+                          color: color,
+                          size: MediaQuery.sizeOf(context).width >= 760
+                              ? 58
+                              : 40),
+                    ),
+            ),
           ),
           const SizedBox(height: 9),
           Text(

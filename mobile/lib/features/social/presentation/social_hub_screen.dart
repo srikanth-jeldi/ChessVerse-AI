@@ -224,13 +224,23 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
         });
     controller.dispose();
     if (username == null || username.isEmpty || _session == null) return;
-    await _act(() => _api.addFriend(_session!.token, username));
+    await _act(
+      () => _api.addFriend(_session!.token, username),
+      successMessage: 'Friend request sent • status: Requested',
+    );
   }
 
-  Future<void> _act(Future<SocialHubDto> Function() action) async {
+  Future<void> _act(Future<SocialHubDto> Function() action,
+      {String? successMessage}) async {
     try {
       final SocialHubDto hub = await action();
-      if (mounted) setState(() => _hub = hub);
+      if (mounted) {
+        setState(() => _hub = hub);
+        if (successMessage != null) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(successMessage)));
+        }
+      }
     } on SocialException catch (error) {
       if (mounted)
         ScaffoldMessenger.of(context)
@@ -409,13 +419,37 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                                       .map((player) => _PlayerCard(
                                           player: player,
                                           primaryLabel: 'Accept',
-                                          onPrimary: () => _act(() =>
-                                              _api.respond(_session!.token,
-                                                  player.connectionId, true)),
+                                          onPrimary: () => _act(
+                                              () => _api.respond(
+                                                  _session!.token,
+                                                  player.connectionId,
+                                                  true),
+                                              successMessage:
+                                                  '${player.displayName} accepted • now friends'),
                                           secondaryLabel: 'Decline',
-                                          onSecondary: () => _act(() =>
-                                              _api.respond(_session!.token,
-                                                  player.connectionId, false))))
+                                          onSecondary: () => _act(
+                                              () => _api.respond(
+                                                  _session!.token,
+                                                  player.connectionId,
+                                                  false),
+                                              successMessage:
+                                                  'Friend request rejected')))
+                                      .toList()),
+                            if (_hub!.outgoing.isNotEmpty)
+                              _Section(
+                                  title: 'SENT REQUESTS',
+                                  icon: Icons.outgoing_mail,
+                                  children: _hub!.outgoing
+                                      .map((player) => _PlayerCard(
+                                          player: player,
+                                          primaryLabel:
+                                              player.relationship == 'DECLINED'
+                                                  ? 'Rejected'
+                                                  : 'Requested',
+                                          primaryEnabled: false,
+                                          onTap: () =>
+                                              _openPlayerProfile(player),
+                                          onPrimary: () {}))
                                       .toList()),
                             _Section(
                                 title: 'CHALLENGES',
@@ -1813,12 +1847,14 @@ class _PlayerCard extends StatelessWidget {
       required this.primaryLabel,
       required this.onPrimary,
       this.onTap,
+      this.primaryEnabled = true,
       this.secondaryLabel,
       this.onSecondary});
   final SocialPlayerDto player;
   final String primaryLabel;
   final VoidCallback onPrimary;
   final VoidCallback? onTap;
+  final bool primaryEnabled;
   final String? secondaryLabel;
   final VoidCallback? onSecondary;
   @override
@@ -1875,7 +1911,9 @@ class _PlayerCard extends StatelessWidget {
                 ])),
             if (secondaryLabel != null)
               TextButton(onPressed: onSecondary, child: Text(secondaryLabel!)),
-            FilledButton(onPressed: onPrimary, child: Text(primaryLabel))
+            FilledButton(
+                onPressed: primaryEnabled ? onPrimary : null,
+                child: Text(primaryLabel))
           ])));
 }
 

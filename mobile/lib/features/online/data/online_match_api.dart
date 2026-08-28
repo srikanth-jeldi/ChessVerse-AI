@@ -126,8 +126,10 @@ class OnlineMatchDto {
       activeColor: (json['activeColor'] as String? ?? 'white').toUpperCase(),
       whitePlayerName: json['whitePlayerName'] as String?,
       blackPlayerName: json['blackPlayerName'] as String?,
-      whitePlayerPhotoUrl: json['whitePlayerPhotoUrl'] as String?,
-      blackPlayerPhotoUrl: json['blackPlayerPhotoUrl'] as String?,
+      whitePlayerPhotoUrl:
+          _absoluteOnlinePhotoUrl(json['whitePlayerPhotoUrl'] as String?),
+      blackPlayerPhotoUrl:
+          _absoluteOnlinePhotoUrl(json['blackPlayerPhotoUrl'] as String?),
       fen: json['fen'] as String? ?? '',
       moves: (json['moves'] as List<dynamic>? ?? <dynamic>[])
           .whereType<Map<String, dynamic>>()
@@ -154,6 +156,14 @@ class OnlineMatchDto {
       updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? ''),
     );
   }
+}
+
+String? _absoluteOnlinePhotoUrl(String? value) {
+  if (value == null || value.trim().isEmpty) return null;
+  final String clean = value.trim();
+  final Uri? uri = Uri.tryParse(clean);
+  if (uri != null && uri.hasScheme) return clean;
+  return '${AppConfig.apiBaseUrl}${clean.startsWith('/') ? clean : '/$clean'}';
 }
 
 class OnlineMatchApi {

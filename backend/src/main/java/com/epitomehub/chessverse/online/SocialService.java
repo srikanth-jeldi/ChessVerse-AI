@@ -45,6 +45,10 @@ class SocialService {
         for (FriendConnection link : friends.activeFor(player.id())) {
             UUID other = link.other(player.id());
             if ("ACCEPTED".equals(link.status)) accepted.add(player(link.id, other, "FRIEND"));
+            else if ("DECLINED".equals(link.status) && link.requesterId.equals(player.id())) {
+                outgoing.add(player(link.id, other, "DECLINED"));
+            }
+            else if ("DECLINED".equals(link.status)) continue;
             else if (link.addresseeId.equals(player.id())) incoming.add(player(link.id, other, "INCOMING"));
             else outgoing.add(player(link.id, other, "OUTGOING"));
         }
