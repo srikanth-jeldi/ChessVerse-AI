@@ -19,10 +19,11 @@ class PlayerNotificationService {
 
     void create(UUID playerId, String type, String title, String body,
                 String actionType, UUID actionId) {
+        UUID notificationId = UUID.randomUUID();
         jdbc.update("insert into player_notification(id,player_id,type,title,body,action_type,action_id,created_at) values(?,?,?,?,?,?,?,?)",
-                UUID.randomUUID(), playerId, type, title, body, actionType, actionId,
+                notificationId, playerId, type, title, body, actionType, actionId,
                 Timestamp.from(Instant.now()));
-        push.send(playerId, title, body, actionType, actionId);
+        push.send(playerId, notificationId, title, body, actionType, actionId);
     }
 
     @Transactional(readOnly = true)
