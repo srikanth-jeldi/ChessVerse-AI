@@ -22,21 +22,30 @@ umask 077
 mkdir -p "${BACKUP_DIR}"
 
 timestamp="$(date -u +'%Y%m%dT%H%M%SZ')"
-backup_file="${BACKUP_DIR}/chessverse-${timestamp}.dump"
+backup_file="${BACKUP_DIR}/chessverse-${timestamp}.dump.age"
+
+if [[ -z "${BACKUP_AGE_RECIPIENT:-}" ]]; then
+  echo "BACKUP_AGE_RECIPIENT is required; plaintext backups are forbidden." >&2
+  exit 1
+fi
+if ! command -v age >/dev/null 2>&1; then
+  echo "age is required to encrypt backups." >&2
+  exit 1
+fi
 
 docker compose \
   --env-file "${ENV_FILE}" \
   -f "${COMPOSE_FILE}" \
   exec -T postgres \
-  sh -c 'pg_dump --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" --format=custom' \
-  > "${backup_file}"
+  sh -c 'pg_dump --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" --format=custom' | \
+  age --recipient "${BACKUP_AGE_RECIPIENT}" --output "${backup_file}"
 
 test -s "${backup_file}"
 sha256sum "${backup_file}" > "${backup_file}.sha256"
 
 retention_days="${BACKUP_RETENTION_DAYS:-14}"
 find "${BACKUP_DIR}" -type f \
-  \( -name 'chessverse-*.dump' -o -name 'chessverse-*.dump.sha256' \) \
+  \( -name 'chessverse-*.dump.age' -o -name 'chessverse-*.dump.age.sha256' \) \
   -mtime "+${retention_days}" -delete
 
 if [[ -n "${BACKUP_REMOTE:-}" ]]; then

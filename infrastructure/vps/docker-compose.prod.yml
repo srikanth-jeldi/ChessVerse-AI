@@ -54,6 +54,7 @@ services:
       AI_COACH_LLM_MODEL: ${AI_COACH_LLM_MODEL:-gpt-4.1-mini}
       AI_COACH_LLM_TIMEOUT_SECONDS: ${AI_COACH_LLM_TIMEOUT_SECONDS:-8}
       AI_COACH_LLM_MAX_OUTPUT_TOKENS: ${AI_COACH_LLM_MAX_OUTPUT_TOKENS:-220}
+      ATTACHMENT_ENCRYPTION_KEY: ${ATTACHMENT_ENCRYPTION_KEY:?Set a Base64-encoded 32-byte attachment encryption key}
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70 -XX:+UseG1GC
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase-service-account.json
     depends_on:

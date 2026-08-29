@@ -26,6 +26,8 @@ spring:
             required: true
 
 chessverse:
+  attachments:
+    encryption-key: ${ATTACHMENT_ENCRYPTION_KEY:}
   api:
     rate-limit:
       enabled: ${API_RATE_LIMIT_ENABLED:true}
