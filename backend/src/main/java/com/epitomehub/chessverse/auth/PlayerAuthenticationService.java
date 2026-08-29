@@ -28,7 +28,7 @@ public class PlayerAuthenticationService {
         }
         AuthSession session = sessions.findByTokenHash(sha256(token))
                 .orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED, "Your session has expired. Sign in again."));
-        if (!session.expiresAt.isAfter(Instant.now())) {
+        if (session.revokedAt != null || !session.expiresAt.isAfter(Instant.now())) {
             throw new AuthException(HttpStatus.UNAUTHORIZED, "Your session has expired. Sign in again.");
         }
         return new AuthenticatedPlayer(

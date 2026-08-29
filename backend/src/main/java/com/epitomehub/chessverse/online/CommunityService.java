@@ -12,7 +12,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ContentDisposition;
@@ -30,11 +30,13 @@ class CommunityService {
     private final OnlinePresenceService presence;
     private final PlayerNotificationService notifications;
     private final Path attachmentRoot;
+    private final AttachmentEncryptionService attachmentEncryption;
 
     CommunityService(JdbcTemplate jdbc, FriendConnectionRepository friends, OnlinePresenceService presence,
-                     PlayerNotificationService notifications,
+                     PlayerNotificationService notifications, AttachmentEncryptionService attachmentEncryption,
                      @Value("${chessverse.attachments.directory:./data/chat-attachments}") String attachmentDirectory) {
         this.jdbc = jdbc; this.friends = friends; this.presence = presence; this.notifications = notifications;
+        this.attachmentEncryption = attachmentEncryption;
         this.attachmentRoot = Path.of(attachmentDirectory).toAbsolutePath().normalize();
     }
 
@@ -92,10 +94,17 @@ class CommunityService {
     CommunityDtos.HubDto joinTournament(AuthenticatedPlayer player, UUID tournamentId, boolean join) {
         requireExists("chess_tournament", tournamentId, "Tournament");
         if (join) {
-            int added=jdbc.update("insert into chess_tournament_entry(tournament_id,player_id,joined_at) values(?,?,?) on conflict do nothing",tournamentId,player.id(),Timestamp.from(Instant.now()));
+            int added=jdbc.update("""
+                    insert into chess_tournament_entry(tournament_id,player_id,joined_at)
+                    select t.id,?,? from chess_tournament t
+                    where t.id=? and t.status='OPEN' and t.starts_at>?
+                      and (select count(*) from chess_tournament_entry e where e.tournament_id=t.id)<t.capacity
+                    on conflict do nothing
+                    """,player.id(),Timestamp.from(Instant.now()),tournamentId,Timestamp.from(Instant.now()));
+            if(added==0) throw new OnlineMatchException(HttpStatus.CONFLICT,"Tournament registration is closed or full.");
             if(added>0) notifications.create(player.id(),"TOURNAMENT_REGISTERED","Tournament registration confirmed","We will remind you before your ChessVerseAI tournament starts.","TOURNAMENT",tournamentId);
         }
-        else jdbc.update("delete from chess_tournament_entry where tournament_id=? and player_id=?",tournamentId,player.id());
+        else jdbc.update("delete from chess_tournament_entry where tournament_id=? and player_id=? and exists(select 1 from chess_tournament t where t.id=? and t.status='OPEN' and t.starts_at>?)",tournamentId,player.id(),tournamentId,Timestamp.from(Instant.now()));
         return hub(player);
     }
 
@@ -127,7 +136,7 @@ class CommunityService {
             if (!destination.startsWith(attachmentRoot)) throw new IOException("Invalid attachment path");
             Path temporary = Files.createTempFile(attachmentRoot, id.toString(), ".upload");
             try {
-                Files.write(temporary, accepted.bytes());
+                Files.write(temporary, attachmentEncryption.encrypt(accepted.bytes(), id.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
                 Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE);
             } finally {
                 Files.deleteIfExists(temporary);
@@ -165,7 +174,14 @@ class CommunityService {
                     if (!player.id().equals(sender) && !player.id().equals(recipient)) throw new OnlineMatchException(HttpStatus.FORBIDDEN,"This attachment is not available.");
                     Path path = attachmentRoot.resolve(rs.getString("attachment_path")).normalize();
                     if (!path.startsWith(attachmentRoot) || !Files.isRegularFile(path)) throw new OnlineMatchException(HttpStatus.NOT_FOUND,"Attachment was not found.");
-                    Resource resource = new FileSystemResource(path);
+                    byte[] plaintext;
+                    try {
+                        plaintext = attachmentEncryption.decrypt(Files.readAllBytes(path),
+                                messageId.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    } catch (IOException | IllegalStateException error) {
+                        throw new OnlineMatchException(HttpStatus.INTERNAL_SERVER_ERROR,"The attachment could not be decrypted.");
+                    }
+                    Resource resource = new ByteArrayResource(plaintext);
                     MediaType media;
                     try { media = MediaType.parseMediaType(rs.getString("attachment_type")); }
                     catch (Exception ignored) { media = MediaType.APPLICATION_OCTET_STREAM; }

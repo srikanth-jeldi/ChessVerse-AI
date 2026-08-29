@@ -49,6 +49,95 @@ class TournamentDto {
       joined: j['joined'] as bool? ?? false);
 }
 
+class TournamentDetailDto {
+  const TournamentDetailDto(
+      {required this.id,
+      required this.name,
+      required this.description,
+      required this.minutes,
+      required this.players,
+      required this.capacity,
+      required this.status,
+      required this.joined,
+      required this.currentRound,
+      required this.rounds,
+      this.champion});
+  final String id, name, description, status;
+  final int minutes, players, capacity, currentRound;
+  final bool joined;
+  final TournamentPlayerDto? champion;
+  final List<TournamentRoundDto> rounds;
+  factory TournamentDetailDto.fromJson(Map<String, dynamic> j) =>
+      TournamentDetailDto(
+          id: j['id'] as String? ?? '',
+          name: j['name'] as String? ?? 'Tournament',
+          description: j['description'] as String? ?? '',
+          minutes: (j['timeControlMinutes'] as num?)?.toInt() ?? 10,
+          players: (j['players'] as num?)?.toInt() ?? 0,
+          capacity: (j['capacity'] as num?)?.toInt() ?? 0,
+          status: j['status'] as String? ?? 'OPEN',
+          joined: j['joined'] as bool? ?? false,
+          currentRound: (j['currentRound'] as num?)?.toInt() ?? 0,
+          champion: j['champion'] is Map<String, dynamic>
+              ? TournamentPlayerDto.fromJson(
+                  j['champion'] as Map<String, dynamic>)
+              : null,
+          rounds: (j['rounds'] as List<dynamic>? ?? const [])
+              .whereType<Map<String, dynamic>>()
+              .map(TournamentRoundDto.fromJson)
+              .toList());
+}
+
+class TournamentPlayerDto {
+  const TournamentPlayerDto(this.id, this.name, this.photoUrl);
+  final String id, name;
+  final String? photoUrl;
+  factory TournamentPlayerDto.fromJson(Map<String, dynamic> j) =>
+      TournamentPlayerDto(j['id'] as String? ?? '',
+          j['displayName'] as String? ?? 'Player', j['photoUrl'] as String?);
+}
+
+class TournamentPairingDto {
+  const TournamentPairingDto(this.board, this.white, this.black, this.matchId,
+      this.winner, this.status);
+  final int board;
+  final TournamentPlayerDto? white, black, winner;
+  final String? matchId;
+  final String status;
+  factory TournamentPairingDto.fromJson(
+          Map<String, dynamic> j) =>
+      TournamentPairingDto(
+          (j['board'] as num?)?.toInt() ?? 0,
+          j['white'] is Map<String, dynamic>
+              ? TournamentPlayerDto.fromJson(j['white'] as Map<String, dynamic>)
+              : null,
+          j['black'] is Map<String, dynamic>
+              ? TournamentPlayerDto.fromJson(j['black'] as Map<String, dynamic>)
+              : null,
+          j['matchId'] as String?,
+          j['winner'] is Map<String, dynamic>
+              ? TournamentPlayerDto.fromJson(
+                  j['winner'] as Map<String, dynamic>)
+              : null,
+          j['status'] as String? ?? 'ACTIVE');
+}
+
+class TournamentRoundDto {
+  const TournamentRoundDto(this.number, this.status, this.pairings);
+  final int number;
+  final String status;
+  final List<TournamentPairingDto> pairings;
+  factory TournamentRoundDto.fromJson(
+          Map<String, dynamic> j) =>
+      TournamentRoundDto(
+          (j['number'] as num?)?.toInt() ?? 0,
+          j['status'] as String? ?? 'ACTIVE',
+          (j['pairings'] as List<dynamic>? ?? const [])
+              .whereType<Map<String, dynamic>>()
+              .map(TournamentPairingDto.fromJson)
+              .toList());
+}
+
 class ConversationDto {
   const ConversationDto(
       {required this.playerId,
@@ -138,6 +227,9 @@ class CommunityApi {
   Future<CommunityDto> tournament(String token, String id, bool join) async =>
       CommunityDto.fromJson(await _request(
           token, 'PUT', '/api/v1/community/tournaments/$id?join=$join'));
+  Future<TournamentDetailDto> tournamentDetail(String token, String id) async =>
+      TournamentDetailDto.fromJson(
+          await _request(token, 'GET', '/api/v1/community/tournaments/$id'));
   Future<List<MessageDto>> messages(String token, String friendId) async =>
       (await _requestList(token, 'GET', '/api/v1/community/messages/$friendId'))
           .whereType<Map<String, dynamic>>()

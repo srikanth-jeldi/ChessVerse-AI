@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Locale;
@@ -69,13 +70,13 @@ class GlobalRateLimitInterceptor implements HandlerInterceptor {
         }
 
         if (ThreadLocalRandom.current().nextInt(512) == 0) {
-            jdbc.update("delete from api_rate_limit_bucket where expires_at < ?", Instant.now());
+            jdbc.update("delete from api_rate_limit_bucket where expires_at < ?", Timestamp.from(Instant.now()));
         }
         return true;
     }
 
     private int increment(String key, long window, Instant expiresAt) {
-        Integer count = jdbc.queryForObject(UPSERT, Integer.class, key, window, expiresAt);
+        Integer count = jdbc.queryForObject(UPSERT, Integer.class, key, window, Timestamp.from(expiresAt));
         return count == null ? 1 : count;
     }
 

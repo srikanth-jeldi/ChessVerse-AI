@@ -62,7 +62,15 @@ final class AuthDtos {
     record MessageResponse(String message, Instant expiresAt, String developmentCode) {
     }
 
-    record AuthResponse(String token, Instant expiresAt, PlayerResponse player) {
+    record RefreshRequest(@NotBlank String refreshToken) {
+    }
+
+    record AuthResponse(String token, Instant expiresAt, String refreshToken,
+            Instant refreshExpiresAt, UUID sessionId, PlayerResponse player) {
+    }
+
+    record DeviceSessionResponse(UUID id, String deviceName, Instant createdAt,
+            Instant lastUsedAt, boolean current) {
     }
 
     record PlayerResponse(

@@ -28,18 +28,21 @@ public class OnlineMatchService {
     private final OnlineMatchRepository matches;
     private final OnlineRatingService ratings;
     private final FairPlayService fairPlay;
+    private final TournamentService tournaments;
     private final SecureRandom random = new SecureRandom();
 
     @Autowired
     public OnlineMatchService(
-            OnlineMatchRepository matches, OnlineRatingService ratings, FairPlayService fairPlay) {
+            OnlineMatchRepository matches, OnlineRatingService ratings, FairPlayService fairPlay,
+            TournamentService tournaments) {
         this.matches = matches;
         this.ratings = ratings;
         this.fairPlay = fairPlay;
+        this.tournaments = tournaments;
     }
 
     OnlineMatchService(OnlineMatchRepository matches, OnlineRatingService ratings) {
-        this(matches, ratings, null);
+        this(matches, ratings, null, null);
     }
 
     @Transactional
@@ -546,5 +549,6 @@ public class OnlineMatchService {
         match.finishedAt = Instant.now();
         match.updatedAt = match.finishedAt;
         ratings.settle(match);
+        if (tournaments != null) tournaments.recordResult(match);
     }
 }

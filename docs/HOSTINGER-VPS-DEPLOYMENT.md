@@ -82,16 +82,21 @@ HTTP, HTTPS and HTTP/3 are allowed through the host firewall.
 
 ## 5. Daily database backup
 
-The included script creates a private PostgreSQL custom-format dump, checksum,
-14-day local retention, and optionally copies each backup to an rclone remote:
+The included script streams a PostgreSQL custom-format dump directly through
+`age`, creates a checksum of the ciphertext, applies 14-day local retention,
+and optionally copies it to an rclone remote. Set `BACKUP_AGE_RECIPIENT` to a
+public recipient whose private identity is kept offline and outside the VPS.
 
 ```bash
 chmod 700 backup-postgres.sh
 ./backup-postgres.sh
 ```
 
-Test a restore before depending on backups. A local VPS snapshot is not a
-substitute for an off-server database copy.
+Verify recovery on a separate host with
+`./verify-encrypted-backup.sh <backup.dump.age> <age-identity-file>`. The helper
+checks the ciphertext checksum, decrypts into a permission-restricted temporary
+file, validates the PostgreSQL archive, and securely removes the temporary.
+A local VPS snapshot is not a substitute for an encrypted off-server copy.
 
 After a successful manual run, add a daily root cron entry:
 

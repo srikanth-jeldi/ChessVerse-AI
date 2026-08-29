@@ -1,0 +1,18 @@
+title = "ChessVerseAI secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Firebase client configuration contains public client identifiers; console restrictions are a release gate."
+paths = [
+  '''mobile/android/app/google-services\.json''',
+  '''mobile/ios/Runner/GoogleService-Info\.plist''',
+]
+
+[[allowlists]]
+description = "Synthetic fixed keys used only by deterministic encryption and authentication tests."
+paths = [
+  '''backend/src/test/java/com/epitomehub/chessverse/online/AttachmentEncryptionServiceTest\.java''',
+  '''backend/src/test/java/com/epitomehub/chessverse/auth/AuthControllerTest\.java''',
+]
