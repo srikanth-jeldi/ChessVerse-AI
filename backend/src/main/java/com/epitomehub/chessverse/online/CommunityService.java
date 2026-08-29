@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -112,27 +113,33 @@ class CommunityService {
     CommunityDtos.MessageDto sendAttachment(AuthenticatedPlayer player, UUID recipientId, String body, MultipartFile file) {
         requireFriends(player.id(), recipientId);
         if (file == null || file.isEmpty()) throw new OnlineMatchException(HttpStatus.BAD_REQUEST,"Choose a file to attach.");
-        if (file.getSize() > 10L * 1024 * 1024) throw new OnlineMatchException(HttpStatus.PAYLOAD_TOO_LARGE,"Attachments must be 10 MB or smaller.");
-        String original = file.getOriginalFilename() == null ? "attachment" : Path.of(file.getOriginalFilename()).getFileName().toString();
-        original = original.replaceAll("[\\r\\n]", "").trim();
-        if (original.isBlank()) original = "attachment";
-        String type = file.getContentType() == null ? MediaType.APPLICATION_OCTET_STREAM_VALUE : file.getContentType();
+        if (file.getSize() > AttachmentPolicy.MAX_BYTES) throw new OnlineMatchException(HttpStatus.PAYLOAD_TOO_LARGE,"Attachments must be 10 MB or smaller.");
+        AttachmentPolicy.AcceptedAttachment accepted;
+        try { accepted = AttachmentPolicy.inspect(file.getBytes(), file.getOriginalFilename()); }
+        catch (IOException error) { throw new OnlineMatchException(HttpStatus.BAD_REQUEST,"The attachment could not be read."); }
+        String original = accepted.filename();
+        String type = accepted.mediaType();
         UUID id = UUID.randomUUID(); Instant now = Instant.now();
-        String extension = original.lastIndexOf('.') < 0 ? "" : original.substring(original.lastIndexOf('.')).replaceAll("[^A-Za-z0-9.]", "");
-        String stored = id + extension;
+        String stored = id + accepted.extension();
         try {
             Files.createDirectories(attachmentRoot);
             Path destination = attachmentRoot.resolve(stored).normalize();
             if (!destination.startsWith(attachmentRoot)) throw new IOException("Invalid attachment path");
-            Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
+            Path temporary = Files.createTempFile(attachmentRoot, id.toString(), ".upload");
+            try {
+                Files.write(temporary, accepted.bytes());
+                Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE);
+            } finally {
+                Files.deleteIfExists(temporary);
+            }
         } catch (IOException error) {
             throw new OnlineMatchException(HttpStatus.INTERNAL_SERVER_ERROR,"The attachment could not be stored.");
         }
         String clean = body == null ? "" : body.trim();
         jdbc.update("insert into direct_message(id,sender_id,recipient_id,body,sent_at,attachment_name,attachment_type,attachment_size,attachment_path) values(?,?,?,?,?,?,?,?,?)",
-                id,player.id(),recipientId,clean,Timestamp.from(now),original,type,file.getSize(),stored);
+                id,player.id(),recipientId,clean,Timestamp.from(now),original,type,(long)accepted.bytes().length,stored);
         notifications.create(recipientId,"MESSAGE_RECEIVED","New attachment from "+player.displayName(),original,"CHAT",player.id());
-        return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,original,type,file.getSize());
+        return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,original,type,(long)accepted.bytes().length);
     }
 
     @Transactional
@@ -162,8 +169,13 @@ class CommunityService {
                     MediaType media;
                     try { media = MediaType.parseMediaType(rs.getString("attachment_type")); }
                     catch (Exception ignored) { media = MediaType.APPLICATION_OCTET_STREAM; }
+                    ContentDisposition disposition = ContentDisposition.attachment()
+                            .filename(rs.getString("attachment_name"), java.nio.charset.StandardCharsets.UTF_8).build();
                     return ResponseEntity.ok().contentType(media)
-                            .header("Content-Disposition","inline; filename=\""+rs.getString("attachment_name").replace("\"","")+"\"")
+                            .header("Content-Disposition", disposition.toString())
+                            .header("X-Content-Type-Options", "nosniff")
+                            .header("Content-Security-Policy", "default-src 'none'; sandbox")
+                            .header("Cache-Control", "private, no-store")
                             .body(resource);
                 },messageId);
     }
