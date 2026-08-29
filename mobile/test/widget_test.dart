@@ -45,7 +45,8 @@ class _FakeOnlineApi extends OnlineMatchApi {
       randomMatch(token);
 
   @override
-  WebSocketChannel openMatchChannel(String token, String matchId) {
+  Future<WebSocketChannel> openMatchChannel(
+      String token, String matchId) async {
     throw StateError('Socket intentionally unavailable in widget test');
   }
 }
@@ -85,7 +86,8 @@ class _FinishedOnlineApi extends OnlineMatchApi {
   Future<OnlineMatchDto> getMatch(String token, String matchId) async => match;
 
   @override
-  WebSocketChannel openMatchChannel(String token, String matchId) {
+  Future<WebSocketChannel> openMatchChannel(
+      String token, String matchId) async {
     throw StateError('Socket intentionally unavailable in widget test');
   }
 }

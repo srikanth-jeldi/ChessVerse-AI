@@ -7252,15 +7252,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       const Duration(seconds: 2),
       (_) => unawaited(_refreshOnlineMatch()),
     );
-    _connectOnlineSocket(token, match.id);
+    unawaited(_connectOnlineSocket(token, match.id));
   }
 
-  void _connectOnlineSocket(String token, String matchId) {
+  Future<void> _connectOnlineSocket(String token, String matchId) async {
     _onlineSocketReconnectTimer?.cancel();
     _onlineHeartbeatTimer?.cancel();
     try {
       final WebSocketChannel channel =
-          _onlineApi.openMatchChannel(token, matchId);
+          await _onlineApi.openMatchChannel(token, matchId);
       _onlineChannel = channel;
       _onlineHeartbeatTimer = Timer.periodic(
         const Duration(seconds: 2),
@@ -7296,7 +7296,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final int delaySeconds = (2 * _onlineSocketReconnectAttempts).clamp(2, 12);
     _onlineSocketReconnectTimer = Timer(
       Duration(seconds: delaySeconds),
-      () => _connectOnlineSocket(token, matchId),
+      () => unawaited(_connectOnlineSocket(token, matchId)),
     );
   }
 
@@ -7487,7 +7487,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       (_) => unawaited(_refreshOnlineMatch()),
     );
     unawaited(_refreshOnlineMatch(forceBoardReplay: true));
-    _connectOnlineSocket(token, match.id);
+    unawaited(_connectOnlineSocket(token, match.id));
   }
 
   Future<void> _startFreshOnlineGame() async {
@@ -11989,7 +11989,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
         unawaited(_expireRandomSearch(match));
       }
     });
-    _openSocket(match);
+    unawaited(_openSocket(match));
   }
 
   Future<void> _expireRandomSearch(OnlineMatchDto waiting) async {
@@ -12028,13 +12028,13 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     });
   }
 
-  void _openSocket(OnlineMatchDto match) {
+  Future<void> _openSocket(OnlineMatchDto match) async {
     _socketReconnectTimer?.cancel();
     unawaited(_socketSubscription?.cancel());
     unawaited(_channel?.sink.close());
     try {
       final WebSocketChannel channel =
-          widget.api.openMatchChannel(widget.token, match.id);
+          await widget.api.openMatchChannel(widget.token, match.id);
       _channel = channel;
       _socketSubscription = channel.stream.listen(
         (_) => unawaited(_poll()),
@@ -12052,7 +12052,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     _socketReconnectTimer?.cancel();
     _socketReconnectTimer = Timer(
       const Duration(seconds: 3),
-      () => _openSocket(match),
+      () => unawaited(_openSocket(match)),
     );
   }
 

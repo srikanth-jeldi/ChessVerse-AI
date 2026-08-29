@@ -39,7 +39,7 @@ Last reviewed: 2026-08-29
 - [x] Return consistent `429` responses with `Retry-After` and rate-limit response headers.
 - [ ] Add metrics and alerts for throttling spikes.
 - [ ] Shorten access-token lifetime; implement refresh-token rotation, reuse detection, server-side revocation, logout-all, and per-device session listing.
-- [ ] Remove WebSocket tokens from query strings. Use an `HttpOnly; Secure; SameSite` cookie for web or an authenticated short-lived one-time WebSocket ticket.
+- [x] Remove session tokens from WebSocket query strings; web now uses an authenticated 30-second, single-use, match-bound ticket.
 - [ ] Redact credentials, tokens, query strings, authorization headers, attachment names, and sensitive chat data from application/proxy/error logs.
 - [ ] Add MFA for administrators first, then optional TOTP/passkeys for players.
 - [ ] Add CSRF protection where cookie authentication is used and strict WebSocket `Origin` allow-list validation.
