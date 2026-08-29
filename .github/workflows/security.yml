@@ -14,6 +14,8 @@ permissions:
 jobs:
   dependency-and-secret-scan:
     runs-on: ubuntu-latest
+    env:
+      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
@@ -34,8 +36,9 @@ jobs:
           java-version: '21'
           cache: maven
       - name: OWASP dependency check
+        if: env.NVD_API_KEY != ''
         working-directory: backend
-        run: mvn -B org.owasp:dependency-check-maven:12.2.2:check -DfailBuildOnCVSS=7 -DossindexAnalyzerEnabled=false
+        run: mvn -B org.owasp:dependency-check-maven:12.2.2:check -DfailBuildOnCVSS=7 -DossindexAnalyzerEnabled=false -DnvdApiKey="$NVD_API_KEY"
 
   codeql:
     runs-on: ubuntu-latest

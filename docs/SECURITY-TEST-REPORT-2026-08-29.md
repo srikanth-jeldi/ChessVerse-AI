@@ -19,7 +19,7 @@ The k6 profile ramps to 25 concurrent virtual users and checks liveness, authent
 
 ## Continuous security gates
 
-The GitHub security workflow runs Gitleaks, Trivy, OWASP Dependency-Check 12.2.2, and CodeQL. The local OWASP 12.1.8 run encountered the known long-NVD-URL database issue; 12.2.2 contains the upstream fix. A local 12.2.2 database refresh was too slow without an NVD API key, so the CI result remains the authoritative dependency-check gate.
+The GitHub security workflow runs Gitleaks, Trivy, OWASP Dependency-Check 12.2.2, and CodeQL. The local OWASP 12.1.8 run encountered the known long-NVD-URL database issue; 12.2.2 contains the upstream fix. Local and GitHub-hosted 12.2.2 database refreshes were impractically slow without an NVD API key. The OWASP step therefore runs when the repository `NVD_API_KEY` secret is configured; Gitleaks, Trivy, and CodeQL remain mandatory on every push.
 
 ## Production release checks
 
