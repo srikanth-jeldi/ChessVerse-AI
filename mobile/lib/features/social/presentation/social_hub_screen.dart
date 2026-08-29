@@ -9,6 +9,7 @@ import '../../auth/data/auth_session_store.dart';
 import '../../online/data/online_match_api.dart';
 import '../data/social_api.dart';
 import '../data/community_api.dart';
+import 'tournament_detail_screen.dart';
 import '../../notifications/presentation/notification_center_screen.dart';
 import '../../notifications/presentation/notification_bell_button.dart';
 import '../../notifications/data/notification_api.dart';
@@ -622,7 +623,14 @@ class _CommunitySection extends StatelessWidget {
           .map((c) => _ClubCard(club: c, onTap: () => onClub(c)))
           .toList(),
       2 => community.tournaments
-          .map((t) => _TournamentCard(event: t, onTap: () => onTournament(t)))
+          .map((t) => _TournamentCard(
+              event: t,
+              onTap: () async {
+                await Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => TournamentDetailScreen(
+                        id: t.id, token: token, api: api)));
+                await onRefresh();
+              }))
           .toList(),
       _ => friends
           .map((f) => _ChatCard(
@@ -779,7 +787,7 @@ class _TournamentCard extends StatelessWidget {
       title: event.name,
       subtitle: event.description,
       meta: '${event.minutes} min • ${event.players}/${event.capacity} players',
-      button: event.joined ? 'Withdraw' : 'Join tournament',
+      button: 'View bracket',
       onTap: onTap);
 }
 

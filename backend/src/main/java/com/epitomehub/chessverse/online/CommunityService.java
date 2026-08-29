@@ -94,10 +94,17 @@ class CommunityService {
     CommunityDtos.HubDto joinTournament(AuthenticatedPlayer player, UUID tournamentId, boolean join) {
         requireExists("chess_tournament", tournamentId, "Tournament");
         if (join) {
-            int added=jdbc.update("insert into chess_tournament_entry(tournament_id,player_id,joined_at) values(?,?,?) on conflict do nothing",tournamentId,player.id(),Timestamp.from(Instant.now()));
+            int added=jdbc.update("""
+                    insert into chess_tournament_entry(tournament_id,player_id,joined_at)
+                    select t.id,?,? from chess_tournament t
+                    where t.id=? and t.status='OPEN' and t.starts_at>?
+                      and (select count(*) from chess_tournament_entry e where e.tournament_id=t.id)<t.capacity
+                    on conflict do nothing
+                    """,player.id(),Timestamp.from(Instant.now()),tournamentId,Timestamp.from(Instant.now()));
+            if(added==0) throw new OnlineMatchException(HttpStatus.CONFLICT,"Tournament registration is closed or full.");
             if(added>0) notifications.create(player.id(),"TOURNAMENT_REGISTERED","Tournament registration confirmed","We will remind you before your ChessVerseAI tournament starts.","TOURNAMENT",tournamentId);
         }
-        else jdbc.update("delete from chess_tournament_entry where tournament_id=? and player_id=?",tournamentId,player.id());
+        else jdbc.update("delete from chess_tournament_entry where tournament_id=? and player_id=? and exists(select 1 from chess_tournament t where t.id=? and t.status='OPEN' and t.starts_at>?)",tournamentId,player.id(),tournamentId,Timestamp.from(Instant.now()));
         return hub(player);
     }
 
