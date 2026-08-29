@@ -45,7 +45,8 @@ class _FakeOnlineApi extends OnlineMatchApi {
       randomMatch(token);
 
   @override
-  WebSocketChannel openMatchChannel(String token, String matchId) {
+  Future<WebSocketChannel> openMatchChannel(
+      String token, String matchId) async {
     throw StateError('Socket intentionally unavailable in widget test');
   }
 }
@@ -85,7 +86,8 @@ class _FinishedOnlineApi extends OnlineMatchApi {
   Future<OnlineMatchDto> getMatch(String token, String matchId) async => match;
 
   @override
-  WebSocketChannel openMatchChannel(String token, String matchId) {
+  Future<WebSocketChannel> openMatchChannel(
+      String token, String matchId) async {
     throw StateError('Socket intentionally unavailable in widget test');
   }
 }
@@ -886,6 +888,34 @@ void main() {
     expect(find.text('Find Match'), findsOneWidget);
     await tester.pump(const Duration(seconds: 4));
     expect(find.text('FINDING YOUR RIVAL'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('random search falls back to a named AI rival', (
+    WidgetTester tester,
+  ) async {
+    String? fallbackName;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: OnlineMatchmakingSheet(
+            api: const _FakeOnlineApi(active: false),
+            token: 'test-token',
+            onProfile: _noop,
+            onAiFallback: (String rivalName) async {
+              fallbackName = rivalName;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Find Match'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 20));
+    await tester.pump();
+
+    expect(fallbackName, isNotNull);
+    expect(fallbackName, isNotEmpty);
     expect(tester.takeException(), isNull);
   });
 

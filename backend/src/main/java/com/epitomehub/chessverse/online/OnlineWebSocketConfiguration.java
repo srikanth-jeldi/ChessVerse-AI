@@ -14,7 +14,6 @@ import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 import org.springframework.web.util.UriTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
 @Configuration
 @EnableWebSocket
@@ -24,14 +23,17 @@ public class OnlineWebSocketConfiguration implements WebSocketConfigurer {
     private final OnlineMatchSocketHandler handler;
     private final PlayerAuthenticationService authentication;
     private final OnlineMatchService matches;
+    private final WebSocketTicketService tickets;
 
     public OnlineWebSocketConfiguration(
             OnlineMatchSocketHandler handler,
             PlayerAuthenticationService authentication,
-            OnlineMatchService matches) {
+            OnlineMatchService matches,
+            WebSocketTicketService tickets) {
         this.handler = handler;
         this.authentication = authentication;
         this.matches = matches;
+        this.tickets = tickets;
     }
 
     @Override
@@ -53,20 +55,25 @@ public class OnlineWebSocketConfiguration implements WebSocketConfigurer {
                 Map<String, String> variables = MATCH_PATH.match(path);
                 UUID matchId = UUID.fromString(variables.get("matchId"));
                 String authorization = request.getHeaders().getFirst("Authorization");
-                if (authorization == null || authorization.isBlank()) {
-                    String token = UriComponentsBuilder.fromUri(request.getURI())
-                            .build()
-                            .getQueryParams()
-                            .getFirst("access_token");
-                    authorization = token == null ? null : "Bearer " + token;
+                UUID playerId;
+                if (authorization != null && !authorization.isBlank()) {
+                    AuthenticatedPlayer player = authentication.requireBearer(authorization);
+                    playerId = player.id();
+                } else {
+                    String ticket = org.springframework.web.util.UriComponentsBuilder.fromUri(request.getURI())
+                            .build().getQueryParams().getFirst("ticket");
+                    playerId = tickets.consume(ticket, matchId);
+                    if (playerId == null) {
+                        response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                        return false;
+                    }
                 }
-                AuthenticatedPlayer player = authentication.requireBearer(authorization);
-                if (!matches.isParticipant(player.id(), matchId)) {
+                if (!matches.isParticipant(playerId, matchId)) {
                     response.setStatusCode(HttpStatus.FORBIDDEN);
                     return false;
                 }
                 attributes.put("matchId", matchId);
-                attributes.put("playerId", player.id());
+                attributes.put("playerId", playerId);
                 return true;
             } catch (RuntimeException exception) {
                 response.setStatusCode(HttpStatus.UNAUTHORIZED);

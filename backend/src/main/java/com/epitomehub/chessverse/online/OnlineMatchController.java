@@ -21,16 +21,19 @@ public class OnlineMatchController {
     private final OnlineMatchService matches;
     private final OnlineMatchSocketHandler socket;
     private final OnlinePresenceService presence;
+    private final WebSocketTicketService tickets;
 
     public OnlineMatchController(
             PlayerAuthenticationService authentication,
             OnlineMatchService matches,
             OnlineMatchSocketHandler socket,
-            OnlinePresenceService presence) {
+            OnlinePresenceService presence,
+            WebSocketTicketService tickets) {
         this.authentication = authentication;
         this.matches = matches;
         this.socket = socket;
         this.presence = presence;
+        this.tickets = tickets;
     }
 
     @PostMapping("/presence")
@@ -80,6 +83,13 @@ public class OnlineMatchController {
             @RequestHeader("Authorization") String authorization,
             @PathVariable UUID matchId) {
         return matches.get(player(authorization), matchId);
+    }
+
+    @PostMapping("/matches/{matchId}/ws-ticket")
+    WebSocketTicketService.Ticket webSocketTicket(
+            @RequestHeader("Authorization") String authorization,
+            @PathVariable UUID matchId) {
+        return tickets.issue(player(authorization), matchId);
     }
 
     @GetMapping("/matches/history")

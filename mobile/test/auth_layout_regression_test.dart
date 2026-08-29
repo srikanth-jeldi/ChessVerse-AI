@@ -58,6 +58,36 @@ void main() {
     expect(find.text('player@example.com'), findsOneWidget);
   });
 
+  testWidgets('player name stays visible after switching from login',
+      (WidgetTester tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(home: AuthScreen(onAuthenticated: (_) {})),
+    );
+    await tester.tap(find.text('Register'));
+    await tester.pumpAndSettle();
+
+    final Finder playerNameField = find.byWidgetPredicate(
+      (Widget widget) =>
+          widget is TextField && widget.decoration?.hintText == 'Player name',
+    );
+    expect(playerNameField, findsOneWidget);
+    await tester.enterText(playerNameField, 'Srikanth');
+
+    final EditableText editable = tester.widget<EditableText>(
+      find.descendant(
+        of: playerNameField,
+        matching: find.byType(EditableText),
+      ),
+    );
+    expect(editable.obscureText, isFalse);
+    expect(find.text('Srikanth'), findsOneWidget);
+  });
+
   testWidgets('landscape phone uses the dedicated mobile split',
       (WidgetTester tester) async {
     tester.view.devicePixelRatio = 1;

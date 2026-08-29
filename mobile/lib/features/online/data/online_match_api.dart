@@ -282,7 +282,8 @@ class OnlineMatchApi {
         .toList(growable: false);
   }
 
-  WebSocketChannel openMatchChannel(String token, String matchId) {
+  Future<WebSocketChannel> openMatchChannel(
+      String token, String matchId) async {
     final Uri api = Uri.parse(AppConfig.apiBaseUrl);
     final Uri socketUri = api.replace(
       scheme: api.scheme == 'https' ? 'wss' : 'ws',
@@ -290,7 +291,21 @@ class OnlineMatchApi {
       query: null,
       fragment: null,
     );
-    return connectOnlineSocket(socketUri, token);
+    String? ticket;
+    if (onlineSocketRequiresTicket) {
+      final Object? decoded = await _requestJson(
+        token,
+        'POST',
+        '/api/v1/online/matches/$matchId/ws-ticket',
+      );
+      ticket =
+          decoded is Map<String, dynamic> ? decoded['ticket'] as String? : null;
+      if (ticket == null || ticket.isEmpty) {
+        throw const OnlineMatchException(
+            'A secure live connection could not be created.');
+      }
+    }
+    return connectOnlineSocket(socketUri, token, ticket);
   }
 
   Future<OnlineMatchDto> _request(

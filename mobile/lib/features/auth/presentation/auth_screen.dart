@@ -1914,6 +1914,16 @@ class _AuthFieldState extends State<_AuthField> {
   late bool _obscured = widget.obscureText;
 
   @override
+  void didUpdateWidget(covariant _AuthField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Login and register render different fields in the same list positions.
+    // Do not let a reused password-field State keep a normal text field masked.
+    if (oldWidget.obscureText != widget.obscureText) {
+      _obscured = widget.obscureText;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return TextField(
       controller: widget.controller,
