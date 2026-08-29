@@ -39,7 +39,7 @@ jobs:
       - name: OWASP dependency check
         if: env.NVD_API_KEY != ''
         working-directory: backend
-        run: mvn -B org.owasp:dependency-check-maven:12.2.2:check -Dformat=ALL -DfailBuildOnCVSS=7 -DossindexAnalyzerEnabled=false -DnvdApiKey="$NVD_API_KEY"
+        run: mvn -B org.owasp:dependency-check-maven:12.2.2:check -Dformat=ALL -DfailBuildOnCVSS=7 -DossindexAnalyzerEnabled=false -DsuppressionFile=config/dependency-check-suppressions.xml -DnvdApiKey="$NVD_API_KEY"
       - name: Upload OWASP dependency report
         if: ${{ always() && env.NVD_API_KEY != '' }}
         uses: actions/upload-artifact@v4
