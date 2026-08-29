@@ -14,13 +14,16 @@ permissions:
 jobs:
   dependency-and-secret-scan:
     runs-on: ubuntu-latest
+    env:
+      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: aquasecurity/trivy-action@0.36.0
+      # Immutable commit for trivy-action v0.36.0.
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8
         with:
           scan-type: fs
           scan-ref: .
@@ -33,8 +36,9 @@ jobs:
           java-version: '21'
           cache: maven
       - name: OWASP dependency check
+        if: env.NVD_API_KEY != ''
         working-directory: backend
-        run: mvn -B org.owasp:dependency-check-maven:12.2.2:check -DfailBuildOnCVSS=7 -DossindexAnalyzerEnabled=false
+        run: mvn -B org.owasp:dependency-check-maven:12.2.2:check -DfailBuildOnCVSS=7 -DossindexAnalyzerEnabled=false -DnvdApiKey="$NVD_API_KEY"
 
   codeql:
     runs-on: ubuntu-latest

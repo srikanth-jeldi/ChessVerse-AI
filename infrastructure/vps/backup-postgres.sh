@@ -53,7 +53,15 @@ if [[ -n "${BACKUP_REMOTE:-}" ]]; then
     echo "BACKUP_REMOTE is set, but rclone is not installed." >&2
     exit 1
   fi
-  rclone copy "${backup_file}" "${backup_file}.sha256" "${BACKUP_REMOTE}"
+  remote_base="${BACKUP_REMOTE%/}"
+  rclone_args=()
+  if [[ -n "${BACKUP_RCLONE_BIND:-}" ]]; then
+    rclone_args+=(--bind "${BACKUP_RCLONE_BIND}")
+  fi
+  rclone "${rclone_args[@]}" copyto \
+    "${backup_file}" "${remote_base}/$(basename "${backup_file}")"
+  rclone "${rclone_args[@]}" copyto \
+    "${backup_file}.sha256" "${remote_base}/$(basename "${backup_file}.sha256")"
 fi
 
 echo "Created ${backup_file}"

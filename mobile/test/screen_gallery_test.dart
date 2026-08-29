@@ -1,3 +1,6 @@
+@Tags(['golden'])
+library;
+
 import 'package:chessverse_ai/core/audio/chess_sound_service.dart';
 import 'package:chessverse_ai/core/local_game_archive.dart';
 import 'package:chessverse_ai/features/analysis/presentation/analysis_screen.dart';
