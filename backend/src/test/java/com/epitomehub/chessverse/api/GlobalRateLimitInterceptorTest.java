@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import java.sql.Timestamp;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -24,6 +25,7 @@ class GlobalRateLimitInterceptorTest {
 
         assertTrue(interceptor.preHandle(request, response, new Object()));
         verify(jdbc, times(2)).queryForObject(anyString(), eq(Integer.class), any(), any(), any());
+        verify(jdbc, times(2)).queryForObject(anyString(), eq(Integer.class), any(), any(), isA(Timestamp.class));
         assertEquals("45", response.getHeader("X-RateLimit-Limit"));
         assertEquals("44", response.getHeader("X-RateLimit-Remaining"));
     }

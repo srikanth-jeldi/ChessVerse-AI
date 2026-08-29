@@ -91,7 +91,9 @@ class TournamentService {
                 white.id,white.name,white.photo,false,minutes,"WORLDWIDE","Unknown",1200,0);
         match.blackPlayerId=black.id; match.blackPlayerName=black.name; match.blackPlayerPhotoUrl=black.photo;
         match.status=OnlineMatchStatus.ACTIVE; match.startedAt=Instant.now(); match.turnStartedAt=match.startedAt; match.updatedAt=match.startedAt;
-        return matches.save(match);
+        // Pairings are inserted through JDBC in the same transaction, so the
+        // JPA insert must reach the database before its foreign key is used.
+        return matches.saveAndFlush(match);
     }
 
     private void advanceIfRoundComplete(UUID pairingId) {
