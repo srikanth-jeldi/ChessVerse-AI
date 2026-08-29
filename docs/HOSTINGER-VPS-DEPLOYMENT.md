@@ -109,7 +109,31 @@ When the storage token is restricted to the VPS IPv4 but the VPS also has IPv6,
 set `BACKUP_RCLONE_BIND` to that allowed IPv4 address so uploads use the same
 source address as the provider allow-list.
 
-## 6. Updating production
+## 6. Monitoring and alert heartbeats
+
+Create two private heartbeat checks with a service that supports the
+Healthchecks.io-compatible `/fail` endpoint. Put only the secret ping URLs in
+`vps.env` as `BACKUP_HEARTBEAT_URL` and `APP_HEARTBEAT_URL`; never commit them.
+The backup script reports success only after the encrypted off-site upload has
+finished and reports any failed run. The application monitor runs every five
+minutes and alerts on an unavailable backend, a spike in HTTP 5xx responses,
+password-login failures, or account lockouts. Counters contain no usernames,
+email addresses, tokens, or client IP addresses.
+
+```bash
+chmod 700 monitor-production.sh
+cp chessverse-production-monitor.cron /etc/cron.d/chessverse-production-monitor
+chmod 644 /etc/cron.d/chessverse-production-monitor
+./monitor-production.sh
+```
+
+Also configure an external HTTPS uptime monitor for both
+`https://chessverseai.com/` and
+`https://api.chessverseai.com/actuator/health/readiness`. This remains able to
+alert when the whole VPS or its network is unavailable. Test every alert route
+before release and record the responder/owner.
+
+## 7. Updating production
 
 ```bash
 git pull --ff-only
@@ -122,7 +146,7 @@ docker image prune -f
 Run `backup-postgres.sh` immediately before database migrations or major
 upgrades.
 
-## 7. Mobile release endpoint
+## 8. Mobile release endpoint
 
 Build Android releases with:
 

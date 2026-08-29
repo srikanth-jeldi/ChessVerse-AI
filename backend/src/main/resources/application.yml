@@ -63,6 +63,9 @@ chessverse:
     allowed-origin-patterns: ${ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
 
 management:
+  metrics:
+    tags:
+      application: chessverse-backend
   endpoints:
     web:
       exposure:
