@@ -150,6 +150,25 @@ class AuthControllerTest {
     }
 
     @Test
+    void playerCannotRevokeAnotherPlayersDeviceSession() throws Exception {
+        var first = objectMapper.readTree(mockMvc.perform(post("/api/auth/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"installationId\":\"81000000-0000-4000-8000-000000000001\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var second = objectMapper.readTree(mockMvc.perform(post("/api/auth/guest")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"installationId\":\"81000000-0000-4000-8000-000000000002\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+
+        mockMvc.perform(delete("/api/auth/sessions/" + second.path("sessionId").asText())
+                        .header("Authorization", "Bearer " + first.path("token").asText()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", "Bearer " + second.path("token").asText()))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void guestUpgradeKeepsPlayerIdAndMakesInstallationPermanent() throws Exception {
         String request = "{\"installationId\":\"9b2b103d-8d66-4bf5-9e91-ef5578f20c0a\"}";
         MvcResult guestLogin = mockMvc.perform(post("/api/auth/guest")

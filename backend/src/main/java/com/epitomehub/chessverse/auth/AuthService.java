@@ -556,8 +556,7 @@ class AuthService {
     @Transactional
     void revokeDeviceSession(String token, UUID sessionId) {
         AuthSession current = requireSession(token);
-        AuthSession target = sessions.findById(sessionId)
-                .filter(session -> session.player.id.equals(current.player.id))
+        AuthSession target = sessions.findByIdAndPlayerId(sessionId, current.player.id)
                 .orElseThrow(() -> new AuthException(HttpStatus.NOT_FOUND, "Device session not found."));
         sessions.delete(target);
     }

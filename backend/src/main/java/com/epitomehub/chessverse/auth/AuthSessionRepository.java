@@ -18,6 +18,8 @@ interface AuthSessionRepository extends JpaRepository<AuthSession, UUID> {
 
     java.util.List<AuthSession> findAllByPlayerIdOrderByLastUsedAtDesc(UUID playerId);
 
+    Optional<AuthSession> findByIdAndPlayerId(UUID id, UUID playerId);
+
     void deleteByTokenFamilyId(UUID tokenFamilyId);
 
     void deleteByTokenHash(String tokenHash);
