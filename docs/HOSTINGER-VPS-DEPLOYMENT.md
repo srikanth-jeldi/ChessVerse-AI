@@ -105,6 +105,9 @@ After a successful manual run, add a daily root cron entry:
 ```
 
 Use an external rclone destination by setting `BACKUP_REMOTE` in `vps.env`.
+When the storage token is restricted to the VPS IPv4 but the VPS also has IPv6,
+set `BACKUP_RCLONE_BIND` to that allowed IPv4 address so uploads use the same
+source address as the provider allow-list.
 
 ## 6. Updating production
 
