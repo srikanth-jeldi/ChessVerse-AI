@@ -12,6 +12,7 @@ import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../../core/widgets/skeleton_loader.dart';
 import '../../legal/presentation/legal_screen.dart';
 import 'help_support_screen.dart';
+import 'device_sessions_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
@@ -383,6 +384,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      const _SettingsSectionTitle(
+                        icon: Icons.security_rounded,
+                        label: 'SECURITY',
+                      ),
+                      const SizedBox(height: 12),
+                      ChessVerseCard(
+                        child: _ActionRow(
+                          icon: Icons.devices_rounded,
+                          title: 'Devices & sessions',
+                          onTap: () async {
+                            final bool? loggedOut = await Navigator.of(context)
+                                .push<bool>(MaterialPageRoute<bool>(
+                              builder: (_) => const DeviceSessionsScreen(),
+                            ));
+                            if (loggedOut == true) {
+                              await widget.onLogout?.call();
+                            }
+                          },
                         ),
                       ),
                       const SizedBox(height: 18),

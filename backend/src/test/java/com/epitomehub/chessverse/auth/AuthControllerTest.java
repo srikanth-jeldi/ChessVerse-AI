@@ -107,6 +107,49 @@ class AuthControllerTest {
     }
 
     @Test
+    void refreshTokenRotatesOnceAndDeviceSessionCanBeListed() throws Exception {
+        MvcResult login = mockMvc.perform(post("/api/auth/guest")
+                        .header("X-Device-Id", "android-test-device")
+                        .header("X-Device-Name", "Pixel Test")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"installationId\":\"61e719da-a5a2-4cef-b1fa-b11c19a8d940\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.refreshToken").isNotEmpty())
+                .andExpect(jsonPath("$.sessionId").isNotEmpty())
+                .andReturn();
+        var issued = objectMapper.readTree(login.getResponse().getContentAsString());
+        String accessToken = issued.path("token").asText();
+        String refreshToken = issued.path("refreshToken").asText();
+
+        mockMvc.perform(get("/api/auth/sessions")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].deviceName").value("Pixel Test"))
+                .andExpect(jsonPath("$[0].current").value(true));
+
+        MvcResult rotated = mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"" + refreshToken + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty())
+                .andExpect(jsonPath("$.refreshToken").isNotEmpty())
+                .andReturn();
+        String rotatedAccess = objectMapper.readTree(rotated.getResponse().getContentAsString())
+                .path("token").asText();
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"" + refreshToken + "\"}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", "Bearer " + rotatedAccess))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void guestUpgradeKeepsPlayerIdAndMakesInstallationPermanent() throws Exception {
         String request = "{\"installationId\":\"9b2b103d-8d66-4bf5-9e91-ef5578f20c0a\"}";
         MvcResult guestLogin = mockMvc.perform(post("/api/auth/guest")

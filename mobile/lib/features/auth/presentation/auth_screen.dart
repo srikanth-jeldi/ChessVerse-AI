@@ -1305,6 +1305,10 @@ class _AuthScreenState extends State<AuthScreen> {
           email: email,
           photoUrl: resolvedPhotoUrl,
           isGuest: isGuest,
+          refreshToken: _nonBlankString(data['refreshToken']),
+          refreshExpiresAt:
+              DateTime.tryParse(data['refreshExpiresAt'] as String? ?? ''),
+          sessionId: _nonBlankString(data['sessionId']),
         ),
       );
     } else {

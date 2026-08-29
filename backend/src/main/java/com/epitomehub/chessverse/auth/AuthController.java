@@ -5,6 +5,7 @@ import static com.epitomehub.chessverse.auth.AuthDtos.*;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -42,6 +45,11 @@ class AuthController {
     @PostMapping("/login")
     AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/refresh")
+    AuthResponse refresh(@Valid @RequestBody RefreshRequest request) {
+        return authService.refresh(request);
     }
 
     @PostMapping("/google")
@@ -100,6 +108,26 @@ class AuthController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void logout(@RequestHeader(name = "Authorization", required = false) String authorization) {
         authService.logout(bearerToken(authorization));
+    }
+
+    @GetMapping("/sessions")
+    List<DeviceSessionResponse> sessions(
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        return authService.deviceSessions(bearerToken(authorization));
+    }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void revokeSession(
+            @RequestHeader(name = "Authorization", required = false) String authorization,
+            @PathVariable UUID sessionId) {
+        authService.revokeDeviceSession(bearerToken(authorization), sessionId);
+    }
+
+    @PostMapping("/logout-all")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void logoutAll(@RequestHeader(name = "Authorization", required = false) String authorization) {
+        authService.logoutAll(bearerToken(authorization));
     }
 
     @DeleteMapping("/account")

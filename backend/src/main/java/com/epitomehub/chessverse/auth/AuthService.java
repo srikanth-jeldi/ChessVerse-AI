@@ -9,6 +9,8 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.Base64;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +19,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Service
 class AuthService {
@@ -37,6 +41,7 @@ class AuthService {
     private final SecureRandom random = new SecureRandom();
     private final Duration otpExpiry;
     private final Duration sessionExpiry;
+    private final Duration refreshExpiry;
     private final Duration loginLockout;
     private final Duration resendCooldown;
     private final boolean exposeDevelopmentCode;
@@ -54,6 +59,7 @@ class AuthService {
             JdbcTemplate jdbcTemplate,
             @Value("${chessverse.auth.otp-expiry-minutes:10}") long otpExpiryMinutes,
             @Value("${chessverse.auth.session-expiry-days:30}") long sessionExpiryDays,
+            @Value("${chessverse.auth.refresh-expiry-days:30}") long refreshExpiryDays,
             @Value("${chessverse.auth.login-lockout-minutes:15}") long loginLockoutMinutes,
             @Value("${chessverse.auth.resend-cooldown-seconds:60}") long resendCooldownSeconds,
             @Value("${chessverse.auth.expose-development-code:false}") boolean exposeDevelopmentCode) {
@@ -69,6 +75,7 @@ class AuthService {
         this.jdbcTemplate = jdbcTemplate;
         this.otpExpiry = Duration.ofMinutes(otpExpiryMinutes);
         this.sessionExpiry = Duration.ofDays(sessionExpiryDays);
+        this.refreshExpiry = Duration.ofDays(refreshExpiryDays);
         this.loginLockout = Duration.ofMinutes(loginLockoutMinutes);
         this.resendCooldown = Duration.ofSeconds(resendCooldownSeconds);
         this.exposeDevelopmentCode = exposeDevelopmentCode;
@@ -510,6 +517,58 @@ class AuthService {
     }
 
     @Transactional
+    AuthResponse refresh(RefreshRequest request) {
+        String refreshHash = sha256(request.refreshToken());
+        AuthSession current = sessions.findByRefreshTokenHash(refreshHash)
+                .orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED,
+                        "Your refresh token is invalid. Sign in again."));
+        Instant now = Instant.now();
+        if (current.revokedAt != null || !current.createdAt.plus(refreshExpiry).isAfter(now)) {
+            sessions.deleteByTokenFamilyId(current.tokenFamilyId);
+            throw new AuthException(HttpStatus.UNAUTHORIZED,
+                    "Your session can no longer be refreshed. Sign in again.");
+        }
+
+        // Preserve the consumed hash as a replay marker. Presenting it again
+        // revokes the complete token family, including the rotated successor.
+        UUID familyId = current.tokenFamilyId;
+        PlayerAccount player = current.player;
+        String deviceId = current.deviceId;
+        String deviceName = current.deviceName;
+        current.revokedAt = now;
+        current.lastUsedAt = now;
+        sessions.save(current);
+        sessions.flush();
+        return createSession(player, familyId, deviceId, deviceName);
+    }
+
+    @Transactional(readOnly = true)
+    List<DeviceSessionResponse> deviceSessions(String token) {
+        AuthSession current = requireSession(token);
+        return sessions.findAllByPlayerIdOrderByLastUsedAtDesc(current.player.id).stream()
+                .filter(session -> session.revokedAt == null)
+                .map(session -> new DeviceSessionResponse(session.id,
+                        session.deviceName == null ? "Unknown device" : session.deviceName,
+                        session.createdAt, session.lastUsedAt, session.id.equals(current.id)))
+                .toList();
+    }
+
+    @Transactional
+    void revokeDeviceSession(String token, UUID sessionId) {
+        AuthSession current = requireSession(token);
+        AuthSession target = sessions.findById(sessionId)
+                .filter(session -> session.player.id.equals(current.player.id))
+                .orElseThrow(() -> new AuthException(HttpStatus.NOT_FOUND, "Device session not found."));
+        sessions.delete(target);
+    }
+
+    @Transactional
+    void logoutAll(String token) {
+        AuthSession current = requireSession(token);
+        sessions.deleteByPlayerId(current.player.id);
+    }
+
+    @Transactional
     void deleteAccount(String token) {
         PlayerAccount player = requireSession(token).player;
         // Remove managed sessions first. Otherwise Hibernate can flush the
@@ -533,16 +592,51 @@ class AuthService {
     }
 
     private AuthResponse createSession(PlayerAccount player) {
-        // A ChessVerseAI account has exactly one active server session. Creating
-        // a new session (password, Google, Facebook, or guest restore) revokes
-        // every token previously issued for that player.
-        sessions.deleteByPlayerId(player.id);
-        sessions.flush();
-        String token = UUID.randomUUID() + "." + UUID.randomUUID();
-        Instant expiresAt = Instant.now().plus(sessionExpiry);
-        sessions.save(new AuthSession(player, sha256(token), expiresAt));
-        return new AuthResponse(token, expiresAt, PlayerResponse.from(player));
+        DeviceDetails device = requestDevice();
+        // Guest restore remains one-session-per-installation; permanent
+        // accounts are deliberately multi-device and can revoke each device.
+        if (player.guestAccount && device.id() != null) {
+            sessions.findAllByPlayerIdOrderByLastUsedAtDesc(player.id).stream()
+                    .filter(session -> device.id().equals(session.deviceId))
+                    .forEach(sessions::delete);
+            sessions.flush();
+        }
+        return createSession(player, UUID.randomUUID(), device.id(), device.name());
     }
+
+    private AuthResponse createSession(PlayerAccount player, UUID familyId,
+            String deviceId, String deviceName) {
+        String token = randomToken();
+        String refreshToken = randomToken();
+        Instant expiresAt = Instant.now().plus(sessionExpiry);
+        AuthSession session = sessions.save(new AuthSession(player, sha256(token),
+                sha256(refreshToken), familyId, deviceId, deviceName, expiresAt));
+        return new AuthResponse(token, expiresAt, refreshToken,
+                session.createdAt.plus(refreshExpiry), session.id, PlayerResponse.from(player));
+    }
+
+    private String randomToken() {
+        byte[] bytes = new byte[32];
+        random.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private DeviceDetails requestDevice() {
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
+            String id = cleanHeader(attributes.getRequest().getHeader("X-Device-Id"), 128);
+            String name = cleanHeader(attributes.getRequest().getHeader("X-Device-Name"), 160);
+            return new DeviceDetails(id, name == null ? "Unknown device" : name);
+        }
+        return new DeviceDetails(null, "Unknown device");
+    }
+
+    private String cleanHeader(String value, int maxLength) {
+        if (value == null || value.isBlank()) return null;
+        String clean = value.replaceAll("[\\p{Cntrl}]", "").trim();
+        return clean.isEmpty() ? null : clean.substring(0, Math.min(clean.length(), maxLength));
+    }
+
+    private record DeviceDetails(String id, String name) { }
 
     private CodeDelivery createVerificationCode(PlayerAccount player) {
         EmailVerification recent = verifications
@@ -598,7 +692,7 @@ class AuthService {
     private AuthSession requireSession(String token) {
         AuthSession session = sessions.findByTokenHash(sha256(token))
                 .orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED, "Your session is invalid."));
-        if (session.expiresAt.isBefore(Instant.now())) {
+        if (session.revokedAt != null || session.expiresAt.isBefore(Instant.now())) {
             sessions.delete(session);
             throw new AuthException(HttpStatus.UNAUTHORIZED, "Your session has expired.");
         }

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/app_config.dart';
+import 'auth_session_store.dart';
 
 class AuthApi {
   const AuthApi();
@@ -12,12 +13,18 @@ class AuthApi {
     String path,
     Map<String, String> body,
   ) async {
+    final String installationId =
+        await const AuthSessionStore().installationId();
     final http.Response response;
     try {
       response = await http
           .post(
             Uri.parse('${AppConfig.apiBaseUrl}/api/auth/$path'),
-            headers: const <String, String>{'Content-Type': 'application/json'},
+            headers: <String, String>{
+              'Content-Type': 'application/json',
+              'X-Device-Id': installationId,
+              'X-Device-Name': 'ChessVerseAI app',
+            },
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 15));
@@ -28,6 +35,40 @@ class AuthApi {
     }
 
     return _decode(response);
+  }
+
+  Future<Map<String, dynamic>> refresh(String refreshToken) =>
+      post('refresh', <String, String>{'refreshToken': refreshToken});
+
+  Future<List<Map<String, dynamic>>> sessions(String token) async {
+    final http.Response response = await http.get(
+      Uri.parse('${AppConfig.apiBaseUrl}/api/auth/sessions'),
+      headers: <String, String>{'Authorization': 'Bearer $token'},
+    ).timeout(const Duration(seconds: 12));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      _decode(response);
+    }
+    final Object? decoded =
+        response.body.isEmpty ? null : jsonDecode(response.body);
+    return decoded is List
+        ? decoded.whereType<Map<String, dynamic>>().toList()
+        : <Map<String, dynamic>>[];
+  }
+
+  Future<void> revokeSession(String token, String sessionId) async {
+    final http.Response response = await http.delete(
+      Uri.parse('${AppConfig.apiBaseUrl}/api/auth/sessions/$sessionId'),
+      headers: <String, String>{'Authorization': 'Bearer $token'},
+    ).timeout(const Duration(seconds: 12));
+    _decode(response);
+  }
+
+  Future<void> logoutAll(String token) async {
+    final http.Response response = await http.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/api/auth/logout-all'),
+      headers: <String, String>{'Authorization': 'Bearer $token'},
+    ).timeout(const Duration(seconds: 12));
+    _decode(response);
   }
 
   Future<Map<String, dynamic>> currentPlayer(String token) async {

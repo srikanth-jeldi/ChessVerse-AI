@@ -10,6 +10,9 @@ class StoredAuthSession {
     this.email,
     this.photoUrl,
     this.isGuest = false,
+    this.refreshToken,
+    this.refreshExpiresAt,
+    this.sessionId,
   });
 
   final String token;
@@ -19,6 +22,9 @@ class StoredAuthSession {
   final String? email;
   final String? photoUrl;
   final bool isGuest;
+  final String? refreshToken;
+  final DateTime? refreshExpiresAt;
+  final String? sessionId;
 
   bool get isExpired => !expiresAt.isAfter(DateTime.now().toUtc());
 }
@@ -38,6 +44,9 @@ class AuthSessionStore {
   static const String _photoUrlKey = 'auth.photoUrl';
   static const String _rememberMeKey = 'auth.rememberMe';
   static const String _isGuestKey = 'auth.isGuest';
+  static const String _refreshTokenKey = 'auth.refreshToken';
+  static const String _refreshExpiryKey = 'auth.refreshExpiresAt';
+  static const String _sessionIdKey = 'auth.sessionId';
   static const String _installationIdKey = 'device.installationId';
 
   Future<StoredAuthSession?> read() async {
@@ -62,6 +71,10 @@ class AuthSessionStore {
       email: values[_emailKey],
       photoUrl: values[_photoUrlKey],
       isGuest: values[_isGuestKey] == 'true',
+      refreshToken: values[_refreshTokenKey],
+      refreshExpiresAt:
+          DateTime.tryParse(values[_refreshExpiryKey] ?? '')?.toUtc(),
+      sessionId: values[_sessionIdKey],
     );
     if (session.isExpired) {
       await clear();
@@ -92,6 +105,12 @@ class AuthSessionStore {
       _storage.write(key: _emailKey, value: session.email),
       _storage.write(key: _photoUrlKey, value: session.photoUrl),
       _storage.write(key: _isGuestKey, value: session.isGuest.toString()),
+      _storage.write(key: _refreshTokenKey, value: session.refreshToken),
+      _storage.write(
+        key: _refreshExpiryKey,
+        value: session.refreshExpiresAt?.toUtc().toIso8601String(),
+      ),
+      _storage.write(key: _sessionIdKey, value: session.sessionId),
     ]);
     await _storage.write(key: _tokenKey, value: session.token);
   }
@@ -105,6 +124,9 @@ class AuthSessionStore {
       _storage.delete(key: _emailKey),
       _storage.delete(key: _photoUrlKey),
       _storage.delete(key: _isGuestKey),
+      _storage.delete(key: _refreshTokenKey),
+      _storage.delete(key: _refreshExpiryKey),
+      _storage.delete(key: _sessionIdKey),
     ]);
   }
 

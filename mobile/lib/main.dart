@@ -358,7 +358,39 @@ class _SplashGateState extends State<SplashGate> {
       return;
     }
 
-    final StoredAuthSession restoredSession = session;
+    StoredAuthSession restoredSession = session;
+    if (restoredSession.refreshToken != null &&
+        restoredSession.refreshToken!.isNotEmpty) {
+      try {
+        final Map<String, dynamic> rotated =
+            await _authApi.refresh(restoredSession.refreshToken!);
+        final DateTime? rotatedExpiry =
+            DateTime.tryParse(rotated['expiresAt'] as String? ?? '');
+        final String rotatedToken = rotated['token'] as String? ?? '';
+        if (rotatedToken.isNotEmpty && rotatedExpiry != null) {
+          restoredSession = StoredAuthSession(
+            token: rotatedToken,
+            expiresAt: rotatedExpiry,
+            displayName: restoredSession.displayName,
+            username: restoredSession.username,
+            email: restoredSession.email,
+            photoUrl: restoredSession.photoUrl,
+            isGuest: restoredSession.isGuest,
+            refreshToken: rotated['refreshToken'] as String?,
+            refreshExpiresAt:
+                DateTime.tryParse(rotated['refreshExpiresAt'] as String? ?? ''),
+            sessionId: rotated['sessionId'] as String?,
+          );
+          await _sessionStore.write(restoredSession);
+        }
+      } on AuthApiException catch (error) {
+        if (error.statusCode == 401 || error.statusCode == 403) {
+          await _sessionStore.clear();
+          if (mounted) setState(() => _stage = _RootStage.auth);
+          return;
+        }
+      }
+    }
     String playerName = restoredSession.displayName;
     String? username = restoredSession.username;
     String? email = restoredSession.email;
@@ -4838,6 +4870,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         token: token,
         expiresAt: expiresAt,
         displayName: displayName,
+        refreshToken: response['refreshToken'] as String?,
+        refreshExpiresAt:
+            DateTime.tryParse(response['refreshExpiresAt'] as String? ?? ''),
+        sessionId: response['sessionId'] as String?,
       ),
     );
     if (!mounted) return;
