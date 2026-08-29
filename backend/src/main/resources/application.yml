@@ -26,6 +26,9 @@ spring:
             required: true
 
 chessverse:
+  api:
+    rate-limit:
+      enabled: ${API_RATE_LIMIT_ENABLED:true}
   oauth:
     google-web-client-id: ${GOOGLE_WEB_CLIENT_ID:}
     facebook-app-id: ${FACEBOOK_APP_ID:}

@@ -34,9 +34,10 @@ Last reviewed: 2026-08-29
 
 ### P0 - Authentication, sessions, and API abuse
 
-- [ ] Replace the single-process auth limiter with a Redis/distributed rate limiter keyed by IP, account, device, and action.
-- [ ] Add global and endpoint-specific limits for login, signup, password reset, chat, uploads, matchmaking, moves, tournament join, and admin actions.
-- [ ] Return consistent `429` responses with `Retry-After`; add metrics and alerts for throttling spikes.
+- [x] Replace the single-process auth limiter with a PostgreSQL-backed distributed limiter keyed by IP, hashed session, and action.
+- [x] Add global and endpoint-specific limits for login, signup, password reset, chat, uploads, matchmaking, moves, and tournament actions.
+- [x] Return consistent `429` responses with `Retry-After` and rate-limit response headers.
+- [ ] Add metrics and alerts for throttling spikes.
 - [ ] Shorten access-token lifetime; implement refresh-token rotation, reuse detection, server-side revocation, logout-all, and per-device session listing.
 - [ ] Remove WebSocket tokens from query strings. Use an `HttpOnly; Secure; SameSite` cookie for web or an authenticated short-lived one-time WebSocket ticket.
 - [ ] Redact credentials, tokens, query strings, authorization headers, attachment names, and sensitive chat data from application/proxy/error logs.

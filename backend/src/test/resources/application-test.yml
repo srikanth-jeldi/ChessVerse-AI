@@ -9,3 +9,8 @@ spring:
   flyway:
     enabled: false
 
+chessverse:
+  api:
+    rate-limit:
+      enabled: false
+
