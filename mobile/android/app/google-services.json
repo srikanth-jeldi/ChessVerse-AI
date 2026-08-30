@@ -22,6 +22,22 @@
           }
         },
         {
+          "client_id": "823774384869-cd8vmkolo6qvtjphlg8fc5f5r1v7d1ol.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.epitomehub.chessverse",
+            "certificate_hash": "30ae0e06b5e64cc1326225012d8f92f0f2bd98e6"
+          }
+        },
+        {
+          "client_id": "823774384869-cr1nofb5svdo3f51gj59lfqa0jhknv7e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.epitomehub.chessverse",
+            "certificate_hash": "ba4e32b671c4220039172537963ef70e16734dc7"
+          }
+        },
+        {
           "client_id": "823774384869-o7c4p4eqrsgaj7ejno7fddi27n6n9h2o.apps.googleusercontent.com",
           "client_type": 3
         }
