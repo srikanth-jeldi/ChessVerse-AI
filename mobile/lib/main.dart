@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import 'core/analytics/app_analytics.dart';
 import 'core/audio/chess_sound_service.dart';
 import 'core/auth/facebook_sdk_ready.dart';
 import 'core/app_preferences.dart';
@@ -74,6 +75,7 @@ List<SavedMoveReview> _savedReviewsFromCloud(CloudAnalysisJob job) => job.plies
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await FirebasePushService.instance.initialize();
+  await AppAnalytics.initialize();
   await AppDiagnostics.initialize();
   if (!kIsWeb) {
     await SystemChrome.setPreferredOrientations(
@@ -659,6 +661,9 @@ class _SplashGateState extends State<SplashGate> {
                 _isGuest = result.isGuest;
                 _stage = _RootStage.home;
               });
+              unawaited(
+                AppAnalytics.logAuthentication(guest: result.isGuest),
+              );
               if (result.token != null) {
                 _enableCloudSync(result.token!);
                 unawaited(_syncCloudProgress(result.token!));
@@ -1170,6 +1175,10 @@ class _SplashGateState extends State<SplashGate> {
     String? initialAuthToken,
     String? aiOpponentName,
   }) {
+    unawaited(AppAnalytics.logGameStarted(
+      mode: mode.name,
+      guest: _isGuest,
+    ));
     return _push(
       context,
       GameScreen(
