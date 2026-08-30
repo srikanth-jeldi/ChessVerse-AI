@@ -50,9 +50,10 @@ Last reviewed: 2026-08-29
 - [ ] Document the threat model and decide which fields need application-level envelope encryption (chat bodies, attachment metadata, sensitive identifiers).
 - [ ] Encrypt attachment objects with per-object data keys and a managed master key/KMS; define key rotation and deletion behavior.
 - [ ] Enable encrypted PostgreSQL storage/volume and encrypted backups; do not keep encryption keys beside backups.
-- [ ] Send encrypted backups to a separate account/provider with least-privilege credentials, retention, immutability/versioning, and deletion protection.
-- [ ] Automate backup success/failure alerts and perform a documented restore drill before release.
-- [ ] Define RPO/RTO, retention periods, legal/security holds, account deletion behavior, and backup expiry behavior.
+- [x] Send age-encrypted backups to a separate Cloudflare R2 bucket with bucket-scoped, VPS-IP-restricted credentials.
+- [x] Automate backup success/failure alerts and perform a documented isolated PostgreSQL restore drill.
+- [ ] Configure R2 object versioning/immutability or equivalent deletion protection.
+- [ ] Complete retention/legal-hold/account-deletion policy; initial database RPO/RTO is documented in the restore-drill evidence.
 
 ## P1 - Tournament v1 implementation
 
@@ -75,9 +76,11 @@ Last reviewed: 2026-08-29
 - [ ] Add CI dependency/CVE scanning for Maven, Flutter/Dart, Docker images, and GitHub Actions; fail builds on policy-defined critical findings.
 - [ ] Add secret scanning, SAST, container/IaC scanning, and SBOM generation to CI.
 - [ ] Pin/regularly update dependencies and GitHub Actions; document vulnerability patch SLAs.
-- [ ] Configure centralized security logs, alert routing, uptime checks, anomalous-login alerts, upload-abuse alerts, and admin-action alerts.
+- [x] Configure external uptime, backup-failure, high-5xx, anomalous-login and account-lockout alerts with tested email routing.
+- [ ] Add centralized searchable security logs plus upload-abuse and future admin-action alerts.
 - [ ] Add production headers/TLS validation: HSTS, CSP for web, frame restrictions, referrer policy, permissions policy, and modern TLS only.
-- [ ] Verify Firebase/Google API key restrictions in Console: exact Android package + SHA certificates, exact web origins, API allow-list, quotas, and App Check where supported.
+- [x] Restrict Firebase Android/iOS/browser keys, signing SHA certificates, authorized domains and web OAuth origins; production Google login smoke test passed.
+- [ ] Minimize the Firebase API allow-list/quotas after usage observation and evaluate App Check/Play Integrity enforcement.
 - [ ] Ensure Firebase service-account credentials and signing keys are never in the repository or images; rotate any exposed server secret.
 - [ ] Commission an independent penetration test after P0 controls and tournament v1 are staging-complete; track remediation evidence.
 
@@ -93,7 +96,7 @@ Last reviewed: 2026-08-29
 
 - [ ] All P0 items are implemented and verified in staging.
 - [ ] Tournament state/result integrity integration tests pass, including concurrency and forged-request cases.
-- [ ] Restore drill succeeds from an encrypted off-site backup within the documented RTO.
+- [x] Isolated PostgreSQL restore drill succeeds from an encrypted off-site backup within the initial documented RTO.
 - [ ] Critical/high dependency, SAST, secret, container, and penetration-test findings are resolved or formally risk-accepted.
 - [ ] Monitoring and alerts are exercised, and an on-call/incident owner is named.
 - [ ] Legal rules, privacy disclosures, fair-play policy, prizes (if any), refunds, and dispute process are published.

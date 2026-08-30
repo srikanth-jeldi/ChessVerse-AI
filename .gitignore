@@ -17,6 +17,7 @@ backend-local*.log
 !.env.example
 infrastructure/vps/vps.env
 infrastructure/vps/backups/
+infrastructure/vps/.monitor-state
 coverage/
 node_modules/
 dist/
