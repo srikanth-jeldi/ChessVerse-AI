@@ -49,32 +49,36 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
   }
 
   Future<void> _refresh() async {
-    if (mounted)
+    if (mounted) {
       setState(() {
         _busy = true;
         _error = null;
       });
+    }
     try {
       final StoredAuthSession? session = await const AuthSessionStore().read();
-      if (session == null)
+      if (session == null) {
         throw const SocialException('Sign in to use friends and challenges.');
+      }
       final List<Object> values = await Future.wait<Object>(<Future<Object>>[
         _api.load(session.token),
         _communityApi.load(session.token)
       ]);
-      if (mounted)
+      if (mounted) {
         setState(() {
           _session = session;
           _hub = values[0] as SocialHubDto;
           _community = values[1] as CommunityDto;
           _busy = false;
         });
+      }
     } on SocialException catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = error.message;
           _busy = false;
         });
+      }
     }
   }
 
@@ -243,9 +247,10 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
         }
       }
     } on SocialException catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(error.message)));
+      }
     }
   }
 
@@ -288,9 +293,10 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
           SnackBar(content: Text('Challenge sent • room ${value.roomCode}')));
       await _refresh();
     } on SocialException catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(error.message)));
+      }
     }
   }
 
@@ -301,9 +307,10 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
           await _api.acceptChallenge(_session!.token, challenge.id);
       if (mounted) widget.onOpenMatch?.call(match);
     } on SocialException catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(error.message)));
+      }
     }
   }
 
@@ -335,9 +342,10 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
             .getMatch(_session!.token, item.actionId!);
         if (mounted) widget.onOpenMatch?.call(match);
       } on OnlineMatchException catch (error) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text(error.message)));
+        }
       }
       return;
     }
@@ -356,9 +364,10 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
       final CommunityDto value = await action();
       if (mounted) setState(() => _community = value);
     } on SocialException catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(error.message)));
+      }
     }
   }
 
@@ -996,18 +1005,20 @@ class _ChatScreenState extends State<_ChatScreen> {
   Future<void> _load({bool silent = false}) async {
     try {
       final v = await widget.api.messages(widget.token, widget.friend.playerId);
-      if (mounted)
+      if (mounted) {
         setState(() {
           _messages = v;
           _busy = false;
         });
+      }
       if (!silent) _scrollToLatest();
     } on SocialException catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        if (!silent)
+        if (!silent) {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text(e.message)));
+        }
       }
     }
   }
@@ -1030,15 +1041,17 @@ class _ChatScreenState extends State<_ChatScreen> {
         delivered: false,
         seen: false,
         pending: true);
-    if (mounted)
+    if (mounted) {
       setState(() => _messages = <MessageDto>[..._messages, pending]);
+    }
     _scrollToLatest();
     try {
       final m = await widget.api
           .send(widget.token, widget.friend.playerId, outgoingBody);
-      if (mounted)
+      if (mounted) {
         setState(() => _messages =
             _messages.map((item) => item.id == pending.id ? m : item).toList());
+      }
       _scrollToLatest();
     } on SocialException catch (e) {
       if (mounted) {
@@ -1077,13 +1090,15 @@ class _ChatScreenState extends State<_ChatScreen> {
           bytes,
           _mimeFor(file.name),
           caption);
-      if (mounted)
+      if (mounted) {
         setState(() => _messages = <MessageDto>[..._messages, message]);
+      }
       _scrollToLatest();
     } on SocialException catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(error.message)));
+      }
     }
   }
 
@@ -1576,15 +1591,17 @@ class _ChatAttachmentState extends State<_ChatAttachment> {
               child: FutureBuilder<List<int>>(
                   future: widget.api.attachmentBytes(widget.token, message.id),
                   builder: (context, snapshot) {
-                    if (snapshot.hasData)
+                    if (snapshot.hasData) {
                       return Image.memory(Uint8List.fromList(snapshot.data!),
                           width: 230, height: 170, fit: BoxFit.cover);
-                    if (snapshot.hasError)
+                    }
+                    if (snapshot.hasError) {
                       return const SizedBox(
                           width: 230,
                           height: 90,
                           child:
                               Center(child: Icon(Icons.broken_image_outlined)));
+                    }
                     return const SizedBox(
                         width: 230,
                         height: 90,
