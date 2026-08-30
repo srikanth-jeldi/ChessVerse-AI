@@ -20,6 +20,7 @@ import 'core/diagnostics/app_diagnostics.dart';
 import 'core/local_game_archive.dart';
 import 'core/notifications/daily_reminder_service.dart';
 import 'core/notifications/firebase_push_service.dart';
+import 'core/store_review_service.dart';
 import 'core/widgets/chessverse_app_backdrop.dart';
 import 'core/widgets/desktop_app_sidebar.dart';
 import 'core/widgets/network_status_layer.dart';
@@ -3475,6 +3476,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   static const GameAnalysisApi _gameAnalysisApi = GameAnalysisApi();
   OnlineMatchApi get _onlineApi => widget.onlineApi ?? const OnlineMatchApi();
   static const AppPreferences _preferences = AppPreferences();
+  static const StoreReviewService _storeReview = StoreReviewService();
   final math.Random _random = math.Random();
   AudioPlayer? _warningPlayer;
   final List<String> _moves = <String>[];
@@ -4351,9 +4353,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             onRematch: _gameMode == GameMode.online
                                 ? _requestOnlineRematch
                                 : null,
-                            onDismiss: () => setState(() {
-                              _resultVisible = false;
-                            }),
+                            onDismiss: () {
+                              setState(() => _resultVisible = false);
+                              unawaited(_maybeRequestStoreReview());
+                            },
                             onReview: () {
                               setState(() => _resultVisible = false);
                               WidgetsBinding.instance.addPostFrameCallback(
@@ -6565,6 +6568,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       ),
     );
     unawaited(_submitFinishedGameForCloudAnalysis(archivedAt));
+  }
+
+  Future<void> _maybeRequestStoreReview() {
+    final String outcome = playerOutcomeForResult(
+      _gameResultTitle ?? '',
+      humanPlaysWhite: _humanPlaysWhite,
+      tracksPlayer: _gameMode != GameMode.local,
+    );
+    return _storeReview.maybeRequestReview(
+      completedGames: LocalGameArchive.games.length,
+      positiveOutcome: outcome == 'win',
+    );
   }
 
   bool get _isHumanTurnForIdleHint {
