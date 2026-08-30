@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.sql.Timestamp;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -16,7 +17,7 @@ class GlobalRateLimitInterceptorTest {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject(anyString(), eq(Integer.class), any(), any(), any()))
                 .thenReturn(1, 1);
-        var interceptor = new GlobalRateLimitInterceptor(jdbc, true);
+        var interceptor = new GlobalRateLimitInterceptor(jdbc, new SimpleMeterRegistry(), true);
         var request = new MockHttpServletRequest("POST", "/api/v1/community/messages");
         request.setRemoteAddr("172.18.0.3");
         request.addHeader("X-Forwarded-For", "203.0.113.8");
@@ -34,7 +35,8 @@ class GlobalRateLimitInterceptorTest {
     void returns429WithRetryAfterWhenUploadLimitIsExceeded() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.queryForObject(anyString(), eq(Integer.class), any(), any(), any())).thenReturn(13);
-        var interceptor = new GlobalRateLimitInterceptor(jdbc, true);
+        var metrics = new SimpleMeterRegistry();
+        var interceptor = new GlobalRateLimitInterceptor(jdbc, metrics, true);
         var request = new MockHttpServletRequest("POST", "/api/v1/community/messages/attachments");
         request.setRemoteAddr("198.51.100.7");
         var response = new MockHttpServletResponse();
@@ -44,6 +46,8 @@ class GlobalRateLimitInterceptorTest {
         assertNotNull(response.getHeader("Retry-After"));
         assertEquals("0", response.getHeader("X-RateLimit-Remaining"));
         assertTrue(response.getContentAsString().contains("Too many requests"));
+        assertEquals(1.0, metrics.get("chessverse.rate_limit.rejections")
+                .tag("policy", "upload").tag("scope", "ip").counter().count());
     }
 
     @Test
@@ -63,7 +67,7 @@ class GlobalRateLimitInterceptorTest {
     @Test
     void optionsAndHealthAreExempt() throws Exception {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        var interceptor = new GlobalRateLimitInterceptor(jdbc, true);
+        var interceptor = new GlobalRateLimitInterceptor(jdbc, new SimpleMeterRegistry(), true);
         assertTrue(interceptor.preHandle(new MockHttpServletRequest("OPTIONS", "/api/v1/community"),
                 new MockHttpServletResponse(), new Object()));
         assertTrue(interceptor.preHandle(new MockHttpServletRequest("GET", "/api/v1/health"),

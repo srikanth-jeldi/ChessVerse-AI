@@ -36,6 +36,19 @@ class AttachmentPolicyTest {
     }
 
     @Test
+    void rejectsEmptyAndOversizedPayloads() {
+        assertThrows(OnlineMatchException.class, () -> AttachmentPolicy.inspect(new byte[0], "empty.png"));
+        assertThrows(OnlineMatchException.class,
+                () -> AttachmentPolicy.inspect(new byte[(int) AttachmentPolicy.MAX_BYTES + 1], "large.pdf"));
+    }
+
+    @Test
+    void stripsPathTraversalAndControlCharacters() {
+        var accepted = AttachmentPolicy.inspect(png(64, 64), "..\\..\\evil\u0000.html");
+        assertEquals("evil.png", accepted.filename());
+    }
+
+    @Test
     void acceptsPdfBySignatureAndNormalizesName() {
         var accepted = AttachmentPolicy.inspect("%PDF-1.7\n%%EOF".getBytes(StandardCharsets.US_ASCII), "notes.exe");
         assertEquals("notes.pdf", accepted.filename());

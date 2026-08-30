@@ -5,6 +5,7 @@ import com.epitomehub.chessverse.auth.PlayerAuthenticationService;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
@@ -24,23 +25,36 @@ public class OnlineWebSocketConfiguration implements WebSocketConfigurer {
     private final PlayerAuthenticationService authentication;
     private final OnlineMatchService matches;
     private final WebSocketTicketService tickets;
+    private final String[] allowedOriginPatterns;
 
     public OnlineWebSocketConfiguration(
             OnlineMatchSocketHandler handler,
             PlayerAuthenticationService authentication,
             OnlineMatchService matches,
-            WebSocketTicketService tickets) {
+            WebSocketTicketService tickets,
+            @Value("${chessverse.web.allowed-origin-patterns:http://localhost:*,http://127.0.0.1:*}")
+            String allowedOriginPatterns) {
         this.handler = handler;
         this.authentication = authentication;
         this.matches = matches;
         this.tickets = tickets;
+        this.allowedOriginPatterns = parseAllowedOrigins(allowedOriginPatterns);
     }
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(handler, "/ws/matches/{matchId}")
                 .addInterceptors(new MatchHandshakeInterceptor())
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns(allowedOriginPatterns);
+    }
+
+    static String[] parseAllowedOrigins(String configured) {
+        String[] origins = java.util.Arrays.stream(configured == null ? new String[0] : configured.split(","))
+                .map(String::trim).filter(value -> !value.isBlank()).toArray(String[]::new);
+        if (origins.length == 0 || java.util.Arrays.asList(origins).contains("*")) {
+            throw new IllegalArgumentException("WebSocket allowed origins must be an explicit allow-list");
+        }
+        return origins;
     }
 
     private final class MatchHandshakeInterceptor implements HandshakeInterceptor {

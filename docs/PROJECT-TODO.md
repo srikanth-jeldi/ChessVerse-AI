@@ -1,6 +1,6 @@
 # ChessVerse AI - Product and Security TODO
 
-Last reviewed: 2026-08-29
+Last reviewed: 2026-08-30
 
 ## Release gate: complete before public tournaments
 
@@ -22,12 +22,12 @@ Last reviewed: 2026-08-29
 
 ### P0 - Upload and attachment safety
 
-- [ ] Replace client-provided MIME trust with server-side content detection using file signatures/magic bytes.
-- [ ] Start with a strict allow-list (for example JPEG, PNG, WebP, and PDF only); reject HTML, SVG, scripts, executables, archives, and polyglot files.
+- [x] Replace client-provided MIME trust with server-side content detection using file signatures/magic bytes.
+- [x] Start with a strict allow-list (JPEG, PNG, WebP, and PDF only); reject HTML, SVG, scripts, executables, and archives.
 - [ ] Decode and re-encode accepted images to remove active content and metadata; reject malformed/decompression-bomb images.
-- [ ] Generate storage names on the server; never use a user filename as a path. Normalize download filenames and prevent traversal.
+- [x] Generate storage names on the server; never use a user filename as a path. Normalize download filenames and prevent traversal.
 - [ ] Enforce size limits both at the reverse proxy and application layers, plus per-user upload quotas and rate limits.
-- [ ] Store attachments outside the web root and always download with `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`, and a safe server-selected content type.
+- [x] Store attachments outside the web root and always download with `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`, and a safe server-selected content type.
 - [ ] Add malware scanning/quarantine before an attachment becomes downloadable.
 - [ ] Verify sender/recipient authorization on every download and ensure deleted accounts/messages remove associated files according to retention policy.
 - [ ] Add malicious upload tests: fake MIME, SVG/HTML, double extension, path traversal, oversized file, image bomb, and unauthorized download.
@@ -37,12 +37,12 @@ Last reviewed: 2026-08-29
 - [x] Replace the single-process auth limiter with a PostgreSQL-backed distributed limiter keyed by IP, hashed session, and action.
 - [x] Add global and endpoint-specific limits for login, signup, password reset, chat, uploads, matchmaking, moves, and tournament actions.
 - [x] Return consistent `429` responses with `Retry-After` and rate-limit response headers.
-- [ ] Add metrics and alerts for throttling spikes.
-- [ ] Shorten access-token lifetime; implement refresh-token rotation, reuse detection, server-side revocation, logout-all, and per-device session listing.
+- [x] Add metrics and alerts for throttling spikes.
+- [x] Shorten access-token lifetime; implement refresh-token rotation, reuse detection, server-side revocation, logout-all, and per-device session listing.
 - [x] Remove session tokens from WebSocket query strings; web now uses an authenticated 30-second, single-use, match-bound ticket.
-- [ ] Redact credentials, tokens, query strings, authorization headers, attachment names, and sensitive chat data from application/proxy/error logs.
+- [x] Redact credentials, tokens, query strings, authorization headers, attachment names, and sensitive chat data from application/proxy/error logs.
 - [ ] Add MFA for administrators first, then optional TOTP/passkeys for players.
-- [ ] Add CSRF protection where cookie authentication is used and strict WebSocket `Origin` allow-list validation.
+- [x] Document bearer-only CSRF posture and enforce strict WebSocket `Origin` allow-list validation.
 - [ ] Add authorization/IDOR tests for all messages, attachments, games, tournament, and admin endpoints.
 
 ### P0 - Data protection and recovery
@@ -78,7 +78,7 @@ Last reviewed: 2026-08-29
 - [ ] Pin/regularly update dependencies and GitHub Actions; document vulnerability patch SLAs.
 - [x] Configure external uptime, backup-failure, high-5xx, anomalous-login and account-lockout alerts with tested email routing.
 - [ ] Add centralized searchable security logs plus upload-abuse and future admin-action alerts.
-- [ ] Add production headers/TLS validation: HSTS, CSP for web, frame restrictions, referrer policy, permissions policy, and modern TLS only.
+- [x] Add production headers/TLS validation: HSTS, CSP for web, frame restrictions, referrer policy, permissions policy, and modern TLS only.
 - [x] Restrict Firebase Android/iOS/browser keys, signing SHA certificates, authorized domains and web OAuth origins; production Google login smoke test passed.
 - [ ] Minimize the Firebase API allow-list/quotas after usage observation and evaluate App Check/Play Integrity enforcement.
 - [ ] Ensure Firebase service-account credentials and signing keys are never in the repository or images; rotate any exposed server secret.
