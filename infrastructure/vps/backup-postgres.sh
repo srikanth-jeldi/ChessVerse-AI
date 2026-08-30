@@ -8,6 +8,17 @@ ENV_FILE="${ENV_FILE:-vps.env}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
 BACKUP_DIR="${BACKUP_DIR:-${SCRIPT_DIR}/backups}"
 
+notify_backup_monitor() {
+  local status="${1}"
+  [[ -z "${BACKUP_HEARTBEAT_URL:-}" ]] && return 0
+  local url="${BACKUP_HEARTBEAT_URL%/}"
+  [[ "${status}" == "failure" ]] && url="${url}/fail"
+  curl --fail --silent --show-error --max-time 15 --retry 2 --output /dev/null "${url}" ||
+    echo "Warning: backup monitor notification failed." >&2
+}
+
+trap 'exit_code=$?; if [[ ${exit_code} -ne 0 ]]; then notify_backup_monitor failure; fi' EXIT
+
 if [[ ! -f "${ENV_FILE}" ]]; then
   echo "Missing ${ENV_FILE}. Copy vps.env.example to vps.env first." >&2
   exit 1
@@ -64,4 +75,6 @@ if [[ -n "${BACKUP_REMOTE:-}" ]]; then
     "${backup_file}.sha256" "${remote_base}/$(basename "${backup_file}.sha256")"
 fi
 
+notify_backup_monitor success
+trap - EXIT
 echo "Created ${backup_file}"

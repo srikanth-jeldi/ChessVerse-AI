@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.4.xsd"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.4.xsd
+                                  https://dependency-check.github.io/DependencyCheck/dependency-suppression.1.4.xsd">
+    <suppress>
+        <notes><![CDATA[
+        Ecosystem mismatch: these CVEs affect OpenTelemetry-Go, while this
+        dependency is the OpenTelemetry Java extension incubator artifact.
+        Reviewed against the NVD and OpenTelemetry CVE catalog on 2026-08-30.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.opentelemetry/opentelemetry-extension-incubator@.*$</packageUrl>
+        <cve>CVE-2026-24051</cve>
+        <cve>CVE-2026-39882</cve>
+        <cve>CVE-2026-39883</cve>
+        <cve>CVE-2026-41178</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+        Ecosystem mismatch: these CVEs affect OpenTelemetry-Go, while this
+        dependency is the OpenTelemetry Java GCP resource detector artifact.
+        Reviewed against the NVD and OpenTelemetry CVE catalog on 2026-08-30.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.opentelemetry\.contrib/opentelemetry-gcp-resources@.*$</packageUrl>
+        <cve>CVE-2026-24051</cve>
+        <cve>CVE-2026-29181</cve>
+        <cve>CVE-2026-39882</cve>
+        <cve>CVE-2026-39883</cve>
+        <cve>CVE-2026-41178</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+        Product mismatch: dev.cel:protobuf is the CEL Java protobuf adapter,
+        not com.google.protobuf:protobuf-java. The resolved protobuf-java
+        dependency is 4.35.1, outside the affected ranges for these CVEs.
+        Reviewed against the NVD records on 2026-08-30.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/dev\.cel/protobuf@.*$</packageUrl>
+        <cve>CVE-2021-22569</cve>
+        <cve>CVE-2022-3171</cve>
+        <cve>CVE-2024-7254</cve>
+    </suppress>
+</suppressions>

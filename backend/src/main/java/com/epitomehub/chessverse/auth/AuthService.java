@@ -36,6 +36,7 @@ class AuthService {
     private final GoogleIdentityVerifier googleIdentityVerifier;
     private final FacebookIdentityVerifier facebookIdentityVerifier;
     private final OtpDelivery otpDelivery;
+    private final AuthSecurityMetrics securityMetrics;
     private final JdbcTemplate jdbcTemplate;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
     private final SecureRandom random = new SecureRandom();
@@ -56,6 +57,7 @@ class AuthService {
             GoogleIdentityVerifier googleIdentityVerifier,
             FacebookIdentityVerifier facebookIdentityVerifier,
             OtpDelivery otpDelivery,
+            AuthSecurityMetrics securityMetrics,
             JdbcTemplate jdbcTemplate,
             @Value("${chessverse.auth.otp-expiry-minutes:10}") long otpExpiryMinutes,
             @Value("${chessverse.auth.session-expiry-days:30}") long sessionExpiryDays,
@@ -72,6 +74,7 @@ class AuthService {
         this.googleIdentityVerifier = googleIdentityVerifier;
         this.facebookIdentityVerifier = facebookIdentityVerifier;
         this.otpDelivery = otpDelivery;
+        this.securityMetrics = securityMetrics;
         this.jdbcTemplate = jdbcTemplate;
         this.otpExpiry = Duration.ofMinutes(otpExpiryMinutes);
         this.sessionExpiry = Duration.ofDays(sessionExpiryDays);
@@ -228,13 +231,17 @@ class AuthService {
         PlayerAccount player = (identity.contains("@")
                 ? players.findByEmailIgnoreCase(identity)
                 : players.findByUsernameIgnoreCase(identity))
-                .orElseThrow(() -> new AuthException(HttpStatus.UNAUTHORIZED, "Invalid user id or password."));
+                .orElseThrow(() -> {
+                    securityMetrics.failedLogin();
+                    return new AuthException(HttpStatus.UNAUTHORIZED, "Invalid user id or password.");
+                });
 
         if (!player.verified) {
             throw new AuthException(HttpStatus.FORBIDDEN, "Verify your account before signing in.");
         }
         Instant now = Instant.now();
         if (player.lockedUntil != null && player.lockedUntil.isAfter(now)) {
+            securityMetrics.lockedLogin();
             throw new AuthException(
                     HttpStatus.TOO_MANY_REQUESTS,
                     "Account temporarily locked. Try again later or reset your password.");
@@ -244,9 +251,11 @@ class AuthService {
             player.failedLoginAttempts = 0;
         }
         if (!passwordEncoder.matches(request.password(), player.passwordHash)) {
+            securityMetrics.failedLogin();
             player.failedLoginAttempts++;
             if (player.failedLoginAttempts >= MAX_LOGIN_ATTEMPTS) {
                 player.lockedUntil = now.plus(loginLockout);
+                securityMetrics.accountLocked();
             }
             player.updatedAt = now;
             players.save(player);

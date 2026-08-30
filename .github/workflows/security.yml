@@ -1,6 +1,7 @@
 name: Security gates
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, 'agent/**', 'codex/**']
   pull_request:
@@ -38,7 +39,14 @@ jobs:
       - name: OWASP dependency check
         if: env.NVD_API_KEY != ''
         working-directory: backend
-        run: mvn -B org.owasp:dependency-check-maven:12.2.2:check -DfailBuildOnCVSS=7 -DossindexAnalyzerEnabled=false -DnvdApiKey="$NVD_API_KEY"
+        run: mvn -B org.owasp:dependency-check-maven:12.2.2:check -Dformat=ALL -DfailBuildOnCVSS=7 -DossindexAnalyzerEnabled=false -DsuppressionFile=config/dependency-check-suppressions.xml -DnvdApiKey="$NVD_API_KEY"
+      - name: Upload OWASP dependency report
+        if: ${{ always() && env.NVD_API_KEY != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-dependency-check-report
+          path: backend/target/dependency-check-report.*
+          if-no-files-found: error
 
   codeql:
     runs-on: ubuntu-latest
