@@ -1,0 +1,11 @@
+[0:v]scale=2200:1238:force_original_aspect_ratio=increase,crop=2200:1238,zoompan=z='min(zoom+0.00065,1.075)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1920x1080:fps=30,fade=t=in:st=0:d=0.7,format=yuv420p[v0];
+[1:v]scale=2200:1238:force_original_aspect_ratio=increase,crop=2200:1238,zoompan=z='min(zoom+0.00115,1.13)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1920x1080:fps=30,drawtext=fontfile='C\:/Windows/Fonts/arialbd.ttf':text='CHECKMATE':fontcolor=white:fontsize=104:borderw=3:bordercolor=0x06131F:shadowx=5:shadowy=5:shadowcolor=0x000000AA:x=(w-text_w)/2:y=h*0.78:enable='between(t,4.7,8.1)',format=yuv420p[v1];
+[2:v]scale=2200:1238:force_original_aspect_ratio=increase,crop=2200:1238,zoompan=z='min(zoom+0.00145,1.17)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1920x1080:fps=30,drawtext=fontfile='C\:/Windows/Fonts/arialbd.ttf':text='MASTER EVERY MOVE':fontcolor=0xF4D06F:fontsize=72:borderw=2:bordercolor=0x06131F:shadowx=4:shadowy=4:shadowcolor=0x000000AA:x=(w-text_w)/2:y=h*0.83:enable='between(t,4.2,8.1)',format=yuv420p[v2];
+[3:v]scale=2200:1238:force_original_aspect_ratio=increase,crop=2200:1238,zoompan=z='min(zoom+0.00045,1.05)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1920x1080:fps=30,drawtext=fontfile='C\:/Windows/Fonts/arialbd.ttf':text='PLAY. LEARN. EVOLVE.':fontcolor=white:fontsize=52:borderw=2:bordercolor=0x06131F:shadowx=3:shadowy=3:shadowcolor=0x000000AA:x=w*0.075:y=h*0.68:enable='between(t,3.2,8.1)',fade=t=out:st=7.35:d=0.7,format=yuv420p[v3];
+[v0][v1]xfade=transition=fade:duration=0.75:offset=7.3167[x1];
+[x1][v2]xfade=transition=fadeblack:duration=0.75:offset=14.6334[x2];
+[x2][v3]xfade=transition=fade:duration=0.75:offset=21.9501[vout];
+[4:a]volume=0.16,lowpass=f=240[bed];
+[5:a]volume=0.55,afade=t=out:st=1.25:d=0.7,adelay=14500|14500[hit1];
+[6:a]volume=0.5,afade=t=out:st=1.05:d=0.6,adelay=21950|21950[hit2];
+[bed][hit1][hit2]amix=inputs=3:duration=longest:normalize=0,afade=t=in:st=0:d=1.2,afade=t=out:st=28.8:d=1.2,volume=1.6[aout]
