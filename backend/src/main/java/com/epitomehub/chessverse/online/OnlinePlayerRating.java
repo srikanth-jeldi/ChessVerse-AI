@@ -38,6 +38,9 @@ class OnlinePlayerRating {
     @Column(nullable = false)
     int losses;
 
+    @Column(name = "career_coins_won", nullable = false)
+    long careerCoinsWon;
+
     @Column(name = "created_at", nullable = false)
     Instant createdAt;
 

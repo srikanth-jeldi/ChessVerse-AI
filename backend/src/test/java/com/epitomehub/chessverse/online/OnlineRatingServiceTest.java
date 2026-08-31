@@ -33,6 +33,7 @@ class OnlineRatingServiceTest {
         match.blackPlayerName = "Black";
         match.status = OnlineMatchStatus.FINISHED;
         match.result = "1-0";
+        match.entryCoins = 500;
 
         service.settle(match);
         service.settle(match);
@@ -41,6 +42,8 @@ class OnlineRatingServiceTest {
         assertEquals(1184, black.rating);
         assertEquals(1, white.wins);
         assertEquals(1, black.losses);
+        assertEquals(1000, white.careerCoinsWon);
+        assertEquals(0, black.careerCoinsWon);
         assertEquals(1200, match.whiteRatingBefore);
         assertEquals(1216, match.whiteRatingAfter);
         assertNotNull(match.ratedAt);
@@ -65,6 +68,7 @@ class OnlineRatingServiceTest {
         match.blackPlayerName = "Black";
         match.status = OnlineMatchStatus.FINISHED;
         match.result = "1/2-1/2";
+        match.entryCoins = 500;
 
         service.settle(match);
 
@@ -72,6 +76,8 @@ class OnlineRatingServiceTest {
         assertEquals(1200, black.rating);
         assertEquals(1, white.draws);
         assertEquals(1, black.draws);
+        assertEquals(0, white.careerCoinsWon);
+        assertEquals(0, black.careerCoinsWon);
     }
 
     @Test

@@ -13,14 +13,15 @@ final class CommunityDtos {
                    int ratingRequirement, boolean joined) {}
     record TournamentDto(UUID id, String name, String description, int timeControlMinutes,
                          int players, int capacity, Instant startsAt, Instant endsAt,
-                         String status, boolean joined) {}
+                         String status, boolean joined, int entryCoins, long prizePool) {}
     record ConversationDto(UUID playerId, String displayName, String photoUrl,
                            boolean online, String lastMessage, Instant sentAt, int unread) {}
     record MessageDto(UUID id, UUID senderId, UUID recipientId, String body,
                       Instant sentAt, boolean mine, boolean delivered, boolean seen,
                       String attachmentName, String attachmentType, Long attachmentSize) {}
     record HubDto(List<ClubDto> clubs, List<TournamentDto> tournaments,
-                  List<ConversationDto> conversations, int fairPlayScore) {}
+                  List<ConversationDto> conversations, int fairPlayScore,
+                  int circuitPoints) {}
     record MessageRequest(@NotNull UUID recipientId,
                           @NotBlank @Size(max = 500) String body) {}
 }

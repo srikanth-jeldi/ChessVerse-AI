@@ -1,6 +1,7 @@
 package com.epitomehub.chessverse.online;
 
 import com.epitomehub.chessverse.auth.AuthenticatedPlayer;
+import com.epitomehub.chessverse.economy.EconomyService;
 import com.github.bhlangonijr.chesslib.Board;
 import com.github.bhlangonijr.chesslib.Side;
 import com.github.bhlangonijr.chesslib.Square;
@@ -23,26 +24,29 @@ public class OnlineMatchService {
     // Mobile radios and app lifecycle transitions can take several seconds to
     // restore the websocket. Give a temporarily interrupted player a full
     // minute to reconnect before awarding the game to the opponent.
-    static final Duration DISCONNECT_GRACE = Duration.ofSeconds(60);
+    // 30-second reconnect window plus a final 15-second network allowance.
+    static final Duration DISCONNECT_GRACE = Duration.ofSeconds(45);
 
     private final OnlineMatchRepository matches;
     private final OnlineRatingService ratings;
     private final FairPlayService fairPlay;
     private final TournamentService tournaments;
+    private final EconomyService economy;
     private final SecureRandom random = new SecureRandom();
 
     @Autowired
     public OnlineMatchService(
             OnlineMatchRepository matches, OnlineRatingService ratings, FairPlayService fairPlay,
-            TournamentService tournaments) {
+            TournamentService tournaments, EconomyService economy) {
         this.matches = matches;
         this.ratings = ratings;
         this.fairPlay = fairPlay;
         this.tournaments = tournaments;
+        this.economy = economy;
     }
 
     OnlineMatchService(OnlineMatchRepository matches, OnlineRatingService ratings) {
-        this(matches, ratings, null, null);
+        this(matches, ratings, null, null, null);
     }
 
     @Transactional
@@ -58,7 +62,7 @@ public class OnlineMatchService {
         }
         int minutes = switch (timeControlMinutes) { case 3, 5, 10, 15 -> timeControlMinutes; default -> 10; };
         LeaderboardDtos.PlayerRatingDto profile = ratings.profile(player);
-        OnlineDtos.QueueRequest settings = new OnlineDtos.QueueRequest(minutes, "WORLDWIDE", 0);
+        OnlineDtos.QueueRequest settings = new OnlineDtos.QueueRequest(minutes, "WORLDWIDE", 0, 100);
         return OnlineDtos.MatchDto.from(createWaiting(player, false, settings, profile), player.id());
     }
 
@@ -73,6 +77,7 @@ public class OnlineMatchService {
         if (current != null) {
             current.status = OnlineMatchStatus.CANCELLED;
             current.updatedAt = Instant.now();
+            refundWaitingReservation(current);
             matches.save(current);
         }
         int minutes = switch (timeControlMinutes) {
@@ -81,14 +86,14 @@ public class OnlineMatchService {
         };
         LeaderboardDtos.PlayerRatingDto profile = ratings.profile(player);
         OnlineDtos.QueueRequest settings =
-                new OnlineDtos.QueueRequest(minutes, "WORLDWIDE", 0);
+                new OnlineDtos.QueueRequest(minutes, "WORLDWIDE", 0, 100);
         return OnlineDtos.MatchDto.from(
                 createWaiting(player, false, settings, profile), player.id());
     }
 
     @Transactional
     public OnlineDtos.MatchDto randomMatch(AuthenticatedPlayer player) {
-        return randomMatch(player, new OnlineDtos.QueueRequest(10, "WORLDWIDE", 0));
+        return randomMatch(player, new OnlineDtos.QueueRequest(10, "WORLDWIDE", 0, 100));
     }
 
     @Transactional
@@ -109,6 +114,7 @@ public class OnlineMatchService {
                         player.id(),
                         now.minus(RANDOM_QUEUE_LEASE),
                         preferences.timeControlMinutes(),
+                        preferences.entryCoins(),
                         preferences.region(),
                         profile.country(),
                         profile.rating(),
@@ -185,6 +191,7 @@ public class OnlineMatchService {
         }
         match.status = OnlineMatchStatus.CANCELLED;
         match.updatedAt = Instant.now();
+        refundWaitingReservation(match);
         return OnlineDtos.MatchDto.from(matches.save(match), player.id());
     }
 
@@ -254,6 +261,7 @@ public class OnlineMatchService {
         }
         current.status = OnlineMatchStatus.CANCELLED;
         current.updatedAt = Instant.now();
+        refundWaitingReservation(current);
         matches.save(current);
     }
 
@@ -347,6 +355,15 @@ public class OnlineMatchService {
         rematch.blackPlayerName = previous.whitePlayerName;
         rematch.blackPlayerPhotoUrl = previous.whitePlayerPhotoUrl;
         rematch.status = OnlineMatchStatus.ACTIVE;
+        rematch.entryCoins = previous.entryCoins;
+        if (rematch.entryCoins > 0) {
+            economy.spend(rematch.whitePlayerId, "COINS", rematch.entryCoins,
+                    "MATCH_ENTRY_RESERVED", "match:" + rematch.id + ":entry:" + rematch.whitePlayerId,
+                    "Online rematch entry reserved");
+            economy.spend(rematch.blackPlayerId, "COINS", rematch.entryCoins,
+                    "MATCH_ENTRY_RESERVED", "match:" + rematch.id + ":entry:" + rematch.blackPlayerId,
+                    "Online rematch entry reserved");
+        }
         rematch.startedAt = Instant.now();
         rematch.turnStartedAt = rematch.startedAt;
         rematch.updatedAt = rematch.turnStartedAt;
@@ -472,12 +489,26 @@ public class OnlineMatchService {
     }
 
     @Transactional
+    public List<UUID> cancelExpiredWaitingMatches() {
+        List<OnlineMatch> expired = matches.lockExpiredRandomQueue(
+                Instant.now().minus(Duration.ofSeconds(30)));
+        for (OnlineMatch match : expired) {
+            match.status = OnlineMatchStatus.CANCELLED;
+            match.updatedAt = Instant.now();
+            refundWaitingReservation(match);
+            matches.save(match);
+        }
+        return expired.stream().map(match -> match.id).toList();
+    }
+
+    @Transactional
     void cancelChallengeRoom(UUID ownerId, UUID matchId) {
         OnlineMatch match = matches.lockById(matchId).orElse(null);
         if (match == null || !match.whitePlayerId.equals(ownerId)
                 || match.status != OnlineMatchStatus.WAITING) return;
         match.status = OnlineMatchStatus.CANCELLED;
         match.updatedAt = Instant.now();
+        refundWaitingReservation(match);
         matches.save(match);
     }
 
@@ -486,7 +517,7 @@ public class OnlineMatchService {
             boolean randomQueue,
             OnlineDtos.QueueRequest preferences,
             LeaderboardDtos.PlayerRatingDto profile) {
-        return matches.save(new OnlineMatch(
+        OnlineMatch match = new OnlineMatch(
                 UUID.randomUUID(),
                 newRoomCode(),
                 player.id(),
@@ -497,10 +528,28 @@ public class OnlineMatchService {
                 preferences.region(),
                 profile.country(),
                 profile.rating(),
-                preferences.ratingRange()));
+                preferences.ratingRange());
+        match.entryCoins = randomQueue ? preferences.entryCoins() : 0;
+        if (match.entryCoins > 0) {
+            if (economy == null) throw new OnlineMatchException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Play coin service is unavailable.");
+            economy.spend(player.id(), "COINS", match.entryCoins,
+                    "MATCH_ENTRY_RESERVED", "match:" + match.id + ":entry:" + player.id(),
+                    "Online match entry reserved");
+        }
+        return matches.save(match);
     }
 
     private void activate(OnlineMatch match, AuthenticatedPlayer player) {
+        if (match.entryCoins > 0) {
+            if (economy == null) {
+                throw new OnlineMatchException(HttpStatus.SERVICE_UNAVAILABLE,
+                        "Coin entry service is unavailable.");
+            }
+            economy.spend(player.id(), "COINS", match.entryCoins,
+                    "MATCH_ENTRY_RESERVED", "match:" + match.id + ":entry:" + player.id(),
+                    "Online match entry reserved");
+        }
         match.blackPlayerId = player.id();
         match.blackPlayerName = player.displayName();
         match.blackPlayerPhotoUrl = player.photoUrl();
@@ -549,6 +598,51 @@ public class OnlineMatchService {
         match.finishedAt = Instant.now();
         match.updatedAt = match.finishedAt;
         ratings.settle(match);
+        rewardPlayers(match);
         if (tournaments != null) tournaments.recordResult(match);
+    }
+
+    private void refundWaitingReservation(OnlineMatch match) {
+        if (economy == null || match.entryCoins <= 0 || match.blackPlayerId != null) return;
+        economy.grantCoins(match.whitePlayerId, match.entryCoins,
+                "MATCH_ENTRY_RELEASED", "match:" + match.id + ":waiting-refund",
+                "Cancelled matchmaking entry returned");
+        match.coinPoolSettled = true;
+    }
+
+    private void rewardPlayers(OnlineMatch match) {
+        if (economy == null || match.blackPlayerId == null) return;
+        String prefix = "match:" + match.id + ":";
+        if (match.entryCoins > 0 && !match.coinPoolSettled) {
+            // Very short/abandoned matches cannot transfer the pool. Refund
+            // both entries to reduce collusion and accidental disconnect loss.
+            if ("1/2-1/2".equals(match.result)) {
+                economy.grantCoins(match.whitePlayerId, match.entryCoins,
+                        "RANKED_MATCH_REFUND", prefix + "refund:" + match.whitePlayerId,
+                        "Ranked match entry returned");
+                economy.grantCoins(match.blackPlayerId, match.entryCoins,
+                        "RANKED_MATCH_REFUND", prefix + "refund:" + match.blackPlayerId,
+                        "Ranked match entry returned");
+            } else {
+                UUID winner = "1-0".equals(match.result) ? match.whitePlayerId
+                        : "0-1".equals(match.result) ? match.blackPlayerId : null;
+                if (winner != null) {
+                    economy.grantCoins(winner, match.entryCoins * 2,
+                            "RANKED_MATCH_POOL", prefix + "pool", "Ranked match coin pool");
+                }
+            }
+            match.coinPoolSettled = true;
+            return;
+        }
+        economy.grantCoins(match.whitePlayerId, 20, "MATCH_COMPLETED",
+                prefix + "complete:" + match.whitePlayerId, "Match completion reward");
+        economy.grantCoins(match.blackPlayerId, 20, "MATCH_COMPLETED",
+                prefix + "complete:" + match.blackPlayerId, "Match completion reward");
+        UUID winner = "1-0".equals(match.result) ? match.whitePlayerId
+                : "0-1".equals(match.result) ? match.blackPlayerId : null;
+        if (winner != null) {
+            economy.grantCoins(winner, 30, "MATCH_WON",
+                    prefix + "win", "Match victory bonus");
+        }
     }
 }

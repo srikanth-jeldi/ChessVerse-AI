@@ -12,5 +12,6 @@ final class TournamentDtos {
     record RoundDto(int number, String status, List<PairingDto> pairings) {}
     record DetailDto(UUID id, String name, String description, int timeControlMinutes,
             int players, int capacity, Instant startsAt, Instant endsAt, String status,
-            boolean joined, int currentRound, PlayerDto champion, List<RoundDto> rounds) {}
+            boolean joined, int entryCoins, long prizePool, int currentRound,
+            PlayerDto champion, List<RoundDto> rounds) {}
 }

@@ -52,6 +52,11 @@ class OnlineMatchDto {
     this.finishedAt,
     this.durationSeconds,
     this.updatedAt,
+    this.tournamentName,
+    this.tournamentRound,
+    this.entryCoins = 0,
+    this.rewardPoolCoins = 0,
+    this.coinsEarned = 0,
   });
 
   final String id;
@@ -83,6 +88,14 @@ class OnlineMatchDto {
   final DateTime? finishedAt;
   final int? durationSeconds;
   final DateTime? updatedAt;
+  final String? tournamentName;
+  final int? tournamentRound;
+  final int entryCoins;
+  final int rewardPoolCoins;
+  final int coinsEarned;
+
+  bool get isTournamentMatch =>
+      tournamentName != null && tournamentName!.trim().isNotEmpty;
 
   bool get isActive => status == 'ACTIVE';
   int get plyCount => moves.length;
@@ -114,7 +127,7 @@ class OnlineMatchDto {
     final DateTime reference = serverNow ?? DateTime.now().toUtc();
     if (deadline == null) return 0;
     return ((deadline.difference(reference).inMilliseconds + 999) ~/ 1000)
-        .clamp(0, 60);
+        .clamp(0, 45);
   }
 
   factory OnlineMatchDto.fromJson(Map<String, dynamic> json) {
@@ -154,6 +167,11 @@ class OnlineMatchDto {
       finishedAt: DateTime.tryParse(json['finishedAt'] as String? ?? ''),
       durationSeconds: (json['durationSeconds'] as num?)?.toInt(),
       updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? ''),
+      tournamentName: json['tournamentName'] as String?,
+      tournamentRound: (json['tournamentRound'] as num?)?.toInt(),
+      entryCoins: (json['entryCoins'] as num?)?.toInt() ?? 0,
+      rewardPoolCoins: (json['rewardPoolCoins'] as num?)?.toInt() ?? 0,
+      coinsEarned: (json['coinsEarned'] as num?)?.toInt() ?? 0,
     );
   }
 }
@@ -205,6 +223,7 @@ class OnlineMatchApi {
     int timeControlMinutes = 10,
     String region = 'WORLDWIDE',
     int ratingRange = 0,
+    int entryCoins = 100,
   }) =>
       _request(
         token,
@@ -214,6 +233,7 @@ class OnlineMatchApi {
           'timeControlMinutes': timeControlMinutes,
           'region': region,
           'ratingRange': ratingRange,
+          'entryCoins': entryCoins,
         },
       );
 

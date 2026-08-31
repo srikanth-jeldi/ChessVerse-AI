@@ -10,6 +10,7 @@ import '../../online/data/online_match_api.dart';
 import '../data/social_api.dart';
 import '../data/community_api.dart';
 import 'tournament_detail_screen.dart';
+import 'tournament_circuit_view.dart';
 import '../../notifications/presentation/notification_center_screen.dart';
 import '../../notifications/presentation/notification_bell_button.dart';
 import '../../notifications/data/notification_api.dart';
@@ -531,7 +532,8 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                             _communityApi.tournament(
                                 _session!.token, event.id, !event.joined)),
                         api: _communityApi,
-                        token: _session!.token),
+                        token: _session!.token,
+                        onOpenMatch: widget.onOpenMatch),
       );
 }
 
@@ -616,7 +618,8 @@ class _CommunitySection extends StatelessWidget {
       required this.onClub,
       required this.onTournament,
       required this.api,
-      required this.token});
+      required this.token,
+      required this.onOpenMatch});
   final int section;
   final CommunityDto community;
   final List<SocialPlayerDto> friends;
@@ -625,21 +628,32 @@ class _CommunitySection extends StatelessWidget {
   final ValueChanged<TournamentDto> onTournament;
   final CommunityApi api;
   final String token;
+  final ValueChanged<OnlineMatchDto>? onOpenMatch;
   @override
   Widget build(BuildContext context) {
+    if (section == 2) {
+      return TournamentCircuitView(
+          tournaments: community.tournaments,
+          fairPlayScore: community.fairPlayScore,
+          circuitPoints: community.circuitPoints,
+          onRefresh: onRefresh,
+          onOpen: (event) async {
+            await Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => TournamentDetailScreen(
+                    id: event.id,
+                    token: token,
+                    api: api,
+                    onOpenMatch: (matchId) async {
+                      final match =
+                          await const OnlineMatchApi().getMatch(token, matchId);
+                      onOpenMatch?.call(match);
+                    })));
+            await onRefresh();
+          });
+    }
     final List<Widget> cards = switch (section) {
       1 => community.clubs
           .map((c) => _ClubCard(club: c, onTap: () => onClub(c)))
-          .toList(),
-      2 => community.tournaments
-          .map((t) => _TournamentCard(
-              event: t,
-              onTap: () async {
-                await Navigator.of(context).push(MaterialPageRoute<void>(
-                    builder: (_) => TournamentDetailScreen(
-                        id: t.id, token: token, api: api)));
-                await onRefresh();
-              }))
           .toList(),
       _ => friends
           .map((f) => _ChatCard(
@@ -778,26 +792,6 @@ class _ClubCard extends StatelessWidget {
         button: club.joined ? 'Leave' : 'Join club',
         onTap: onTap);
   }
-}
-
-class _TournamentCard extends StatelessWidget {
-  const _TournamentCard({required this.event, required this.onTap});
-  final TournamentDto event;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => _FeatureCard(
-      icon: Icons.emoji_events_rounded,
-      color: const Color(0xFF54DFC9),
-      artwork: switch (event.name) {
-        'Rapid Arena' => 'assets/backgrounds/home-analysis-hero-v1.png',
-        'Blitz Sprint' => 'assets/backgrounds/home-online-hero-v1.png',
-        _ => 'assets/backgrounds/grandmaster-table-v1.webp',
-      },
-      title: event.name,
-      subtitle: event.description,
-      meta: '${event.minutes} min • ${event.players}/${event.capacity} players',
-      button: 'View bracket',
-      onTap: onTap);
 }
 
 class _FeatureCard extends StatelessWidget {

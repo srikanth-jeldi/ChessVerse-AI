@@ -32,6 +32,10 @@ patchbase/
 patchwork/
 release/
 mobile/test/failures/
+.ppt-build/
+.tool-appdata/
+.tool-state/
+.video-review/
 .dart-localappdata/
 .dart-state/
 mobile/.dart-localappdata/
@@ -48,6 +52,13 @@ mobile/build-jni-corrupt-*/
 *.idsig
 *.patch
 *.zip
+video_contact_sheet*.jpg
+blur-check-*.jpg
+ChessVerse-learning-UI-reference.png
+Recording-for-facebook-BLURRED.mp4
+
+# Generated deliverables and local QA artifacts.
+artifacts/
 
 # Mobile signing material must never be committed.
 mobile/android/key.properties

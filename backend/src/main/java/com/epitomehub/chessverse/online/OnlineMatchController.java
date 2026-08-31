@@ -53,7 +53,7 @@ public class OnlineMatchController {
             @RequestHeader("Authorization") String authorization,
             @Valid @RequestBody(required = false) OnlineDtos.QueueRequest request) {
         OnlineDtos.QueueRequest preferences = request == null
-                ? new OnlineDtos.QueueRequest(10, "WORLDWIDE", 0) : request;
+                ? new OnlineDtos.QueueRequest(10, "WORLDWIDE", 0, 100) : request;
         OnlineDtos.MatchDto match = matches.randomMatch(player(authorization), preferences);
         socket.publish(match.id());
         return match;
