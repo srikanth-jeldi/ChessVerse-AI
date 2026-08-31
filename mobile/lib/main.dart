@@ -45,6 +45,7 @@ import 'features/notifications/presentation/notification_center_screen.dart';
 import 'features/leaderboard/presentation/leaderboard_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/shop/presentation/cosmetic_shop_screen.dart';
+import 'features/shop/data/economy_rewards_api.dart';
 import 'features/puzzles/domain/puzzle_catalog.dart';
 import 'features/progress/data/cloud_progress_api.dart';
 import 'features/settings/presentation/settings_screen.dart';
@@ -4377,6 +4378,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             scoreLabel: _resultScoreLabel(),
                             accuracy: _playerAccuracy,
                             turningPoint: _turningPoint,
+                            entryCoins: _gameMode == GameMode.online
+                                ? _onlineMatch?.entryCoins
+                                : null,
+                            rewardPoolCoins: _gameMode == GameMode.online
+                                ? _onlineMatch?.rewardPoolCoins
+                                : null,
+                            coinsEarned: _gameMode == GameMode.online
+                                ? _onlineMatch?.coinsEarned
+                                : null,
                             onNewGame: _gameMode == GameMode.online
                                 ? _startFreshOnlineGame
                                 : _gameMode == GameMode.puzzle
@@ -11980,7 +11990,24 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
   String _searchRegion = 'WORLDWIDE';
   int _ratingRange = 0;
   int _entryCoins = 100;
+  int? _coinBalance;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_refreshCoinBalance());
+  }
+
+  Future<void> _refreshCoinBalance() async {
+    try {
+      final EconomyRewardStatus status =
+          await const EconomyRewardsApi().status(widget.token);
+      if (mounted) setState(() => _coinBalance = status.coins);
+    } on Object {
+      // The server still performs the authoritative balance check.
+    }
+  }
 
   bool get _needsPlayCoins =>
       _error?.toLowerCase().contains('insufficient coins') ?? false;
@@ -12060,6 +12087,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     try {
       final OnlineMatchDto match = await operation();
       if (!mounted) return;
+      unawaited(_refreshCoinBalance());
       _accept(match);
     } on OnlineMatchException catch (error) {
       if (mounted) setState(() => _error = error.message);
@@ -12466,6 +12494,50 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                               'We’ll find a player for you from around the world.',
                             ),
                             const SizedBox(height: 12),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xE6071725),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                    color: const Color(0xFFD6A84F), width: 1.2),
+                              ),
+                              child: Row(children: <Widget>[
+                                const Icon(Icons.account_balance_wallet_rounded,
+                                    color: Color(0xFFD6A84F)),
+                                const SizedBox(width: 9),
+                                Expanded(
+                                  child: Text(
+                                    _coinBalance == null
+                                        ? 'Checking play coins…'
+                                        : 'Your coins: $_coinBalance',
+                                    style: const TextStyle(
+                                      color: Color(0xFFFFE2A3),
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  'WIN ${_entryCoins * 2}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF63E6C8),
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ]),
+                            ),
+                            const SizedBox(height: 10),
+                            const Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text('CHOOSE COIN ENTRY',
+                                  style: TextStyle(
+                                      color: Color(0xFFD6A84F),
+                                      fontSize: 11,
+                                      letterSpacing: 1.3,
+                                      fontWeight: FontWeight.w900)),
+                            ),
+                            const SizedBox(height: 7),
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
@@ -12473,12 +12545,26 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                 final bool selected = _entryCoins == coins;
                                 return ChoiceChip(
                                   selected: selected,
-                                  label:
-                                      Text('$coins entry • ${coins * 2} prize'),
-                                  avatar: const Icon(
-                                      Icons.monetization_on_rounded,
+                                  showCheckmark: true,
+                                  selectedColor: const Color(0xFFD6A84F),
+                                  backgroundColor: const Color(0xFF0A2638),
+                                  side: BorderSide(
+                                    color: selected
+                                        ? const Color(0xFFFFD978)
+                                        : const Color(0xFF3D667C),
+                                  ),
+                                  labelStyle: TextStyle(
+                                    color: selected
+                                        ? const Color(0xFF07131D)
+                                        : const Color(0xFFF4EFE5),
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                  label: Text('$coins IN  →  ${coins * 2} WIN'),
+                                  avatar: Icon(Icons.monetization_on_rounded,
                                       size: 18,
-                                      color: Color(0xFFD6A84F)),
+                                      color: selected
+                                          ? const Color(0xFF07131D)
+                                          : const Color(0xFFD6A84F)),
                                   onSelected: _loading
                                       ? null
                                       : (_) =>
@@ -13402,7 +13488,10 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                               style: TextStyle(
                                   color: Color(0xFFB5BEC8), fontSize: 15),
                             ),
-                            SizedBox(height: compactHeight ? 18 : 28),
+                            const SizedBox(height: 10),
+                            _CoinPoolBanner(
+                                entryCoins: widget.preferences.entryCoins),
+                            SizedBox(height: compactHeight ? 14 : 22),
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: <Widget>[
@@ -13854,7 +13943,9 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Color(0xFFA8B4C1), fontSize: 12),
                     ),
-                    const SizedBox(height: 13),
+                    const SizedBox(height: 8),
+                    _CoinPoolBanner(entryCoins: widget.preferences.entryCoins),
+                    const SizedBox(height: 10),
                     Row(
                       children: <Widget>[
                         Expanded(
@@ -14596,6 +14687,45 @@ class _SearchFact extends StatelessWidget {
             ],
           ),
         ],
+      );
+}
+
+class _CoinPoolBanner extends StatelessWidget {
+  const _CoinPoolBanner({required this.entryCoins});
+
+  final int entryCoins;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: .94, end: 1),
+        duration: const Duration(milliseconds: 650),
+        curve: Curves.easeOutBack,
+        builder: (BuildContext context, double value, Widget? child) =>
+            Transform.scale(scale: value, child: child),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF241D0D),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0xFFF1B94C), width: 1.4),
+            boxShadow: const <BoxShadow>[
+              BoxShadow(color: Color(0x55F1B94C), blurRadius: 20),
+            ],
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+            const Icon(Icons.monetization_on_rounded,
+                color: Color(0xFFF1B94C), size: 22),
+            const SizedBox(width: 8),
+            Text(
+              '$entryCoins + $entryCoins  =  ${entryCoins * 2} COIN POOL',
+              style: const TextStyle(
+                color: Color(0xFFFFE2A3),
+                fontWeight: FontWeight.w900,
+                letterSpacing: .8,
+              ),
+            ),
+          ]),
+        ),
       );
 }
 
@@ -15950,6 +16080,9 @@ class GameResultOverlay extends StatelessWidget {
     required this.scoreLabel,
     required this.accuracy,
     required this.turningPoint,
+    this.entryCoins,
+    this.rewardPoolCoins,
+    this.coinsEarned,
     required this.onNewGame,
     this.newGameLabel,
     this.onRematch,
@@ -15963,6 +16096,9 @@ class GameResultOverlay extends StatelessWidget {
   final String scoreLabel;
   final int? accuracy;
   final String? turningPoint;
+  final int? entryCoins;
+  final int? rewardPoolCoins;
+  final int? coinsEarned;
   final VoidCallback onNewGame;
   final String? newGameLabel;
   final VoidCallback? onRematch;
@@ -16041,6 +16177,64 @@ class GameResultOverlay extends StatelessWidget {
                         ),
                         SizedBox(height: shortLandscape ? 3 : 8),
                         Text(detail, textAlign: TextAlign.center),
+                        if ((rewardPoolCoins ?? 0) > 0) ...<Widget>[
+                          SizedBox(height: shortLandscape ? 7 : 14),
+                          TweenAnimationBuilder<double>(
+                            tween: Tween<double>(begin: .75, end: 1),
+                            duration: const Duration(milliseconds: 850),
+                            curve: Curves.elasticOut,
+                            builder: (BuildContext context, double value,
+                                    Widget? child) =>
+                                Transform.scale(scale: value, child: child),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 13),
+                              decoration: BoxDecoration(
+                                color: draw
+                                    ? const Color(0xFF13262A)
+                                    : (coinsEarned ?? 0) > 0
+                                        ? const Color(0xFF2A210D)
+                                        : const Color(0xFF25171A),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: draw
+                                      ? const Color(0xFF63D2B8)
+                                      : (coinsEarned ?? 0) > 0
+                                          ? const Color(0xFFD6A84F)
+                                          : const Color(0xFFB65B67),
+                                ),
+                              ),
+                              child: Column(children: <Widget>[
+                                Icon(Icons.monetization_on_rounded,
+                                    color: draw
+                                        ? const Color(0xFF63D2B8)
+                                        : const Color(0xFFD6A84F),
+                                    size: 34),
+                                const SizedBox(height: 5),
+                                Text(
+                                  draw
+                                      ? '${entryCoins ?? 0} COINS REFUNDED'
+                                      : (coinsEarned ?? 0) > 0
+                                          ? '+${coinsEarned ?? 0} COINS WON'
+                                          : '0 COINS WON',
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFE2A3),
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                Text(
+                                  draw
+                                      ? 'Draw refund completed'
+                                      : '${entryCoins ?? 0} + ${entryCoins ?? 0} = ${rewardPoolCoins ?? 0} coin pool',
+                                  style: const TextStyle(
+                                      color: Color(0xFFBFC8CF), fontSize: 12),
+                                ),
+                              ]),
+                            ),
+                          ),
+                        ],
                         if (accuracy != null) ...<Widget>[
                           SizedBox(height: shortLandscape ? 5 : 10),
                           Text(
