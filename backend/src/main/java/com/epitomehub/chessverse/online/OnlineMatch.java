@@ -135,6 +135,18 @@ class OnlineMatch {
     @Column(name = "black_rating_after")
     Integer blackRatingAfter;
 
+    @Column(name = "tournament_name", length = 100)
+    String tournamentName;
+
+    @Column(name = "tournament_round")
+    Integer tournamentRound;
+
+    @Column(name = "entry_coins", nullable = false)
+    int entryCoins;
+
+    @Column(name = "coin_pool_settled", nullable = false)
+    boolean coinPoolSettled;
+
     @Version
     long version;
 
@@ -171,6 +183,8 @@ class OnlineMatch {
         this.whitePlayerName = playerName;
         this.whitePlayerPhotoUrl = playerPhotoUrl;
         this.randomQueue = randomQueue;
+        this.entryCoins = 0;
+        this.coinPoolSettled = false;
         this.timeControlMinutes = timeControlMinutes;
         this.queueRegion = queueRegion;
         this.queueCountry = queueCountry;

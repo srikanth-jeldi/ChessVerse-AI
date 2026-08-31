@@ -12,6 +12,7 @@ class ProfileScreen extends StatefulWidget {
     this.isGuest = true,
     this.onDisplayNameChanged,
     this.onSecureProgress,
+    this.onShop,
     super.key,
   });
 
@@ -22,6 +23,7 @@ class ProfileScreen extends StatefulWidget {
   final bool isGuest;
   final Future<void> Function(String displayName)? onDisplayNameChanged;
   final Future<void> Function()? onSecureProgress;
+  final VoidCallback? onShop;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -49,6 +51,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('PLAYER PROFILE'),
         centerTitle: false,
         backgroundColor: const Color(0xD9071827),
+        actions: <Widget>[
+          if (widget.onShop != null)
+            IconButton(
+              key: const ValueKey<String>('profile-shop'),
+              tooltip: 'Cosmetic shop',
+              onPressed: widget.onShop,
+              icon: const Icon(Icons.storefront_rounded),
+            ),
+        ],
       ),
       body: ListView(
         // The root navigation floats over this page. Keep enough scrollable

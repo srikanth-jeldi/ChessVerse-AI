@@ -49,6 +49,11 @@ public class OnlineRatingService {
 
         apply(white, whiteScore, whiteDelta);
         apply(black, 1.0 - whiteScore, blackDelta);
+        if (match.entryCoins > 0) {
+            long prize = Math.multiplyExact((long) match.entryCoins, 2L);
+            if (whiteScore == 1.0) white.careerCoinsWon += prize;
+            else if (whiteScore == 0.0) black.careerCoinsWon += prize;
+        }
         ratings.saveAll(List.of(white, black));
 
         match.whiteRatingBefore = whiteBefore;
@@ -96,6 +101,7 @@ public class OnlineRatingService {
                     (long) pageNumber * pageSize + index + 1L,
                     row.playerId, row.displayName, row.country, row.rating,
                     row.gamesPlayed, row.wins, row.draws, row.losses,
+                    row.careerCoinsWon,
                     row.playerId.equals(player.id())));
         }
         return new LeaderboardDtos.LeaderboardDto(
@@ -136,6 +142,7 @@ public class OnlineRatingService {
         return new LeaderboardDtos.PlayerRatingDto(
                 rating.playerId, rating.displayName, rating.country, rating.rating,
                 rating.peakRating, rating.gamesPlayed, rating.wins, rating.draws, rating.losses,
+                rating.careerCoinsWon,
                 globalRank, countryRank);
     }
 

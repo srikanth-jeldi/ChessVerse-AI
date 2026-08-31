@@ -10,6 +10,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import 'core/analytics/app_analytics.dart';
+import 'core/ads/rewarded_coin_service.dart';
+import 'core/ads/post_match_ad_service.dart';
 import 'core/audio/chess_sound_service.dart';
 import 'core/auth/facebook_sdk_ready.dart';
 import 'core/app_preferences.dart';
@@ -41,6 +44,7 @@ import 'features/notifications/data/notification_api.dart';
 import 'features/notifications/presentation/notification_center_screen.dart';
 import 'features/leaderboard/presentation/leaderboard_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
+import 'features/shop/presentation/cosmetic_shop_screen.dart';
 import 'features/puzzles/domain/puzzle_catalog.dart';
 import 'features/progress/data/cloud_progress_api.dart';
 import 'features/settings/presentation/settings_screen.dart';
@@ -74,6 +78,9 @@ List<SavedMoveReview> _savedReviewsFromCloud(CloudAnalysisJob job) => job.plies
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await FirebasePushService.instance.initialize();
+  await RewardedCoinService.instance.initialize();
+  unawaited(PostMatchAdService.instance.load());
+  await AppAnalytics.initialize();
   await AppDiagnostics.initialize();
   if (!kIsWeb) {
     await SystemChrome.setPreferredOrientations(
@@ -659,6 +666,9 @@ class _SplashGateState extends State<SplashGate> {
                 _isGuest = result.isGuest;
                 _stage = _RootStage.home;
               });
+              unawaited(
+                AppAnalytics.logAuthentication(guest: result.isGuest),
+              );
               if (result.token != null) {
                 _enableCloudSync(result.token!);
                 unawaited(_syncCloudProgress(result.token!));
@@ -750,6 +760,12 @@ class _SplashGateState extends State<SplashGate> {
         isGuest: _isGuest,
         onSecureProgress: _isGuest ? () => _secureGuestProgress(context) : null,
         onDisplayNameChanged: _updateDisplayName,
+        onShop: () async {
+          final StoredAuthSession? session =
+              await const AuthSessionStore().read();
+          if (!context.mounted || session == null) return;
+          await _push(context, CosmeticShopScreen(token: session.token));
+        },
       ),
       SocialHubScreen(
         onOpenMatch: (OnlineMatchDto match) async {
@@ -1170,6 +1186,10 @@ class _SplashGateState extends State<SplashGate> {
     String? initialAuthToken,
     String? aiOpponentName,
   }) {
+    unawaited(AppAnalytics.logGameStarted(
+      mode: mode.name,
+      guest: _isGuest,
+    ));
     return _push(
       context,
       GameScreen(
@@ -2748,6 +2768,16 @@ const Map<BoardSkin, BoardPalette> boardPalettes = <BoardSkin, BoardPalette>{
   ),
 };
 
+BoardSkin tournamentBoardSkin(String? tournamentName) {
+  final String name = tournamentName?.toLowerCase() ?? '';
+  if (name.contains('tokyo')) return BoardSkin.sapphire;
+  if (name.contains('dubai')) return BoardSkin.royalWalnut;
+  if (name.contains('london')) return BoardSkin.tournament;
+  if (name.contains('new york')) return BoardSkin.marble;
+  if (name.contains('hyderabad')) return BoardSkin.jadeGlass;
+  return BoardSkin.tournament;
+}
+
 class ChessPiece {
   const ChessPiece(this.code, this.white);
 
@@ -3760,13 +3790,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _showMoveHints = values[1] as bool;
       _coachEnabled = values[2] as bool;
       _showCoordinates = values[3] as bool;
-      _skin = switch (boardTheme) {
-        'Jade Glass' => BoardSkin.jadeGlass,
-        'Tournament' => BoardSkin.tournament,
-        'Marble' => BoardSkin.marble,
-        'Sapphire' => BoardSkin.sapphire,
-        _ => BoardSkin.royalWalnut,
-      };
+      _skin = _onlineMatch?.isTournamentMatch == true
+          ? tournamentBoardSkin(_onlineMatch?.tournamentName)
+          : switch (boardTheme) {
+              'Jade Glass' => BoardSkin.jadeGlass,
+              'Tournament' => BoardSkin.tournament,
+              'Marble' => BoardSkin.marble,
+              'Sapphire' => BoardSkin.sapphire,
+              _ => BoardSkin.royalWalnut,
+            };
     });
     ChessSoundService.instance.enabled = _soundEnabled;
   }
@@ -4003,6 +4035,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       matchActive: _onlineMatch?.isActive ?? false,
                       socketConnected: _onlineSocketConnected,
                       connectedPlayers: _onlineConnectedPlayers,
+                      tournamentName: _onlineMatch?.tournamentName,
+                      tournamentRound: _onlineMatch?.tournamentRound,
                       compactOverlay: compactLandscape,
                     )
                   : BoardStage(palette: palette, child: board);
@@ -4034,6 +4068,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   2 => 'Exact move',
                   _ => 'Piece hint',
                 },
+                canHint: _gameResultTitle == null,
                 analyzeLabel: _moveQualityText == null
                     ? 'Analyze'
                     : _moveQualityIsWeak
@@ -5544,14 +5579,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           }
           _lastPlayerCoachNote = _coachNote;
           if (_gameMode == GameMode.puzzle && puzzleWrongMove) {
-            // The curated objective no longer decides terminal state once the
-            // player branches. Continue as a normal legal chess position.
-            _gameResultTitle = null;
-            _gameResultDetail = null;
-            _resultVisible = false;
+            // A tactics puzzle is an exact forcing line, not a free-play game.
+            // End this attempt instead of allowing a long branch that can
+            // eventually surface normal-game draw/stalemate results.
+            _gameResultTitle = 'Challenge missed';
+            _gameResultDetail =
+                'That move leaves the puzzle solution. Find the forcing line and try again.';
+            _resultVisible = true;
             _coachNote =
-                'Legal move played. Exploration mode started; the defense will reply. '
-                'Tap Try again anytime to return to the puzzle line.';
+                'That is a legal chess move, but not the tactic. Tap Try again and look for checks, captures, and threats.';
             _lastPlayerCoachNote = _coachNote;
             unawaited(ChessSoundService.instance.error());
           } else if (_isTacticsMode && !_puzzleExplorationMode) {
@@ -6940,6 +6976,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _showHint() async {
+    if (_gameResultTitle != null) return;
     final bool whiteToMove = _isTacticsMode ? true : _moves.length.isEven;
     final int hintStage = (_hintStage % 3) + 1;
     setState(() => _hintStage = hintStage);
@@ -7268,6 +7305,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     setState(() {
       _authToken = token;
       _onlineMatch = match;
+      if (match.isTournamentMatch) {
+        _skin = tournamentBoardSkin(match.tournamentName);
+        ChessPieceAppearanceController.current.value =
+            const ChessPieceAppearance(
+          style: ChessPieceVisualStyle.premium3d,
+          size: ChessPieceVisualSize.extraLarge,
+        );
+      }
       _gameMode = GameMode.online;
       _humanPlaysWhite = match.yourColor.toLowerCase() == 'white';
       _whitePlayerName = match.whitePlayerName ?? 'White player';
@@ -7542,6 +7587,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _startFreshOnlineGame() async {
+    final OnlineMatchDto? completed = _onlineMatch;
+    if (completed?.status == 'FINISHED') {
+      await PostMatchAdService.instance.showAfterMatch(completed!.id);
+    }
     _onlinePollTimer?.cancel();
     _onlineSocketReconnectTimer?.cancel();
     _onlineHeartbeatTimer?.cancel();
@@ -7647,6 +7696,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final OnlineMatchDto? match = _onlineMatch;
     final String? token = _authToken;
     if (match == null || token == null || match.status != 'FINISHED') return;
+    await PostMatchAdService.instance.showAfterMatch(match.id);
     setState(() {
       _resultVisible = false;
       _coachNote = 'Rematch requested. Waiting for your opponent...';
@@ -7788,10 +7838,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final String ratingText = ratingDelta == null
         ? ''
         : ' • ELO ${ratingDelta >= 0 ? '+' : ''}$ratingDelta';
-    final bool userWhite = match.yourColor.toUpperCase() == 'WHITE';
-    final bool userWon = (match.result == '1-0' && userWhite) ||
-        (match.result == '0-1' && !userWhite);
-    final int coinsEarned = userWon ? 26 : 8;
+    final int coinsEarned = match.coinsEarned;
     return '${match.result ?? ''} • $reason$ratingText • Coins +$coinsEarned';
   }
 
@@ -7866,6 +7913,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return 'Checkmate. $_gameResultTitle.';
     }
     if (stalemate) {
+      if (_isTacticsMode) {
+        _gameResultTitle = 'Challenge missed';
+        _gameResultDetail =
+            'Stalemate is not the checkmate objective. Try the forcing line again.';
+        _resultVisible = true;
+        unawaited(ChessSoundService.instance.error());
+        return 'Stalemate avoids checkmate. Try again.';
+      }
       _gameResultTitle = 'Draw';
       _gameResultDetail = 'Stalemate';
       _delayLocalResultOverlay(
@@ -10128,6 +10183,7 @@ class _StudioCoachPanel extends StatelessWidget {
     required this.dailyGoal,
     required this.canUndo,
     required this.hintLabel,
+    required this.canHint,
     required this.analyzeLabel,
     required this.onHint,
     required this.onAnalyze,
@@ -10150,6 +10206,7 @@ class _StudioCoachPanel extends StatelessWidget {
   final int dailyGoal;
   final bool canUndo;
   final String hintLabel;
+  final bool canHint;
   final String analyzeLabel;
   final VoidCallback onHint;
   final VoidCallback onAnalyze;
@@ -10383,7 +10440,7 @@ class _StudioCoachPanel extends StatelessWidget {
                     children: <Widget>[
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: onHint,
+                          onPressed: canHint ? onHint : null,
                           icon: const Icon(Icons.tips_and_updates_outlined),
                           label: FittedBox(
                             fit: BoxFit.scaleDown,
@@ -10587,21 +10644,28 @@ class _OnlineConnectionBanner extends StatelessWidget {
   const _OnlineConnectionBanner({
     required this.reconnecting,
     required this.opponentAway,
+    this.tournamentName,
+    this.tournamentRound,
   });
 
   final bool reconnecting;
   final bool opponentAway;
+  final String? tournamentName;
+  final int? tournamentRound;
 
   @override
   Widget build(BuildContext context) {
     final bool healthy = !reconnecting && !opponentAway;
     final Color color =
         healthy ? const Color(0xFF63D2B8) : const Color(0xFFE5B856);
-    final String label = reconnecting
+    final String connection = reconnecting
         ? 'Reconnecting to match…'
         : opponentAway
             ? 'Opponent offline — waiting for reconnect'
             : 'Both players online';
+    final String label = tournamentName == null
+        ? connection
+        : '${tournamentName!.toUpperCase()} • ROUND ${tournamentRound ?? 1} • $connection';
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
@@ -10653,6 +10717,8 @@ class _OnlineArenaBoard extends StatelessWidget {
     required this.matchActive,
     required this.socketConnected,
     required this.connectedPlayers,
+    this.tournamentName,
+    this.tournamentRound,
     this.compactOverlay = false,
   });
 
@@ -10668,6 +10734,8 @@ class _OnlineArenaBoard extends StatelessWidget {
   final bool matchActive;
   final bool socketConnected;
   final int connectedPlayers;
+  final String? tournamentName;
+  final int? tournamentRound;
   final bool compactOverlay;
 
   @override
@@ -10715,6 +10783,8 @@ class _OnlineArenaBoard extends StatelessWidget {
               child: _OnlineConnectionBanner(
                 reconnecting: !socketConnected,
                 opponentAway: socketConnected && connectedPlayers < 2,
+                tournamentName: tournamentName,
+                tournamentRound: tournamentRound,
               ),
             ),
           ),
@@ -10729,6 +10799,8 @@ class _OnlineArenaBoard extends StatelessWidget {
             child: _OnlineConnectionBanner(
               reconnecting: !socketConnected,
               opponentAway: socketConnected && connectedPlayers < 2,
+              tournamentName: tournamentName,
+              tournamentRound: tournamentRound,
             ),
           ),
         ),
@@ -11855,6 +11927,7 @@ typedef _SearchPreferences = ({
   int timeControlMinutes,
   String region,
   int ratingRange,
+  int entryCoins,
 });
 
 class OnlineMatchmakingSheet extends StatefulWidget {
@@ -11906,7 +11979,52 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
   int _timeControlMinutes = 10;
   String _searchRegion = 'WORLDWIDE';
   int _ratingRange = 0;
+  int _entryCoins = 100;
   String? _error;
+
+  bool get _needsPlayCoins =>
+      _error?.toLowerCase().contains('insufficient coins') ?? false;
+
+  Future<void> _openEarnCoins() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => CosmeticShopScreen(token: widget.token),
+      ),
+    );
+    if (mounted) setState(() => _error = null);
+  }
+
+  Widget _errorNotice() {
+    if (_needsPlayCoins) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0x332A213D),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFD6A84F)),
+        ),
+        child: Row(children: <Widget>[
+          const Icon(Icons.monetization_on_rounded, color: Color(0xFFD6A84F)),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Not enough play coins. Claim the free daily reward or watch rewarded videos—no purchase needed.',
+              style: TextStyle(color: Color(0xFFFFE2A3)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          FilledButton(
+            onPressed: _openEarnCoins,
+            child: const Text('Earn free coins'),
+          ),
+        ]),
+      );
+    }
+    return Text(
+      _error!,
+      style: const TextStyle(color: Color(0xFFFF6B6B)),
+    );
+  }
 
   @override
   void dispose() {
@@ -11965,6 +12083,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
         timeControlMinutes: _timeControlMinutes,
         region: _searchRegion,
         ratingRange: _ratingRange,
+        entryCoins: _entryCoins,
       );
 
   Future<void> _applySearchPreferences(_SearchPreferences preferences) async {
@@ -11989,6 +12108,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
       _timeControlMinutes = preferences.timeControlMinutes;
       _searchRegion = preferences.region;
       _ratingRange = preferences.ratingRange;
+      _entryCoins = preferences.entryCoins;
     });
     await _run(_requestRandomMatch, randomSearch: true);
   }
@@ -12183,6 +12303,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                 timeControlMinutes: _timeControlMinutes,
                 region: _searchRegion,
                 ratingRange: _ratingRange,
+                entryCoins: _entryCoins,
               ),
               onPreferencesChanged: _applySearchPreferences,
               onCopyCode: () {
@@ -12266,10 +12387,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                   ),
                   if (_error != null) ...<Widget>[
                     const SizedBox(height: 12),
-                    Text(
-                      _error!,
-                      style: const TextStyle(color: Color(0xFFFF6B6B)),
-                    ),
+                    _errorNotice(),
                   ],
                   SizedBox(height: wideLayout ? 22 : 16),
                   if (widget.initialMode == OnlineLobbyMode.random)
@@ -12346,6 +12464,27 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                             const SizedBox(height: 8),
                             const Text(
                               'We’ll find a player for you from around the world.',
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: <int>[100, 200, 500].map((int coins) {
+                                final bool selected = _entryCoins == coins;
+                                return ChoiceChip(
+                                  selected: selected,
+                                  label:
+                                      Text('$coins entry • ${coins * 2} prize'),
+                                  avatar: const Icon(
+                                      Icons.monetization_on_rounded,
+                                      size: 18,
+                                      color: Color(0xFFD6A84F)),
+                                  onSelected: _loading
+                                      ? null
+                                      : (_) =>
+                                          setState(() => _entryCoins = coins),
+                                );
+                              }).toList(growable: false),
                             ),
                             SizedBox(height: wideLayout ? 18 : 12),
                             Align(
@@ -12681,8 +12820,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                     ),
                     if (_error != null) ...<Widget>[
                       const SizedBox(height: 12),
-                      Text(_error!,
-                          style: const TextStyle(color: Color(0xFFFF6B6B))),
+                      _errorNotice(),
                     ],
                     const SizedBox(height: 20),
                     Container(
@@ -13939,6 +14077,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
     int minutes = widget.preferences.timeControlMinutes;
     String region = widget.preferences.region;
     int range = widget.preferences.ratingRange;
+    int entryCoins = widget.preferences.entryCoins;
     final _SearchPreferences? selected =
         await showModalBottomSheet<_SearchPreferences>(
       context: context,
@@ -13983,6 +14122,24 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                         setSheetState(() => minutes = value ?? 10),
                   ),
                   const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    initialValue: entryCoins,
+                    decoration: const InputDecoration(
+                      labelText: 'Play coin entry',
+                      prefixIcon: Icon(Icons.monetization_on_rounded),
+                    ),
+                    items: const <DropdownMenuItem<int>>[
+                      DropdownMenuItem(
+                          value: 100, child: Text('100 entry • 200 prize')),
+                      DropdownMenuItem(
+                          value: 200, child: Text('200 entry • 400 prize')),
+                      DropdownMenuItem(
+                          value: 500, child: Text('500 entry • 1,000 prize')),
+                    ],
+                    onChanged: (int? value) =>
+                        setSheetState(() => entryCoins = value ?? 100),
+                  ),
+                  const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: region,
                     decoration: const InputDecoration(
@@ -14020,6 +14177,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                       timeControlMinutes: minutes,
                       region: region,
                       ratingRange: range,
+                      entryCoins: entryCoins,
                     )),
                     icon: const Icon(Icons.refresh_rounded),
                     label: const Text('APPLY & RESTART SEARCH'),
@@ -14568,6 +14726,27 @@ class _OpponentFoundViewState extends State<_OpponentFoundView> {
                           style: TextStyle(
                               color: Color(0xFFB7C1CB), fontSize: 15)),
                       SizedBox(height: wide ? 20 : 15),
+                      if (match.rewardPoolCoins > 0) ...<Widget>[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 18, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: gold.withValues(alpha: .10),
+                            borderRadius: BorderRadius.circular(999),
+                            border:
+                                Border.all(color: gold.withValues(alpha: .65)),
+                          ),
+                          child: Text(
+                            '${match.entryCoins} + ${match.entryCoins}  •  ${match.rewardPoolCoins} COIN POOL',
+                            style: const TextStyle(
+                              color: gold,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.1,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: wide ? 18 : 13),
+                      ],
                       Row(
                         children: <Widget>[
                           Expanded(

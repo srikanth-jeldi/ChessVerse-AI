@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 
 import com.epitomehub.chessverse.auth.AuthenticatedPlayer;
+import com.epitomehub.chessverse.economy.EconomyService;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +22,7 @@ class OnlineMatchServiceTest {
     private OnlineMatchRepository repository;
     private OnlineRatingService ratings;
     private OnlineMatchService service;
+    private EconomyService economy;
     private AuthenticatedPlayer white;
     private AuthenticatedPlayer black;
 
@@ -28,7 +30,8 @@ class OnlineMatchServiceTest {
     void setUp() {
         repository = mock(OnlineMatchRepository.class);
         ratings = mock(OnlineRatingService.class);
-        service = new OnlineMatchService(repository, ratings);
+        economy = mock(EconomyService.class);
+        service = new OnlineMatchService(repository, ratings, null, null, economy);
         white = new AuthenticatedPlayer(UUID.randomUUID(), "white", "White Player", "https://example.com/white.png");
         black = new AuthenticatedPlayer(UUID.randomUUID(), "black", "Black Player", "https://example.com/black.png");
         when(repository.save(any(OnlineMatch.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -36,7 +39,7 @@ class OnlineMatchServiceTest {
             AuthenticatedPlayer player = invocation.getArgument(0);
             return new LeaderboardDtos.PlayerRatingDto(
                     player.id(), player.displayName(), "India", 1200, 1200,
-                    0, 0, 0, 0, 1, 1);
+                    0, 0, 0, 0, 0, 1, 1);
         });
     }
 
@@ -45,7 +48,7 @@ class OnlineMatchServiceTest {
         OnlineMatch waiting = waitingMatch();
         when(repository.findCurrentForPlayer(black.id())).thenReturn(Optional.empty());
         when(repository.lockOldestRandomOpponent(
-                eq(black.id()), any(), eq(10), eq("WORLDWIDE"),
+                eq(black.id()), any(), eq(10), eq(100), eq("WORLDWIDE"),
                 eq("India"), eq(1200), eq(0)))
                 .thenReturn(Optional.of(waiting));
 
@@ -55,6 +58,10 @@ class OnlineMatchServiceTest {
         assertEquals("black", result.yourColor());
         assertEquals("Black Player", result.blackPlayerName());
         assertNotNull(result.startedAt());
+        assertEquals(100, result.entryCoins());
+        assertEquals(200, result.rewardPoolCoins());
+        verify(economy).spend(eq(black.id()), eq("COINS"), eq(100L),
+                eq("MATCH_ENTRY_RESERVED"), any(), eq("Online match entry reserved"));
     }
 
     @Test
@@ -169,6 +176,9 @@ class OnlineMatchServiceTest {
 
         assertEquals(OnlineMatchStatus.FINISHED, result.status());
         assertEquals("0-1", result.result());
+        verify(economy).grantCoins(eq(white.id()), eq(20L), eq("MATCH_COMPLETED"), any(), eq("Match completion reward"));
+        verify(economy).grantCoins(eq(black.id()), eq(20L), eq("MATCH_COMPLETED"), any(), eq("Match completion reward"));
+        verify(economy).grantCoins(eq(black.id()), eq(30L), eq("MATCH_WON"), any(), eq("Match victory bonus"));
         assertEquals("RESIGNATION", result.resultReason());
         assertNotNull(result.finishedAt());
         assertNotNull(result.durationSeconds());
@@ -274,6 +284,53 @@ class OnlineMatchServiceTest {
     }
 
     @Test
+    void queueReservesSelectedEntryBeforeSearching() {
+        when(repository.findCurrentForPlayer(white.id())).thenReturn(Optional.empty());
+        when(repository.lockOldestRandomOpponent(
+                eq(white.id()), any(), eq(10), eq(500), eq("WORLDWIDE"),
+                eq("India"), eq(1200), eq(0))).thenReturn(Optional.empty());
+
+        OnlineDtos.MatchDto queued = service.randomMatch(white,
+                new OnlineDtos.QueueRequest(10, "WORLDWIDE", 0, 500));
+
+        assertEquals(OnlineMatchStatus.WAITING, queued.status());
+        assertEquals(500, queued.entryCoins());
+        assertEquals(1000, queued.rewardPoolCoins());
+        verify(economy).spend(eq(white.id()), eq("COINS"), eq(500L),
+                eq("MATCH_ENTRY_RESERVED"), any(), eq("Online match entry reserved"));
+    }
+
+    @Test
+    void cancellingQueueReturnsReservedEntry() {
+        OnlineMatch waiting = waitingMatch();
+        waiting.entryCoins = 200;
+        when(repository.lockById(waiting.id)).thenReturn(Optional.of(waiting));
+
+        OnlineDtos.MatchDto cancelled = service.cancelWaiting(white, waiting.id);
+
+        assertEquals(OnlineMatchStatus.CANCELLED, cancelled.status());
+        verify(economy).grantCoins(eq(white.id()), eq(200L),
+                eq("MATCH_ENTRY_RELEASED"), any(),
+                eq("Cancelled matchmaking entry returned"));
+    }
+
+    @Test
+    void completedRankedMatchAwardsTheTwoHundredCoinPoolOnce() {
+        OnlineMatch match = activeMatch();
+        match.entryCoins = 100;
+        when(repository.lockById(match.id)).thenReturn(Optional.of(match));
+
+        service.move(white, match.id, "f2f3", 0);
+        service.move(black, match.id, "e7e5", 1);
+        service.move(white, match.id, "g2g4", 2);
+        OnlineDtos.MatchDto result = service.move(black, match.id, "d8h4", 3);
+
+        assertEquals(200, result.coinsEarned());
+        verify(economy).grantCoins(eq(black.id()), eq(200L),
+                eq("RANKED_MATCH_POOL"), any(), eq("Ranked match coin pool"));
+    }
+
+    @Test
     void challengeCannotReplaceAnActiveMatch() {
         OnlineMatch match = activeMatch();
         when(repository.findCurrentForPlayer(white.id())).thenReturn(Optional.of(match));
@@ -300,17 +357,20 @@ class OnlineMatchServiceTest {
     }
 
     private OnlineMatch waitingMatch() {
-        return new OnlineMatch(
+        OnlineMatch match = new OnlineMatch(
                 UUID.randomUUID(),
                 "CVTEST",
                 white.id(),
                 white.displayName(),
                 white.photoUrl(),
                 true);
+        match.entryCoins = 100;
+        return match;
     }
 
     private OnlineMatch activeMatch() {
         OnlineMatch match = waitingMatch();
+        match.entryCoins = 0;
         match.blackPlayerId = black.id();
         match.blackPlayerName = black.displayName();
         match.status = OnlineMatchStatus.ACTIVE;

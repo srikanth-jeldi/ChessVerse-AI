@@ -102,4 +102,15 @@ void main() {
     expect(value.champion?.name, 'Knight');
     expect(value.rounds.single.pairings.single.matchId, 'm1');
   });
+
+  test('community decodes authoritative circuit points', () {
+    final value = CommunityDto.fromJson(<String, dynamic>{
+      'clubs': <dynamic>[],
+      'tournaments': <dynamic>[],
+      'conversations': <dynamic>[],
+      'fairPlayScore': 98,
+      'circuitPoints': 1750,
+    });
+    expect(value.circuitPoints, 1750);
+  });
 }

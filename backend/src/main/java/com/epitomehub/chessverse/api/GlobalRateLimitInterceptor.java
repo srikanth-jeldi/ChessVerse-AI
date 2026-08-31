@@ -15,6 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 
 @Component
 class GlobalRateLimitInterceptor implements HandlerInterceptor {
@@ -30,11 +32,14 @@ class GlobalRateLimitInterceptor implements HandlerInterceptor {
 
     private final JdbcTemplate jdbc;
     private final boolean enabled;
+    private final MeterRegistry metrics;
 
     GlobalRateLimitInterceptor(
             JdbcTemplate jdbc,
+            MeterRegistry metrics,
             @Value("${chessverse.api.rate-limit.enabled:true}") boolean enabled) {
         this.jdbc = jdbc;
+        this.metrics = metrics;
         this.enabled = enabled;
     }
 
@@ -53,14 +58,14 @@ class GlobalRateLimitInterceptor implements HandlerInterceptor {
 
         String route = policy.name().toLowerCase(Locale.ROOT);
         int ipCount = increment("ip:" + hash(clientIp(request)) + ':' + route, window, expiresAt);
-        if (ipCount > policy.ipLimit) return reject(response, retryAfter, policy.ipLimit);
+        if (ipCount > policy.ipLimit) return reject(response, retryAfter, policy, "ip", policy.ipLimit);
 
         String authorization = request.getHeader("Authorization");
         if (authorization != null && authorization.regionMatches(true, 0, "Bearer ", 0, 7)) {
             String token = authorization.substring(7).trim();
             if (!token.isEmpty()) {
                 int identityCount = increment("session:" + hash(token) + ':' + route, window, expiresAt);
-                if (identityCount > policy.sessionLimit) return reject(response, retryAfter, policy.sessionLimit);
+                if (identityCount > policy.sessionLimit) return reject(response, retryAfter, policy, "session", policy.sessionLimit);
                 response.setHeader("X-RateLimit-Limit", Integer.toString(policy.sessionLimit));
                 response.setHeader("X-RateLimit-Remaining", Integer.toString(Math.max(0, policy.sessionLimit - identityCount)));
             }
@@ -80,7 +85,12 @@ class GlobalRateLimitInterceptor implements HandlerInterceptor {
         return count == null ? 1 : count;
     }
 
-    private boolean reject(HttpServletResponse response, long retryAfter, int limit) throws IOException {
+    private boolean reject(HttpServletResponse response, long retryAfter, Policy policy, String scope, int limit) throws IOException {
+        Counter.builder("chessverse.rate_limit.rejections")
+                .description("Requests rejected by the distributed API rate limiter")
+                .tag("policy", policy.name().toLowerCase(Locale.ROOT))
+                .tag("scope", scope)
+                .register(metrics).increment();
         response.setStatus(429);
         response.setHeader("Retry-After", Long.toString(retryAfter));
         response.setHeader("X-RateLimit-Limit", Integer.toString(limit));

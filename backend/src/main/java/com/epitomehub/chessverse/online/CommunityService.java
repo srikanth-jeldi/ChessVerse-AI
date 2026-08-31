@@ -1,6 +1,7 @@
 package com.epitomehub.chessverse.online;
 
 import com.epitomehub.chessverse.auth.AuthenticatedPlayer;
+import com.epitomehub.chessverse.economy.EconomyService;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -31,12 +32,15 @@ class CommunityService {
     private final PlayerNotificationService notifications;
     private final Path attachmentRoot;
     private final AttachmentEncryptionService attachmentEncryption;
+    private final EconomyService economy;
 
     CommunityService(JdbcTemplate jdbc, FriendConnectionRepository friends, OnlinePresenceService presence,
                      PlayerNotificationService notifications, AttachmentEncryptionService attachmentEncryption,
+                     EconomyService economy,
                      @Value("${chessverse.attachments.directory:./data/chat-attachments}") String attachmentDirectory) {
         this.jdbc = jdbc; this.friends = friends; this.presence = presence; this.notifications = notifications;
         this.attachmentEncryption = attachmentEncryption;
+        this.economy = economy;
         this.attachmentRoot = Path.of(attachmentDirectory).toAbsolutePath().normalize();
     }
 
@@ -52,31 +56,45 @@ class CommunityService {
                 rs.getString("description"),rs.getInt("members"),rs.getInt("rating_requirement"),
                 rs.getBoolean("joined")), player.id());
         List<CommunityDtos.TournamentDto> tournaments = jdbc.query("""
-                select t.*,count(e.player_id) players,
-                exists(select 1 from chess_tournament_entry mine where mine.tournament_id=t.id and mine.player_id=?) joined
-                from chess_tournament t left join chess_tournament_entry e on e.tournament_id=t.id
+                select t.*,count(e.player_id) players,coalesce(sum(e.reserved_coins),0) prize_pool,
+                exists(select 1 from chess_tournament_entry mine where mine.tournament_id=t.id and mine.player_id=? and mine.active=true) joined
+                from chess_tournament t left join chess_tournament_entry e on e.tournament_id=t.id and e.active=true
                 group by t.id order by t.starts_at
                 """, (rs,row) -> new CommunityDtos.TournamentDto(uuid(rs,"id"),rs.getString("name"),
                 rs.getString("description"),rs.getInt("time_control_minutes"),rs.getInt("players"),
                 rs.getInt("capacity"),rs.getTimestamp("starts_at").toInstant(),rs.getTimestamp("ends_at").toInstant(),
-                rs.getString("status"),rs.getBoolean("joined")), player.id());
+                rs.getString("status"),rs.getBoolean("joined"),rs.getInt("entry_coins"),
+                rs.getLong("prize_pool")), player.id());
         List<CommunityDtos.ConversationDto> conversations = jdbc.query("""
-                select p.id,p.display_name,p.photo_url,m.body,m.sent_at,
-                (select count(*) from direct_message u where u.sender_id=p.id and u.recipient_id=? and u.read_at is null) unread
-                from player_account p join lateral (
-                  select body,sent_at from direct_message d
+                select p.id,p.display_name,p.photo_url,
+                (select d.body from direct_message d
                   where (d.sender_id=? and d.recipient_id=p.id) or (d.sender_id=p.id and d.recipient_id=?)
-                  order by sent_at desc limit 1
-                ) m on true
+                  order by d.sent_at desc limit 1) body,
+                (select d.sent_at from direct_message d
+                  where (d.sender_id=? and d.recipient_id=p.id) or (d.sender_id=p.id and d.recipient_id=?)
+                  order by d.sent_at desc limit 1) sent_at,
+                (select count(*) from direct_message u where u.sender_id=p.id and u.recipient_id=? and u.read_at is null) unread
+                from player_account p
                 where exists(select 1 from friend_connection f where f.status='ACCEPTED'
                   and ((f.requester_id=? and f.addressee_id=p.id) or (f.addressee_id=? and f.requester_id=p.id)))
-                order by m.sent_at desc limit 30
+                  and exists(select 1 from direct_message d where
+                    (d.sender_id=? and d.recipient_id=p.id) or (d.sender_id=p.id and d.recipient_id=?))
+                order by sent_at desc limit 30
                 """, (rs,row) -> new CommunityDtos.ConversationDto(uuid(rs,"id"),rs.getString("display_name"),
                 rs.getString("photo_url"),presence.isOnline(uuid(rs,"id")),rs.getString("body"),
                 rs.getTimestamp("sent_at").toInstant(),rs.getInt("unread")),
-                player.id(),player.id(),player.id(),player.id(),player.id());
+                player.id(),player.id(),player.id(),player.id(),player.id(),
+                player.id(),player.id(),player.id(),player.id());
         Integer signals = jdbc.queryForObject("select count(*) from fair_play_signal where player_id=? and severity>=3", Integer.class, player.id());
-        return new CommunityDtos.HubDto(clubs,tournaments,conversations,Math.max(0,100-(signals == null ? 0 : signals*5)));
+        Integer circuitPoints = jdbc.queryForObject("""
+                select
+                  100 * (select count(*) from chess_tournament_entry where player_id=? and active=true) +
+                  250 * (select count(*) from chess_tournament_pairing where winner_id=?) +
+                  1000 * (select count(*) from chess_tournament where champion_id=?)
+                """, Integer.class, player.id(), player.id(), player.id());
+        return new CommunityDtos.HubDto(clubs,tournaments,conversations,
+                Math.max(0,100-(signals == null ? 0 : signals*5)),
+                circuitPoints == null ? 0 : circuitPoints);
     }
 
     @Transactional
@@ -94,17 +112,49 @@ class CommunityService {
     CommunityDtos.HubDto joinTournament(AuthenticatedPlayer player, UUID tournamentId, boolean join) {
         requireExists("chess_tournament", tournamentId, "Tournament");
         if (join) {
-            int added=jdbc.update("""
-                    insert into chess_tournament_entry(tournament_id,player_id,joined_at)
-                    select t.id,?,? from chess_tournament t
-                    where t.id=? and t.status='OPEN' and t.starts_at>?
-                      and (select count(*) from chess_tournament_entry e where e.tournament_id=t.id)<t.capacity
-                    on conflict do nothing
-                    """,player.id(),Timestamp.from(Instant.now()),tournamentId,Timestamp.from(Instant.now()));
-            if(added==0) throw new OnlineMatchException(HttpStatus.CONFLICT,"Tournament registration is closed or full.");
-            if(added>0) notifications.create(player.id(),"TOURNAMENT_REGISTERED","Tournament registration confirmed","We will remind you before your ChessVerseAI tournament starts.","TOURNAMENT",tournamentId);
+            Object[] tournament = jdbc.query("select status,starts_at,capacity,entry_coins from chess_tournament where id=? for update",
+                    rs -> rs.next() ? new Object[]{rs.getString(1),rs.getTimestamp(2).toInstant(),rs.getInt(3),rs.getInt(4)} : null,
+                    tournamentId);
+            if (tournament == null || !"OPEN".equals(tournament[0]) || !((Instant)tournament[1]).isAfter(Instant.now()))
+                throw new OnlineMatchException(HttpStatus.CONFLICT,"Tournament registration is closed.");
+            Boolean active = jdbc.query("select active from chess_tournament_entry where tournament_id=? and player_id=? for update",
+                    rs -> rs.next() ? rs.getBoolean(1) : null, tournamentId, player.id());
+            if (Boolean.TRUE.equals(active)) return hub(player);
+            Integer players = jdbc.queryForObject("select count(*) from chess_tournament_entry where tournament_id=? and active=true",Integer.class,tournamentId);
+            if (players != null && players >= (Integer)tournament[2])
+                throw new OnlineMatchException(HttpStatus.CONFLICT,"Tournament registration is full.");
+            int entryCoins = (Integer)tournament[3];
+            UUID reservationId = UUID.randomUUID();
+            economy.spend(player.id(),"COINS",entryCoins,"TOURNAMENT_ENTRY_RESERVED",
+                    "tournament:"+tournamentId+":entry:"+reservationId,"Tournament entry reserved");
+            if (active == null) {
+                jdbc.update("""
+                        insert into chess_tournament_entry(tournament_id,player_id,joined_at,active,reserved_coins,reservation_id,refunded_at)
+                        values(?,?,?,true,?,?,null)
+                        """,tournamentId,player.id(),Timestamp.from(Instant.now()),entryCoins,reservationId);
+            } else {
+                jdbc.update("""
+                        update chess_tournament_entry set joined_at=?,active=true,reserved_coins=?,
+                        reservation_id=?,refunded_at=null where tournament_id=? and player_id=?
+                        """,Timestamp.from(Instant.now()),entryCoins,reservationId,tournamentId,player.id());
+            }
+            notifications.create(player.id(),"TOURNAMENT_REGISTERED","Tournament registration confirmed",
+                    entryCoins+" play coins reserved. Your entry is confirmed.","TOURNAMENT",tournamentId);
         }
-        else jdbc.update("delete from chess_tournament_entry where tournament_id=? and player_id=? and exists(select 1 from chess_tournament t where t.id=? and t.status='OPEN' and t.starts_at>?)",tournamentId,player.id(),tournamentId,Timestamp.from(Instant.now()));
+        else {
+            Object[] entry = jdbc.query("""
+                    select e.reserved_coins,e.reservation_id from chess_tournament_entry e
+                    join chess_tournament t on t.id=e.tournament_id
+                    where e.tournament_id=? and e.player_id=? and e.active=true
+                      and t.status='OPEN' and t.starts_at>? for update
+                    """,rs -> rs.next() ? new Object[]{rs.getInt(1),rs.getObject(2,UUID.class)} : null,
+                    tournamentId,player.id(),Timestamp.from(Instant.now()));
+            if (entry == null) throw new OnlineMatchException(HttpStatus.CONFLICT,"Tournament entry can no longer be withdrawn.");
+            jdbc.update("update chess_tournament_entry set active=false,refunded_at=? where tournament_id=? and player_id=?",
+                    Timestamp.from(Instant.now()),tournamentId,player.id());
+            if ((Integer)entry[0] > 0 && entry[1] != null) economy.grantCoins(player.id(),(Integer)entry[0],
+                    "TOURNAMENT_ENTRY_REFUND","tournament:"+tournamentId+":refund:"+entry[1],"Tournament entry returned");
+        }
         return hub(player);
     }
 

@@ -28,7 +28,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a legal non-solution puzzle move gets a defense reply', (
+  testWidgets('a legal non-solution move ends the tactic with try again', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -48,15 +48,20 @@ void main() {
     );
     await tester.pump();
 
-    // Easy 001 expects e1-h1. The rook move e1-e2 is legal chess, keeps the
-    // game live, and must switch to free exploration with a black reply.
+    // Easy 001 expects e1-h1. The rook move e1-e2 is legal chess but is not
+    // the forcing puzzle line, so this attempt must end instead of free play.
     await tester.tap(find.byKey(const ValueKey<String>('square-e1')));
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey<String>('square-e2')));
     await tester.pump();
 
-    await tester.pump(const Duration(milliseconds: 600));
-    expect(find.textContaining('Incorrect puzzle move'), findsNothing);
+    expect(find.text('Challenge missed'), findsOneWidget);
+    expect(find.text('Try again'), findsWidgets);
+    expect(find.text('Draw'), findsNothing);
+    final OutlinedButton hint = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'Piece hint'),
+    );
+    expect(hint.onPressed, isNull);
     expect(find.textContaining('Next challenge unlocks'), findsNothing);
     expect(tester.takeException(), isNull);
   });

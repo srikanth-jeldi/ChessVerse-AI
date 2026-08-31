@@ -14,11 +14,11 @@ class LocalOtpDelivery implements OtpDelivery {
 
     @Override
     public void sendVerificationCode(String email, String displayName, String code) {
-        log.info("Local ChessVerse verification requested for {}", email);
+        log.info("Local ChessVerse verification requested");
     }
 
     @Override
     public void sendPasswordResetCode(String email, String displayName, String code) {
-        log.info("Local ChessVerse password reset requested for {}", email);
+        log.info("Local ChessVerse password reset requested");
     }
 }

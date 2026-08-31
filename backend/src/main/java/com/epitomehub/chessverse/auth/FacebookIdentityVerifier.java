@@ -24,7 +24,7 @@ class FacebookIdentityVerifier {
     private final String appSecret;
     private final String graphVersion;
     private final ObjectMapper objectMapper;
-    private final HttpClient httpClient;
+    private volatile HttpClient httpClient;
 
     FacebookIdentityVerifier(
             @Value("${chessverse.oauth.facebook-app-id:}") String appId,
@@ -35,7 +35,6 @@ class FacebookIdentityVerifier {
         this.appSecret = appSecret.trim();
         this.graphVersion = graphVersion.trim();
         this.objectMapper = objectMapper;
-        this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     }
 
     VerifiedFacebookIdentity verify(String accessToken) {
@@ -92,7 +91,7 @@ class FacebookIdentityVerifier {
                 .header("Content-Type", MediaType.APPLICATION_FORM_URLENCODED_VALUE)
                 .POST(HttpRequest.BodyPublishers.ofString(form))
                 .build();
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             log.warn("Facebook app access-token request failed with HTTP {}", response.statusCode());
             throw invalidToken();
@@ -108,12 +107,24 @@ class FacebookIdentityVerifier {
                 .timeout(Duration.ofSeconds(8))
                 .GET()
                 .build();
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             log.warn("Facebook Graph request failed with HTTP {}", response.statusCode());
             throw invalidToken();
         }
         return objectMapper.readTree(response.body());
+    }
+
+    private HttpClient client() {
+        HttpClient current = httpClient;
+        if (current != null) return current;
+        synchronized (this) {
+            if (httpClient == null) {
+                httpClient = HttpClient.newBuilder()
+                        .connectTimeout(Duration.ofSeconds(5)).build();
+            }
+            return httpClient;
+        }
     }
 
     private String encode(String value) {

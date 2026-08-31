@@ -10,6 +10,7 @@ import '../../online/data/online_match_api.dart';
 import '../data/social_api.dart';
 import '../data/community_api.dart';
 import 'tournament_detail_screen.dart';
+import 'tournament_circuit_view.dart';
 import '../../notifications/presentation/notification_center_screen.dart';
 import '../../notifications/presentation/notification_bell_button.dart';
 import '../../notifications/data/notification_api.dart';
@@ -49,32 +50,36 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
   }
 
   Future<void> _refresh() async {
-    if (mounted)
+    if (mounted) {
       setState(() {
         _busy = true;
         _error = null;
       });
+    }
     try {
       final StoredAuthSession? session = await const AuthSessionStore().read();
-      if (session == null)
+      if (session == null) {
         throw const SocialException('Sign in to use friends and challenges.');
+      }
       final List<Object> values = await Future.wait<Object>(<Future<Object>>[
         _api.load(session.token),
         _communityApi.load(session.token)
       ]);
-      if (mounted)
+      if (mounted) {
         setState(() {
           _session = session;
           _hub = values[0] as SocialHubDto;
           _community = values[1] as CommunityDto;
           _busy = false;
         });
+      }
     } on SocialException catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = error.message;
           _busy = false;
         });
+      }
     }
   }
 
@@ -243,9 +248,10 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
         }
       }
     } on SocialException catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(error.message)));
+      }
     }
   }
 
@@ -288,9 +294,10 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
           SnackBar(content: Text('Challenge sent • room ${value.roomCode}')));
       await _refresh();
     } on SocialException catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(error.message)));
+      }
     }
   }
 
@@ -301,9 +308,10 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
           await _api.acceptChallenge(_session!.token, challenge.id);
       if (mounted) widget.onOpenMatch?.call(match);
     } on SocialException catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(error.message)));
+      }
     }
   }
 
@@ -335,9 +343,10 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
             .getMatch(_session!.token, item.actionId!);
         if (mounted) widget.onOpenMatch?.call(match);
       } on OnlineMatchException catch (error) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text(error.message)));
+        }
       }
       return;
     }
@@ -356,9 +365,10 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
       final CommunityDto value = await action();
       if (mounted) setState(() => _community = value);
     } on SocialException catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(error.message)));
+      }
     }
   }
 
@@ -522,7 +532,8 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                             _communityApi.tournament(
                                 _session!.token, event.id, !event.joined)),
                         api: _communityApi,
-                        token: _session!.token),
+                        token: _session!.token,
+                        onOpenMatch: widget.onOpenMatch),
       );
 }
 
@@ -607,7 +618,8 @@ class _CommunitySection extends StatelessWidget {
       required this.onClub,
       required this.onTournament,
       required this.api,
-      required this.token});
+      required this.token,
+      required this.onOpenMatch});
   final int section;
   final CommunityDto community;
   final List<SocialPlayerDto> friends;
@@ -616,21 +628,32 @@ class _CommunitySection extends StatelessWidget {
   final ValueChanged<TournamentDto> onTournament;
   final CommunityApi api;
   final String token;
+  final ValueChanged<OnlineMatchDto>? onOpenMatch;
   @override
   Widget build(BuildContext context) {
+    if (section == 2) {
+      return TournamentCircuitView(
+          tournaments: community.tournaments,
+          fairPlayScore: community.fairPlayScore,
+          circuitPoints: community.circuitPoints,
+          onRefresh: onRefresh,
+          onOpen: (event) async {
+            await Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => TournamentDetailScreen(
+                    id: event.id,
+                    token: token,
+                    api: api,
+                    onOpenMatch: (matchId) async {
+                      final match =
+                          await const OnlineMatchApi().getMatch(token, matchId);
+                      onOpenMatch?.call(match);
+                    })));
+            await onRefresh();
+          });
+    }
     final List<Widget> cards = switch (section) {
       1 => community.clubs
           .map((c) => _ClubCard(club: c, onTap: () => onClub(c)))
-          .toList(),
-      2 => community.tournaments
-          .map((t) => _TournamentCard(
-              event: t,
-              onTap: () async {
-                await Navigator.of(context).push(MaterialPageRoute<void>(
-                    builder: (_) => TournamentDetailScreen(
-                        id: t.id, token: token, api: api)));
-                await onRefresh();
-              }))
           .toList(),
       _ => friends
           .map((f) => _ChatCard(
@@ -769,26 +792,6 @@ class _ClubCard extends StatelessWidget {
         button: club.joined ? 'Leave' : 'Join club',
         onTap: onTap);
   }
-}
-
-class _TournamentCard extends StatelessWidget {
-  const _TournamentCard({required this.event, required this.onTap});
-  final TournamentDto event;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => _FeatureCard(
-      icon: Icons.emoji_events_rounded,
-      color: const Color(0xFF54DFC9),
-      artwork: switch (event.name) {
-        'Rapid Arena' => 'assets/backgrounds/home-analysis-hero-v1.png',
-        'Blitz Sprint' => 'assets/backgrounds/home-online-hero-v1.png',
-        _ => 'assets/backgrounds/grandmaster-table-v1.webp',
-      },
-      title: event.name,
-      subtitle: event.description,
-      meta: '${event.minutes} min • ${event.players}/${event.capacity} players',
-      button: 'View bracket',
-      onTap: onTap);
 }
 
 class _FeatureCard extends StatelessWidget {
@@ -996,18 +999,20 @@ class _ChatScreenState extends State<_ChatScreen> {
   Future<void> _load({bool silent = false}) async {
     try {
       final v = await widget.api.messages(widget.token, widget.friend.playerId);
-      if (mounted)
+      if (mounted) {
         setState(() {
           _messages = v;
           _busy = false;
         });
+      }
       if (!silent) _scrollToLatest();
     } on SocialException catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        if (!silent)
+        if (!silent) {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text(e.message)));
+        }
       }
     }
   }
@@ -1030,15 +1035,17 @@ class _ChatScreenState extends State<_ChatScreen> {
         delivered: false,
         seen: false,
         pending: true);
-    if (mounted)
+    if (mounted) {
       setState(() => _messages = <MessageDto>[..._messages, pending]);
+    }
     _scrollToLatest();
     try {
       final m = await widget.api
           .send(widget.token, widget.friend.playerId, outgoingBody);
-      if (mounted)
+      if (mounted) {
         setState(() => _messages =
             _messages.map((item) => item.id == pending.id ? m : item).toList());
+      }
       _scrollToLatest();
     } on SocialException catch (e) {
       if (mounted) {
@@ -1077,13 +1084,15 @@ class _ChatScreenState extends State<_ChatScreen> {
           bytes,
           _mimeFor(file.name),
           caption);
-      if (mounted)
+      if (mounted) {
         setState(() => _messages = <MessageDto>[..._messages, message]);
+      }
       _scrollToLatest();
     } on SocialException catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(error.message)));
+      }
     }
   }
 
@@ -1576,15 +1585,17 @@ class _ChatAttachmentState extends State<_ChatAttachment> {
               child: FutureBuilder<List<int>>(
                   future: widget.api.attachmentBytes(widget.token, message.id),
                   builder: (context, snapshot) {
-                    if (snapshot.hasData)
+                    if (snapshot.hasData) {
                       return Image.memory(Uint8List.fromList(snapshot.data!),
                           width: 230, height: 170, fit: BoxFit.cover);
-                    if (snapshot.hasError)
+                    }
+                    if (snapshot.hasError) {
                       return const SizedBox(
                           width: 230,
                           height: 90,
                           child:
                               Center(child: Icon(Icons.broken_image_outlined)));
+                    }
                     return const SizedBox(
                         width: 230,
                         height: 90,

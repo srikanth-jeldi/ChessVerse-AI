@@ -49,6 +49,14 @@ void main() {
     });
   });
 
+  test('world circuit cities select distinct playable board palettes', () {
+    expect(tournamentBoardSkin('Hyderabad Royal Cup'), BoardSkin.jadeGlass);
+    expect(tournamentBoardSkin('Tokyo Neon Masters'), BoardSkin.sapphire);
+    expect(tournamentBoardSkin('Dubai Gold Open'), BoardSkin.royalWalnut);
+    expect(tournamentBoardSkin('London Classic'), BoardSkin.tournament);
+    expect(tournamentBoardSkin('New York Grand Final'), BoardSkin.marble);
+  });
+
   testWidgets('Classic 2D uses distinct white and black Unicode pieces', (
     WidgetTester tester,
   ) async {

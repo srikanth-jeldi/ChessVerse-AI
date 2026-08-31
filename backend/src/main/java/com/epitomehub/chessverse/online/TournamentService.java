@@ -1,6 +1,7 @@
 package com.epitomehub.chessverse.online;
 
 import com.epitomehub.chessverse.auth.AuthenticatedPlayer;
+import com.epitomehub.chessverse.economy.EconomyService;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -17,9 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 class TournamentService {
     private final JdbcTemplate jdbc;
     private final OnlineMatchRepository matches;
+    private final EconomyService economy;
 
-    TournamentService(JdbcTemplate jdbc, OnlineMatchRepository matches) {
-        this.jdbc = jdbc; this.matches = matches;
+    TournamentService(JdbcTemplate jdbc, OnlineMatchRepository matches, EconomyService economy) {
+        this.jdbc = jdbc; this.matches = matches; this.economy = economy;
     }
 
     @Transactional
@@ -41,9 +43,13 @@ class TournamentService {
                 rs.next() ? new Object[]{rs.getString(1), rs.getTimestamp(2).toInstant()} : null, tournamentId);
         if (state == null) throw new OnlineMatchException(HttpStatus.NOT_FOUND, "Tournament was not found.");
         if (!"OPEN".equals(state[0]) || ((Instant) state[1]).isAfter(Instant.now())) return;
-        List<UUID> players = jdbc.query("select player_id from chess_tournament_entry where tournament_id=? order by joined_at,player_id",
+        List<UUID> players = jdbc.query("select player_id from chess_tournament_entry where tournament_id=? and active=true order by joined_at,player_id",
                 (rs,row) -> rs.getObject(1, UUID.class), tournamentId);
-        if (players.size() < 2) return;
+        if (players.size() < 2) {
+            jdbc.update("update chess_tournament set status='CANCELLED' where id=?", tournamentId);
+            refundCancelledEntries(tournamentId);
+            return;
+        }
         jdbc.update("update chess_tournament set status='ACTIVE',current_round=1 where id=?", tournamentId);
         createRound(tournamentId, 1, players);
     }
@@ -55,7 +61,14 @@ class TournamentService {
         if (pairingId == null) return;
         if ("1/2-1/2".equals(match.result)) {
             PlayerRow white = player(match.whitePlayerId), black = player(match.blackPlayerId);
-            OnlineMatch replay = createMatch(white, black, match.timeControlMinutes);
+            Object[] context = jdbc.queryForObject("""
+                    select r.tournament_id,r.round_number
+                    from chess_tournament_pairing p
+                    join chess_tournament_round r on r.id=p.round_id
+                    where p.id=?
+                    """, (rs,row) -> new Object[]{rs.getObject(1,UUID.class),rs.getInt(2)}, pairingId);
+            OnlineMatch replay = createMatch(white, black, match.timeControlMinutes,
+                    (UUID)context[0], (Integer)context[1]);
             jdbc.update("update chess_tournament_pairing set online_match_id=? where id=?", replay.id, pairingId);
             return;
         }
@@ -78,7 +91,7 @@ class TournamentService {
                         pairingId,roundId,board++,whiteId,whiteId,Timestamp.from(Instant.now()),Timestamp.from(Instant.now()));
             } else {
                 int minutes = jdbc.queryForObject("select time_control_minutes from chess_tournament where id=?",Integer.class,tournamentId);
-                OnlineMatch online=createMatch(player(whiteId),player(blackId),minutes);
+                OnlineMatch online=createMatch(player(whiteId),player(blackId),minutes,tournamentId,number);
                 jdbc.update("insert into chess_tournament_pairing(id,round_id,board_number,white_player_id,black_player_id,online_match_id,status,created_at) values(?,?,?,?,?,?,'ACTIVE',?)",
                         pairingId,roundId,board++,whiteId,blackId,online.id,Timestamp.from(Instant.now()));
             }
@@ -86,10 +99,14 @@ class TournamentService {
         advanceRoundIfOnlyByes(roundId);
     }
 
-    private OnlineMatch createMatch(PlayerRow white, PlayerRow black, int minutes) {
+    private OnlineMatch createMatch(PlayerRow white, PlayerRow black, int minutes,
+            UUID tournamentId, int tournamentRound) {
         OnlineMatch match = new OnlineMatch(UUID.randomUUID(), UUID.randomUUID().toString().replace("-","").substring(0,8).toUpperCase(),
                 white.id,white.name,white.photo,false,minutes,"WORLDWIDE","Unknown",1200,0);
         match.blackPlayerId=black.id; match.blackPlayerName=black.name; match.blackPlayerPhotoUrl=black.photo;
+        match.tournamentName=jdbc.queryForObject(
+                "select name from chess_tournament where id=?",String.class,tournamentId);
+        match.tournamentRound=tournamentRound;
         match.status=OnlineMatchStatus.ACTIVE; match.startedAt=Instant.now(); match.turnStartedAt=match.startedAt; match.updatedAt=match.startedAt;
         // Pairings are inserted through JDBC in the same transaction, so the
         // JPA insert must reach the database before its foreign key is used.
@@ -107,16 +124,37 @@ class TournamentService {
         UUID tournamentId=(UUID)state[0]; int number=(Integer)state[1];
         jdbc.update("update chess_tournament_round set status='FINISHED',completed_at=? where id=?",Timestamp.from(Instant.now()),roundId);
         List<UUID>winners=jdbc.query("select winner_id from chess_tournament_pairing where round_id=? order by board_number",(rs,row)->rs.getObject(1,UUID.class),roundId);
-        if(winners.size()==1){jdbc.update("update chess_tournament set status='FINISHED',champion_id=?,current_round=? where id=?",winners.get(0),number,tournamentId);return;}
+        if(winners.size()==1){
+            UUID champion = winners.get(0);
+            jdbc.update("update chess_tournament set status='FINISHED',champion_id=?,current_round=? where id=?",champion,number,tournamentId);
+            Long prizePool = jdbc.queryForObject("select coalesce(sum(reserved_coins),0) from chess_tournament_entry where tournament_id=? and active=true",Long.class,tournamentId);
+            if (prizePool != null && prizePool > 0) economy.grantCoins(champion, prizePool,
+                    "TOURNAMENT_CHAMPION_POOL", "tournament:" + tournamentId + ":champion-pool",
+                    "Tournament champion prize pool");
+            return;
+        }
         jdbc.update("update chess_tournament set current_round=? where id=?",number+1,tournamentId);
         createRound(tournamentId,number+1,winners);
     }
 
     private TournamentDtos.DetailDto load(UUID viewer, UUID id) {
-        TournamentDtos.DetailDto base=jdbc.query("select t.*,count(e.player_id) players,exists(select 1 from chess_tournament_entry x where x.tournament_id=t.id and x.player_id=?) joined from chess_tournament t left join chess_tournament_entry e on e.tournament_id=t.id where t.id=? group by t.id",
-                rs->{if(!rs.next())throw new OnlineMatchException(HttpStatus.NOT_FOUND,"Tournament was not found.");return new TournamentDtos.DetailDto(id,rs.getString("name"),rs.getString("description"),rs.getInt("time_control_minutes"),rs.getInt("players"),rs.getInt("capacity"),rs.getTimestamp("starts_at").toInstant(),rs.getTimestamp("ends_at").toInstant(),rs.getString("status"),rs.getBoolean("joined"),rs.getInt("current_round"),playerDto((UUID)rs.getObject("champion_id")),List.of());},viewer,id);
+        TournamentDtos.DetailDto base=jdbc.query("select t.*,count(e.player_id) players,coalesce(sum(e.reserved_coins),0) prize_pool,exists(select 1 from chess_tournament_entry x where x.tournament_id=t.id and x.player_id=? and x.active=true) joined from chess_tournament t left join chess_tournament_entry e on e.tournament_id=t.id and e.active=true where t.id=? group by t.id",
+                rs->{if(!rs.next())throw new OnlineMatchException(HttpStatus.NOT_FOUND,"Tournament was not found.");int players=rs.getInt("players"),entryCoins=rs.getInt("entry_coins");return new TournamentDtos.DetailDto(id,rs.getString("name"),rs.getString("description"),rs.getInt("time_control_minutes"),players,rs.getInt("capacity"),rs.getTimestamp("starts_at").toInstant(),rs.getTimestamp("ends_at").toInstant(),rs.getString("status"),rs.getBoolean("joined"),entryCoins,rs.getLong("prize_pool"),rs.getInt("current_round"),playerDto((UUID)rs.getObject("champion_id")),List.of());},viewer,id);
         List<TournamentDtos.RoundDto> rounds=jdbc.query("select id,round_number,status from chess_tournament_round where tournament_id=? order by round_number",(rs,row)->new TournamentDtos.RoundDto(rs.getInt("round_number"),rs.getString("status"),pairings(rs.getObject("id",UUID.class))),id);
-        return new TournamentDtos.DetailDto(base.id(),base.name(),base.description(),base.timeControlMinutes(),base.players(),base.capacity(),base.startsAt(),base.endsAt(),base.status(),base.joined(),base.currentRound(),base.champion(),rounds);
+        return new TournamentDtos.DetailDto(base.id(),base.name(),base.description(),base.timeControlMinutes(),base.players(),base.capacity(),base.startsAt(),base.endsAt(),base.status(),base.joined(),base.entryCoins(),base.prizePool(),base.currentRound(),base.champion(),rounds);
+    }
+
+    private void refundCancelledEntries(UUID tournamentId) {
+        List<Object[]> entries = jdbc.query("select player_id,reserved_coins,reservation_id from chess_tournament_entry where tournament_id=? and active=true and refunded_at is null for update",
+                (rs,row)->new Object[]{rs.getObject(1,UUID.class),rs.getInt(2),rs.getObject(3,UUID.class)},tournamentId);
+        Instant now = Instant.now();
+        for (Object[] entry : entries) {
+            UUID playerId=(UUID)entry[0], reservationId=(UUID)entry[2]; int coins=(Integer)entry[1];
+            if (coins > 0 && reservationId != null) economy.grantCoins(playerId,coins,"TOURNAMENT_CANCELLED_REFUND",
+                    "tournament:"+tournamentId+":cancel-refund:"+reservationId,"Cancelled tournament entry returned");
+        }
+        jdbc.update("update chess_tournament_entry set active=false,refunded_at=? where tournament_id=? and active=true",
+                Timestamp.from(now),tournamentId);
     }
     private List<TournamentDtos.PairingDto> pairings(UUID roundId){return jdbc.query("select * from chess_tournament_pairing where round_id=? order by board_number",(rs,row)->new TournamentDtos.PairingDto(rs.getObject("id",UUID.class),rs.getInt("board_number"),playerDto((UUID)rs.getObject("white_player_id")),playerDto((UUID)rs.getObject("black_player_id")),(UUID)rs.getObject("online_match_id"),playerDto((UUID)rs.getObject("winner_id")),rs.getString("status")),roundId);}
     private PlayerRow player(UUID id){return jdbc.queryForObject("select id,display_name,photo_url from player_account where id=?",(rs,row)->new PlayerRow(rs.getObject(1,UUID.class),rs.getString(2),rs.getString(3)),id);}

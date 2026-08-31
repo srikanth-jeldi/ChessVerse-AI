@@ -24,6 +24,7 @@ interface OnlineMatchRepository extends JpaRepository<OnlineMatch, UUID> {
               and match.whitePlayerId <> :playerId
               and match.updatedAt >= :activeAfter
               and match.timeControlMinutes = :timeControlMinutes
+              and match.entryCoins = :entryCoins
               and match.queueRegion = :region
               and (:region = 'WORLDWIDE' or match.queueCountry = :country)
               and (:ratingRange = 0 or abs(match.queueRating - :rating) <= :ratingRange)
@@ -35,6 +36,7 @@ interface OnlineMatchRepository extends JpaRepository<OnlineMatch, UUID> {
             @Param("playerId") UUID playerId,
             @Param("activeAfter") Instant activeAfter,
             @Param("timeControlMinutes") int timeControlMinutes,
+            @Param("entryCoins") int entryCoins,
             @Param("region") String region,
             @Param("country") String country,
             @Param("rating") int rating,
@@ -46,6 +48,14 @@ interface OnlineMatchRepository extends JpaRepository<OnlineMatch, UUID> {
               and match.updatedAt >= :activeAfter
             """)
     long countFreshRandomQueue(@Param("activeAfter") Instant activeAfter);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select match from OnlineMatch match
+            where match.randomQueue = true and match.status = 'WAITING'
+              and match.updatedAt < :cutoff
+            """)
+    List<OnlineMatch> lockExpiredRandomQueue(@Param("cutoff") Instant cutoff);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

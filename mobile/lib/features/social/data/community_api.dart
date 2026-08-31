@@ -34,10 +34,15 @@ class TournamentDto {
       required this.players,
       required this.capacity,
       required this.status,
-      required this.joined});
+      required this.joined,
+      this.entryCoins = 100,
+      this.prizePool = 0,
+      this.startsAt,
+      this.endsAt});
   final String id, name, description, status;
-  final int minutes, players, capacity;
+  final int minutes, players, capacity, entryCoins, prizePool;
   final bool joined;
+  final DateTime? startsAt, endsAt;
   factory TournamentDto.fromJson(Map<String, dynamic> j) => TournamentDto(
       id: j['id'] as String? ?? '',
       name: j['name'] as String? ?? 'Tournament',
@@ -46,7 +51,11 @@ class TournamentDto {
       players: (j['players'] as num?)?.toInt() ?? 0,
       capacity: (j['capacity'] as num?)?.toInt() ?? 0,
       status: j['status'] as String? ?? 'OPEN',
-      joined: j['joined'] as bool? ?? false);
+      joined: j['joined'] as bool? ?? false,
+      entryCoins: (j['entryCoins'] as num?)?.toInt() ?? 100,
+      prizePool: (j['prizePool'] as num?)?.toInt() ?? 0,
+      startsAt: DateTime.tryParse(j['startsAt'] as String? ?? '')?.toLocal(),
+      endsAt: DateTime.tryParse(j['endsAt'] as String? ?? '')?.toLocal());
 }
 
 class TournamentDetailDto {
@@ -59,12 +68,17 @@ class TournamentDetailDto {
       required this.capacity,
       required this.status,
       required this.joined,
+      this.entryCoins = 100,
+      this.prizePool = 0,
       required this.currentRound,
       required this.rounds,
+      this.startsAt,
+      this.endsAt,
       this.champion});
   final String id, name, description, status;
-  final int minutes, players, capacity, currentRound;
+  final int minutes, players, capacity, entryCoins, prizePool, currentRound;
   final bool joined;
+  final DateTime? startsAt, endsAt;
   final TournamentPlayerDto? champion;
   final List<TournamentRoundDto> rounds;
   factory TournamentDetailDto.fromJson(Map<String, dynamic> j) =>
@@ -77,7 +91,12 @@ class TournamentDetailDto {
           capacity: (j['capacity'] as num?)?.toInt() ?? 0,
           status: j['status'] as String? ?? 'OPEN',
           joined: j['joined'] as bool? ?? false,
+          entryCoins: (j['entryCoins'] as num?)?.toInt() ?? 100,
+          prizePool: (j['prizePool'] as num?)?.toInt() ?? 0,
           currentRound: (j['currentRound'] as num?)?.toInt() ?? 0,
+          startsAt:
+              DateTime.tryParse(j['startsAt'] as String? ?? '')?.toLocal(),
+          endsAt: DateTime.tryParse(j['endsAt'] as String? ?? '')?.toLocal(),
           champion: j['champion'] is Map<String, dynamic>
               ? TournamentPlayerDto.fromJson(
                   j['champion'] as Map<String, dynamic>)
@@ -198,11 +217,13 @@ class CommunityDto {
       {required this.clubs,
       required this.tournaments,
       required this.conversations,
-      required this.fairPlayScore});
+      required this.fairPlayScore,
+      this.circuitPoints = 0});
   final List<ClubDto> clubs;
   final List<TournamentDto> tournaments;
   final List<ConversationDto> conversations;
   final int fairPlayScore;
+  final int circuitPoints;
   factory CommunityDto.fromJson(Map<String, dynamic> j) {
     List<T> items<T>(String k, T Function(Map<String, dynamic>) f) =>
         (j[k] as List<dynamic>? ?? const <dynamic>[])
@@ -213,7 +234,8 @@ class CommunityDto {
         clubs: items('clubs', ClubDto.fromJson),
         tournaments: items('tournaments', TournamentDto.fromJson),
         conversations: items('conversations', ConversationDto.fromJson),
-        fairPlayScore: (j['fairPlayScore'] as num?)?.toInt() ?? 100);
+        fairPlayScore: (j['fairPlayScore'] as num?)?.toInt() ?? 100,
+        circuitPoints: (j['circuitPoints'] as num?)?.toInt() ?? 0);
   }
 }
 

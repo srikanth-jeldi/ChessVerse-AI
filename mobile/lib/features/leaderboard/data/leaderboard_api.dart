@@ -16,6 +16,7 @@ class PlayerRatingDto {
     required this.wins,
     required this.draws,
     required this.losses,
+    required this.careerCoinsWon,
     required this.globalRank,
     required this.countryRank,
   });
@@ -29,6 +30,7 @@ class PlayerRatingDto {
   final int wins;
   final int draws;
   final int losses;
+  final int careerCoinsWon;
   final int globalRank;
   final int countryRank;
 
@@ -43,6 +45,7 @@ class PlayerRatingDto {
         wins: (json['wins'] as num?)?.toInt() ?? 0,
         draws: (json['draws'] as num?)?.toInt() ?? 0,
         losses: (json['losses'] as num?)?.toInt() ?? 0,
+        careerCoinsWon: (json['careerCoinsWon'] as num?)?.toInt() ?? 0,
         globalRank: (json['globalRank'] as num?)?.toInt() ?? 1,
         countryRank: (json['countryRank'] as num?)?.toInt() ?? 1,
       );
@@ -59,6 +62,7 @@ class LeaderboardEntryDto {
     required this.wins,
     required this.draws,
     required this.losses,
+    required this.careerCoinsWon,
     required this.you,
   });
 
@@ -71,6 +75,7 @@ class LeaderboardEntryDto {
   final int wins;
   final int draws;
   final int losses;
+  final int careerCoinsWon;
   final bool you;
 
   factory LeaderboardEntryDto.fromJson(Map<String, dynamic> json) =>
@@ -84,6 +89,7 @@ class LeaderboardEntryDto {
         wins: (json['wins'] as num?)?.toInt() ?? 0,
         draws: (json['draws'] as num?)?.toInt() ?? 0,
         losses: (json['losses'] as num?)?.toInt() ?? 0,
+        careerCoinsWon: (json['careerCoinsWon'] as num?)?.toInt() ?? 0,
         you: json['you'] as bool? ?? false,
       );
 
@@ -101,6 +107,7 @@ class LeaderboardEntryDto {
         wins: player.wins,
         draws: player.draws,
         losses: player.losses,
+        careerCoinsWon: player.careerCoinsWon,
         you: true,
       );
 }

@@ -85,6 +85,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           wins: sample[index].$5,
           draws: sample[index].$4 - sample[index].$5 - sample[index].$6,
           losses: sample[index].$6,
+          careerCoinsWon: sample[index].$5 * 200,
           you: index == 3,
         ),
     ];
@@ -101,6 +102,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         wins: 8,
         draws: 0,
         losses: 5,
+        careerCoinsWon: 1600,
         globalRank: 4,
         countryRank: 3,
       ),
@@ -666,7 +668,7 @@ class _LeaderboardTile extends StatelessWidget {
                   ),
                 ]),
                 Text(
-                    '${entry.country}  ·  ${entry.gamesPlayed} games  ·  ${entry.wins}W ${entry.draws}D ${entry.losses}L',
+                    '${entry.country}  ·  ${entry.gamesPlayed} games  ·  ${entry.wins}W ${entry.draws}D ${entry.losses}L  ·  🪙 ${entry.careerCoinsWon} won',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(

@@ -41,6 +41,7 @@
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://accounts.google.com https://www.gstatic.com https://connect.facebook.net https://checkout.razorpay.com; worker-src 'self' blob:; connect-src 'self' https://api.chessverseai.com wss://api.chessverseai.com https://accounts.google.com https://www.gstatic.com https://fonts.gstatic.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.googleusercontent.com https://graph.facebook.com https://api.razorpay.com https://*.razorpay.com; frame-src https://accounts.google.com https://*.firebaseapp.com https://api.razorpay.com https://*.razorpay.com"
 	}
 }
 
@@ -58,5 +59,7 @@ www.{$APP_DOMAIN} {
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "no-referrer"
+		Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 	}
 }

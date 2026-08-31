@@ -22,7 +22,7 @@ class OpenAiCompatibleCoachLanguageProvider implements CoachLanguageProvider {
             """;
 
     private final ObjectMapper json;
-    private final HttpClient http;
+    private volatile HttpClient http;
     private final boolean configured;
     private final URI endpoint;
     private final String apiKey;
@@ -41,7 +41,6 @@ class OpenAiCompatibleCoachLanguageProvider implements CoachLanguageProvider {
             @Value("${chessverse.coach.language.max-output-tokens:220}") int maxTokens,
             AiCoachMetrics metrics) {
         this.json = json;
-        this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
         this.endpoint = endpoint.isBlank() ? null : URI.create(endpoint.trim());
         this.apiKey = apiKey.trim();
         this.model = model.trim();
@@ -74,7 +73,7 @@ class OpenAiCompatibleCoachLanguageProvider implements CoachLanguageProvider {
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(payload)));
             if (!apiKey.isBlank()) request.header("Authorization", "Bearer " + apiKey);
-            HttpResponse<String> response = http.send(request.build(), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = client().send(request.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 metrics.languageFailure(System.nanoTime() - started);
                 return null;
@@ -95,6 +94,16 @@ class OpenAiCompatibleCoachLanguageProvider implements CoachLanguageProvider {
             if (exception instanceof InterruptedException) Thread.currentThread().interrupt();
             metrics.languageFailure(System.nanoTime() - started);
             return null;
+        }
+    }
+
+    private HttpClient client() {
+        HttpClient current = http;
+        if (current != null) return current;
+        synchronized (this) {
+            if (http == null) http = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(3)).build();
+            return http;
         }
     }
 

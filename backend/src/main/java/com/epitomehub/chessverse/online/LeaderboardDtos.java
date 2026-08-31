@@ -22,6 +22,7 @@ final class LeaderboardDtos {
             int wins,
             int draws,
             int losses,
+            long careerCoinsWon,
             long globalRank,
             long countryRank) {
     }
@@ -36,6 +37,7 @@ final class LeaderboardDtos {
             int wins,
             int draws,
             int losses,
+            long careerCoinsWon,
             boolean you) {
     }
 
