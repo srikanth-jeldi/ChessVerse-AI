@@ -325,7 +325,14 @@ class OnlineMatchApi {
             'A secure live connection could not be created.');
       }
     }
-    return connectOnlineSocket(socketUri, token, ticket);
+    final WebSocketChannel channel =
+        connectOnlineSocket(socketUri, token, ticket);
+    // A channel can be constructed before the HTTP upgrade completes. Awaiting
+    // readiness keeps ordinary offline/server-restart failures inside the
+    // caller's reconnect path instead of surfacing as uncaught Flutter errors
+    // and false-positive Crashlytics crashes.
+    await channel.ready;
+    return channel;
   }
 
   Future<OnlineMatchDto> _request(
