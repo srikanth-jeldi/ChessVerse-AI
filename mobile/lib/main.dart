@@ -12910,7 +12910,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                     ],
                     const SizedBox(height: 20),
                     Container(
-                      height: 250,
+                      height: 326,
                       decoration: BoxDecoration(
                         image: const DecorationImage(
                           image: AssetImage(
@@ -12930,7 +12930,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: SizedBox(
-                            width: compactDesktop ? 340 : 410,
+                            width: compactDesktop ? 430 : 500,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
@@ -12946,6 +12946,101 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                       color: Color(0xFFC8D1DD),
                                       fontSize: 17,
                                       height: 1.35),
+                                ),
+                                const SizedBox(height: 14),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 9,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xE6071725),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: gold,
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: <Widget>[
+                                      const Icon(
+                                        Icons.monetization_on_rounded,
+                                        color: gold,
+                                        size: 21,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _coinBalance == null
+                                              ? 'Checking play coins…'
+                                              : 'Your coins: $_coinBalance',
+                                          style: const TextStyle(
+                                            color: Color(0xFFFFE2A3),
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        'WIN ${_entryCoins * 2}',
+                                        style: const TextStyle(
+                                          color: teal,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 9),
+                                const Text(
+                                  'CHOOSE COIN ENTRY',
+                                  style: TextStyle(
+                                    color: gold,
+                                    fontSize: 11,
+                                    letterSpacing: 1.25,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 7,
+                                  children:
+                                      <int>[100, 200, 500].map((int coins) {
+                                    final bool selected = _entryCoins == coins;
+                                    return ChoiceChip(
+                                      selected: selected,
+                                      showCheckmark: false,
+                                      selectedColor: gold,
+                                      backgroundColor: const Color(0xFF0A2638),
+                                      side: BorderSide(
+                                        color: selected
+                                            ? const Color(0xFFFFD978)
+                                            : const Color(0xFF3D667C),
+                                      ),
+                                      labelStyle: TextStyle(
+                                        color: selected
+                                            ? const Color(0xFF07131D)
+                                            : const Color(0xFFF4EFE5),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                      avatar: Icon(
+                                        Icons.monetization_on_rounded,
+                                        size: 16,
+                                        color: selected
+                                            ? const Color(0xFF07131D)
+                                            : gold,
+                                      ),
+                                      label: Text(
+                                        '$coins IN  →  ${coins * 2} WIN',
+                                      ),
+                                      onSelected: _loading
+                                          ? null
+                                          : (_) => setState(
+                                                () => _entryCoins = coins,
+                                              ),
+                                    );
+                                  }).toList(growable: false),
                                 ),
                                 const Spacer(),
                                 SizedBox(
