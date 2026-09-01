@@ -12221,10 +12221,63 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
       });
       return;
     }
+    final bool continueWithComputer = await _confirmComputerFallback();
+    if (!mounted || _foundMatch != null) return;
+    if (!continueWithComputer) {
+      setState(() {
+        _match = null;
+        _randomSearch = false;
+        _loading = false;
+        _elapsedSeconds = 0;
+        _error = 'No online player was available. Search again when ready.';
+      });
+      return;
+    }
     Navigator.of(context).pop();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(fallback(rivalName));
     });
+  }
+
+  Future<bool> _confirmComputerFallback() async {
+    final bool? accepted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF071725),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: Color(0xFFF0B84B), width: 1.2),
+        ),
+        icon: const Icon(Icons.person_search_rounded,
+            color: Color(0xFF58DFC9), size: 44),
+        title: const Text(
+          'No online player found',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        content: const Text(
+          'No suitable player is online right now. Would you like to continue '
+          'this match against ChessVerseAI? Your selected coin entry will not '
+          'be used for a computer match.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFFB8C4D0), height: 1.45),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: <Widget>[
+          OutlinedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('SEARCH LATER'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            icon: const Icon(Icons.smart_toy_rounded),
+            label: const Text('PLAY COMPUTER'),
+          ),
+        ],
+      ),
+    );
+    return accepted ?? false;
   }
 
   Future<void> _openSocket(OnlineMatchDto match) async {
@@ -14482,6 +14535,7 @@ class _WideSearchCore extends StatelessWidget {
         AnimatedBuilder(
           animation: pulse,
           builder: (BuildContext context, Widget? child) {
+            final double phase = pulse.value;
             final double value = Curves.easeInOut.transform(pulse.value);
             return SizedBox.square(
               dimension: dimension,
@@ -14511,26 +14565,76 @@ class _WideSearchCore extends StatelessWidget {
                         ),
                       );
                     }),
-                  Container(
-                    width: dimension * .72,
-                    height: dimension * .72,
-                    padding: EdgeInsets.all(dimension * .055),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(colors: <Color>[
-                        teal.withValues(alpha: .22),
-                        const Color(0xFF03111D),
-                      ]),
-                      border: Border.all(color: teal.withValues(alpha: .72)),
-                      boxShadow: <BoxShadow>[
-                        BoxShadow(
-                            color: teal.withValues(alpha: .22), blurRadius: 34),
-                      ],
+                  for (int index = 0; index < 8; index++)
+                    Transform.translate(
+                      offset: Offset(
+                        math.cos(phase * math.pi * 2 + index * math.pi / 4) *
+                            dimension *
+                            .43,
+                        math.sin(phase * math.pi * 2 + index * math.pi / 4) *
+                            dimension *
+                            .43,
+                      ),
+                      child: Container(
+                        width: index.isEven ? 8 : 5,
+                        height: index.isEven ? 8 : 5,
+                        decoration: BoxDecoration(
+                          color: index.isEven ? teal : gold,
+                          shape: BoxShape.circle,
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: (index.isEven ? teal : gold)
+                                  .withValues(alpha: .75),
+                              blurRadius: 12,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    child: Image.asset(
-                      'assets/matchmaking/neon_rival_knights.png',
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.high,
+                  Transform.rotate(
+                    angle: phase * math.pi * 2,
+                    child: Container(
+                      width: dimension * .92,
+                      height: 2,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(colors: <Color>[
+                          Color(0x0058DFC9),
+                          Color(0xCC58DFC9),
+                          Color(0x0058DFC9),
+                        ]),
+                      ),
+                    ),
+                  ),
+                  Transform.translate(
+                    offset: Offset(0, math.sin(phase * math.pi * 2) * 5),
+                    child: Transform.scale(
+                      scale: .98 + value * .035,
+                      child: Container(
+                        width: dimension * .72,
+                        height: dimension * .72,
+                        padding: EdgeInsets.all(dimension * .055),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(colors: <Color>[
+                            teal.withValues(alpha: .22 + value * .08),
+                            const Color(0xFF03111D),
+                          ]),
+                          border:
+                              Border.all(color: teal.withValues(alpha: .72)),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: teal.withValues(alpha: .18 + value * .18),
+                              blurRadius: 34 + value * 16,
+                            ),
+                          ],
+                        ),
+                        child: Image.asset(
+                          'assets/matchmaking/neon_rival_knights.png',
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.high,
+                        ),
+                      ),
                     ),
                   ),
                   Container(
