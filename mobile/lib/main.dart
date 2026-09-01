@@ -14496,6 +14496,7 @@ class _WideSearchPlayerCard extends StatelessWidget {
     required this.rating,
     required this.detail,
     required this.footer,
+    this.assetPath,
   });
 
   final Color accent;
@@ -14504,6 +14505,7 @@ class _WideSearchPlayerCard extends StatelessWidget {
   final String rating;
   final String detail;
   final String footer;
+  final String? assetPath;
 
   @override
   Widget build(BuildContext context) {
@@ -14535,7 +14537,16 @@ class _WideSearchPlayerCard extends StatelessWidget {
                 BoxShadow(color: accent.withValues(alpha: .2), blurRadius: 20),
               ],
             ),
-            child: Icon(icon, color: accent, size: 58),
+            child: assetPath == null
+                ? Icon(icon, color: accent, size: 58)
+                : Padding(
+                    padding: const EdgeInsets.all(9),
+                    child: Image.asset(
+                      assetPath!,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
+                    ),
+                  ),
           ),
           const SizedBox(height: 14),
           Text(title,
@@ -14732,6 +14743,7 @@ class _MobileMatchPlayerCard extends StatelessWidget {
     required this.title,
     required this.rating,
     required this.subtitle,
+    this.assetPath,
   });
 
   final Color accent;
@@ -14739,6 +14751,7 @@ class _MobileMatchPlayerCard extends StatelessWidget {
   final String title;
   final String rating;
   final String subtitle;
+  final String? assetPath;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -14760,7 +14773,16 @@ class _MobileMatchPlayerCard extends StatelessWidget {
                 color: accent.withValues(alpha: .13),
                 border: Border.all(color: accent.withValues(alpha: .7)),
               ),
-              child: Icon(icon, color: accent, size: 24),
+              child: assetPath == null
+                  ? Icon(icon, color: accent, size: 24)
+                  : Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Image.asset(
+                        assetPath!,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                      ),
+                    ),
             ),
             const SizedBox(height: 3),
             Text(title,
@@ -14789,12 +14811,13 @@ class _SearchingRivalCard extends StatelessWidget {
   final Animation<double> animation;
   final bool wide;
 
-  static const List<IconData> _candidateIcons = <IconData>[
-    Icons.person_rounded,
-    Icons.face_rounded,
-    Icons.account_circle_rounded,
-    Icons.sports_esports_rounded,
-    Icons.person_search_rounded,
+  static const List<String> _candidateAssets = <String>[
+    'assets/pieces/staunton_white_king.png',
+    'assets/pieces/staunton_black_queen.png',
+    'assets/pieces/staunton_white_knight.png',
+    'assets/pieces/staunton_black_king.png',
+    'assets/pieces/staunton_white_queen.png',
+    'assets/pieces/staunton_black_knight.png',
   ];
 
   @override
@@ -14805,59 +14828,35 @@ class _SearchingRivalCard extends StatelessWidget {
       builder: (BuildContext context, Widget? child) {
         final double phase = animation.value;
         final int candidate =
-            (phase * _candidateIcons.length).floor() % _candidateIcons.length;
-        final double scan = Curves.easeInOut.transform(phase);
+            (phase * _candidateAssets.length).floor() % _candidateAssets.length;
         final Widget card = wide
             ? _WideSearchPlayerCard(
                 accent: gold,
-                icon: _candidateIcons[candidate],
-                title: candidate == _candidateIcons.length - 1
-                    ? 'Searching…'
-                    : 'Scanning…',
+                icon: Icons.person_rounded,
+                assetPath: _candidateAssets[candidate],
+                title: 'Searching…',
                 rating: '????',
                 detail: 'Best match',
                 footer: 'Worldwide',
               )
             : _MobileMatchPlayerCard(
                 accent: gold,
-                icon: _candidateIcons[candidate],
-                title: candidate == _candidateIcons.length - 1
-                    ? 'Searching…'
-                    : 'Scanning…',
+                icon: Icons.person_rounded,
+                assetPath: _candidateAssets[candidate],
+                title: 'Searching…',
                 rating: 'Best match',
                 subtitle: 'Worldwide',
               );
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(wide ? 20 : 18),
-          child: Stack(
-            children: <Widget>[
-              card,
-              Positioned(
-                left: 0,
-                right: 0,
-                top: (wide ? 318 : 112) * scan - 10,
-                child: Container(
-                  height: 20,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: <Color>[
-                        Colors.transparent,
-                        gold.withValues(alpha: .42),
-                        Colors.transparent,
-                      ],
-                    ),
-                    boxShadow: <BoxShadow>[
-                      BoxShadow(
-                        color: gold.withValues(alpha: .32),
-                        blurRadius: 18,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 240),
+          transitionBuilder: (Widget child, Animation<double> transition) =>
+              FadeTransition(
+            opacity: transition,
+            child: ScaleTransition(scale: transition, child: child),
+          ),
+          child: KeyedSubtree(
+            key: ValueKey<int>(candidate),
+            child: card,
           ),
         );
       },
