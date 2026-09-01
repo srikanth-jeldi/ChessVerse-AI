@@ -16073,7 +16073,7 @@ class _OnlineVictoryCelebrationState extends State<OnlineVictoryCelebration>
                       (BuildContext context, double scale, Widget? child) =>
                           Transform.scale(scale: scale, child: child),
                   child: Align(
-                    alignment: const Alignment(0, -0.48),
+                    alignment: Alignment.center,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
