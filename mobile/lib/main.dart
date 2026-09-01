@@ -12925,8 +12925,12 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                         ],
                       ),
                       child: Padding(
-                        padding: EdgeInsets.fromLTRB(compactDesktop ? 210 : 365,
-                            30, compactDesktop ? 22 : 340, 24),
+                        padding: EdgeInsets.fromLTRB(
+                          compactDesktop ? 210 : 365,
+                          30,
+                          compactDesktop ? 22 : 36,
+                          24,
+                        ),
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: SizedBox(
