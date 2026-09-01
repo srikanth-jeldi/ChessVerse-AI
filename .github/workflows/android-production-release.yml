@@ -106,7 +106,7 @@ jobs:
           # even when every bundle entry verifies cryptographically. Require
           # jarsigner's positive verification result instead.
           verification="$(jarsigner -verify -certs "$aab" 2>&1)"
-          printf '%s\n' "$verification" | grep -q 'jar verified'
+          grep -q 'jar verified' <<< "$verification"
           sha256sum "$aab" > "$aab.sha256"
 
       - name: Upload production bundle
