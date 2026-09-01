@@ -12446,9 +12446,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                       ),
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(
-                          wideLayout ? 230 : 92,
+                          wideLayout ? 230 : 18,
                           wideLayout ? 30 : 20,
-                          wideLayout ? 230 : 92,
+                          wideLayout ? 230 : 18,
                           wideLayout ? 30 : 18,
                         ),
                         child: Column(
@@ -12910,7 +12910,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                     ],
                     const SizedBox(height: 20),
                     Container(
-                      height: 326,
+                      height: 440,
                       decoration: BoxDecoration(
                         image: const DecorationImage(
                           image: AssetImage(
@@ -14295,6 +14295,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                           TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<int>(
+                    isExpanded: true,
                     initialValue: minutes,
                     decoration: const InputDecoration(
                       labelText: 'Time control',
@@ -14313,6 +14314,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<int>(
+                    isExpanded: true,
                     initialValue: entryCoins,
                     decoration: const InputDecoration(
                       labelText: 'Play coin entry',
@@ -14331,6 +14333,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: region,
                     decoration: const InputDecoration(
                       labelText: 'Region',
@@ -14347,6 +14350,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<int>(
+                    isExpanded: true,
                     initialValue: range,
                     decoration: const InputDecoration(
                       labelText: 'Rating range',
@@ -14811,19 +14815,22 @@ class _CoinPoolBanner extends StatelessWidget {
               BoxShadow(color: Color(0x55F1B94C), blurRadius: 20),
             ],
           ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
-            const Icon(Icons.monetization_on_rounded,
-                color: Color(0xFFF1B94C), size: 22),
-            const SizedBox(width: 8),
-            Text(
-              '$entryCoins + $entryCoins  =  ${entryCoins * 2} COIN POOL',
-              style: const TextStyle(
-                color: Color(0xFFFFE2A3),
-                fontWeight: FontWeight.w900,
-                letterSpacing: .8,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+              const Icon(Icons.monetization_on_rounded,
+                  color: Color(0xFFF1B94C), size: 22),
+              const SizedBox(width: 8),
+              Text(
+                '$entryCoins + $entryCoins  =  ${entryCoins * 2} COIN POOL',
+                style: const TextStyle(
+                  color: Color(0xFFFFE2A3),
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .8,
+                ),
               ),
-            ),
-          ]),
+            ]),
+          ),
         ),
       );
 }

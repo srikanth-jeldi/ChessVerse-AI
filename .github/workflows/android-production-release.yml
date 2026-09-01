@@ -79,7 +79,11 @@ jobs:
         run: flutter analyze
 
       - name: Test
-        run: flutter test
+        # Screenshot goldens are generated on Windows and are intentionally
+        # validated in their dedicated visual workflow. Linux font rasterizing
+        # differs by a few pixels, so production release CI runs all functional
+        # and security tests while excluding only the tagged golden suite.
+        run: flutter test --exclude-tags golden
 
       - name: Build signed production bundle
         run: >-
