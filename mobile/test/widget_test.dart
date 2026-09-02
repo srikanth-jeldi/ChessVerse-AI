@@ -916,8 +916,47 @@ void main() {
     await tester.pump(const Duration(seconds: 20));
     await tester.pump();
 
+    expect(find.text('No online player found'), findsOneWidget);
+    expect(find.text('PLAY COMPUTER'), findsOneWidget);
+    expect(fallbackName, isNull);
+    await tester.tap(find.text('PLAY COMPUTER'));
+    await tester.pumpAndSettle();
+
     expect(fallbackName, isNotNull);
     expect(fallbackName, isNotEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('random search never silently falls back to the computer', (
+    WidgetTester tester,
+  ) async {
+    String? fallbackName;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: OnlineMatchmakingSheet(
+            api: const _FakeOnlineApi(active: false),
+            token: 'test-token',
+            onProfile: _noop,
+            onAiFallback: (String rivalName) async {
+              fallbackName = rivalName;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Find Match'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 20));
+    await tester.pump();
+
+    await tester.tap(find.text('SEARCH LATER'));
+    await tester.pumpAndSettle();
+
+    expect(fallbackName, isNull);
+    expect(
+        find.textContaining('No online player was available'), findsOneWidget);
+    expect(find.text('Find Match'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

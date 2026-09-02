@@ -12221,10 +12221,63 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
       });
       return;
     }
+    final bool continueWithComputer = await _confirmComputerFallback();
+    if (!mounted || _foundMatch != null) return;
+    if (!continueWithComputer) {
+      setState(() {
+        _match = null;
+        _randomSearch = false;
+        _loading = false;
+        _elapsedSeconds = 0;
+        _error = 'No online player was available. Search again when ready.';
+      });
+      return;
+    }
     Navigator.of(context).pop();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(fallback(rivalName));
     });
+  }
+
+  Future<bool> _confirmComputerFallback() async {
+    final bool? accepted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF071725),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: Color(0xFFF0B84B), width: 1.2),
+        ),
+        icon: const Icon(Icons.person_search_rounded,
+            color: Color(0xFF58DFC9), size: 44),
+        title: const Text(
+          'No online player found',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        content: const Text(
+          'No suitable player is online right now. Would you like to continue '
+          'this match against ChessVerseAI? Your selected coin entry will not '
+          'be used for a computer match.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFFB8C4D0), height: 1.45),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: <Widget>[
+          OutlinedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('SEARCH LATER'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            icon: const Icon(Icons.smart_toy_rounded),
+            label: const Text('PLAY COMPUTER'),
+          ),
+        ],
+      ),
+    );
+    return accepted ?? false;
   }
 
   Future<void> _openSocket(OnlineMatchDto match) async {
@@ -12446,9 +12499,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                       ),
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(
-                          wideLayout ? 230 : 92,
+                          wideLayout ? 230 : 18,
                           wideLayout ? 30 : 20,
-                          wideLayout ? 230 : 92,
+                          wideLayout ? 230 : 18,
                           wideLayout ? 30 : 18,
                         ),
                         child: Column(
@@ -12910,7 +12963,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                     ],
                     const SizedBox(height: 20),
                     Container(
-                      height: 326,
+                      height: 440,
                       decoration: BoxDecoration(
                         image: const DecorationImage(
                           image: AssetImage(
@@ -13327,15 +13380,20 @@ class _MatchSearchingView extends StatefulWidget {
 }
 
 class _MatchSearchingViewState extends State<_MatchSearchingView>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _pulse = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
   )..repeat();
+  late final AnimationController _entrance = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 760),
+  )..forward();
 
   @override
   void dispose() {
     _pulse.dispose();
+    _entrance.dispose();
     super.dispose();
   }
 
@@ -13594,17 +13652,29 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: <Widget>[
-                                SizedBox(
-                                  width: 236,
-                                  child: _WideSearchPlayerCard(
-                                    accent: teal,
-                                    icon: Icons.person_rounded,
-                                    title: playerName,
-                                    rating: rating,
-                                    detail: rating == 'Unrated'
-                                        ? 'Unrated'
-                                        : 'Gold II',
-                                    footer: 'Worldwide',
+                                SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(-.65, 0),
+                                    end: Offset.zero,
+                                  ).animate(CurvedAnimation(
+                                    parent: _entrance,
+                                    curve: Curves.easeOutBack,
+                                  )),
+                                  child: FadeTransition(
+                                    opacity: _entrance,
+                                    child: SizedBox(
+                                      width: 236,
+                                      child: _WideSearchPlayerCard(
+                                        accent: teal,
+                                        icon: Icons.person_rounded,
+                                        title: playerName,
+                                        rating: rating,
+                                        detail: rating == 'Unrated'
+                                            ? 'Unrated'
+                                            : 'Gold II',
+                                        footer: 'Worldwide',
+                                      ),
+                                    ),
                                   ),
                                 ),
                                 Expanded(
@@ -13614,15 +13684,23 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                     compact: compactHeight,
                                   ),
                                 ),
-                                const SizedBox(
-                                  width: 236,
-                                  child: _WideSearchPlayerCard(
-                                    accent: gold,
-                                    icon: Icons.person_search_rounded,
-                                    title: 'Searching…',
-                                    rating: '????',
-                                    detail: 'Best match',
-                                    footer: 'Worldwide',
+                                SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(.65, 0),
+                                    end: Offset.zero,
+                                  ).animate(CurvedAnimation(
+                                    parent: _entrance,
+                                    curve: Curves.easeOutBack,
+                                  )),
+                                  child: FadeTransition(
+                                    opacity: _entrance,
+                                    child: SizedBox(
+                                      width: 236,
+                                      child: _SearchingRivalCard(
+                                        animation: _pulse,
+                                        wide: true,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -14048,12 +14126,24 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                     Row(
                       children: <Widget>[
                         Expanded(
-                          child: _MobileMatchPlayerCard(
-                            accent: teal,
-                            icon: Icons.person_rounded,
-                            title: playerName,
-                            rating: rating,
-                            subtitle: 'Worldwide',
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(-.7, 0),
+                              end: Offset.zero,
+                            ).animate(CurvedAnimation(
+                              parent: _entrance,
+                              curve: Curves.easeOutBack,
+                            )),
+                            child: FadeTransition(
+                              opacity: _entrance,
+                              child: _MobileMatchPlayerCard(
+                                accent: teal,
+                                icon: Icons.person_rounded,
+                                title: playerName,
+                                rating: rating,
+                                subtitle: 'Worldwide',
+                              ),
+                            ),
                           ),
                         ),
                         Padding(
@@ -14089,13 +14179,22 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                             },
                           ),
                         ),
-                        const Expanded(
-                          child: _MobileMatchPlayerCard(
-                            accent: gold,
-                            icon: Icons.person_search_rounded,
-                            title: 'Searching…',
-                            rating: 'Best match',
-                            subtitle: 'Worldwide',
+                        Expanded(
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(.7, 0),
+                              end: Offset.zero,
+                            ).animate(CurvedAnimation(
+                              parent: _entrance,
+                              curve: Curves.easeOutBack,
+                            )),
+                            child: FadeTransition(
+                              opacity: _entrance,
+                              child: _SearchingRivalCard(
+                                animation: _pulse,
+                                wide: false,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -14295,6 +14394,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                           TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<int>(
+                    isExpanded: true,
                     initialValue: minutes,
                     decoration: const InputDecoration(
                       labelText: 'Time control',
@@ -14313,6 +14413,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<int>(
+                    isExpanded: true,
                     initialValue: entryCoins,
                     decoration: const InputDecoration(
                       labelText: 'Play coin entry',
@@ -14331,6 +14432,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: region,
                     decoration: const InputDecoration(
                       labelText: 'Region',
@@ -14347,6 +14449,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<int>(
+                    isExpanded: true,
                     initialValue: range,
                     decoration: const InputDecoration(
                       labelText: 'Rating range',
@@ -14393,6 +14496,7 @@ class _WideSearchPlayerCard extends StatelessWidget {
     required this.rating,
     required this.detail,
     required this.footer,
+    this.assetPath,
   });
 
   final Color accent;
@@ -14401,6 +14505,7 @@ class _WideSearchPlayerCard extends StatelessWidget {
   final String rating;
   final String detail;
   final String footer;
+  final String? assetPath;
 
   @override
   Widget build(BuildContext context) {
@@ -14432,7 +14537,16 @@ class _WideSearchPlayerCard extends StatelessWidget {
                 BoxShadow(color: accent.withValues(alpha: .2), blurRadius: 20),
               ],
             ),
-            child: Icon(icon, color: accent, size: 58),
+            child: assetPath == null
+                ? Icon(icon, color: accent, size: 58)
+                : Padding(
+                    padding: const EdgeInsets.all(9),
+                    child: Image.asset(
+                      assetPath!,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
+                    ),
+                  ),
           ),
           const SizedBox(height: 14),
           Text(title,
@@ -14478,6 +14592,7 @@ class _WideSearchCore extends StatelessWidget {
         AnimatedBuilder(
           animation: pulse,
           builder: (BuildContext context, Widget? child) {
+            final double phase = pulse.value;
             final double value = Curves.easeInOut.transform(pulse.value);
             return SizedBox.square(
               dimension: dimension,
@@ -14507,26 +14622,76 @@ class _WideSearchCore extends StatelessWidget {
                         ),
                       );
                     }),
-                  Container(
-                    width: dimension * .72,
-                    height: dimension * .72,
-                    padding: EdgeInsets.all(dimension * .055),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(colors: <Color>[
-                        teal.withValues(alpha: .22),
-                        const Color(0xFF03111D),
-                      ]),
-                      border: Border.all(color: teal.withValues(alpha: .72)),
-                      boxShadow: <BoxShadow>[
-                        BoxShadow(
-                            color: teal.withValues(alpha: .22), blurRadius: 34),
-                      ],
+                  for (int index = 0; index < 8; index++)
+                    Transform.translate(
+                      offset: Offset(
+                        math.cos(phase * math.pi * 2 + index * math.pi / 4) *
+                            dimension *
+                            .43,
+                        math.sin(phase * math.pi * 2 + index * math.pi / 4) *
+                            dimension *
+                            .43,
+                      ),
+                      child: Container(
+                        width: index.isEven ? 8 : 5,
+                        height: index.isEven ? 8 : 5,
+                        decoration: BoxDecoration(
+                          color: index.isEven ? teal : gold,
+                          shape: BoxShape.circle,
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: (index.isEven ? teal : gold)
+                                  .withValues(alpha: .75),
+                              blurRadius: 12,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    child: Image.asset(
-                      'assets/matchmaking/neon_rival_knights.png',
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.high,
+                  Transform.rotate(
+                    angle: phase * math.pi * 2,
+                    child: Container(
+                      width: dimension * .92,
+                      height: 2,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(colors: <Color>[
+                          Color(0x0058DFC9),
+                          Color(0xCC58DFC9),
+                          Color(0x0058DFC9),
+                        ]),
+                      ),
+                    ),
+                  ),
+                  Transform.translate(
+                    offset: Offset(0, math.sin(phase * math.pi * 2) * 5),
+                    child: Transform.scale(
+                      scale: .98 + value * .035,
+                      child: Container(
+                        width: dimension * .72,
+                        height: dimension * .72,
+                        padding: EdgeInsets.all(dimension * .055),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(colors: <Color>[
+                            teal.withValues(alpha: .22 + value * .08),
+                            const Color(0xFF03111D),
+                          ]),
+                          border:
+                              Border.all(color: teal.withValues(alpha: .72)),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: teal.withValues(alpha: .18 + value * .18),
+                              blurRadius: 34 + value * 16,
+                            ),
+                          ],
+                        ),
+                        child: Image.asset(
+                          'assets/matchmaking/neon_rival_knights.png',
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.high,
+                        ),
+                      ),
                     ),
                   ),
                   Container(
@@ -14578,6 +14743,7 @@ class _MobileMatchPlayerCard extends StatelessWidget {
     required this.title,
     required this.rating,
     required this.subtitle,
+    this.assetPath,
   });
 
   final Color accent;
@@ -14585,6 +14751,7 @@ class _MobileMatchPlayerCard extends StatelessWidget {
   final String title;
   final String rating;
   final String subtitle;
+  final String? assetPath;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -14606,7 +14773,16 @@ class _MobileMatchPlayerCard extends StatelessWidget {
                 color: accent.withValues(alpha: .13),
                 border: Border.all(color: accent.withValues(alpha: .7)),
               ),
-              child: Icon(icon, color: accent, size: 24),
+              child: assetPath == null
+                  ? Icon(icon, color: accent, size: 24)
+                  : Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Image.asset(
+                        assetPath!,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                      ),
+                    ),
             ),
             const SizedBox(height: 3),
             Text(title,
@@ -14624,6 +14800,68 @@ class _MobileMatchPlayerCard extends StatelessWidget {
           ],
         ),
       );
+}
+
+class _SearchingRivalCard extends StatelessWidget {
+  const _SearchingRivalCard({
+    required this.animation,
+    required this.wide,
+  });
+
+  final Animation<double> animation;
+  final bool wide;
+
+  static const List<String> _candidateAssets = <String>[
+    'assets/pieces/staunton_white_king.png',
+    'assets/pieces/staunton_black_queen.png',
+    'assets/pieces/staunton_white_knight.png',
+    'assets/pieces/staunton_black_king.png',
+    'assets/pieces/staunton_white_queen.png',
+    'assets/pieces/staunton_black_knight.png',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    const Color gold = Color(0xFFF0B84B);
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (BuildContext context, Widget? child) {
+        final double phase = animation.value;
+        final int candidate =
+            (phase * _candidateAssets.length).floor() % _candidateAssets.length;
+        final Widget card = wide
+            ? _WideSearchPlayerCard(
+                accent: gold,
+                icon: Icons.person_rounded,
+                assetPath: _candidateAssets[candidate],
+                title: 'Searching…',
+                rating: '????',
+                detail: 'Best match',
+                footer: 'Worldwide',
+              )
+            : _MobileMatchPlayerCard(
+                accent: gold,
+                icon: Icons.person_rounded,
+                assetPath: _candidateAssets[candidate],
+                title: 'Searching…',
+                rating: 'Best match',
+                subtitle: 'Worldwide',
+              );
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 240),
+          transitionBuilder: (Widget child, Animation<double> transition) =>
+              FadeTransition(
+            opacity: transition,
+            child: ScaleTransition(scale: transition, child: child),
+          ),
+          child: KeyedSubtree(
+            key: ValueKey<int>(candidate),
+            child: card,
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _MobileSearchFact extends StatelessWidget {
@@ -14811,19 +15049,22 @@ class _CoinPoolBanner extends StatelessWidget {
               BoxShadow(color: Color(0x55F1B94C), blurRadius: 20),
             ],
           ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
-            const Icon(Icons.monetization_on_rounded,
-                color: Color(0xFFF1B94C), size: 22),
-            const SizedBox(width: 8),
-            Text(
-              '$entryCoins + $entryCoins  =  ${entryCoins * 2} COIN POOL',
-              style: const TextStyle(
-                color: Color(0xFFFFE2A3),
-                fontWeight: FontWeight.w900,
-                letterSpacing: .8,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+              const Icon(Icons.monetization_on_rounded,
+                  color: Color(0xFFF1B94C), size: 22),
+              const SizedBox(width: 8),
+              Text(
+                '$entryCoins + $entryCoins  =  ${entryCoins * 2} COIN POOL',
+                style: const TextStyle(
+                  color: Color(0xFFFFE2A3),
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .8,
+                ),
               ),
-            ),
-          ]),
+            ]),
+          ),
         ),
       );
 }
@@ -14849,9 +15090,14 @@ class _OpponentFoundView extends StatefulWidget {
   State<_OpponentFoundView> createState() => _OpponentFoundViewState();
 }
 
-class _OpponentFoundViewState extends State<_OpponentFoundView> {
+class _OpponentFoundViewState extends State<_OpponentFoundView>
+    with SingleTickerProviderStateMixin {
   int _countdown = 3;
   Timer? _timer;
+  late final AnimationController _versusEntrance = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1050),
+  )..forward();
 
   @override
   void initState() {
@@ -14868,6 +15114,7 @@ class _OpponentFoundViewState extends State<_OpponentFoundView> {
   @override
   void dispose() {
     _timer?.cancel();
+    _versusEntrance.dispose();
     super.dispose();
   }
 
@@ -14976,54 +15223,91 @@ class _OpponentFoundViewState extends State<_OpponentFoundView> {
                         ),
                         SizedBox(height: wide ? 18 : 13),
                       ],
-                      Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: _VersusPlayerCard(
-                              name: you,
-                              color: teal,
-                              label: 'YOU • ${match.yourColor}',
-                              rating: rating,
-                              rival: false,
-                              photoUrl: yourPhotoUrl,
-                            ),
-                          ),
-                          Padding(
-                            padding:
-                                EdgeInsets.symmetric(horizontal: wide ? 28 : 7),
-                            child: Container(
-                              width: wide ? 88 : 54,
-                              height: wide ? 88 : 54,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: const Color(0xFF061522),
-                                  border: Border.all(color: gold, width: 1.4),
-                                  boxShadow: <BoxShadow>[
-                                    BoxShadow(
-                                        color: gold.withValues(alpha: .28),
-                                        blurRadius: 28)
-                                  ]),
-                              child: Text('VS',
-                                  style: TextStyle(
+                      AnimatedBuilder(
+                        animation: _versusEntrance,
+                        builder: (BuildContext context, Widget? child) {
+                          final double collision = Curves.easeOutBack.transform(
+                            CurvedAnimation(
+                              parent: _versusEntrance,
+                              curve: const Interval(0, .72),
+                            ).value,
+                          );
+                          final double reveal = CurvedAnimation(
+                            parent: _versusEntrance,
+                            curve: const Interval(.48, 1,
+                                curve: Curves.elasticOut),
+                          ).value;
+                          final double travel = wide ? 190 : 88;
+                          return Row(
+                            children: <Widget>[
+                              Expanded(
+                                child: Transform.translate(
+                                  offset: Offset(-travel * (1 - collision), 0),
+                                  child: Opacity(
+                                    opacity: collision.clamp(0, 1),
+                                    child: _VersusPlayerCard(
+                                      name: you,
+                                      color: teal,
+                                      label: 'YOU • ${match.yourColor}',
+                                      rating: rating,
+                                      rival: false,
+                                      photoUrl: yourPhotoUrl,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: wide ? 28 : 7),
+                                child: Transform.scale(
+                                  scale: reveal,
+                                  child: Container(
+                                    width: wide ? 88 : 54,
+                                    height: wide ? 88 : 54,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: const Color(0xFF061522),
+                                      border:
+                                          Border.all(color: gold, width: 1.4),
+                                      boxShadow: <BoxShadow>[
+                                        BoxShadow(
+                                          color: gold.withValues(
+                                              alpha: .25 + reveal * .35),
+                                          blurRadius: 28 + reveal * 24,
+                                          spreadRadius: reveal * 3,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text('VS',
+                                        style: TextStyle(
+                                            color: gold,
+                                            fontFamily: 'serif',
+                                            fontSize: wide ? 30 : 20,
+                                            fontWeight: FontWeight.w900)),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Transform.translate(
+                                  offset: Offset(travel * (1 - collision), 0),
+                                  child: Opacity(
+                                    opacity: collision.clamp(0, 1),
+                                    child: _VersusPlayerCard(
+                                      name: rival,
                                       color: gold,
-                                      fontFamily: 'serif',
-                                      fontSize: wide ? 30 : 20,
-                                      fontWeight: FontWeight.w900)),
-                            ),
-                          ),
-                          Expanded(
-                            child: _VersusPlayerCard(
-                              name: rival,
-                              color: gold,
-                              label:
-                                  'RIVAL • ${match.yourColor == 'WHITE' ? 'BLACK' : 'WHITE'}',
-                              rating: 'Ready',
-                              rival: true,
-                              photoUrl: rivalPhotoUrl,
-                            ),
-                          ),
-                        ],
+                                      label:
+                                          'RIVAL • ${match.yourColor == 'WHITE' ? 'BLACK' : 'WHITE'}',
+                                      rating: 'Ready',
+                                      rival: true,
+                                      photoUrl: rivalPhotoUrl,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                       SizedBox(height: wide ? 18 : 15),
                       TweenAnimationBuilder<double>(
