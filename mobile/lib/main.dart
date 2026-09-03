@@ -4488,7 +4488,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           !_gameResultTitle!
                               .toLowerCase()
                               .contains('challenge missed'))
-                        Positioned.fill(
+                        Positioned(
+                          // On desktop the board and coach share the body. The
+                          // completion badge belongs over the board, so centre
+                          // it in that region instead of the full viewport
+                          // (which places it between the board and coach).
+                          top: wide ? wideHeaderHeight : 0,
+                          bottom: wide && showWideDock ? wideDockHeight : 0,
+                          left: 0,
+                          right: wide ? widePanelWidth + 50 : 0,
                           child: OnlineVictoryCelebration(
                             winnerAtTop: true,
                             title: _resultDisplayTitle(),
