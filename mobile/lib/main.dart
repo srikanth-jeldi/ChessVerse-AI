@@ -294,6 +294,7 @@ class _SplashGateState extends State<SplashGate> {
   bool _cloudSyncInFlight = false;
   bool _cloudSyncQueued = false;
   int? _onlinePlayerCount;
+  int? _coinBalance;
   int _primaryDestination = 0;
 
   @override
@@ -447,6 +448,7 @@ class _SplashGateState extends State<SplashGate> {
     unawaited(_syncCloudProgress(restoredSession.token));
     unawaited(_resumeCloudAnalysisJobs(restoredSession.token));
     _startOnlinePresence(restoredSession.token);
+    unawaited(_refreshCoinBalance(restoredSession.token));
     _startNotificationPolling(restoredSession.token);
     _startSessionValidation(restoredSession.token);
     unawaited(FirebasePushService.instance
@@ -539,6 +541,16 @@ class _SplashGateState extends State<SplashGate> {
       if (mounted) setState(() => _onlinePlayerCount = count);
     } on OnlineMatchException {
       if (mounted) setState(() => _onlinePlayerCount = null);
+    }
+  }
+
+  Future<void> _refreshCoinBalance(String token) async {
+    try {
+      final EconomyRewardStatus status =
+          await const EconomyRewardsApi().status(token);
+      if (mounted) setState(() => _coinBalance = status.coins);
+    } on Object {
+      // Balance stays hidden while offline; the backend remains authoritative.
     }
   }
 
@@ -674,6 +686,7 @@ class _SplashGateState extends State<SplashGate> {
                 _enableCloudSync(result.token!);
                 unawaited(_syncCloudProgress(result.token!));
                 _startOnlinePresence(result.token!);
+                unawaited(_refreshCoinBalance(result.token!));
                 _startNotificationPolling(result.token!);
               }
             },
@@ -690,6 +703,7 @@ class _SplashGateState extends State<SplashGate> {
         playerName: _playerName,
         profilePhotoUrl: _photoUrl,
         onlinePlayerCount: _onlinePlayerCount,
+        coinBalance: _coinBalance,
         onPlayVsAi: () => _chooseSideAndOpen(context, GameMode.computer),
         onDailyChallenge: () => _openGame(context, GameMode.daily),
         onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
@@ -766,6 +780,7 @@ class _SplashGateState extends State<SplashGate> {
               await const AuthSessionStore().read();
           if (!context.mounted || session == null) return;
           await _push(context, CosmeticShopScreen(token: session.token));
+          await _refreshCoinBalance(session.token);
         },
       ),
       SocialHubScreen(
@@ -1274,6 +1289,7 @@ class _SplashGateState extends State<SplashGate> {
         initialAuthToken: session.token,
       );
     }
+    await _refreshCoinBalance(session.token);
   }
 
   Future<void> _logout(BuildContext currentRouteContext) async {
@@ -1309,6 +1325,7 @@ class _SplashGateState extends State<SplashGate> {
       _photoUrl = null;
       _isGuest = true;
       _onlinePlayerCount = null;
+      _coinBalance = null;
       _stage = _RootStage.auth;
     });
   }
@@ -1340,6 +1357,7 @@ class _SplashGateState extends State<SplashGate> {
       _photoUrl = null;
       _isGuest = true;
       _onlinePlayerCount = null;
+      _coinBalance = null;
       _primaryDestination = 0;
       _stage = _RootStage.auth;
     });

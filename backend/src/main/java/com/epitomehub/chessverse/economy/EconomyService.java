@@ -16,11 +16,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class EconomyService {
-    static final long SIGNUP_COINS = 500;
+    static final long SIGNUP_COINS = 700;
     static final long SIGNUP_DIAMONDS = 10;
     static final long DAILY_COINS = 100;
     static final long REWARDED_AD_COINS = 150;
     static final int REWARDED_AD_DAILY_LIMIT = 3;
+    static final long FREE_COIN_COOLDOWN_HOURS = 8;
     private final JdbcTemplate jdbc;
 
     public EconomyService(JdbcTemplate jdbc) {
@@ -163,8 +164,8 @@ public class EconomyService {
                 Long.class, player.id());
         Instant last = lastDailyClaim(player.id());
         Instant now = Instant.now();
-        if (last != null && last.plus(24, ChronoUnit.HOURS).isAfter(now)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Daily reward is not ready yet.");
+        if (last != null && last.plus(FREE_COIN_COOLDOWN_HOURS, ChronoUnit.HOURS).isAfter(now)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Free coins are not ready yet.");
         }
         grantCoins(player.id(), DAILY_COINS, "DAILY_REWARD", "daily:" + UUID.randomUUID(),
                 "Daily play coins");
@@ -175,7 +176,7 @@ public class EconomyService {
     EconomyDtos.RewardStatusDto rewardStatus(AuthenticatedPlayer player) {
         ensureWallet(player.id());
         Instant last = lastDailyClaim(player.id());
-        Instant next = last == null ? Instant.now() : last.plus(24, ChronoUnit.HOURS);
+        Instant next = last == null ? Instant.now() : last.plus(FREE_COIN_COOLDOWN_HOURS, ChronoUnit.HOURS);
         Instant dayStart = Instant.now().truncatedTo(ChronoUnit.DAYS);
         Integer used = jdbc.queryForObject("""
                 select count(*) from economy_transaction

@@ -184,8 +184,8 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                           : null,
                   icon: const Icon(Icons.card_giftcard_rounded),
                   label: Text((_rewards?.dailyAvailable ?? false)
-                      ? 'CLAIM DAILY • +100 COINS'
-                      : 'DAILY REWARD CLAIMED'),
+                      ? 'CLAIM FREE • +100 COINS'
+                      : 'NEXT FREE DROP IN 8 HOURS'),
                   style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFFB8862F))),
               const SizedBox(height: 8),
@@ -210,7 +210,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       await _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Daily reward claimed • +100 play coins')));
+            content: Text('Free reward claimed • +100 play coins')));
       }
     } catch (error) {
       if (mounted) {

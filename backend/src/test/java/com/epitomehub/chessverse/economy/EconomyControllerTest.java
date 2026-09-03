@@ -52,7 +52,7 @@ class EconomyControllerTest {
 
         mockMvc.perform(get("/api/v1/economy/wallet").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.coins").value(500))
+                .andExpect(jsonPath("$.coins").value(700))
                 .andExpect(jsonPath("$.diamonds").value(10));
         mockMvc.perform(get("/api/v1/economy/wallet").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
@@ -70,7 +70,7 @@ class EconomyControllerTest {
         org.junit.jupiter.api.Assertions.assertTrue(economy.grantCoins(playerId, 100, "REWARDED_AD", "ad:tx-1", "Rewarded video"));
         org.junit.jupiter.api.Assertions.assertFalse(economy.grantCoins(playerId, 100, "REWARDED_AD", "ad:tx-1", "Rewarded video"));
         mockMvc.perform(get("/api/v1/economy/wallet").header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.coins").value(600));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.coins").value(800));
     }
 
     @Test
@@ -79,10 +79,10 @@ class EconomyControllerTest {
         String authorization = "Bearer " + token;
         String item = "41000000-0000-0000-0000-000000000099";
         mockMvc.perform(post("/api/v1/shop/items/" + item + "/purchase").header("Authorization", authorization))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.wallet.coins").value(200))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.wallet.coins").value(400))
                 .andExpect(jsonPath("$.items[1].owned").value(true));
         mockMvc.perform(post("/api/v1/shop/items/" + item + "/purchase").header("Authorization", authorization))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.wallet.coins").value(200));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.wallet.coins").value(400));
         mockMvc.perform(put("/api/v1/shop/loadout/BOARD").header("Authorization", authorization)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"itemId\":\"" + item + "\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.items[1].equipped").value(true));
@@ -133,7 +133,7 @@ class EconomyControllerTest {
         purchases.fulfillVerified(playerId, orderId, "GOOGLE_PLAY", "test_coins", "raw-secret-token-123");
 
         mockMvc.perform(get("/api/v1/economy/wallet").header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.coins").value(1000));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.coins").value(1200));
         String stored = jdbc.queryForObject("select provider_transaction_hash from purchase_order where id=?",
                 String.class, orderId);
         org.junit.jupiter.api.Assertions.assertNotEquals("raw-secret-token-123", stored);
@@ -154,7 +154,7 @@ class EconomyControllerTest {
                         .content("{\"purchaseToken\":\"untrusted-client-value\"}"))
                 .andExpect(status().isServiceUnavailable());
         mockMvc.perform(get("/api/v1/economy/wallet").header("Authorization", authorization))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.coins").value(500));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.coins").value(700));
     }
 
     @Test
@@ -180,13 +180,13 @@ class EconomyControllerTest {
         purchases.refundVerified("RAZORPAY", "pay_refund_test", "event-refund-1");
         org.junit.jupiter.api.Assertions.assertEquals(0L,
                 jdbc.queryForObject("select coin_balance from player_wallet where player_id=?", Long.class, playerId));
-        org.junit.jupiter.api.Assertions.assertEquals(400L,
+        org.junit.jupiter.api.Assertions.assertEquals(200L,
                 jdbc.queryForObject("select coin_debt from player_wallet where player_id=?", Long.class, playerId));
 
         economy.grantCoins(playerId, 100, "REWARDED_AD", "ad:debt", "Rewarded video");
         org.junit.jupiter.api.Assertions.assertEquals(0L,
                 jdbc.queryForObject("select coin_balance from player_wallet where player_id=?", Long.class, playerId));
-        org.junit.jupiter.api.Assertions.assertEquals(300L,
+        org.junit.jupiter.api.Assertions.assertEquals(100L,
                 jdbc.queryForObject("select coin_debt from player_wallet where player_id=?", Long.class, playerId));
     }
 

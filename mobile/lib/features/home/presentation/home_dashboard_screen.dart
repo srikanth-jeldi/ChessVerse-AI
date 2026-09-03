@@ -18,6 +18,7 @@ class HomeDashboardScreen extends StatelessWidget {
     required this.playerName,
     this.profilePhotoUrl,
     this.onlinePlayerCount,
+    this.coinBalance,
     this.activityGames,
     required this.onPlayVsAi,
     required this.onDailyChallenge,
@@ -40,6 +41,7 @@ class HomeDashboardScreen extends StatelessWidget {
   final String playerName;
   final String? profilePhotoUrl;
   final int? onlinePlayerCount;
+  final int? coinBalance;
   final List<SavedGameRecord>? activityGames;
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
@@ -70,6 +72,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 playerName: playerName,
                 profilePhotoUrl: profilePhotoUrl,
                 onlinePlayerCount: onlinePlayerCount,
+                coinBalance: coinBalance,
                 activityGames: activityGames,
                 onPlayVsAi: onPlayVsAi,
                 onDailyChallenge: onDailyChallenge,
@@ -91,6 +94,7 @@ class HomeDashboardScreen extends StatelessWidget {
               playerName: playerName,
               profilePhotoUrl: profilePhotoUrl,
               onlinePlayerCount: onlinePlayerCount,
+              coinBalance: coinBalance,
               activityGames: activityGames,
               onPlayVsAi: onPlayVsAi,
               onDailyChallenge: onDailyChallenge,
@@ -120,6 +124,7 @@ class _MobileHome extends StatefulWidget {
     required this.playerName,
     this.profilePhotoUrl,
     this.onlinePlayerCount,
+    this.coinBalance,
     this.activityGames,
     required this.onPlayVsAi,
     required this.onDailyChallenge,
@@ -141,6 +146,7 @@ class _MobileHome extends StatefulWidget {
   final String playerName;
   final String? profilePhotoUrl;
   final int? onlinePlayerCount;
+  final int? coinBalance;
   final List<SavedGameRecord>? activityGames;
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
@@ -187,6 +193,7 @@ class _MobileHomeState extends State<_MobileHome> {
                     _PlayerHeader(
                       playerName: widget.playerName,
                       profilePhotoUrl: widget.profilePhotoUrl,
+                      coinBalance: widget.coinBalance,
                       onProfile: widget.onProfile,
                       onSettings: widget.onSettings,
                       onNotifications: widget.onNotifications,
@@ -367,6 +374,7 @@ class _WideHome extends StatefulWidget {
     required this.playerName,
     this.profilePhotoUrl,
     this.onlinePlayerCount,
+    this.coinBalance,
     this.activityGames,
     required this.onPlayVsAi,
     required this.onDailyChallenge,
@@ -387,6 +395,7 @@ class _WideHome extends StatefulWidget {
   final String playerName;
   final String? profilePhotoUrl;
   final int? onlinePlayerCount;
+  final int? coinBalance;
   final List<SavedGameRecord>? activityGames;
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
@@ -446,6 +455,7 @@ class _WideHomeState extends State<_WideHome> {
                         _PlayerHeader(
                           playerName: widget.playerName,
                           profilePhotoUrl: widget.profilePhotoUrl,
+                          coinBalance: widget.coinBalance,
                           onProfile: widget.onProfile,
                           onSettings: widget.onSettings,
                           onNotifications: widget.onNotifications,
@@ -1324,12 +1334,14 @@ class _PlayerHeader extends StatelessWidget {
   const _PlayerHeader(
       {required this.playerName,
       this.profilePhotoUrl,
+      this.coinBalance,
       required this.onProfile,
       required this.onSettings,
       required this.onNotifications,
       this.wide = false});
   final String playerName;
   final String? profilePhotoUrl;
+  final int? coinBalance;
   final VoidCallback onProfile;
   final VoidCallback onSettings;
   final VoidCallback onNotifications;
@@ -1369,6 +1381,27 @@ class _PlayerHeader extends StatelessWidget {
           ),
         ),
         ...<Widget>[
+          if (coinBalance != null) ...<Widget>[
+            Container(
+              key: const ValueKey<String>('home-coin-balance'),
+              padding: EdgeInsets.symmetric(
+                  horizontal: wide ? 13 : 10, vertical: wide ? 10 : 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF102A40),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: const Color(0x66E7B54D)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+                const Icon(Icons.paid_rounded,
+                    color: Color(0xFFE7B54D), size: 19),
+                const SizedBox(width: 5),
+                Text('$coinBalance',
+                    style: const TextStyle(
+                        color: Color(0xFFFFE2A3), fontWeight: FontWeight.w900)),
+              ]),
+            ),
+            const SizedBox(width: 6),
+          ],
           NotificationBellButton(
             key: const ValueKey<String>('home-notifications'),
             onPressed: onNotifications,
