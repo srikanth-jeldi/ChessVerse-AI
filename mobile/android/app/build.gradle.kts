@@ -51,6 +51,13 @@ android {
 
     buildTypes {
         release {
+            // AGP 9 enables R8 for release builds by default. Its current full
+            // mode incorrectly rewrites Room's reflective WorkDatabase lookup
+            // (the crash literally asks for `WorkDatabase.canonicalName`).
+            // Keep release optimisation off until the upstream AGP/Room fix is
+            // available; Flutter/Dart AOT compilation is unaffected.
+            isMinifyEnabled = false
+            isShrinkResources = false
             // Without key.properties Gradle produces an unsigned release artifact.
             // A Play Store build must use the private upload key configured locally
             // or by the release CI environment.
