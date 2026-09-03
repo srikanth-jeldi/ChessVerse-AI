@@ -61,6 +61,12 @@ android {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+
+    // google_mobile_ads pulls WorkManager transitively. Its legacy 2.7.0
+    // runtime can fail while creating WorkDatabase on newer Android devices,
+    // before Flutter is even started. Pin the newest line that still supports
+    // this app's minSdk so AndroidX Startup uses the fixed implementation.
+    implementation("androidx.work:work-runtime:2.9.1")
 }
 
 kotlin {
