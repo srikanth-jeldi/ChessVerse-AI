@@ -13,6 +13,7 @@ import org.springframework.mail.MailException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -43,6 +44,16 @@ public class ApiExceptionHandler {
     @ExceptionHandler(OnlineMatchException.class)
     public ResponseEntity<Map<String, Object>> online(OnlineMatchException ex, HttpServletRequest request) {
         return error(ex.status(), ex.getMessage(), request.getRequestURI());
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> responseStatus(
+            ResponseStatusException ex, HttpServletRequest request) {
+        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        String message = ex.getReason() == null || ex.getReason().isBlank()
+                ? status.getReasonPhrase()
+                : ex.getReason();
+        return error(status, message, request.getRequestURI());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
