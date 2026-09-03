@@ -817,28 +817,38 @@ class _SplashGateState extends State<SplashGate> {
         final bool genuineWideLayout =
             size.maxWidth >= 700 && size.maxHeight >= 600;
         final bool useDesktopSidebar = genuineWideLayout;
-        final Widget content = Stack(
-          children: <Widget>[
-            Positioned.fill(
-              child: IndexedStack(
-                index: _primaryDestination,
-                children: destinations,
-              ),
-            ),
-            if (_primaryDestination != 0)
-              Positioned(
-                top: useDesktopSidebar ? 18 : 10,
-                right: useDesktopSidebar ? 22 : 12,
-                child: SafeArea(
-                  child: CoinBalanceBadge(
-                    balance: _coinBalance,
-                    expandedLabel: useDesktopSidebar,
-                    compact: !useDesktopSidebar,
-                  ),
-                ),
-              ),
-          ],
+        final Widget destinationStack = IndexedStack(
+          index: _primaryDestination,
+          children: destinations,
         );
+        final Widget content = _primaryDestination == 0
+            ? destinationStack
+            : Column(
+                children: <Widget>[
+                  SafeArea(
+                    bottom: false,
+                    child: Container(
+                      height: useDesktopSidebar ? 62 : 52,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: useDesktopSidebar ? 22 : 12,
+                      ),
+                      decoration: const BoxDecoration(
+                        color: Color(0xD9051624),
+                        border: Border(
+                          bottom: BorderSide(color: Color(0xFF19364A)),
+                        ),
+                      ),
+                      alignment: Alignment.centerRight,
+                      child: CoinBalanceBadge(
+                        balance: _coinBalance,
+                        expandedLabel: useDesktopSidebar,
+                        compact: !useDesktopSidebar,
+                      ),
+                    ),
+                  ),
+                  Expanded(child: destinationStack),
+                ],
+              );
         if (useDesktopSidebar) {
           const List<String> desktopSections = <String>[
             'Home',
