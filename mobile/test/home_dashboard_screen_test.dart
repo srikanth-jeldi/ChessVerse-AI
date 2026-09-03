@@ -9,12 +9,14 @@ void main() {
     required VoidCallback onOnline,
     required VoidCallback onComputer,
     int? onlinePlayerCount,
+    int? coinBalance,
   }) {
     return MaterialApp(
       theme: AppTheme.darkTheme,
       home: HomeDashboardScreen(
         playerName: 'Test Player',
         onlinePlayerCount: onlinePlayerCount,
+        coinBalance: coinBalance,
         onPlayVsAi: onComputer,
         onDailyChallenge: () {},
         onLocalGame: () {},
@@ -96,6 +98,26 @@ void main() {
     expect(find.text('Rankings'), findsOneWidget);
     expect(find.text('Play Online'), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('play-computer')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('home header always presents the live coin balance', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      app(onOnline: () {}, onComputer: () {}, coinBalance: 1250),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey<String>('global-coin-balance')),
+        findsOneWidget);
+    expect(find.text('Your Coins: '), findsOneWidget);
+    expect(find.text('1,250'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

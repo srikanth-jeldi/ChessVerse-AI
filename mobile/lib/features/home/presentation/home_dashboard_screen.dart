@@ -6,6 +6,7 @@ import '../../../core/local_game_archive.dart';
 import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
+import '../../../core/widgets/coin_balance_badge.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../../leaderboard/data/leaderboard_api.dart';
 import '../../analysis/domain/player_learning_profile.dart';
@@ -1381,27 +1382,12 @@ class _PlayerHeader extends StatelessWidget {
           ),
         ),
         ...<Widget>[
-          if (coinBalance != null) ...<Widget>[
-            Container(
-              key: const ValueKey<String>('home-coin-balance'),
-              padding: EdgeInsets.symmetric(
-                  horizontal: wide ? 13 : 10, vertical: wide ? 10 : 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF102A40),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: const Color(0x66E7B54D)),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
-                const Icon(Icons.paid_rounded,
-                    color: Color(0xFFE7B54D), size: 19),
-                const SizedBox(width: 5),
-                Text('$coinBalance',
-                    style: const TextStyle(
-                        color: Color(0xFFFFE2A3), fontWeight: FontWeight.w900)),
-              ]),
-            ),
-            const SizedBox(width: 6),
-          ],
+          CoinBalanceBadge(
+            balance: coinBalance,
+            expandedLabel: wide,
+            compact: !wide,
+          ),
+          const SizedBox(width: 6),
           NotificationBellButton(
             key: const ValueKey<String>('home-notifications'),
             onPressed: onNotifications,
