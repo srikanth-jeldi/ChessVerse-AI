@@ -375,7 +375,7 @@ class OnlineMatchApi {
           decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw OnlineMatchException(
-          _responseErrorMessage(json, response.statusCode),
+          onlineResponseErrorMessage(json, response.statusCode),
           statusCode: response.statusCode,
         );
       }
@@ -392,26 +392,31 @@ class OnlineMatchApi {
       );
     }
   }
+}
 
-  String _responseErrorMessage(
-    Map<String, dynamic> json,
-    int statusCode,
-  ) {
-    for (final String key in <String>['message', 'error']) {
-      final Object? value = json[key];
-      if (value is String && value.trim().isNotEmpty) return value.trim();
+String onlineResponseErrorMessage(Map<String, dynamic> json, int statusCode) {
+  for (final String key in <String>['message', 'detail', 'error']) {
+    final Object? value = json[key];
+    if (value is String && value.trim().isNotEmpty) {
+      final String message = value.trim();
+      final String normalized = message.toLowerCase();
+      if (normalized != 'conflict' &&
+          normalized != 'bad request' &&
+          normalized != 'internal server error') {
+        return message;
+      }
     }
-    return switch (statusCode) {
-      401 => 'Your session has expired. Sign in again.',
-      403 => 'This account is not allowed to start online play.',
-      409 =>
-        'Online play could not start because of an account or coin conflict.',
-      429 => 'Too many requests. Please wait a moment and try again.',
-      >= 500 =>
-        'The ChessVerseAI server could not start online play. Please try again shortly.',
-      _ => 'Online play request failed (HTTP $statusCode).',
-    };
   }
+  return switch (statusCode) {
+    401 => 'Your session has expired. Sign in again.',
+    403 => 'This account is not allowed to start online play.',
+    409 =>
+      'Online play could not start because of an account or coin conflict.',
+    429 => 'Too many requests. Please wait a moment and try again.',
+    >= 500 =>
+      'The ChessVerseAI server could not start online play. Please try again shortly.',
+    _ => 'Online play request failed (HTTP $statusCode).',
+  };
 }
 
 class OnlineMatchException implements Exception {

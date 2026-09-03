@@ -821,34 +821,36 @@ class _SplashGateState extends State<SplashGate> {
           index: _primaryDestination,
           children: destinations,
         );
-        final Widget content = _primaryDestination == 0
-            ? destinationStack
-            : Column(
-                children: <Widget>[
-                  SafeArea(
-                    bottom: false,
-                    child: Container(
-                      height: useDesktopSidebar ? 62 : 52,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: useDesktopSidebar ? 22 : 12,
-                      ),
-                      decoration: const BoxDecoration(
-                        color: Color(0xD9051624),
-                        border: Border(
-                          bottom: BorderSide(color: Color(0xFF19364A)),
-                        ),
-                      ),
-                      alignment: Alignment.centerRight,
-                      child: CoinBalanceBadge(
-                        balance: _coinBalance,
-                        expandedLabel: useDesktopSidebar,
-                        compact: !useDesktopSidebar,
-                      ),
-                    ),
+        final double coinTop = switch (_primaryDestination) {
+          1 => useDesktopSidebar ? 25 : 8,
+          2 => useDesktopSidebar ? 18 : 10,
+          3 => useDesktopSidebar ? 15 : 10,
+          4 || 5 => useDesktopSidebar ? 9 : 8,
+          _ => 10,
+        };
+        final double coinRight = switch (_primaryDestination) {
+          4 => useDesktopSidebar ? 92 : 66,
+          5 => useDesktopSidebar ? 112 : 102,
+          _ => useDesktopSidebar ? 22 : 12,
+        };
+        final Widget content = Stack(
+          children: <Widget>[
+            Positioned.fill(child: destinationStack),
+            if (_primaryDestination != 0)
+              Positioned(
+                top: coinTop,
+                right: coinRight,
+                child: SafeArea(
+                  bottom: false,
+                  child: CoinBalanceBadge(
+                    balance: _coinBalance,
+                    expandedLabel: useDesktopSidebar,
+                    compact: !useDesktopSidebar,
                   ),
-                  Expanded(child: destinationStack),
-                ],
-              );
+                ),
+              ),
+          ],
+        );
         if (useDesktopSidebar) {
           const List<String> desktopSections = <String>[
             'Home',
@@ -3857,10 +3859,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _skin = _onlineMatch?.isTournamentMatch == true
           ? tournamentBoardSkin(_onlineMatch?.tournamentName)
           : switch (boardTheme) {
-              'Jade Glass' => BoardSkin.jadeGlass,
+              'Jade Glass' ||
+              'Ocean Teal' ||
+              'Royal Emerald' =>
+                BoardSkin.jadeGlass,
               'Tournament' => BoardSkin.tournament,
               'Marble' => BoardSkin.marble,
-              'Sapphire' => BoardSkin.sapphire,
+              'Sapphire' ||
+              'Midnight Sapphire' ||
+              'Neon Arena' =>
+                BoardSkin.sapphire,
               _ => BoardSkin.royalWalnut,
             };
     });
@@ -4480,7 +4488,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           !_gameResultTitle!
                               .toLowerCase()
                               .contains('challenge missed'))
-                        Positioned.fill(
+                        Positioned(
+                          // On desktop the board and coach share the body. The
+                          // completion badge belongs over the board, so centre
+                          // it in that region instead of the full viewport
+                          // (which places it between the board and coach).
+                          top: wide ? wideHeaderHeight : 0,
+                          bottom: wide && showWideDock ? wideDockHeight : 0,
+                          left: 0,
+                          right: wide ? widePanelWidth + 50 : 0,
                           child: OnlineVictoryCelebration(
                             winnerAtTop: true,
                             title: _resultDisplayTitle(),
@@ -12153,7 +12169,14 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
       unawaited(_refreshCoinBalance());
       _accept(match);
     } on OnlineMatchException catch (error) {
-      if (mounted) setState(() => _error = error.message);
+      if (mounted) {
+        final bool insufficientCoins = error.statusCode == 409 &&
+            _coinBalance != null &&
+            _coinBalance! < _entryCoins;
+        setState(() => _error = insufficientCoins
+            ? 'Insufficient coins to enter this match.'
+            : error.message);
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -13290,6 +13313,10 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
     vsync: this,
     duration: const Duration(milliseconds: 1400),
   )..repeat();
+  late final AnimationController _rivalShuffle = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 9600),
+  )..repeat();
   late final AnimationController _entrance = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 760),
@@ -13298,6 +13325,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
   @override
   void dispose() {
     _pulse.dispose();
+    _rivalShuffle.dispose();
     _entrance.dispose();
     super.dispose();
   }
@@ -13602,7 +13630,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                     child: SizedBox(
                                       width: 236,
                                       child: _SearchingRivalCard(
-                                        animation: _pulse,
+                                        animation: _rivalShuffle,
                                         wide: true,
                                       ),
                                     ),
@@ -14096,7 +14124,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                             child: FadeTransition(
                               opacity: _entrance,
                               child: _SearchingRivalCard(
-                                animation: _pulse,
+                                animation: _rivalShuffle,
                                 wide: false,
                               ),
                             ),
@@ -14401,7 +14429,6 @@ class _WideSearchPlayerCard extends StatelessWidget {
     required this.rating,
     required this.detail,
     required this.footer,
-    this.assetPath,
   });
 
   final Color accent;
@@ -14410,7 +14437,6 @@ class _WideSearchPlayerCard extends StatelessWidget {
   final String rating;
   final String detail;
   final String footer;
-  final String? assetPath;
 
   @override
   Widget build(BuildContext context) {
@@ -14442,16 +14468,7 @@ class _WideSearchPlayerCard extends StatelessWidget {
                 BoxShadow(color: accent.withValues(alpha: .2), blurRadius: 20),
               ],
             ),
-            child: assetPath == null
-                ? Icon(icon, color: accent, size: 58)
-                : Padding(
-                    padding: const EdgeInsets.all(9),
-                    child: Image.asset(
-                      assetPath!,
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.high,
-                    ),
-                  ),
+            child: Icon(icon, color: accent, size: 58),
           ),
           const SizedBox(height: 14),
           Text(title,
@@ -14554,20 +14571,6 @@ class _WideSearchCore extends StatelessWidget {
                         ),
                       ),
                     ),
-                  Transform.rotate(
-                    angle: phase * math.pi * 2,
-                    child: Container(
-                      width: dimension * .92,
-                      height: 2,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(colors: <Color>[
-                          Color(0x0058DFC9),
-                          Color(0xCC58DFC9),
-                          Color(0x0058DFC9),
-                        ]),
-                      ),
-                    ),
-                  ),
                   Transform.translate(
                     offset: Offset(0, math.sin(phase * math.pi * 2) * 5),
                     child: Transform.scale(
@@ -14648,7 +14651,6 @@ class _MobileMatchPlayerCard extends StatelessWidget {
     required this.title,
     required this.rating,
     required this.subtitle,
-    this.assetPath,
   });
 
   final Color accent;
@@ -14656,7 +14658,6 @@ class _MobileMatchPlayerCard extends StatelessWidget {
   final String title;
   final String rating;
   final String subtitle;
-  final String? assetPath;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -14678,16 +14679,7 @@ class _MobileMatchPlayerCard extends StatelessWidget {
                 color: accent.withValues(alpha: .13),
                 border: Border.all(color: accent.withValues(alpha: .7)),
               ),
-              child: assetPath == null
-                  ? Icon(icon, color: accent, size: 24)
-                  : Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Image.asset(
-                        assetPath!,
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.high,
-                      ),
-                    ),
+              child: Icon(icon, color: accent, size: 24),
             ),
             const SizedBox(height: 3),
             Text(title,
@@ -14716,48 +14708,57 @@ class _SearchingRivalCard extends StatelessWidget {
   final Animation<double> animation;
   final bool wide;
 
-  static const List<String> _candidateAssets = <String>[
-    'assets/pieces/staunton_white_king.png',
-    'assets/pieces/staunton_black_queen.png',
-    'assets/pieces/staunton_white_knight.png',
-    'assets/pieces/staunton_black_king.png',
-    'assets/pieces/staunton_white_queen.png',
-    'assets/pieces/staunton_black_knight.png',
+  static const List<(IconData, Color)> _candidates = <(IconData, Color)>[
+    (Icons.face_rounded, Color(0xFFF0B84B)),
+    (Icons.face_2_rounded, Color(0xFF58DFC9)),
+    (Icons.face_3_rounded, Color(0xFF76A9FF)),
+    (Icons.face_4_rounded, Color(0xFFE98CC7)),
+    (Icons.face_5_rounded, Color(0xFFA98BFF)),
+    (Icons.face_6_rounded, Color(0xFFFF8E72)),
+    (Icons.account_circle_rounded, Color(0xFF65D49A)),
+    (Icons.person_rounded, Color(0xFFFFC857)),
   ];
 
   @override
   Widget build(BuildContext context) {
-    const Color gold = Color(0xFFF0B84B);
     return AnimatedBuilder(
       animation: animation,
       builder: (BuildContext context, Widget? child) {
         final double phase = animation.value;
         final int candidate =
-            (phase * _candidateAssets.length).floor() % _candidateAssets.length;
+            (phase * _candidates.length).floor() % _candidates.length;
+        final (IconData avatar, Color accent) = _candidates[candidate];
         final Widget card = wide
             ? _WideSearchPlayerCard(
-                accent: gold,
-                icon: Icons.person_rounded,
-                assetPath: _candidateAssets[candidate],
+                accent: accent,
+                icon: avatar,
                 title: 'Searching…',
                 rating: '????',
                 detail: 'Best match',
                 footer: 'Worldwide',
               )
             : _MobileMatchPlayerCard(
-                accent: gold,
-                icon: Icons.person_rounded,
-                assetPath: _candidateAssets[candidate],
+                accent: accent,
+                icon: avatar,
                 title: 'Searching…',
                 rating: 'Best match',
                 subtitle: 'Worldwide',
               );
         return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 240),
+          duration: const Duration(milliseconds: 620),
+          reverseDuration: const Duration(milliseconds: 420),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
           transitionBuilder: (Widget child, Animation<double> transition) =>
               FadeTransition(
             opacity: transition,
-            child: ScaleTransition(scale: transition, child: child),
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(.12, 0),
+                end: Offset.zero,
+              ).animate(transition),
+              child: child,
+            ),
           ),
           child: KeyedSubtree(
             key: ValueKey<int>(candidate),
