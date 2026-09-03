@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../../core/app_preferences.dart';
 import '../../../core/ads/rewarded_coin_service.dart';
@@ -19,10 +21,24 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   String? _error;
   String _category = 'BOARD';
   EconomyRewardStatus? _rewards;
+  Timer? _countdownTimer;
+  bool _rewardRefreshPending = false;
   @override
   void initState() {
     super.initState();
     _load();
+    _countdownTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) {
+        if (mounted && _rewards?.nextDailyAt != null) setState(() {});
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -182,7 +198,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                   icon: const Icon(Icons.card_giftcard_rounded),
                   label: Text((_rewards?.dailyAvailable ?? false)
                       ? 'CLAIM FREE • +100 COINS'
-                      : 'NEXT FREE DROP IN 8 HOURS'),
+                      : 'NEXT FREE DROP • ${_freeDropCountdown()}'),
                   style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFFB8862F))),
               const SizedBox(height: 8),
@@ -199,6 +215,27 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                       side: const BorderSide(color: Color(0x805DE9D3))))
             ])
           ]));
+
+  String _freeDropCountdown() {
+    final DateTime? next = _rewards?.nextDailyAt;
+    if (next == null) return '--:--:--';
+    final Duration remaining = next.toUtc().difference(DateTime.now().toUtc());
+    if (remaining <= Duration.zero) {
+      if (!(_rewards?.dailyAvailable ?? false) && !_rewardRefreshPending) {
+        _rewardRefreshPending = true;
+        scheduleMicrotask(() async {
+          await _load();
+          _rewardRefreshPending = false;
+        });
+      }
+      return 'READY';
+    }
+    final int hours = remaining.inHours;
+    final int minutes = remaining.inMinutes.remainder(60);
+    final int seconds = remaining.inSeconds.remainder(60);
+    String twoDigits(int value) => value.toString().padLeft(2, '0');
+    return '${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}';
+  }
 
   Future<void> _claimDaily() async {
     setState(() => _busy = true);
