@@ -27,6 +27,7 @@ import 'core/store_review_service.dart';
 import 'core/widgets/chessverse_app_backdrop.dart';
 import 'core/widgets/desktop_app_sidebar.dart';
 import 'core/widgets/network_status_layer.dart';
+import 'core/widgets/coin_balance_badge.dart';
 import 'features/auth/data/auth_api.dart';
 import 'features/auth/data/auth_session_store.dart';
 import 'features/auth/presentation/auth_screen.dart';
@@ -279,6 +280,7 @@ class _SplashGateState extends State<SplashGate> {
   late final bool _forceFreshWebLogin;
   Timer? _presenceTimer;
   Timer? _notificationTimer;
+  String? _notificationPollingToken;
   Timer? _sessionValidationTimer;
   bool _sessionValidationInFlight = false;
   final Set<String> _seenNotificationIds = <String>{};
@@ -507,7 +509,7 @@ class _SplashGateState extends State<SplashGate> {
       if (error.statusCode != 401 && error.statusCode != 403) return;
       _sessionValidationTimer?.cancel();
       _presenceTimer?.cancel();
-      _notificationTimer?.cancel();
+      _stopNotificationPolling();
       await _sessionStore.clearSession();
       if (!mounted) return;
       setState(() => _stage = _RootStage.auth);
@@ -555,7 +557,8 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   void _startNotificationPolling(String token) {
-    _notificationTimer?.cancel();
+    _stopNotificationPolling();
+    _notificationPollingToken = token;
     unawaited(_pollNotifications(token, initial: true));
     _notificationTimer = Timer.periodic(
       const Duration(seconds: 4),
@@ -564,6 +567,11 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   Future<void> _pollNotifications(String token, {bool initial = false}) async {
+    if (!mounted ||
+        _stage != _RootStage.home ||
+        token != _notificationPollingToken) {
+      return;
+    }
     try {
       final NotificationInboxDto inbox =
           await const NotificationApi().load(token);
@@ -586,6 +594,13 @@ class _SplashGateState extends State<SplashGate> {
     } on NotificationException {
       // The persistent inbox will catch up after connectivity is restored.
     }
+  }
+
+  void _stopNotificationPolling() {
+    _notificationTimer?.cancel();
+    _notificationTimer = null;
+    _notificationPollingToken = null;
+    NotificationBadgeState.unread.value = 0;
   }
 
   Future<void> _openAcceptedChallenge(String token, String matchId) async {
@@ -640,7 +655,7 @@ class _SplashGateState extends State<SplashGate> {
   void dispose() {
     _timer?.cancel();
     _presenceTimer?.cancel();
-    _notificationTimer?.cancel();
+    _stopNotificationPolling();
     _sessionValidationTimer?.cancel();
     super.dispose();
   }
@@ -802,10 +817,38 @@ class _SplashGateState extends State<SplashGate> {
         final bool genuineWideLayout =
             size.maxWidth >= 700 && size.maxHeight >= 600;
         final bool useDesktopSidebar = genuineWideLayout;
-        final Widget content = IndexedStack(
+        final Widget destinationStack = IndexedStack(
           index: _primaryDestination,
           children: destinations,
         );
+        final Widget content = _primaryDestination == 0
+            ? destinationStack
+            : Column(
+                children: <Widget>[
+                  SafeArea(
+                    bottom: false,
+                    child: Container(
+                      height: useDesktopSidebar ? 62 : 52,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: useDesktopSidebar ? 22 : 12,
+                      ),
+                      decoration: const BoxDecoration(
+                        color: Color(0xD9051624),
+                        border: Border(
+                          bottom: BorderSide(color: Color(0xFF19364A)),
+                        ),
+                      ),
+                      alignment: Alignment.centerRight,
+                      child: CoinBalanceBadge(
+                        balance: _coinBalance,
+                        expandedLabel: useDesktopSidebar,
+                        compact: !useDesktopSidebar,
+                      ),
+                    ),
+                  ),
+                  Expanded(child: destinationStack),
+                ],
+              );
         if (useDesktopSidebar) {
           const List<String> desktopSections = <String>[
             'Home',
@@ -1297,6 +1340,7 @@ class _SplashGateState extends State<SplashGate> {
     _sessionValidationTimer = null;
     _presenceTimer?.cancel();
     _presenceTimer = null;
+    _stopNotificationPolling();
     const AuthSessionStore sessionStore = AuthSessionStore();
     const AuthApi authApi = AuthApi();
     final StoredAuthSession? session = await sessionStore.read();
@@ -1335,6 +1379,7 @@ class _SplashGateState extends State<SplashGate> {
     _sessionValidationTimer = null;
     _presenceTimer?.cancel();
     _presenceTimer = null;
+    _stopNotificationPolling();
     final StoredAuthSession? session = await _sessionStore.read();
     if (session == null) {
       throw const AuthApiException('No signed-in account was found.');
@@ -12565,83 +12610,12 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                               'We’ll find a player for you from around the world.',
                             ),
                             const SizedBox(height: 12),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xE6071725),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                    color: const Color(0xFFD6A84F), width: 1.2),
-                              ),
-                              child: Row(children: <Widget>[
-                                const Icon(Icons.account_balance_wallet_rounded,
-                                    color: Color(0xFFD6A84F)),
-                                const SizedBox(width: 9),
-                                Expanded(
-                                  child: Text(
-                                    _coinBalance == null
-                                        ? 'Checking play coins…'
-                                        : 'Your coins: $_coinBalance',
-                                    style: const TextStyle(
-                                      color: Color(0xFFFFE2A3),
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  'WIN ${_entryCoins * 2}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF63E6C8),
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ]),
-                            ),
-                            const SizedBox(height: 10),
-                            const Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text('CHOOSE COIN ENTRY',
-                                  style: TextStyle(
-                                      color: Color(0xFFD6A84F),
-                                      fontSize: 11,
-                                      letterSpacing: 1.3,
-                                      fontWeight: FontWeight.w900)),
-                            ),
-                            const SizedBox(height: 7),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: <int>[100, 200, 500].map((int coins) {
-                                final bool selected = _entryCoins == coins;
-                                return ChoiceChip(
-                                  selected: selected,
-                                  showCheckmark: true,
-                                  selectedColor: const Color(0xFFD6A84F),
-                                  backgroundColor: const Color(0xFF0A2638),
-                                  side: BorderSide(
-                                    color: selected
-                                        ? const Color(0xFFFFD978)
-                                        : const Color(0xFF3D667C),
-                                  ),
-                                  labelStyle: TextStyle(
-                                    color: selected
-                                        ? const Color(0xFF07131D)
-                                        : const Color(0xFFF4EFE5),
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                  label: Text('$coins IN  →  ${coins * 2} WIN'),
-                                  avatar: Icon(Icons.monetization_on_rounded,
-                                      size: 18,
-                                      color: selected
-                                          ? const Color(0xFF07131D)
-                                          : const Color(0xFFD6A84F)),
-                                  onSelected: _loading
-                                      ? null
-                                      : (_) =>
-                                          setState(() => _entryCoins = coins),
-                                );
-                              }).toList(growable: false),
+                            _CoinStakeSelector(
+                              balance: _coinBalance,
+                              entryCoins: _entryCoins,
+                              enabled: !_loading,
+                              onSelected: (int coins) =>
+                                  setState(() => _entryCoins = coins),
                             ),
                             SizedBox(height: wideLayout ? 18 : 12),
                             Align(
@@ -13023,99 +12997,12 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                       height: 1.35),
                                 ),
                                 const SizedBox(height: 14),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 9,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xE6071725),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                      color: gold,
-                                      width: 1.2,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: <Widget>[
-                                      const Icon(
-                                        Icons.monetization_on_rounded,
-                                        color: gold,
-                                        size: 21,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          _coinBalance == null
-                                              ? 'Checking play coins…'
-                                              : 'Your coins: $_coinBalance',
-                                          style: const TextStyle(
-                                            color: Color(0xFFFFE2A3),
-                                            fontWeight: FontWeight.w900,
-                                          ),
-                                        ),
-                                      ),
-                                      Text(
-                                        'WIN ${_entryCoins * 2}',
-                                        style: const TextStyle(
-                                          color: teal,
-                                          fontWeight: FontWeight.w900,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 9),
-                                const Text(
-                                  'CHOOSE COIN ENTRY',
-                                  style: TextStyle(
-                                    color: gold,
-                                    fontSize: 11,
-                                    letterSpacing: 1.25,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Wrap(
-                                  spacing: 7,
-                                  children:
-                                      <int>[100, 200, 500].map((int coins) {
-                                    final bool selected = _entryCoins == coins;
-                                    return ChoiceChip(
-                                      selected: selected,
-                                      showCheckmark: false,
-                                      selectedColor: gold,
-                                      backgroundColor: const Color(0xFF0A2638),
-                                      side: BorderSide(
-                                        color: selected
-                                            ? const Color(0xFFFFD978)
-                                            : const Color(0xFF3D667C),
-                                      ),
-                                      labelStyle: TextStyle(
-                                        color: selected
-                                            ? const Color(0xFF07131D)
-                                            : const Color(0xFFF4EFE5),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                      avatar: Icon(
-                                        Icons.monetization_on_rounded,
-                                        size: 16,
-                                        color: selected
-                                            ? const Color(0xFF07131D)
-                                            : gold,
-                                      ),
-                                      label: Text(
-                                        '$coins IN  →  ${coins * 2} WIN',
-                                      ),
-                                      onSelected: _loading
-                                          ? null
-                                          : (_) => setState(
-                                                () => _entryCoins = coins,
-                                              ),
-                                    );
-                                  }).toList(growable: false),
+                                _CoinStakeSelector(
+                                  balance: _coinBalance,
+                                  entryCoins: _entryCoins,
+                                  enabled: !_loading,
+                                  onSelected: (int coins) =>
+                                      setState(() => _entryCoins = coins),
                                 ),
                                 const Spacer(),
                                 SizedBox(
@@ -15096,6 +14983,227 @@ class _SearchDivider extends StatelessWidget {
         height: 32,
         margin: const EdgeInsets.symmetric(horizontal: 20),
         color: const Color(0xFF294255),
+      );
+}
+
+class _CoinStakeSelector extends StatelessWidget {
+  const _CoinStakeSelector({
+    required this.balance,
+    required this.entryCoins,
+    required this.enabled,
+    required this.onSelected,
+  });
+
+  final int? balance;
+  final int entryCoins;
+  final bool enabled;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    const Color gold = Color(0xFFF0B93F);
+    const Color teal = Color(0xFF55DFC7);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[Color(0xF20A2233), Color(0xF2051422)],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFF476076)),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+              color: Color(0x33000000), blurRadius: 18, offset: Offset(0, 8)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _StakeSummary(
+                  icon: Icons.account_balance_wallet_rounded,
+                  label: 'BALANCE',
+                  value: balance == null
+                      ? 'Checking…'
+                      : formatCoinAmount(balance!),
+                  color: gold,
+                ),
+              ),
+              Container(width: 1, height: 38, color: const Color(0xFF294357)),
+              Expanded(
+                child: _StakeSummary(
+                  icon: Icons.emoji_events_rounded,
+                  label: 'WINNER GETS',
+                  value: '${formatCoinAmount(entryCoins * 2)} COINS',
+                  color: teal,
+                  alignEnd: true,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'SELECT MATCH ENTRY',
+            style: TextStyle(
+              color: Color(0xFFAFC1CF),
+              fontSize: 10,
+              letterSpacing: 1.25,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 7),
+          LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              const double gap = 7;
+              final double tileWidth = (constraints.maxWidth - gap * 2) / 3;
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: <int>[100, 200, 500].map((int coins) {
+                  final bool selected = entryCoins == coins;
+                  final bool affordable = balance == null || balance! >= coins;
+                  return SizedBox(
+                    width: tileWidth,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: enabled && affordable
+                            ? () => onSelected(coins)
+                            : null,
+                        borderRadius: BorderRadius.circular(12),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 9,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: selected
+                                ? const LinearGradient(
+                                    colors: <Color>[
+                                      Color(0xFFFFD568),
+                                      Color(0xFFE5A72F),
+                                    ],
+                                  )
+                                : null,
+                            color: selected ? null : const Color(0xFF0B2A3C),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: selected
+                                  ? const Color(0xFFFFE59B)
+                                  : const Color(0xFF385C72),
+                            ),
+                          ),
+                          child: Column(
+                            children: <Widget>[
+                              Icon(
+                                Icons.monetization_on_rounded,
+                                size: 17,
+                                color: selected
+                                    ? const Color(0xFF07131D)
+                                    : (affordable
+                                        ? gold
+                                        : const Color(0xFF647684)),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '${formatCoinAmount(coins)} ENTRY',
+                                maxLines: 1,
+                                style: TextStyle(
+                                  color: selected
+                                      ? const Color(0xFF07131D)
+                                      : (affordable
+                                          ? Colors.white
+                                          : const Color(0xFF718391)),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              Text(
+                                '${formatCoinAmount(coins * 2)} PRIZE',
+                                maxLines: 1,
+                                style: TextStyle(
+                                  color: selected
+                                      ? const Color(0xFF17303D)
+                                      : (affordable
+                                          ? teal
+                                          : const Color(0xFF647684)),
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(growable: false),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StakeSummary extends StatelessWidget {
+  const _StakeSummary({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+    this.alignEnd = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  final bool alignEnd;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisAlignment:
+            alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: <Widget>[
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Column(
+              crossAxisAlignment:
+                  alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  label,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: Color(0xFF91A6B6),
+                    fontSize: 9,
+                    letterSpacing: .8,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       );
 }
 
