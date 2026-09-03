@@ -171,9 +171,6 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
               Row(mainAxisSize: MainAxisSize.min, children: [
                 _balance(Icons.paid_rounded, '${s.wallet.coins}', 'COINS',
                     const Color(0xFFF4C75B)),
-                const SizedBox(width: 10),
-                _balance(Icons.diamond_rounded, '${s.wallet.diamonds}',
-                    'DIAMONDS', const Color(0xFF5DE9E0))
               ]),
               const SizedBox(height: 10),
               FilledButton.icon(

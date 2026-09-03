@@ -821,34 +821,36 @@ class _SplashGateState extends State<SplashGate> {
           index: _primaryDestination,
           children: destinations,
         );
-        final Widget content = _primaryDestination == 0
-            ? destinationStack
-            : Column(
-                children: <Widget>[
-                  SafeArea(
-                    bottom: false,
-                    child: Container(
-                      height: useDesktopSidebar ? 62 : 52,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: useDesktopSidebar ? 22 : 12,
-                      ),
-                      decoration: const BoxDecoration(
-                        color: Color(0xD9051624),
-                        border: Border(
-                          bottom: BorderSide(color: Color(0xFF19364A)),
-                        ),
-                      ),
-                      alignment: Alignment.centerRight,
-                      child: CoinBalanceBadge(
-                        balance: _coinBalance,
-                        expandedLabel: useDesktopSidebar,
-                        compact: !useDesktopSidebar,
-                      ),
-                    ),
+        final double coinTop = switch (_primaryDestination) {
+          1 => useDesktopSidebar ? 25 : 8,
+          2 => useDesktopSidebar ? 18 : 10,
+          3 => useDesktopSidebar ? 15 : 10,
+          4 || 5 => useDesktopSidebar ? 9 : 8,
+          _ => 10,
+        };
+        final double coinRight = switch (_primaryDestination) {
+          4 => useDesktopSidebar ? 92 : 66,
+          5 => useDesktopSidebar ? 112 : 102,
+          _ => useDesktopSidebar ? 22 : 12,
+        };
+        final Widget content = Stack(
+          children: <Widget>[
+            Positioned.fill(child: destinationStack),
+            if (_primaryDestination != 0)
+              Positioned(
+                top: coinTop,
+                right: coinRight,
+                child: SafeArea(
+                  bottom: false,
+                  child: CoinBalanceBadge(
+                    balance: _coinBalance,
+                    expandedLabel: useDesktopSidebar,
+                    compact: !useDesktopSidebar,
                   ),
-                  Expanded(child: destinationStack),
-                ],
-              );
+                ),
+              ),
+          ],
+        );
         if (useDesktopSidebar) {
           const List<String> desktopSections = <String>[
             'Home',

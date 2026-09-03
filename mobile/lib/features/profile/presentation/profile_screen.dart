@@ -53,11 +53,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: const Color(0xD9071827),
         actions: <Widget>[
           if (widget.onShop != null)
-            IconButton(
-              key: const ValueKey<String>('profile-shop'),
-              tooltip: 'Cosmetic shop',
-              onPressed: widget.onShop,
-              icon: const Icon(Icons.storefront_rounded),
+            Padding(
+              padding: EdgeInsets.only(
+                right: MediaQuery.sizeOf(context).width >= 700 ? 24 : 8,
+              ),
+              child: IconButton(
+                key: const ValueKey<String>('profile-shop'),
+                tooltip: 'Cosmetic shop',
+                onPressed: widget.onShop,
+                icon: const Icon(Icons.storefront_rounded),
+              ),
             ),
         ],
       ),
