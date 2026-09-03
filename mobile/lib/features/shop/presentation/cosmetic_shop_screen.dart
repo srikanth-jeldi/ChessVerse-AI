@@ -329,7 +329,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
           Expanded(
               child: Padding(
                   padding: const EdgeInsets.all(16),
-                  child: _preview(a, b, item.category))),
+                  child: _preview(a, b, item))),
           Padding(
               padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
               child: Column(
@@ -381,7 +381,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         ]));
   }
 
-  Widget _preview(Color a, Color b, String category) => ClipRRect(
+  Widget _preview(Color a, Color b, CosmeticItemDto item) => ClipRRect(
       borderRadius: BorderRadius.circular(14),
       child: AspectRatio(
           aspectRatio: 1.7,
@@ -392,40 +392,61 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
               itemCount: 64,
               itemBuilder: (_, i) {
                 final dark = ((i ~/ 8) + (i % 8)).isOdd;
+                final _ShopPreviewPiece? piece =
+                    item.category == 'PIECES' ? _previewPiece(i) : null;
                 return Container(
                     color: dark ? b : a,
                     alignment: Alignment.center,
-                    child: category == 'PIECES' &&
-                            <int>{
-                              0,
-                              1,
-                              2,
-                              3,
-                              4,
-                              5,
-                              6,
-                              7,
-                              56,
-                              57,
-                              58,
-                              59,
-                              60,
-                              61,
-                              62,
-                              63
-                            }.contains(i)
-                        ? Text(i < 8 ? '♟' : '♙',
-                            style: TextStyle(
-                                fontSize: 18,
-                                color: i < 8 ? Colors.black : Colors.white,
-                                shadows: const [
-                                  Shadow(color: Colors.black54, blurRadius: 3)
-                                ]))
-                        : null);
+                    child: piece == null
+                        ? null
+                        : Padding(
+                            padding: const EdgeInsets.all(1.5),
+                            child: Image.asset(
+                              'assets/pieces/staunton_${piece.side}_${piece.name}.png',
+                              fit: BoxFit.contain,
+                              filterQuality: FilterQuality.high,
+                              color: item.slug == 'golden-crown'
+                                  ? const Color(0xFFFFC94A)
+                                  : null,
+                              colorBlendMode: item.slug == 'golden-crown'
+                                  ? BlendMode.modulate
+                                  : null,
+                            ),
+                          ));
               })));
+
+  _ShopPreviewPiece? _previewPiece(int square) {
+    const List<String> backRank = <String>[
+      'rook',
+      'knight',
+      'bishop',
+      'queen',
+      'king',
+      'bishop',
+      'knight',
+      'rook',
+    ];
+    if (square < 8) return _ShopPreviewPiece('black', backRank[square]);
+    if (square < 16) return const _ShopPreviewPiece('black', 'pawn');
+    if (square >= 48 && square < 56) {
+      return const _ShopPreviewPiece('white', 'pawn');
+    }
+    if (square >= 56) {
+      return _ShopPreviewPiece('white', backRank[square - 56]);
+    }
+    return null;
+  }
+
   Color _color(String? hex, Color fallback) {
     if (hex == null) return fallback;
     return Color(
         int.tryParse(hex.replaceFirst('#', '0xFF')) ?? fallback.toARGB32());
   }
+}
+
+class _ShopPreviewPiece {
+  const _ShopPreviewPiece(this.side, this.name);
+
+  final String side;
+  final String name;
 }

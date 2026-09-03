@@ -2,6 +2,21 @@ import 'package:chessverse_ai/features/online/data/online_match_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('generic HTTP conflict label is replaced with useful online guidance',
+      () {
+    expect(
+      onlineResponseErrorMessage(<String, dynamic>{'error': 'Conflict'}, 409),
+      'Online play could not start because of an account or coin conflict.',
+    );
+    expect(
+      onlineResponseErrorMessage(
+        <String, dynamic>{'message': 'Insufficient coins.'},
+        409,
+      ),
+      'Insufficient coins.',
+    );
+  });
+
   test('online match parses authoritative lifecycle state', () {
     final OnlineMatchDto match = OnlineMatchDto.fromJson(
       <String, dynamic>{

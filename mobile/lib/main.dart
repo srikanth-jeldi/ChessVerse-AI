@@ -3859,10 +3859,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _skin = _onlineMatch?.isTournamentMatch == true
           ? tournamentBoardSkin(_onlineMatch?.tournamentName)
           : switch (boardTheme) {
-              'Jade Glass' => BoardSkin.jadeGlass,
+              'Jade Glass' ||
+              'Ocean Teal' ||
+              'Royal Emerald' =>
+                BoardSkin.jadeGlass,
               'Tournament' => BoardSkin.tournament,
               'Marble' => BoardSkin.marble,
-              'Sapphire' => BoardSkin.sapphire,
+              'Sapphire' ||
+              'Midnight Sapphire' ||
+              'Neon Arena' =>
+                BoardSkin.sapphire,
               _ => BoardSkin.royalWalnut,
             };
     });
@@ -12155,7 +12161,14 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
       unawaited(_refreshCoinBalance());
       _accept(match);
     } on OnlineMatchException catch (error) {
-      if (mounted) setState(() => _error = error.message);
+      if (mounted) {
+        final bool insufficientCoins = error.statusCode == 409 &&
+            _coinBalance != null &&
+            _coinBalance! < _entryCoins;
+        setState(() => _error = insufficientCoins
+            ? 'Insufficient coins to enter this match.'
+            : error.message);
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
