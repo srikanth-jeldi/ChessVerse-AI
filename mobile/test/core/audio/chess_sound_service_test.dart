@@ -9,8 +9,9 @@ void main() {
     expect(ChessSoundService.pieceAssetPaths.keys,
         containsAll(<String>['P', 'N', 'B', 'R', 'Q', 'K']));
     expect(paths.toSet(), hasLength(6));
-    expect(ChessSoundService.assetForPiece('n'), 'audio/piece_knight.wav');
-    expect(ChessSoundService.assetForPiece('b'), 'audio/piece_bishop.wav');
+    expect(ChessSoundService.assetForPiece('n'), 'audio/piece_knight.ogg');
+    expect(ChessSoundService.assetForPiece('b'), 'audio/piece_bishop.ogg');
+    expect(ChessSoundService.assetForPiece('q'), 'audio/piece_queen.ogg');
     expect(ChessSoundService.assetForPiece('k'), 'audio/piece_king.wav');
   });
 
