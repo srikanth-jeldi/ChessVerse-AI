@@ -12429,6 +12429,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
   Widget build(BuildContext context) {
     final Size size = MediaQuery.sizeOf(context);
     final bool wideLayout = size.width >= 900 && size.height >= 600;
+    final bool compactLobby = size.width < 600;
     final double maxWidth = wideLayout ? 1180 : math.min(560, size.width - 20);
     final double maxHeight = size.height * (wideLayout ? 0.94 : 0.96);
     final OnlineMatchDto? found = _foundMatch;
@@ -12560,17 +12561,16 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                   if (widget.initialMode == OnlineLobbyMode.random)
                     DecoratedBox(
                       decoration: BoxDecoration(
-                        image: const DecorationImage(
-                          image: AssetImage(
-                            'assets/backgrounds/online-matchmaking-hero-v1.png',
-                          ),
-                          // Preserve the complete wide composition on phones:
-                          // pawn at the left, copy in the centre and map at the
-                          // right. Cover was cropping both visual anchors.
-                          fit: BoxFit.contain,
-                          alignment: Alignment.center,
-                          opacity: .78,
-                        ),
+                        image: !compactLobby
+                            ? const DecorationImage(
+                                image: AssetImage(
+                                  'assets/backgrounds/online-matchmaking-hero-v1.png',
+                                ),
+                                fit: BoxFit.contain,
+                                alignment: Alignment.center,
+                                opacity: .78,
+                              )
+                            : null,
                         gradient: const LinearGradient(
                           colors: <Color>[Color(0xD9051B35), Color(0x77071936)],
                         ),
@@ -12632,6 +12632,24 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                             const Text(
                               'We’ll find a player for you from around the world.',
                             ),
+                            if (compactLobby) ...<Widget>[
+                              const SizedBox(height: 12),
+                              ClipRRect(
+                                key: const ValueKey<String>(
+                                  'mobile-matchmaking-hero',
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                                child: AspectRatio(
+                                  aspectRatio: 2.15,
+                                  child: Image.asset(
+                                    'assets/backgrounds/online-matchmaking-hero-v1.png',
+                                    fit: BoxFit.cover,
+                                    alignment: Alignment.center,
+                                    filterQuality: FilterQuality.high,
+                                  ),
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 12),
                             _CoinStakeSelector(
                               balance: _coinBalance,
@@ -14070,6 +14088,9 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                             child: FadeTransition(
                               opacity: _entrance,
                               child: _MobileMatchPlayerCard(
+                                key: const ValueKey<String>(
+                                  'mobile-player-card',
+                                ),
                                 accent: teal,
                                 icon: Icons.person_rounded,
                                 title: playerName,
@@ -14646,6 +14667,7 @@ class _WideSearchCore extends StatelessWidget {
 
 class _MobileMatchPlayerCard extends StatelessWidget {
   const _MobileMatchPlayerCard({
+    super.key,
     required this.accent,
     required this.icon,
     required this.title,
@@ -14661,6 +14683,7 @@ class _MobileMatchPlayerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
+        width: double.infinity,
         height: 112,
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
@@ -14738,6 +14761,7 @@ class _SearchingRivalCard extends StatelessWidget {
                 footer: 'Worldwide',
               )
             : _MobileMatchPlayerCard(
+                key: const ValueKey<String>('mobile-rival-card'),
                 accent: accent,
                 icon: avatar,
                 title: 'Searching…',
@@ -15005,6 +15029,7 @@ class _CoinStakeSelector extends StatelessWidget {
     const Color gold = Color(0xFFF0B93F);
     const Color teal = Color(0xFF55DFC7);
     return Container(
+      key: const ValueKey<String>('coin-stake-selector'),
       width: double.infinity,
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
