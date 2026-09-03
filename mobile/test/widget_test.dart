@@ -750,9 +750,48 @@ void main() {
     expect(find.text('VS'), findsOneWidget);
     expect(find.text('SEARCH SETTINGS'), findsOneWidget);
     expect(find.text('CANCEL SEARCH'), findsOneWidget);
+    final Size playerCard = tester
+        .getSize(find.byKey(const ValueKey<String>('mobile-player-card')));
+    final Size rivalCard =
+        tester.getSize(find.byKey(const ValueKey<String>('mobile-rival-card')));
+    expect(rivalCard, playerCard);
     expect(
       tester.getBottomRight(find.text('CANCEL SEARCH')).dy,
       lessThanOrEqualTo(tester.view.physicalSize.height),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('mobile lobby keeps coin controls below the hero artwork', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: OnlineMatchmakingSheet(
+            api: _FakeOnlineApi(active: false),
+            token: 'test-token',
+            onProfile: _noop,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final Finder hero =
+        find.byKey(const ValueKey<String>('mobile-matchmaking-hero'));
+    final Finder selector =
+        find.byKey(const ValueKey<String>('coin-stake-selector'));
+    expect(hero, findsOneWidget);
+    expect(selector, findsOneWidget);
+    expect(
+      tester.getBottomLeft(hero).dy,
+      lessThanOrEqualTo(tester.getTopLeft(selector).dy),
     );
     expect(tester.takeException(), isNull);
   });
