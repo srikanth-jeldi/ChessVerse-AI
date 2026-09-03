@@ -279,6 +279,7 @@ class _SplashGateState extends State<SplashGate> {
   late final bool _forceFreshWebLogin;
   Timer? _presenceTimer;
   Timer? _notificationTimer;
+  String? _notificationPollingToken;
   Timer? _sessionValidationTimer;
   bool _sessionValidationInFlight = false;
   final Set<String> _seenNotificationIds = <String>{};
@@ -507,7 +508,7 @@ class _SplashGateState extends State<SplashGate> {
       if (error.statusCode != 401 && error.statusCode != 403) return;
       _sessionValidationTimer?.cancel();
       _presenceTimer?.cancel();
-      _notificationTimer?.cancel();
+      _stopNotificationPolling();
       await _sessionStore.clearSession();
       if (!mounted) return;
       setState(() => _stage = _RootStage.auth);
@@ -555,7 +556,8 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   void _startNotificationPolling(String token) {
-    _notificationTimer?.cancel();
+    _stopNotificationPolling();
+    _notificationPollingToken = token;
     unawaited(_pollNotifications(token, initial: true));
     _notificationTimer = Timer.periodic(
       const Duration(seconds: 4),
@@ -564,6 +566,11 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   Future<void> _pollNotifications(String token, {bool initial = false}) async {
+    if (!mounted ||
+        _stage != _RootStage.home ||
+        token != _notificationPollingToken) {
+      return;
+    }
     try {
       final NotificationInboxDto inbox =
           await const NotificationApi().load(token);
@@ -586,6 +593,13 @@ class _SplashGateState extends State<SplashGate> {
     } on NotificationException {
       // The persistent inbox will catch up after connectivity is restored.
     }
+  }
+
+  void _stopNotificationPolling() {
+    _notificationTimer?.cancel();
+    _notificationTimer = null;
+    _notificationPollingToken = null;
+    NotificationBadgeState.unread.value = 0;
   }
 
   Future<void> _openAcceptedChallenge(String token, String matchId) async {
@@ -640,7 +654,7 @@ class _SplashGateState extends State<SplashGate> {
   void dispose() {
     _timer?.cancel();
     _presenceTimer?.cancel();
-    _notificationTimer?.cancel();
+    _stopNotificationPolling();
     _sessionValidationTimer?.cancel();
     super.dispose();
   }
@@ -1297,6 +1311,7 @@ class _SplashGateState extends State<SplashGate> {
     _sessionValidationTimer = null;
     _presenceTimer?.cancel();
     _presenceTimer = null;
+    _stopNotificationPolling();
     const AuthSessionStore sessionStore = AuthSessionStore();
     const AuthApi authApi = AuthApi();
     final StoredAuthSession? session = await sessionStore.read();
@@ -1335,6 +1350,7 @@ class _SplashGateState extends State<SplashGate> {
     _sessionValidationTimer = null;
     _presenceTimer?.cancel();
     _presenceTimer = null;
+    _stopNotificationPolling();
     final StoredAuthSession? session = await _sessionStore.read();
     if (session == null) {
       throw const AuthApiException('No signed-in account was found.');

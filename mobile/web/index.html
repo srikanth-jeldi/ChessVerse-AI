@@ -34,17 +34,35 @@
 
   <title>ChessVerseAI</title>
   <link rel="manifest" href="manifest.json">
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-
   <script>
     // Only provider-issued IDs/signatures cross this bridge. ChessVerseAI never
     // receives card numbers, CVV, UPI PINs, or bank credentials.
-    window.chessverseOpenRazorpay = function (key, orderId, amount, currency, name, description) {
-      return new Promise(function (resolve, reject) {
-        if (typeof window.Razorpay !== 'function') {
+    // Checkout is loaded only when the user explicitly starts a web purchase;
+    // loading it on the sign-in page starts unnecessary third-party requests.
+    window.__chessverseRazorpayReady = null;
+    window.chessverseEnsureRazorpay = function () {
+      if (typeof window.Razorpay === 'function') return Promise.resolve(true);
+      if (window.__chessverseRazorpayReady) return window.__chessverseRazorpayReady;
+      window.__chessverseRazorpayReady = new Promise(function (resolve, reject) {
+        var script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        script.onload = function () {
+          if (typeof window.Razorpay === 'function') resolve(true);
+          else reject(new Error('Secure checkout could not be initialized.'));
+        };
+        script.onerror = function () {
+          window.__chessverseRazorpayReady = null;
           reject(new Error('Secure checkout could not be loaded.'));
-          return;
-        }
+        };
+        document.head.appendChild(script);
+      });
+      return window.__chessverseRazorpayReady;
+    };
+
+    window.chessverseOpenRazorpay = function (key, orderId, amount, currency, name, description) {
+      return window.chessverseEnsureRazorpay().then(function () {
+        return new Promise(function (resolve, reject) {
         var settled = false;
         var checkout = new window.Razorpay({
           key: key,
@@ -69,6 +87,7 @@
           reject(new Error(response.error && response.error.description || 'Payment failed.'));
         });
         checkout.open();
+        });
       });
     };
   </script>
