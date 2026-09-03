@@ -8,13 +8,14 @@ void main() {
   Widget app({
     required VoidCallback onOnline,
     required VoidCallback onComputer,
+    String playerName = 'Test Player',
     int? onlinePlayerCount,
     int? coinBalance,
   }) {
     return MaterialApp(
       theme: AppTheme.darkTheme,
       home: HomeDashboardScreen(
-        playerName: 'Test Player',
+        playerName: playerName,
         onlinePlayerCount: onlinePlayerCount,
         coinBalance: coinBalance,
         onPlayVsAi: onComputer,
@@ -118,6 +119,35 @@ void main() {
         findsOneWidget);
     expect(find.text('Your Coins: '), findsOneWidget);
     expect(find.text('1,250'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('compact header puts coins below actions for long player names', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      app(
+        onOnline: () {},
+        onComputer: () {},
+        playerName: 'Guest Player With A Very Long Display Name 649037',
+        coinBalance: 500,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final Finder coins =
+        find.byKey(const ValueKey<String>('global-coin-balance'));
+    final Finder settings =
+        find.byKey(const ValueKey<String>('home-settings-top'));
+    expect(coins, findsOneWidget);
+    expect(settings, findsOneWidget);
+    expect(tester.getTopLeft(coins).dy,
+        greaterThan(tester.getTopLeft(settings).dy));
     expect(tester.takeException(), isNull);
   });
 

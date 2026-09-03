@@ -1350,60 +1350,85 @@ class _PlayerHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        InkWell(
-          key: const ValueKey<String>('home-profile'),
-          onTap: onProfile,
-          borderRadius: BorderRadius.circular(999),
-          child: _Avatar(
-            photoUrl: profilePhotoUrl,
-            size: wide ? 58 : 42,
-            useSavedPlayerAvatar: true,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final Widget profile = InkWell(
+      key: const ValueKey<String>('home-profile'),
+      onTap: onProfile,
+      borderRadius: BorderRadius.circular(999),
+      child: _Avatar(
+        photoUrl: profilePhotoUrl,
+        size: wide ? 58 : 42,
+        useSavedPlayerAvatar: true,
+      ),
+    );
+    final Widget identity = Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text('Welcome back,',
+              style: TextStyle(
+                  color: const Color(0xFF9FB6C8), fontSize: wide ? 15 : 12)),
+          Text(playerName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: wide ? 22 : 17,
+                  fontWeight: FontWeight.w800)),
+        ],
+      ),
+    );
+    final Widget notifications = NotificationBellButton(
+      key: const ValueKey<String>('home-notifications'),
+      onPressed: onNotifications,
+      filled: true,
+    );
+    final Widget settings = IconButton(
+      key: const ValueKey<String>('home-settings-top'),
+      onPressed: onSettings,
+      tooltip: 'Settings',
+      style: IconButton.styleFrom(
+          backgroundColor: const Color(0xFF102A40),
+          foregroundColor: Colors.white),
+      icon: const Icon(Icons.settings_rounded),
+    );
+
+    if (!wide) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
             children: <Widget>[
-              Text('Welcome back,',
-                  style: TextStyle(
-                      color: const Color(0xFF9FB6C8),
-                      fontSize: wide ? 15 : 12)),
-              Text(playerName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: wide ? 22 : 17,
-                      fontWeight: FontWeight.w800)),
+              profile,
+              const SizedBox(width: 12),
+              identity,
+              const SizedBox(width: 6),
+              notifications,
+              const SizedBox(width: 6),
+              settings,
             ],
           ),
-        ),
-        ...<Widget>[
-          CoinBalanceBadge(
-            balance: coinBalance,
-            expandedLabel: wide,
-            compact: !wide,
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerRight,
+            child: CoinBalanceBadge(
+              balance: coinBalance,
+              compact: true,
+            ),
           ),
-          const SizedBox(width: 6),
-          NotificationBellButton(
-            key: const ValueKey<String>('home-notifications'),
-            onPressed: onNotifications,
-            filled: true,
-          ),
-          const SizedBox(width: 6),
         ],
-        IconButton(
-          key: const ValueKey<String>('home-settings-top'),
-          onPressed: onSettings,
-          tooltip: 'Settings',
-          style: IconButton.styleFrom(
-              backgroundColor: const Color(0xFF102A40),
-              foregroundColor: Colors.white),
-          icon: const Icon(Icons.settings_rounded),
-        ),
+      );
+    }
+
+    return Row(
+      children: <Widget>[
+        profile,
+        const SizedBox(width: 12),
+        identity,
+        CoinBalanceBadge(balance: coinBalance, expandedLabel: true),
+        const SizedBox(width: 6),
+        notifications,
+        const SizedBox(width: 6),
+        settings,
       ],
     );
   }
