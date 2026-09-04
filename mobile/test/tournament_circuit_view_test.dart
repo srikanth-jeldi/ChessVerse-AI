@@ -6,6 +6,17 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final tournaments = <TournamentDto>[
     TournamentDto(
+      id: 'hyd-finished',
+      name: 'Hyderabad Royal Cup',
+      description: 'Previous weekly cup.',
+      minutes: 10,
+      players: 64,
+      capacity: 128,
+      status: 'FINISHED',
+      joined: false,
+      startsAt: DateTime.now().subtract(const Duration(days: 7)),
+    ),
+    TournamentDto(
       id: 'hyd',
       name: 'Hyderabad Royal Cup',
       description: 'Seven-round rated rapid beneath the city lights.',
@@ -57,8 +68,7 @@ void main() {
       expect(find.text('SEASON PROGRESSION'), findsOneWidget);
       expect(find.text('1250 / 5000 CP'), findsOneWidget);
       if (size.width < 600) {
-        await tester.drag(
-            find.byType(CustomScrollView), const Offset(0, -500));
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
         await tester.pump();
       }
       await tester.tap(find.ancestor(
