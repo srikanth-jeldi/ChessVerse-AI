@@ -32,6 +32,42 @@ class TournamentService {
     }
 
     @Transactional
+    public void scheduleNextOccurrences() {
+        List<SeriesRow> terminal = jdbc.query("""
+                select distinct on (series_code) id,series_code,occurrence_number,name,description,
+                       time_control_minutes,capacity,starts_at,ends_at,cadence_days,minimum_players,
+                       entry_coins,badge_code,champion_bonus,runner_up_bonus,participation_bonus,status
+                from chess_tournament
+                where series_code is not null
+                order by series_code,occurrence_number desc
+                """, (rs,row) -> new SeriesRow(
+                rs.getObject("id",UUID.class),rs.getString("series_code"),rs.getInt("occurrence_number"),
+                rs.getString("name"),rs.getString("description"),rs.getInt("time_control_minutes"),
+                rs.getInt("capacity"),rs.getTimestamp("starts_at").toInstant(),
+                rs.getTimestamp("ends_at").toInstant(),rs.getInt("cadence_days"),
+                rs.getInt("minimum_players"),rs.getInt("entry_coins"),rs.getString("badge_code"),
+                rs.getInt("champion_bonus"),rs.getInt("runner_up_bonus"),
+                rs.getInt("participation_bonus"),rs.getString("status")));
+        for (SeriesRow previous : terminal) {
+            if (!"FINISHED".equals(previous.status) && !"CANCELLED".equals(previous.status)) continue;
+            Instant nextStart = previous.startsAt.plus(previous.cadenceDays, java.time.temporal.ChronoUnit.DAYS);
+            while (!nextStart.isAfter(Instant.now().plus(1, java.time.temporal.ChronoUnit.DAYS))) {
+                nextStart = nextStart.plus(previous.cadenceDays, java.time.temporal.ChronoUnit.DAYS);
+            }
+            Instant nextEnd = nextStart.plus(java.time.Duration.between(previous.startsAt, previous.endsAt));
+            jdbc.update("""
+                    insert into chess_tournament(id,name,description,time_control_minutes,capacity,starts_at,
+                    ends_at,status,current_round,entry_coins,series_code,occurrence_number,cadence_days,
+                    minimum_players,badge_code,champion_bonus,runner_up_bonus,participation_bonus)
+                    values(?,?,?,?,?,?,?,'OPEN',0,?,?,?,?,?,?,?,?,?) on conflict do nothing
+                    """,UUID.randomUUID(),previous.name,previous.description,previous.minutes,previous.capacity,
+                    Timestamp.from(nextStart),Timestamp.from(nextEnd),previous.entryCoins,previous.seriesCode,
+                    previous.occurrence+1,previous.cadenceDays,previous.minimumPlayers,previous.badgeCode,
+                    previous.championBonus,previous.runnerUpBonus,previous.participationBonus);
+        }
+    }
+
+    @Transactional
     TournamentDtos.DetailDto detail(AuthenticatedPlayer player, UUID id) {
         startIfReady(id);
         return load(player.id(), id);
@@ -39,13 +75,13 @@ class TournamentService {
 
     @Transactional
     void startIfReady(UUID tournamentId) {
-        var state = jdbc.query("select status,starts_at from chess_tournament where id=? for update", rs ->
-                rs.next() ? new Object[]{rs.getString(1), rs.getTimestamp(2).toInstant()} : null, tournamentId);
+        var state = jdbc.query("select status,starts_at,minimum_players from chess_tournament where id=? for update", rs ->
+                rs.next() ? new Object[]{rs.getString(1), rs.getTimestamp(2).toInstant(),rs.getInt(3)} : null, tournamentId);
         if (state == null) throw new OnlineMatchException(HttpStatus.NOT_FOUND, "Tournament was not found.");
         if (!"OPEN".equals(state[0]) || ((Instant) state[1]).isAfter(Instant.now())) return;
         List<UUID> players = jdbc.query("select player_id from chess_tournament_entry where tournament_id=? and active=true order by joined_at,player_id",
                 (rs,row) -> rs.getObject(1, UUID.class), tournamentId);
-        if (players.size() < 2) {
+        if (players.size() < (Integer)state[2]) {
             jdbc.update("update chess_tournament set status='CANCELLED' where id=?", tournamentId);
             refundCancelledEntries(tournamentId);
             return;
@@ -126,22 +162,43 @@ class TournamentService {
         List<UUID>winners=jdbc.query("select winner_id from chess_tournament_pairing where round_id=? order by board_number",(rs,row)->rs.getObject(1,UUID.class),roundId);
         if(winners.size()==1){
             UUID champion = winners.get(0);
-            jdbc.update("update chess_tournament set status='FINISHED',champion_id=?,current_round=? where id=?",champion,number,tournamentId);
+            UUID runnerUp = jdbc.query("select case when white_player_id=? then black_player_id else white_player_id end from chess_tournament_pairing where round_id=? and status='FINISHED' limit 1",
+                    rs -> rs.next() ? rs.getObject(1,UUID.class) : null,champion,roundId);
+            jdbc.update("update chess_tournament set status='FINISHED',champion_id=?,runner_up_id=?,current_round=? where id=?",champion,runnerUp,number,tournamentId);
             Long prizePool = jdbc.queryForObject("select coalesce(sum(reserved_coins),0) from chess_tournament_entry where tournament_id=? and active=true",Long.class,tournamentId);
             if (prizePool != null && prizePool > 0) economy.grantCoins(champion, prizePool,
                     "TOURNAMENT_CHAMPION_POOL", "tournament:" + tournamentId + ":champion-pool",
                     "Tournament champion prize pool");
+            awardTournamentRewards(tournamentId, champion, runnerUp);
             return;
         }
         jdbc.update("update chess_tournament set current_round=? where id=?",number+1,tournamentId);
         createRound(tournamentId,number+1,winners);
     }
 
+    private void awardTournamentRewards(UUID tournamentId, UUID champion, UUID runnerUp) {
+        Object[] rewards=jdbc.queryForObject("select badge_code,champion_bonus,runner_up_bonus,participation_bonus from chess_tournament where id=?",
+                (rs,row)->new Object[]{rs.getString(1),rs.getInt(2),rs.getInt(3),rs.getInt(4)},tournamentId);
+        String badge=(String)rewards[0]; int championBonus=(Integer)rewards[1],runnerBonus=(Integer)rewards[2],participation=(Integer)rewards[3];
+        List<UUID> entrants=jdbc.query("select player_id from chess_tournament_entry where tournament_id=? and active=true",
+                (rs,row)->rs.getObject(1,UUID.class),tournamentId);
+        for(UUID playerId:entrants){
+            if(participation>0) economy.grantCoins(playerId,participation,"TOURNAMENT_PARTICIPATION",
+                    "tournament:"+tournamentId+":participation:"+playerId,"Tournament participation reward");
+            if(badge!=null&&!badge.isBlank()) jdbc.update("insert into player_tournament_badge(player_id,tournament_id,badge_code,placement,awarded_at) values(?,?,?,?,?) on conflict do nothing",
+                    playerId,tournamentId,badge,playerId.equals(champion)?"CHAMPION":playerId.equals(runnerUp)?"RUNNER_UP":"PARTICIPANT",Timestamp.from(Instant.now()));
+        }
+        if(championBonus>0) economy.grantCoins(champion,championBonus,"TOURNAMENT_CHAMPION_BONUS",
+                "tournament:"+tournamentId+":champion-bonus","Tournament champion bonus");
+        if(runnerUp!=null&&runnerBonus>0) economy.grantCoins(runnerUp,runnerBonus,"TOURNAMENT_RUNNER_UP_BONUS",
+                "tournament:"+tournamentId+":runner-up-bonus","Tournament runner-up bonus");
+    }
+
     private TournamentDtos.DetailDto load(UUID viewer, UUID id) {
         TournamentDtos.DetailDto base=jdbc.query("select t.*,count(e.player_id) players,coalesce(sum(e.reserved_coins),0) prize_pool,exists(select 1 from chess_tournament_entry x where x.tournament_id=t.id and x.player_id=? and x.active=true) joined from chess_tournament t left join chess_tournament_entry e on e.tournament_id=t.id and e.active=true where t.id=? group by t.id",
-                rs->{if(!rs.next())throw new OnlineMatchException(HttpStatus.NOT_FOUND,"Tournament was not found.");int players=rs.getInt("players"),entryCoins=rs.getInt("entry_coins");return new TournamentDtos.DetailDto(id,rs.getString("name"),rs.getString("description"),rs.getInt("time_control_minutes"),players,rs.getInt("capacity"),rs.getTimestamp("starts_at").toInstant(),rs.getTimestamp("ends_at").toInstant(),rs.getString("status"),rs.getBoolean("joined"),entryCoins,rs.getLong("prize_pool"),rs.getInt("current_round"),playerDto((UUID)rs.getObject("champion_id")),List.of());},viewer,id);
+                rs->{if(!rs.next())throw new OnlineMatchException(HttpStatus.NOT_FOUND,"Tournament was not found.");int players=rs.getInt("players"),entryCoins=rs.getInt("entry_coins");return new TournamentDtos.DetailDto(id,rs.getString("name"),rs.getString("description"),rs.getInt("time_control_minutes"),players,rs.getInt("capacity"),rs.getTimestamp("starts_at").toInstant(),rs.getTimestamp("ends_at").toInstant(),rs.getString("status"),rs.getBoolean("joined"),entryCoins,rs.getLong("prize_pool"),rs.getInt("current_round"),rs.getInt("cadence_days"),rs.getInt("minimum_players"),rs.getString("badge_code"),rs.getInt("champion_bonus"),rs.getInt("runner_up_bonus"),rs.getInt("participation_bonus"),playerDto((UUID)rs.getObject("champion_id")),playerDto((UUID)rs.getObject("runner_up_id")),List.of());},viewer,id);
         List<TournamentDtos.RoundDto> rounds=jdbc.query("select id,round_number,status from chess_tournament_round where tournament_id=? order by round_number",(rs,row)->new TournamentDtos.RoundDto(rs.getInt("round_number"),rs.getString("status"),pairings(rs.getObject("id",UUID.class))),id);
-        return new TournamentDtos.DetailDto(base.id(),base.name(),base.description(),base.timeControlMinutes(),base.players(),base.capacity(),base.startsAt(),base.endsAt(),base.status(),base.joined(),base.entryCoins(),base.prizePool(),base.currentRound(),base.champion(),rounds);
+        return new TournamentDtos.DetailDto(base.id(),base.name(),base.description(),base.timeControlMinutes(),base.players(),base.capacity(),base.startsAt(),base.endsAt(),base.status(),base.joined(),base.entryCoins(),base.prizePool(),base.currentRound(),base.cadenceDays(),base.minimumPlayers(),base.badgeCode(),base.championBonus(),base.runnerUpBonus(),base.participationBonus(),base.champion(),base.runnerUp(),rounds);
     }
 
     private void refundCancelledEntries(UUID tournamentId) {
@@ -160,4 +217,7 @@ class TournamentService {
     private PlayerRow player(UUID id){return jdbc.queryForObject("select id,display_name,photo_url from player_account where id=?",(rs,row)->new PlayerRow(rs.getObject(1,UUID.class),rs.getString(2),rs.getString(3)),id);}
     private TournamentDtos.PlayerDto playerDto(UUID id){if(id==null)return null;PlayerRow p=player(id);return new TournamentDtos.PlayerDto(p.id,p.name,p.photo);}
     private record PlayerRow(UUID id,String name,String photo){}
+    private record SeriesRow(UUID id,String seriesCode,int occurrence,String name,String description,
+            int minutes,int capacity,Instant startsAt,Instant endsAt,int cadenceDays,int minimumPlayers,
+            int entryCoins,String badgeCode,int championBonus,int runnerUpBonus,int participationBonus,String status){}
 }

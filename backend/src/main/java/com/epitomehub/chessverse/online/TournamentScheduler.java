@@ -11,5 +11,8 @@ class TournamentScheduler {
     TournamentScheduler(TournamentService tournaments) { this.tournaments = tournaments; }
 
     @Scheduled(fixedDelayString = "${chessverse.tournaments.scheduler-delay-ms:30000}")
-    void startDue() { tournaments.startDueTournaments(); }
+    void startDue() {
+        tournaments.startDueTournaments();
+        tournaments.scheduleNextOccurrences();
+    }
 }
