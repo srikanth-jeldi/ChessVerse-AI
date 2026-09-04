@@ -41,4 +41,13 @@ void main() {
     expect(find.text('100 COINS REFUNDED'), findsOneWidget);
     expect(find.text('Draw refund completed'), findsOneWidget);
   });
+
+  testWidgets('loss does not show a zero-coin reward card', (tester) async {
+    await tester.pumpWidget(_result(title: 'Opponent wins', coinsEarned: 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('0 COINS WON'), findsNothing);
+    expect(find.text('100 + 100 = 200 coin pool'), findsNothing);
+    expect(find.byIcon(Icons.monetization_on_rounded), findsNothing);
+  });
 }

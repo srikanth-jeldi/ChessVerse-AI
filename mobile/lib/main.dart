@@ -7970,8 +7970,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final String ratingText = ratingDelta == null
         ? ''
         : ' • ELO ${ratingDelta >= 0 ? '+' : ''}$ratingDelta';
-    final int coinsEarned = match.coinsEarned;
-    return '${match.result ?? ''} • $reason$ratingText • Coins +$coinsEarned';
+    final bool draw = match.result == '1/2-1/2';
+    final bool userIsWhite = match.yourColor.toUpperCase() == 'WHITE';
+    final bool userWon = (match.result == '1-0' && userIsWhite) ||
+        (match.result == '0-1' && !userIsWhite);
+    final String coinText = match.entryCoins <= 0
+        ? ''
+        : draw
+            ? ' • ${match.entryCoins} coins refunded'
+            : userWon
+                ? ' • Prize +${match.coinsEarned} coins'
+                : ' • Entry -${match.entryCoins} coins';
+    return '${match.result ?? ''} • $reason$ratingText$coinText';
   }
 
   Future<void> _showPromotionPicker(String square, bool white) async {
@@ -12677,16 +12687,32 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                             ),
                             if (compactLobby) ...<Widget>[
                               const SizedBox(height: 12),
-                              ClipRRect(
+                              Container(
                                 key: const ValueKey<String>(
                                   'mobile-matchmaking-hero',
                                 ),
-                                borderRadius: BorderRadius.circular(14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF020D19),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(0xAA2F9CFF),
+                                  ),
+                                  boxShadow: const <BoxShadow>[
+                                    BoxShadow(
+                                      color: Color(0x332F9CFF),
+                                      blurRadius: 16,
+                                    ),
+                                  ],
+                                ),
+                                clipBehavior: Clip.antiAlias,
                                 child: AspectRatio(
-                                  aspectRatio: 2.15,
+                                  // Keep the pawn and world map visible like
+                                  // the desktop hero instead of cropping them
+                                  // into a shallow banner on phones.
+                                  aspectRatio: 1.62,
                                   child: Image.asset(
                                     'assets/backgrounds/online-matchmaking-hero-v1.png',
-                                    fit: BoxFit.cover,
+                                    fit: BoxFit.contain,
                                     alignment: Alignment.center,
                                     filterQuality: FilterQuality.high,
                                   ),
@@ -16689,6 +16715,8 @@ class GameResultOverlay extends StatelessWidget {
     final bool missed = title.toLowerCase().contains('challenge missed');
     final bool dailyComplete =
         title.toLowerCase().contains('challenge complete');
+    final bool showCoinOutcome =
+        (rewardPoolCoins ?? 0) > 0 && (draw || (coinsEarned ?? 0) > 0);
     final Widget resultCard = ColoredBox(
       color: Colors.black.withValues(alpha: 0.72),
       child: SafeArea(
@@ -16755,7 +16783,7 @@ class GameResultOverlay extends StatelessWidget {
                         ),
                         SizedBox(height: shortLandscape ? 3 : 8),
                         Text(detail, textAlign: TextAlign.center),
-                        if ((rewardPoolCoins ?? 0) > 0) ...<Widget>[
+                        if (showCoinOutcome) ...<Widget>[
                           SizedBox(height: shortLandscape ? 7 : 14),
                           TweenAnimationBuilder<double>(
                             tween: Tween<double>(begin: .75, end: 1),
@@ -16793,9 +16821,7 @@ class GameResultOverlay extends StatelessWidget {
                                 Text(
                                   draw
                                       ? '${entryCoins ?? 0} COINS REFUNDED'
-                                      : (coinsEarned ?? 0) > 0
-                                          ? '+${coinsEarned ?? 0} COINS WON'
-                                          : '0 COINS WON',
+                                      : '+${coinsEarned ?? 0} COINS WON',
                                   style: const TextStyle(
                                     color: Color(0xFFFFE2A3),
                                     fontSize: 20,
