@@ -49,11 +49,38 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
   Future<void> _toggle() async {
     final value = detail;
     if (value == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(value.joined
+            ? 'Withdraw from tournament?'
+            : 'Confirm tournament registration'),
+        content: Text(value.joined
+            ? 'Your ${value.entryCoins} reserved play coins will be returned because registration is still open.'
+            : '${value.entryCoins} play coins will be reserved. Return when the event becomes LIVE, open your pairing, and play each round to advance.'),
+        actions: <Widget>[
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('CANCEL')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(value.joined ? 'WITHDRAW' : 'REGISTER NOW')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     setState(() => busy = true);
     try {
       await widget.api.tournament(widget.token, widget.id, !value.joined);
       if (mounted) setState(() => actionError = null);
       await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(value.joined
+              ? 'Tournament withdrawal complete. Entry coins returned.'
+              : 'Registration confirmed. We will place you in the bracket automatically.'),
+        ));
+      }
     } on SocialException catch (exception) {
       if (mounted) setState(() => actionError = exception.message);
     } finally {
@@ -126,8 +153,6 @@ class TournamentDetailContent extends StatelessWidget {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    _TournamentHero(detail: detail, theme: theme),
-                    const SizedBox(height: 16),
                     _RegistrationPanel(
                         detail: detail,
                         busy: busy,
@@ -135,9 +160,11 @@ class TournamentDetailContent extends StatelessWidget {
                         onToggle: onToggle,
                         onEarnCoins: onEarnCoins ?? onToggle),
                     const SizedBox(height: 16),
-                    _TournamentRewardVault(detail: detail, theme: theme),
-                    const SizedBox(height: 24),
+                    _TournamentHero(detail: detail, theme: theme),
+                    const SizedBox(height: 16),
                     _TournamentGuide(detail: detail),
+                    const SizedBox(height: 16),
+                    _TournamentRewardVault(detail: detail, theme: theme),
                     if (detail.champion != null) ...<Widget>[
                       const SizedBox(height: 16),
                       _ChampionCard(
