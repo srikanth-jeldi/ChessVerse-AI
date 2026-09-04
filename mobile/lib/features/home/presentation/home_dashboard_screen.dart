@@ -2164,15 +2164,14 @@ class _Avatar extends StatelessWidget {
               BoxShadow(color: Color(0x553C9FF0), blurRadius: 12)
             ]),
         child: ClipOval(
-            child: useSavedPlayerAvatar
-                ? Icon(playerIcons[avatarIndex], color: Colors.white)
-                : photoUrl?.trim().isNotEmpty == true
-                    ? Image.network(photoUrl!,
-                        fit: BoxFit.cover,
-                        webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
-                        errorBuilder: (_, __, ___) => const Icon(
-                            Icons.person_rounded,
-                            color: Colors.white))
+            child: photoUrl?.trim().isNotEmpty == true
+                ? Image.network(photoUrl!,
+                    fit: BoxFit.cover,
+                    webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.person_rounded, color: Colors.white))
+                : useSavedPlayerAvatar
+                    ? Icon(playerIcons[avatarIndex], color: Colors.white)
                     : const Icon(Icons.person_rounded, color: Colors.white)),
       ),
     );

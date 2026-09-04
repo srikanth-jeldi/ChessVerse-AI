@@ -73,6 +73,7 @@ services:
     volumes:
       - ./secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
       - attachments-data:/app/data/chat-attachments
+      - profile-photos-data:/app/data/profile-photos
     healthcheck:
       test:
         - CMD-SHELL
@@ -127,6 +128,7 @@ volumes:
   caddy-data:
   caddy-config:
   attachments-data:
+  profile-photos-data:
 
 networks:
   internal:

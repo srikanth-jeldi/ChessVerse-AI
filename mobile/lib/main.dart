@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:audioplayers/audioplayers.dart';
@@ -798,6 +799,7 @@ class _SplashGateState extends State<SplashGate> {
         isGuest: _isGuest,
         onSecureProgress: _isGuest ? () => _secureGuestProgress(context) : null,
         onDisplayNameChanged: _updateDisplayName,
+        onProfilePhotoChanged: _updateProfilePhoto,
         onShop: () async {
           final StoredAuthSession? session =
               await const AuthSessionStore().read();
@@ -1439,6 +1441,33 @@ class _SplashGateState extends State<SplashGate> {
     ));
     if (!mounted) return;
     setState(() => _playerName = savedName);
+  }
+
+  Future<String?> _updateProfilePhoto(Uint8List bytes, String filename) async {
+    final StoredAuthSession? session = await _sessionStore.read();
+    if (session == null) {
+      throw const AuthApiException('Sign in to update your profile photo.');
+    }
+    final player = await _authApi.uploadProfilePhoto(
+      session.token,
+      bytes,
+      filename,
+    );
+    final photoUrl = _profileValue(player['photoUrl']);
+    await _sessionStore.write(StoredAuthSession(
+      token: session.token,
+      expiresAt: session.expiresAt,
+      displayName: session.displayName,
+      username: session.username,
+      email: session.email,
+      photoUrl: photoUrl,
+      isGuest: session.isGuest,
+      refreshToken: session.refreshToken,
+      refreshExpiresAt: session.refreshExpiresAt,
+      sessionId: session.sessionId,
+    ));
+    if (mounted) setState(() => _photoUrl = photoUrl);
+    return photoUrl;
   }
 
   Future<void> _secureGuestProgress(BuildContext currentRouteContext) async {

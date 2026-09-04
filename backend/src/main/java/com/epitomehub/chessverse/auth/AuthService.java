@@ -275,7 +275,7 @@ class AuthService {
         OAuthIdentity existingIdentity =
                 oauthIdentities.findByProviderAndSubject("google", google.subject()).orElse(null);
         if (existingIdentity != null) {
-            existingIdentity.player.photoUrl = google.photoUrl();
+            applyProviderPhoto(existingIdentity.player, google.photoUrl());
             existingIdentity.player.updatedAt = Instant.now();
             players.save(existingIdentity.player);
             return createSession(existingIdentity.player);
@@ -296,7 +296,7 @@ class AuthService {
         player.verified = true;
         player.failedLoginAttempts = 0;
         player.lockedUntil = null;
-        player.photoUrl = google.photoUrl();
+        applyProviderPhoto(player, google.photoUrl());
         player.updatedAt = Instant.now();
         players.save(player);
         oauthIdentities.save(new OAuthIdentity("google", google.subject(), player));
@@ -321,7 +321,7 @@ class AuthService {
             // that sign-in instead of trapping the user on the guest-upgrade
             // page. The numbered guest remains attached to the installation,
             // so none of its progress is overwritten or deleted.
-            identity.player.photoUrl = google.photoUrl();
+            applyProviderPhoto(identity.player, google.photoUrl());
             identity.player.updatedAt = Instant.now();
             players.save(identity.player);
             return createSession(identity.player);
@@ -341,7 +341,7 @@ class AuthService {
         guest.username = availableGoogleUsername(email);
         guest.displayName = displayName.substring(0, Math.min(displayName.length(), 80));
         guest.email = email;
-        guest.photoUrl = google.photoUrl();
+        applyProviderPhoto(guest, google.photoUrl());
         guest.guestAccount = false;
         guest.verified = true;
         guest.failedLoginAttempts = 0;
@@ -389,7 +389,7 @@ class AuthService {
         OAuthIdentity existingIdentity =
                 oauthIdentities.findByProviderAndSubject(provider, subject).orElse(null);
         if (existingIdentity != null) {
-            existingIdentity.player.photoUrl = photoUrl;
+            applyProviderPhoto(existingIdentity.player, photoUrl);
             existingIdentity.player.updatedAt = Instant.now();
             players.save(existingIdentity.player);
             return createSession(existingIdentity.player);
@@ -412,7 +412,7 @@ class AuthService {
         player.verified = true;
         player.failedLoginAttempts = 0;
         player.lockedUntil = null;
-        player.photoUrl = photoUrl;
+        applyProviderPhoto(player, photoUrl);
         player.updatedAt = Instant.now();
         players.save(player);
         oauthIdentities.save(new OAuthIdentity(provider, subject, player));
@@ -439,7 +439,7 @@ class AuthService {
         OAuthIdentity identity =
                 oauthIdentities.findByProviderAndSubject(provider, subject).orElse(null);
         if (identity != null && !java.util.Objects.equals(identity.player.id, guest.id)) {
-            identity.player.photoUrl = photoUrl;
+            applyProviderPhoto(identity.player, photoUrl);
             identity.player.updatedAt = Instant.now();
             players.save(identity.player);
             return createSession(identity.player);
@@ -455,7 +455,7 @@ class AuthService {
         guest.username = availableGoogleUsername(email);
         guest.displayName = oauthDisplayName(rawDisplayName, email);
         guest.email = email;
-        guest.photoUrl = photoUrl;
+        applyProviderPhoto(guest, photoUrl);
         guest.guestAccount = false;
         guest.verified = true;
         guest.failedLoginAttempts = 0;
@@ -472,6 +472,15 @@ class AuthService {
                 ? email.substring(0, email.indexOf('@'))
                 : rawDisplayName.trim();
         return displayName.substring(0, Math.min(displayName.length(), 80));
+    }
+
+    private void applyProviderPhoto(PlayerAccount player, String providerPhotoUrl) {
+        if (player.photoUrl != null && player.photoUrl.contains("/api/auth/profile-photo/")) {
+            return;
+        }
+        if (providerPhotoUrl != null && !providerPhotoUrl.isBlank()) {
+            player.photoUrl = providerPhotoUrl.trim();
+        }
     }
 
     @Transactional
