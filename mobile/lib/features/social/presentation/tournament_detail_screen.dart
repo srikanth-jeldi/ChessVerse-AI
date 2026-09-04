@@ -103,6 +103,29 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
         backgroundColor: const Color(0xFF071421),
         title: Text(value?.name ?? 'World Chess Circuit'),
       ),
+      floatingActionButton: value?.status == 'OPEN'
+          ? FloatingActionButton.extended(
+              key: const ValueKey<String>('tournament-sticky-register'),
+              onPressed: busy ? null : _toggle,
+              backgroundColor: const Color(0xFFE0AD42),
+              foregroundColor: const Color(0xFF07111B),
+              icon: busy
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFF07111B),
+                      ),
+                    )
+                  : Icon(value!.joined
+                      ? Icons.verified_rounded
+                      : Icons.how_to_reg_rounded),
+              label: Text(
+                value!.joined ? 'REGISTRATION CONFIRMED' : 'REGISTER NOW',
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            )
+          : null,
       body: error != null
           ? _LoadError(message: error!, onRetry: _load)
           : value == null
