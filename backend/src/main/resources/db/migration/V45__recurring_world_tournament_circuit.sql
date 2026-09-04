@@ -3,7 +3,7 @@
 alter table chess_tournament drop constraint if exists chess_tournament_entry_coins_check;
 alter table chess_tournament
     add constraint chess_tournament_entry_coins_check
-    check (entry_coins in (100, 250, 500, 750, 1000)),
+    check (entry_coins in (100, 200, 250, 500, 750, 1000)),
     add column if not exists series_code varchar(32),
     add column if not exists occurrence_number integer not null default 1,
     add column if not exists cadence_days integer,
