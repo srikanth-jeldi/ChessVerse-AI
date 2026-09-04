@@ -371,6 +371,13 @@ class _CircuitCard extends StatelessWidget {
     return 'STARTS IN ${difference.inHours}H ${difference.inMinutes % 60}M';
   }
 
+  String get _actionLabel {
+    if (event.status == 'FINISHED') return 'VIEW RESULTS';
+    if (event.status == 'ACTIVE') return 'VIEW LIVE TOURNAMENT';
+    if (event.joined) return 'REGISTRATION CONFIRMED • VIEW';
+    return 'VIEW DETAILS & REGISTER';
+  }
+
   @override
   Widget build(BuildContext context) => Material(
         color: Colors.transparent,
@@ -465,16 +472,16 @@ class _CircuitCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: event.joined
                               ? const Color(0xFF126558)
-                              : const Color(0xFFE0AD42),
+                              : event.status == 'FINISHED'
+                                  ? const Color(0xFF183149)
+                                  : const Color(0xFFE0AD42),
                           borderRadius: BorderRadius.circular(13),
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          event.joined
-                              ? 'REGISTRATION CONFIRMED • VIEW'
-                              : 'VIEW DETAILS & REGISTER',
+                          _actionLabel,
                           style: TextStyle(
-                            color: event.joined
+                            color: event.joined || event.status == 'FINISHED'
                                 ? Colors.white
                                 : const Color(0xFF07111B),
                             fontWeight: FontWeight.w900,
