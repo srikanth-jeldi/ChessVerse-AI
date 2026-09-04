@@ -34,6 +34,7 @@ class HomeDashboardScreen extends StatelessWidget {
     this.onRankings = _noOnlineAction,
     this.onCommunity = _noOnlineAction,
     this.onNotifications = _noOnlineAction,
+    this.onCoins = _noOnlineAction,
     required this.onSettings,
     this.showPrimaryNavigation = true,
     super.key,
@@ -57,6 +58,7 @@ class HomeDashboardScreen extends StatelessWidget {
   final VoidCallback onRankings;
   final VoidCallback onCommunity;
   final VoidCallback onNotifications;
+  final VoidCallback onCoins;
   final VoidCallback onSettings;
   final bool showPrimaryNavigation;
 
@@ -87,6 +89,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 onRankings: onRankings,
                 onCommunity: onCommunity,
                 onNotifications: onNotifications,
+                onCoins: onCoins,
                 onSettings: onSettings,
                 showPrimaryNavigation: showPrimaryNavigation,
               );
@@ -110,6 +113,7 @@ class HomeDashboardScreen extends StatelessWidget {
               onRankings: onRankings,
               onCommunity: onCommunity,
               onNotifications: onNotifications,
+              onCoins: onCoins,
               onSettings: onSettings,
               showPrimaryNavigation: showPrimaryNavigation,
             );
@@ -140,6 +144,7 @@ class _MobileHome extends StatefulWidget {
     required this.onRankings,
     required this.onCommunity,
     required this.onNotifications,
+    required this.onCoins,
     required this.onSettings,
     required this.showPrimaryNavigation,
   });
@@ -162,6 +167,7 @@ class _MobileHome extends StatefulWidget {
   final VoidCallback onRankings;
   final VoidCallback onCommunity;
   final VoidCallback onNotifications;
+  final VoidCallback onCoins;
   final VoidCallback onSettings;
   final bool showPrimaryNavigation;
 
@@ -198,6 +204,7 @@ class _MobileHomeState extends State<_MobileHome> {
                       onProfile: widget.onProfile,
                       onSettings: widget.onSettings,
                       onNotifications: widget.onNotifications,
+                      onCoins: widget.onCoins,
                     ),
                     const SizedBox(height: 8),
                     const _BrandHero(compact: true),
@@ -389,6 +396,7 @@ class _WideHome extends StatefulWidget {
     required this.onRankings,
     required this.onCommunity,
     required this.onNotifications,
+    required this.onCoins,
     required this.onSettings,
     required this.showPrimaryNavigation,
   });
@@ -410,6 +418,7 @@ class _WideHome extends StatefulWidget {
   final VoidCallback onRankings;
   final VoidCallback onCommunity;
   final VoidCallback onNotifications;
+  final VoidCallback onCoins;
   final VoidCallback onSettings;
   final bool showPrimaryNavigation;
 
@@ -460,6 +469,7 @@ class _WideHomeState extends State<_WideHome> {
                           onProfile: widget.onProfile,
                           onSettings: widget.onSettings,
                           onNotifications: widget.onNotifications,
+                          onCoins: widget.onCoins,
                           wide: true,
                         ),
                         SizedBox(height: compact ? 10 : 16),
@@ -1339,6 +1349,7 @@ class _PlayerHeader extends StatelessWidget {
       required this.onProfile,
       required this.onSettings,
       required this.onNotifications,
+      required this.onCoins,
       this.wide = false});
   final String playerName;
   final String? profilePhotoUrl;
@@ -1346,6 +1357,7 @@ class _PlayerHeader extends StatelessWidget {
   final VoidCallback onProfile;
   final VoidCallback onSettings;
   final VoidCallback onNotifications;
+  final VoidCallback onCoins;
   final bool wide;
 
   @override
@@ -1413,6 +1425,7 @@ class _PlayerHeader extends StatelessWidget {
             child: CoinBalanceBadge(
               balance: coinBalance,
               compact: true,
+              onTap: onCoins,
             ),
           ),
         ],
@@ -1424,7 +1437,11 @@ class _PlayerHeader extends StatelessWidget {
         profile,
         const SizedBox(width: 12),
         identity,
-        CoinBalanceBadge(balance: coinBalance, expandedLabel: true),
+        CoinBalanceBadge(
+          balance: coinBalance,
+          expandedLabel: true,
+          onTap: onCoins,
+        ),
         const SizedBox(width: 6),
         notifications,
         const SizedBox(width: 6),

@@ -13,7 +13,9 @@ final class CommunityDtos {
                    int ratingRequirement, boolean joined) {}
     record TournamentDto(UUID id, String name, String description, int timeControlMinutes,
                          int players, int capacity, Instant startsAt, Instant endsAt,
-                         String status, boolean joined, int entryCoins, long prizePool) {}
+                         String status, boolean joined, int entryCoins, long prizePool,
+                         int cadenceDays, int minimumPlayers, String badgeCode,
+                         int championBonus, int runnerUpBonus, int participationBonus) {}
     record ConversationDto(UUID playerId, String displayName, String photoUrl,
                            boolean online, String lastMessage, Instant sentAt, int unread) {}
     record MessageDto(UUID id, UUID senderId, UUID recipientId, String body,

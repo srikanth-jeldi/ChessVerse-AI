@@ -134,11 +134,17 @@ class TournamentDetailContent extends StatelessWidget {
                         actionError: actionError,
                         onToggle: onToggle,
                         onEarnCoins: onEarnCoins ?? onToggle),
+                    const SizedBox(height: 16),
+                    _TournamentRewardVault(detail: detail, theme: theme),
                     const SizedBox(height: 24),
                     _TournamentGuide(detail: detail),
                     if (detail.champion != null) ...<Widget>[
                       const SizedBox(height: 16),
-                      _ChampionCard(player: detail.champion!, theme: theme),
+                      _ChampionCard(
+                        player: detail.champion!,
+                        runnerUp: detail.runnerUp,
+                        theme: theme,
+                      ),
                     ],
                     const SizedBox(height: 26),
                     const _SectionHeading(
@@ -164,6 +170,174 @@ class TournamentDetailContent extends StatelessWidget {
       ),
     );
   }
+}
+
+class _TournamentRewardVault extends StatelessWidget {
+  const _TournamentRewardVault({required this.detail, required this.theme});
+  final TournamentDetailDto detail;
+  final CircuitTheme theme;
+
+  String get cadence => switch (detail.cadenceDays) {
+        7 => 'WEEKLY',
+        14 => 'EVERY 2 WEEKS',
+        30 => 'MONTHLY',
+        60 => 'EVERY 2 MONTHS',
+        90 => 'SEASON FINAL',
+        _ => 'SPECIAL EVENT',
+      };
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: LinearGradient(colors: <Color>[
+            theme.colors.first.withValues(alpha: .96),
+            theme.colors[1].withValues(alpha: .74),
+            const Color(0xFF09131E),
+          ]),
+          border: Border.all(color: theme.colors.last),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: theme.colors.last.withValues(alpha: .18),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: LayoutBuilder(builder: (context, constraints) {
+          final bool compact = constraints.maxWidth < 650;
+          final Widget badge = TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: .84, end: 1),
+            duration: const Duration(milliseconds: 850),
+            curve: Curves.easeOutBack,
+            builder: (_, value, child) =>
+                Transform.scale(scale: value, child: child),
+            child: Container(
+              width: 126,
+              height: 126,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(colors: <Color>[
+                  theme.colors.last.withValues(alpha: .8),
+                  theme.colors[1],
+                  const Color(0xFF06101B),
+                ]),
+                border: Border.all(color: const Color(0xFFFFDC7B), width: 2),
+                boxShadow: const <BoxShadow>[
+                  BoxShadow(color: Color(0x66F2B94B), blurRadius: 28),
+                ],
+              ),
+              child: Stack(alignment: Alignment.center, children: <Widget>[
+                Icon(theme.icon, color: const Color(0xFFFFE5A1), size: 54),
+                const Positioned(
+                  right: 16,
+                  bottom: 16,
+                  child: Icon(Icons.workspace_premium_rounded,
+                      color: Color(0xFF5DE1C9), size: 30),
+                ),
+              ]),
+            ),
+          );
+          final Widget rewards = Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Row(children: <Widget>[
+                Expanded(
+                  child: Text('3D CITY REWARD VAULT • $cadence',
+                      style: const TextStyle(
+                          color: Color(0xFFFFD66F),
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: .8)),
+                ),
+                Text('${detail.minimumPlayers}+ PLAYERS',
+                    style: const TextStyle(
+                        color: Color(0xFF63DFC9),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900)),
+              ]),
+              const SizedBox(height: 7),
+              Text(
+                detail.badgeCode.replaceAll('_', ' '),
+                style:
+                    const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 14),
+              Wrap(spacing: 9, runSpacing: 9, children: <Widget>[
+                _RewardChip(
+                    icon: Icons.emoji_events_rounded,
+                    label: 'CHAMPION',
+                    coins: detail.championBonus,
+                    color: const Color(0xFFFFD66F)),
+                _RewardChip(
+                    icon: Icons.military_tech_rounded,
+                    label: 'RUNNER-UP',
+                    coins: detail.runnerUpBonus,
+                    color: const Color(0xFFC7D7E7)),
+                _RewardChip(
+                    icon: Icons.verified_rounded,
+                    label: 'PARTICIPATION',
+                    coins: detail.participationBonus,
+                    color: const Color(0xFF63DFC9)),
+              ]),
+              const SizedBox(height: 11),
+              Text(
+                'Champion also wins the live ${detail.prizePool}-coin entry pool. Every verified entrant receives the city badge.',
+                style: const TextStyle(color: Color(0xFFB9C9D7), height: 1.35),
+              ),
+            ],
+          );
+          if (compact) {
+            return Column(children: <Widget>[
+              badge,
+              const SizedBox(height: 16),
+              rewards,
+            ]);
+          }
+          return Row(children: <Widget>[
+            badge,
+            const SizedBox(width: 22),
+            Expanded(child: rewards),
+          ]);
+        }),
+      );
+}
+
+class _RewardChip extends StatelessWidget {
+  const _RewardChip(
+      {required this.icon,
+      required this.label,
+      required this.coins,
+      required this.color});
+  final IconData icon;
+  final String label;
+  final int coins;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xB2071623),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: color.withValues(alpha: .55)),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 7),
+          Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(label,
+                    style: const TextStyle(
+                        color: Color(0xFFAFC0CE),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800)),
+                Text('+$coins COINS',
+                    style:
+                        TextStyle(color: color, fontWeight: FontWeight.w900)),
+              ]),
+        ]),
+      );
 }
 
 class _TournamentHero extends StatelessWidget {
@@ -450,7 +624,7 @@ class _TournamentGuide extends StatelessWidget {
             );
           }),
           const SizedBox(height: 16),
-          _OfficialRules(minutes: detail.minutes),
+          _OfficialRules(detail: detail),
         ],
       );
 }
@@ -492,15 +666,16 @@ class _GuideStep extends StatelessWidget {
 }
 
 class _OfficialRules extends StatelessWidget {
-  const _OfficialRules({required this.minutes});
+  const _OfficialRules({required this.detail});
 
-  final int minutes;
+  final TournamentDetailDto detail;
 
   @override
   Widget build(BuildContext context) {
     final rules = <String>[
       'Single-elimination: one verified loss ends your tournament run.',
-      'Time control: $minutes minutes per player with no increment ($minutes+0).',
+      'Time control: ${detail.minutes} minutes per player with no increment (${detail.minutes}+0).',
+      'The event starts with at least ${detail.minimumPlayers} registered players.',
       'Pairings follow registration order; an odd player count can receive a bye.',
       'A draw creates a fresh replay between the same two players.',
       'Your entry is charged once only. Draw replays never charge again.',
@@ -753,8 +928,10 @@ class _PlayerRow extends StatelessWidget {
 }
 
 class _ChampionCard extends StatelessWidget {
-  const _ChampionCard({required this.player, required this.theme});
+  const _ChampionCard(
+      {required this.player, required this.runnerUp, required this.theme});
   final TournamentPlayerDto player;
+  final TournamentPlayerDto? runnerUp;
   final CircuitTheme theme;
   @override
   Widget build(BuildContext context) => Container(
@@ -771,19 +948,27 @@ class _ChampionCard extends StatelessWidget {
           const Icon(Icons.emoji_events_rounded,
               size: 52, color: Color(0xFFFFD66F)),
           const SizedBox(width: 15),
-          Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                const Text('CIRCUIT CHAMPION',
-                    style: TextStyle(
-                        color: Color(0xFFFFD66F),
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1)),
-                const SizedBox(height: 5),
-                Text(player.name,
-                    style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.w900)),
-              ]),
+          Expanded(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  const Text('CIRCUIT CHAMPION',
+                      style: TextStyle(
+                          color: Color(0xFFFFD66F),
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1)),
+                  const SizedBox(height: 5),
+                  Text(player.name,
+                      style: const TextStyle(
+                          fontSize: 22, fontWeight: FontWeight.w900)),
+                  if (runnerUp != null) ...<Widget>[
+                    const SizedBox(height: 5),
+                    Text('Runner-up • ${runnerUp!.name}',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Color(0xFFC7D7E7))),
+                  ],
+                ]),
+          ),
         ]),
       );
 }

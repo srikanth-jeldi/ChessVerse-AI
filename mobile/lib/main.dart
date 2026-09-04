@@ -556,6 +556,13 @@ class _SplashGateState extends State<SplashGate> {
     }
   }
 
+  Future<void> _openRewardsCenter(BuildContext context) async {
+    final StoredAuthSession? session = await const AuthSessionStore().read();
+    if (!context.mounted || session == null) return;
+    await _push(context, CosmeticShopScreen(token: session.token));
+    await _refreshCoinBalance(session.token);
+  }
+
   void _startNotificationPolling(String token) {
     _stopNotificationPolling();
     _notificationPollingToken = token;
@@ -751,6 +758,7 @@ class _SplashGateState extends State<SplashGate> {
         ),
         onCommunity: () => setState(() => _primaryDestination = 5),
         onNotifications: () => _openNotificationCenter(context),
+        onCoins: () => _openRewardsCenter(context),
         onLearnChess: () => setState(() => _primaryDestination = 3),
         onProfile: () => setState(() => _primaryDestination = 4),
         onSettings: () => _push(
@@ -846,6 +854,7 @@ class _SplashGateState extends State<SplashGate> {
                     balance: _coinBalance,
                     expandedLabel: useDesktopSidebar,
                     compact: !useDesktopSidebar,
+                    onTap: () => _openRewardsCenter(context),
                   ),
                 ),
               ),

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/local_game_archive.dart';
+import '../../../core/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -30,7 +33,9 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  static const String _useAccountPhotoPreference = 'useAccountProfilePhoto';
   late String _displayName;
+  bool _useAccountPhoto = true;
 
   @override
   void initState() {
@@ -38,6 +43,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _displayName = widget.playerName.trim().isEmpty
         ? 'ChessVerseAI Player'
         : widget.playerName.trim();
+    _loadPhotoPreference();
+  }
+
+  Future<void> _loadPhotoPreference() async {
+    try {
+      final bool value = await const AppPreferences().readBool(
+        _useAccountPhotoPreference,
+        fallback: true,
+      );
+      if (mounted) setState(() => _useAccountPhoto = value);
+    } on Object {
+      // Account-provider photo remains the safe default when local preference
+      // storage is unavailable.
+    }
   }
 
   @override
@@ -84,6 +103,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             country: LocalGameArchive.profileCountry,
             level: LocalGameArchive.profileLevel,
             avatar: LocalGameArchive.profileAvatar,
+            accountPhotoUrl: _useAccountPhoto ? widget.profilePhotoUrl : null,
             isGuest: widget.isGuest,
             onEdit: _editProfile,
           ),
@@ -307,6 +327,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         initialCountry: LocalGameArchive.profileCountry,
         initialLevel: LocalGameArchive.profileLevel,
         initialAvatar: LocalGameArchive.profileAvatar,
+        accountPhotoUrl: widget.profilePhotoUrl,
+        initialUseAccountPhoto: _useAccountPhoto,
       ),
     );
     if (value == null || !mounted) return;
@@ -319,7 +341,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         avatar: value.avatar,
       );
       if (!mounted) return;
-      setState(() => _displayName = value.displayName);
+      setState(() {
+        _displayName = value.displayName;
+        _useAccountPhoto = value.useAccountPhoto;
+      });
+      unawaited(_savePhotoPreference(value.useAccountPhoto));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Player profile saved')),
       );
@@ -328,6 +354,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error.toString())),
       );
+    }
+  }
+
+  Future<void> _savePhotoPreference(bool value) async {
+    try {
+      await const AppPreferences().writeBool(
+        _useAccountPhotoPreference,
+        value,
+      );
+    } on Object {
+      // Profile edits remain usable if secure storage is temporarily
+      // unavailable. The selected account photo is still active this session.
     }
   }
 }
@@ -435,6 +473,7 @@ class _ProfileHero extends StatelessWidget {
     required this.country,
     required this.level,
     required this.avatar,
+    this.accountPhotoUrl,
     required this.isGuest,
     required this.onEdit,
   });
@@ -444,6 +483,7 @@ class _ProfileHero extends StatelessWidget {
   final String country;
   final int level;
   final int avatar;
+  final String? accountPhotoUrl;
   final bool isGuest;
   final VoidCallback onEdit;
 
@@ -475,8 +515,9 @@ class _ProfileHero extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              _Avatar(
-                index: avatar,
+              _ProfilePicture(
+                accountPhotoUrl: accountPhotoUrl,
+                avatar: avatar,
                 size: 76,
               ),
               const SizedBox(width: 15),
@@ -546,6 +587,8 @@ class _ProfileEditorSheet extends StatefulWidget {
     required this.initialCountry,
     required this.initialLevel,
     required this.initialAvatar,
+    this.accountPhotoUrl,
+    required this.initialUseAccountPhoto,
   });
 
   final String initialDisplayName;
@@ -553,6 +596,8 @@ class _ProfileEditorSheet extends StatefulWidget {
   final String initialCountry;
   final int initialLevel;
   final int initialAvatar;
+  final String? accountPhotoUrl;
+  final bool initialUseAccountPhoto;
 
   @override
   State<_ProfileEditorSheet> createState() => _ProfileEditorSheetState();
@@ -760,6 +805,7 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
   late String _country;
   late int _level;
   late int _avatar;
+  late bool _useAccountPhoto;
 
   @override
   void initState() {
@@ -770,6 +816,8 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
         : _countries.first;
     _level = widget.initialLevel;
     _avatar = widget.initialAvatar;
+    _useAccountPhoto = widget.initialUseAccountPhoto &&
+        widget.accountPhotoUrl?.trim().isNotEmpty == true;
   }
 
   @override
@@ -825,29 +873,61 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
                 height: 74,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount: 6,
+                  itemCount:
+                      widget.accountPhotoUrl?.trim().isNotEmpty == true ? 7 : 6,
                   separatorBuilder: (_, __) => const SizedBox(width: 10),
-                  itemBuilder: (BuildContext context, int index) => InkWell(
-                    key: ValueKey<String>('profile-avatar-$index'),
-                    borderRadius: BorderRadius.circular(99),
-                    onTap: () => setState(() => _avatar = index),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: _avatar == index
-                              ? AppColors.accentGold
-                              : Colors.transparent,
-                          width: 3,
+                  itemBuilder: (BuildContext context, int itemIndex) {
+                    final bool hasAccountPhoto =
+                        widget.accountPhotoUrl?.trim().isNotEmpty == true;
+                    final bool accountPhoto = hasAccountPhoto && itemIndex == 0;
+                    final int index =
+                        hasAccountPhoto ? itemIndex - 1 : itemIndex;
+                    final bool selected = accountPhoto
+                        ? _useAccountPhoto
+                        : !_useAccountPhoto && _avatar == index;
+                    return InkWell(
+                      key: ValueKey<String>(accountPhoto
+                          ? 'profile-account-photo'
+                          : 'profile-avatar-$index'),
+                      borderRadius: BorderRadius.circular(99),
+                      onTap: () => setState(() {
+                        _useAccountPhoto = accountPhoto;
+                        if (!accountPhoto) _avatar = index;
+                      }),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: selected
+                                ? AppColors.accentGold
+                                : Colors.transparent,
+                            width: 3,
+                          ),
                         ),
+                        child: accountPhoto
+                            ? _ProfilePicture(
+                                accountPhotoUrl: widget.accountPhotoUrl,
+                                avatar: _avatar,
+                                size: 62,
+                              )
+                            : _Avatar(index: index, size: 62),
                       ),
-                      child: _Avatar(index: index, size: 62),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
+              if (widget.accountPhotoUrl?.trim().isNotEmpty ==
+                  true) ...<Widget>[
+                const SizedBox(height: 8),
+                Text(
+                  _useAccountPhoto
+                      ? 'Using your Google or Facebook account photo.'
+                      : 'Using a ChessVerse avatar. Tap the first photo to restore your account photo.',
+                  style: const TextStyle(color: Color(0xFF91A8B4)),
+                ),
+              ],
               const SizedBox(height: 18),
               TextField(
                 key: const ValueKey<String>('profile-display-name-field'),
@@ -946,6 +1026,7 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
                       country: _country,
                       level: _level,
                       avatar: _avatar,
+                      useAccountPhoto: _useAccountPhoto,
                     ),
                   );
                 },
@@ -969,12 +1050,41 @@ class _EditableProfile {
     required this.country,
     required this.level,
     required this.avatar,
+    required this.useAccountPhoto,
   });
 
   final String displayName;
   final String country;
   final int level;
   final int avatar;
+  final bool useAccountPhoto;
+}
+
+class _ProfilePicture extends StatelessWidget {
+  const _ProfilePicture({
+    required this.accountPhotoUrl,
+    required this.avatar,
+    required this.size,
+  });
+
+  final String? accountPhotoUrl;
+  final int avatar;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final String? url = accountPhotoUrl?.trim();
+    if (url == null || url.isEmpty) return _Avatar(index: avatar, size: size);
+    return ClipOval(
+      child: Image.network(
+        url,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _Avatar(index: avatar, size: size),
+      ),
+    );
+  }
 }
 
 class _Avatar extends StatelessWidget {

@@ -417,9 +417,9 @@ class _CircuitCard extends StatelessWidget {
                                 event.joined ? Icons.check_rounded : theme.icon,
                             label: event.joined ? 'REGISTERED' : _timing),
                         const Spacer(),
-                        if (featured)
-                          const _Pill(
-                              icon: Icons.star_rounded, label: 'FEATURED'),
+                        _Pill(
+                            icon: Icons.monetization_on_rounded,
+                            label: '${event.entryCoins} ENTRY'),
                       ]),
                       const Spacer(),
                       Icon(theme.icon,

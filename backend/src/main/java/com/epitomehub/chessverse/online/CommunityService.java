@@ -64,7 +64,9 @@ class CommunityService {
                 rs.getString("description"),rs.getInt("time_control_minutes"),rs.getInt("players"),
                 rs.getInt("capacity"),rs.getTimestamp("starts_at").toInstant(),rs.getTimestamp("ends_at").toInstant(),
                 rs.getString("status"),rs.getBoolean("joined"),rs.getInt("entry_coins"),
-                rs.getLong("prize_pool")), player.id());
+                rs.getLong("prize_pool"),rs.getInt("cadence_days"),rs.getInt("minimum_players"),
+                rs.getString("badge_code"),rs.getInt("champion_bonus"),rs.getInt("runner_up_bonus"),
+                rs.getInt("participation_bonus")), player.id());
         List<CommunityDtos.ConversationDto> conversations = jdbc.query("""
                 select p.id,p.display_name,p.photo_url,
                 (select d.body from direct_message d

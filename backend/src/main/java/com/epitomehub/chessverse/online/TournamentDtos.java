@@ -13,5 +13,7 @@ final class TournamentDtos {
     record DetailDto(UUID id, String name, String description, int timeControlMinutes,
             int players, int capacity, Instant startsAt, Instant endsAt, String status,
             boolean joined, int entryCoins, long prizePool, int currentRound,
-            PlayerDto champion, List<RoundDto> rounds) {}
+            int cadenceDays, int minimumPlayers, String badgeCode, int championBonus,
+            int runnerUpBonus, int participationBonus, PlayerDto champion,
+            PlayerDto runnerUp, List<RoundDto> rounds) {}
 }
