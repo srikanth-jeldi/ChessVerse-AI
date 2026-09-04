@@ -229,32 +229,36 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                   shadowColor: Colors.black87,
                   centerTitle: false,
                   automaticallyImplyLeading: false,
-                  title: const Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        'PUZZLE ACADEMY',
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 21,
-                          letterSpacing: .8,
-                          fontWeight: FontWeight.w900,
+                  title: SizedBox(
+                    width: MediaQuery.sizeOf(context).width - 150,
+                    child: const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'PUZZLE ACADEMY',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 19,
+                            letterSpacing: .8,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Train tactics and sharpen pattern recognition',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Color(0xFF9FB0C1),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
+                        SizedBox(height: 2),
+                        Text(
+                          'Train tactics and sharpen pattern recognition',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Color(0xFF9FB0C1),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 SliverPadding(
