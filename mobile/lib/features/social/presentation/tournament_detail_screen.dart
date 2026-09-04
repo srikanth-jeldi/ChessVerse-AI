@@ -513,9 +513,11 @@ class _RegistrationPanel extends StatelessWidget {
                 const SizedBox(width: 9),
                 Flexible(
                     child: Text(
-                        detail.joined
-                            ? 'REGISTRATION CONFIRMED'
-                            : 'TOURNAMENT REGISTRATION',
+                        detail.status == 'FINISHED'
+                            ? 'TOURNAMENT FINISHED'
+                            : detail.joined
+                                ? 'REGISTRATION CONFIRMED'
+                                : 'TOURNAMENT REGISTRATION',
                         style: const TextStyle(
                             fontWeight: FontWeight.w900, letterSpacing: .5))),
               ]),
@@ -538,6 +540,13 @@ class _RegistrationPanel extends StatelessWidget {
                   '${detail.entryCoins} play coins reserved on join • ${detail.prizePool} current prize pool',
                   style: const TextStyle(
                       color: Color(0xFFFFD66F), fontWeight: FontWeight.w700)),
+              if (detail.status == 'FINISHED') ...<Widget>[
+                const SizedBox(height: 8),
+                const Text(
+                  'Registration is closed because this tournament is complete. Return to the circuit and choose a tournament marked Registration Open.',
+                  style: TextStyle(color: Color(0xFFC1CED9), height: 1.35),
+                ),
+              ],
               if (actionError != null) ...<Widget>[
                 const SizedBox(height: 10),
                 Text(actionError!,
