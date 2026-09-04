@@ -11,7 +11,7 @@ void main() {
     expect(paths.toSet(), hasLength(6));
     expect(ChessSoundService.assetForPiece('n'), 'audio/piece_knight.ogg');
     expect(ChessSoundService.assetForPiece('b'), 'audio/piece_bishop.ogg');
-    expect(ChessSoundService.assetForPiece('q'), 'audio/piece_queen.ogg');
+    expect(ChessSoundService.assetForPiece('q'), 'audio/piece_queen.wav');
     expect(ChessSoundService.assetForPiece('k'), 'audio/piece_king.wav');
   });
 
