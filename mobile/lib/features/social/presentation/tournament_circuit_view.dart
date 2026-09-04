@@ -18,8 +18,47 @@ class TournamentCircuitView extends StatelessWidget {
   final ValueChanged<TournamentDto> onOpen;
   final Future<void> Function() onRefresh;
 
+  List<TournamentDto> get _currentTournaments {
+    final bySeries = <String, TournamentDto>{};
+    for (final event in tournaments) {
+      final key = event.name.trim().toLowerCase();
+      final current = bySeries[key];
+      if (current == null || _prefer(event, current)) {
+        bySeries[key] = event;
+      }
+    }
+    return bySeries.values.toList(growable: false);
+  }
+
+  bool _prefer(TournamentDto candidate, TournamentDto current) {
+    int priority(TournamentDto event) {
+      if (event.joined) return 40;
+      return switch (event.status) {
+        'ACTIVE' => 30,
+        'OPEN' => 20,
+        'FINISHED' => 10,
+        _ => 0,
+      };
+    }
+
+    final candidatePriority = priority(candidate);
+    final currentPriority = priority(current);
+    if (candidatePriority != currentPriority) {
+      return candidatePriority > currentPriority;
+    }
+    final candidateStart = candidate.startsAt;
+    final currentStart = current.startsAt;
+    if (candidateStart == null) return false;
+    if (currentStart == null) return true;
+    if (candidate.status == 'FINISHED') {
+      return candidateStart.isAfter(currentStart);
+    }
+    return candidateStart.isBefore(currentStart);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final events = _currentTournaments;
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: CustomScrollView(
@@ -27,7 +66,7 @@ class TournamentCircuitView extends StatelessWidget {
           SliverToBoxAdapter(
               child: _CircuitHero(
                   score: fairPlayScore, circuitPoints: circuitPoints)),
-          if (tournaments.isEmpty)
+          if (events.isEmpty)
             const SliverFillRemaining(
                 hasScrollBody: false, child: _EmptyCircuit())
           else ...<Widget>[
@@ -53,8 +92,7 @@ class TournamentCircuitView extends StatelessWidget {
                   ),
                   _Pill(
                       icon: Icons.workspace_premium_rounded,
-                      label:
-                          '${tournaments.where((e) => e.joined).length} joined'),
+                      label: '${events.where((e) => e.joined).length} joined'),
                 ]),
               ),
             ),
@@ -73,7 +111,7 @@ class TournamentCircuitView extends StatelessWidget {
                 return SliverGrid(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      final event = tournaments[index];
+                      final event = events[index];
                       return _CircuitCard(
                         event: event,
                         theme: CircuitTheme.forTournament(event, index),
@@ -81,7 +119,7 @@ class TournamentCircuitView extends StatelessWidget {
                         onTap: () => onOpen(event),
                       );
                     },
-                    childCount: tournaments.length,
+                    childCount: events.length,
                   ),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: columns,
