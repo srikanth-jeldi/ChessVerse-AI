@@ -87,7 +87,7 @@ class TournamentCircuitView extends StatelessWidget {
                     crossAxisCount: columns,
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
-                    childAspectRatio: columns == 1 ? 1.16 : .92,
+                    childAspectRatio: columns == 1 ? .94 : .82,
                   ),
                 );
               }),
@@ -411,16 +411,20 @@ class _CircuitCard extends StatelessWidget {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Row(children: <Widget>[
-                        _Pill(
-                            icon:
-                                event.joined ? Icons.check_rounded : theme.icon,
-                            label: event.joined ? 'REGISTERED' : _timing),
-                        const Spacer(),
-                        _Pill(
-                            icon: Icons.monetization_on_rounded,
-                            label: '${event.entryCoins} ENTRY'),
-                      ]),
+                      Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.spaceBetween,
+                          children: <Widget>[
+                            _Pill(
+                                icon: event.joined
+                                    ? Icons.check_rounded
+                                    : theme.icon,
+                                label: event.joined ? 'REGISTERED' : _timing),
+                            _Pill(
+                                icon: Icons.monetization_on_rounded,
+                                label: 'ENTRY FEE ${event.entryCoins}'),
+                          ]),
                       const Spacer(),
                       Icon(theme.icon,
                           color: const Color(0xFFFFD570), size: 42),
@@ -454,6 +458,30 @@ class _CircuitCard extends StatelessWidget {
                         const Icon(Icons.arrow_forward_rounded,
                             color: Color(0xFFFFD570)),
                       ]),
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        decoration: BoxDecoration(
+                          color: event.joined
+                              ? const Color(0xFF126558)
+                              : const Color(0xFFE0AD42),
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          event.joined
+                              ? 'REGISTRATION CONFIRMED • VIEW'
+                              : 'VIEW DETAILS & REGISTER',
+                          style: TextStyle(
+                            color: event.joined
+                                ? Colors.white
+                                : const Color(0xFF07111B),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
                     ]),
               ),
             ]),
