@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -106,6 +107,33 @@ class AuthApi {
       throw const AuthApiException(_connectionMessage);
     }
     return _decode(response);
+  }
+
+  Future<Map<String, dynamic>> uploadProfilePhoto(
+    String token,
+    Uint8List bytes,
+    String filename,
+  ) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${AppConfig.apiBaseUrl}/api/auth/profile-photo'),
+      )
+        ..headers['Authorization'] = 'Bearer $token'
+        ..files.add(http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: filename,
+        ));
+      final streamed =
+          await request.send().timeout(const Duration(seconds: 25));
+      return _decode(await http.Response.fromStream(streamed));
+    } on TimeoutException {
+      throw const AuthApiException('The photo upload took too long.');
+    } catch (error) {
+      if (error is AuthApiException) rethrow;
+      throw const AuthApiException(_connectionMessage);
+    }
   }
 
   Future<Map<String, dynamic>> upgradeGuestWithGoogle(

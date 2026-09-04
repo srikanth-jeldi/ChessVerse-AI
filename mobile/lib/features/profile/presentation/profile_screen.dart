@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/local_game_archive.dart';
@@ -14,6 +16,7 @@ class ProfileScreen extends StatefulWidget {
     this.profilePhotoUrl,
     this.isGuest = true,
     this.onDisplayNameChanged,
+    this.onProfilePhotoChanged,
     this.onSecureProgress,
     this.onShop,
     super.key,
@@ -25,6 +28,8 @@ class ProfileScreen extends StatefulWidget {
   final String? profilePhotoUrl;
   final bool isGuest;
   final Future<void> Function(String displayName)? onDisplayNameChanged;
+  final Future<String?> Function(Uint8List bytes, String filename)?
+      onProfilePhotoChanged;
   final Future<void> Function()? onSecureProgress;
   final VoidCallback? onShop;
 
@@ -35,7 +40,9 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   static const String _useAccountPhotoPreference = 'useAccountProfilePhoto';
   late String _displayName;
+  late String? _profilePhotoUrl;
   bool _useAccountPhoto = true;
+  bool _uploadingPhoto = false;
 
   @override
   void initState() {
@@ -43,6 +50,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _displayName = widget.playerName.trim().isEmpty
         ? 'ChessVerseAI Player'
         : widget.playerName.trim();
+    _profilePhotoUrl = widget.profilePhotoUrl;
     _loadPhotoPreference();
   }
 
@@ -103,7 +111,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             country: LocalGameArchive.profileCountry,
             level: LocalGameArchive.profileLevel,
             avatar: LocalGameArchive.profileAvatar,
-            accountPhotoUrl: _useAccountPhoto ? widget.profilePhotoUrl : null,
+            accountPhotoUrl: _useAccountPhoto ? _profilePhotoUrl : null,
             isGuest: widget.isGuest,
             onEdit: _editProfile,
           ),
@@ -202,6 +210,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   style:
                       const TextStyle(color: Color(0xFFA9BBC4), height: 1.45),
                 ),
+                if (!widget.isGuest &&
+                    widget.onProfilePhotoChanged != null) ...<Widget>[
+                  const SizedBox(height: 14),
+                  OutlinedButton.icon(
+                    key: const ValueKey<String>('change-profile-photo'),
+                    onPressed: _uploadingPhoto ? null : _changeProfilePhoto,
+                    icon: _uploadingPhoto
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.add_a_photo_rounded),
+                    label: Text(_uploadingPhoto
+                        ? 'UPLOADING PHOTO…'
+                        : 'CHANGE PROFILE PHOTO'),
+                  ),
+                ],
                 if (widget.isGuest &&
                     widget.onSecureProgress != null) ...<Widget>[
                   const SizedBox(height: 14),
@@ -315,6 +340,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
 
+  Future<void> _changeProfilePhoto() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const <String>['jpg', 'jpeg', 'png', 'webp'],
+      withData: true,
+    );
+    final file = result?.files.singleOrNull;
+    final bytes = file?.bytes;
+    if (file == null || bytes == null || !mounted) return;
+    if (bytes.length > 5 * 1024 * 1024) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Choose an image up to 5 MB.')),
+      );
+      return;
+    }
+    setState(() => _uploadingPhoto = true);
+    try {
+      final url = await widget.onProfilePhotoChanged!(bytes, file.name);
+      if (!mounted) return;
+      setState(() {
+        _profilePhotoUrl = url ?? _profilePhotoUrl;
+        _useAccountPhoto = true;
+      });
+      await _savePhotoPreference(true);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile photo updated everywhere.')),
+      );
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
+  }
+
   Future<void> _editProfile() async {
     final _EditableProfile? value =
         await showModalBottomSheet<_EditableProfile>(
@@ -327,7 +390,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         initialCountry: LocalGameArchive.profileCountry,
         initialLevel: LocalGameArchive.profileLevel,
         initialAvatar: LocalGameArchive.profileAvatar,
-        accountPhotoUrl: widget.profilePhotoUrl,
+        accountPhotoUrl: _profilePhotoUrl,
         initialUseAccountPhoto: _useAccountPhoto,
       ),
     );

@@ -13,6 +13,12 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.Resource;
+import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
+import org.springframework.http.ResponseEntity;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,9 +26,11 @@ import java.util.UUID;
 @RequestMapping("/api/auth")
 class AuthController {
     private final AuthService authService;
+    private final ProfilePhotoService profilePhotos;
 
-    AuthController(AuthService authService) {
+    AuthController(AuthService authService, ProfilePhotoService profilePhotos) {
         this.authService = authService;
+        this.profilePhotos = profilePhotos;
     }
 
     @PostMapping("/register")
@@ -102,6 +110,21 @@ class AuthController {
             @RequestHeader(name = "Authorization", required = false) String authorization,
             @Valid @RequestBody UpdateProfileRequest request) {
         return authService.updateProfile(bearerToken(authorization), request);
+    }
+
+    @PostMapping(value = "/profile-photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    PlayerResponse uploadProfilePhoto(
+            @RequestHeader(name = "Authorization", required = false) String authorization,
+            @RequestPart("file") MultipartFile file) {
+        return profilePhotos.upload(authorization, file);
+    }
+
+    @GetMapping("/profile-photo/{playerId}")
+    ResponseEntity<Resource> profilePhoto(@PathVariable UUID playerId) {
+        Resource resource = profilePhotos.load(playerId);
+        return ResponseEntity.ok()
+                .contentType(MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM))
+                .header("Cache-Control", "public, max-age=300").body(resource);
     }
 
     @PostMapping("/logout")
