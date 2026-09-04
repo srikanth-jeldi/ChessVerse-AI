@@ -1,7 +1,7 @@
 -- ChessVerseAI uses one earned-only virtual currency. Existing diamond-priced
 -- cosmetics are converted to coins so every displayed item has an attainable
 -- in-game earning path.
-update cosmetic_catalog
+update cosmetic_item
 set price_currency = 'COINS',
     price_amount = case slug
         when 'neon-arena' then 1500
