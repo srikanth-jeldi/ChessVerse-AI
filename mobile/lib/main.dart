@@ -3252,20 +3252,25 @@ class _PlayDestination extends StatelessWidget {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         toolbarHeight: wide ? 96 : null,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text('PLAY',
-                style:
-                    TextStyle(letterSpacing: 1.8, fontWeight: FontWeight.w900)),
-            Text('Choose your battle mode',
-                style: TextStyle(
-                    color: Color(0xFFAEC0D1),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w400)),
-          ],
+        title: SizedBox(
+          width: wide ? null : MediaQuery.sizeOf(context).width - 150,
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text('PLAY',
+                  style: TextStyle(
+                      letterSpacing: 1.8, fontWeight: FontWeight.w900)),
+              Text('Choose your battle mode',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      color: Color(0xFFAEC0D1),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400)),
+            ],
+          ),
         ),
-        centerTitle: !wide,
+        centerTitle: false,
       ),
       body: Center(
         child: SingleChildScrollView(

@@ -1424,7 +1424,7 @@ class _PlayerHeader extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: CoinBalanceBadge(
               balance: coinBalance,
-              expandedLabel: true,
+              compact: true,
               onTap: onCoins,
             ),
           ),
