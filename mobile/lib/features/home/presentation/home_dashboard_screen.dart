@@ -1693,10 +1693,10 @@ class _CarouselHero extends StatelessWidget {
             ),
             if (data.foregroundAsset != null)
               Positioned(
-                right: wide ? 84 : 34,
+                right: wide ? 270 : 92,
                 top: wide ? 25 : 38,
                 bottom: wide ? 20 : 34,
-                width: wide ? 225 : 130,
+                width: wide ? 205 : 112,
                 child: IgnorePointer(
                   child: Image.asset(
                     data.foregroundAsset!,
