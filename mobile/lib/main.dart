@@ -3423,8 +3423,11 @@ class _PlayModeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool desktopCard = MediaQuery.sizeOf(context).width >= 900;
-    final Alignment imageAlignment =
-        title == 'Play Online' ? const Alignment(0.5, 0) : Alignment.center;
+    final Alignment imageAlignment = title == 'Play Online'
+        ? const Alignment(0.5, 0)
+        : title == 'Tournaments'
+            ? const Alignment(0.72, 0)
+            : Alignment.center;
     return Card(
       color: const Color(0xFF071827),
       shape: RoundedRectangleBorder(
