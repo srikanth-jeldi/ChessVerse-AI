@@ -4,6 +4,8 @@ import '../data/community_api.dart';
 import '../../shop/presentation/cosmetic_shop_screen.dart';
 import '../data/social_api.dart';
 import 'tournament_circuit_view.dart';
+import '../../../core/local_game_archive.dart';
+import '../domain/tournament_readiness.dart';
 
 class TournamentDetailScreen extends StatefulWidget {
   const TournamentDetailScreen(
@@ -185,6 +187,12 @@ class TournamentDetailContent extends StatelessWidget {
                     const SizedBox(height: 16),
                     _TournamentHero(detail: detail, theme: theme),
                     const SizedBox(height: 16),
+                    _TournamentPreparation(
+                      readiness: TournamentReadiness.fromGames(
+                        LocalGameArchive.games,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     _TournamentGuide(detail: detail),
                     const SizedBox(height: 16),
                     _TournamentRewardVault(detail: detail, theme: theme),
@@ -220,6 +228,124 @@ class TournamentDetailContent extends StatelessWidget {
       ),
     );
   }
+}
+
+class _TournamentPreparation extends StatelessWidget {
+  const _TournamentPreparation({required this.readiness});
+  final TournamentReadiness readiness;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        key: const ValueKey<String>('tournament-ai-preparation'),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          gradient: const LinearGradient(
+            colors: <Color>[Color(0xFF092B36), Color(0xFF081725)],
+          ),
+          border: Border.all(color: const Color(0xFF38BFAE)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(children: <Widget>[
+              const Icon(Icons.psychology_alt_rounded,
+                  color: Color(0xFF63E1CD), size: 30),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text('AI TOURNAMENT PREPARATION',
+                        style: TextStyle(
+                            color: Color(0xFFFFD66F),
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: .8)),
+                    Text('Evidence from your latest tracked games',
+                        style:
+                            TextStyle(color: Color(0xFF9FB3C2), fontSize: 12)),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0A2030),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF4ED7C2)),
+                ),
+                child: Text(
+                  readiness.score == null ? '—' : '${readiness.score}%',
+                  style: const TextStyle(
+                      color: Color(0xFF64E4D1),
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 12),
+            Text(readiness.headline,
+                style: const TextStyle(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 5),
+            Text('${readiness.confidence} • ${readiness.gamesAnalysed} games',
+                style: const TextStyle(color: Color(0xFF72B9FF), fontSize: 11)),
+            const SizedBox(height: 14),
+            _PreparationItem(
+                icon: Icons.auto_stories_rounded,
+                title: 'OPENING CHECK',
+                body: readiness.openingInsight),
+            _PreparationItem(
+                icon: Icons.timer_outlined,
+                title: 'CLOCK PLAN',
+                body: readiness.timeAdvice),
+            _PreparationItem(
+                icon: Icons.school_rounded,
+                title: 'RECOMMENDED LESSON',
+                body: readiness.recommendedLesson),
+            _PreparationItem(
+                icon: Icons.speed_rounded,
+                title: 'TIME CONTROL',
+                body: readiness.timeControlAdvice),
+          ],
+        ),
+      );
+}
+
+class _PreparationItem extends StatelessWidget {
+  const _PreparationItem({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+  final IconData icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 11),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(icon, color: const Color(0xFF58D8C3), size: 21),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(title,
+                    style: const TextStyle(
+                        color: Color(0xFFFFD66F),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900)),
+                const SizedBox(height: 2),
+                Text(body,
+                    style: const TextStyle(
+                        color: Color(0xFFC1CDD6), fontSize: 13, height: 1.3)),
+              ],
+            ),
+          ),
+        ]),
+      );
 }
 
 class _TournamentRewardVault extends StatelessWidget {
