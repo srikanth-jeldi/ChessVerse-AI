@@ -1531,7 +1531,6 @@ class _HomeHeroData {
     required this.buttonLabel,
     required this.onTap,
     this.asset,
-    this.foregroundAsset,
     this.statusLabel,
     this.countdownTarget,
   });
@@ -1541,7 +1540,6 @@ class _HomeHeroData {
   final String buttonLabel;
   final VoidCallback onTap;
   final String? asset;
-  final String? foregroundAsset;
   final String? statusLabel;
   final DateTime? countdownTarget;
 }
@@ -1559,7 +1557,6 @@ _HomeHeroData _tournamentHero(
     icon: Icons.emoji_events_rounded,
     buttonLabel: 'View Tournaments',
     asset: 'assets/backgrounds/tournament-new-york-grand-final-v1.png',
-    foregroundAsset: 'assets/branding/trophy-new-york-grand-final-v1.png',
     statusLabel:
         tournament == null ? 'Open tournaments and upcoming events' : null,
     countdownTarget: tournament?.startsAt,
@@ -1691,20 +1688,6 @@ class _CarouselHero extends StatelessWidget {
                 ),
               ),
             ),
-            if (data.foregroundAsset != null)
-              Positioned(
-                right: wide ? 270 : 92,
-                top: wide ? 25 : 38,
-                bottom: wide ? 20 : 34,
-                width: wide ? 205 : 112,
-                child: IgnorePointer(
-                  child: Image.asset(
-                    data.foregroundAsset!,
-                    fit: BoxFit.contain,
-                    alignment: Alignment.center,
-                  ),
-                ),
-              ),
             Padding(
               padding: EdgeInsets.all(wide ? 30 : 22),
               child: Align(

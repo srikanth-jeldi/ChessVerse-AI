@@ -810,6 +810,10 @@ class _SplashGateState extends State<SplashGate> {
         onComputer: () => _chooseSideAndOpen(context, GameMode.computer),
         onOnline: () => _openOnlineGame(context),
         onLocal: () => _chooseSideAndOpen(context, GameMode.local),
+        onTournaments: () => setState(() {
+          _communitySection = 2;
+          _primaryDestination = 5;
+        }),
         onDaily: () => _openGame(context, GameMode.daily),
       ),
       PuzzlesScreen(
@@ -3297,11 +3301,13 @@ class _PlayDestination extends StatelessWidget {
     required this.onComputer,
     required this.onOnline,
     required this.onLocal,
+    required this.onTournaments,
     required this.onDaily,
   });
   final VoidCallback onComputer;
   final VoidCallback onOnline;
   final VoidCallback onLocal;
+  final VoidCallback onTournaments;
   final VoidCallback onDaily;
 
   @override
@@ -3370,6 +3376,15 @@ class _PlayDestination extends StatelessWidget {
                     color: const Color(0xFF25664F),
                     asset: 'assets/backgrounds/local-match-card-v2.png',
                     onTap: onLocal,
+                  ),
+                  _PlayModeCard(
+                    icon: Icons.emoji_events_rounded,
+                    title: 'Tournaments',
+                    subtitle: 'Enter the World Chess Circuit',
+                    color: const Color(0xFFD5A63B),
+                    asset:
+                        'assets/backgrounds/tournament-new-york-grand-final-v1.png',
+                    onTap: onTournaments,
                   ),
                   _PlayModeCard(
                     icon: Icons.calendar_month_rounded,
@@ -3509,11 +3524,13 @@ class _PlayModeCard extends StatelessWidget {
                               Text(
                                 title == 'Daily Challenge'
                                     ? 'Solve Now'
-                                    : title == 'Local Match'
-                                        ? 'Start Match'
-                                        : title == 'Play Computer'
-                                            ? 'Start Game'
-                                            : 'Play Now',
+                                    : title == 'Tournaments'
+                                        ? 'View Tournaments'
+                                        : title == 'Local Match'
+                                            ? 'Start Match'
+                                            : title == 'Play Computer'
+                                                ? 'Start Game'
+                                                : 'Play Now',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
