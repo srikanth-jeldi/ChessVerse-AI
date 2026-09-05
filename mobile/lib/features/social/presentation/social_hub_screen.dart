@@ -16,9 +16,15 @@ import '../../notifications/presentation/notification_bell_button.dart';
 import '../../notifications/data/notification_api.dart';
 
 class SocialHubScreen extends StatefulWidget {
-  const SocialHubScreen({this.onOpenMatch, this.previewHub, super.key});
+  const SocialHubScreen({
+    this.onOpenMatch,
+    this.previewHub,
+    this.initialSection = 0,
+    super.key,
+  });
   final ValueChanged<OnlineMatchDto>? onOpenMatch;
   final SocialHubDto? previewHub;
+  final int initialSection;
   @override
   State<SocialHubScreen> createState() => _SocialHubScreenState();
 }
@@ -29,13 +35,14 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
   StoredAuthSession? _session;
   SocialHubDto? _hub;
   CommunityDto? _community;
-  int _section = 0;
+  late int _section;
   String? _error;
   bool _busy = true;
 
   @override
   void initState() {
     super.initState();
+    _section = widget.initialSection.clamp(0, 3);
     if (widget.previewHub != null) {
       _hub = widget.previewHub;
       _community = const CommunityDto(
@@ -46,6 +53,14 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
       _busy = false;
     } else {
       _refresh();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant SocialHubScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialSection != widget.initialSection) {
+      _section = widget.initialSection.clamp(0, 3);
     }
   }
 

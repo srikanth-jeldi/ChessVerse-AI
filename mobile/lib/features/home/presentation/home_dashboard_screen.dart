@@ -11,6 +11,7 @@ import '../../auth/data/auth_session_store.dart';
 import '../../leaderboard/data/leaderboard_api.dart';
 import '../../analysis/domain/player_learning_profile.dart';
 import '../../notifications/presentation/notification_bell_button.dart';
+import '../../social/data/community_api.dart';
 
 void _noOnlineAction() {}
 
@@ -21,6 +22,7 @@ class HomeDashboardScreen extends StatelessWidget {
     this.onlinePlayerCount,
     this.coinBalance,
     this.activityGames,
+    this.nextTournament,
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onLocalGame,
@@ -33,6 +35,7 @@ class HomeDashboardScreen extends StatelessWidget {
     required this.onProfile,
     this.onRankings = _noOnlineAction,
     this.onCommunity = _noOnlineAction,
+    this.onTournaments = _noOnlineAction,
     this.onNotifications = _noOnlineAction,
     this.onCoins = _noOnlineAction,
     required this.onSettings,
@@ -45,6 +48,7 @@ class HomeDashboardScreen extends StatelessWidget {
   final int? onlinePlayerCount;
   final int? coinBalance;
   final List<SavedGameRecord>? activityGames;
+  final TournamentDto? nextTournament;
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
@@ -57,6 +61,7 @@ class HomeDashboardScreen extends StatelessWidget {
   final VoidCallback onProfile;
   final VoidCallback onRankings;
   final VoidCallback onCommunity;
+  final VoidCallback onTournaments;
   final VoidCallback onNotifications;
   final VoidCallback onCoins;
   final VoidCallback onSettings;
@@ -77,6 +82,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 onlinePlayerCount: onlinePlayerCount,
                 coinBalance: coinBalance,
                 activityGames: activityGames,
+                nextTournament: nextTournament,
                 onPlayVsAi: onPlayVsAi,
                 onDailyChallenge: onDailyChallenge,
                 onLocalGame: onLocalGame,
@@ -88,6 +94,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 onProfile: onProfile,
                 onRankings: onRankings,
                 onCommunity: onCommunity,
+                onTournaments: onTournaments,
                 onNotifications: onNotifications,
                 onCoins: onCoins,
                 onSettings: onSettings,
@@ -100,6 +107,7 @@ class HomeDashboardScreen extends StatelessWidget {
               onlinePlayerCount: onlinePlayerCount,
               coinBalance: coinBalance,
               activityGames: activityGames,
+              nextTournament: nextTournament,
               onPlayVsAi: onPlayVsAi,
               onDailyChallenge: onDailyChallenge,
               onLocalGame: onLocalGame,
@@ -112,6 +120,7 @@ class HomeDashboardScreen extends StatelessWidget {
               onProfile: onProfile,
               onRankings: onRankings,
               onCommunity: onCommunity,
+              onTournaments: onTournaments,
               onNotifications: onNotifications,
               onCoins: onCoins,
               onSettings: onSettings,
@@ -131,6 +140,7 @@ class _MobileHome extends StatefulWidget {
     this.onlinePlayerCount,
     this.coinBalance,
     this.activityGames,
+    this.nextTournament,
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onLocalGame,
@@ -143,6 +153,7 @@ class _MobileHome extends StatefulWidget {
     required this.onProfile,
     required this.onRankings,
     required this.onCommunity,
+    required this.onTournaments,
     required this.onNotifications,
     required this.onCoins,
     required this.onSettings,
@@ -154,6 +165,7 @@ class _MobileHome extends StatefulWidget {
   final int? onlinePlayerCount;
   final int? coinBalance;
   final List<SavedGameRecord>? activityGames;
+  final TournamentDto? nextTournament;
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
@@ -166,6 +178,7 @@ class _MobileHome extends StatefulWidget {
   final VoidCallback onProfile;
   final VoidCallback onRankings;
   final VoidCallback onCommunity;
+  final VoidCallback onTournaments;
   final VoidCallback onNotifications;
   final VoidCallback onCoins;
   final VoidCallback onSettings;
@@ -234,6 +247,10 @@ class _MobileHomeState extends State<_MobileHome> {
                           buttonLabel: 'Choose Side',
                           asset: 'assets/backgrounds/home-computer-hero-v1.png',
                           onTap: widget.onPlayVsAi,
+                        ),
+                        _tournamentHero(
+                          widget.nextTournament,
+                          widget.onTournaments,
                         ),
                         _HomeHeroData(
                           title: 'Play with Friends',
@@ -384,6 +401,7 @@ class _WideHome extends StatefulWidget {
     this.onlinePlayerCount,
     this.coinBalance,
     this.activityGames,
+    this.nextTournament,
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onOnlineGame,
@@ -395,6 +413,7 @@ class _WideHome extends StatefulWidget {
     required this.onProfile,
     required this.onRankings,
     required this.onCommunity,
+    required this.onTournaments,
     required this.onNotifications,
     required this.onCoins,
     required this.onSettings,
@@ -406,6 +425,7 @@ class _WideHome extends StatefulWidget {
   final int? onlinePlayerCount;
   final int? coinBalance;
   final List<SavedGameRecord>? activityGames;
+  final TournamentDto? nextTournament;
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onOnlineGame;
@@ -417,6 +437,7 @@ class _WideHome extends StatefulWidget {
   final VoidCallback onProfile;
   final VoidCallback onRankings;
   final VoidCallback onCommunity;
+  final VoidCallback onTournaments;
   final VoidCallback onNotifications;
   final VoidCallback onCoins;
   final VoidCallback onSettings;
@@ -503,6 +524,10 @@ class _WideHomeState extends State<_WideHome> {
                               asset:
                                   'assets/backgrounds/home-computer-hero-v1.png',
                               onTap: widget.onPlayVsAi,
+                            ),
+                            _tournamentHero(
+                              widget.nextTournament,
+                              widget.onTournaments,
                             ),
                             _HomeHeroData(
                               title: 'Play with Friends',
@@ -1507,6 +1532,7 @@ class _HomeHeroData {
     required this.onTap,
     this.asset,
     this.statusLabel,
+    this.countdownTarget,
   });
   final String title;
   final String subtitle;
@@ -1515,6 +1541,37 @@ class _HomeHeroData {
   final VoidCallback onTap;
   final String? asset;
   final String? statusLabel;
+  final DateTime? countdownTarget;
+}
+
+_HomeHeroData _tournamentHero(
+  TournamentDto? tournament,
+  VoidCallback onTap,
+) {
+  final String name = tournament?.name ?? 'Hyderabad Royal Cup';
+  final String normalized = name.toLowerCase();
+  final String asset = normalized.contains('tokyo')
+      ? 'assets/backgrounds/tournament-tokyo-neon-masters-v1.png'
+      : normalized.contains('dubai')
+          ? 'assets/backgrounds/tournament-dubai-gold-open-v1.png'
+          : normalized.contains('london')
+              ? 'assets/backgrounds/tournament-london-classic-v1.png'
+              : normalized.contains('new york')
+                  ? 'assets/backgrounds/tournament-new-york-grand-final-v1.png'
+                  : 'assets/backgrounds/tournament-hyderabad-royal-cup-v1.png';
+  final String entry =
+      tournament == null ? '' : ' • ${tournament.entryCoins} coins entry';
+  return _HomeHeroData(
+    title: name,
+    subtitle: 'Compete in the World Chess Circuit$entry',
+    icon: Icons.emoji_events_rounded,
+    buttonLabel: tournament?.joined == true ? 'View My Event' : 'Register Now',
+    asset: asset,
+    statusLabel:
+        tournament == null ? 'Open tournaments and upcoming events' : null,
+    countdownTarget: tournament?.startsAt,
+    onTap: onTap,
+  );
 }
 
 String _onlineStatus(int? count) {
@@ -1689,12 +1746,17 @@ class _CarouselHero extends StatelessWidget {
                         icon: const Icon(Icons.arrow_forward_rounded, size: 17),
                         label: Text(data.buttonLabel),
                       ),
-                      if (data.statusLabel != null)
+                      if (data.statusLabel != null ||
+                          data.countdownTarget != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 5),
-                          child: Text('●  ${data.statusLabel}',
-                              style: const TextStyle(
-                                  color: Color(0xFF65D8C2), fontSize: 10)),
+                          child: data.countdownTarget == null
+                              ? Text('●  ${data.statusLabel}',
+                                  style: const TextStyle(
+                                      color: Color(0xFF65D8C2), fontSize: 10))
+                              : _LiveTournamentCountdown(
+                                  startsAt: data.countdownTarget!,
+                                ),
                         ),
                     ],
                   ),
@@ -1733,6 +1795,48 @@ class _CarouselHero extends StatelessWidget {
           ]),
         ),
       );
+}
+
+class _LiveTournamentCountdown extends StatefulWidget {
+  const _LiveTournamentCountdown({required this.startsAt});
+  final DateTime startsAt;
+
+  @override
+  State<_LiveTournamentCountdown> createState() =>
+      _LiveTournamentCountdownState();
+}
+
+class _LiveTournamentCountdownState extends State<_LiveTournamentCountdown> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Duration remaining = widget.startsAt.difference(DateTime.now());
+    final String label = remaining.isNegative
+        ? 'STARTING SOON'
+        : remaining.inDays > 0
+            ? 'STARTS IN ${remaining.inDays}D ${remaining.inHours % 24}H'
+            : 'STARTS IN ${remaining.inHours}H ${remaining.inMinutes % 60}M';
+    return Text(
+      '●  $label',
+      key: const ValueKey<String>('home-tournament-countdown'),
+      style: const TextStyle(color: Color(0xFF65D8C2), fontSize: 10),
+    );
+  }
 }
 
 // Retained as a compact fallback for embedded/snapshot surfaces.

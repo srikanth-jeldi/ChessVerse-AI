@@ -52,6 +52,7 @@ import 'features/puzzles/domain/puzzle_catalog.dart';
 import 'features/progress/data/cloud_progress_api.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/social/presentation/social_hub_screen.dart';
+import 'features/social/data/community_api.dart';
 import 'features/tutorial/presentation/learn_chess_screen.dart';
 import 'features/tutorial/data/academy_progress_store.dart';
 
@@ -298,7 +299,9 @@ class _SplashGateState extends State<SplashGate> {
   bool _cloudSyncQueued = false;
   int? _onlinePlayerCount;
   int? _coinBalance;
+  TournamentDto? _nextTournament;
   int _primaryDestination = 0;
+  int _communitySection = 0;
 
   @override
   void initState() {
@@ -532,10 +535,33 @@ class _SplashGateState extends State<SplashGate> {
   void _startOnlinePresence(String token) {
     _presenceTimer?.cancel();
     unawaited(_refreshOnlinePresence(token));
+    unawaited(_refreshNextTournament(token));
     _presenceTimer = Timer.periodic(
       const Duration(seconds: 20),
       (_) => unawaited(_refreshOnlinePresence(token)),
     );
+  }
+
+  Future<void> _refreshNextTournament(String token) async {
+    try {
+      final CommunityDto community = await const CommunityApi().load(token);
+      final List<TournamentDto> current = community.tournaments
+          .where((event) => event.status == 'OPEN' || event.status == 'ACTIVE')
+          .toList()
+        ..sort((a, b) {
+          if (a.status == 'ACTIVE' && b.status != 'ACTIVE') return -1;
+          if (b.status == 'ACTIVE' && a.status != 'ACTIVE') return 1;
+          final DateTime aStart = a.startsAt ?? DateTime(2999);
+          final DateTime bStart = b.startsAt ?? DateTime(2999);
+          return aStart.compareTo(bStart);
+        });
+      if (mounted) {
+        setState(
+            () => _nextTournament = current.isEmpty ? null : current.first);
+      }
+    } on Object {
+      // The home remains usable offline; Community refresh retries on entry.
+    }
   }
 
   Future<void> _refreshOnlinePresence(String token) async {
@@ -727,6 +753,7 @@ class _SplashGateState extends State<SplashGate> {
         profilePhotoUrl: _photoUrl,
         onlinePlayerCount: _onlinePlayerCount,
         coinBalance: _coinBalance,
+        nextTournament: _nextTournament,
         onPlayVsAi: () => _chooseSideAndOpen(context, GameMode.computer),
         onDailyChallenge: () => _openGame(context, GameMode.daily),
         onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
@@ -758,6 +785,10 @@ class _SplashGateState extends State<SplashGate> {
           ),
         ),
         onCommunity: () => setState(() => _primaryDestination = 5),
+        onTournaments: () => setState(() {
+          _communitySection = 2;
+          _primaryDestination = 5;
+        }),
         onNotifications: () => _openNotificationCenter(context),
         onCoins: () => _openRewardsCenter(context),
         onLearnChess: () => setState(() => _primaryDestination = 3),
@@ -809,6 +840,7 @@ class _SplashGateState extends State<SplashGate> {
         },
       ),
       SocialHubScreen(
+        initialSection: _communitySection,
         onOpenMatch: (OnlineMatchDto match) async {
           final StoredAuthSession? session =
               await const AuthSessionStore().read();
