@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:chessverse_ai/core/theme/app_theme.dart';
 import 'package:chessverse_ai/features/home/presentation/home_dashboard_screen.dart';
+import 'package:chessverse_ai/features/social/data/community_api.dart';
 
 void main() {
   Widget app({
@@ -11,6 +12,7 @@ void main() {
     String playerName = 'Test Player',
     int? onlinePlayerCount,
     int? coinBalance,
+    TournamentDto? nextTournament,
   }) {
     return MaterialApp(
       theme: AppTheme.darkTheme,
@@ -18,6 +20,7 @@ void main() {
         playerName: playerName,
         onlinePlayerCount: onlinePlayerCount,
         coinBalance: coinBalance,
+        nextTournament: nextTournament,
         onPlayVsAi: onComputer,
         onDailyChallenge: () {},
         onLocalGame: () {},
@@ -28,6 +31,7 @@ void main() {
         onLearnChess: () {},
         onProfile: () {},
         onSettings: () {},
+        onTournaments: () {},
       ),
     );
   }
@@ -173,5 +177,50 @@ void main() {
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('tournament is the third carousel slide with a countdown', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      app(
+        onOnline: () {},
+        onComputer: () {},
+        nextTournament: TournamentDto(
+          id: 'hyd-1',
+          name: 'Hyderabad Royal Cup',
+          description: 'Weekly city cup',
+          minutes: 10,
+          players: 4,
+          capacity: 128,
+          status: 'OPEN',
+          joined: false,
+          entryCoins: 100,
+          startsAt: DateTime.now().add(const Duration(days: 2, hours: 3)),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final PageView carousel = tester.widget<PageView>(
+      find.byKey(const ValueKey<String>('home-hero-carousel')),
+    );
+    expect(carousel.childrenDelegate.estimatedChildCount, 7);
+    await tester.drag(
+      find.byKey(const ValueKey<String>('home-hero-carousel')),
+      const Offset(-780, 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hyderabad Royal Cup'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('home-tournament-countdown')),
+      findsOneWidget,
+    );
   });
 }

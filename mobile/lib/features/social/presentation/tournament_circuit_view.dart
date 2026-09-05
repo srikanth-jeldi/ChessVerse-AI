@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/community_api.dart';
@@ -385,7 +387,7 @@ class _CircuitProgress extends StatelessWidget {
   }
 }
 
-class _CircuitCard extends StatelessWidget {
+class _CircuitCard extends StatefulWidget {
   const _CircuitCard(
       {required this.event,
       required this.theme,
@@ -395,6 +397,30 @@ class _CircuitCard extends StatelessWidget {
   final CircuitTheme theme;
   final VoidCallback onTap;
   final bool featured;
+
+  @override
+  State<_CircuitCard> createState() => _CircuitCardState();
+}
+
+class _CircuitCardState extends State<_CircuitCard> {
+  Timer? _timer;
+
+  TournamentDto get event => widget.event;
+  CircuitTheme get theme => widget.theme;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   String get _timing {
     if (event.status == 'ACTIVE') return 'LIVE NOW';
@@ -412,7 +438,7 @@ class _CircuitCard extends StatelessWidget {
   String get _actionLabel {
     if (event.status == 'FINISHED') return 'VIEW RESULTS';
     if (event.status == 'ACTIVE') return 'VIEW LIVE TOURNAMENT';
-    if (event.joined) return 'REGISTRATION CONFIRMED • VIEW';
+    if (event.joined) return 'REGISTERED';
     return 'VIEW DETAILS & REGISTER';
   }
 
@@ -420,15 +446,16 @@ class _CircuitCard extends StatelessWidget {
   Widget build(BuildContext context) => Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: widget.onTap,
           borderRadius: BorderRadius.circular(26),
           child: Container(
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(26),
               border: Border.all(
-                  color:
-                      featured ? const Color(0xFFE0B14A) : theme.colors.last),
+                  color: widget.featured
+                      ? const Color(0xFFE0B14A)
+                      : theme.colors.last),
               boxShadow: const <BoxShadow>[
                 BoxShadow(
                     color: Color(0x33000000),
@@ -462,10 +489,10 @@ class _CircuitCard extends StatelessWidget {
                           alignment: WrapAlignment.spaceBetween,
                           children: <Widget>[
                             _Pill(
-                                icon: event.joined
-                                    ? Icons.check_rounded
-                                    : theme.icon,
-                                label: event.joined ? 'REGISTERED' : _timing),
+                                icon: event.status == 'ACTIVE'
+                                    ? Icons.play_arrow_rounded
+                                    : Icons.schedule_rounded,
+                                label: _timing),
                             _Pill(
                                 icon: Icons.monetization_on_rounded,
                                 label: 'ENTRY FEE ${event.entryCoins}'),
