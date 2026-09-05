@@ -1531,6 +1531,7 @@ class _HomeHeroData {
     required this.buttonLabel,
     required this.onTap,
     this.asset,
+    this.foregroundAsset,
     this.statusLabel,
     this.countdownTarget,
   });
@@ -1540,6 +1541,7 @@ class _HomeHeroData {
   final String buttonLabel;
   final VoidCallback onTap;
   final String? asset;
+  final String? foregroundAsset;
   final String? statusLabel;
   final DateTime? countdownTarget;
 }
@@ -1548,25 +1550,16 @@ _HomeHeroData _tournamentHero(
   TournamentDto? tournament,
   VoidCallback onTap,
 ) {
-  final String name = tournament?.name ?? 'Hyderabad Royal Cup';
-  final String normalized = name.toLowerCase();
-  final String asset = normalized.contains('tokyo')
-      ? 'assets/backgrounds/tournament-tokyo-neon-masters-v1.png'
-      : normalized.contains('dubai')
-          ? 'assets/backgrounds/tournament-dubai-gold-open-v1.png'
-          : normalized.contains('london')
-              ? 'assets/backgrounds/tournament-london-classic-v1.png'
-              : normalized.contains('new york')
-                  ? 'assets/backgrounds/tournament-new-york-grand-final-v1.png'
-                  : 'assets/backgrounds/tournament-hyderabad-royal-cup-v1.png';
-  final String entry =
-      tournament == null ? '' : ' • ${tournament.entryCoins} coins entry';
+  final String nextEvent = tournament == null
+      ? 'Explore city cups, brackets and championship rewards'
+      : 'Next event: ${tournament.name} • ${tournament.entryCoins} coins entry';
   return _HomeHeroData(
-    title: name,
-    subtitle: 'Compete in the World Chess Circuit$entry',
+    title: 'World Chess Tournaments',
+    subtitle: nextEvent,
     icon: Icons.emoji_events_rounded,
-    buttonLabel: tournament?.joined == true ? 'View My Event' : 'Register Now',
-    asset: asset,
+    buttonLabel: 'View Tournaments',
+    asset: 'assets/backgrounds/tournament-new-york-grand-final-v1.png',
+    foregroundAsset: 'assets/branding/trophy-new-york-grand-final-v1.png',
     statusLabel:
         tournament == null ? 'Open tournaments and upcoming events' : null,
     countdownTarget: tournament?.startsAt,
@@ -1698,6 +1691,20 @@ class _CarouselHero extends StatelessWidget {
                 ),
               ),
             ),
+            if (data.foregroundAsset != null)
+              Positioned(
+                right: wide ? 84 : 34,
+                top: wide ? 25 : 38,
+                bottom: wide ? 20 : 34,
+                width: wide ? 225 : 130,
+                child: IgnorePointer(
+                  child: Image.asset(
+                    data.foregroundAsset!,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.center,
+                  ),
+                ),
+              ),
             Padding(
               padding: EdgeInsets.all(wide ? 30 : 22),
               child: Align(

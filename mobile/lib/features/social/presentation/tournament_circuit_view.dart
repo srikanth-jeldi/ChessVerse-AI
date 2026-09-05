@@ -140,9 +140,9 @@ class TournamentCircuitView extends StatelessWidget {
 }
 
 class CircuitTheme {
-  const CircuitTheme(
-      this.city, this.subtitle, this.icon, this.colors, this.artwork);
-  final String city, subtitle, artwork;
+  const CircuitTheme(this.city, this.subtitle, this.icon, this.colors,
+      this.artwork, this.trophyArtwork);
+  final String city, subtitle, artwork, trophyArtwork;
   final IconData icon;
   final List<Color> colors;
 
@@ -152,31 +152,36 @@ class CircuitTheme {
         'ROYAL CUP',
         Icons.account_balance_rounded,
         <Color>[Color(0xFF061A35), Color(0xFF0B3470), Color(0xFFB47824)],
-        'assets/backgrounds/tournament-hyderabad-royal-cup-v1.png'),
+        'assets/backgrounds/tournament-hyderabad-royal-cup-v1.png',
+        'assets/branding/trophy-hyderabad-royal-v1.png'),
     CircuitTheme(
         'TOKYO',
         'NEON MASTERS',
         Icons.bolt_rounded,
         <Color>[Color(0xFF10072D), Color(0xFF47208D), Color(0xFF00A7D6)],
-        'assets/backgrounds/tournament-tokyo-neon-masters-v1.png'),
+        'assets/backgrounds/tournament-tokyo-neon-masters-v1.png',
+        'assets/branding/trophy-tokyo-neon-v1.png'),
     CircuitTheme(
         'DUBAI',
         'GOLD OPEN',
         Icons.location_city_rounded,
         <Color>[Color(0xFF17100A), Color(0xFF624014), Color(0xFFE0A735)],
-        'assets/backgrounds/tournament-dubai-gold-open-v1.png'),
+        'assets/backgrounds/tournament-dubai-gold-open-v1.png',
+        'assets/branding/trophy-dubai-gold-v1.png'),
     CircuitTheme(
         'LONDON',
         'CLASSIC',
         Icons.castle_rounded,
         <Color>[Color(0xFF091421), Color(0xFF243D5A), Color(0xFF8DA9C0)],
-        'assets/backgrounds/tournament-london-classic-v1.png'),
+        'assets/backgrounds/tournament-london-classic-v1.png',
+        'assets/branding/trophy-london-classic-v1.png'),
     CircuitTheme(
         'NEW YORK',
         'GRAND FINAL',
         Icons.emoji_events_rounded,
         <Color>[Color(0xFF090D1D), Color(0xFF173769), Color(0xFFE2B54E)],
-        'assets/backgrounds/tournament-new-york-grand-final-v1.png'),
+        'assets/backgrounds/tournament-new-york-grand-final-v1.png',
+        'assets/branding/trophy-new-york-grand-final-v1.png'),
   ];
 
   static CircuitTheme forTournament(TournamentDto event, int index) {
@@ -498,9 +503,28 @@ class _CircuitCardState extends State<_CircuitCard> {
                                 label: 'ENTRY FEE ${event.entryCoins}'),
                           ]),
                       const Spacer(),
-                      Icon(theme.icon,
-                          color: const Color(0xFFFFD570), size: 42),
-                      const SizedBox(height: 10),
+                      Container(
+                        width: 72,
+                        height: 72,
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const RadialGradient(colors: <Color>[
+                            Color(0x5539D8FF),
+                            Color(0x22112238),
+                            Colors.transparent,
+                          ]),
+                          border: Border.all(
+                            color: const Color(0x66FFD570),
+                          ),
+                        ),
+                        child: Image.asset(
+                          theme.trophyArtwork,
+                          fit: BoxFit.contain,
+                          semanticLabel: '${theme.city} championship trophy',
+                        ),
+                      ),
+                      const SizedBox(height: 7),
                       Text(theme.city,
                           style: const TextStyle(
                               fontSize: 27,

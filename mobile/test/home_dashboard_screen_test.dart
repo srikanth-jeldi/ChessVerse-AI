@@ -217,7 +217,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Hyderabad Royal Cup'), findsOneWidget);
+    expect(find.text('World Chess Tournaments'), findsOneWidget);
+    expect(
+        find.textContaining('Next event: Hyderabad Royal Cup'), findsOneWidget);
     expect(
       find.byKey(const ValueKey<String>('home-tournament-countdown')),
       findsOneWidget,
