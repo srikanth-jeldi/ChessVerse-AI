@@ -5961,6 +5961,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     // to the same game epoch and must be retained; only a board reset makes
     // an outstanding result stale.
     final int reviewEpoch = _moveReviewEpoch;
+    final int reviewedBoardPly = _moves.length;
     try {
       final Map<String, dynamic> engine = await _engineApi.reviewMove(
         fen: fen,
@@ -6008,7 +6009,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _moveQualityText = reviewText;
         _moveQualityIsWeak = isWeak;
         _lastPlayerCoachNote = reviewText;
-        _coachNote = reviewText;
+        // A remote review may finish after the opponent has replied. Keep it
+        // in the player's review summary, but never replace the current-board
+        // status with commentary about an earlier position.
+        if (_moves.length == reviewedBoardPly) {
+          _coachNote = reviewText;
+        }
         _moveReviews.removeWhere((SavedMoveReview item) => item.ply == ply);
         _moveReviews.add(
           SavedMoveReview(

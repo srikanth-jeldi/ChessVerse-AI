@@ -287,8 +287,10 @@ class CommunityService {
                 throw new OnlineMatchException(HttpStatus.CONFLICT,"Delete for everyone is available for 15 minutes.");
             jdbc.update("""
                     update direct_message set body='This message was deleted', deleted_for_everyone_at=?,
+                    deleted_for_sender=true,deleted_for_recipient=true,
                     attachment_name=null,attachment_type=null,attachment_size=null,attachment_path=null where id=?
                     """,Timestamp.from(Instant.now()),messageId);
+            jdbc.update("delete from direct_message_reaction where message_id=?", messageId);
             if (message.attachmentPath() != null) {
                 Path stored = attachmentRoot.resolve(message.attachmentPath()).normalize();
                 if (stored.startsWith(attachmentRoot.normalize())) {

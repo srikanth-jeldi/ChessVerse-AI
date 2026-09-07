@@ -148,6 +148,33 @@ void main() {
     expect(ChessRules.safeLegalTargets('e7', pieces), isNot(contains('e8')));
   });
 
+  test('knight check is reported only for a real L-shaped attack', () {
+    const Map<String, ChessPiece> quietKnight = <String, ChessPiece>{
+      'e1': ChessPiece('K', true),
+      'e8': ChessPiece('K', false),
+      'e5': ChessPiece('N', true),
+    };
+    expect(ChessRules.isKingInCheck(false, quietKnight), isFalse);
+
+    const Map<String, ChessPiece> checkingKnight = <String, ChessPiece>{
+      'e1': ChessPiece('K', true),
+      'e8': ChessPiece('K', false),
+      'c7': ChessPiece('N', true),
+    };
+    expect(ChessRules.isKingInCheck(false, checkingKnight), isTrue);
+  });
+
+  test('a knight check with a king escape is never checkmate', () {
+    const Map<String, ChessPiece> position = <String, ChessPiece>{
+      'a1': ChessPiece('K', true),
+      'e8': ChessPiece('K', false),
+      'c7': ChessPiece('N', true),
+    };
+    expect(ChessRules.isKingInCheck(false, position), isTrue);
+    expect(ChessRules.hasAnySafeMove(false, position), isTrue);
+    expect(ChessRules.isCheckmate(false, position), isFalse);
+  });
+
   test('a checked king with an escape is not checkmate', () {
     final Map<String, ChessPiece> pieces = <String, ChessPiece>{
       'e1': const ChessPiece('K', true),

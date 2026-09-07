@@ -130,6 +130,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
         backgroundColor: const Color(0xE6071727),
+        actions: <Widget>[
+          IconButton(
+            key: const ValueKey<String>('settings-language-shortcut'),
+            tooltip: 'Language',
+            onPressed: _loading ? null : _chooseLanguage,
+            icon: const Icon(Icons.translate_rounded),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: _loading
           ? const SkeletonPage(rows: 4)
