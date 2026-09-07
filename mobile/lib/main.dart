@@ -832,6 +832,7 @@ class _SplashGateState extends State<SplashGate> {
         }),
         onNotifications: () => _openNotificationCenter(context),
         onCoins: () => _openRewardsCenter(context),
+        onLanguage: () => _openLanguageCentre(context),
         onLearnChess: () => setState(() => _primaryDestination = 3),
         onProfile: () => setState(() => _primaryDestination = 4),
         onSettings: () => _push(
@@ -876,6 +877,7 @@ class _SplashGateState extends State<SplashGate> {
         onSecureProgress: _isGuest ? () => _secureGuestProgress(context) : null,
         onDisplayNameChanged: _updateDisplayName,
         onProfilePhotoChanged: _updateProfilePhoto,
+        onLanguage: () => _openLanguageCentre(context),
         onMissions: () async {
           final StoredAuthSession? session = await _sessionStore.read();
           if (!context.mounted || session == null) return;
@@ -1007,6 +1009,20 @@ class _SplashGateState extends State<SplashGate> {
     if (!mounted) return;
     setState(() => _primaryDestination = destination);
   }
+
+  Future<void> _openLanguageCentre(BuildContext context) => _push(
+        context,
+        SettingsScreen(
+          openLanguagePickerOnStart: true,
+          onLogout: () => _logout(context),
+          onDeleteAccount: () => _deleteAccount(context),
+          onHome: () => _closeSettingsAndSelect(context, 0),
+          onPlay: () => _closeSettingsAndSelect(context, 1),
+          onPuzzles: () => _closeSettingsAndSelect(context, 2),
+          onLearn: () => _closeSettingsAndSelect(context, 3),
+          onProfile: () => _closeSettingsAndSelect(context, 4),
+        ),
+      );
 
   Future<void> _openNotificationCenter(BuildContext context) async {
     await _push(

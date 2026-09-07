@@ -20,6 +20,7 @@ class ProfileScreen extends StatefulWidget {
     this.onSecureProgress,
     this.onShop,
     this.onMissions,
+    this.onLanguage,
     super.key,
   });
 
@@ -34,6 +35,7 @@ class ProfileScreen extends StatefulWidget {
   final Future<void> Function()? onSecureProgress;
   final VoidCallback? onShop;
   final VoidCallback? onMissions;
+  final VoidCallback? onLanguage;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -81,25 +83,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
         centerTitle: false,
         backgroundColor: const Color(0xD9071827),
         actions: <Widget>[
-          if (widget.onMissions != null)
-            IconButton(
-              key: const ValueKey<String>('profile-missions'),
-              tooltip: 'Daily and weekly missions',
-              onPressed: widget.onMissions,
-              icon: const Icon(Icons.flag_circle_rounded),
+          Padding(
+            padding: EdgeInsets.only(
+              right: MediaQuery.sizeOf(context).width >= 700 ? 24 : 8,
             ),
-          if (widget.onShop != null)
-            Padding(
-              padding: EdgeInsets.only(
-                right: MediaQuery.sizeOf(context).width >= 700 ? 24 : 8,
-              ),
-              child: IconButton(
-                key: const ValueKey<String>('profile-shop'),
-                tooltip: 'Cosmetic shop',
-                onPressed: widget.onShop,
-                icon: const Icon(Icons.storefront_rounded),
-              ),
+            child: PopupMenuButton<String>(
+              key: const ValueKey<String>('profile-actions-menu'),
+              tooltip: 'Profile actions',
+              icon: const Icon(Icons.menu_rounded),
+              onSelected: (String action) {
+                switch (action) {
+                  case 'language':
+                    widget.onLanguage?.call();
+                  case 'missions':
+                    widget.onMissions?.call();
+                  case 'shop':
+                    widget.onShop?.call();
+                }
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                if (widget.onLanguage != null)
+                  const PopupMenuItem<String>(
+                    value: 'language',
+                    child: ListTile(
+                      leading: Icon(Icons.translate_rounded),
+                      title: Text('Language & translation'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                if (widget.onMissions != null)
+                  const PopupMenuItem<String>(
+                    value: 'missions',
+                    child: ListTile(
+                      leading: Icon(Icons.task_alt_rounded),
+                      title: Text('Daily & weekly missions'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                if (widget.onShop != null)
+                  const PopupMenuItem<String>(
+                    value: 'shop',
+                    child: ListTile(
+                      leading: Icon(Icons.storefront_rounded),
+                      title: Text('Boards & piece shop'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+              ],
             ),
+          ),
         ],
       ),
       body: ListView(
@@ -129,10 +161,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             title: 'PLAYER PROGRESS',
             icon: Icons.military_tech_rounded,
             asset: 'assets/backgrounds/home-analysis-hero-v1.png',
-            trailing: _Pill(
-              icon: Icons.paid_rounded,
-              label: '${rewards.coins} coins',
-            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[

@@ -17,6 +17,7 @@ import 'device_sessions_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
+    this.openLanguagePickerOnStart = false,
     this.onLogout,
     this.onDeleteAccount,
     this.onHome,
@@ -27,6 +28,7 @@ class SettingsScreen extends StatefulWidget {
     super.key,
   });
 
+  final bool openLanguagePickerOnStart;
   final Future<void> Function()? onLogout;
   final Future<void> Function()? onDeleteAccount;
   final VoidCallback? onHome;
@@ -54,6 +56,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _appTheme = 'Dark premium';
   String _language = AppLanguageController.systemCode;
   bool _loading = true;
+  bool _openedInitialLanguagePicker = false;
 
   @override
   void initState() {
@@ -97,6 +100,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       size: ChessPieceAppearanceController.sizeFromLabel(_pieceSize),
     );
     ChessSoundService.instance.enabled = _soundEnabled;
+    if (widget.openLanguagePickerOnStart && !_openedInitialLanguagePicker) {
+      _openedInitialLanguagePicker = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _chooseLanguage();
+      });
+    }
   }
 
   @override

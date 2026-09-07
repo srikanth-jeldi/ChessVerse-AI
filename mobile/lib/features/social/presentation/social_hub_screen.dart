@@ -1268,10 +1268,12 @@ class _ChatScreenState extends State<_ChatScreen> {
     );
   }
 
-  Future<void> _attach() async {
+  Future<void> _attach({bool gifOnly = false}) async {
     final FilePickerResult? result = await FilePicker.platform.pickFiles(
       withData: true,
       allowMultiple: false,
+      type: gifOnly ? FileType.custom : FileType.any,
+      allowedExtensions: gifOnly ? const <String>['gif'] : null,
     );
     if (result == null || result.files.isEmpty || !mounted) return;
     final PlatformFile file = result.files.single;
@@ -1395,53 +1397,119 @@ class _ChatScreenState extends State<_ChatScreen> {
           '👑 CHAMPION',
           '💪 REMATCH'
         ];
-        return SafeArea(
+        return DefaultTabController(
+          length: 3,
+          child: SafeArea(
             child: SizedBox(
-                height: 410,
-                child: Column(children: <Widget>[
-                  Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 12, 8, 6),
-                      child: Row(children: <Widget>[
-                        const Expanded(
-                            child: Text('Choose emoji',
-                                style: TextStyle(fontWeight: FontWeight.w800))),
-                        IconButton(
-                            onPressed: () => Navigator.pop(sheetContext),
-                            icon: const Icon(Icons.close_rounded))
-                      ])),
-                  SizedBox(
-                      height: 76,
-                      child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: stickers.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
-                          itemBuilder: (_, index) => ActionChip(
-                              label: Text(stickers[index]),
+              height: 460,
+              child: Column(children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 12, 8, 6),
+                  child: Row(children: <Widget>[
+                    const Expanded(
+                      child: Text('Express yourself',
+                          style: TextStyle(fontWeight: FontWeight.w800)),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(sheetContext),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ]),
+                ),
+                const TabBar(
+                  tabs: <Widget>[
+                    Tab(
+                        icon: Icon(Icons.emoji_emotions_outlined),
+                        text: 'Emoji'),
+                    Tab(icon: Icon(Icons.gif_box_outlined), text: 'GIF'),
+                    Tab(
+                        icon: Icon(Icons.sticky_note_2_outlined),
+                        text: 'Stickers'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(children: <Widget>[
+                    GridView.builder(
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 8),
+                      itemCount: emojis.length,
+                      itemBuilder: (_, index) => InkWell(
+                        borderRadius: BorderRadius.circular(18),
+                        onTap: () {
+                          _text.text += emojis[index];
+                          _text.selection = TextSelection.collapsed(
+                              offset: _text.text.length);
+                          _composerFocus.requestFocus();
+                        },
+                        child: Center(
+                          child: Text(emojis[index],
+                              style: const TextStyle(fontSize: 26)),
+                        ),
+                      ),
+                    ),
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            const Icon(Icons.gif_box_rounded,
+                                size: 62, color: Color(0xFF54DECD)),
+                            const SizedBox(height: 12),
+                            const Text('Send an animated GIF',
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.w800)),
+                            const SizedBox(height: 6),
+                            const Text(
+                                'Choose a GIF saved on your device (max 10 MB).',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Color(0xFFAAB8C4))),
+                            const SizedBox(height: 18),
+                            FilledButton.icon(
                               onPressed: () {
-                                _text.text = '::sticker::${stickers[index]}';
                                 Navigator.pop(sheetContext);
-                                _send();
-                              }))),
-                  Expanded(
-                      child: GridView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 8),
-                          itemCount: emojis.length,
-                          itemBuilder: (_, index) => InkWell(
-                              borderRadius: BorderRadius.circular(18),
-                              onTap: () {
-                                _text.text += emojis[index];
-                                _text.selection = TextSelection.collapsed(
-                                    offset: _text.text.length);
-                                _composerFocus.requestFocus();
+                                _attach(gifOnly: true);
                               },
-                              child: Center(
-                                  child: Text(emojis[index],
-                                      style: const TextStyle(fontSize: 26))))))
-                ])));
+                              icon:
+                                  const Icon(Icons.add_photo_alternate_rounded),
+                              label: const Text('Choose GIF'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    GridView.builder(
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2, childAspectRatio: 2.4),
+                      itemCount: stickers.length,
+                      itemBuilder: (_, index) => Card(
+                        color: const Color(0xFF102B3A),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            _text.text = '::sticker::${stickers[index]}';
+                            Navigator.pop(sheetContext);
+                            _send();
+                          },
+                          child: Center(
+                            child: Text(stickers[index],
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ]),
+                ),
+              ]),
+            ),
+          ),
+        );
       });
 
   Widget _buildComposer() {
