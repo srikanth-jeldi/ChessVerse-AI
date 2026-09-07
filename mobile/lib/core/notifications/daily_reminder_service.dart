@@ -10,9 +10,14 @@ class DailyReminderService {
   static final DailyReminderService instance = DailyReminderService._();
   static const int _notificationId = 7714;
   static const int _weeklyReportNotificationId = 7715;
+  static const int _playReminderIdBase = 7720;
+  static const int _scheduledPlayReminderCount = 28;
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  bool _enabled = false;
+  bool _pendingPlayOpen = false;
+  final ValueNotifier<int> playOpenRequests = ValueNotifier<int>(0);
 
   Future<void> initialize() async {
     if (_initialized || kIsWeb) return;
@@ -29,8 +34,28 @@ class DailyReminderService {
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
         iOS: DarwinInitializationSettings(),
       ),
+      onDidReceiveNotificationResponse: _handleNotificationResponse,
     );
+    final NotificationAppLaunchDetails? launchDetails =
+        await _plugin.getNotificationAppLaunchDetails();
+    if (launchDetails?.didNotificationLaunchApp ?? false) {
+      _handleNotificationResponse(launchDetails!.notificationResponse!);
+    }
     _initialized = true;
+  }
+
+  void _handleNotificationResponse(NotificationResponse response) {
+    if (response.payload != 'open_play') return;
+    _pendingPlayOpen = true;
+    playOpenRequests.value += 1;
+  }
+
+  bool get hasPendingPlayOpen => _pendingPlayOpen;
+
+  bool takePendingPlayOpen() {
+    if (!_pendingPlayOpen) return false;
+    _pendingPlayOpen = false;
+    return true;
   }
 
   Future<bool> enable() async {
@@ -52,28 +77,11 @@ class DailyReminderService {
         true;
     if (!androidAllowed || !iosAllowed) return false;
 
+    _enabled = true;
+    // Remove the legacy fixed 7 PM reminder when upgrading an installation.
+    await _plugin.cancel(_notificationId);
+    await _schedulePlayReminders(tz.TZDateTime.now(tz.local));
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
-    tz.TZDateTime next =
-        tz.TZDateTime(tz.local, now.year, now.month, now.day, 19);
-    if (!next.isAfter(now)) next = next.add(const Duration(days: 1));
-    await _plugin.zonedSchedule(
-      _notificationId,
-      'Your board is waiting ♟️',
-      'Come and play ChessVerseAI — keep your daily streak alive!',
-      next,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'daily_chess_reminder',
-          'Daily chess reminder',
-          channelDescription: 'A daily reminder to play ChessVerseAI',
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
     tz.TZDateTime weekly = tz.TZDateTime(
       tz.local,
       now.year,
@@ -109,8 +117,53 @@ class DailyReminderService {
   Future<void> disable() async {
     if (kIsWeb) return;
     await initialize();
+    _enabled = false;
     await _plugin.cancel(_notificationId);
     await _plugin.cancel(_weeklyReportNotificationId);
+    await _cancelPlayReminders();
+  }
+
+  /// Resets the inactivity clock whenever the player opens Play or starts a
+  /// game. Any unopened follow-up is cancelled immediately.
+  Future<void> recordPlayOpened() async {
+    if (kIsWeb || !_enabled) return;
+    await initialize();
+    await _schedulePlayReminders(tz.TZDateTime.now(tz.local));
+  }
+
+  Future<void> _cancelPlayReminders() async {
+    for (int index = 0; index < _scheduledPlayReminderCount; index++) {
+      await _plugin.cancel(_playReminderIdBase + index);
+    }
+  }
+
+  Future<void> _schedulePlayReminders(tz.TZDateTime lastActivity) async {
+    await _cancelPlayReminders();
+    final List<tz.TZDateTime> plan = buildPlayReminderPlan(lastActivity);
+    for (int index = 0; index < plan.length; index++) {
+      final bool followUp = index.isOdd;
+      await _plugin.zonedSchedule(
+        _playReminderIdBase + index,
+        followUp ? 'Your next move is waiting ♟️' : 'Let’s Play Chess ♟️',
+        followUp
+            ? 'A quick game is ready whenever you are.'
+            : 'Challenge a rival, solve a puzzle, or continue your tournament.',
+        plan[index],
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'play_inactivity_reminders',
+            'Play reminders',
+            channelDescription:
+                'Helpful reminders after you have been away from ChessVerseAI',
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        payload: 'open_play',
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+    }
   }
 
   Future<void> showRealtime(int id, String title, String body) async {
@@ -133,4 +186,45 @@ class DailyReminderService {
       ),
     );
   }
+}
+
+/// Builds fourteen days of spam-safe reminders. Each day contains one main
+/// reminder and at most one follow-up. Quiet hours are 10 PM–8 AM.
+List<tz.TZDateTime> buildPlayReminderPlan(tz.TZDateTime lastActivity) {
+  tz.TZDateTime first = _outsideQuietHours(
+    lastActivity.add(const Duration(hours: 8)),
+  );
+  final List<tz.TZDateTime> result = <tz.TZDateTime>[];
+  for (int day = 0; day < 14; day++) {
+    final tz.TZDateTime reminder =
+        _outsideQuietHours(first.add(Duration(days: day)));
+    final tz.TZDateTime followUp =
+        _outsideQuietHours(reminder.add(const Duration(hours: 2)));
+    result
+      ..add(reminder)
+      ..add(followUp);
+  }
+  return result;
+}
+
+tz.TZDateTime _outsideQuietHours(tz.TZDateTime value) {
+  if (value.hour >= 22) {
+    return tz.TZDateTime(
+      value.location,
+      value.year,
+      value.month,
+      value.day + 1,
+      8,
+    );
+  }
+  if (value.hour < 8) {
+    return tz.TZDateTime(
+      value.location,
+      value.year,
+      value.month,
+      value.day,
+      8,
+    );
+  }
+  return value;
 }

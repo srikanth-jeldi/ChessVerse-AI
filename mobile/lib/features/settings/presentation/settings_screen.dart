@@ -589,8 +589,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _dailyReminderSwitch() => _SettingSwitch(
         icon: Icons.notifications_active_rounded,
-        title: 'Daily chess reminder',
-        subtitle: 'Remind me to play the daily challenge',
+        title: 'Play reminders',
+        subtitle: 'Remind me after 8 hours away, with one gentle follow-up',
         value: _dailyReminderEnabled,
         onChanged: (bool value) async {
           final ScaffoldMessengerState messenger =
@@ -607,7 +607,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           messenger.showSnackBar(
             SnackBar(
               content: Text(enabled
-                  ? 'Daily reminder set for 7:00 PM.'
+                  ? 'Play reminders enabled. Quiet hours are 10 PM–8 AM.'
                   : value
                       ? 'Notification permission is required.'
                       : 'Daily reminder disabled.'),

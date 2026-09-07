@@ -306,6 +306,10 @@ class _SplashGateState extends State<SplashGate> {
   void initState() {
     super.initState();
     _forceFreshWebLogin = consumeFreshWebLaunch();
+    DailyReminderService.instance.playOpenRequests.addListener(
+      _openPlayFromReminder,
+    );
+    unawaited(DailyReminderService.instance.initialize());
   }
 
   @override
@@ -444,6 +448,7 @@ class _SplashGateState extends State<SplashGate> {
       _isGuest = isGuest;
       _stage = _RootStage.home;
     });
+    _openPlayFromReminder();
     // Do not make active-match recovery wait for profile/progress sync. A
     // killed mobile process has a short server grace window and must reopen
     // its authoritative match as soon as the authenticated home route exists.
@@ -686,11 +691,25 @@ class _SplashGateState extends State<SplashGate> {
 
   @override
   void dispose() {
+    DailyReminderService.instance.playOpenRequests.removeListener(
+      _openPlayFromReminder,
+    );
     _timer?.cancel();
     _presenceTimer?.cancel();
     _stopNotificationPolling();
     _sessionValidationTimer?.cancel();
     super.dispose();
+  }
+
+  void _openPlayFromReminder() {
+    if (!mounted ||
+        _stage != _RootStage.home ||
+        !DailyReminderService.instance.hasPendingPlayOpen) {
+      return;
+    }
+    DailyReminderService.instance.takePendingPlayOpen();
+    setState(() => _primaryDestination = 1);
+    unawaited(DailyReminderService.instance.recordPlayOpened());
   }
 
   @override
@@ -727,6 +746,7 @@ class _SplashGateState extends State<SplashGate> {
                 _isGuest = result.isGuest;
                 _stage = _RootStage.home;
               });
+              _openPlayFromReminder();
               unawaited(
                 AppAnalytics.logAuthentication(guest: result.isGuest),
               );
@@ -907,7 +927,7 @@ class _SplashGateState extends State<SplashGate> {
             'Community',
           ];
           void selectDestination(int value) {
-            setState(() => _primaryDestination = value);
+            _selectPrimaryDestination(value);
           }
 
           return Scaffold(
@@ -932,12 +952,18 @@ class _SplashGateState extends State<SplashGate> {
           body: content,
           bottomNavigationBar: _GlassBottomNavigation(
             selectedIndex: _primaryDestination,
-            onDestinationSelected: (int value) =>
-                setState(() => _primaryDestination = value),
+            onDestinationSelected: _selectPrimaryDestination,
           ),
         );
       },
     );
+  }
+
+  void _selectPrimaryDestination(int destination) {
+    if (destination == 1) {
+      unawaited(DailyReminderService.instance.recordPlayOpened());
+    }
+    setState(() => _primaryDestination = destination);
   }
 
   void _closeSettingsAndSelect(BuildContext context, int destination) {
@@ -1293,6 +1319,7 @@ class _SplashGateState extends State<SplashGate> {
     String? initialAuthToken,
     String? aiOpponentName,
   }) {
+    unawaited(DailyReminderService.instance.recordPlayOpened());
     unawaited(AppAnalytics.logGameStarted(
       mode: mode.name,
       guest: _isGuest,
@@ -1328,6 +1355,7 @@ class _SplashGateState extends State<SplashGate> {
     BuildContext context, {
     OnlineLobbyMode lobbyMode = OnlineLobbyMode.random,
   }) async {
+    unawaited(DailyReminderService.instance.recordPlayOpened());
     final StoredAuthSession? session = await const AuthSessionStore().read();
     if (!context.mounted) return;
     if (session == null || session.token.isEmpty) {
