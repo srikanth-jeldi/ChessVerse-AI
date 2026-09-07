@@ -245,11 +245,15 @@ class MessageDto {
       this.attachmentName,
       this.attachmentType,
       this.attachmentSize,
+      this.deletedForEveryone = false,
+      this.reactions = const <MessageReactionDto>[],
       this.pending = false});
   final String id, senderId, recipientId, body;
   final bool mine, delivered, seen, pending;
   final String? attachmentName, attachmentType;
   final int? attachmentSize;
+  final bool deletedForEveryone;
+  final List<MessageReactionDto> reactions;
   final DateTime sentAt;
   factory MessageDto.fromJson(Map<String, dynamic> j) => MessageDto(
       id: j['id'] as String? ?? '',
@@ -263,7 +267,24 @@ class MessageDto {
       seen: j['seen'] as bool? ?? false,
       attachmentName: j['attachmentName'] as String?,
       attachmentType: j['attachmentType'] as String?,
-      attachmentSize: (j['attachmentSize'] as num?)?.toInt());
+      attachmentSize: (j['attachmentSize'] as num?)?.toInt(),
+      deletedForEveryone: j['deletedForEveryone'] as bool? ?? false,
+      reactions: (j['reactions'] as List<dynamic>? ?? const <dynamic>[])
+          .whereType<Map<String, dynamic>>()
+          .map(MessageReactionDto.fromJson)
+          .toList());
+}
+
+class MessageReactionDto {
+  const MessageReactionDto(
+      {required this.playerId, required this.emoji, required this.mine});
+  final String playerId, emoji;
+  final bool mine;
+  factory MessageReactionDto.fromJson(Map<String, dynamic> json) =>
+      MessageReactionDto(
+          playerId: json['playerId'] as String? ?? '',
+          emoji: json['emoji'] as String? ?? '',
+          mine: json['mine'] as bool? ?? false);
 }
 
 class CommunityDto {
@@ -341,6 +362,16 @@ class CommunityApi {
           body: <String, Object?>{'recipientId': recipientId, 'body': body}));
   Future<void> markDelivered(String token) async =>
       _raw(token, 'POST', '/api/v1/community/messages/delivered', null);
+  Future<void> deleteMessage(String token, String messageId,
+          {required bool forEveryone}) async =>
+      _raw(token, 'DELETE',
+          '/api/v1/community/messages/$messageId?scope=${forEveryone ? 'everyone' : 'me'}', null);
+  Future<MessageDto> react(
+          String token, String messageId, String? emoji) async =>
+      MessageDto.fromJson(await _request(
+          token,
+          'PUT',
+          '/api/v1/community/messages/$messageId/reaction?emoji=${Uri.encodeQueryComponent(emoji ?? '')}'));
   Future<MessageDto> sendAttachment(String token, String recipientId,
       String name, List<int> bytes, String? mimeType, String body) async {
     try {
@@ -408,17 +439,22 @@ class CommunityApi {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json'
       };
-      final response = method == 'POST'
-          ? await http
-              .post(uri, headers: headers, body: jsonEncode(body))
-              .timeout(const Duration(seconds: 15))
-          : method == 'PUT'
-              ? await http
-                  .put(uri, headers: headers)
-                  .timeout(const Duration(seconds: 15))
-              : await http
-                  .get(uri, headers: headers)
-                  .timeout(const Duration(seconds: 15));
+      final response = switch (method) {
+        'POST' => await http
+            .post(uri, headers: headers, body: jsonEncode(body))
+            .timeout(const Duration(seconds: 15)),
+        'PUT' => await http
+            .put(uri,
+                headers: headers,
+                body: body == null ? null : jsonEncode(body))
+            .timeout(const Duration(seconds: 15)),
+        'DELETE' => await http
+            .delete(uri, headers: headers)
+            .timeout(const Duration(seconds: 15)),
+        _ => await http
+            .get(uri, headers: headers)
+            .timeout(const Duration(seconds: 15)),
+      };
       final Object decoded = response.body.isEmpty
           ? <String, dynamic>{}
           : jsonDecode(response.body);

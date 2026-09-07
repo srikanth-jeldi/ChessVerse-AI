@@ -68,11 +68,12 @@ class OpenAiCompatibleCoachLanguageProviderTest {
                     "test-key", "test-model", 3, 120, org.mockito.Mockito.mock(AiCoachMetrics.class));
             String answer = provider.explain(new CoachLanguageProvider.CoachLanguageContext(
                     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                    "Why? player@example.com", "none", "e2e4", null,
+                    "te", "Why? player@example.com", "none", "e2e4", null,
                     "Best", "e2e4", 0, "e7e5", List.of("e2e4", "e7e5")));
 
             assertThat(answer).isEqualTo("Develop first, then castle.");
             assertThat(received.get()).contains("test-model", "e2e4", "[redacted-email]")
+                    .contains("Answer language (BCP-47): te")
                     .doesNotContain("player@example.com", "test-key");
             assertThat(received.get()).contains("\"role\":\"developer\"");
             assertThat(authorization.get()).isEqualTo("Bearer test-key");

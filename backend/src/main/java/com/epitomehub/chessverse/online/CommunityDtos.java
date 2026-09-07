@@ -23,7 +23,9 @@ final class CommunityDtos {
                            boolean online, String lastMessage, Instant sentAt, int unread) {}
     record MessageDto(UUID id, UUID senderId, UUID recipientId, String body,
                       Instant sentAt, boolean mine, boolean delivered, boolean seen,
-                      String attachmentName, String attachmentType, Long attachmentSize) {}
+                      String attachmentName, String attachmentType, Long attachmentSize,
+                      boolean deletedForEveryone, List<MessageReactionDto> reactions) {}
+    record MessageReactionDto(UUID playerId, String emoji, boolean mine) {}
     record HubDto(List<ClubDto> clubs, List<TournamentDto> tournaments,
                   List<ConversationDto> conversations, int fairPlayScore,
                   int circuitPoints) {}

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/app_config.dart';
+import '../../../core/app_language.dart';
 
 class AiCoachAnswer {
   const AiCoachAnswer({
@@ -106,6 +107,7 @@ class AiCoachApi {
     List<String> candidateMoves = const <String>[],
   }) async {
     try {
+      final String language = await AppLanguageController.effectiveCode();
       final http.Response response = await http
           .post(
             Uri.parse('${AppConfig.apiBaseUrl}/api/v1/coach/ask'),
@@ -119,6 +121,7 @@ class AiCoachApi {
               'question': question,
               if (sessionId != null) 'sessionId': sessionId,
               if (candidateMoves.isNotEmpty) 'candidateMoves': candidateMoves,
+              'language': language,
             }),
           )
           .timeout(const Duration(seconds: 20));

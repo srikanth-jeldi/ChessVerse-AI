@@ -13,6 +13,7 @@ public interface CoachLanguageProvider {
 
     record CoachLanguageContext(
             String fen,
+            String language,
             String question,
             String previousQuestion,
             String playedMove,

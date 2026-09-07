@@ -4310,7 +4310,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     ? () => unawaited(
                           _refreshOnlineMatch(forceBoardReplay: true),
                         )
-                    : _confirmNewGame,
+                    : _isTacticsMode
+                        ? (_gameResultTitle
+                                    ?.toLowerCase()
+                                    .contains('challenge missed') ==
+                                true
+                            ? _reset
+                            : null)
+                        : _confirmNewGame,
                 onUndo: _undo,
                 puzzleComplete: _gameMode == GameMode.puzzle &&
                     _gameResultTitle == 'Puzzle complete',
@@ -10488,7 +10495,7 @@ class _StudioCoachPanel extends StatelessWidget {
   final String analyzeLabel;
   final VoidCallback onHint;
   final VoidCallback onAnalyze;
-  final VoidCallback onTryAgain;
+  final VoidCallback? onTryAgain;
   final VoidCallback onUndo;
   final bool puzzleComplete;
   final VoidCallback onNextPuzzle;

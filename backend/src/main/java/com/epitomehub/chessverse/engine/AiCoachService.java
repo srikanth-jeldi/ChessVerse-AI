@@ -96,7 +96,8 @@ class AiCoachService {
         String moveToReview = candidate == null ? request.playedMove().toLowerCase(Locale.ROOT) : candidate;
         var evidence = reviewCached(request.fen(), moveToReview);
         String normalizedQuestion = normalizeQuestion(request.question());
-        String key = sha256(request.fen().trim() + "|" + moveToReview + "|" + normalizedQuestion + "|" + context);
+        String language = request.language() == null ? "en" : request.language().replace('_', '-').toLowerCase(Locale.ROOT);
+        String key = sha256(request.fen().trim() + "|" + moveToReview + "|" + normalizedQuestion + "|" + language + "|" + context);
         Instant now = Instant.now();
         AiCoachResponseCache cached = cache.findById(key)
                 .filter(item -> item.expiresAt.isAfter(now))
@@ -130,7 +131,8 @@ class AiCoachService {
         if (provider != null) {
             try {
                 String generated = provider.explain(new CoachLanguageProvider.CoachLanguageContext(
-                        request.fen().trim(), request.question().trim(), conversationContext, move, candidate,
+                        request.fen().trim(), request.language() == null ? "en" : request.language(),
+                        request.question().trim(), conversationContext, move, candidate,
                         evidence.classification(), evidence.bestMove(), evidence.centipawnLoss(),
                         evidence.opponentThreat(), evidence.principalVariation()));
                 if (generated != null && !generated.isBlank()) {

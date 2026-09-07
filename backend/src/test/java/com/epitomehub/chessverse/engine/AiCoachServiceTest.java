@@ -54,7 +54,7 @@ class AiCoachServiceTest {
                 List.of(), metrics, 30, 168);
         var response = service.ask(playerId, new AiCoachController.CoachRequest(
                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                "e2e4", "What if I play f2f3 instead?", "f2f3", null, List.of("f2f3")));
+                "e2e4", "What if I play f2f3 instead?", "f2f3", null, "en", List.of("f2f3")));
 
         assertThat(response.answer()).contains("f2 → f3", "286 centipawn", "g1 → f3", "d8 → h4");
         assertThat(response.candidateMove()).isEqualTo("f2f3");
@@ -71,7 +71,7 @@ class AiCoachServiceTest {
 
         assertThatThrownBy(() -> service.ask(playerId, new AiCoachController.CoachRequest(
                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                "e2e4", "Why?", null, null, List.of())))
+                "e2e4", "Why?", null, null, "en", List.of())))
                 .isInstanceOf(EngineException.class)
                 .hasMessageContaining("daily AI Coach limit");
     }
@@ -95,13 +95,14 @@ class AiCoachServiceTest {
 
         var response = service.ask(playerId, new AiCoachController.CoachRequest(
                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                "e2e4", "What should I do next?", null, sessionId, List.of()));
+                "e2e4", "What should I do next?", null, sessionId, "te", List.of()));
 
         ArgumentCaptor<CoachLanguageProvider.CoachLanguageContext> context =
                 ArgumentCaptor.forClass(CoachLanguageProvider.CoachLanguageContext.class);
         verify(language).explain(context.capture());
         assertThat(context.getValue().previousQuestion())
                 .contains("Why develop first?", "Because active pieces control more squares.");
+        assertThat(context.getValue().language()).isEqualTo("te");
         assertThat(response.sessionId()).isEqualTo(sessionId);
         assertThat(response.conversationTurns()).isEqualTo(2);
     }
@@ -112,7 +113,7 @@ class AiCoachServiceTest {
                 List.of(), metrics, 30, 168);
         AiCoachController.CoachRequest request = new AiCoachController.CoachRequest(
                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                "e2e4", "Why?", null, null, List.of("e2e4"));
+                "e2e4", "Why?", null, null, "en", List.of("e2e4"));
 
         service.ask(playerId, request);
         service.ask(playerId, request);

@@ -68,6 +68,7 @@ class AiCoachController {
             @Pattern(regexp = "^$|^[a-h][1-8][a-h][1-8][qrbn]?$", flags = Pattern.Flag.CASE_INSENSITIVE)
             String candidateMove,
             UUID sessionId,
+            @Pattern(regexp = "^[A-Za-z]{2,3}([_-][A-Za-z]{2,4})?$") String language,
             @Size(max = 3) List<@Pattern(
                     regexp = "^[a-h][1-8][a-h][1-8][qrbn]?$",
                     flags = Pattern.Flag.CASE_INSENSITIVE) String> candidateMoves) {}

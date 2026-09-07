@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/audio/chess_sound_service.dart';
 import '../../../core/app_preferences.dart';
+import '../../../core/app_language.dart';
 import '../../../core/chess_piece_appearance.dart';
 import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/layout/responsive_page.dart';
@@ -51,6 +52,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _pieceStyle = 'Premium 3D';
   String _pieceSize = 'Extra Large';
   String _appTheme = 'Dark premium';
+  String _language = AppLanguageController.systemCode;
   bool _loading = true;
 
   @override
@@ -71,6 +73,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _preferences.readString('pieceStyle', fallback: 'Premium 3D'),
       _preferences.readString('pieceSize', fallback: 'Extra Large'),
       _preferences.readString('appTheme', fallback: 'Dark premium'),
+      AppLanguageController.selectedCode(),
     ]);
     if (!mounted) return;
     setState(() {
@@ -86,6 +89,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       _pieceSize = values[8] as String;
       _appTheme = values[9] as String;
+      _language = values[10] as String;
       _loading = false;
     });
     ChessPieceAppearanceController.current.value = ChessPieceAppearance(
@@ -197,6 +201,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   _dailyReminderSwitch(),
                                 ],
                               ),
+                      ),
+                      const SizedBox(height: 18),
+                      const _SettingsSectionTitle(
+                        icon: Icons.translate_rounded,
+                        label: 'LANGUAGE & AI COACH',
+                      ),
+                      const SizedBox(height: 12),
+                      ChessVerseCard(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: desktop ? 26 : 16,
+                          vertical: desktop ? 10 : 8,
+                        ),
+                        child: _SettingRow(
+                          icon: Icons.language_rounded,
+                          title: 'App & coach language',
+                          value: AppLanguageController.byCode(_language)
+                              .displayName,
+                          onTap: _chooseLanguage,
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(8, 8, 8, 0),
+                        child: Text(
+                          'AI explanations use your selected language. Untranslated app text safely falls back to English.',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 18),
                       const _SettingsSectionTitle(
@@ -616,6 +649,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
         },
       );
 
+  Future<void> _chooseLanguage() async {
+    final String? selected = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (BuildContext context) => _LanguagePicker(selected: _language),
+    );
+    if (selected == null || !mounted) return;
+    setState(() => _language = selected);
+    await AppLanguageController.select(selected);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(selected == AppLanguageController.systemCode
+          ? 'Language follows this device.'
+          : 'AI coach language changed to ${AppLanguageController.byCode(selected).englishName}.'),
+    ));
+  }
+
   Future<void> _logout() async {
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -1034,6 +1085,94 @@ class _AdaptiveFlexItem extends StatelessWidget {
       expanded ? Expanded(child: child) : child;
 }
 
+class _LanguagePicker extends StatefulWidget {
+  const _LanguagePicker({required this.selected});
+
+  final String selected;
+
+  @override
+  State<_LanguagePicker> createState() => _LanguagePickerState();
+}
+
+class _LanguagePickerState extends State<_LanguagePicker> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final String query = _query.trim().toLowerCase();
+    final List<AppLanguage> languages = AppLanguageController.supported
+        .where((AppLanguage item) =>
+            query.isEmpty ||
+            item.nativeName.toLowerCase().contains(query) ||
+            item.englishName.toLowerCase().contains(query) ||
+            item.code.toLowerCase().contains(query))
+        .toList(growable: false);
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * .82,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Column(children: <Widget>[
+              const Text('Choose language',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 6),
+              const Text('App interface & AI chess coach',
+                  style: TextStyle(color: AppColors.textSecondary)),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: TextField(
+                  autofocus: false,
+                  onChanged: (String value) => setState(() => _query = value),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search_rounded),
+                    hintText: 'Search language',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                  itemCount: languages.length,
+                  separatorBuilder: (_, __) =>
+                      const Divider(color: AppColors.border, height: 1),
+                  itemBuilder: (BuildContext context, int index) {
+                    final AppLanguage language = languages[index];
+                    final bool active = language.code == widget.selected;
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: active
+                            ? AppColors.accentGold
+                            : const Color(0xFF10283A),
+                        child: Icon(
+                          language.code == AppLanguageController.systemCode
+                              ? Icons.phone_android_rounded
+                              : Icons.translate_rounded,
+                          color:
+                              active ? const Color(0xFF071827) : Colors.white,
+                        ),
+                      ),
+                      title: Text(language.nativeName,
+                          style: const TextStyle(fontWeight: FontWeight.w800)),
+                      subtitle: Text(language.englishName),
+                      trailing: active
+                          ? const Icon(Icons.check_circle_rounded,
+                              color: Color(0xFF42DACA))
+                          : null,
+                      onTap: () => Navigator.pop(context, language.code),
+                    );
+                  },
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SettingRow extends StatelessWidget {
   const _SettingRow(
       {required this.icon,
@@ -1055,7 +1194,13 @@ class _SettingRow extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Text(value, style: Theme.of(context).textTheme.bodySmall),
+          Flexible(
+            child: Text(value,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+                style: Theme.of(context).textTheme.bodySmall),
+          ),
           const SizedBox(width: 4),
           const Icon(Icons.chevron_right_rounded),
         ],

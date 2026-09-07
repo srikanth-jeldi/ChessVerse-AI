@@ -34,5 +34,16 @@ class CommunityController {
                                          @RequestPart("file") MultipartFile file){return community.sendAttachment(player(auth),recipientId,body,file);}
     @GetMapping("/messages/{messageId}/attachment")
     ResponseEntity<Resource> attachment(@RequestHeader("Authorization")String auth,@PathVariable UUID messageId){return community.attachment(player(auth),messageId);}
+    @DeleteMapping("/messages/{messageId}")
+    void deleteMessage(@RequestHeader("Authorization") String auth, @PathVariable UUID messageId,
+                       @RequestParam(defaultValue="me") String scope) {
+        community.deleteMessage(player(auth), messageId, scope);
+    }
+    @PutMapping("/messages/{messageId}/reaction")
+    CommunityDtos.MessageDto react(@RequestHeader("Authorization") String auth,
+                                   @PathVariable UUID messageId,
+                                   @RequestParam(required=false) String emoji) {
+        return community.react(player(auth), messageId, emoji);
+    }
     private AuthenticatedPlayer player(String auth){return authentication.requireBearer(auth);}
 }

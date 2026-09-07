@@ -583,6 +583,13 @@ void main() {
 
     expect(find.text('DAILY CHALLENGE'), findsOneWidget);
     expect(find.byType(ChessBoard), findsOneWidget);
+    final FilledButton tryAgain = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Try again'),
+    );
+    expect(tryAgain.onPressed, isNull);
+    await tester.tap(find.widgetWithText(FilledButton, 'Try again'));
+    await tester.pump();
+    expect(find.text('Start new game?'), findsNothing);
   });
 
   testWidgets('phone layout prioritizes the playable board', (

@@ -219,7 +219,7 @@ class CommunityService {
         UUID id=UUID.randomUUID(); Instant now=Instant.now(); String clean=body.trim();
         jdbc.update("insert into direct_message(id,sender_id,recipient_id,body,sent_at) values(?,?,?,?,?)",id,player.id(),recipientId,clean,Timestamp.from(now));
         notifications.create(recipientId,"MESSAGE_RECEIVED","New message from "+player.displayName(),clean,"CHAT",player.id());
-        return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,null,null,null);
+        return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,null,null,null,false,List.of());
     }
 
     @Transactional
@@ -252,7 +252,7 @@ class CommunityService {
         jdbc.update("insert into direct_message(id,sender_id,recipient_id,body,sent_at,attachment_name,attachment_type,attachment_size,attachment_path) values(?,?,?,?,?,?,?,?,?)",
                 id,player.id(),recipientId,clean,Timestamp.from(now),original,type,(long)accepted.bytes().length,stored);
         notifications.create(recipientId,"MESSAGE_RECEIVED","New attachment from "+player.displayName(),original,"CHAT",player.id());
-        return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,original,type,(long)accepted.bytes().length);
+        return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,original,type,(long)accepted.bytes().length,false,List.of());
     }
 
     @Transactional
@@ -264,10 +264,78 @@ class CommunityService {
     List<CommunityDtos.MessageDto> messages(AuthenticatedPlayer player, UUID friendId) {
         requireFriends(player.id(), friendId);
         jdbc.update("update direct_message set delivered_at=coalesce(delivered_at,?),read_at=? where sender_id=? and recipient_id=? and read_at is null",Timestamp.from(Instant.now()),Timestamp.from(Instant.now()),friendId,player.id());
-        return jdbc.query("select * from direct_message where (sender_id=? and recipient_id=?) or (sender_id=? and recipient_id=?) order by sent_at desc limit 100",
-                (rs,row)->new CommunityDtos.MessageDto(uuid(rs,"id"),uuid(rs,"sender_id"),uuid(rs,"recipient_id"),rs.getString("body"),rs.getTimestamp("sent_at").toInstant(),uuid(rs,"sender_id").equals(player.id()),rs.getTimestamp("delivered_at")!=null,rs.getTimestamp("read_at")!=null,rs.getString("attachment_name"),rs.getString("attachment_type"),(Long)rs.getObject("attachment_size")),
+        return jdbc.query("""
+                select * from direct_message where
+                ((sender_id=? and recipient_id=? and deleted_for_sender=false) or
+                 (sender_id=? and recipient_id=? and deleted_for_recipient=false))
+                order by sent_at desc limit 100
+                """, (rs,row)->messageDto(rs, player.id()),
                 player.id(),friendId,friendId,player.id()).reversed();
     }
+
+    @Transactional
+    void deleteMessage(AuthenticatedPlayer player, UUID messageId, String rawScope) {
+        MessageOwner message = jdbc.query("select sender_id,recipient_id,sent_at,attachment_path from direct_message where id=?",
+                rs -> rs.next() ? new MessageOwner(uuid(rs,"sender_id"),uuid(rs,"recipient_id"),
+                        rs.getTimestamp("sent_at").toInstant(),rs.getString("attachment_path")) : null,messageId);
+        if (message == null || (!player.id().equals(message.sender()) && !player.id().equals(message.recipient())))
+            throw new OnlineMatchException(HttpStatus.NOT_FOUND,"Message was not found.");
+        if ("everyone".equalsIgnoreCase(rawScope)) {
+            if (!player.id().equals(message.sender()))
+                throw new OnlineMatchException(HttpStatus.FORBIDDEN,"Only the sender can delete for everyone.");
+            if (message.sentAt().isBefore(Instant.now().minusSeconds(15 * 60)))
+                throw new OnlineMatchException(HttpStatus.CONFLICT,"Delete for everyone is available for 15 minutes.");
+            jdbc.update("""
+                    update direct_message set body='This message was deleted', deleted_for_everyone_at=?,
+                    attachment_name=null,attachment_type=null,attachment_size=null,attachment_path=null where id=?
+                    """,Timestamp.from(Instant.now()),messageId);
+            if (message.attachmentPath() != null) {
+                Path stored = attachmentRoot.resolve(message.attachmentPath()).normalize();
+                if (stored.startsWith(attachmentRoot.normalize())) {
+                    try { Files.deleteIfExists(stored); }
+                    catch (IOException ignored) { }
+                }
+            }
+        } else if (player.id().equals(message.sender())) {
+            jdbc.update("update direct_message set deleted_for_sender=true where id=?",messageId);
+        } else {
+            jdbc.update("update direct_message set deleted_for_recipient=true where id=?",messageId);
+        }
+    }
+
+    @Transactional
+    CommunityDtos.MessageDto react(AuthenticatedPlayer player, UUID messageId, String rawEmoji) {
+        Integer visible = jdbc.queryForObject("select count(*) from direct_message where id=? and (sender_id=? or recipient_id=?)",
+                Integer.class,messageId,player.id(),player.id());
+        if (visible == null || visible == 0) throw new OnlineMatchException(HttpStatus.NOT_FOUND,"Message was not found.");
+        String emoji = rawEmoji == null ? "" : rawEmoji.trim();
+        if (emoji.isEmpty()) jdbc.update("delete from direct_message_reaction where message_id=? and player_id=?",messageId,player.id());
+        else {
+            if (!List.of("👍","❤️","😂","😮","😢","🔥","♟️").contains(emoji))
+                throw new OnlineMatchException(HttpStatus.BAD_REQUEST,"Choose a supported reaction.");
+            jdbc.update("""
+                    insert into direct_message_reaction(message_id,player_id,emoji,reacted_at) values(?,?,?,?)
+                    on conflict(message_id,player_id) do update set emoji=excluded.emoji,reacted_at=excluded.reacted_at
+                    """,messageId,player.id(),emoji,Timestamp.from(Instant.now()));
+        }
+        return jdbc.query("select * from direct_message where id=?",rs -> {
+            if (!rs.next()) throw new OnlineMatchException(HttpStatus.NOT_FOUND,"Message was not found.");
+            return messageDto(rs,player.id());
+        },messageId);
+    }
+
+    private CommunityDtos.MessageDto messageDto(ResultSet rs, UUID viewer) throws SQLException {
+        UUID id=uuid(rs,"id"), sender=uuid(rs,"sender_id");
+        boolean deleted=rs.getTimestamp("deleted_for_everyone_at")!=null;
+        List<CommunityDtos.MessageReactionDto> reactions=jdbc.query("select player_id,emoji from direct_message_reaction where message_id=? order by reacted_at",
+                (reaction,row)->new CommunityDtos.MessageReactionDto(uuid(reaction,"player_id"),reaction.getString("emoji"),uuid(reaction,"player_id").equals(viewer)),id);
+        return new CommunityDtos.MessageDto(id,sender,uuid(rs,"recipient_id"),rs.getString("body"),
+                rs.getTimestamp("sent_at").toInstant(),sender.equals(viewer),rs.getTimestamp("delivered_at")!=null,
+                rs.getTimestamp("read_at")!=null,rs.getString("attachment_name"),rs.getString("attachment_type"),
+                (Long)rs.getObject("attachment_size"),deleted,reactions);
+    }
+
+    private record MessageOwner(UUID sender, UUID recipient, Instant sentAt, String attachmentPath) {}
 
     @Transactional(readOnly = true)
     ResponseEntity<Resource> attachment(AuthenticatedPlayer player, UUID messageId) {

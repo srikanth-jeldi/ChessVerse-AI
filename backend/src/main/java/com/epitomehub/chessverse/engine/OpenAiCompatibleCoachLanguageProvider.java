@@ -109,6 +109,8 @@ class OpenAiCompatibleCoachLanguageProvider implements CoachLanguageProvider {
 
     private static String evidencePrompt(CoachLanguageContext context) {
         return "FEN: " + context.fen() + "\n"
+                + "Answer language (BCP-47): " + sanitize(context.language()) +
+                ". Write the complete answer in that language; keep chess notation unchanged.\n"
                 + "Question: " + sanitize(context.question()) + "\n"
                 + "Prior conversation: " + sanitize(context.previousQuestion()) + "\n"
                 + "Played/candidate: " + context.playedMove() + " / " + context.candidateMove() + "\n"

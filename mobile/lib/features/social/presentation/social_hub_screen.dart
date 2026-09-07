@@ -1179,6 +1179,95 @@ class _ChatScreenState extends State<_ChatScreen> {
     }
   }
 
+  Future<void> _react(MessageDto message, String? emoji) async {
+    try {
+      final MessageDto updated =
+          await widget.api.react(widget.token, message.id, emoji);
+      if (mounted) {
+        setState(() => _messages = _messages
+            .map((item) => item.id == updated.id ? updated : item)
+            .toList());
+      }
+    } on SocialException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
+  Future<void> _deleteMessage(MessageDto message, bool forEveryone) async {
+    try {
+      await widget.api
+          .deleteMessage(widget.token, message.id, forEveryone: forEveryone);
+      await _load(silent: true);
+    } on SocialException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
+  Future<void> _messageActions(MessageDto message) async {
+    if (message.pending) return;
+    final bool canDeleteEveryone = message.mine &&
+        DateTime.now().difference(message.sentAt) <=
+            const Duration(minutes: 15);
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF0A1C2B),
+      builder: (BuildContext sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
+          child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+            Wrap(
+              spacing: 8,
+              children: <String>['👍', '❤️', '😂', '😮', '😢', '🔥', '♟️']
+                  .map((emoji) => ActionChip(
+                        label:
+                            Text(emoji, style: const TextStyle(fontSize: 22)),
+                        onPressed: () {
+                          Navigator.pop(sheetContext);
+                          _react(message, emoji);
+                        },
+                      ))
+                  .toList(),
+            ),
+            ListTile(
+              leading: const Icon(Icons.reply_rounded),
+              title: const Text('Reply'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                setState(() => _replyingTo = message);
+                _composerFocus.requestFocus();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded),
+              title: const Text('Delete for me'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _deleteMessage(message, false);
+              },
+            ),
+            if (canDeleteEveryone)
+              ListTile(
+                leading: const Icon(Icons.delete_forever_rounded,
+                    color: Color(0xFFFF7A7A)),
+                title: const Text('Delete for everyone'),
+                subtitle: const Text('Available for 15 minutes'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _deleteMessage(message, true);
+                },
+              ),
+          ]),
+        ),
+      ),
+    );
+  }
+
   Future<void> _attach() async {
     final FilePickerResult? result = await FilePicker.platform.pickFiles(
       withData: true,
@@ -1296,9 +1385,19 @@ class _ChatScreenState extends State<_ChatScreen> {
           '❓',
           '💡'
         ];
+        const stickers = <String>[
+          '🏆♟️🔥',
+          '♚ CHECKMATE',
+          '♞ GREAT MOVE',
+          '🤝 GOOD GAME',
+          '⚡ YOUR TURN',
+          '🎯 NICE TACTIC',
+          '👑 CHAMPION',
+          '💪 REMATCH'
+        ];
         return SafeArea(
             child: SizedBox(
-                height: 330,
+                height: 410,
                 child: Column(children: <Widget>[
                   Padding(
                       padding: const EdgeInsets.fromLTRB(18, 12, 8, 6),
@@ -1310,6 +1409,20 @@ class _ChatScreenState extends State<_ChatScreen> {
                             onPressed: () => Navigator.pop(sheetContext),
                             icon: const Icon(Icons.close_rounded))
                       ])),
+                  SizedBox(
+                      height: 76,
+                      child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: stickers.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          itemBuilder: (_, index) => ActionChip(
+                              label: Text(stickers[index]),
+                              onPressed: () {
+                                _text.text = '::sticker::${stickers[index]}';
+                                Navigator.pop(sheetContext);
+                                _send();
+                              }))),
                   Expanded(
                       child: GridView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
@@ -1512,6 +1625,7 @@ class _ChatScreenState extends State<_ChatScreen> {
                               message: m,
                               token: widget.token,
                               api: widget.api,
+                              onActions: () => _messageActions(m),
                               onReply: () {
                                 setState(() => _replyingTo = m);
                                 _composerFocus.requestFocus();
@@ -1535,10 +1649,12 @@ class _MessageBubble extends StatelessWidget {
   const _MessageBubble(
       {required this.message,
       required this.onReply,
+      required this.onActions,
       required this.token,
       required this.api});
   final MessageDto message;
   final VoidCallback onReply;
+  final VoidCallback onActions;
   final String token;
   final CommunityApi api;
   @override
@@ -1552,11 +1668,14 @@ class _MessageBubble extends StatelessWidget {
     final String? quoted = parts.isNotEmpty && parts.first.startsWith('↪ ')
         ? parts.removeAt(0).substring(2)
         : null;
-    final String visibleBody = parts.join('\n');
+    final String rawBody = parts.join('\n');
+    final bool sticker = rawBody.startsWith('::sticker::');
+    final String visibleBody =
+        sticker ? rawBody.substring('::sticker::'.length) : rawBody;
     return Align(
         alignment: message.mine ? Alignment.centerRight : Alignment.centerLeft,
         child: GestureDetector(
-            onLongPress: onReply,
+            onLongPress: onActions,
             child: Container(
                 margin: const EdgeInsets.only(bottom: 3),
                 constraints:
@@ -1606,10 +1725,14 @@ class _MessageBubble extends StatelessWidget {
                                       runSpacing: 2,
                                       children: <Widget>[
                                         Text(visibleBody,
-                                            style: const TextStyle(
-                                                fontSize: 15,
+                                            style: TextStyle(
+                                                fontSize: sticker ? 22 : 15,
                                                 height: 1.22,
-                                                color: Color(0xFFF1EEE7))),
+                                                fontWeight: sticker
+                                                    ? FontWeight.w900
+                                                    : FontWeight.normal,
+                                                color:
+                                                    const Color(0xFFF1EEE7))),
                                         Row(
                                             mainAxisSize: MainAxisSize.min,
                                             crossAxisAlignment:
@@ -1628,7 +1751,33 @@ class _MessageBubble extends StatelessWidget {
                                                     seen: message.seen)
                                               ]
                                             ])
-                                      ])
+                                      ]),
+                                  if (message.reactions.isNotEmpty) ...<Widget>[
+                                    const SizedBox(height: 5),
+                                    Wrap(
+                                      spacing: 4,
+                                      runSpacing: 3,
+                                      children: message.reactions
+                                          .map((MessageReactionDto reaction) =>
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 7,
+                                                        vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: reaction.mine
+                                                      ? const Color(0x443FD8C4)
+                                                      : const Color(0x33101A22),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                                child: Text(reaction.emoji,
+                                                    style: const TextStyle(
+                                                        fontSize: 13)),
+                                              ))
+                                          .toList(growable: false),
+                                    ),
+                                  ]
                                 ])))))));
   }
 }
@@ -1673,13 +1822,72 @@ class _ChatAttachment extends StatefulWidget {
 
 class _ChatAttachmentState extends State<_ChatAttachment> {
   bool _saving = false;
+  late final Future<List<int>> _bytes =
+      widget.api.attachmentBytes(widget.token, widget.message.id);
+
+  Future<void> _previewImage() async {
+    try {
+      final Uint8List bytes = Uint8List.fromList(await _bytes);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        barrierColor: const Color(0xEE000000),
+        builder: (BuildContext dialogContext) => Dialog.fullscreen(
+          backgroundColor: const Color(0xFF02070C),
+          child: SafeArea(
+            child: Stack(
+              children: <Widget>[
+                Positioned.fill(
+                  child: InteractiveViewer(
+                    minScale: 0.7,
+                    maxScale: 5,
+                    child: Center(
+                      child: Image.memory(
+                        bytes,
+                        fit: BoxFit.contain,
+                        gaplessPlayback: true,
+                        semanticLabel: widget.message.attachmentName,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 10,
+                  left: 10,
+                  child: IconButton.filled(
+                    tooltip: 'Close preview',
+                    onPressed: () => Navigator.pop(dialogContext),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ),
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: IconButton.filled(
+                    tooltip: 'Save image',
+                    onPressed: _save,
+                    icon: const Icon(Icons.download_rounded),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Image preview could not be opened.')),
+        );
+      }
+    }
+  }
 
   Future<void> _save() async {
     if (_saving) return;
     setState(() => _saving = true);
     try {
-      final List<int> bytes =
-          await widget.api.attachmentBytes(widget.token, widget.message.id);
+      final List<int> bytes = await _bytes;
       await FilePicker.platform.saveFile(
         dialogTitle: 'Save chat attachment',
         fileName: widget.message.attachmentName,
@@ -1702,11 +1910,12 @@ class _ChatAttachmentState extends State<_ChatAttachment> {
     final bool image = message.attachmentType?.startsWith('image/') ?? false;
     if (image) {
       return InkWell(
-          onTap: _save,
+          onTap: _previewImage,
+          borderRadius: BorderRadius.circular(10),
           child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: FutureBuilder<List<int>>(
-                  future: widget.api.attachmentBytes(widget.token, message.id),
+                  future: _bytes,
                   builder: (context, snapshot) {
                     if (snapshot.hasData) {
                       return Image.memory(Uint8List.fromList(snapshot.data!),
