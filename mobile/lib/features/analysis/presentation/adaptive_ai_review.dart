@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
+import '../../../core/widgets/ai_language_picker.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../data/ai_coach_api.dart';
 import '../domain/ai_review_report.dart';
@@ -868,10 +869,20 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: const Row(children: <Widget>[
-          Icon(Icons.auto_awesome_rounded, color: Color(0xFF59E4C8)),
-          SizedBox(width: 9),
-          Text('Personal AI Coach'),
+        title: Row(children: <Widget>[
+          const Icon(Icons.auto_awesome_rounded, color: Color(0xFF59E4C8)),
+          const SizedBox(width: 9),
+          const Expanded(child: Text('Personal AI Coach')),
+          TextButton.icon(
+            key: const ValueKey<String>('coach-language'),
+            onPressed: () async {
+              if (await chooseAndSaveAiLanguage(context) && mounted) {
+                setState(() => _cloudAnswer = null);
+              }
+            },
+            icon: const Icon(Icons.translate_rounded, size: 18),
+            label: const Text('Language'),
+          ),
         ]),
         content: SizedBox(
           width: 520,

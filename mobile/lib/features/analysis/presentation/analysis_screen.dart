@@ -7,6 +7,7 @@ import '../../../core/widgets/chessverse_button.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../data/game_analysis_api.dart';
+import '../../../core/widgets/ai_language_picker.dart';
 import '../data/ai_coach_api.dart';
 import '../domain/ai_review_report.dart';
 import '../domain/learning_intelligence.dart';
@@ -86,7 +87,18 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     );
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(title: const Text('Analysis')),
+      appBar: AppBar(
+        title: const Text('Analysis'),
+        actions: <Widget>[
+          TextButton.icon(
+            key: const ValueKey<String>('analysis-ai-language'),
+            onPressed: () => chooseAndSaveAiLanguage(context),
+            icon: const Icon(Icons.translate_rounded),
+            label: const Text('AI Language'),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: ResponsivePage(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
