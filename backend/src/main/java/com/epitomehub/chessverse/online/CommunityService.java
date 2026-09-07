@@ -59,6 +59,8 @@ class CommunityService {
                 select t.*,count(e.player_id) players,coalesce(sum(e.reserved_coins),0) prize_pool,
                 exists(select 1 from chess_tournament_entry mine where mine.tournament_id=t.id and mine.player_id=? and mine.active=true) joined
                 from chess_tournament t left join chess_tournament_entry e on e.tournament_id=t.id and e.active=true
+                where t.club_id is null or exists(select 1 from chess_club_member visible
+                    where visible.club_id=t.club_id and visible.player_id=?)
                 group by t.id order by t.starts_at
                 """, (rs,row) -> new CommunityDtos.TournamentDto(uuid(rs,"id"),rs.getString("name"),
                 rs.getString("description"),rs.getInt("time_control_minutes"),rs.getInt("players"),
@@ -66,7 +68,7 @@ class CommunityService {
                 rs.getString("status"),rs.getBoolean("joined"),rs.getInt("entry_coins"),
                 rs.getLong("prize_pool"),rs.getInt("cadence_days"),rs.getInt("minimum_players"),
                 rs.getString("badge_code"),rs.getInt("champion_bonus"),rs.getInt("runner_up_bonus"),
-                rs.getInt("participation_bonus")), player.id());
+                rs.getInt("participation_bonus"),uuidOrNull(rs,"club_id")), player.id(),player.id());
         List<CommunityDtos.ConversationDto> conversations = jdbc.query("""
                 select p.id,p.display_name,p.photo_url,
                 (select d.body from direct_message d
@@ -113,6 +115,15 @@ class CommunityService {
     @Transactional
     CommunityDtos.HubDto joinTournament(AuthenticatedPlayer player, UUID tournamentId, boolean join) {
         requireExists("chess_tournament", tournamentId, "Tournament");
+        Integer visible = jdbc.queryForObject("""
+                select count(*) from chess_tournament t where t.id=? and
+                (t.club_id is null or exists(select 1 from chess_club_member m
+                    where m.club_id=t.club_id and m.player_id=?))
+                """, Integer.class, tournamentId, player.id());
+        if (visible == null || visible == 0) {
+            throw new OnlineMatchException(HttpStatus.FORBIDDEN,
+                    "Join this club before entering its private tournament.");
+        }
         if (join) {
             Object[] tournament = jdbc.query("select status,starts_at,capacity,entry_coins from chess_tournament where id=? for update",
                     rs -> rs.next() ? new Object[]{rs.getString(1),rs.getTimestamp(2).toInstant(),rs.getInt(3),rs.getInt(4)} : null,
@@ -157,6 +168,47 @@ class CommunityService {
             if ((Integer)entry[0] > 0 && entry[1] != null) economy.grantCoins(player.id(),(Integer)entry[0],
                     "TOURNAMENT_ENTRY_REFUND","tournament:"+tournamentId+":refund:"+entry[1],"Tournament entry returned");
         }
+        return hub(player);
+    }
+
+    @Transactional
+    CommunityDtos.HubDto createClubTournament(AuthenticatedPlayer player, UUID clubId,
+            CommunityDtos.CreateClubTournamentRequest request) {
+        Integer member = jdbc.queryForObject("""
+                select count(*) from chess_club_member where club_id=? and player_id=?
+                """, Integer.class, clubId, player.id());
+        if (member == null || member == 0) {
+            throw new OnlineMatchException(HttpStatus.FORBIDDEN,
+                    "Join the club before creating a private tournament.");
+        }
+        Instant now = Instant.now();
+        if (request.startsAt().isBefore(now.plusSeconds(30 * 60)) ||
+                request.startsAt().isAfter(now.plusSeconds(30L * 86_400))) {
+            throw new OnlineMatchException(HttpStatus.BAD_REQUEST,
+                    "Choose a start time between 30 minutes and 30 days from now.");
+        }
+        if (!(request.timeControlMinutes() == 3 || request.timeControlMinutes() == 5 ||
+                request.timeControlMinutes() == 10 || request.timeControlMinutes() == 15)) {
+            throw new OnlineMatchException(HttpStatus.BAD_REQUEST,
+                    "Time control must be 3, 5, 10 or 15 minutes.");
+        }
+        if (!(request.entryCoins() == 100 || request.entryCoins() == 200 ||
+                request.entryCoins() == 500)) {
+            throw new OnlineMatchException(HttpStatus.BAD_REQUEST,
+                    "Entry must be 100, 200 or 500 play coins.");
+        }
+        UUID id = UUID.randomUUID();
+        jdbc.update("""
+                insert into chess_tournament(id,name,description,time_control_minutes,capacity,
+                    starts_at,ends_at,status,current_round,entry_coins,minimum_players,badge_code,
+                    champion_bonus,runner_up_bonus,participation_bonus,club_id,created_by)
+                values(?,?,?,?,?,?,?,'OPEN',0,?,2,'CLUB_CHAMPION',500,250,25,?,?)
+                """, id, request.name().trim(), request.description().trim(),
+                request.timeControlMinutes(), request.capacity(),
+                Timestamp.from(request.startsAt()), Timestamp.from(request.startsAt().plusSeconds(86_400)),
+                request.entryCoins(), clubId, player.id());
+        notifications.create(player.id(), "CLUB_TOURNAMENT_CREATED", "Private tournament created",
+                request.name().trim()+" is open to your club members.", "TOURNAMENT", id);
         return hub(player);
     }
 
@@ -258,4 +310,5 @@ class CommunityService {
         if(found==null||found==0) throw new OnlineMatchException(HttpStatus.NOT_FOUND,label+" was not found.");
     }
     private static UUID uuid(ResultSet rs,String name) throws SQLException { return rs.getObject(name,UUID.class); }
+    private static UUID uuidOrNull(ResultSet rs,String name) throws SQLException { return rs.getObject(name,UUID.class); }
 }

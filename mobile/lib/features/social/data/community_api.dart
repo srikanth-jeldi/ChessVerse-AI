@@ -43,6 +43,7 @@ class TournamentDto {
       this.championBonus = 0,
       this.runnerUpBonus = 0,
       this.participationBonus = 0,
+      this.clubId,
       this.startsAt,
       this.endsAt});
   final String id, name, description, status;
@@ -59,6 +60,7 @@ class TournamentDto {
   final String badgeCode;
   final bool joined;
   final DateTime? startsAt, endsAt;
+  final String? clubId;
   factory TournamentDto.fromJson(Map<String, dynamic> j) => TournamentDto(
       id: j['id'] as String? ?? '',
       name: j['name'] as String? ?? 'Tournament',
@@ -76,6 +78,7 @@ class TournamentDto {
       championBonus: (j['championBonus'] as num?)?.toInt() ?? 0,
       runnerUpBonus: (j['runnerUpBonus'] as num?)?.toInt() ?? 0,
       participationBonus: (j['participationBonus'] as num?)?.toInt() ?? 0,
+      clubId: j['clubId'] as String?,
       startsAt: DateTime.tryParse(j['startsAt'] as String? ?? '')?.toLocal(),
       endsAt: DateTime.tryParse(j['endsAt'] as String? ?? '')?.toLocal());
 }
@@ -297,6 +300,29 @@ class CommunityApi {
   Future<CommunityDto> club(String token, String id, bool join) async =>
       CommunityDto.fromJson(await _request(
           token, 'PUT', '/api/v1/community/clubs/$id?join=$join'));
+  Future<CommunityDto> createClubTournament(
+    String token,
+    String clubId, {
+    required String name,
+    required String description,
+    required DateTime startsAt,
+    required int timeControlMinutes,
+    required int capacity,
+    required int entryCoins,
+  }) async =>
+      CommunityDto.fromJson(await _request(
+        token,
+        'POST',
+        '/api/v1/community/clubs/$clubId/tournaments',
+        body: <String, Object?>{
+          'name': name,
+          'description': description,
+          'startsAt': startsAt.toUtc().toIso8601String(),
+          'timeControlMinutes': timeControlMinutes,
+          'capacity': capacity,
+          'entryCoins': entryCoins,
+        },
+      ));
   Future<CommunityDto> tournament(String token, String id, bool join) async =>
       CommunityDto.fromJson(await _request(
           token, 'PUT', '/api/v1/community/tournaments/$id?join=$join'));

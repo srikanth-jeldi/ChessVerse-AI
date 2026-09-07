@@ -3,6 +3,8 @@ package com.epitomehub.chessverse.online;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -15,7 +17,8 @@ final class CommunityDtos {
                          int players, int capacity, Instant startsAt, Instant endsAt,
                          String status, boolean joined, int entryCoins, long prizePool,
                          int cadenceDays, int minimumPlayers, String badgeCode,
-                         int championBonus, int runnerUpBonus, int participationBonus) {}
+                         int championBonus, int runnerUpBonus, int participationBonus,
+                         UUID clubId) {}
     record ConversationDto(UUID playerId, String displayName, String photoUrl,
                            boolean online, String lastMessage, Instant sentAt, int unread) {}
     record MessageDto(UUID id, UUID senderId, UUID recipientId, String body,
@@ -26,4 +29,11 @@ final class CommunityDtos {
                   int circuitPoints) {}
     record MessageRequest(@NotNull UUID recipientId,
                           @NotBlank @Size(max = 500) String body) {}
+    record CreateClubTournamentRequest(
+            @NotBlank @Size(max = 100) String name,
+            @NotBlank @Size(max = 300) String description,
+            @NotNull Instant startsAt,
+            @Min(3) @Max(15) int timeControlMinutes,
+            @Min(4) @Max(64) int capacity,
+            @Min(100) @Max(500) int entryCoins) {}
 }

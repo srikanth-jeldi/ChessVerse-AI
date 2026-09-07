@@ -69,6 +69,14 @@ class TournamentService {
 
     @Transactional
     TournamentDtos.DetailDto detail(AuthenticatedPlayer player, UUID id) {
+        Integer visible = jdbc.queryForObject("""
+                select count(*) from chess_tournament t where t.id=? and
+                (t.club_id is null or exists(select 1 from chess_club_member m
+                    where m.club_id=t.club_id and m.player_id=?))
+                """, Integer.class, id, player.id());
+        if (visible == null || visible == 0) {
+            throw new OnlineMatchException(HttpStatus.NOT_FOUND, "Tournament was not found.");
+        }
         startIfReady(id);
         return load(player.id(), id);
     }
@@ -138,7 +146,7 @@ class TournamentService {
     private OnlineMatch createMatch(PlayerRow white, PlayerRow black, int minutes,
             UUID tournamentId, int tournamentRound) {
         OnlineMatch match = new OnlineMatch(UUID.randomUUID(), UUID.randomUUID().toString().replace("-","").substring(0,8).toUpperCase(),
-                white.id,white.name,white.photo,false,minutes,"WORLDWIDE","Unknown",1200,0);
+                white.id,white.name,white.photo,false,minutes,"WORLDWIDE","Unknown",1200,0,"STANDARD");
         match.blackPlayerId=black.id; match.blackPlayerName=black.name; match.blackPlayerPhotoUrl=black.photo;
         match.tournamentName=jdbc.queryForObject(
                 "select name from chess_tournament where id=?",String.class,tournamentId);

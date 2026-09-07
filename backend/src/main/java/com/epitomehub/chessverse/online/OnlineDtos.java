@@ -33,11 +33,17 @@ final class OnlineDtos {
             @Min(3) @Max(15) int timeControlMinutes,
             @Pattern(regexp = "^(WORLDWIDE|COUNTRY)$") String region,
             @Min(0) @Max(800) int ratingRange,
-            @Min(100) @Max(500) int entryCoins) {
+            @Min(100) @Max(500) int entryCoins,
+            @Pattern(regexp = "^(EXCELLENT|STANDARD|LIMITED)$") String connectionQuality) {
         QueueRequest {
             if (timeControlMinutes == 0) timeControlMinutes = 10;
             if (region == null || region.isBlank()) region = "WORLDWIDE";
             if (entryCoins == 0) entryCoins = 100;
+            if (connectionQuality == null || connectionQuality.isBlank()) connectionQuality = "STANDARD";
+        }
+
+        QueueRequest(int timeControlMinutes, String region, int ratingRange, int entryCoins) {
+            this(timeControlMinutes, region, ratingRange, entryCoins, "STANDARD");
         }
 
         @AssertTrue(message = "Time control must be 3, 5, 10 or 15 minutes.")

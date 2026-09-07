@@ -5,6 +5,7 @@ import '../../shop/presentation/cosmetic_shop_screen.dart';
 import '../data/social_api.dart';
 import 'tournament_circuit_view.dart';
 import '../../../core/local_game_archive.dart';
+import '../../../core/notifications/daily_reminder_service.dart';
 import '../domain/tournament_readiness.dart';
 
 class TournamentDetailScreen extends StatefulWidget {
@@ -74,6 +75,15 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
     setState(() => busy = true);
     try {
       await widget.api.tournament(widget.token, widget.id, !value.joined);
+      if (value.joined) {
+        await DailyReminderService.instance.cancelTournamentReminders(value.id);
+      } else if (value.startsAt != null) {
+        await DailyReminderService.instance.scheduleTournamentReminders(
+          tournamentId: value.id,
+          tournamentName: value.name,
+          startsAt: value.startsAt!,
+        );
+      }
       if (mounted) setState(() => actionError = null);
       await _load();
       if (mounted) {

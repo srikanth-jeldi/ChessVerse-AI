@@ -20,6 +20,7 @@ Widget _result({
         onNewGame: () {},
         onDismiss: () {},
         onReview: () {},
+        onShare: () async {},
       ),
     ),
   );

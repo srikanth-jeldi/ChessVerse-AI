@@ -17,7 +17,9 @@ class DailyReminderService {
   bool _initialized = false;
   bool _enabled = false;
   bool _pendingPlayOpen = false;
+  bool _pendingTournamentOpen = false;
   final ValueNotifier<int> playOpenRequests = ValueNotifier<int>(0);
+  final ValueNotifier<int> tournamentOpenRequests = ValueNotifier<int>(0);
 
   Future<void> initialize() async {
     if (_initialized || kIsWeb) return;
@@ -45,9 +47,13 @@ class DailyReminderService {
   }
 
   void _handleNotificationResponse(NotificationResponse response) {
-    if (response.payload != 'open_play') return;
-    _pendingPlayOpen = true;
-    playOpenRequests.value += 1;
+    if (response.payload == 'open_play') {
+      _pendingPlayOpen = true;
+      playOpenRequests.value += 1;
+    } else if (response.payload == 'open_tournaments') {
+      _pendingTournamentOpen = true;
+      tournamentOpenRequests.value += 1;
+    }
   }
 
   bool get hasPendingPlayOpen => _pendingPlayOpen;
@@ -55,6 +61,14 @@ class DailyReminderService {
   bool takePendingPlayOpen() {
     if (!_pendingPlayOpen) return false;
     _pendingPlayOpen = false;
+    return true;
+  }
+
+  bool get hasPendingTournamentOpen => _pendingTournamentOpen;
+
+  bool takePendingTournamentOpen() {
+    if (!_pendingTournamentOpen) return false;
+    _pendingTournamentOpen = false;
     return true;
   }
 
@@ -164,6 +178,77 @@ class DailyReminderService {
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       );
     }
+  }
+
+  Future<void> scheduleTournamentReminders({
+    required String tournamentId,
+    required String tournamentName,
+    required DateTime startsAt,
+  }) async {
+    if (kIsWeb) return;
+    await initialize();
+    final int base = _tournamentNotificationBase(tournamentId);
+    await cancelTournamentReminders(tournamentId);
+    final tz.TZDateTime start = tz.TZDateTime.from(startsAt, tz.local);
+    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    final List<(Duration, String, String)> reminders =
+        <(Duration, String, String)>[
+      (
+        const Duration(hours: 24),
+        '$tournamentName starts tomorrow',
+        'Review your preparation and return for your pairing.'
+      ),
+      (
+        const Duration(hours: 1),
+        '$tournamentName starts in 1 hour',
+        'Your registered tournament is almost ready.'
+      ),
+      (
+        const Duration(minutes: 10),
+        '$tournamentName starts in 10 minutes',
+        'Open the tournament bracket and get ready to play.'
+      ),
+    ];
+    for (int index = 0; index < reminders.length; index++) {
+      final item = reminders[index];
+      final tz.TZDateTime when = start.subtract(item.$1);
+      if (!when.isAfter(now)) continue;
+      await _plugin.zonedSchedule(
+        base + index,
+        item.$2,
+        item.$3,
+        when,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'tournament_match_reminders',
+            'Tournament and match reminders',
+            channelDescription: 'Reminders for tournaments you registered for',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        payload: 'open_tournaments',
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+    }
+  }
+
+  Future<void> cancelTournamentReminders(String tournamentId) async {
+    if (kIsWeb) return;
+    await initialize();
+    final int base = _tournamentNotificationBase(tournamentId);
+    for (int index = 0; index < 3; index++) {
+      await _plugin.cancel(base + index);
+    }
+  }
+
+  int _tournamentNotificationBase(String value) {
+    int hash = 17;
+    for (final int unit in value.codeUnits) {
+      hash = ((hash * 31) + unit) & 0x3fffffff;
+    }
+    return 100000 + (hash % 800000) * 3;
   }
 
   Future<void> showRealtime(int id, String title, String body) async {

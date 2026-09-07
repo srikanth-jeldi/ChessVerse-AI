@@ -45,6 +45,7 @@ import 'features/notifications/data/notification_api.dart';
 import 'features/notifications/presentation/notification_center_screen.dart';
 import 'features/leaderboard/presentation/leaderboard_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
+import 'features/missions/presentation/missions_screen.dart';
 import 'features/shop/presentation/cosmetic_shop_screen.dart';
 import 'features/shop/data/economy_rewards_api.dart';
 import 'features/puzzles/domain/puzzle_catalog.dart';
@@ -309,6 +310,9 @@ class _SplashGateState extends State<SplashGate> {
     DailyReminderService.instance.playOpenRequests.addListener(
       _openPlayFromReminder,
     );
+    DailyReminderService.instance.tournamentOpenRequests.addListener(
+      _openTournamentsFromReminder,
+    );
     unawaited(DailyReminderService.instance.initialize());
   }
 
@@ -449,6 +453,7 @@ class _SplashGateState extends State<SplashGate> {
       _stage = _RootStage.home;
     });
     _openPlayFromReminder();
+    _openTournamentsFromReminder();
     // Do not make active-match recovery wait for profile/progress sync. A
     // killed mobile process has a short server grace window and must reopen
     // its authoritative match as soon as the authenticated home route exists.
@@ -694,6 +699,9 @@ class _SplashGateState extends State<SplashGate> {
     DailyReminderService.instance.playOpenRequests.removeListener(
       _openPlayFromReminder,
     );
+    DailyReminderService.instance.tournamentOpenRequests.removeListener(
+      _openTournamentsFromReminder,
+    );
     _timer?.cancel();
     _presenceTimer?.cancel();
     _stopNotificationPolling();
@@ -710,6 +718,19 @@ class _SplashGateState extends State<SplashGate> {
     DailyReminderService.instance.takePendingPlayOpen();
     setState(() => _primaryDestination = 1);
     unawaited(DailyReminderService.instance.recordPlayOpened());
+  }
+
+  void _openTournamentsFromReminder() {
+    if (!mounted ||
+        _stage != _RootStage.home ||
+        !DailyReminderService.instance.hasPendingTournamentOpen) {
+      return;
+    }
+    DailyReminderService.instance.takePendingTournamentOpen();
+    setState(() {
+      _communitySection = 2;
+      _primaryDestination = 5;
+    });
   }
 
   @override
@@ -747,6 +768,7 @@ class _SplashGateState extends State<SplashGate> {
                 _stage = _RootStage.home;
               });
               _openPlayFromReminder();
+              _openTournamentsFromReminder();
               unawaited(
                 AppAnalytics.logAuthentication(guest: result.isGuest),
               );
@@ -854,6 +876,20 @@ class _SplashGateState extends State<SplashGate> {
         onSecureProgress: _isGuest ? () => _secureGuestProgress(context) : null,
         onDisplayNameChanged: _updateDisplayName,
         onProfilePhotoChanged: _updateProfilePhoto,
+        onMissions: () async {
+          final StoredAuthSession? session = await _sessionStore.read();
+          if (!context.mounted || session == null) return;
+          await _push(
+            context,
+            MissionsScreen(
+              token: session.token,
+              onRewardClaimed: () => unawaited(
+                _refreshCoinBalance(session.token),
+              ),
+            ),
+          );
+          await _refreshCoinBalance(session.token);
+        },
         onShop: () async {
           final StoredAuthSession? session =
               await const AuthSessionStore().read();
@@ -4600,6 +4636,27 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                               WidgetsBinding.instance.addPostFrameCallback(
                                 (_) => _showAiReview(),
                               );
+                            },
+                            onShare: () async {
+                              final String result = <String>[
+                                'ChessVerseAI • ${_resultDisplayTitle()}',
+                                _resultScoreLabel(),
+                                _gameResultDetail ?? 'Game complete',
+                                if (_playerAccuracy != null)
+                                  'AI accuracy: $_playerAccuracy%',
+                                if (_turningPoint != null)
+                                  'Turning point: $_turningPoint',
+                                'Play and improve at chessverseai.com',
+                              ].join('\n');
+                              await Clipboard.setData(
+                                  ClipboardData(text: result));
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Shareable result copied.'),
+                                  ),
+                                );
+                              }
                             },
                           ),
                         ),
@@ -12202,6 +12259,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
   int _ratingRange = 0;
   int _entryCoins = 100;
   int? _coinBalance;
+  String _connectionQuality = 'STANDARD';
   String? _error;
 
   @override
@@ -12316,8 +12374,19 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
 
   Future<void> _refreshOnlinePlayerCount() async {
     try {
+      final Stopwatch latency = Stopwatch()..start();
       final int count = await widget.api.onlinePlayerCount(widget.token);
-      if (mounted) setState(() => _onlinePlayerCount = count);
+      latency.stop();
+      if (mounted) {
+        setState(() {
+          _onlinePlayerCount = count;
+          _connectionQuality = latency.elapsedMilliseconds <= 180
+              ? 'EXCELLENT'
+              : latency.elapsedMilliseconds <= 650
+                  ? 'STANDARD'
+                  : 'LIMITED';
+        });
+      }
     } on OnlineMatchException {
       // Presence is supporting context; matchmaking remains available when
       // the count endpoint is temporarily unavailable.
@@ -12330,6 +12399,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
         region: _searchRegion,
         ratingRange: _ratingRange,
         entryCoins: _entryCoins,
+        connectionQuality: _connectionQuality,
       );
 
   Future<void> _applySearchPreferences(_SearchPreferences preferences) async {
@@ -16771,6 +16841,7 @@ class GameResultOverlay extends StatelessWidget {
     this.onRematch,
     required this.onDismiss,
     required this.onReview,
+    required this.onShare,
     super.key,
   });
 
@@ -16787,6 +16858,7 @@ class GameResultOverlay extends StatelessWidget {
   final VoidCallback? onRematch;
   final VoidCallback onDismiss;
   final VoidCallback onReview;
+  final Future<void> Function() onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -16993,6 +17065,16 @@ class GameResultOverlay extends StatelessWidget {
                             ),
                           ),
                         ],
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            key: const ValueKey<String>('share-game-result'),
+                            onPressed: onShare,
+                            icon: const Icon(Icons.ios_share_rounded),
+                            label: const Text('COPY SHAREABLE RESULT'),
+                          ),
+                        ),
                       ],
                     ),
                   ),

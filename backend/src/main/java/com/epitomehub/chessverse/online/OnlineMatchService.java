@@ -118,7 +118,8 @@ public class OnlineMatchService {
                         preferences.region(),
                         profile.country(),
                         profile.rating(),
-                        preferences.ratingRange())
+                        preferences.ratingRange(),
+                        preferences.connectionQuality())
                 .orElse(null);
         if (opponent == null) {
             return OnlineDtos.MatchDto.from(
@@ -350,7 +351,8 @@ public class OnlineMatchService {
                 previous.queueRegion,
                 previous.queueCountry,
                 previous.queueRating,
-                previous.ratingRange);
+                previous.ratingRange,
+                previous.queueConnectionQuality);
         rematch.blackPlayerId = previous.whitePlayerId;
         rematch.blackPlayerName = previous.whitePlayerName;
         rematch.blackPlayerPhotoUrl = previous.whitePlayerPhotoUrl;
@@ -528,7 +530,8 @@ public class OnlineMatchService {
                 preferences.region(),
                 profile.country(),
                 profile.rating(),
-                preferences.ratingRange());
+                preferences.ratingRange(),
+                preferences.connectionQuality());
         match.entryCoins = randomQueue ? preferences.entryCoins() : 0;
         if (match.entryCoins > 0) {
             if (economy == null) throw new OnlineMatchException(HttpStatus.SERVICE_UNAVAILABLE,

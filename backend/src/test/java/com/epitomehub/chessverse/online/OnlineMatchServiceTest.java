@@ -49,7 +49,7 @@ class OnlineMatchServiceTest {
         when(repository.findCurrentForPlayer(black.id())).thenReturn(Optional.empty());
         when(repository.lockOldestRandomOpponent(
                 eq(black.id()), any(), eq(10), eq(100), eq("WORLDWIDE"),
-                eq("India"), eq(1200), eq(0)))
+                eq("India"), eq(1200), eq(0), eq("STANDARD")))
                 .thenReturn(Optional.of(waiting));
 
         OnlineDtos.MatchDto result = service.randomMatch(black);
@@ -288,7 +288,7 @@ class OnlineMatchServiceTest {
         when(repository.findCurrentForPlayer(white.id())).thenReturn(Optional.empty());
         when(repository.lockOldestRandomOpponent(
                 eq(white.id()), any(), eq(10), eq(500), eq("WORLDWIDE"),
-                eq("India"), eq(1200), eq(0))).thenReturn(Optional.empty());
+                eq("India"), eq(1200), eq(0), eq("STANDARD"))).thenReturn(Optional.empty());
 
         OnlineDtos.MatchDto queued = service.randomMatch(white,
                 new OnlineDtos.QueueRequest(10, "WORLDWIDE", 0, 500));

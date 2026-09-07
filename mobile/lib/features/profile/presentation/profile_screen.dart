@@ -19,6 +19,7 @@ class ProfileScreen extends StatefulWidget {
     this.onProfilePhotoChanged,
     this.onSecureProgress,
     this.onShop,
+    this.onMissions,
     super.key,
   });
 
@@ -32,6 +33,7 @@ class ProfileScreen extends StatefulWidget {
       onProfilePhotoChanged;
   final Future<void> Function()? onSecureProgress;
   final VoidCallback? onShop;
+  final VoidCallback? onMissions;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -79,6 +81,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         centerTitle: false,
         backgroundColor: const Color(0xD9071827),
         actions: <Widget>[
+          if (widget.onMissions != null)
+            IconButton(
+              key: const ValueKey<String>('profile-missions'),
+              tooltip: 'Daily and weekly missions',
+              onPressed: widget.onMissions,
+              icon: const Icon(Icons.flag_circle_rounded),
+            ),
           if (widget.onShop != null)
             Padding(
               padding: EdgeInsets.only(

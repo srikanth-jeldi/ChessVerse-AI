@@ -18,6 +18,11 @@ class CommunityController {
     CommunityController(PlayerAuthenticationService authentication,CommunityService community,TournamentService tournaments){this.authentication=authentication;this.community=community;this.tournaments=tournaments;}
     @GetMapping CommunityDtos.HubDto hub(@RequestHeader("Authorization")String auth){return community.hub(player(auth));}
     @PutMapping("/clubs/{id}") CommunityDtos.HubDto club(@RequestHeader("Authorization")String auth,@PathVariable UUID id,@RequestParam boolean join){return community.joinClub(player(auth),id,join);}
+    @PostMapping("/clubs/{id}/tournaments") CommunityDtos.HubDto createClubTournament(
+            @RequestHeader("Authorization") String auth, @PathVariable UUID id,
+            @Valid @RequestBody CommunityDtos.CreateClubTournamentRequest request) {
+        return community.createClubTournament(player(auth), id, request);
+    }
     @PutMapping("/tournaments/{id}") CommunityDtos.HubDto tournament(@RequestHeader("Authorization")String auth,@PathVariable UUID id,@RequestParam boolean join){return community.joinTournament(player(auth),id,join);}
     @GetMapping("/tournaments/{id}") TournamentDtos.DetailDto tournamentDetail(@RequestHeader("Authorization")String auth,@PathVariable UUID id){return tournaments.detail(player(auth),id);}
     @GetMapping("/messages/{friendId}") List<CommunityDtos.MessageDto> messages(@RequestHeader("Authorization")String auth,@PathVariable UUID friendId){return community.messages(player(auth),friendId);}

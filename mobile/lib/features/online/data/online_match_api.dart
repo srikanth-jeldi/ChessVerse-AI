@@ -224,6 +224,7 @@ class OnlineMatchApi {
     String region = 'WORLDWIDE',
     int ratingRange = 0,
     int entryCoins = 100,
+    String connectionQuality = 'STANDARD',
   }) =>
       _request(
         token,
@@ -234,6 +235,7 @@ class OnlineMatchApi {
           'region': region,
           'ratingRange': ratingRange,
           'entryCoins': entryCoins,
+          'connectionQuality': connectionQuality,
         },
       );
 

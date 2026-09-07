@@ -98,6 +98,100 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
     }
   }
 
+  Future<void> _createClubTournament() async {
+    final ClubDto? club =
+        _community?.clubs.where((item) => item.joined).firstOrNull;
+    if (club == null || _session == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content:
+                Text('Join a club before creating its private tournament.')),
+      );
+      return;
+    }
+    final TextEditingController name = TextEditingController(
+      text: '${club.name} Challenge',
+    );
+    int startsInHours = 6;
+    int minutes = 10;
+    int entryCoins = 100;
+    final bool? create = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => StatefulBuilder(
+        builder: (BuildContext context, StateSetter setDialogState) =>
+            AlertDialog(
+          title: Text('Create ${club.name} tournament'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+              TextField(
+                controller: name,
+                maxLength: 100,
+                decoration: const InputDecoration(labelText: 'Tournament name'),
+              ),
+              DropdownButtonFormField<int>(
+                initialValue: startsInHours,
+                decoration: const InputDecoration(labelText: 'Starts in'),
+                items: const <DropdownMenuItem<int>>[
+                  DropdownMenuItem(value: 1, child: Text('1 hour')),
+                  DropdownMenuItem(value: 6, child: Text('6 hours')),
+                  DropdownMenuItem(value: 24, child: Text('24 hours')),
+                ],
+                onChanged: (value) =>
+                    setDialogState(() => startsInHours = value ?? 6),
+              ),
+              DropdownButtonFormField<int>(
+                initialValue: minutes,
+                decoration: const InputDecoration(labelText: 'Time control'),
+                items: const <DropdownMenuItem<int>>[
+                  DropdownMenuItem(value: 3, child: Text('3 minutes')),
+                  DropdownMenuItem(value: 5, child: Text('5 minutes')),
+                  DropdownMenuItem(value: 10, child: Text('10 minutes')),
+                  DropdownMenuItem(value: 15, child: Text('15 minutes')),
+                ],
+                onChanged: (value) =>
+                    setDialogState(() => minutes = value ?? 10),
+              ),
+              DropdownButtonFormField<int>(
+                initialValue: entryCoins,
+                decoration: const InputDecoration(labelText: 'Play-coin entry'),
+                items: const <DropdownMenuItem<int>>[
+                  DropdownMenuItem(value: 100, child: Text('100 coins')),
+                  DropdownMenuItem(value: 200, child: Text('200 coins')),
+                  DropdownMenuItem(value: 500, child: Text('500 coins')),
+                ],
+                onChanged: (value) =>
+                    setDialogState(() => entryCoins = value ?? 100),
+              ),
+            ]),
+          ),
+          actions: <Widget>[
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('CANCEL')),
+            FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('CREATE')),
+          ],
+        ),
+      ),
+    );
+    final String tournamentName = name.text.trim();
+    name.dispose();
+    if (create != true || !mounted || tournamentName.isEmpty) return;
+    await _communityAct(() => _communityApi.createClubTournament(
+          _session!.token,
+          club.id,
+          name: tournamentName,
+          description:
+              'A private ${club.name} skill tournament created by a club member.',
+          startsAt: DateTime.now().add(Duration(hours: startsInHours)),
+          timeControlMinutes: minutes,
+          capacity: 32,
+          entryCoins: entryCoins,
+        ));
+    if (mounted) setState(() => _section = 2);
+  }
+
   Future<void> _addFriend() async {
     final TextEditingController controller = TextEditingController();
     final String? username = await showDialog<String>(
@@ -546,6 +640,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                         onTournament: (event) => _communityAct(() =>
                             _communityApi.tournament(
                                 _session!.token, event.id, !event.joined)),
+                        onCreateClubTournament: _createClubTournament,
                         api: _communityApi,
                         token: _session!.token,
                         onOpenMatch: widget.onOpenMatch),
@@ -632,6 +727,7 @@ class _CommunitySection extends StatelessWidget {
       required this.onRefresh,
       required this.onClub,
       required this.onTournament,
+      required this.onCreateClubTournament,
       required this.api,
       required this.token,
       required this.onOpenMatch});
@@ -641,6 +737,7 @@ class _CommunitySection extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final ValueChanged<ClubDto> onClub;
   final ValueChanged<TournamentDto> onTournament;
+  final VoidCallback onCreateClubTournament;
   final CommunityApi api;
   final String token;
   final ValueChanged<OnlineMatchDto>? onOpenMatch;
@@ -702,6 +799,17 @@ class _CommunitySection extends StatelessWidget {
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: 1.2)),
                             const SizedBox(height: 10),
+                            if (section == 1) ...<Widget>[
+                              FilledButton.icon(
+                                key: const ValueKey<String>(
+                                    'create-club-tournament'),
+                                onPressed: onCreateClubTournament,
+                                icon: const Icon(Icons.add_rounded),
+                                label: const Text(
+                                    'CREATE PRIVATE CLUB TOURNAMENT'),
+                              ),
+                              const SizedBox(height: 12),
+                            ],
                             if (cards.isEmpty)
                               const _EmptyCommunity()
                             else

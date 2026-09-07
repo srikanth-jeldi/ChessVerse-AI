@@ -29,7 +29,8 @@ interface OnlineMatchRepository extends JpaRepository<OnlineMatch, UUID> {
               and (:region = 'WORLDWIDE' or match.queueCountry = :country)
               and (:ratingRange = 0 or abs(match.queueRating - :rating) <= :ratingRange)
               and (match.ratingRange = 0 or abs(match.queueRating - :rating) <= match.ratingRange)
-            order by match.createdAt
+            order by case when match.queueConnectionQuality = :connectionQuality then 0 else 1 end,
+                     match.createdAt
             limit 1
             """)
     Optional<OnlineMatch> lockOldestRandomOpponent(
@@ -40,7 +41,8 @@ interface OnlineMatchRepository extends JpaRepository<OnlineMatch, UUID> {
             @Param("region") String region,
             @Param("country") String country,
             @Param("rating") int rating,
-            @Param("ratingRange") int ratingRange);
+            @Param("ratingRange") int ratingRange,
+            @Param("connectionQuality") String connectionQuality);
 
     @Query("""
             select count(match) from OnlineMatch match

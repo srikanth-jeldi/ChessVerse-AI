@@ -66,6 +66,9 @@ class OnlineMatch {
     @Column(name = "rating_range", nullable = false)
     int ratingRange;
 
+    @Column(name = "queue_connection_quality", nullable = false, length = 16)
+    String queueConnectionQuality;
+
     @Column(name = "active_color", nullable = false, length = 8)
     String activeColor;
 
@@ -161,7 +164,7 @@ class OnlineMatch {
             String playerPhotoUrl,
             boolean randomQueue) {
         this(id, roomCode, playerId, playerName, playerPhotoUrl, randomQueue,
-                10, "WORLDWIDE", "Unknown", 1200, 0);
+                10, "WORLDWIDE", "Unknown", 1200, 0, "STANDARD");
     }
 
     OnlineMatch(
@@ -175,7 +178,8 @@ class OnlineMatch {
             String queueRegion,
             String queueCountry,
             int queueRating,
-            int ratingRange) {
+            int ratingRange,
+            String connectionQuality) {
         this.id = id;
         this.roomCode = roomCode;
         this.status = OnlineMatchStatus.WAITING;
@@ -190,6 +194,7 @@ class OnlineMatch {
         this.queueCountry = queueCountry;
         this.queueRating = queueRating;
         this.ratingRange = ratingRange;
+        this.queueConnectionQuality = connectionQuality;
         this.activeColor = "white";
         this.fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         this.createdAt = Instant.now();

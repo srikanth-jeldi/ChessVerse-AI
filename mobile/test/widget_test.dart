@@ -24,6 +24,7 @@ class _FakeOnlineApi extends OnlineMatchApi {
     String region = 'WORLDWIDE',
     int ratingRange = 0,
     int entryCoins = 100,
+    String connectionQuality = 'STANDARD',
   }) async =>
       OnlineMatchDto(
         id: '11111111-1111-1111-1111-111111111111',
@@ -64,6 +65,7 @@ class _PreferenceOnlineApi extends _FakeOnlineApi {
     String region = 'WORLDWIDE',
     int ratingRange = 0,
     int entryCoins = 100,
+    String connectionQuality = 'STANDARD',
   }) async {
     _requestNumber++;
     return OnlineMatchDto(
