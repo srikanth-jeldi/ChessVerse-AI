@@ -81,6 +81,29 @@ class OnlineMatchSocketHandlerTest {
         verify(abandoned).close(CloseStatus.SESSION_NOT_RELIABLE);
     }
 
+    @Test
+    void quickChatIsValidatedAndBroadcastWithViewerPerspective() throws Exception {
+        UUID matchId = UUID.randomUUID();
+        WebSocketSession sender = session(matchId);
+        WebSocketSession opponent = session(matchId);
+        OnlineMatchSocketHandler handler =
+                new OnlineMatchSocketHandler(mock(OnlineMatchService.class));
+        handler.afterConnectionEstablished(sender);
+        handler.afterConnectionEstablished(opponent);
+        clearInvocations(sender, opponent);
+
+        handler.handleTextMessage(sender,
+                new TextMessage("{\"type\":\"quick_chat\",\"value\":\"👍 Good move\"}"));
+
+        ArgumentCaptor<TextMessage> senderMessage = ArgumentCaptor.forClass(TextMessage.class);
+        ArgumentCaptor<TextMessage> opponentMessage = ArgumentCaptor.forClass(TextMessage.class);
+        verify(sender).sendMessage(senderMessage.capture());
+        verify(opponent).sendMessage(opponentMessage.capture());
+        assertTrue(senderMessage.getValue().getPayload().contains("\"mine\":true"));
+        assertTrue(opponentMessage.getValue().getPayload().contains("\"mine\":false"));
+        assertTrue(opponentMessage.getValue().getPayload().contains("Good move"));
+    }
+
     private WebSocketSession session(UUID matchId) {
         WebSocketSession session = mock(WebSocketSession.class);
         when(session.getAttributes()).thenReturn(

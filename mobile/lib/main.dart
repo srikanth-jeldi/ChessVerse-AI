@@ -3769,6 +3769,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   int _onlineSocketReconnectAttempts = 0;
   Timer? _onlineHeartbeatTimer;
   Timer? _onlineResultPresentationTimer;
+  Timer? _quickChatTimer;
   OnlineMatchDto? _onlineMatch;
   String? _handledDrawOfferKey;
   String? _archivedOnlineMatchId;
@@ -3777,6 +3778,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   bool _onlineSocketConnected = false;
   bool _onlineSubmitting = false;
   String? _onlineCelebrationMatchId;
+  String? _quickChatMessage;
+  bool _quickChatMine = false;
   String? _selectedSquare;
   String? _lastFromSquare;
   String? _lastToSquare;
@@ -4081,6 +4084,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _onlineSocketReconnectTimer?.cancel();
     _onlineHeartbeatTimer?.cancel();
     _onlineResultPresentationTimer?.cancel();
+    _quickChatTimer?.cancel();
     final AudioPlayer? warningPlayer = _warningPlayer;
     if (warningPlayer != null) {
       unawaited(warningPlayer.dispose());
@@ -4591,6 +4595,59 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                     ? 'PLAYER 1 • WHITE'
                                     : 'PLAYER 2 • BLACK')
                                 : 'YOUR TURN',
+                          ),
+                        ),
+                      if (_signedIn &&
+                          _gameMode == GameMode.online &&
+                          _onlineMatch?.isActive == true)
+                        Positioned(
+                          top: wide
+                              ? wideHeaderHeight + 18
+                              : compactLandscape
+                                  ? mobileHeaderHeight + 8
+                                  : mobileHeaderHeight +
+                                      arenaRailsHeight +
+                                      boardDimension -
+                                      58,
+                          right: wide ? widePanelWidth + 34 : 10,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              if (_quickChatMessage != null)
+                                Container(
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 190),
+                                  margin: const EdgeInsets.only(right: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: _quickChatMine
+                                        ? const Color(0xEE0D746A)
+                                        : const Color(0xEE132C3A),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                        color: const Color(0xFF52DCCB)),
+                                  ),
+                                  child: Text(
+                                    _quickChatMessage!,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w800),
+                                  ),
+                                ),
+                              IconButton.filled(
+                                key: const ValueKey<String>(
+                                    'online-quick-chat-button'),
+                                tooltip: 'Quick game chat',
+                                onPressed: _showQuickChatPicker,
+                                style: IconButton.styleFrom(
+                                  backgroundColor: const Color(0xEE08283A),
+                                  foregroundColor: const Color(0xFF59E5D2),
+                                  side: const BorderSide(
+                                      color: Color(0xFF59E5D2)),
+                                ),
+                                icon: const Icon(Icons.emoji_emotions_outlined),
+                              ),
+                            ],
                           ),
                         ),
                       if (!_signedIn)
@@ -7983,6 +8040,19 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           _onlineSocketReconnectAttempts = 0;
         });
       }
+      if (decoded['type'] == 'quick_chat') {
+        final String value = decoded['value'] as String? ?? '';
+        if (value.isEmpty || !mounted) return;
+        _quickChatTimer?.cancel();
+        setState(() {
+          _quickChatMessage = value;
+          _quickChatMine = decoded['mine'] as bool? ?? false;
+        });
+        _quickChatTimer = Timer(const Duration(seconds: 4), () {
+          if (mounted) setState(() => _quickChatMessage = null);
+        });
+        return;
+      }
       if (decoded['type'] != 'presence.updated') return;
       final int connected = (decoded['connectedPlayers'] as num?)?.toInt() ?? 0;
       if (!mounted) return;
@@ -7997,6 +8067,65 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     } on FormatException {
       // Ignore non-JSON socket frames; polling remains the source of truth.
     }
+  }
+
+  void _sendQuickChat(String value) {
+    final WebSocketChannel? channel = _onlineChannel;
+    if (channel == null || !_onlineSocketConnected) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Reconnect to send a game message.'),
+      ));
+      return;
+    }
+    channel.sink.add(jsonEncode(<String, String>{
+      'type': 'quick_chat',
+      'value': value,
+    }));
+  }
+
+  Future<void> _showQuickChatPicker() async {
+    const List<String> messages = <String>[
+      '👍 Good move',
+      '🍀 Good luck',
+      '🤝 Good game',
+      '👏 Well played',
+      '🔥 Nice tactic',
+      '⚡ Your turn',
+      '😊',
+      '😂',
+      '😮',
+      '♟️',
+    ];
+    final String? selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF0A1C2B),
+      showDragHandle: true,
+      builder: (BuildContext context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Text('QUICK GAME CHAT',
+                  style: TextStyle(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: messages
+                    .map((String message) => ActionChip(
+                          label: Text(message),
+                          onPressed: () => Navigator.pop(context, message),
+                        ))
+                    .toList(growable: false),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (selected != null && mounted) _sendQuickChat(selected);
   }
 
   Future<void> _respondOnlineDraw(bool accept) async {
