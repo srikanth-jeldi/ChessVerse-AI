@@ -10721,6 +10721,8 @@ class _StudioCoachPanel extends StatelessWidget {
       GameMode.online => 'Play a live opponent',
     };
     final String localizedGoal = _localizedCoachGoal(goal, languageCode);
+    final String? localizedMoveOwner =
+        lastMoveOwner == null ? null : _localizedYourMoveLabel(languageCode);
     final AppLanguage selectedLanguage =
         languageCode == AppLanguageController.systemCode
             ? const AppLanguage(
@@ -10888,7 +10890,7 @@ class _StudioCoachPanel extends StatelessWidget {
                             ? 'ChessVerseAI is calculating…'
                             : lastMove == null
                                 ? 'Select a piece to begin'
-                                : '${lastMoveOwner ?? 'Last move'}: $lastMove',
+                                : '${localizedMoveOwner ?? 'Last move'}: $lastMove',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -11191,8 +11193,229 @@ String _localizedLiveCoachText(String text, String languageCode) {
       text == 'Select a piece to begin') {
     return _coachCopy(languageCode)[2];
   }
+  final String code = _effectiveLiveCoachLanguage(languageCode);
+  if (code == 'en') return text;
+  final RegExpMatch? review = RegExp(
+    r'^(Best|Great|Inaccuracy|Mistake|Blunder) • .*?([a-h][1-8][a-h][1-8][qrbn]?) was stronger; the immediate opponent threat is ([a-h][1-8][a-h][1-8][qrbn]?)\.?$',
+    caseSensitive: false,
+  ).firstMatch(text);
+  if (review != null) {
+    final List<String> labels =
+        _dynamicCoachLabels[code] ?? _dynamicCoachLabels['en']!;
+    return '${labels[1]}: ${_localizedMoveAssessment(review.group(1)!, code)}\n'
+        '${labels[2]}: ${review.group(2)}  •  ${labels[3]}: ${review.group(3)}';
+  }
   return text;
 }
+
+String _localizedYourMoveLabel(String languageCode) {
+  final String code = _effectiveLiveCoachLanguage(languageCode);
+  return (_dynamicCoachLabels[code] ?? _dynamicCoachLabels['en']!)[0];
+}
+
+String _localizedMoveAssessment(String value, String code) {
+  const Map<String, Map<String, String>> translations =
+      <String, Map<String, String>>{
+    'te': <String, String>{
+      'Best': 'అత్యుత్తమం',
+      'Great': 'చాలా మంచి ఎత్తు',
+      'Inaccuracy': 'ఖచ్చితత్వం లేని ఎత్తు',
+      'Mistake': 'తప్పు',
+      'Blunder': 'పెద్ద తప్పు'
+    },
+    'hi': <String, String>{
+      'Best': 'सर्वोत्तम',
+      'Great': 'बहुत अच्छी चाल',
+      'Inaccuracy': 'अशुद्ध चाल',
+      'Mistake': 'गलती',
+      'Blunder': 'बड़ी गलती'
+    },
+    'ta': <String, String>{
+      'Best': 'சிறந்தது',
+      'Great': 'மிக நல்ல நகர்வு',
+      'Inaccuracy': 'துல்லியமற்ற நகர்வு',
+      'Mistake': 'தவறு',
+      'Blunder': 'பெரும் தவறு'
+    },
+    'kn': <String, String>{
+      'Best': 'ಅತ್ಯುತ್ತಮ',
+      'Great': 'ತುಂಬಾ ಒಳ್ಳೆಯ ನಡೆ',
+      'Inaccuracy': 'ನಿಖರವಲ್ಲದ ನಡೆ',
+      'Mistake': 'ತಪ್ಪು',
+      'Blunder': 'ದೊಡ್ಡ ತಪ್ಪು'
+    },
+    'ml': <String, String>{
+      'Best': 'മികച്ചത്',
+      'Great': 'വളരെ നല്ല നീക്കം',
+      'Inaccuracy': 'കൃത്യതയില്ലാത്ത നീക്കം',
+      'Mistake': 'പിശക്',
+      'Blunder': 'വലിയ പിശക്'
+    },
+    'es': <String, String>{
+      'Best': 'Mejor',
+      'Great': 'Muy buena jugada',
+      'Inaccuracy': 'Imprecisión',
+      'Mistake': 'Error',
+      'Blunder': 'Error grave'
+    },
+    'fr': <String, String>{
+      'Best': 'Meilleur',
+      'Great': 'Très bon coup',
+      'Inaccuracy': 'Imprécision',
+      'Mistake': 'Erreur',
+      'Blunder': 'Gaffe'
+    },
+    'de': <String, String>{
+      'Best': 'Bester Zug',
+      'Great': 'Sehr guter Zug',
+      'Inaccuracy': 'Ungenauigkeit',
+      'Mistake': 'Fehler',
+      'Blunder': 'Grober Fehler'
+    },
+    'he': <String, String>{
+      'Best': 'המסע הטוב ביותר',
+      'Great': 'מסע מצוין',
+      'Inaccuracy': 'אי־דיוק',
+      'Mistake': 'טעות',
+      'Blunder': 'טעות חמורה'
+    },
+    'ar': <String, String>{
+      'Best': 'أفضل نقلة',
+      'Great': 'نقلة رائعة',
+      'Inaccuracy': 'نقلة غير دقيقة',
+      'Mistake': 'خطأ',
+      'Blunder': 'خطأ فادح'
+    },
+  };
+  return translations[code]?[value] ?? value;
+}
+
+const Map<String, List<String>> _dynamicCoachLabels = <String, List<String>>{
+  'en': <String>['Your move', 'Move review', 'Better move', 'Opponent threat'],
+  'te': <String>[
+    'మీ ఎత్తు',
+    'ఎత్తు విశ్లేషణ',
+    'మెరుగైన ఎత్తు',
+    'ప్రత్యర్థి ముప్పు'
+  ],
+  'hi': <String>[
+    'आपकी चाल',
+    'चाल समीक्षा',
+    'बेहतर चाल',
+    'प्रतिद्वंद्वी का खतरा'
+  ],
+  'ta': <String>[
+    'உங்கள் நகர்வு',
+    'நகர்வு ஆய்வு',
+    'சிறந்த மாற்று',
+    'எதிரியின் அச்சுறுத்தல்'
+  ],
+  'kn': <String>[
+    'ನಿಮ್ಮ ನಡೆ',
+    'ನಡೆಯ ವಿಶ್ಲೇಷಣೆ',
+    'ಉತ್ತಮ ನಡೆ',
+    'ಎದುರಾಳಿಯ ಬೆದರಿಕೆ'
+  ],
+  'ml': <String>[
+    'നിങ്ങളുടെ നീക്കം',
+    'നീക്ക വിലയിരുത്തൽ',
+    'മികച്ച നീക്കം',
+    'എതിരാളിയുടെ ഭീഷണി'
+  ],
+  'mr': <String>[
+    'तुमची चाल',
+    'चालीचे विश्लेषण',
+    'चांगली चाल',
+    'प्रतिस्पर्ध्याचा धोका'
+  ],
+  'bn': <String>[
+    'আপনার চাল',
+    'চাল পর্যালোচনা',
+    'ভালো চাল',
+    'প্রতিপক্ষের হুমকি'
+  ],
+  'gu': <String>['તમારી ચાલ', 'ચાલની સમીક્ષા', 'વધુ સારી ચાલ', 'હરીફનો ખતરો'],
+  'pa': <String>['ਤੁਹਾਡੀ ਚਾਲ', 'ਚਾਲ ਸਮੀਖਿਆ', 'ਬਿਹਤਰ ਚਾਲ', 'ਵਿਰੋਧੀ ਦਾ ਖ਼ਤਰਾ'],
+  'ur': <String>['آپ کی چال', 'چال کا جائزہ', 'بہتر چال', 'مخالف کا خطرہ'],
+  'ar': <String>['نقلتك', 'مراجعة النقلة', 'نقلة أفضل', 'تهديد الخصم'],
+  'es': <String>['Tu jugada', 'Análisis', 'Mejor jugada', 'Amenaza rival'],
+  'fr': <String>['Votre coup', 'Analyse', 'Meilleur coup', 'Menace adverse'],
+  'de': <String>[
+    'Dein Zug',
+    'Zuganalyse',
+    'Besserer Zug',
+    'Drohung des Gegners'
+  ],
+  'it': <String>[
+    'La tua mossa',
+    'Analisi',
+    'Mossa migliore',
+    'Minaccia avversaria'
+  ],
+  'pt': <String>['Sua jogada', 'Análise', 'Melhor jogada', 'Ameaça adversária'],
+  'ru': <String>['Ваш ход', 'Разбор хода', 'Лучший ход', 'Угроза соперника'],
+  'uk': <String>['Ваш хід', 'Аналіз ходу', 'Кращий хід', 'Загроза суперника'],
+  'tr': <String>[
+    'Hamleniz',
+    'Hamle analizi',
+    'Daha iyi hamle',
+    'Rakibin tehdidi'
+  ],
+  'fa': <String>['حرکت شما', 'بررسی حرکت', 'حرکت بهتر', 'تهدید حریف'],
+  'zh': <String>['你的走法', '着法分析', '更好的走法', '对手的威胁'],
+  'ja': <String>['あなたの手', '着手レビュー', 'より良い手', '相手の脅威'],
+  'ko': <String>['내 수', '수 분석', '더 좋은 수', '상대의 위협'],
+  'id': <String>[
+    'Langkah Anda',
+    'Ulasan langkah',
+    'Langkah lebih baik',
+    'Ancaman lawan'
+  ],
+  'ms': <String>[
+    'Langkah anda',
+    'Ulasan langkah',
+    'Langkah lebih baik',
+    'Ancaman lawan'
+  ],
+  'th': <String>[
+    'ตาของคุณ',
+    'วิเคราะห์การเดิน',
+    'การเดินที่ดีกว่า',
+    'ภัยคุกคามของคู่แข่ง'
+  ],
+  'vi': <String>[
+    'Nước đi của bạn',
+    'Đánh giá nước đi',
+    'Nước tốt hơn',
+    'Đe dọa của đối thủ'
+  ],
+  'pl': <String>[
+    'Twój ruch',
+    'Ocena ruchu',
+    'Lepszy ruch',
+    'Groźba przeciwnika'
+  ],
+  'nl': <String>[
+    'Jouw zet',
+    'Zetanalyse',
+    'Betere zet',
+    'Dreiging van tegenstander'
+  ],
+  'sv': <String>['Ditt drag', 'Draganalys', 'Bättre drag', 'Motståndarens hot'],
+  'el': <String>[
+    'Η κίνησή σας',
+    'Ανάλυση κίνησης',
+    'Καλύτερη κίνηση',
+    'Απειλή αντιπάλου'
+  ],
+  'he': <String>['המסע שלך', 'ניתוח המסע', 'מסע טוב יותר', 'איום היריב'],
+  'sw': <String>[
+    'Hatua yako',
+    'Uchambuzi wa hatua',
+    'Hatua bora',
+    'Tishio la mpinzani'
+  ],
+};
 
 class _CoachInsightCard extends StatelessWidget {
   const _CoachInsightCard({
