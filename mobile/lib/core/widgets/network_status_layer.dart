@@ -13,6 +13,7 @@ class NetworkStatusLayer extends StatefulWidget {
 
 class _NetworkStatusLayerState extends State<NetworkStatusLayer> {
   final NetworkHealthController _controller = NetworkHealthController.instance;
+  bool _bannerDismissed = false;
 
   @override
   void initState() {
@@ -28,7 +29,13 @@ class _NetworkStatusLayerState extends State<NetworkStatusLayer> {
   }
 
   void _refresh() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {
+        if (_controller.health == NetworkHealth.online) {
+          _bannerDismissed = false;
+        }
+      });
+    }
   }
 
   @override
@@ -37,7 +44,8 @@ class _NetworkStatusLayerState extends State<NetworkStatusLayer> {
     return Stack(
       children: <Widget>[
         widget.child,
-        if (health == NetworkHealth.offline || health == NetworkHealth.slow)
+        if (!_bannerDismissed &&
+            (health == NetworkHealth.offline || health == NetworkHealth.slow))
           Positioned(
             top: 0,
             left: 0,
@@ -49,12 +57,13 @@ class _NetworkStatusLayerState extends State<NetworkStatusLayer> {
                     ? Icons.wifi_off_rounded
                     : Icons.network_check_rounded,
                 message: health == NetworkHealth.offline
-                    ? 'You are offline. Online features will resume automatically.'
+                    ? 'Offline · Local play is available'
                     : 'Connection is slow. Some actions may take longer.',
                 color: health == NetworkHealth.offline
                     ? const Color(0xFFD94B5B)
                     : const Color(0xFFD99A2B),
                 onRetry: _controller.checkNow,
+                onDismiss: () => setState(() => _bannerDismissed = true),
               ),
             ),
           ),
@@ -115,12 +124,14 @@ class _NetworkBanner extends StatelessWidget {
     required this.message,
     required this.color,
     required this.onRetry,
+    required this.onDismiss,
   });
 
   final IconData icon;
   final String message;
   final Color color;
   final VoidCallback onRetry;
+  final VoidCallback onDismiss;
 
   @override
   Widget build(BuildContext context) => Material(
@@ -141,6 +152,11 @@ class _NetworkBanner extends StatelessWidget {
                 onPressed: onRetry,
                 style: TextButton.styleFrom(foregroundColor: Colors.white),
                 child: const Text('Retry'),
+              ),
+              IconButton(
+                tooltip: 'Dismiss connection notice',
+                onPressed: onDismiss,
+                icon: const Icon(Icons.close_rounded, color: Colors.white),
               ),
             ],
           ),

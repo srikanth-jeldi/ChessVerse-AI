@@ -1102,13 +1102,20 @@ class _ChatScreenState extends State<_ChatScreen> {
   MessageDto? _replyingTo;
   bool _busy = true;
   Timer? _pollTimer;
+  Timer? _presenceTimer;
+  bool _presenceLoading = false;
+  late bool _friendOnline;
   @override
   void initState() {
     super.initState();
+    _friendOnline = widget.friend.online;
     _composerFocus.addListener(() {
       if (_composerFocus.hasFocus) _scrollToLatest();
     });
     _load();
+    _refreshPresence();
+    _presenceTimer =
+        Timer.periodic(const Duration(seconds: 15), (_) => _refreshPresence());
     _pollTimer =
         Timer.periodic(const Duration(seconds: 5), (_) => _load(silent: true));
   }
@@ -1116,6 +1123,7 @@ class _ChatScreenState extends State<_ChatScreen> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _presenceTimer?.cancel();
     _text.dispose();
     _composerFocus.dispose();
     _scroll.dispose();
@@ -1133,6 +1141,26 @@ class _ChatScreenState extends State<_ChatScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => move());
     Future<void>.delayed(const Duration(milliseconds: 90), move);
     Future<void>.delayed(const Duration(milliseconds: 280), move);
+  }
+
+  Future<void> _refreshPresence() async {
+    if (_presenceLoading) return;
+    _presenceLoading = true;
+    try {
+      final CommunityDto community = await widget.api.load(widget.token);
+      for (final ConversationDto conversation in community.conversations) {
+        if (conversation.playerId == widget.friend.playerId) {
+          if (mounted) {
+            setState(() => _friendOnline = conversation.online);
+          }
+          break;
+        }
+      }
+    } on SocialException {
+      // A failed poll is not evidence that the friend went offline.
+    } finally {
+      _presenceLoading = false;
+    }
   }
 
   Future<void> _load({bool silent = false}) async {
@@ -1639,7 +1667,7 @@ class _ChatScreenState extends State<_ChatScreen> {
                       height: 13,
                       decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: widget.friend.online
+                          color: _friendOnline
                               ? const Color(0xFF28E898)
                               : const Color(0xFF647783),
                           border: Border.all(
@@ -1654,9 +1682,9 @@ class _ChatScreenState extends State<_ChatScreen> {
                   Text(widget.friend.displayName,
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w900)),
-                  Text(widget.friend.online ? 'Online' : 'Offline',
+                  Text(_friendOnline ? 'Online' : 'Offline',
                       style: TextStyle(
-                          color: widget.friend.online
+                          color: _friendOnline
                               ? const Color(0xFF48E0C9)
                               : const Color(0xFF91A4B0),
                           fontSize: 11))

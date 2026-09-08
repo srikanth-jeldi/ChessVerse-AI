@@ -7206,6 +7206,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           bestMove: bestMove,
           explanation: _reviewPracticeExplanation(insight),
           progressLabel: 'POSITION BEFORE MOVE ${insight.number}',
+          languageCode: _coachLanguageCode,
         ),
       );
     });
@@ -8736,6 +8737,7 @@ class ReviewedPositionRetryDialog extends StatefulWidget {
     required this.explanation,
     this.progressLabel = 'RETRY THIS POSITION',
     this.nextLabel = 'Back to review',
+    this.languageCode = 'en',
     this.onNext,
     super.key,
   });
@@ -8747,6 +8749,7 @@ class ReviewedPositionRetryDialog extends StatefulWidget {
   final String explanation;
   final String progressLabel;
   final String nextLabel;
+  final String languageCode;
   final VoidCallback? onNext;
 
   @override
@@ -8762,6 +8765,8 @@ class _ReviewedPositionRetryDialogState
   String? _lastTo;
   String? _message;
   bool _answered = false;
+
+  bool get _telugu => _effectiveLiveCoachLanguage(widget.languageCode) == 'te';
 
   String _capturedPieces(bool white) {
     const Map<String, int> starting = <String, int>{
@@ -8914,9 +8919,13 @@ class _ReviewedPositionRetryDialogState
       _lastTo = square;
       _selected = null;
       _answered = true;
-      _message = correct
-          ? 'Best move found. ${widget.explanation}'
-          : 'Good try. The engine preferred ${widget.bestMove.substring(0, 2)} to ${widget.bestMove.substring(2, 4)}. ${widget.explanation}';
+      _message = _telugu
+          ? '${correct ? 'ఉత్తమ ఎత్తును కనుగొన్నారు.' : 'మంచి ప్రయత్నం.'} '
+              'ఇంజిన్ సూచించిన ఎత్తు: ${widget.bestMove}. '
+              'ప్రత్యర్థి సమాధానాన్ని కూడా లెక్కించండి.'
+          : correct
+              ? 'Best move found. ${widget.explanation}'
+              : 'Good try. The engine preferred ${widget.bestMove.substring(0, 2)} to ${widget.bestMove.substring(2, 4)}. ${widget.explanation}';
     });
   }
 
@@ -8955,7 +8964,13 @@ class _ReviewedPositionRetryDialogState
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      widget.progressLabel,
+                      _telugu
+                          ? widget.progressLabel
+                              .replaceFirst('POSITION BEFORE MOVE ',
+                                  'ఈ ఎత్తుకు ముందు స్థితి: ')
+                              .replaceFirst('RETRY THIS POSITION',
+                                  'ఈ స్థితిని మళ్లీ ప్రయత్నించండి')
+                          : widget.progressLabel,
                       style: const TextStyle(
                           fontSize: 19, fontWeight: FontWeight.w900),
                     ),
@@ -8967,7 +8982,9 @@ class _ReviewedPositionRetryDialogState
                 ],
               ),
               Text(
-                '${widget.whiteToMove ? 'White' : 'Black'} to move • Find the strongest continuation',
+                _telugu
+                    ? '${widget.whiteToMove ? 'తెలుపు' : 'నలుపు'} ఆడాలి • అత్యుత్తమ కొనసాగింపును కనుగొనండి'
+                    : '${widget.whiteToMove ? 'White' : 'Black'} to move • Find the strongest continuation',
                 style: const TextStyle(color: Color(0xFF9DB0BE)),
               ),
               const SizedBox(height: 6),
@@ -8975,9 +8992,11 @@ class _ReviewedPositionRetryDialogState
                 final String whiteCaptured = _capturedPieces(true);
                 final String blackCaptured = _capturedPieces(false);
                 return Text(
-                  whiteCaptured.isEmpty && blackCaptured.isEmpty
-                      ? 'Starting position restored • All pieces on board'
-                      : 'Exact game snapshot restored • Missing White: ${whiteCaptured.isEmpty ? '—' : whiteCaptured}  Black: ${blackCaptured.isEmpty ? '—' : blackCaptured}',
+                  _telugu
+                      ? 'సమీక్షించిన స్థితి పునరుద్ధరించబడింది'
+                      : whiteCaptured.isEmpty && blackCaptured.isEmpty
+                          ? 'Starting position restored • All pieces on board'
+                          : 'Exact game snapshot restored • Missing White: ${whiteCaptured.isEmpty ? '—' : whiteCaptured}  Black: ${blackCaptured.isEmpty ? '—' : blackCaptured}',
                   style: const TextStyle(
                     color: Color(0xFF63D2B8),
                     fontSize: 12,
@@ -9029,13 +9048,15 @@ class _ReviewedPositionRetryDialogState
                   OutlinedButton.icon(
                     onPressed: _reset,
                     icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('Try again'),
+                    label: Text(_telugu ? 'మళ్లీ ప్రయత్నించు' : 'Try again'),
                   ),
                   const Spacer(),
                   FilledButton(
                     onPressed:
                         widget.onNext ?? () => Navigator.of(context).pop(),
-                    child: Text(widget.nextLabel),
+                    child: Text(_telugu && widget.nextLabel == 'Back to review'
+                        ? 'సమీక్షకు తిరిగి వెళ్ళండి'
+                        : widget.nextLabel),
                   ),
                 ],
               ),

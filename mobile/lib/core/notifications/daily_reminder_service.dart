@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import '../app_preferences.dart';
 
 class DailyReminderService {
   DailyReminderService._();
@@ -16,6 +17,8 @@ class DailyReminderService {
       FlutterLocalNotificationsPlugin();
   bool _initialized = false;
   bool _enabled = false;
+  static const AppPreferences _preferences = AppPreferences();
+  static const String _activityKey = 'playReminderLastActivity';
   bool _pendingPlayOpen = false;
   bool _pendingTournamentOpen = false;
   final ValueNotifier<int> playOpenRequests = ValueNotifier<int>(0);
@@ -94,7 +97,17 @@ class DailyReminderService {
     _enabled = true;
     // Remove the legacy fixed 7 PM reminder when upgrading an installation.
     await _plugin.cancel(_notificationId);
-    await _schedulePlayReminders(tz.TZDateTime.now(tz.local));
+    final String saved =
+        await _preferences.readString(_activityKey, fallback: '');
+    final DateTime? previous = DateTime.tryParse(saved);
+    final tz.TZDateTime activity = previous == null
+        ? tz.TZDateTime.now(tz.local)
+        : tz.TZDateTime.from(previous, tz.local);
+    if (previous == null) {
+      await _preferences.writeString(
+          _activityKey, activity.toUtc().toIso8601String());
+    }
+    await _schedulePlayReminders(activity);
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     tz.TZDateTime weekly = tz.TZDateTime(
       tz.local,
@@ -142,7 +155,10 @@ class DailyReminderService {
   Future<void> recordPlayOpened() async {
     if (kIsWeb || !_enabled) return;
     await initialize();
-    await _schedulePlayReminders(tz.TZDateTime.now(tz.local));
+    final tz.TZDateTime activity = tz.TZDateTime.now(tz.local);
+    await _preferences.writeString(
+        _activityKey, activity.toUtc().toIso8601String());
+    await _schedulePlayReminders(activity);
   }
 
   Future<void> _cancelPlayReminders() async {
@@ -153,8 +169,14 @@ class DailyReminderService {
 
   Future<void> _schedulePlayReminders(tz.TZDateTime lastActivity) async {
     await _cancelPlayReminders();
-    final List<tz.TZDateTime> plan = buildPlayReminderPlan(lastActivity);
+    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    final int elapsedDays = now.difference(lastActivity).inDays;
+    final tz.TZDateTime anchor = elapsedDays > 1
+        ? lastActivity.add(Duration(days: elapsedDays - 1))
+        : lastActivity;
+    final List<tz.TZDateTime> plan = buildPlayReminderPlan(anchor);
     for (int index = 0; index < plan.length; index++) {
+      if (!plan[index].isAfter(now)) continue;
       final bool followUp = index.isOdd;
       await _plugin.zonedSchedule(
         _playReminderIdBase + index,
