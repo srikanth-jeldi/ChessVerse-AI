@@ -71,11 +71,11 @@ Future<String?> showAiLanguagePicker(BuildContext context) async {
   );
 }
 
-Future<bool> chooseAndSaveAiLanguage(BuildContext context) async {
+Future<String?> selectAndSaveAiLanguage(BuildContext context) async {
   final String? selected = await showAiLanguagePicker(context);
-  if (selected == null || !context.mounted) return false;
+  if (selected == null || !context.mounted) return null;
   await AppLanguageController.select(selected);
-  if (!context.mounted) return false;
+  if (!context.mounted) return null;
   final AppLanguage language = AppLanguageController.byCode(selected);
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
@@ -84,5 +84,9 @@ Future<bool> chooseAndSaveAiLanguage(BuildContext context) async {
           : 'AI Coach will answer in ${language.englishName}.'),
     ),
   );
-  return true;
+  return selected;
+}
+
+Future<bool> chooseAndSaveAiLanguage(BuildContext context) async {
+  return await selectAndSaveAiLanguage(context) != null;
 }

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/app_language.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../../../core/widgets/ai_language_picker.dart';
@@ -772,6 +773,7 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
   AiCoachAnswer? _cloudAnswer;
   String? _token;
   String? _sessionId;
+  String _languageCode = AppLanguageController.systemCode;
 
   @override
   void initState() {
@@ -782,11 +784,17 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
 
   Future<void> _loadSession() async {
     final session = await const AuthSessionStore().read();
-    if (mounted) setState(() => _token = session?.token);
+    final String language = await AppLanguageController.selectedCode();
+    if (mounted) {
+      setState(() {
+        _token = session?.token;
+        _languageCode = language;
+      });
+    }
   }
 
-  Future<void> _ask() async {
-    final String question = _controller.text.trim();
+  Future<void> _ask({String? presetQuestion}) async {
+    final String question = (presetQuestion ?? _controller.text).trim();
     final String? fen = widget.insight.fenBefore;
     if (question.isEmpty || fen == null || fen.isEmpty || _loading) return;
     final String? token = _token;
@@ -823,6 +831,15 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _askPreset(CoachQuestion question) async {
+    setState(() {
+      _question = question;
+      _answer = PersonalAiCoach.answer(widget.insight, question);
+      _cloudAnswer = null;
+    });
+    await _ask(presetQuestion: PersonalAiCoach.label(question));
   }
 
   Future<void> _sendFeedback(bool helpful) async {
@@ -876,12 +893,16 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
           TextButton.icon(
             key: const ValueKey<String>('coach-language'),
             onPressed: () async {
-              if (await chooseAndSaveAiLanguage(context) && mounted) {
-                setState(() => _cloudAnswer = null);
+              final String? selected = await selectAndSaveAiLanguage(context);
+              if (selected != null && mounted) {
+                setState(() => _languageCode = selected);
+                await _askPreset(_question);
               }
             },
             icon: const Icon(Icons.translate_rounded, size: 18),
-            label: const Text('Language'),
+            label: Text(_languageCode == AppLanguageController.systemCode
+                ? 'Auto language'
+                : AppLanguageController.byCode(_languageCode).nativeName),
           ),
         ]),
         content: SizedBox(
@@ -985,12 +1006,7 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
                       ChoiceChip(
                         label: Text(PersonalAiCoach.label(question)),
                         selected: _question == question,
-                        onSelected: (_) => setState(() {
-                          _question = question;
-                          _answer =
-                              PersonalAiCoach.answer(widget.insight, question);
-                          _cloudAnswer = null;
-                        }),
+                        onSelected: (_) => _askPreset(question),
                       ),
                   ],
                 ),
