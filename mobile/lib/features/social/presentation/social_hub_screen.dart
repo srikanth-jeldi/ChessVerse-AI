@@ -1582,6 +1582,36 @@ class _ChatScreenState extends State<_ChatScreen> {
     ]);
   }
 
+  List<Widget> _messageWidgets() {
+    final List<Widget> children = <Widget>[];
+    DateTime? previousDay;
+    for (final MessageDto message in _messages) {
+      final DateTime day = DateTime(
+        message.sentAt.year,
+        message.sentAt.month,
+        message.sentAt.day,
+      );
+      if (previousDay == null || day != previousDay) {
+        if (children.isNotEmpty) children.add(const SizedBox(height: 12));
+        children.add(_ChatDateSeparator(date: day));
+        children.add(const SizedBox(height: 12));
+        previousDay = day;
+      }
+      children.add(_MessageBubble(
+        message: message,
+        token: widget.token,
+        api: widget.api,
+        onActions: () => _messageActions(message),
+        onReply: () {
+          setState(() => _replyingTo = message);
+          _composerFocus.requestFocus();
+          _scrollToLatest();
+        },
+      ));
+    }
+    return children;
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
       backgroundColor: const Color(0xFF020D16),
@@ -1667,30 +1697,7 @@ class _ChatScreenState extends State<_ChatScreen> {
                           14,
                           MediaQuery.sizeOf(context).width > 800 ? 80 : 14,
                           20),
-                      children: <Widget>[
-                          const Row(children: <Widget>[
-                            Expanded(child: Divider(color: Color(0xFF23645F))),
-                            Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 16),
-                                child: Text('Today',
-                                    style: TextStyle(
-                                        color: Color(0xFFB7C6CD),
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700))),
-                            Expanded(child: Divider(color: Color(0xFF23645F)))
-                          ]),
-                          const SizedBox(height: 12),
-                          ..._messages.map((m) => _MessageBubble(
-                              message: m,
-                              token: widget.token,
-                              api: widget.api,
-                              onActions: () => _messageActions(m),
-                              onReply: () {
-                                setState(() => _replyingTo = m);
-                                _composerFocus.requestFocus();
-                                _scrollToLatest();
-                              }))
-                        ])),
+                      children: _messageWidgets())),
           SafeArea(
               top: false,
               child: Padding(
@@ -1702,6 +1709,55 @@ class _ChatScreenState extends State<_ChatScreen> {
                   child: _buildComposer()))
         ])
       ]));
+}
+
+class _ChatDateSeparator extends StatelessWidget {
+  const _ChatDateSeparator({required this.date});
+
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context) => Row(children: <Widget>[
+        const Expanded(child: Divider(color: Color(0xFF23645F))),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            chatDateLabel(date),
+            style: const TextStyle(
+              color: Color(0xFFB7C6CD),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const Expanded(child: Divider(color: Color(0xFF23645F))),
+      ]);
+}
+
+String chatDateLabel(DateTime timestamp, {DateTime? now}) {
+  final DateTime localNow = now ?? DateTime.now();
+  final DateTime today = DateTime(localNow.year, localNow.month, localNow.day);
+  final DateTime date =
+      DateTime(timestamp.year, timestamp.month, timestamp.day);
+  final int difference = today.difference(date).inDays;
+  if (difference == 0) return 'Today';
+  if (difference == 1) return 'Yesterday';
+  const List<String> months = <String>[
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec'
+  ];
+  final String year = date.year == localNow.year ? '' : ' ${date.year}';
+  return '${months[date.month - 1]} ${date.day}$year';
 }
 
 class _OnlineMediaSearch extends StatefulWidget {
@@ -2006,6 +2062,26 @@ class _MessageBubble extends StatelessWidget {
                                                 ]
                                               ])
                                         ]),
+                                  if (mediaUrl != null)
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: <Widget>[
+                                          Text(time,
+                                              style: const TextStyle(
+                                                  color: Color(0xFFB2BEC5),
+                                                  fontSize: 10)),
+                                          if (message.mine) ...<Widget>[
+                                            const SizedBox(width: 3),
+                                            _ReceiptTicks(
+                                                pending: message.pending,
+                                                delivered: message.delivered,
+                                                seen: message.seen),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
                                   if (message.reactions.isNotEmpty) ...<Widget>[
                                     const SizedBox(height: 5),
                                     Wrap(

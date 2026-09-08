@@ -35,6 +35,14 @@ const Map<String, Map<String, String>> _reviewTranslations =
     <String, Map<String, String>>{
   'en': <String, String>{
     'title': 'AI GAME REVIEW',
+    'threatTitle': 'Opponent threat',
+    'immediateReply': 'Immediate opponent reply',
+    'alternative': 'Best alternative',
+    'continuation': 'Engine continuation',
+    'noVariation': 'No additional principal variation was returned.',
+    'noThreat':
+        'No forcing opponent threat was found in the available review. Run engine analysis for a deeper forcing line.',
+    'gotIt': 'Got it',
     'opening': 'OPENING',
     'moveQuality': 'MOVE QUALITY',
     'evaluationGraph': 'EVALUATION GRAPH',
@@ -59,6 +67,14 @@ const Map<String, Map<String, String>> _reviewTranslations =
   },
   'te': <String, String>{
     'title': 'AI గేమ్ సమీక్ష',
+    'threatTitle': 'ప్రత్యర్థి ప్రమాదం',
+    'immediateReply': 'ప్రత్యర్థి తక్షణ ప్రతిస్పందన',
+    'alternative': 'ఉత్తమ ప్రత్యామ్నాయం',
+    'continuation': 'ఇంజిన్ సూచించిన కొనసాగింపు',
+    'noVariation': 'అదనపు కొనసాగింపు వివరాలు అందుబాటులో లేవు.',
+    'noThreat':
+        'ఈ సమీక్షలో ప్రత్యర్థి నుంచి బలవంతపు ప్రమాదం కనిపించలేదు. మరింత లోతైన కొనసాగింపు కోసం ఇంజిన్ విశ్లేషణను అమలు చేయండి.',
+    'gotIt': 'అర్థమైంది',
     'opening': 'ఓపెనింగ్',
     'moveQuality': 'ఎత్తుల నాణ్యత',
     'evaluationGraph': 'విశ్లేషణ గ్రాఫ్',
@@ -965,10 +981,11 @@ class _MoveTimeline extends StatelessWidget {
                                       _reviewText('showThreat', languageCode),
                                   onTap: () => _showReviewDetail(
                                     context,
-                                    'Opponent threat',
+                                    _reviewText('threatTitle', languageCode),
                                     insight.opponentThreat?.isNotEmpty == true
-                                        ? 'Immediate opponent reply: ${insight.opponentThreat}.\n\nBest alternative: ${insight.bestMove ?? '—'}.\n\n${_variationText(insight)}'
-                                        : 'No forcing opponent threat was found in the available review. Run engine analysis for a deeper forcing line.',
+                                        ? '${_reviewText('immediateReply', languageCode)}: ${insight.opponentThreat}.\n\n${_reviewText('alternative', languageCode)}: ${insight.bestMove ?? '—'}.\n\n${_variationText(insight, languageCode)}'
+                                        : _reviewText('noThreat', languageCode),
+                                    languageCode: languageCode,
                                   ),
                                 ),
                                 _ReviewAction(
@@ -995,10 +1012,10 @@ class _MoveTimeline extends StatelessWidget {
   }
 }
 
-String _variationText(AiMoveInsight insight) => insight
+String _variationText(AiMoveInsight insight, String languageCode) => insight
         .principalVariation.isEmpty
-    ? 'No additional principal variation was returned.'
-    : 'Engine continuation: ${insight.principalVariation.take(6).join(' → ')}';
+    ? _reviewText('noVariation', languageCode)
+    : '${_reviewText('continuation', languageCode)}: ${insight.principalVariation.take(6).join(' → ')}';
 
 Future<void> _showInteractiveCoach(
   BuildContext context,
@@ -1006,10 +1023,12 @@ Future<void> _showInteractiveCoach(
   String? openingEco,
   String? timeControl,
 }) {
+  final String initialLanguageCode = _ReviewLanguageScope.of(context);
   return showDialog<void>(
     context: context,
     builder: (BuildContext context) => _InteractiveCoachDialog(
       insight,
+      initialLanguageCode: initialLanguageCode,
       openingEco: openingEco,
       timeControl: timeControl,
     ),
@@ -1019,16 +1038,93 @@ Future<void> _showInteractiveCoach(
 class _InteractiveCoachDialog extends StatefulWidget {
   const _InteractiveCoachDialog(
     this.insight, {
+    required this.initialLanguageCode,
     this.openingEco,
     this.timeControl,
   });
   final AiMoveInsight insight;
+  final String initialLanguageCode;
   final String? openingEco;
   final String? timeControl;
 
   @override
   State<_InteractiveCoachDialog> createState() =>
       _InteractiveCoachDialogState();
+}
+
+String _coachDialogText(String key, String code) {
+  const Map<String, String> english = <String, String>{
+    'title': 'Personal AI Coach',
+    'loading': 'Preparing your coach explanation…',
+    'askPosition': 'Ask about this exact position',
+    'example': 'Example: What if I play f2f3 instead?',
+    'compare': 'Compare up to 3 moves (optional)',
+    'followUp': 'ASK A FOLLOW-UP',
+    'back': 'Back to review',
+  };
+  const Map<String, String> telugu = <String, String>{
+    'title': 'వ్యక్తిగత AI కోచ్',
+    'loading': 'మీ కోచ్ వివరణ సిద్ధమవుతోంది…',
+    'askPosition': 'ఈ స్థితి గురించి అడగండి',
+    'example': 'ఉదాహరణ: నేను f2f3 ఆడితే ఏమవుతుంది?',
+    'compare': 'గరిష్ఠంగా 3 ఎత్తులను పోల్చండి (ఐచ్ఛికం)',
+    'followUp': 'తదుపరి ప్రశ్న అడగండి',
+    'back': 'సమీక్షకు తిరిగి వెళ్ళండి',
+  };
+  return (code == 'te' ? telugu : english)[key] ?? english[key] ?? key;
+}
+
+String _localizedCoachQuestion(CoachQuestion question, String code) {
+  if (code != 'te') return PersonalAiCoach.label(question);
+  return switch (question) {
+    CoachQuestion.whyBad => 'ఈ ఎత్తు ఎందుకు తప్పు?',
+    CoachQuestion.opponentThreat => 'ప్రమాదం ఏమిటి?',
+    CoachQuestion.bestPlan => 'నేను ఏ ఎత్తు ఆడాలి?',
+    CoachQuestion.pattern => 'నేను ఏ నమూనాను మిస్ చేశాను?',
+    CoachQuestion.practice => 'నేను ఎలా మెరుగుపడాలి?',
+  };
+}
+
+String _displayCoachMove(String? move) {
+  if (move == null || move.trim().isEmpty) return 'ఇంజిన్ సూచించిన ఉత్తమ ఎత్తు';
+  final String clean = move.trim();
+  if (RegExp(r'^[a-h][1-8][a-h][1-8][qrbn]?$', caseSensitive: false)
+      .hasMatch(clean)) {
+    return '${clean.substring(0, 2)} → ${clean.substring(2)}';
+  }
+  return clean;
+}
+
+String _localizedPersonalCoachAnswer(
+    AiMoveInsight insight, CoachQuestion question, String code) {
+  if (code != 'te') return PersonalAiCoach.answer(insight, question);
+  final String played = _displayCoachMove(insight.notation);
+  final String best = _displayCoachMove(insight.bestMove);
+  final String threat = _displayCoachMove(insight.opponentThreat);
+  final String line = insight.principalVariation.isEmpty
+      ? 'ఎత్తు వేయడానికి ముందు ప్రత్యర్థి బలమైన సమాధానాన్ని లెక్కించండి.'
+      : 'స్పష్టమైన కొనసాగింపు: ${insight.principalVariation.take(6).map(_displayCoachMove).join(' → ')}.';
+  return switch (question) {
+    CoachQuestion.whyBad =>
+      '$played ఈ స్థితిలో ప్రధాన సమస్యను పరిష్కరించలేదు. ${_localizedReviewExplanation(insight.explanation, 'te')} ఉత్తమ ఎత్తు: $best.',
+    CoachQuestion.opponentThreat => insight.opponentThreat?.isNotEmpty == true
+        ? '$played తర్వాత ప్రత్యర్థి తక్షణ సమాధానం $threat. $line'
+        : 'ఇక్కడ ఒక్క బలవంతపు సమాధానం కనిపించలేదు. ప్రత్యర్థి చెక్స్, క్యాప్చర్లు మరియు ప్రత్యక్ష ప్రమాదాలను పరిశీలించండి.',
+    CoachQuestion.bestPlan =>
+      '$best ఆడండి. ఇది ఈ స్థితిలోని ప్రధాన అవసరాన్ని బాగా పరిష్కరిస్తుంది. $line',
+    CoachQuestion.pattern =>
+      'ఎత్తు వేయడానికి ముందు “నా ఎత్తు తర్వాత ఏమి మారుతుంది? ప్రత్యర్థి అత్యంత బలవంతపు సమాధానం ఏమిటి?” అని అడగండి.',
+    CoachQuestion.practice =>
+      'ఈ స్థితిని మళ్లీ ప్రయత్నించి వెంటనే ఎత్తు వేయకుండా $best కనుగొనండి. సూచన లేకుండా రెండుసార్లు పరిష్కరించే వరకు సాధన చేయండి.',
+  };
+}
+
+String _localizedCoachApiAnswer(
+    String answer, AiMoveInsight insight, CoachQuestion question, String code) {
+  if (code == 'te' && !RegExp(r'[\u0C00-\u0C7F]').hasMatch(answer)) {
+    return _localizedPersonalCoachAnswer(insight, question, code);
+  }
+  return answer;
 }
 
 class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
@@ -1040,22 +1136,32 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
   AiCoachAnswer? _cloudAnswer;
   String? _token;
   String? _sessionId;
-  String _languageCode = AppLanguageController.systemCode;
+  late String _languageCode;
 
   @override
   void initState() {
     super.initState();
-    _answer = PersonalAiCoach.answer(widget.insight, _question);
+    _languageCode = widget.initialLanguageCode;
+    _answer = _localizedPersonalCoachAnswer(
+      widget.insight,
+      _question,
+      _languageCode,
+    );
     _loadSession();
   }
 
   Future<void> _loadSession() async {
     final session = await const AuthSessionStore().read();
-    final String language = await AppLanguageController.selectedCode();
+    final String language = await AppLanguageController.effectiveCode();
     if (mounted) {
       setState(() {
         _token = session?.token;
         _languageCode = language;
+        _answer = _localizedPersonalCoachAnswer(
+          widget.insight,
+          _question,
+          language,
+        );
       });
     }
   }
@@ -1089,7 +1195,12 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
       );
       if (!mounted) return;
       setState(() {
-        _answer = result.answer;
+        _answer = _localizedCoachApiAnswer(
+          result.answer,
+          widget.insight,
+          _question,
+          _languageCode,
+        );
         _cloudAnswer = result;
         _sessionId = result.sessionId;
       });
@@ -1103,7 +1214,11 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
   Future<void> _askPreset(CoachQuestion question) async {
     setState(() {
       _question = question;
-      _answer = PersonalAiCoach.answer(widget.insight, question);
+      _answer = _localizedPersonalCoachAnswer(
+        widget.insight,
+        question,
+        _languageCode,
+      );
       _cloudAnswer = null;
     });
     await _ask(presetQuestion: PersonalAiCoach.label(question));
@@ -1156,13 +1271,16 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
         title: Row(children: <Widget>[
           const Icon(Icons.auto_awesome_rounded, color: Color(0xFF59E4C8)),
           const SizedBox(width: 9),
-          const Expanded(child: Text('Personal AI Coach')),
+          Expanded(child: Text(_coachDialogText('title', _languageCode))),
           TextButton.icon(
             key: const ValueKey<String>('coach-language'),
             onPressed: () async {
               final String? selected = await selectAndSaveAiLanguage(context);
               if (selected != null && mounted) {
-                setState(() => _languageCode = selected);
+                final String effective =
+                    await AppLanguageController.effectiveCode();
+                if (!mounted) return;
+                setState(() => _languageCode = effective);
                 await _askPreset(_question);
               }
             },
@@ -1180,7 +1298,7 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Text(
-                  _answer!,
+                  _answer ?? _coachDialogText('loading', _languageCode),
                   style: const TextStyle(height: 1.45),
                 ),
                 const SizedBox(height: 18),
@@ -1192,8 +1310,8 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => _ask(),
                   decoration: InputDecoration(
-                    labelText: 'Ask about this exact position',
-                    hintText: 'Example: What if I play f2f3 instead?',
+                    labelText: _coachDialogText('askPosition', _languageCode),
+                    hintText: _coachDialogText('example', _languageCode),
                     suffixIcon: _loading
                         ? const Padding(
                             padding: EdgeInsets.all(12),
@@ -1208,10 +1326,10 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: _candidatesController,
-                  decoration: const InputDecoration(
-                    labelText: 'Compare up to 3 moves (optional)',
+                  decoration: InputDecoration(
+                    labelText: _coachDialogText('compare', _languageCode),
                     hintText: 'e2e4, d2d4, g1f3',
-                    prefixIcon: Icon(Icons.compare_arrows_rounded),
+                    prefixIcon: const Icon(Icons.compare_arrows_rounded),
                   ),
                 ),
                 if (_cloudAnswer != null) ...<Widget>[
@@ -1257,8 +1375,8 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
                   ]),
                 ],
                 const SizedBox(height: 8),
-                const Text('ASK A FOLLOW-UP',
-                    style: TextStyle(
+                Text(_coachDialogText('followUp', _languageCode),
+                    style: const TextStyle(
                       color: AppColors.accentGold,
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
@@ -1271,7 +1389,8 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
                   children: <Widget>[
                     for (final CoachQuestion question in CoachQuestion.values)
                       ChoiceChip(
-                        label: Text(PersonalAiCoach.label(question)),
+                        label: Text(
+                            _localizedCoachQuestion(question, _languageCode)),
                         selected: _question == question,
                         onSelected: (_) => _askPreset(question),
                       ),
@@ -1284,7 +1403,7 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
         actions: <Widget>[
           FilledButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Back to review'),
+            child: Text(_coachDialogText('back', _languageCode)),
           ),
         ],
       );
@@ -1434,17 +1553,18 @@ class _ReviewAction extends StatelessWidget {
 Future<void> _showReviewDetail(
   BuildContext context,
   String title,
-  String message,
-) {
+  String message, {
+  required String languageCode,
+}) {
   return showDialog<void>(
     context: context,
     builder: (BuildContext context) => AlertDialog(
       title: Text(title),
-      content: Text(message),
+      content: SingleChildScrollView(child: Text(message)),
       actions: <Widget>[
         FilledButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Got it'),
+          child: Text(_reviewText('gotIt', languageCode)),
         ),
       ],
     ),

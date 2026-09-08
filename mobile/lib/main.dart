@@ -11210,14 +11210,17 @@ String _localizedLiveCoachText(String text, String languageCode) {
   final String code = _effectiveLiveCoachLanguage(languageCode);
   if (code == 'en') return text;
   final RegExpMatch? review = RegExp(
-    r'^(Best|Great|Inaccuracy|Mistake|Blunder) • .*?([a-h][1-8][a-h][1-8][qrbn]?) was stronger; the immediate opponent threat is ([a-h][1-8][a-h][1-8][qrbn]?)\.?$',
+    r'^(Best|Great|Inaccuracy|Mistake|Blunder) • .*?([a-h][1-8][a-h][1-8][qrbn]?|\(none\)) was stronger; the immediate opponent threat is ([a-h][1-8][a-h][1-8][qrbn]?|\(none\))\.?$',
     caseSensitive: false,
   ).firstMatch(text);
   if (review != null) {
     final List<String> labels =
         _dynamicCoachLabels[code] ?? _dynamicCoachLabels['en']!;
+    String moveOrUnavailable(String value) => value.toLowerCase() == '(none)'
+        ? (code == 'te' ? 'అందుబాటులో లేదు' : '—')
+        : value;
     return '${labels[1]}: ${_localizedMoveAssessment(review.group(1)!, code)}\n'
-        '${labels[2]}: ${review.group(2)}  •  ${labels[3]}: ${review.group(3)}';
+        '${labels[2]}: ${moveOrUnavailable(review.group(2)!)}  •  ${labels[3]}: ${moveOrUnavailable(review.group(3)!)}';
   }
   return text;
 }
