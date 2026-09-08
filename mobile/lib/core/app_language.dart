@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'package:flutter/foundation.dart';
 
 import 'app_preferences.dart';
 
@@ -17,6 +17,8 @@ class AppLanguageController {
 
   static const String systemCode = 'system';
   static const AppPreferences _preferences = AppPreferences();
+  static final ValueNotifier<String?> effectiveLanguageChanges =
+      ValueNotifier(null);
 
   /// Languages offered by the language centre. AI coaching accepts any locale
   /// from this catalogue and the app safely falls back to English for static
@@ -62,15 +64,29 @@ class AppLanguageController {
   static Future<String> selectedCode() =>
       _preferences.readString('language', fallback: systemCode);
 
-  static Future<void> select(String code) =>
-      _preferences.writeString('language', code);
+  static Future<void> select(String code) async {
+    await _preferences.writeString('language', code);
+    effectiveLanguageChanges.value = resolveCode(code);
+  }
 
   static Future<String> effectiveCode() async {
     final String selected = await selectedCode();
-    if (selected != systemCode) return selected;
-    final String device = PlatformDispatcher.instance.locale.languageCode;
-    return supported.any((AppLanguage item) => item.code == device)
-        ? device
+    return resolveCode(selected);
+  }
+
+  /// Resolve every consumer against the same catalogue, including BCP-47
+  /// regional variants and the automatic device setting.
+  static String resolveCode(String selected, {String? deviceCode}) {
+    final String code = (selected == systemCode
+            ? deviceCode ?? PlatformDispatcher.instance.locale.languageCode
+            : selected)
+        .replaceAll('_', '-')
+        .toLowerCase()
+        .split('-')
+        .first;
+    return supported.any(
+            (AppLanguage item) => item.code == code && item.code != systemCode)
+        ? code
         : 'en';
   }
 

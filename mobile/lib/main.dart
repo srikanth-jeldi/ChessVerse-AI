@@ -12,6 +12,11 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'core/analytics/app_analytics.dart';
 import 'core/app_language.dart';
+import 'core/coach_localizations.dart';
+import 'core/coach_extra_localizations.dart';
+import 'core/live_coach_localizations.dart';
+import 'core/analysis_dashboard_localizations.dart';
+import 'core/review_narrative_localizations.dart';
 import 'core/ads/rewarded_coin_service.dart';
 import 'core/ads/post_match_ad_service.dart';
 import 'core/audio/chess_sound_service.dart';
@@ -3896,6 +3901,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     super.initState();
     unawaited(_loadGamePreferences());
     unawaited(_loadCoachLanguage());
+    AppLanguageController.effectiveLanguageChanges
+        .addListener(_onCoachLanguageChanged);
     WidgetsBinding.instance.addObserver(this);
     _dailyDifficulty =
         widget.initialDailyDifficulty ?? DailyChallengeDifficulty.medium;
@@ -4023,7 +4030,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final String language = await AppLanguageController.selectedCode();
     if (mounted) {
       setState(() {
-        _coachLanguageCode = language;
+        _coachLanguageCode =
+            AppLanguageController.effectiveLanguageChanges.value ?? language;
         _coachLanguageLoaded = true;
       });
     }
@@ -4034,6 +4042,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (language != null && mounted) {
       setState(() => _coachLanguageCode = language);
     }
+  }
+
+  void _onCoachLanguageChanged() {
+    final language = AppLanguageController.effectiveLanguageChanges.value;
+    if (!mounted || language == null) return;
+    setState(() {
+      _coachLanguageCode = language;
+      _coachLanguageLoaded = true;
+    });
   }
 
   Future<void> _loadGamePreferences() async {
@@ -4079,6 +4096,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    AppLanguageController.effectiveLanguageChanges
+        .removeListener(_onCoachLanguageChanged);
     _clockTimer?.cancel();
     _moveQualityTimer?.cancel();
     _aiWatchdogTimer?.cancel();
@@ -7187,12 +7206,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _openReviewedPositionRetry(AiMoveInsight insight) {
+  Future<void> _openReviewedPositionRetry(AiMoveInsight insight) async {
     final String? fen = insight.fenBefore;
     final String? bestMove = insight.bestMove;
     if (fen == null || fen.isEmpty || bestMove == null || bestMove.length < 4) {
       return;
     }
+    final language = await AppLanguageController.effectiveCode();
+    if (!mounted) return;
     final List<String> fenParts = fen.split(RegExp(r'\s+'));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -7204,9 +7225,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           initialPieces: _piecesFromFen(fen),
           whiteToMove: fenParts.length < 2 || fenParts[1] != 'b',
           bestMove: bestMove,
-          explanation: _reviewPracticeExplanation(insight),
+          explanation: _reviewPracticeExplanation(insight, language),
           progressLabel: 'POSITION BEFORE MOVE ${insight.number}',
-          languageCode: _coachLanguageCode,
+          languageCode: language,
         ),
       );
     });
@@ -7228,16 +7249,20 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     });
   }
 
-  String _reviewPracticeExplanation(AiMoveInsight insight) {
+  String _reviewPracticeExplanation(AiMoveInsight insight, String language) {
+    final copy = CoachLocalizations(language);
     final String variation = insight.principalVariation.isEmpty
         ? ''
-        : ' Continue with ${insight.principalVariation.take(5).join(' → ')}.';
-    return '${insight.explanation} The engine preferred ${insight.bestMove}. '
-        'The immediate threat was ${insight.opponentThreat ?? 'not forcing'}.$variation';
+        : '\n${copy.text('continuation')}: ${insight.principalVariation.take(5).join(' → ')}.';
+    return '${localizeLiveCoach(localizeReviewNarrative(insight.explanation, language), language)}\n'
+        '${copy.text('immediateReply')}: ${insight.opponentThreat ?? '—'}.$variation';
   }
 
-  void _openMistakePuzzle(List<SavedMoveReview> puzzles, int index) {
+  Future<void> _openMistakePuzzle(
+      List<SavedMoveReview> puzzles, int index) async {
     if (!mounted || index >= puzzles.length) return;
+    final language = await AppLanguageController.effectiveCode();
+    if (!mounted) return;
     final SavedMoveReview puzzle = puzzles[index];
     final List<String> fenParts = puzzle.fenBefore.split(RegExp(r'\s+'));
     showDialog<void>(
@@ -7248,9 +7273,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         initialPieces: _piecesFromFen(puzzle.fenBefore),
         whiteToMove: fenParts.length < 2 || fenParts[1] != 'b',
         bestMove: puzzle.bestMove,
+        languageCode: language,
         explanation: puzzle.explanation,
-        progressLabel: 'MISTAKE PUZZLE ${index + 1} OF ${puzzles.length}',
-        nextLabel: index + 1 < puzzles.length ? 'Next puzzle' : 'Finish set',
+        progressLabel: coachExtraText('mistakePuzzle', language,
+            {'index': '${index + 1}', 'total': '${puzzles.length}'}),
+        nextLabel: coachExtraText(
+            index + 1 < puzzles.length ? 'nextPuzzle' : 'finishSet', language),
         onNext: () {
           Navigator.of(context).pop();
           if (index + 1 < puzzles.length) {
@@ -7260,8 +7288,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           } else {
             ScaffoldMessenger.of(this.context).showSnackBar(
               SnackBar(
-                content: Text(
-                    'Training complete: ${puzzles.length} real game ${puzzles.length == 1 ? 'mistake' : 'mistakes'} reviewed.'),
+                content: Text(coachExtraText('trainingComplete', language,
+                    {'count': '${puzzles.length}'})),
               ),
             );
           }
@@ -7527,8 +7555,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (BuildContext context) =>
-          PositionAnalysisSheet(analysis: analysis),
+      builder: (BuildContext context) => PositionAnalysisSheet(
+          analysis: analysis,
+          languageCode: _effectiveLiveCoachLanguage(_coachLanguageCode)),
     );
   }
 
@@ -8766,7 +8795,7 @@ class _ReviewedPositionRetryDialogState
   String? _message;
   bool _answered = false;
 
-  bool get _telugu => _effectiveLiveCoachLanguage(widget.languageCode) == 'te';
+  CoachLocalizations get _copy => CoachLocalizations(widget.languageCode);
 
   String _capturedPieces(bool white) {
     const Map<String, int> starting = <String, int>{
@@ -8919,13 +8948,9 @@ class _ReviewedPositionRetryDialogState
       _lastTo = square;
       _selected = null;
       _answered = true;
-      _message = _telugu
-          ? '${correct ? 'ఉత్తమ ఎత్తును కనుగొన్నారు.' : 'మంచి ప్రయత్నం.'} '
-              'ఇంజిన్ సూచించిన ఎత్తు: ${widget.bestMove}. '
-              'ప్రత్యర్థి సమాధానాన్ని కూడా లెక్కించండి.'
-          : correct
-              ? 'Best move found. ${widget.explanation}'
-              : 'Good try. The engine preferred ${widget.bestMove.substring(0, 2)} to ${widget.bestMove.substring(2, 4)}. ${widget.explanation}';
+      _message = '${_copy.text(correct ? 'bestFound' : 'goodTry')} '
+          '${_copy.text('preferred', {'move': widget.bestMove})} '
+          '${localizeLiveCoach(localizeReviewNarrative(widget.explanation, widget.languageCode), widget.languageCode)}';
     });
   }
 
@@ -8964,13 +8989,14 @@ class _ReviewedPositionRetryDialogState
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      _telugu
-                          ? widget.progressLabel
-                              .replaceFirst('POSITION BEFORE MOVE ',
-                                  'ఈ ఎత్తుకు ముందు స్థితి: ')
-                              .replaceFirst('RETRY THIS POSITION',
-                                  'ఈ స్థితిని మళ్లీ ప్రయత్నించండి')
-                          : widget.progressLabel,
+                      widget.progressLabel.startsWith('POSITION BEFORE MOVE ')
+                          ? _copy.text('positionBefore', {
+                              'move': widget.progressLabel
+                                  .substring('POSITION BEFORE MOVE '.length)
+                            })
+                          : widget.progressLabel == 'RETRY THIS POSITION'
+                              ? _copy.text('retry')
+                              : widget.progressLabel,
                       style: const TextStyle(
                           fontSize: 19, fontWeight: FontWeight.w900),
                     ),
@@ -8982,9 +9008,9 @@ class _ReviewedPositionRetryDialogState
                 ],
               ),
               Text(
-                _telugu
-                    ? '${widget.whiteToMove ? 'తెలుపు' : 'నలుపు'} ఆడాలి • అత్యుత్తమ కొనసాగింపును కనుగొనండి'
-                    : '${widget.whiteToMove ? 'White' : 'Black'} to move • Find the strongest continuation',
+                _copy.text('findContinuation', {
+                  'side': _copy.text(widget.whiteToMove ? 'white' : 'black')
+                }),
                 style: const TextStyle(color: Color(0xFF9DB0BE)),
               ),
               const SizedBox(height: 6),
@@ -8992,8 +9018,8 @@ class _ReviewedPositionRetryDialogState
                 final String whiteCaptured = _capturedPieces(true);
                 final String blackCaptured = _capturedPieces(false);
                 return Text(
-                  _telugu
-                      ? 'సమీక్షించిన స్థితి పునరుద్ధరించబడింది'
+                  _copy.language != 'en'
+                      ? '${_copy.text('restored')} · ${_copy.text('white')}: −${whiteCaptured.isEmpty ? '0' : whiteCaptured} · ${_copy.text('black')}: −${blackCaptured.isEmpty ? '0' : blackCaptured}'
                       : whiteCaptured.isEmpty && blackCaptured.isEmpty
                           ? 'Starting position restored • All pieces on board'
                           : 'Exact game snapshot restored • Missing White: ${whiteCaptured.isEmpty ? '—' : whiteCaptured}  Black: ${blackCaptured.isEmpty ? '—' : blackCaptured}',
@@ -9043,19 +9069,20 @@ class _ReviewedPositionRetryDialogState
                 ),
               ],
               const SizedBox(height: 14),
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
                 children: <Widget>[
                   OutlinedButton.icon(
                     onPressed: _reset,
                     icon: const Icon(Icons.refresh_rounded),
-                    label: Text(_telugu ? 'మళ్లీ ప్రయత్నించు' : 'Try again'),
+                    label: Text(_copy.text('retry')),
                   ),
-                  const Spacer(),
                   FilledButton(
                     onPressed:
                         widget.onNext ?? () => Navigator.of(context).pop(),
-                    child: Text(_telugu && widget.nextLabel == 'Back to review'
-                        ? 'సమీక్షకు తిరిగి వెళ్ళండి'
+                    child: Text(widget.nextLabel == 'Back to review'
+                        ? _copy.text('back')
                         : widget.nextLabel),
                   ),
                 ],
@@ -10750,7 +10777,8 @@ class _StudioCoachPanel extends StatelessWidget {
       GameMode.local => 'Outplay your opponent',
       GameMode.online => 'Play a live opponent',
     };
-    final String localizedGoal = _localizedCoachGoal(goal, languageCode);
+    final String localizedGoal = localizeLiveCoach(
+        _localizedCoachGoal(goal, languageCode), languageCode);
     final String? localizedMoveOwner =
         lastMoveOwner == null ? null : _localizedYourMoveLabel(languageCode);
     final AppLanguage selectedLanguage =
@@ -10779,7 +10807,9 @@ class _StudioCoachPanel extends StatelessWidget {
             child: Text(
               coachEnabled
                   ? coachNote
-                  : 'Turn Coach on in Game controls for live move explanations.',
+                  : localizeLiveCoach(
+                      'Turn Coach on in Game controls for live move explanations.',
+                      languageCode),
               style: const TextStyle(
                 color: Color(0xFFF2EDE4),
                 fontSize: 15,
@@ -10816,7 +10846,8 @@ class _StudioCoachPanel extends StatelessWidget {
                           child: OutlinedButton.icon(
                             onPressed: onBackToAcademy,
                             icon: const Icon(Icons.school_rounded),
-                            label: const Text('Puzzle Academy'),
+                            label: Text(localizeLiveCoach(
+                                'Puzzle Academy', languageCode)),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -10824,7 +10855,8 @@ class _StudioCoachPanel extends StatelessWidget {
                           child: FilledButton.icon(
                             onPressed: onNextPuzzle,
                             icon: const Icon(Icons.arrow_forward_rounded),
-                            label: const Text('Next puzzle'),
+                            label: Text(
+                                coachExtraText('nextPuzzle', languageCode)),
                           ),
                         ),
                       ],
@@ -10837,7 +10869,7 @@ class _StudioCoachPanel extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
                               Text(
-                                'AI Coach ✦',
+                                localizeLiveCoach('AI Coach ✦', languageCode),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -10848,7 +10880,7 @@ class _StudioCoachPanel extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                modeLabel,
+                                localizeLiveCoach(modeLabel, languageCode),
                                 maxLines: compact ? 2 : 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
@@ -10917,7 +10949,9 @@ class _StudioCoachPanel extends StatelessWidget {
                       accent: const Color(0xFF63D2B8),
                       child: Text(
                         aiThinking
-                            ? 'ChessVerseAI is calculating…'
+                            ? localizeLiveCoach(
+                                'ChessVerseAI is calculating its reply.',
+                                languageCode)
                             : lastMove == null
                                 ? _coachCopy(languageCode)[2]
                                 : '${localizedMoveOwner ?? 'Last move'}: $lastMove',
@@ -10941,7 +10975,9 @@ class _StudioCoachPanel extends StatelessWidget {
                                 child: Text(
                                   coachEnabled
                                       ? coachNote
-                                      : 'Turn Coach on from Game controls to receive move-by-move explanations.',
+                                      : localizeLiveCoach(
+                                          'Turn Coach on from Game controls to receive move-by-move explanations.',
+                                          languageCode),
                                   style: TextStyle(
                                     color: const Color(0xFFF2EDE4),
                                     fontFamily: 'serif',
@@ -10962,7 +10998,9 @@ class _StudioCoachPanel extends StatelessWidget {
                                 child: Text(
                                   coachEnabled
                                       ? coachNote
-                                      : 'Turn Coach on from Game controls to receive move-by-move explanations.',
+                                      : localizeLiveCoach(
+                                          'Turn Coach on from Game controls to receive move-by-move explanations.',
+                                          languageCode),
                                   style: TextStyle(
                                     color: const Color(0xFFF2EDE4),
                                     fontFamily: 'serif',
@@ -10997,7 +11035,9 @@ class _StudioCoachPanel extends StatelessWidget {
                           icon: const Icon(Icons.tips_and_updates_outlined),
                           label: FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: Text(hintLabel, maxLines: 1),
+                            child: Text(
+                                localizeLiveCoach(hintLabel, languageCode),
+                                maxLines: 1),
                           ),
                         ),
                       ),
@@ -11008,7 +11048,9 @@ class _StudioCoachPanel extends StatelessWidget {
                           icon: const Icon(Icons.visibility_outlined),
                           label: FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: Text(analyzeLabel, maxLines: 1),
+                            child: Text(
+                                localizeLiveCoach(analyzeLabel, languageCode),
+                                maxLines: 1),
                           ),
                         ),
                       ),
@@ -11025,8 +11067,9 @@ class _StudioCoachPanel extends StatelessWidget {
                             fit: BoxFit.scaleDown,
                             child: Text(
                               gameMode == GameMode.online
-                                  ? 'Sync'
-                                  : 'Try again',
+                                  ? localizeLiveCoach('Sync', languageCode)
+                                  : localizeLiveCoach(
+                                      'Try again', languageCode),
                               maxLines: 1,
                             ),
                           ),
@@ -11045,9 +11088,7 @@ class _StudioCoachPanel extends StatelessWidget {
 }
 
 String _effectiveLiveCoachLanguage(String code) =>
-    code == AppLanguageController.systemCode
-        ? ui.PlatformDispatcher.instance.locale.languageCode
-        : code;
+    AppLanguageController.resolveCode(code);
 
 const Map<String, List<String>> _liveCoachCopy = <String, List<String>>{
   'en': <String>[
@@ -11219,241 +11260,15 @@ String _localizedGoalLabel(String languageCode) => _coachCopy(languageCode)[0];
 String _localizedCoachGoal(String goal, String languageCode) =>
     goal == 'Find the strongest move' ? _coachCopy(languageCode)[1] : goal;
 
-String _localizedLiveCoachText(String text, String languageCode) {
-  if (text == 'Select a coin to see legal moves.' ||
-      text == 'Select a piece to see legal moves.' ||
-      text == 'Select a piece to begin') {
-    return _coachCopy(languageCode)[2];
-  }
-  if (text.startsWith('Move undone.')) {
-    return _coachCopy(languageCode)[2];
-  }
-  final String code = _effectiveLiveCoachLanguage(languageCode);
-  if (code == 'en') return text;
-  final RegExpMatch? review = RegExp(
-    r'^(Best|Great|Inaccuracy|Mistake|Blunder) • .*?([a-h][1-8][a-h][1-8][qrbn]?|\(none\)) was stronger; the immediate opponent threat is ([a-h][1-8][a-h][1-8][qrbn]?|\(none\))\.?$',
-    caseSensitive: false,
-  ).firstMatch(text);
-  if (review != null) {
-    final List<String> labels =
-        _dynamicCoachLabels[code] ?? _dynamicCoachLabels['en']!;
-    String moveOrUnavailable(String value) => value.toLowerCase() == '(none)'
-        ? (code == 'te' ? 'అందుబాటులో లేదు' : '—')
-        : value;
-    return '${labels[1]}: ${_localizedMoveAssessment(review.group(1)!, code)}\n'
-        '${labels[2]}: ${moveOrUnavailable(review.group(2)!)}  •  ${labels[3]}: ${moveOrUnavailable(review.group(3)!)}';
-  }
-  return text;
-}
+String _localizedLiveCoachText(String text, String languageCode) =>
+    localizeLiveCoach(text, languageCode);
 
-String _localizedYourMoveLabel(String languageCode) {
-  final String code = _effectiveLiveCoachLanguage(languageCode);
-  return (_dynamicCoachLabels[code] ?? _dynamicCoachLabels['en']!)[0];
-}
+String _localizedYourMoveLabel(String languageCode) =>
+    localizeLiveCoach('Your move', languageCode);
 
-String _localizedMoveAssessment(String value, String code) {
-  const Map<String, Map<String, String>> translations =
-      <String, Map<String, String>>{
-    'te': <String, String>{
-      'Best': 'అత్యుత్తమం',
-      'Great': 'చాలా మంచి ఎత్తు',
-      'Inaccuracy': 'ఖచ్చితత్వం లేని ఎత్తు',
-      'Mistake': 'తప్పు',
-      'Blunder': 'పెద్ద తప్పు'
-    },
-    'hi': <String, String>{
-      'Best': 'सर्वोत्तम',
-      'Great': 'बहुत अच्छी चाल',
-      'Inaccuracy': 'अशुद्ध चाल',
-      'Mistake': 'गलती',
-      'Blunder': 'बड़ी गलती'
-    },
-    'ta': <String, String>{
-      'Best': 'சிறந்தது',
-      'Great': 'மிக நல்ல நகர்வு',
-      'Inaccuracy': 'துல்லியமற்ற நகர்வு',
-      'Mistake': 'தவறு',
-      'Blunder': 'பெரும் தவறு'
-    },
-    'kn': <String, String>{
-      'Best': 'ಅತ್ಯುತ್ತಮ',
-      'Great': 'ತುಂಬಾ ಒಳ್ಳೆಯ ನಡೆ',
-      'Inaccuracy': 'ನಿಖರವಲ್ಲದ ನಡೆ',
-      'Mistake': 'ತಪ್ಪು',
-      'Blunder': 'ದೊಡ್ಡ ತಪ್ಪು'
-    },
-    'ml': <String, String>{
-      'Best': 'മികച്ചത്',
-      'Great': 'വളരെ നല്ല നീക്കം',
-      'Inaccuracy': 'കൃത്യതയില്ലാത്ത നീക്കം',
-      'Mistake': 'പിശക്',
-      'Blunder': 'വലിയ പിശക്'
-    },
-    'es': <String, String>{
-      'Best': 'Mejor',
-      'Great': 'Muy buena jugada',
-      'Inaccuracy': 'Imprecisión',
-      'Mistake': 'Error',
-      'Blunder': 'Error grave'
-    },
-    'fr': <String, String>{
-      'Best': 'Meilleur',
-      'Great': 'Très bon coup',
-      'Inaccuracy': 'Imprécision',
-      'Mistake': 'Erreur',
-      'Blunder': 'Gaffe'
-    },
-    'de': <String, String>{
-      'Best': 'Bester Zug',
-      'Great': 'Sehr guter Zug',
-      'Inaccuracy': 'Ungenauigkeit',
-      'Mistake': 'Fehler',
-      'Blunder': 'Grober Fehler'
-    },
-    'he': <String, String>{
-      'Best': 'המסע הטוב ביותר',
-      'Great': 'מסע מצוין',
-      'Inaccuracy': 'אי־דיוק',
-      'Mistake': 'טעות',
-      'Blunder': 'טעות חמורה'
-    },
-    'ar': <String, String>{
-      'Best': 'أفضل نقلة',
-      'Great': 'نقلة رائعة',
-      'Inaccuracy': 'نقلة غير دقيقة',
-      'Mistake': 'خطأ',
-      'Blunder': 'خطأ فادح'
-    },
-  };
-  return translations[code]?[value] ?? value;
-}
-
-const Map<String, List<String>> _dynamicCoachLabels = <String, List<String>>{
-  'en': <String>['Your move', 'Move review', 'Better move', 'Opponent threat'],
-  'te': <String>[
-    'మీ ఎత్తు',
-    'ఎత్తు విశ్లేషణ',
-    'మెరుగైన ఎత్తు',
-    'ప్రత్యర్థి ముప్పు'
-  ],
-  'hi': <String>[
-    'आपकी चाल',
-    'चाल समीक्षा',
-    'बेहतर चाल',
-    'प्रतिद्वंद्वी का खतरा'
-  ],
-  'ta': <String>[
-    'உங்கள் நகர்வு',
-    'நகர்வு ஆய்வு',
-    'சிறந்த மாற்று',
-    'எதிரியின் அச்சுறுத்தல்'
-  ],
-  'kn': <String>[
-    'ನಿಮ್ಮ ನಡೆ',
-    'ನಡೆಯ ವಿಶ್ಲೇಷಣೆ',
-    'ಉತ್ತಮ ನಡೆ',
-    'ಎದುರಾಳಿಯ ಬೆದರಿಕೆ'
-  ],
-  'ml': <String>[
-    'നിങ്ങളുടെ നീക്കം',
-    'നീക്ക വിലയിരുത്തൽ',
-    'മികച്ച നീക്കം',
-    'എതിരാളിയുടെ ഭീഷണി'
-  ],
-  'mr': <String>[
-    'तुमची चाल',
-    'चालीचे विश्लेषण',
-    'चांगली चाल',
-    'प्रतिस्पर्ध्याचा धोका'
-  ],
-  'bn': <String>[
-    'আপনার চাল',
-    'চাল পর্যালোচনা',
-    'ভালো চাল',
-    'প্রতিপক্ষের হুমকি'
-  ],
-  'gu': <String>['તમારી ચાલ', 'ચાલની સમીક્ષા', 'વધુ સારી ચાલ', 'હરીફનો ખતરો'],
-  'pa': <String>['ਤੁਹਾਡੀ ਚਾਲ', 'ਚਾਲ ਸਮੀਖਿਆ', 'ਬਿਹਤਰ ਚਾਲ', 'ਵਿਰੋਧੀ ਦਾ ਖ਼ਤਰਾ'],
-  'ur': <String>['آپ کی چال', 'چال کا جائزہ', 'بہتر چال', 'مخالف کا خطرہ'],
-  'ar': <String>['نقلتك', 'مراجعة النقلة', 'نقلة أفضل', 'تهديد الخصم'],
-  'es': <String>['Tu jugada', 'Análisis', 'Mejor jugada', 'Amenaza rival'],
-  'fr': <String>['Votre coup', 'Analyse', 'Meilleur coup', 'Menace adverse'],
-  'de': <String>[
-    'Dein Zug',
-    'Zuganalyse',
-    'Besserer Zug',
-    'Drohung des Gegners'
-  ],
-  'it': <String>[
-    'La tua mossa',
-    'Analisi',
-    'Mossa migliore',
-    'Minaccia avversaria'
-  ],
-  'pt': <String>['Sua jogada', 'Análise', 'Melhor jogada', 'Ameaça adversária'],
-  'ru': <String>['Ваш ход', 'Разбор хода', 'Лучший ход', 'Угроза соперника'],
-  'uk': <String>['Ваш хід', 'Аналіз ходу', 'Кращий хід', 'Загроза суперника'],
-  'tr': <String>[
-    'Hamleniz',
-    'Hamle analizi',
-    'Daha iyi hamle',
-    'Rakibin tehdidi'
-  ],
-  'fa': <String>['حرکت شما', 'بررسی حرکت', 'حرکت بهتر', 'تهدید حریف'],
-  'zh': <String>['你的走法', '着法分析', '更好的走法', '对手的威胁'],
-  'ja': <String>['あなたの手', '着手レビュー', 'より良い手', '相手の脅威'],
-  'ko': <String>['내 수', '수 분석', '더 좋은 수', '상대의 위협'],
-  'id': <String>[
-    'Langkah Anda',
-    'Ulasan langkah',
-    'Langkah lebih baik',
-    'Ancaman lawan'
-  ],
-  'ms': <String>[
-    'Langkah anda',
-    'Ulasan langkah',
-    'Langkah lebih baik',
-    'Ancaman lawan'
-  ],
-  'th': <String>[
-    'ตาของคุณ',
-    'วิเคราะห์การเดิน',
-    'การเดินที่ดีกว่า',
-    'ภัยคุกคามของคู่แข่ง'
-  ],
-  'vi': <String>[
-    'Nước đi của bạn',
-    'Đánh giá nước đi',
-    'Nước tốt hơn',
-    'Đe dọa của đối thủ'
-  ],
-  'pl': <String>[
-    'Twój ruch',
-    'Ocena ruchu',
-    'Lepszy ruch',
-    'Groźba przeciwnika'
-  ],
-  'nl': <String>[
-    'Jouw zet',
-    'Zetanalyse',
-    'Betere zet',
-    'Dreiging van tegenstander'
-  ],
-  'sv': <String>['Ditt drag', 'Draganalys', 'Bättre drag', 'Motståndarens hot'],
-  'el': <String>[
-    'Η κίνησή σας',
-    'Ανάλυση κίνησης',
-    'Καλύτερη κίνηση',
-    'Απειλή αντιπάλου'
-  ],
-  'he': <String>['המסע שלך', 'ניתוח המסע', 'מסע טוב יותר', 'איום היריב'],
-  'sw': <String>[
-    'Hatua yako',
-    'Uchambuzi wa hatua',
-    'Hatua bora',
-    'Tishio la mpinzani'
-  ],
-};
+String _localizedCoachUiLabel(String key, String languageCode) =>
+    localizeLiveCoach(
+        key == 'progress' ? 'Step progress' : 'Evaluation', languageCode);
 
 class _CoachInsightCard extends StatelessWidget {
   const _CoachInsightCard({
@@ -11488,103 +11303,6 @@ class _CoachInsightCard extends StatelessWidget {
       ),
     );
   }
-}
-
-String _localizedCoachUiLabel(String key, String languageCode) {
-  const Map<String, Map<String, String>> labels = <String, Map<String, String>>{
-    'en': <String, String>{
-      'progress': 'Step progress',
-      'evaluation': 'Evaluation',
-      'toMove': 'to move',
-    },
-    'te': <String, String>{
-      'progress': 'దశ పురోగతి',
-      'evaluation': 'విశ్లేషణ',
-      'toMove': 'ఆడాలి',
-    },
-    'hi': <String, String>{
-      'progress': 'चरण प्रगति',
-      'evaluation': 'मूल्यांकन',
-      'toMove': 'की चाल',
-    },
-    'ta': <String, String>{
-      'progress': 'படி முன்னேற்றம்',
-      'evaluation': 'மதிப்பீடு',
-      'toMove': 'நகர வேண்டும்',
-    },
-    'kn': <String, String>{
-      'progress': 'ಹಂತದ ಪ್ರಗತಿ',
-      'evaluation': 'ಮೌಲ್ಯಮಾಪನ',
-      'toMove': 'ನಡೆಸಬೇಕು',
-    },
-    'ml': <String, String>{
-      'progress': 'ഘട്ട പുരോഗതി',
-      'evaluation': 'വിലയിരുത്തൽ',
-      'toMove': 'നീക്കണം',
-    },
-    'es': <String, String>{
-      'progress': 'Progreso',
-      'evaluation': 'Evaluación',
-      'toMove': 'juega',
-    },
-    'fr': <String, String>{
-      'progress': 'Progression',
-      'evaluation': 'Évaluation',
-      'toMove': 'doit jouer',
-    },
-    'de': <String, String>{
-      'progress': 'Fortschritt',
-      'evaluation': 'Bewertung',
-      'toMove': 'am Zug',
-    },
-    'he': <String, String>{
-      'progress': 'התקדמות',
-      'evaluation': 'הערכה',
-      'toMove': 'בתור',
-    },
-    'ar': <String, String>{
-      'progress': 'تقدم الخطوات',
-      'evaluation': 'التقييم',
-      'toMove': 'عليه النقل',
-    },
-  };
-  final String code = _effectiveLiveCoachLanguage(languageCode);
-  return (labels[code] ?? labels['en']!)[key] ?? labels['en']![key]!;
-}
-
-String _localizedActiveTurn(String value, String languageCode) {
-  final String code = _effectiveLiveCoachLanguage(languageCode);
-  if (value == 'YOUR TURN') {
-    return <String, String>{
-          'te': 'మీరు',
-          'hi': 'आप',
-          'ta': 'நீங்கள்',
-          'kn': 'ನೀವು',
-          'ml': 'നിങ്ങൾ',
-          'es': 'Tú',
-          'fr': 'Vous',
-          'de': 'Du',
-          'he': 'אתה',
-          'ar': 'أنت',
-        }[code] ??
-        value;
-  }
-  if (value == 'AI TURN') {
-    return <String, String>{
-          'te': 'AI',
-          'hi': 'AI',
-          'ta': 'AI',
-          'kn': 'AI',
-          'ml': 'AI',
-          'es': 'IA',
-          'fr': 'IA',
-          'de': 'KI',
-          'he': 'AI',
-          'ar': 'الذكاء الاصطناعي',
-        }[code] ??
-        value;
-  }
-  return value;
 }
 
 class _CoachProgress extends StatelessWidget {
@@ -11692,8 +11410,7 @@ class _CoachEvaluation extends StatelessWidget {
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerRight,
               child: Text(
-                '${_localizedActiveTurn(activeColor, languageCode)} '
-                '${_localizedCoachUiLabel('toMove', languageCode)}',
+                localizeLiveCoach(activeColor, languageCode),
                 maxLines: 1,
                 style: const TextStyle(
                   color: Color(0xFF63D2B8),
@@ -12813,17 +12530,19 @@ class BoardThemeMenuItem extends StatelessWidget {
 }
 
 class PositionAnalysisSheet extends StatelessWidget {
-  const PositionAnalysisSheet({required this.analysis, super.key});
+  const PositionAnalysisSheet(
+      {required this.analysis, this.languageCode = 'en', super.key});
 
   final PositionAnalysis analysis;
+  final String languageCode;
 
   @override
   Widget build(BuildContext context) {
     final String evaluation = analysis.evaluation == 0
-        ? 'Equal'
+        ? localizeLiveCoach('Equal', languageCode)
         : analysis.evaluation > 0
-            ? 'White +${analysis.evaluation.toStringAsFixed(1)}'
-            : 'Black +${analysis.evaluation.abs().toStringAsFixed(1)}';
+            ? '${CoachLocalizations(languageCode).source('White')} +${analysis.evaluation.toStringAsFixed(1)}'
+            : '${CoachLocalizations(languageCode).source('Black')} +${analysis.evaluation.abs().toStringAsFixed(1)}';
 
     return SafeArea(
       child: LayoutBuilder(
@@ -12876,12 +12595,12 @@ class PositionAnalysisSheet extends StatelessWidget {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'AI Agent Coach',
+                              localizeLiveCoach('AI Coach', languageCode),
                               style: Theme.of(context).textTheme.headlineSmall,
                             ),
                           ),
                           IconButton(
-                            tooltip: 'Close analysis',
+                            tooltip: coachExtraText('close', languageCode),
                             onPressed: () => Navigator.of(context).pop(),
                             icon: const Icon(Icons.close_rounded),
                           ),
@@ -12890,30 +12609,37 @@ class PositionAnalysisSheet extends StatelessWidget {
                       SizedBox(height: shortLandscape ? 6 : 14),
                       AnalysisMetric(
                         icon: Icons.balance_rounded,
-                        label: 'Evaluation',
+                        label: localizeLiveCoach('Evaluation', languageCode),
                         value: evaluation,
                       ),
                       AnalysisMetric(
                         icon: Icons.route_rounded,
-                        label: '${analysis.side} legal moves',
+                        label: localizeLiveCoach(
+                            '${analysis.side} legal moves', languageCode),
                         value: '${analysis.legalMoves}',
                       ),
                       AnalysisMetric(
                         icon: Icons.gps_fixed_rounded,
-                        label: 'Immediate captures',
+                        label: localizeLiveCoach(
+                            'Immediate captures', languageCode),
                         value: '${analysis.captures}',
                       ),
                       AnalysisMetric(
                         icon: Icons.auto_graph_rounded,
-                        label: 'Move quality',
-                        value: analysis.quality,
+                        label: CoachLocalizations(languageCode)
+                            .text('moveQuality'),
+                        value:
+                            localizeLiveCoach(analysis.quality, languageCode),
                       ),
                       AnalysisMetric(
                         icon: analysis.inCheck
                             ? Icons.warning_amber_rounded
                             : Icons.shield_outlined,
-                        label: 'King safety',
-                        value: analysis.inCheck ? 'In check' : 'Safe',
+                        label:
+                            analysisDashboardText('kingSafety', languageCode),
+                        value: localizeLiveCoach(
+                            analysis.inCheck ? 'In check' : 'Safe',
+                            languageCode),
                       ),
                       SizedBox(height: shortLandscape ? 6 : 12),
                       DecoratedBox(
@@ -12938,8 +12664,9 @@ class PositionAnalysisSheet extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   analysis.bestMove == null
-                                      ? 'No legal move'
-                                      : 'Recommended: ${analysis.bestMove}\n${analysis.coachLine}',
+                                      ? localizeLiveCoach(
+                                          'No legal move', languageCode)
+                                      : '${CoachLocalizations(languageCode).text('recommended')}: ${analysis.bestMove}\n${localizeLiveCoach(analysis.coachLine, languageCode)}',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w800,
                                   ),

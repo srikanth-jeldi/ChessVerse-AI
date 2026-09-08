@@ -104,10 +104,13 @@ class AiCoachApi {
     required String playedMove,
     required String question,
     String? sessionId,
+    String? languageCode,
     List<String> candidateMoves = const <String>[],
   }) async {
     try {
-      final String language = await AppLanguageController.effectiveCode();
+      final String language = languageCode == null
+          ? await AppLanguageController.effectiveCode()
+          : AppLanguageController.resolveCode(languageCode);
       final http.Response response = await http
           .post(
             Uri.parse('${AppConfig.apiBaseUrl}/api/v1/coach/ask'),
