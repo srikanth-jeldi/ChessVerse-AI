@@ -16,11 +16,9 @@ class GiphyMediaService {
 
     private final String apiKey;
     private final RestClient client = RestClient.create();
-    private final ObjectMapper mapper;
+    private final ObjectMapper mapper = new ObjectMapper();
 
-    GiphyMediaService(ObjectMapper mapper,
-            @Value("${chessverse.chat.giphy.api-key:}") String apiKey) {
-        this.mapper = mapper;
+    GiphyMediaService(@Value("${chessverse.chat.giphy.api-key:}") String apiKey) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
     }
 
