@@ -12,6 +12,256 @@ import '../data/ai_coach_api.dart';
 import '../domain/ai_review_report.dart';
 import '../domain/personal_ai_coach.dart';
 
+class _ReviewLanguageScope extends InheritedWidget {
+  const _ReviewLanguageScope({
+    required this.languageCode,
+    required super.child,
+  });
+
+  final String languageCode;
+
+  static String of(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<_ReviewLanguageScope>()
+          ?.languageCode ??
+      'en';
+
+  @override
+  bool updateShouldNotify(_ReviewLanguageScope oldWidget) =>
+      languageCode != oldWidget.languageCode;
+}
+
+const Map<String, Map<String, String>> _reviewTranslations =
+    <String, Map<String, String>>{
+  'en': <String, String>{
+    'title': 'AI GAME REVIEW',
+    'opening': 'OPENING',
+    'moveQuality': 'MOVE QUALITY',
+    'evaluationGraph': 'EVALUATION GRAPH',
+    'moveByMove': 'MOVE-BY-MOVE COACHING',
+    'completeGame': 'Complete a game to unlock move review.',
+    'noMistakes': 'No reviewed mistakes to train',
+    'resumeMistakes': 'Train reviewed mistakes',
+    'noEngineLoss': 'Engine: no evaluation lost',
+    'engineLoss': 'Engine loss',
+    'best': 'Best',
+    'explain': 'Explain simply',
+    'showThreat': 'Show threat',
+    'retryPosition': 'Retry position',
+    'strength': 'YOUR STRENGTH',
+    'turningPoint': 'TURNING POINT',
+    'importantMoments': 'IMPORTANT MOMENTS',
+    'trainingFocus': 'NEXT TRAINING FOCUS',
+    'trainingPlan': 'PERSONAL TRAINING PLAN',
+    'recommended': 'Recommended',
+    'retry': 'Retry',
+    'graphHelp': 'Tap or drag across the graph to restore a reviewed position.',
+  },
+  'te': <String, String>{
+    'title': 'AI గేమ్ సమీక్ష',
+    'opening': 'ఓపెనింగ్',
+    'moveQuality': 'ఎత్తుల నాణ్యత',
+    'evaluationGraph': 'విశ్లేషణ గ్రాఫ్',
+    'moveByMove': 'ప్రతి ఎత్తుకు కోచింగ్',
+    'completeGame': 'ఎత్తుల సమీక్ష కోసం ఒక గేమ్ పూర్తి చేయండి.',
+    'noMistakes': 'శిక్షణకు సమీక్షించిన తప్పులు లేవు',
+    'resumeMistakes': 'సమీక్షించిన తప్పులను సాధన చేయండి',
+    'noEngineLoss': 'ఇంజిన్: మూల్యాంకన నష్టం లేదు',
+    'engineLoss': 'ఇంజిన్ నష్టం',
+    'best': 'ఉత్తమం',
+    'explain': 'సులభంగా వివరించు',
+    'showThreat': 'ప్రమాదాన్ని చూపు',
+    'retryPosition': 'స్థితిని మళ్లీ ప్రయత్నించు',
+    'strength': 'మీ బలం',
+    'turningPoint': 'మలుపు తిరిగిన ఎత్తు',
+    'importantMoments': 'ముఖ్యమైన క్షణాలు',
+    'trainingFocus': 'తదుపరి శిక్షణ లక్ష్యం',
+    'trainingPlan': 'వ్యక్తిగత శిక్షణ ప్రణాళిక',
+    'recommended': 'సిఫార్సు',
+    'retry': 'మళ్లీ ప్రయత్నించు',
+    'graphHelp':
+        'సమీక్షించిన స్థితికి వెళ్లడానికి గ్రాఫ్‌పై ట్యాప్ లేదా డ్రాగ్ చేయండి.',
+  },
+  'hi': <String, String>{
+    'title': 'AI गेम समीक्षा',
+    'opening': 'ओपनिंग',
+    'moveQuality': 'चाल की गुणवत्ता',
+    'evaluationGraph': 'मूल्यांकन ग्राफ',
+    'moveByMove': 'हर चाल की कोचिंग',
+    'explain': 'सरल रूप से समझाएँ',
+    'showThreat': 'खतरा दिखाएँ',
+    'retryPosition': 'स्थिति फिर खेलें',
+  },
+  'ta': <String, String>{
+    'title': 'AI ஆட்ட மதிப்பாய்வு',
+    'opening': 'தொடக்கம்',
+    'moveQuality': 'நகர்வு தரம்',
+    'evaluationGraph': 'மதிப்பீட்டு வரைபடம்',
+    'moveByMove': 'ஒவ்வொரு நகர்வுக்கும் பயிற்சி',
+    'explain': 'எளிதாக விளக்கு',
+    'showThreat': 'அச்சுறுத்தலைக் காட்டு',
+    'retryPosition': 'நிலையை மீண்டும் முயற்சி',
+  },
+  'kn': <String, String>{
+    'title': 'AI ಆಟದ ವಿಮರ್ಶೆ',
+    'opening': 'ಆರಂಭ',
+    'moveQuality': 'ನಡೆಯ ಗುಣಮಟ್ಟ',
+    'evaluationGraph': 'ಮೌಲ್ಯಮಾಪನ ಗ್ರಾಫ್',
+    'moveByMove': 'ಪ್ರತಿ ನಡೆಯ ತರಬೇತಿ',
+    'explain': 'ಸರಳವಾಗಿ ವಿವರಿಸಿ',
+    'showThreat': 'ಬೆದರಿಕೆ ತೋರಿಸಿ',
+    'retryPosition': 'ಸ್ಥಿತಿಯನ್ನು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
+  },
+  'ml': <String, String>{
+    'title': 'AI ഗെയിം അവലോകനം',
+    'opening': 'ഓപ്പണിംഗ്',
+    'moveQuality': 'നീക്കത്തിന്റെ നിലവാരം',
+    'evaluationGraph': 'വിലയിരുത്തൽ ഗ്രാഫ്',
+    'moveByMove': 'ഓരോ നീക്കത്തിനും പരിശീലനം',
+    'explain': 'ലളിതമായി വിശദീകരിക്കുക',
+    'showThreat': 'ഭീഷണി കാണിക്കുക',
+    'retryPosition': 'സ്ഥാനം വീണ്ടും ശ്രമിക്കുക',
+  },
+  'es': <String, String>{
+    'title': 'ANÁLISIS DE PARTIDA CON IA',
+    'opening': 'APERTURA',
+    'moveQuality': 'CALIDAD DE JUGADAS',
+    'evaluationGraph': 'GRÁFICO DE EVALUACIÓN',
+    'moveByMove': 'ANÁLISIS JUGADA A JUGADA',
+    'explain': 'Explicar fácil',
+    'showThreat': 'Mostrar amenaza',
+    'retryPosition': 'Reintentar posición',
+  },
+  'fr': <String, String>{
+    'title': 'ANALYSE DE PARTIE IA',
+    'opening': 'OUVERTURE',
+    'moveQuality': 'QUALITÉ DES COUPS',
+    'evaluationGraph': "GRAPHE D'ÉVALUATION",
+    'moveByMove': 'COACHING COUP PAR COUP',
+    'explain': 'Expliquer simplement',
+    'showThreat': 'Voir la menace',
+    'retryPosition': 'Rejouer la position',
+  },
+  'de': <String, String>{
+    'title': 'KI-SPIELANALYSE',
+    'opening': 'ERÖFFNUNG',
+    'moveQuality': 'ZUGQUALITÄT',
+    'evaluationGraph': 'BEWERTUNGSGRAFIK',
+    'moveByMove': 'ZUG-FÜR-ZUG-COACHING',
+    'explain': 'Einfach erklären',
+    'showThreat': 'Drohung zeigen',
+    'retryPosition': 'Position wiederholen',
+  },
+  'he': <String, String>{
+    'title': 'סקירת משחק AI',
+    'opening': 'פתיחה',
+    'moveQuality': 'איכות המסעים',
+    'evaluationGraph': 'גרף הערכה',
+    'moveByMove': 'אימון מסע אחר מסע',
+    'explain': 'הסבר בפשטות',
+    'showThreat': 'הצג איום',
+    'retryPosition': 'נסה שוב את העמדה',
+  },
+  'ar': <String, String>{
+    'title': 'مراجعة المباراة بالذكاء الاصطناعي',
+    'opening': 'الافتتاح',
+    'moveQuality': 'جودة النقلات',
+    'evaluationGraph': 'رسم التقييم',
+    'moveByMove': 'تدريب نقلة بنقلة',
+    'explain': 'اشرح ببساطة',
+    'showThreat': 'أظهر التهديد',
+    'retryPosition': 'أعد محاولة الوضع',
+  },
+};
+
+String _reviewText(String key, String code) =>
+    _reviewTranslations[code]?[key] ?? _reviewTranslations['en']![key] ?? key;
+
+String _localizedReviewHeadline(String value, String code) {
+  if (code != 'te') return value;
+  return <String, String>{
+        'Confident, accurate chess': 'ఆత్మవిశ్వాసంతో ఖచ్చితమైన ఆట',
+        'Good ideas with room to sharpen': 'మంచి ఆలోచనలు—ఇంకా మెరుగుపరచవచ్చు',
+        'A useful game to learn from': 'నేర్చుకోవడానికి ఉపయోగకరమైన గేమ్',
+      }[value] ??
+      value;
+}
+
+String _localizedReviewSummary(String value, String code) {
+  if (code != 'te') return value;
+  final RegExpMatch? count =
+      RegExp(r'^(\d+) half-moves reviewed').firstMatch(value);
+  return count == null
+      ? (value == 'No recorded moves are available yet.'
+          ? 'ఇంకా నమోదు చేసిన ఎత్తులు లేవు.'
+          : value)
+      : 'ఓపెనింగ్, మధ్యగేమ్, ఎండ్‌గేమ్‌లో ${count.group(1)} అర్ధ-ఎత్తులను సమీక్షించాం.';
+}
+
+String _localizedOpeningName(String value, String code) =>
+    code == 'te' && value == 'Unclassified opening'
+        ? 'వర్గీకరించని ఓపెనింగ్'
+        : value;
+
+String _localizedReviewPhase(String value, String code) {
+  if (code != 'te') return value;
+  return <String, String>{
+        'Opening': 'ఓపెనింగ్',
+        'Middlegame': 'మధ్యగేమ్',
+        'Endgame': 'ఎండ్‌గేమ్'
+      }[value] ??
+      value;
+}
+
+String _localizedReviewQuality(String value, String code) {
+  if (code != 'te') return value;
+  return <String, String>{
+        'Best': 'ఉత్తమం',
+        'Great': 'చాలా మంచి',
+        'Good': 'మంచి',
+        'Playable': 'ఆడదగినది',
+        'Inaccuracy': 'అస్పష్టత',
+        'Mistake': 'తప్పు',
+        'Blunder': 'పెద్ద తప్పు',
+      }[value] ??
+      value;
+}
+
+String _localizedReviewExplanation(String value, String code) {
+  if (code != 'te') return value;
+  if (value.startsWith('A quiet move.')) {
+    return 'ఇది నిశ్శబ్ద ఎత్తు. చెక్స్, క్యాప్చర్లు మరియు ప్రత్యక్ష ప్రమాదాలతో పోల్చండి.';
+  }
+  final String translated = value
+      .replaceFirst(
+          'This move is playable, but it misses a more accurate continuation.',
+          'ఈ ఎత్తు ఆడదగినదే, కానీ మరింత ఖచ్చితమైన కొనసాగింపును కోల్పోయింది.')
+      .replaceFirst('This concedes a clear advantage that can be avoided.',
+          'ఈ ఎత్తు నివారించగల స్పష్టమైన ఆధిక్యాన్ని ప్రత్యర్థికి ఇస్తోంది.')
+      .replaceFirst('was stronger; the immediate opponent threat is',
+          'మరింత బలమైనది; ప్రత్యర్థి తక్షణ ప్రమాదం');
+  return translated;
+}
+
+String _localizedReviewNarrative(String value, String code) {
+  if (code != 'te') return value;
+  return value
+      .replaceFirst(
+          'Your strongest habit was central control and piece development.',
+          'మీ ప్రధాన బలం కేంద్ర నియంత్రణ మరియు పావుల అభివృద్ధి.')
+      .replaceFirst(
+          'You kept the position playable and created a base for deeper calculation.',
+          'మీరు స్థితిని ఆడదగినదిగా ఉంచి లోతైన లెక్కింపుకు పునాది వేశారు.')
+      .replaceFirst('Calculation discipline:', 'లెక్కింపు క్రమశిక్షణ:')
+      .replaceFirst('Tactical vision:', 'టాక్టికల్ దృష్టి:')
+      .replaceFirst('Opening survival:', 'ఓపెనింగ్ రక్షణ:')
+      .replaceFirst('King safety:', 'రాజు భద్రత:')
+      .replaceFirst('Piece safety:', 'పావుల భద్రత:')
+      .replaceFirst('Endgame conversion:', 'ఎండ్‌గేమ్ పూర్తి చేయడం:')
+      .replaceAll('Move ', 'ఎత్తు ')
+      .replaceAll('Opening:', 'ఓపెనింగ్:');
+}
+
 Future<void> showAdaptiveAiReview(
   BuildContext context, {
   required AiReviewReport report,
@@ -19,7 +269,9 @@ Future<void> showAdaptiveAiReview(
   String? timeControl,
   ValueChanged<AiMoveInsight>? onRetryPosition,
   VoidCallback? onGeneratePuzzles,
-}) {
+}) async {
+  final String languageCode = await AppLanguageController.effectiveCode();
+  if (!context.mounted) return;
   final Size viewport = MediaQuery.sizeOf(context);
   if (viewport.width >= 900 && viewport.height >= 620) {
     return showDialog<void>(
@@ -30,13 +282,16 @@ Future<void> showAdaptiveAiReview(
         backgroundColor: const Color(0xFF061722),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1180, maxHeight: 760),
-          child: _AiReviewWorkspace(
-            report: report,
-            desktop: true,
-            openingEco: openingEco,
-            timeControl: timeControl,
-            onRetryPosition: onRetryPosition,
-            onGeneratePuzzles: onGeneratePuzzles,
+          child: _ReviewLanguageScope(
+            languageCode: languageCode,
+            child: _AiReviewWorkspace(
+              report: report,
+              desktop: true,
+              openingEco: openingEco,
+              timeControl: timeControl,
+              onRetryPosition: onRetryPosition,
+              onGeneratePuzzles: onGeneratePuzzles,
+            ),
           ),
         ),
       ),
@@ -50,13 +305,16 @@ Future<void> showAdaptiveAiReview(
     backgroundColor: const Color(0xFF061722),
     builder: (BuildContext context) => FractionallySizedBox(
       heightFactor: .94,
-      child: _AiReviewWorkspace(
-        report: report,
-        desktop: false,
-        openingEco: openingEco,
-        timeControl: timeControl,
-        onRetryPosition: onRetryPosition,
-        onGeneratePuzzles: onGeneratePuzzles,
+      child: _ReviewLanguageScope(
+        languageCode: languageCode,
+        child: _AiReviewWorkspace(
+          report: report,
+          desktop: false,
+          openingEco: openingEco,
+          timeControl: timeControl,
+          onRetryPosition: onRetryPosition,
+          onGeneratePuzzles: onGeneratePuzzles,
+        ),
       ),
     ),
   );
@@ -81,6 +339,7 @@ class _AiReviewWorkspace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String languageCode = _ReviewLanguageScope.of(context);
     final Widget overview = _ReviewOverview(
       report: report,
       onRetryPosition: onRetryPosition,
@@ -101,8 +360,8 @@ class _AiReviewWorkspace extends StatelessWidget {
       onPressed: puzzleCount == 0 ? null : onGeneratePuzzles,
       icon: const Icon(Icons.extension_rounded),
       label: Text(puzzleCount == 0
-          ? 'No reviewed mistakes to train'
-          : 'Resume all $puzzleCount mistake ${puzzleCount == 1 ? 'position' : 'positions'}'),
+          ? _reviewText('noMistakes', languageCode)
+          : '${_reviewText('resumeMistakes', languageCode)} ($puzzleCount)'),
     );
     return Padding(
       padding: EdgeInsets.all(desktop ? 24 : 16),
@@ -110,9 +369,9 @@ class _AiReviewWorkspace extends StatelessWidget {
         Row(children: <Widget>[
           const Icon(Icons.auto_awesome_rounded, color: Color(0xFF59E4C8)),
           const SizedBox(width: 9),
-          const Expanded(
-            child: Text('AI GAME REVIEW',
-                style: TextStyle(
+          Expanded(
+            child: Text(_reviewText('title', languageCode),
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.1,
@@ -162,6 +421,7 @@ class _ReviewOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String languageCode = _ReviewLanguageScope.of(context);
     final Map<String, int> counts = <String, int>{};
     for (final AiMoveInsight insight in report.insights) {
       final String quality = reviewQualityBucket(insight.label);
@@ -191,11 +451,11 @@ class _ReviewOverview extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(report.headline,
+                  Text(_localizedReviewHeadline(report.headline, languageCode),
                       style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.w900)),
                   const SizedBox(height: 5),
-                  Text(report.summary,
+                  Text(_localizedReviewSummary(report.summary, languageCode),
                       style: const TextStyle(
                           color: AppColors.textSecondary, height: 1.35)),
                 ],
@@ -206,8 +466,8 @@ class _ReviewOverview extends StatelessWidget {
         const SizedBox(height: 12),
         _InsightCard(
           icon: Icons.menu_book_rounded,
-          label: 'OPENING',
-          body: report.openingName,
+          label: _reviewText('opening', languageCode),
+          body: _localizedOpeningName(report.openingName, languageCode),
           color: const Color(0xFF50B8FF),
         ),
         if (report.insights
@@ -225,8 +485,8 @@ class _ReviewOverview extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Text('MOVE QUALITY',
-                  style: TextStyle(
+              Text(_reviewText('moveQuality', languageCode),
+                  style: const TextStyle(
                     color: AppColors.accentGold,
                     fontSize: 11,
                     fontWeight: FontWeight.w900,
@@ -246,7 +506,7 @@ class _ReviewOverview extends StatelessWidget {
                     'Blunder',
                   ])
                     _QualityCount(
-                      label: label,
+                      label: _localizedReviewQuality(label, languageCode),
                       count: counts[label] ?? 0,
                       color: _qualityColor(label),
                     ),
@@ -258,27 +518,27 @@ class _ReviewOverview extends StatelessWidget {
         const SizedBox(height: 12),
         _InsightCard(
           icon: Icons.workspace_premium_rounded,
-          label: 'YOUR STRENGTH',
-          body: report.strength,
+          label: _reviewText('strength', languageCode),
+          body: _localizedReviewNarrative(report.strength, languageCode),
           color: const Color(0xFF59E4C8),
         ),
         const SizedBox(height: 12),
         _InsightCard(
           icon: Icons.route_rounded,
-          label: 'TURNING POINT',
-          body: report.turningPoint,
+          label: _reviewText('turningPoint', languageCode),
+          body: _localizedReviewNarrative(report.turningPoint, languageCode),
           color: AppColors.accentGold,
         ),
         if (report.importantMistakes.isNotEmpty) ...<Widget>[
           const SizedBox(height: 12),
           _InsightCard(
             icon: Icons.priority_high_rounded,
-            label: '3 IMPORTANT MOMENTS',
+            label: _reviewText('importantMoments', languageCode),
             body: report.importantMistakes
                 .asMap()
                 .entries
                 .map((MapEntry<int, String> item) =>
-                    '${item.key + 1}. ${item.value}')
+                    '${item.key + 1}. ${_localizedReviewNarrative(item.value, languageCode)}')
                 .join('\n\n'),
             color: AppColors.accentGold,
           ),
@@ -286,9 +546,9 @@ class _ReviewOverview extends StatelessWidget {
         const SizedBox(height: 12),
         _InsightCard(
           icon: Icons.psychology_alt_rounded,
-          label: 'NEXT TRAINING FOCUS',
+          label: _reviewText('trainingFocus', languageCode),
           body:
-              '${report.trainingFocus}\n\nRecommended: ${report.recommendedLesson}',
+              '${_localizedReviewNarrative(report.trainingFocus, languageCode)}\n\n${_reviewText('recommended', languageCode)}: ${report.recommendedLesson}',
           color: const Color(0xFF59E4C8),
         ),
         const SizedBox(height: 12),
@@ -296,8 +556,8 @@ class _ReviewOverview extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Text('PERSONAL TRAINING PLAN',
-                  style: TextStyle(
+              Text(_reviewText('trainingPlan', languageCode),
+                  style: const TextStyle(
                     color: Color(0xFF59E4C8),
                     fontSize: 11,
                     fontWeight: FontWeight.w900,
@@ -310,7 +570,7 @@ class _ReviewOverview extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 7),
                   child: Text(
-                    '${index + 1}. ${report.trainingRecommendations[index]}',
+                    '${index + 1}. ${_localizedReviewNarrative(report.trainingRecommendations[index], languageCode)}',
                     style: const TextStyle(height: 1.35),
                   ),
                 ),
@@ -350,6 +610,7 @@ class _EvaluationGraphState extends State<_EvaluationGraph> {
 
   @override
   Widget build(BuildContext context) {
+    final String languageCode = _ReviewLanguageScope.of(context);
     final List<AiMoveInsight> points = widget.report.insights
         .where((AiMoveInsight item) => item.evaluationAfterCp != null)
         .toList(growable: false);
@@ -364,11 +625,12 @@ class _EvaluationGraphState extends State<_EvaluationGraph> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Row(children: <Widget>[
-            Icon(Icons.show_chart_rounded, color: Color(0xFF59E4C8), size: 18),
-            SizedBox(width: 8),
-            Text('EVALUATION GRAPH',
-                style: TextStyle(
+          Row(children: <Widget>[
+            const Icon(Icons.show_chart_rounded,
+                color: Color(0xFF59E4C8), size: 18),
+            const SizedBox(width: 8),
+            Text(_reviewText('evaluationGraph', languageCode),
+                style: const TextStyle(
                   color: Color(0xFF59E4C8),
                   fontSize: 11,
                   fontWeight: FontWeight.w900,
@@ -443,12 +705,12 @@ class _EvaluationGraphState extends State<_EvaluationGraph> {
               TextButton.icon(
                 onPressed: () => widget.onRetryPosition!(insight),
                 icon: const Icon(Icons.replay_rounded, size: 17),
-                label: const Text('Retry'),
+                label: Text(_reviewText('retry', languageCode)),
               ),
           ]),
-          const Text(
-              'Tap or drag across the graph to restore a reviewed position.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+          Text(_reviewText('graphHelp', languageCode),
+              style: const TextStyle(
+                  color: AppColors.textSecondary, fontSize: 11)),
         ],
       ),
     );
@@ -612,15 +874,15 @@ class _MoveTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String languageCode = _ReviewLanguageScope.of(context);
     if (report.insights.isEmpty) {
-      return const Center(
-          child: Text('Complete a game to unlock move review.'));
+      return Center(child: Text(_reviewText('completeGame', languageCode)));
     }
     return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Text('MOVE-BY-MOVE COACHING',
-              style: TextStyle(
+          Text(_reviewText('moveByMove', languageCode),
+              style: const TextStyle(
                 color: AppColors.accentGold,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1,
@@ -654,14 +916,17 @@ class _MoveTimeline extends StatelessWidget {
                                     style: const TextStyle(
                                         fontWeight: FontWeight.w900)),
                               ),
-                              Text(insight.label,
+                              Text(
+                                  _localizedReviewQuality(
+                                      insight.label, languageCode),
                                   style: TextStyle(
                                       color: color,
                                       fontWeight: FontWeight.w900,
                                       fontSize: 11)),
                             ]),
                             const SizedBox(height: 4),
-                            Text('${insight.phase}: ${insight.explanation}',
+                            Text(
+                                '${_localizedReviewPhase(insight.phase, languageCode)}: ${_localizedReviewExplanation(insight.explanation, languageCode)}',
                                 style: const TextStyle(
                                     color: AppColors.textSecondary,
                                     height: 1.35)),
@@ -669,9 +934,9 @@ class _MoveTimeline extends StatelessWidget {
                               const SizedBox(height: 7),
                               Text(
                                 insight.centipawnLoss == 0
-                                    ? 'Engine: no evaluation lost'
-                                    : 'Engine loss: ${insight.centipawnLoss} centipawns'
-                                        '${insight.bestMove?.isNotEmpty == true ? ' • Best: ${insight.bestMove}' : ''}',
+                                    ? _reviewText('noEngineLoss', languageCode)
+                                    : '${_reviewText('engineLoss', languageCode)}: ${insight.centipawnLoss} cp'
+                                        '${insight.bestMove?.isNotEmpty == true ? ' • ${_reviewText('best', languageCode)}: ${insight.bestMove}' : ''}',
                                 style: TextStyle(
                                   color: color,
                                   fontSize: 12,
@@ -686,7 +951,7 @@ class _MoveTimeline extends StatelessWidget {
                               children: <Widget>[
                                 _ReviewAction(
                                   icon: Icons.psychology_alt_rounded,
-                                  label: 'Explain simply',
+                                  label: _reviewText('explain', languageCode),
                                   onTap: () => _showInteractiveCoach(
                                     context,
                                     insight,
@@ -696,7 +961,8 @@ class _MoveTimeline extends StatelessWidget {
                                 ),
                                 _ReviewAction(
                                   icon: Icons.warning_amber_rounded,
-                                  label: 'Show threat',
+                                  label:
+                                      _reviewText('showThreat', languageCode),
                                   onTap: () => _showReviewDetail(
                                     context,
                                     'Opponent threat',
@@ -707,7 +973,8 @@ class _MoveTimeline extends StatelessWidget {
                                 ),
                                 _ReviewAction(
                                   icon: Icons.replay_circle_filled_rounded,
-                                  label: 'Retry position',
+                                  label: _reviewText(
+                                      'retryPosition', languageCode),
                                   onTap: insight.hasEngineEvidence &&
                                           insight.bestMove?.isNotEmpty ==
                                               true &&

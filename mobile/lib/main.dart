@@ -3804,6 +3804,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String? _turningPoint;
   String _coachNote = 'Select a coin to see legal moves.';
   String _coachLanguageCode = AppLanguageController.systemCode;
+  bool _coachLanguageLoaded = false;
   BoardSkin _skin = BoardSkin.royalWalnut;
   GameMode _gameMode = GameMode.computer;
   double _aiLevel = 4;
@@ -4020,7 +4021,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Future<void> _loadCoachLanguage() async {
     final String language = await AppLanguageController.selectedCode();
-    if (mounted) setState(() => _coachLanguageCode = language);
+    if (mounted) {
+      setState(() {
+        _coachLanguageCode = language;
+        _coachLanguageLoaded = true;
+      });
+    }
   }
 
   Future<void> _chooseGameCoachLanguage() async {
@@ -4309,64 +4315,67 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     )
                   : BoardStage(palette: palette, child: board);
 
-              final Widget studioCoach = _StudioCoachPanel(
-                gameMode: _gameMode,
-                activeColor: _gameMode == GameMode.computer
-                    ? (sideToMoveWhite == _humanPlaysWhite && !_aiThinking
-                        ? 'YOUR TURN'
-                        : 'AI TURN')
-                    : _gameMode == GameMode.online && _onlineMatch != null
-                        ? (_onlineStatusText(_onlineMatch!))
-                        : _moves.length.isEven
-                            ? 'PLAYER 1 • WHITE'
-                            : 'PLAYER 2 • BLACK',
-                aiThinking: _aiThinking,
-                coachEnabled: _coachEnabled,
-                coachNote: _localizedLiveCoachText(
-                  _lastPlayerCoachNote ?? _coachNote,
-                  _coachLanguageCode,
-                ),
-                languageCode: _coachLanguageCode,
-                onLanguage: _chooseGameCoachLanguage,
-                evaluationPawns: _engineEvaluationPawns,
-                lastMove: _lastPlayerMove,
-                lastMoveOwner: _lastPlayerMove == null ? null : 'Your move',
-                dailyProgress: _dailyPlayerMovesCompleted,
-                dailyGoal: _dailyChallenge.playerMoveGoal,
-                canUndo: _gameMode != GameMode.online &&
-                    _gameResultTitle == null &&
-                    _history.isNotEmpty,
-                hintLabel: switch (_hintStage) {
-                  1 => 'Direction',
-                  2 => 'Exact move',
-                  _ => 'Piece hint',
-                },
-                canHint: _gameResultTitle == null,
-                analyzeLabel: _moveQualityText == null
-                    ? 'Analyze'
-                    : _moveQualityIsWeak
-                        ? 'Why weak?'
-                        : 'Analyze move',
-                onHint: _showHint,
-                onAnalyze: _showAnalysis,
-                onTryAgain: _gameMode == GameMode.online
-                    ? () => unawaited(
-                          _refreshOnlineMatch(forceBoardReplay: true),
-                        )
-                    : _isTacticsMode
-                        ? (_gameResultTitle
-                                    ?.toLowerCase()
-                                    .contains('challenge missed') ==
-                                true
-                            ? _reset
-                            : null)
-                        : _confirmNewGame,
-                onUndo: _undo,
-                puzzleComplete: _gameMode == GameMode.puzzle &&
-                    _gameResultTitle == 'Puzzle complete',
-                onNextPuzzle: _startNextPuzzle,
-                onBackToAcademy: () => Navigator.of(context).pop(),
-              );
+              final Widget studioCoach = !_coachLanguageLoaded
+                  ? const Center(child: CircularProgressIndicator())
+                  : _StudioCoachPanel(
+                      gameMode: _gameMode,
+                      activeColor: _gameMode == GameMode.computer
+                          ? (sideToMoveWhite == _humanPlaysWhite && !_aiThinking
+                              ? 'YOUR TURN'
+                              : 'AI TURN')
+                          : _gameMode == GameMode.online && _onlineMatch != null
+                              ? (_onlineStatusText(_onlineMatch!))
+                              : _moves.length.isEven
+                                  ? 'PLAYER 1 • WHITE'
+                                  : 'PLAYER 2 • BLACK',
+                      aiThinking: _aiThinking,
+                      coachEnabled: _coachEnabled,
+                      coachNote: _localizedLiveCoachText(
+                        _lastPlayerCoachNote ?? _coachNote,
+                        _coachLanguageCode,
+                      ),
+                      languageCode: _coachLanguageCode,
+                      onLanguage: _chooseGameCoachLanguage,
+                      evaluationPawns: _engineEvaluationPawns,
+                      lastMove: _lastPlayerMove,
+                      lastMoveOwner:
+                          _lastPlayerMove == null ? null : 'Your move',
+                      dailyProgress: _dailyPlayerMovesCompleted,
+                      dailyGoal: _dailyChallenge.playerMoveGoal,
+                      canUndo: _gameMode != GameMode.online &&
+                          _gameResultTitle == null &&
+                          _history.isNotEmpty,
+                      hintLabel: switch (_hintStage) {
+                        1 => 'Direction',
+                        2 => 'Exact move',
+                        _ => 'Piece hint',
+                      },
+                      canHint: _gameResultTitle == null,
+                      analyzeLabel: _moveQualityText == null
+                          ? 'Analyze'
+                          : _moveQualityIsWeak
+                              ? 'Why weak?'
+                              : 'Analyze move',
+                      onHint: _showHint,
+                      onAnalyze: _showAnalysis,
+                      onTryAgain: _gameMode == GameMode.online
+                          ? () => unawaited(
+                                _refreshOnlineMatch(forceBoardReplay: true),
+                              )
+                          : _isTacticsMode
+                              ? (_gameResultTitle
+                                          ?.toLowerCase()
+                                          .contains('challenge missed') ==
+                                      true
+                                  ? _reset
+                                  : null)
+                              : _confirmNewGame,
+                      onUndo: _undo,
+                      puzzleComplete: _gameMode == GameMode.puzzle &&
+                          _gameResultTitle == 'Puzzle complete',
+                      onNextPuzzle: _startNextPuzzle,
+                      onBackToAcademy: () => Navigator.of(context).pop(),
+                    );
               final bool yourTurn = switch (_gameMode) {
                 GameMode.computer =>
                   sideToMoveWhite == _humanPlaysWhite && !_aiThinking,
@@ -10889,7 +10898,7 @@ class _StudioCoachPanel extends StatelessWidget {
                         aiThinking
                             ? 'ChessVerseAI is calculating…'
                             : lastMove == null
-                                ? 'Select a piece to begin'
+                                ? _coachCopy(languageCode)[2]
                                 : '${localizedMoveOwner ?? 'Last move'}: $lastMove',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -10949,11 +10958,13 @@ class _StudioCoachPanel extends StatelessWidget {
                     _CoachProgress(
                       progress: progress,
                       goal: goalSteps,
+                      languageCode: languageCode,
                     ),
                     const SizedBox(height: 10),
                     _CoachEvaluation(
                       activeColor: activeColor,
                       evaluationPawns: evaluationPawns,
+                      languageCode: languageCode,
                     ),
                   ],
                   SizedBox(height: compact ? 8 : 12),
@@ -11191,6 +11202,9 @@ String _localizedLiveCoachText(String text, String languageCode) {
   if (text == 'Select a coin to see legal moves.' ||
       text == 'Select a piece to see legal moves.' ||
       text == 'Select a piece to begin') {
+    return _coachCopy(languageCode)[2];
+  }
+  if (text.startsWith('Move undone.')) {
     return _coachCopy(languageCode)[2];
   }
   final String code = _effectiveLiveCoachLanguage(languageCode);
@@ -11452,11 +11466,113 @@ class _CoachInsightCard extends StatelessWidget {
   }
 }
 
+String _localizedCoachUiLabel(String key, String languageCode) {
+  const Map<String, Map<String, String>> labels = <String, Map<String, String>>{
+    'en': <String, String>{
+      'progress': 'Step progress',
+      'evaluation': 'Evaluation',
+      'toMove': 'to move',
+    },
+    'te': <String, String>{
+      'progress': 'దశ పురోగతి',
+      'evaluation': 'విశ్లేషణ',
+      'toMove': 'ఆడాలి',
+    },
+    'hi': <String, String>{
+      'progress': 'चरण प्रगति',
+      'evaluation': 'मूल्यांकन',
+      'toMove': 'की चाल',
+    },
+    'ta': <String, String>{
+      'progress': 'படி முன்னேற்றம்',
+      'evaluation': 'மதிப்பீடு',
+      'toMove': 'நகர வேண்டும்',
+    },
+    'kn': <String, String>{
+      'progress': 'ಹಂತದ ಪ್ರಗತಿ',
+      'evaluation': 'ಮೌಲ್ಯಮಾಪನ',
+      'toMove': 'ನಡೆಸಬೇಕು',
+    },
+    'ml': <String, String>{
+      'progress': 'ഘട്ട പുരോഗതി',
+      'evaluation': 'വിലയിരുത്തൽ',
+      'toMove': 'നീക്കണം',
+    },
+    'es': <String, String>{
+      'progress': 'Progreso',
+      'evaluation': 'Evaluación',
+      'toMove': 'juega',
+    },
+    'fr': <String, String>{
+      'progress': 'Progression',
+      'evaluation': 'Évaluation',
+      'toMove': 'doit jouer',
+    },
+    'de': <String, String>{
+      'progress': 'Fortschritt',
+      'evaluation': 'Bewertung',
+      'toMove': 'am Zug',
+    },
+    'he': <String, String>{
+      'progress': 'התקדמות',
+      'evaluation': 'הערכה',
+      'toMove': 'בתור',
+    },
+    'ar': <String, String>{
+      'progress': 'تقدم الخطوات',
+      'evaluation': 'التقييم',
+      'toMove': 'عليه النقل',
+    },
+  };
+  final String code = _effectiveLiveCoachLanguage(languageCode);
+  return (labels[code] ?? labels['en']!)[key] ?? labels['en']![key]!;
+}
+
+String _localizedActiveTurn(String value, String languageCode) {
+  final String code = _effectiveLiveCoachLanguage(languageCode);
+  if (value == 'YOUR TURN') {
+    return <String, String>{
+          'te': 'మీరు',
+          'hi': 'आप',
+          'ta': 'நீங்கள்',
+          'kn': 'ನೀವು',
+          'ml': 'നിങ്ങൾ',
+          'es': 'Tú',
+          'fr': 'Vous',
+          'de': 'Du',
+          'he': 'אתה',
+          'ar': 'أنت',
+        }[code] ??
+        value;
+  }
+  if (value == 'AI TURN') {
+    return <String, String>{
+          'te': 'AI',
+          'hi': 'AI',
+          'ta': 'AI',
+          'kn': 'AI',
+          'ml': 'AI',
+          'es': 'IA',
+          'fr': 'IA',
+          'de': 'KI',
+          'he': 'AI',
+          'ar': 'الذكاء الاصطناعي',
+        }[code] ??
+        value;
+  }
+  return value;
+}
+
 class _CoachProgress extends StatelessWidget {
-  const _CoachProgress({required this.progress, required this.goal});
+  const _CoachProgress({
+    required this.progress,
+    required this.goal,
+    required this.languageCode,
+  });
 
   final int progress;
   final int goal;
+  final String languageCode;
 
   @override
   Widget build(BuildContext context) {
@@ -11470,9 +11586,9 @@ class _CoachProgress extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          const Text(
-            'Step progress',
-            style: TextStyle(fontWeight: FontWeight.w700),
+          Text(
+            _localizedCoachUiLabel('progress', languageCode),
+            style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -11506,10 +11622,12 @@ class _CoachEvaluation extends StatelessWidget {
   const _CoachEvaluation({
     required this.activeColor,
     required this.evaluationPawns,
+    required this.languageCode,
   });
 
   final String activeColor;
   final double evaluationPawns;
+  final String languageCode;
 
   @override
   Widget build(BuildContext context) {
@@ -11523,9 +11641,8 @@ class _CoachEvaluation extends StatelessWidget {
       child: Row(
         children: <Widget>[
           Text(
-            evaluationPawns == 0
-                ? 'Evaluation 0.0'
-                : 'Evaluation ${evaluationPawns > 0 ? '+' : ''}${evaluationPawns.toStringAsFixed(1)}',
+            '${_localizedCoachUiLabel('evaluation', languageCode)} '
+            '${evaluationPawns == 0 ? '0.0' : '${evaluationPawns > 0 ? '+' : ''}${evaluationPawns.toStringAsFixed(1)}'}',
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(width: 12),
@@ -11551,7 +11668,8 @@ class _CoachEvaluation extends StatelessWidget {
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerRight,
               child: Text(
-                '$activeColor to move',
+                '${_localizedActiveTurn(activeColor, languageCode)} '
+                '${_localizedCoachUiLabel('toMove', languageCode)}',
                 maxLines: 1,
                 style: const TextStyle(
                   color: Color(0xFF63D2B8),
