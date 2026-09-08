@@ -1731,11 +1731,17 @@ class _CarouselHero extends StatelessWidget {
                           Expanded(
                             child: Text(
                               data.title,
-                              maxLines: 2,
+                              maxLines: data.title == 'World Chess Tournaments'
+                                  ? 3
+                                  : 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: wide ? 40 : 28,
+                                fontSize: wide
+                                    ? 40
+                                    : data.title == 'World Chess Tournaments'
+                                        ? 23
+                                        : 28,
                                 height: 1,
                                 fontWeight: FontWeight.w900,
                               ),
