@@ -14,15 +14,23 @@ import org.springframework.web.util.UriComponentsBuilder;
 class GiphyMediaService {
     record MediaResult(String id, String title, String previewUrl, String mediaUrl, String kind) {}
 
-    private final String apiKey;
+    private final String androidApiKey;
+    private final String webApiKey;
+    private final String fallbackApiKey;
     private final RestClient client = RestClient.create();
     private final ObjectMapper mapper = new ObjectMapper();
 
-    GiphyMediaService(@Value("${chessverse.chat.giphy.api-key:}") String apiKey) {
-        this.apiKey = apiKey == null ? "" : apiKey.trim();
+    GiphyMediaService(
+            @Value("${chessverse.chat.giphy.android-api-key:}") String androidApiKey,
+            @Value("${chessverse.chat.giphy.web-api-key:}") String webApiKey,
+            @Value("${chessverse.chat.giphy.api-key:}") String fallbackApiKey) {
+        this.androidApiKey = clean(androidApiKey);
+        this.webApiKey = clean(webApiKey);
+        this.fallbackApiKey = clean(fallbackApiKey);
     }
 
-    List<MediaResult> search(String query, String kind, String locale) {
+    List<MediaResult> search(String query, String kind, String locale, String platform) {
+        String apiKey = apiKeyFor(platform);
         if (apiKey.isBlank()) return List.of();
         String safeKind = "sticker".equalsIgnoreCase(kind) ? "sticker" : "gif";
         String trimmed = query == null || query.isBlank() ? "chess" : query.trim();
@@ -56,6 +64,15 @@ class GiphyMediaService {
         } catch (Exception error) {
             throw new IllegalStateException("GIPHY response could not be read", error);
         }
+    }
+
+    private String apiKeyFor(String platform) {
+        String platformKey = "web".equalsIgnoreCase(platform) ? webApiKey : androidApiKey;
+        return platformKey.isBlank() ? fallbackApiKey : platformKey;
+    }
+
+    private static String clean(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private boolean isGiphyUrl(String value) {

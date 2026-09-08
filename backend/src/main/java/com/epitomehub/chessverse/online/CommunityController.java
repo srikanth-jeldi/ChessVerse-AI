@@ -49,9 +49,10 @@ class CommunityController {
     List<GiphyMediaService.MediaResult> searchMedia(@RequestHeader("Authorization") String auth,
                                                    @RequestParam(defaultValue="chess") String q,
                                                    @RequestParam(defaultValue="gif") String kind,
-                                                   @RequestParam(defaultValue="en_US") String locale) {
+                                                   @RequestParam(defaultValue="en_US") String locale,
+                                                   @RequestParam(defaultValue="android") String platform) {
         player(auth);
-        return media.search(q, kind, locale);
+        return media.search(q, kind, locale, platform);
     }
     private AuthenticatedPlayer player(String auth){return authentication.requireBearer(auth);}
 }

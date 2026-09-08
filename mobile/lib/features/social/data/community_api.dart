@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../../../core/config/app_config.dart';
@@ -385,7 +386,8 @@ class CommunityApi {
     final String path = '/api/v1/community/media/search'
         '?q=${Uri.encodeQueryComponent(query)}'
         '&kind=${Uri.encodeQueryComponent(kind)}'
-        '&locale=${Uri.encodeQueryComponent(locale)}';
+        '&locale=${Uri.encodeQueryComponent(locale)}'
+        '&platform=${kIsWeb ? 'web' : 'android'}';
     return (await _requestList(token, 'GET', path))
         .whereType<Map<String, dynamic>>()
         .map(ChatMediaDto.fromJson)

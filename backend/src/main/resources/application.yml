@@ -29,6 +29,8 @@ chessverse:
   chat:
     giphy:
       api-key: ${GIPHY_API_KEY:}
+      android-api-key: ${GIPHY_ANDROID_API_KEY:}
+      web-api-key: ${GIPHY_WEB_API_KEY:}
   payments:
     apple-storekit:
       enabled: ${APPLE_STOREKIT_ENABLED:false}
