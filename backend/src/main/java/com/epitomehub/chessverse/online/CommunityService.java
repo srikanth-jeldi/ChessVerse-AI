@@ -81,14 +81,12 @@ class CommunityService {
                 from player_account p
                 where exists(select 1 from friend_connection f where f.status='ACCEPTED'
                   and ((f.requester_id=? and f.addressee_id=p.id) or (f.addressee_id=? and f.requester_id=p.id)))
-                  and exists(select 1 from direct_message d where
-                    (d.sender_id=? and d.recipient_id=p.id) or (d.sender_id=p.id and d.recipient_id=?))
-                order by sent_at desc limit 30
+                order by sent_at desc nulls last, p.display_name limit 30
                 """, (rs,row) -> new CommunityDtos.ConversationDto(uuid(rs,"id"),rs.getString("display_name"),
                 rs.getString("photo_url"),presence.isOnline(uuid(rs,"id")),rs.getString("body"),
-                rs.getTimestamp("sent_at").toInstant(),rs.getInt("unread")),
+                rs.getTimestamp("sent_at") == null ? null : rs.getTimestamp("sent_at").toInstant(),rs.getInt("unread")),
                 player.id(),player.id(),player.id(),player.id(),player.id(),
-                player.id(),player.id(),player.id(),player.id());
+                player.id(),player.id());
         Integer signals = jdbc.queryForObject("select count(*) from fair_play_signal where player_id=? and severity>=3", Integer.class, player.id());
         Integer circuitPoints = jdbc.queryForObject("""
                 select

@@ -2598,8 +2598,11 @@ class _GameLaunchChoice {
 Future<void> _restoreDailyReminder() async {
   const AppPreferences preferences = AppPreferences();
   final bool enabled =
-      await preferences.readBool('dailyReminder', fallback: false);
-  if (enabled) await DailyReminderService.instance.enable();
+      await preferences.readBool('dailyReminder', fallback: true);
+  if (enabled) {
+    final bool allowed = await DailyReminderService.instance.enable();
+    await preferences.writeBool('dailyReminder', allowed);
+  }
 }
 
 class _MobileLoadingFeatures extends StatelessWidget {

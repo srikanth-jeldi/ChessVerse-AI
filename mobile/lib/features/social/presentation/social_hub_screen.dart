@@ -764,11 +764,26 @@ class _CommunitySection extends StatelessWidget {
             await onRefresh();
           });
     }
+    final List<SocialPlayerDto> chatPlayers = <SocialPlayerDto>[
+      ...community.conversations.map((ConversationDto conversation) =>
+          SocialPlayerDto(
+              connectionId: '',
+              playerId: conversation.playerId,
+              username: '',
+              displayName: conversation.displayName,
+              photoUrl: conversation.photoUrl,
+              country: '',
+              rating: 1200,
+              online: conversation.online,
+              relationship: 'FRIEND')),
+      ...friends.where((SocialPlayerDto friend) => !community.conversations
+          .any((ConversationDto item) => item.playerId == friend.playerId)),
+    ];
     final List<Widget> cards = switch (section) {
       1 => community.clubs
           .map((c) => _ClubCard(club: c, onTap: () => onClub(c)))
           .toList(),
-      _ => friends
+      _ => chatPlayers
           .map((f) => _ChatCard(
               friend: f,
               onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(

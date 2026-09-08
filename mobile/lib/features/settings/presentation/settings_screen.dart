@@ -71,7 +71,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _preferences.readBool('coach', fallback: true),
       _preferences.readBool('animations', fallback: true),
       _preferences.readBool('coordinates', fallback: true),
-      _preferences.readBool('dailyReminder', fallback: false),
+      _preferences.readBool('dailyReminder', fallback: true),
       _preferences.readString('boardTheme', fallback: 'Royal Walnut'),
       _preferences.readString('pieceStyle', fallback: 'Premium 3D'),
       _preferences.readString('pieceSize', fallback: 'Extra Large'),
