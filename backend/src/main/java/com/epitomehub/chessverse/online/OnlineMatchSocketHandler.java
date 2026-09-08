@@ -21,7 +21,8 @@ public class OnlineMatchSocketHandler extends TextWebSocketHandler {
     private static final Duration QUICK_CHAT_COOLDOWN = Duration.ofSeconds(2);
     private static final Set<String> QUICK_CHAT_MESSAGES = Set.of(
             "👍 Good move", "🍀 Good luck", "🤝 Good game", "👏 Well played",
-            "🔥 Nice tactic", "⚡ Your turn", "😊", "😂", "😮", "♟️");
+            "🔥 Nice tactic", "⚡ Your turn", "😄", "😂", "😉", "😮", "😢",
+            "😡", "👍", "👏", "♟️");
     private final ConcurrentHashMap<UUID, Set<WebSocketSession>> subscribers = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<WebSocketSession, Instant> lastSeen = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<WebSocketSession, Instant> lastQuickChat = new ConcurrentHashMap<>();

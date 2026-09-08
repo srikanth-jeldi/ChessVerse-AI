@@ -8084,16 +8084,23 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _showQuickChatPicker() async {
-    const List<String> messages = <String>[
+    const List<String> phrases = <String>[
       '👍 Good move',
       '🍀 Good luck',
       '🤝 Good game',
       '👏 Well played',
       '🔥 Nice tactic',
       '⚡ Your turn',
-      '😊',
+    ];
+    const List<String> emojis = <String>[
+      '😄',
       '😂',
+      '😉',
       '😮',
+      '😢',
+      '😡',
+      '👍',
+      '👏',
       '♟️',
     ];
     final String? selected = await showModalBottomSheet<String>(
@@ -8113,10 +8120,28 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: messages
+                children: phrases
                     .map((String message) => ActionChip(
                           label: Text(message),
                           onPressed: () => Navigator.pop(context, message),
+                        ))
+                    .toList(growable: false),
+              ),
+              const SizedBox(height: 14),
+              const Text('REACTIONS',
+                  style: TextStyle(
+                      color: Color(0xFF59E5D2),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: emojis
+                    .map((String emoji) => ActionChip(
+                          label:
+                              Text(emoji, style: const TextStyle(fontSize: 22)),
+                          onPressed: () => Navigator.pop(context, emoji),
                         ))
                     .toList(growable: false),
               ),
