@@ -10721,6 +10721,11 @@ class _StudioCoachPanel extends StatelessWidget {
       GameMode.online => 'Play a live opponent',
     };
     final String localizedGoal = _localizedCoachGoal(goal, languageCode);
+    final AppLanguage selectedLanguage =
+        languageCode == AppLanguageController.systemCode
+            ? const AppLanguage(
+                AppLanguageController.systemCode, 'Device', 'Automatic')
+            : AppLanguageController.byCode(languageCode);
     final int progress =
         (gameMode == GameMode.daily || gameMode == GameMode.puzzle)
             ? dailyProgress.clamp(0, dailyGoal)
@@ -10796,39 +10801,55 @@ class _StudioCoachPanel extends StatelessWidget {
                     Row(
                       children: <Widget>[
                         Expanded(
-                          child: InkWell(
-                            key: const ValueKey<String>('live-coach-language'),
-                            onTap: onLanguage,
-                            borderRadius: BorderRadius.circular(8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                Text(
-                                  'AI Coach ✦  ${languageCode == AppLanguageController.systemCode ? 'A⇄' : languageCode.toUpperCase()}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: const Color(0xFF63D2B8),
-                                    fontFamily: 'serif',
-                                    fontSize: compact ? 23 : 30,
-                                    fontWeight: FontWeight.w800,
-                                  ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                'AI Coach ✦',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: const Color(0xFF63D2B8),
+                                  fontFamily: 'serif',
+                                  fontSize: compact ? 23 : 30,
+                                  fontWeight: FontWeight.w800,
                                 ),
-                                Text(
-                                  modeLabel,
-                                  maxLines: compact ? 2 : 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xFFE2B458),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 1.2,
-                                  ),
+                              ),
+                              Text(
+                                modeLabel,
+                                maxLines: compact ? 2 : 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFFE2B458),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.2,
                                 ),
-                              ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        OutlinedButton.icon(
+                          key: const ValueKey<String>('live-coach-language'),
+                          onPressed: onLanguage,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 9, vertical: 8),
+                            foregroundColor: const Color(0xFFF1BE57),
+                          ),
+                          icon: const Icon(Icons.translate_rounded, size: 17),
+                          label: ConstrainedBox(
+                            constraints:
+                                BoxConstraints(maxWidth: compact ? 58 : 82),
+                            child: Text(
+                              '${selectedLanguage.englishName} ▾',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),
+                        const SizedBox(width: 6),
                         IconButton.outlined(
                           tooltip: gameMode == GameMode.online
                               ? 'Undo is unavailable in online games'
