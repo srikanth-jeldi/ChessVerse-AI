@@ -11,6 +11,7 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'core/analytics/app_analytics.dart';
+import 'core/app_language.dart';
 import 'core/ads/rewarded_coin_service.dart';
 import 'core/ads/post_match_ad_service.dart';
 import 'core/audio/chess_sound_service.dart';
@@ -25,6 +26,7 @@ import 'core/notifications/daily_reminder_service.dart';
 import 'core/notifications/firebase_push_service.dart';
 import 'core/store_review_service.dart';
 import 'core/widgets/chessverse_app_backdrop.dart';
+import 'core/widgets/ai_language_picker.dart';
 import 'core/widgets/desktop_app_sidebar.dart';
 import 'core/widgets/network_status_layer.dart';
 import 'core/widgets/coin_balance_badge.dart';
@@ -3795,6 +3797,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   final List<SavedMoveReview> _moveReviews = <SavedMoveReview>[];
   String? _turningPoint;
   String _coachNote = 'Select a coin to see legal moves.';
+  String _coachLanguageCode = AppLanguageController.systemCode;
   BoardSkin _skin = BoardSkin.royalWalnut;
   GameMode _gameMode = GameMode.computer;
   double _aiLevel = 4;
@@ -3885,6 +3888,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     unawaited(_loadGamePreferences());
+    unawaited(_loadCoachLanguage());
     WidgetsBinding.instance.addObserver(this);
     _dailyDifficulty =
         widget.initialDailyDifficulty ?? DailyChallengeDifficulty.medium;
@@ -4006,6 +4010,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         }
       });
     });
+  }
+
+  Future<void> _loadCoachLanguage() async {
+    final String language = await AppLanguageController.selectedCode();
+    if (mounted) setState(() => _coachLanguageCode = language);
+  }
+
+  Future<void> _chooseGameCoachLanguage() async {
+    final String? language = await selectAndSaveAiLanguage(context);
+    if (language != null && mounted) {
+      setState(() => _coachLanguageCode = language);
+    }
   }
 
   Future<void> _loadGamePreferences() async {
@@ -4299,7 +4315,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             : 'PLAYER 2 • BLACK',
                 aiThinking: _aiThinking,
                 coachEnabled: _coachEnabled,
-                coachNote: _lastPlayerCoachNote ?? _coachNote,
+                coachNote: _localizedLiveCoachText(
+                  _lastPlayerCoachNote ?? _coachNote,
+                  _coachLanguageCode,
+                ),
+                languageCode: _coachLanguageCode,
+                onLanguage: _chooseGameCoachLanguage,
                 evaluationPawns: _engineEvaluationPawns,
                 lastMove: _lastPlayerMove,
                 lastMoveOwner: _lastPlayerMove == null ? null : 'Your move',
@@ -10482,6 +10503,8 @@ class _StudioCoachPanel extends StatelessWidget {
     required this.aiThinking,
     required this.coachEnabled,
     required this.coachNote,
+    required this.languageCode,
+    required this.onLanguage,
     required this.evaluationPawns,
     required this.lastMove,
     required this.lastMoveOwner,
@@ -10505,6 +10528,8 @@ class _StudioCoachPanel extends StatelessWidget {
   final bool aiThinking;
   final bool coachEnabled;
   final String coachNote;
+  final String languageCode;
+  final VoidCallback onLanguage;
   final double evaluationPawns;
   final String? lastMove;
   final String? lastMoveOwner;
@@ -10538,6 +10563,7 @@ class _StudioCoachPanel extends StatelessWidget {
       GameMode.local => 'Outplay your opponent',
       GameMode.online => 'Play a live opponent',
     };
+    final String localizedGoal = _localizedCoachGoal(goal, languageCode);
     final int progress =
         (gameMode == GameMode.daily || gameMode == GameMode.puzzle)
             ? dailyProgress.clamp(0, dailyGoal)
@@ -10613,28 +10639,37 @@ class _StudioCoachPanel extends StatelessWidget {
                     Row(
                       children: <Widget>[
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                'AI Coach ✦',
-                                style: TextStyle(
-                                  color: const Color(0xFF63D2B8),
-                                  fontFamily: 'serif',
-                                  fontSize: compact ? 23 : 30,
-                                  fontWeight: FontWeight.w800,
+                          child: InkWell(
+                            key: const ValueKey<String>('live-coach-language'),
+                            onTap: onLanguage,
+                            borderRadius: BorderRadius.circular(8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  'AI Coach ✦  ${languageCode == AppLanguageController.systemCode ? 'A⇄' : languageCode.toUpperCase()}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: const Color(0xFF63D2B8),
+                                    fontFamily: 'serif',
+                                    fontSize: compact ? 23 : 30,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                modeLabel,
-                                style: const TextStyle(
-                                  color: Color(0xFFE2B458),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.2,
+                                Text(
+                                  modeLabel,
+                                  maxLines: compact ? 2 : 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFFE2B458),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.2,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                         IconButton.outlined(
@@ -10651,7 +10686,7 @@ class _StudioCoachPanel extends StatelessWidget {
                     icon: Icons.track_changes_rounded,
                     accent: const Color(0xFF63D2B8),
                     child: Text(
-                      'Goal: $goal',
+                      '${_localizedGoalLabel(languageCode)}: $localizedGoal',
                       style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
@@ -10795,6 +10830,190 @@ class _StudioCoachPanel extends StatelessWidget {
       },
     );
   }
+}
+
+String _effectiveLiveCoachLanguage(String code) =>
+    code == AppLanguageController.systemCode
+        ? ui.PlatformDispatcher.instance.locale.languageCode
+        : code;
+
+const Map<String, List<String>> _liveCoachCopy = <String, List<String>>{
+  'en': <String>[
+    'Goal',
+    'Find the strongest move',
+    'Select a piece to see legal moves.'
+  ],
+  'te': <String>[
+    'లక్ష్యం',
+    'అత్యుత్తమ ఎత్తును కనుగొనండి',
+    'చట్టబద్ధమైన ఎత్తులను చూడటానికి ఒక పావును ఎంచుకోండి.'
+  ],
+  'hi': <String>[
+    'लक्ष्य',
+    'सबसे मजबूत चाल खोजें',
+    'वैध चालें देखने के लिए एक मोहरा चुनें।'
+  ],
+  'ta': <String>[
+    'இலக்கு',
+    'சிறந்த நகர்வைக் கண்டறியுங்கள்',
+    'சட்டபூர்வ நகர்வுகளைக் காண ஒரு காயைத் தேர்ந்தெடுக்கவும்.'
+  ],
+  'kn': <String>[
+    'ಗುರಿ',
+    'ಅತ್ಯುತ್ತಮ ನಡೆಯನ್ನು ಹುಡುಕಿ',
+    'ಕಾನೂನುಬದ್ಧ ನಡೆಗಳನ್ನು ನೋಡಲು ಒಂದು ಕಾಯಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ.'
+  ],
+  'ml': <String>[
+    'ലക്ഷ്യം',
+    'ഏറ്റവും മികച്ച നീക്കം കണ്ടെത്തുക',
+    'നിയമാനുസൃത നീക്കങ്ങൾ കാണാൻ ഒരു കരു തിരഞ്ഞെടുക്കുക.'
+  ],
+  'mr': <String>[
+    'ध्येय',
+    'सर्वोत्तम चाल शोधा',
+    'वैध चाली पाहण्यासाठी एक मोहरा निवडा.'
+  ],
+  'bn': <String>[
+    'লক্ষ্য',
+    'সবচেয়ে শক্তিশালী চালটি খুঁজুন',
+    'বৈধ চাল দেখতে একটি ঘুঁটি নির্বাচন করুন।'
+  ],
+  'gu': <String>[
+    'લક્ષ્ય',
+    'સૌથી મજબૂત ચાલ શોધો',
+    'માન્ય ચાલ જોવા માટે એક મહોરું પસંદ કરો.'
+  ],
+  'pa': <String>[
+    'ਟੀਚਾ',
+    'ਸਭ ਤੋਂ ਮਜ਼ਬੂਤ ਚਾਲ ਲੱਭੋ',
+    'ਕਾਨੂੰਨੀ ਚਾਲਾਂ ਦੇਖਣ ਲਈ ਇੱਕ ਮੋਹਰਾ ਚੁਣੋ।'
+  ],
+  'ur': <String>[
+    'مقصد',
+    'سب سے مضبوط چال تلاش کریں',
+    'قانونی چالیں دیکھنے کے لیے ایک مہرہ منتخب کریں۔'
+  ],
+  'ar': <String>[
+    'الهدف',
+    'اعثر على أقوى نقلة',
+    'اختر قطعة لرؤية النقلات القانونية.'
+  ],
+  'es': <String>[
+    'Objetivo',
+    'Encuentra la jugada más fuerte',
+    'Selecciona una pieza para ver los movimientos legales.'
+  ],
+  'fr': <String>[
+    'Objectif',
+    'Trouvez le meilleur coup',
+    'Sélectionnez une pièce pour voir les coups légaux.'
+  ],
+  'de': <String>[
+    'Ziel',
+    'Finde den stärksten Zug',
+    'Wähle eine Figur, um die legalen Züge zu sehen.'
+  ],
+  'it': <String>[
+    'Obiettivo',
+    'Trova la mossa migliore',
+    'Seleziona un pezzo per vedere le mosse legali.'
+  ],
+  'pt': <String>[
+    'Objetivo',
+    'Encontre a jogada mais forte',
+    'Selecione uma peça para ver as jogadas legais.'
+  ],
+  'ru': <String>[
+    'Цель',
+    'Найдите сильнейший ход',
+    'Выберите фигуру, чтобы увидеть допустимые ходы.'
+  ],
+  'uk': <String>[
+    'Мета',
+    'Знайдіть найсильніший хід',
+    'Виберіть фігуру, щоб побачити дозволені ходи.'
+  ],
+  'tr': <String>[
+    'Hedef',
+    'En güçlü hamleyi bul',
+    'Yasal hamleleri görmek için bir taş seçin.'
+  ],
+  'fa': <String>[
+    'هدف',
+    'قوی‌ترین حرکت را پیدا کنید',
+    'برای دیدن حرکت‌های مجاز یک مهره را انتخاب کنید.'
+  ],
+  'zh': <String>['目标', '找出最佳着法', '选择一个棋子以查看合法走法。'],
+  'ja': <String>['目標', '最善手を見つける', '合法手を表示するには駒を選択してください。'],
+  'ko': <String>['목표', '가장 강한 수를 찾으세요', '합법적인 수를 보려면 말을 선택하세요.'],
+  'id': <String>[
+    'Tujuan',
+    'Temukan langkah terbaik',
+    'Pilih bidak untuk melihat langkah yang sah.'
+  ],
+  'ms': <String>[
+    'Matlamat',
+    'Cari langkah terbaik',
+    'Pilih buah untuk melihat langkah yang sah.'
+  ],
+  'th': <String>[
+    'เป้าหมาย',
+    'ค้นหาตาที่ดีที่สุด',
+    'เลือกตัวหมากเพื่อดูตาเดินที่ถูกต้อง'
+  ],
+  'vi': <String>[
+    'Mục tiêu',
+    'Tìm nước đi mạnh nhất',
+    'Chọn một quân để xem các nước đi hợp lệ.'
+  ],
+  'pl': <String>[
+    'Cel',
+    'Znajdź najlepszy ruch',
+    'Wybierz figurę, aby zobaczyć dozwolone ruchy.'
+  ],
+  'nl': <String>[
+    'Doel',
+    'Vind de sterkste zet',
+    'Selecteer een stuk om geldige zetten te zien.'
+  ],
+  'sv': <String>[
+    'Mål',
+    'Hitta det starkaste draget',
+    'Välj en pjäs för att se giltiga drag.'
+  ],
+  'el': <String>[
+    'Στόχος',
+    'Βρείτε την ισχυρότερη κίνηση',
+    'Επιλέξτε ένα κομμάτι για να δείτε τις νόμιμες κινήσεις.'
+  ],
+  'he': <String>[
+    'מטרה',
+    'מצא את המסע החזק ביותר',
+    'בחר כלי כדי לראות מסעים חוקיים.'
+  ],
+  'sw': <String>[
+    'Lengo',
+    'Tafuta hatua bora zaidi',
+    'Chagua kete ili kuona hatua halali.'
+  ],
+};
+
+List<String> _coachCopy(String languageCode) =>
+    _liveCoachCopy[_effectiveLiveCoachLanguage(languageCode)] ??
+    _liveCoachCopy['en']!;
+
+String _localizedGoalLabel(String languageCode) => _coachCopy(languageCode)[0];
+
+String _localizedCoachGoal(String goal, String languageCode) =>
+    goal == 'Find the strongest move' ? _coachCopy(languageCode)[1] : goal;
+
+String _localizedLiveCoachText(String text, String languageCode) {
+  if (text == 'Select a coin to see legal moves.' ||
+      text == 'Select a piece to see legal moves.' ||
+      text == 'Select a piece to begin') {
+    return _coachCopy(languageCode)[2];
+  }
+  return text;
 }
 
 class _CoachInsightCard extends StatelessWidget {

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/app_language.dart';
 import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../../online/data/online_match_api.dart';
@@ -1449,60 +1450,35 @@ class _ChatScreenState extends State<_ChatScreen> {
                         ),
                       ),
                     ),
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            const Icon(Icons.gif_box_rounded,
-                                size: 62, color: Color(0xFF54DECD)),
-                            const SizedBox(height: 12),
-                            const Text('Send an animated GIF',
-                                style: TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.w800)),
-                            const SizedBox(height: 6),
-                            const Text(
-                                'Choose a GIF saved on your device (max 10 MB).',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Color(0xFFAAB8C4))),
-                            const SizedBox(height: 18),
-                            FilledButton.icon(
-                              onPressed: () {
-                                Navigator.pop(sheetContext);
-                                _attach(gifOnly: true);
-                              },
-                              icon:
-                                  const Icon(Icons.add_photo_alternate_rounded),
-                              label: const Text('Choose GIF'),
-                            ),
-                          ],
-                        ),
-                      ),
+                    _OnlineMediaSearch(
+                      api: widget.api,
+                      token: widget.token,
+                      kind: 'gif',
+                      onSelected: (ChatMediaDto item) {
+                        _text.text = '::giphy::gif::${item.mediaUrl}';
+                        Navigator.pop(sheetContext);
+                        _send();
+                      },
+                      onChooseDevice: () {
+                        Navigator.pop(sheetContext);
+                        _attach(gifOnly: true);
+                      },
                     ),
-                    GridView.builder(
-                      padding: const EdgeInsets.all(16),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2, childAspectRatio: 2.4),
-                      itemCount: stickers.length,
-                      itemBuilder: (_, index) => Card(
-                        color: const Color(0xFF102B3A),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () {
-                            _text.text = '::sticker::${stickers[index]}';
-                            Navigator.pop(sheetContext);
-                            _send();
-                          },
-                          child: Center(
-                            child: Text(stickers[index],
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w800)),
-                          ),
-                        ),
-                      ),
+                    _OnlineMediaSearch(
+                      api: widget.api,
+                      token: widget.token,
+                      kind: 'sticker',
+                      fallbackStickers: stickers,
+                      onFallbackSticker: (String sticker) {
+                        _text.text = '::sticker::$sticker';
+                        Navigator.pop(sheetContext);
+                        _send();
+                      },
+                      onSelected: (ChatMediaDto item) {
+                        _text.text = '::giphy::sticker::${item.mediaUrl}';
+                        Navigator.pop(sheetContext);
+                        _send();
+                      },
                     ),
                   ]),
                 ),
@@ -1713,6 +1689,183 @@ class _ChatScreenState extends State<_ChatScreen> {
       ]));
 }
 
+class _OnlineMediaSearch extends StatefulWidget {
+  const _OnlineMediaSearch({
+    required this.api,
+    required this.token,
+    required this.kind,
+    required this.onSelected,
+    this.onChooseDevice,
+    this.fallbackStickers = const <String>[],
+    this.onFallbackSticker,
+  });
+
+  final CommunityApi api;
+  final String token;
+  final String kind;
+  final ValueChanged<ChatMediaDto> onSelected;
+  final VoidCallback? onChooseDevice;
+  final List<String> fallbackStickers;
+  final ValueChanged<String>? onFallbackSticker;
+
+  @override
+  State<_OnlineMediaSearch> createState() => _OnlineMediaSearchState();
+}
+
+class _OnlineMediaSearchState extends State<_OnlineMediaSearch> {
+  final TextEditingController _query = TextEditingController(text: 'chess');
+  Future<List<ChatMediaDto>>? _results;
+
+  @override
+  void initState() {
+    super.initState();
+    _search();
+  }
+
+  @override
+  void dispose() {
+    _query.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search() async {
+    final String query = _query.text.trim();
+    if (query.isEmpty) return;
+    final String locale = await AppLanguageController.effectiveCode();
+    if (!mounted) return;
+    setState(() {
+      _results = widget.api.searchMedia(
+        widget.token,
+        query: query,
+        kind: widget.kind,
+        locale: locale,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: <Widget>[
+      Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+        child: Row(children: <Widget>[
+          Expanded(
+            child: TextField(
+              controller: _query,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => _search(),
+              decoration: InputDecoration(
+                isDense: true,
+                hintText:
+                    'Search ${widget.kind == 'gif' ? 'GIFs' : 'stickers'}',
+                prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: IconButton(
+                  tooltip: 'Search',
+                  onPressed: _search,
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                ),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+            ),
+          ),
+          if (widget.onChooseDevice != null) ...<Widget>[
+            const SizedBox(width: 8),
+            IconButton.filledTonal(
+              tooltip: 'Choose GIF from device (max 10 MB)',
+              onPressed: widget.onChooseDevice,
+              icon: const Icon(Icons.add_photo_alternate_rounded),
+            ),
+          ],
+        ]),
+      ),
+      if (widget.fallbackStickers.isNotEmpty)
+        SizedBox(
+          height: 54,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            scrollDirection: Axis.horizontal,
+            itemCount: widget.fallbackStickers.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 6),
+            itemBuilder: (_, int index) => ActionChip(
+              label: Text(widget.fallbackStickers[index]),
+              onPressed: () => widget.onFallbackSticker
+                  ?.call(widget.fallbackStickers[index]),
+            ),
+          ),
+        ),
+      Expanded(
+        child: FutureBuilder<List<ChatMediaDto>>(
+          future: _results,
+          builder: (BuildContext context,
+              AsyncSnapshot<List<ChatMediaDto>> snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Padding(
+                padding: const EdgeInsets.all(24),
+                child: Center(
+                  child: Text(
+                    'Online ${widget.kind == 'gif' ? 'GIF' : 'sticker'} search is unavailable. You can still use local media.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Color(0xFFAAB8C4)),
+                  ),
+                ),
+              );
+            }
+            final List<ChatMediaDto> items = snapshot.data ?? const [];
+            if (items.isEmpty) {
+              return const Center(child: Text('No results found.'));
+            }
+            return GridView.builder(
+              padding: const EdgeInsets.all(12),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: items.length,
+              itemBuilder: (_, int index) {
+                final ChatMediaDto item = items[index];
+                return Semantics(
+                  button: true,
+                  label: item.title.isEmpty ? 'Send media' : item.title,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => widget.onSelected(item),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: ColoredBox(
+                        color: const Color(0xFF102B3A),
+                        child: Image.network(
+                          item.previewUrl,
+                          fit: widget.kind == 'sticker'
+                              ? BoxFit.contain
+                              : BoxFit.cover,
+                          gaplessPlayback: true,
+                          errorBuilder: (_, __, ___) => const Icon(
+                              Icons.broken_image_outlined,
+                              color: Color(0xFFAAB8C4)),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ),
+      const Padding(
+        padding: EdgeInsets.only(bottom: 6),
+        child: Text('Powered by GIPHY',
+            style: TextStyle(fontSize: 10, color: Color(0xFF8395A3))),
+      ),
+    ]);
+  }
+}
+
 class _MessageBubble extends StatelessWidget {
   const _MessageBubble(
       {required this.message,
@@ -1738,8 +1891,19 @@ class _MessageBubble extends StatelessWidget {
         : null;
     final String rawBody = parts.join('\n');
     final bool sticker = rawBody.startsWith('::sticker::');
-    final String visibleBody =
-        sticker ? rawBody.substring('::sticker::'.length) : rawBody;
+    final String? mediaKind = rawBody.startsWith('::giphy::gif::')
+        ? 'gif'
+        : rawBody.startsWith('::giphy::sticker::')
+            ? 'sticker'
+            : null;
+    final String? mediaUrl = mediaKind == null
+        ? null
+        : rawBody.substring('::giphy::$mediaKind::'.length);
+    final String visibleBody = mediaKind != null
+        ? ''
+        : sticker
+            ? rawBody.substring('::sticker::'.length)
+            : rawBody;
     return Align(
         alignment: message.mine ? Alignment.centerRight : Alignment.centerLeft,
         child: GestureDetector(
@@ -1782,44 +1946,51 @@ class _MessageBubble extends StatelessWidget {
                                         message: message,
                                         token: token,
                                         api: api),
+                                  if (mediaUrl != null)
+                                    _GiphyChatMedia(
+                                        url: mediaUrl,
+                                        sticker: mediaKind == 'sticker'),
                                   if (message.attachmentName != null &&
                                       visibleBody.isNotEmpty)
                                     const SizedBox(height: 4),
-                                  Wrap(
-                                      alignment: WrapAlignment.end,
-                                      crossAxisAlignment:
-                                          WrapCrossAlignment.end,
-                                      spacing: 8,
-                                      runSpacing: 2,
-                                      children: <Widget>[
-                                        Text(visibleBody,
-                                            style: TextStyle(
-                                                fontSize: sticker ? 22 : 15,
-                                                height: 1.22,
-                                                fontWeight: sticker
-                                                    ? FontWeight.w900
-                                                    : FontWeight.normal,
-                                                color:
-                                                    const Color(0xFFF1EEE7))),
-                                        Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.end,
-                                            children: <Widget>[
-                                              Text(time,
-                                                  style: const TextStyle(
-                                                      color: Color(0xFFB2BEC5),
-                                                      fontSize: 10)),
-                                              if (message.mine) ...<Widget>[
-                                                const SizedBox(width: 3),
-                                                _ReceiptTicks(
-                                                    pending: message.pending,
-                                                    delivered:
-                                                        message.delivered,
-                                                    seen: message.seen)
-                                              ]
-                                            ])
-                                      ]),
+                                  if (visibleBody.isNotEmpty ||
+                                      mediaUrl == null)
+                                    Wrap(
+                                        alignment: WrapAlignment.end,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.end,
+                                        spacing: 8,
+                                        runSpacing: 2,
+                                        children: <Widget>[
+                                          Text(visibleBody,
+                                              style: TextStyle(
+                                                  fontSize: sticker ? 22 : 15,
+                                                  height: 1.22,
+                                                  fontWeight: sticker
+                                                      ? FontWeight.w900
+                                                      : FontWeight.normal,
+                                                  color:
+                                                      const Color(0xFFF1EEE7))),
+                                          Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.end,
+                                              children: <Widget>[
+                                                Text(time,
+                                                    style: const TextStyle(
+                                                        color:
+                                                            Color(0xFFB2BEC5),
+                                                        fontSize: 10)),
+                                                if (message.mine) ...<Widget>[
+                                                  const SizedBox(width: 3),
+                                                  _ReceiptTicks(
+                                                      pending: message.pending,
+                                                      delivered:
+                                                          message.delivered,
+                                                      seen: message.seen)
+                                                ]
+                                              ])
+                                        ]),
                                   if (message.reactions.isNotEmpty) ...<Widget>[
                                     const SizedBox(height: 5),
                                     Wrap(
@@ -1847,6 +2018,72 @@ class _MessageBubble extends StatelessWidget {
                                     ),
                                   ]
                                 ])))))));
+  }
+}
+
+class _GiphyChatMedia extends StatelessWidget {
+  const _GiphyChatMedia({required this.url, required this.sticker});
+
+  final String url;
+  final bool sticker;
+
+  bool get _allowed {
+    final Uri? uri = Uri.tryParse(url);
+    final String host = uri?.host.toLowerCase() ?? '';
+    return uri?.scheme == 'https' &&
+        (host == 'giphy.com' || host.endsWith('.giphy.com'));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_allowed) {
+      return const Text('Media link unavailable.',
+          style: TextStyle(color: Color(0xFFAAB8C4)));
+    }
+    final Widget image = Image.network(
+      url,
+      width: sticker ? 170 : 240,
+      height: sticker ? 170 : 190,
+      fit: sticker ? BoxFit.contain : BoxFit.cover,
+      gaplessPlayback: true,
+      errorBuilder: (_, __, ___) => const SizedBox(
+          width: 170,
+          height: 100,
+          child: Center(child: Icon(Icons.broken_image_outlined))),
+    );
+    return GestureDetector(
+      onTap: () => showDialog<void>(
+        context: context,
+        barrierColor: const Color(0xEE000000),
+        builder: (BuildContext dialogContext) => Dialog.fullscreen(
+          backgroundColor: const Color(0xFF02070C),
+          child: SafeArea(
+            child: Stack(children: <Widget>[
+              Positioned.fill(
+                child: InteractiveViewer(
+                  minScale: .7,
+                  maxScale: 5,
+                  child: Center(
+                    child: Image.network(url,
+                        fit: BoxFit.contain, gaplessPlayback: true),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 10,
+                left: 10,
+                child: IconButton.filled(
+                  tooltip: 'Close preview',
+                  onPressed: () => Navigator.pop(dialogContext),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+      child: ClipRRect(borderRadius: BorderRadius.circular(14), child: image),
+    );
   }
 }
 

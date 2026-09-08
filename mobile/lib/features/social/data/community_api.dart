@@ -287,6 +287,24 @@ class MessageReactionDto {
           mine: json['mine'] as bool? ?? false);
 }
 
+class ChatMediaDto {
+  const ChatMediaDto({
+    required this.id,
+    required this.title,
+    required this.previewUrl,
+    required this.mediaUrl,
+    required this.kind,
+  });
+  final String id, title, previewUrl, mediaUrl, kind;
+  factory ChatMediaDto.fromJson(Map<String, dynamic> json) => ChatMediaDto(
+        id: json['id'] as String? ?? '',
+        title: json['title'] as String? ?? '',
+        previewUrl: json['previewUrl'] as String? ?? '',
+        mediaUrl: json['mediaUrl'] as String? ?? '',
+        kind: json['kind'] as String? ?? 'gif',
+      );
+}
+
 class CommunityDto {
   const CommunityDto(
       {required this.clubs,
@@ -360,17 +378,33 @@ class CommunityApi {
       MessageDto.fromJson(await _request(
           token, 'POST', '/api/v1/community/messages',
           body: <String, Object?>{'recipientId': recipientId, 'body': body}));
+  Future<List<ChatMediaDto>> searchMedia(String token,
+      {required String query,
+      required String kind,
+      required String locale}) async {
+    final String path = '/api/v1/community/media/search'
+        '?q=${Uri.encodeQueryComponent(query)}'
+        '&kind=${Uri.encodeQueryComponent(kind)}'
+        '&locale=${Uri.encodeQueryComponent(locale)}';
+    return (await _requestList(token, 'GET', path))
+        .whereType<Map<String, dynamic>>()
+        .map(ChatMediaDto.fromJson)
+        .where((ChatMediaDto item) => item.mediaUrl.isNotEmpty)
+        .toList(growable: false);
+  }
+
   Future<void> markDelivered(String token) async =>
       _raw(token, 'POST', '/api/v1/community/messages/delivered', null);
   Future<void> deleteMessage(String token, String messageId,
           {required bool forEveryone}) async =>
-      _raw(token, 'DELETE',
-          '/api/v1/community/messages/$messageId?scope=${forEveryone ? 'everyone' : 'me'}', null);
+      _raw(
+          token,
+          'DELETE',
+          '/api/v1/community/messages/$messageId?scope=${forEveryone ? 'everyone' : 'me'}',
+          null);
   Future<MessageDto> react(
           String token, String messageId, String? emoji) async =>
-      MessageDto.fromJson(await _request(
-          token,
-          'PUT',
+      MessageDto.fromJson(await _request(token, 'PUT',
           '/api/v1/community/messages/$messageId/reaction?emoji=${Uri.encodeQueryComponent(emoji ?? '')}'));
   Future<MessageDto> sendAttachment(String token, String recipientId,
       String name, List<int> bytes, String? mimeType, String body) async {
@@ -445,8 +479,7 @@ class CommunityApi {
             .timeout(const Duration(seconds: 15)),
         'PUT' => await http
             .put(uri,
-                headers: headers,
-                body: body == null ? null : jsonEncode(body))
+                headers: headers, body: body == null ? null : jsonEncode(body))
             .timeout(const Duration(seconds: 15)),
         'DELETE' => await http
             .delete(uri, headers: headers)

@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/community")
 class CommunityController {
-    private final PlayerAuthenticationService authentication; private final CommunityService community; private final TournamentService tournaments;
-    CommunityController(PlayerAuthenticationService authentication,CommunityService community,TournamentService tournaments){this.authentication=authentication;this.community=community;this.tournaments=tournaments;}
+    private final PlayerAuthenticationService authentication; private final CommunityService community; private final TournamentService tournaments; private final GiphyMediaService media;
+    CommunityController(PlayerAuthenticationService authentication,CommunityService community,TournamentService tournaments,GiphyMediaService media){this.authentication=authentication;this.community=community;this.tournaments=tournaments;this.media=media;}
     @GetMapping CommunityDtos.HubDto hub(@RequestHeader("Authorization")String auth){return community.hub(player(auth));}
     @PutMapping("/clubs/{id}") CommunityDtos.HubDto club(@RequestHeader("Authorization")String auth,@PathVariable UUID id,@RequestParam boolean join){return community.joinClub(player(auth),id,join);}
     @PostMapping("/clubs/{id}/tournaments") CommunityDtos.HubDto createClubTournament(
@@ -44,6 +44,14 @@ class CommunityController {
                                    @PathVariable UUID messageId,
                                    @RequestParam(required=false) String emoji) {
         return community.react(player(auth), messageId, emoji);
+    }
+    @GetMapping("/media/search")
+    List<GiphyMediaService.MediaResult> searchMedia(@RequestHeader("Authorization") String auth,
+                                                   @RequestParam(defaultValue="chess") String q,
+                                                   @RequestParam(defaultValue="gif") String kind,
+                                                   @RequestParam(defaultValue="en_US") String locale) {
+        player(auth);
+        return media.search(q, kind, locale);
     }
     private AuthenticatedPlayer player(String auth){return authentication.requireBearer(auth);}
 }

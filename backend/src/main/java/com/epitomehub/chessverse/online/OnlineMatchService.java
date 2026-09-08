@@ -136,10 +136,6 @@ public class OnlineMatchService {
 
     @Transactional
     public OnlineDtos.MatchDto joinRoom(AuthenticatedPlayer player, String rawCode) {
-        OnlineMatch current = current(player.id());
-        if (current != null) {
-            return OnlineDtos.MatchDto.from(current, player.id());
-        }
         String code = rawCode.trim().toUpperCase(Locale.ROOT);
         OnlineMatch match = matches.findByRoomCodeIgnoreCase(code)
                 .orElseThrow(() -> new OnlineMatchException(HttpStatus.NOT_FOUND, "Room code was not found."));
@@ -147,7 +143,19 @@ public class OnlineMatchService {
             throw new OnlineMatchException(HttpStatus.CONFLICT, "That room is no longer waiting for a player.");
         }
         if (match.whitePlayerId.equals(player.id())) {
-            return OnlineDtos.MatchDto.from(match, player.id());
+            throw new OnlineMatchException(HttpStatus.CONFLICT,
+                    "This room belongs to your account. Ask your friend to join with a different account.");
+        }
+        OnlineMatch current = current(player.id());
+        if (current != null && current.status == OnlineMatchStatus.ACTIVE) {
+            throw new OnlineMatchException(HttpStatus.CONFLICT,
+                    "Finish your active match before joining another room.");
+        }
+        if (current != null) {
+            current.status = OnlineMatchStatus.CANCELLED;
+            current.updatedAt = Instant.now();
+            refundWaitingReservation(current);
+            matches.save(current);
         }
         activate(match, player);
         return OnlineDtos.MatchDto.from(matches.save(match), player.id());

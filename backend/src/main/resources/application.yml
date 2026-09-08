@@ -26,6 +26,9 @@ spring:
             required: true
 
 chessverse:
+  chat:
+    giphy:
+      api-key: ${GIPHY_API_KEY:}
   payments:
     apple-storekit:
       enabled: ${APPLE_STOREKIT_ENABLED:false}

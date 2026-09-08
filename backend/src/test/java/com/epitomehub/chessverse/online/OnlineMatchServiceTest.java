@@ -65,6 +65,37 @@ class OnlineMatchServiceTest {
     }
 
     @Test
+    void roomOwnerCannotJoinOwnCodeFromAnotherDevice() {
+        OnlineMatch waiting = waitingMatch();
+        when(repository.findByRoomCodeIgnoreCase(waiting.roomCode))
+                .thenReturn(Optional.of(waiting));
+
+        OnlineMatchException error = assertThrows(
+                OnlineMatchException.class,
+                () -> service.joinRoom(white, waiting.roomCode));
+
+        assertEquals(HttpStatus.CONFLICT, error.status());
+        assertEquals(OnlineMatchStatus.WAITING, waiting.status);
+    }
+
+    @Test
+    void friendCanJoinRequestedRoomEvenWithAnotherWaitingLobby() {
+        OnlineMatch target = waitingMatch();
+        OnlineMatch staleLobby = waitingMatch();
+        staleLobby.whitePlayerId = black.id();
+        when(repository.findByRoomCodeIgnoreCase(target.roomCode))
+                .thenReturn(Optional.of(target));
+        when(repository.findCurrentForPlayer(black.id()))
+                .thenReturn(Optional.of(staleLobby));
+
+        OnlineDtos.MatchDto result = service.joinRoom(black, target.roomCode);
+
+        assertEquals(OnlineMatchStatus.ACTIVE, result.status());
+        assertEquals("black", result.yourColor());
+        assertEquals(OnlineMatchStatus.CANCELLED, staleLobby.status);
+    }
+
+    @Test
     void rejectsMoveFromPlayerWhoseTurnHasNotStarted() {
         OnlineMatch match = activeMatch();
         when(repository.lockById(match.id)).thenReturn(Optional.of(match));
