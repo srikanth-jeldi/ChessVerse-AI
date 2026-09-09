@@ -1393,28 +1393,33 @@ class _SplashGateState extends State<SplashGate> {
     String? aiOpponentName,
     ComputerGameDraft? resumeDraft,
   }) async {
-    if (mode == GameMode.computer && !_isGuest) {
+    if (mode == GameMode.computer) {
       try {
         final owner = await ComputerGameStore.activeOwner();
         final saved = await ComputerGameStore.load(owner);
         if (!context.mounted) return;
         if (resumeDraft == null && saved.isNotEmpty) {
           final replace = await showDialog<bool>(
-              context: context,
-              builder: (dialogContext) => AlertDialog(
-                    title: const Text('Replace paused game?'),
-                    content: const Text(
-                        'Starting a new computer game removes your paused game from this account. Completed games stay in My Games.'),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(dialogContext, false),
-                          child: const Text('Cancel')),
-                      FilledButton(
-                          onPressed: () => Navigator.pop(dialogContext, true),
-                          child: const Text('New Game'))
-                    ],
-                  ));
-          if (replace != true) return;
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('Continue your computer game?'),
+              content: const Text(
+                'Starting a new computer game removes your paused game from this account. Completed games stay in My Games.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Continue'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('New Game'),
+                ),
+              ],
+            ),
+          );
+          if (replace == null) return;
+          if (!replace) resumeDraft = saved.first;
         }
         await ComputerGameStore.prepare(owner, resumeDraft,
             replacing: saved.isEmpty ? null : saved.first);
@@ -3885,7 +3890,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         owner.isEmpty ||
         _gameMode != GameMode.computer ||
         !_signedIn ||
-        widget.initiallyGuest ||
         _draftConflict) {
       return;
     }
@@ -3893,7 +3897,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     try {
       if (_gameResultTitle != null) {
         if (_lastDraftFingerprint == 'finished') return;
-        _lastDraftFingerprint = 'finished';
         await ComputerGameStore.finish(
             owner,
             ComputerGameDraft(id: id, updatedAt: DateTime.now(), state: {
@@ -3909,6 +3912,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   humanPlaysWhite: _humanPlaysWhite, tracksPlayer: true),
               'reviews': _moveReviews.map((r) => r.toJson()).toList(),
             }));
+        _lastDraftFingerprint = 'finished';
         _lastSaveOkay = true;
         return;
       }
@@ -3936,9 +3940,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         'lastPlayerMove': _lastPlayerMove,
         'lastPlayerCoachNote': _lastPlayerCoachNote,
       };
-      _lastDraftFingerprint = fingerprint;
       await ComputerGameStore.save(owner,
           ComputerGameDraft(id: id, updatedAt: DateTime.now(), state: state));
+      _lastDraftFingerprint = fingerprint;
       _lastSaveOkay = true;
     } on ComputerGameConflict {
       _draftConflict = true;
@@ -4444,8 +4448,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: _gameMode != GameMode.computer ||
-          widget.initiallyGuest ||
+      canPop:
+          _gameMode != GameMode.computer ||
           _allowComputerExit ||
           _draftConflict,
       onPopInvokedWithResult: (didPop, result) {
@@ -4477,6 +4481,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) Navigator.of(context).pop();
     });
+  }
+
+  void _leaveGame() {
+    if (_gameMode == GameMode.computer) {
+      unawaited(_pauseComputerAndLeave());
+    } else {
+      Navigator.of(context).pop();
+    }
   }
 
   Widget _buildGameScreen(BuildContext context) {
@@ -4756,7 +4768,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                   playerName: _whitePlayerName,
                                   soundEnabled: _soundEnabled,
                                   onSoundChanged: _setSoundEnabled,
-                                  onHome: () => Navigator.of(context).pop(),
+                                  onHome: _leaveGame,
+                                  onPause: _gameMode == GameMode.computer
+                                      ? _leaveGame
+                                      : null,
                                   onDailyChallenge: _openDailyChallenge,
                                   onProfile: _openProfile,
                                 ),
@@ -4821,7 +4836,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                 child: SizedBox(
                                   width: constraints.maxWidth,
                                   child: CompactHeader(
-                                    onHome: () => Navigator.of(context).pop(),
+                                    onHome: _leaveGame,
+                                    onPause: _gameMode == GameMode.computer
+                                        ? _leaveGame
+                                        : null,
                                     onProfile: _openProfile,
                                     onReset: _confirmNewGame,
                                     onLogout: _logout,
@@ -4910,7 +4928,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: <Widget>[
                               CompactHeader(
-                                onHome: () => Navigator.of(context).pop(),
+                                onHome: _leaveGame,
+                                onPause: _gameMode == GameMode.computer
+                                    ? _leaveGame
+                                    : null,
                                 onProfile: _openProfile,
                                 onReset: _confirmNewGame,
                                 onLogout: _logout,
@@ -5681,9 +5702,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
     await _persistComputerDraft(force: true);
     if (!mounted || !_lastSaveOkay || _draftConflict) return;
-    if (mode == GameMode.computer &&
-        _gameMode != GameMode.computer &&
-        !widget.initiallyGuest) {
+    if (mode == GameMode.computer && _gameMode != GameMode.computer) {
       try {
         final owner = await ComputerGameStore.activeOwner();
         final saved = await ComputerGameStore.load(owner);
@@ -9013,6 +9032,7 @@ class CompactHeader extends StatelessWidget {
     required this.onProfile,
     required this.onReset,
     required this.onLogout,
+    this.onPause,
     super.key,
   });
 
@@ -9020,6 +9040,7 @@ class CompactHeader extends StatelessWidget {
   final VoidCallback onProfile;
   final VoidCallback onReset;
   final VoidCallback onLogout;
+  final VoidCallback? onPause;
 
   @override
   Widget build(BuildContext context) {
@@ -9032,6 +9053,13 @@ class CompactHeader extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_rounded),
         ),
         const ChessVerseMark(size: 36),
+        if (onPause != null)
+          IconButton(
+            key: const ValueKey('pause-computer-game'),
+            tooltip: 'Pause and save',
+            onPressed: onPause,
+            icon: const Icon(Icons.pause_circle_outline),
+          ),
         const SizedBox(width: 8),
         Expanded(
           child: Text.rich(
@@ -10841,6 +10869,7 @@ class _GameStudioHeader extends StatelessWidget {
     required this.onHome,
     required this.onDailyChallenge,
     required this.onProfile,
+    this.onPause,
   });
 
   final GameMode gameMode;
@@ -10850,10 +10879,12 @@ class _GameStudioHeader extends StatelessWidget {
   final VoidCallback onHome;
   final VoidCallback onDailyChallenge;
   final VoidCallback onProfile;
+  final VoidCallback? onPause;
 
   @override
   Widget build(BuildContext context) {
-    final bool compact = MediaQuery.sizeOf(context).width < 1050;
+    final bool compact = MediaQuery.sizeOf(context).width <
+        (onPause == null ? 1050 : 1500);
     final String title = switch (gameMode) {
       GameMode.daily => 'Daily Challenge',
       GameMode.puzzle => 'Puzzle Academy',
@@ -10887,6 +10918,13 @@ class _GameStudioHeader extends StatelessWidget {
                 label: const Text('Back to Home'),
               ),
             SizedBox(width: compact ? 10 : 16),
+            if (onPause != null)
+              TextButton.icon(
+                key: const ValueKey('pause-computer-game'),
+                onPressed: onPause,
+                icon: const Icon(Icons.pause_circle_outline),
+                label: const Text('Pause & Save'),
+              ),
             Row(
               children: <Widget>[
                 ClipRRect(

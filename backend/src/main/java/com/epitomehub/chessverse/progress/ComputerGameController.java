@@ -25,20 +25,14 @@ public class ComputerGameController {
     @PostMapping("/history/import")
     @Transactional
     public void importHistory(@RequestHeader("Authorization") String authorization, @RequestBody java.util.List<JsonNode> drafts) {
-        UUID player = authentication.requireBearer(authorization).id();
-        if (drafts == null || drafts.size() > 25) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid history batch");
-        for (JsonNode draft : drafts) {
-            if (!draft.path("id").isTextual() || draft.path("id").asText().length() > 80 ||
-                    !draft.path("state").path("result").isTextual() || draft.toString().length() > 2000000) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid history record");
-            }
-            jdbc.update("INSERT INTO computer_game_history(player_id, game_id, draft) VALUES (?, ?, ?) ON CONFLICT (player_id, game_id) DO NOTHING", player, draft.path("id").asText(), draft.toString());
-        }
+        authentication.requireBearer(authorization);
+        // Device archives predate account ownership and cannot be safely claimed.
+        throw new ResponseStatusException(HttpStatus.GONE, "Unverified device history import is no longer supported");
     }
     @GetMapping("/history")
     public java.util.List<JsonNode> history(@RequestHeader("Authorization") String authorization) {
         UUID player = authentication.requireBearer(authorization).id();
-        return jdbc.query("SELECT draft FROM computer_game_history WHERE player_id = ? ORDER BY created_at DESC", (rs, row) -> {
+        return jdbc.query("SELECT draft FROM computer_game_history WHERE player_id = ? AND game_id NOT LIKE 'legacy-%' ORDER BY created_at DESC", (rs, row) -> {
             try { return mapper.readTree(rs.getString(1)); }
             catch (Exception e) { throw new IllegalStateException(e); }
         }, player);

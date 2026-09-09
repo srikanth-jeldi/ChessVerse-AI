@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../main.dart'
+    show ChessBoard, ChessPiece, BoardSkin, boardPalettes;
+
 import '../../../core/local_game_archive.dart';
 import '../../../core/computer_game_store.dart';
 import '../../../core/theme/app_colors.dart';
@@ -135,134 +138,176 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
               }
               final draft = snapshot.data!.first;
               return ListTile(
-                  title: const Text('Continue computer game'),
-                  subtitle: Text(
-                      '${draft.whiteName} vs ${draft.blackName} · ${draft.plyCount} half-moves · Level ${draft.level.toInt()}'),
-                  trailing: FilledButton(
-                      onPressed: widget.onResume == null
-                          ? null
-                          : () async {
-                              await widget.onResume!(draft);
-                              if (mounted) await _refresh();
-                            },
-                      child: const Text('Continue')));
-            }),
-        Expanded(
-            child: RefreshIndicator(
-          onRefresh: _refresh,
-          child: FutureBuilder<List<OnlineMatchDto>>(
-            future: _online,
-            builder: (BuildContext context,
-                AsyncSnapshot<List<OnlineMatchDto>> snapshot) {
-              final List<OnlineMatchDto> online =
-                  snapshot.data ?? const <OnlineMatchDto>[];
-              final List<SavedGameRecord> local = [
-                ..._cloudGames,
-                ...LocalGameArchive.games.where((g) => !_cloudGames.any((c) =>
-                    c.summary == g.summary &&
-                    c.moves.join(',') == g.moves.join(',') &&
-                    c.playedAt.difference(g.playedAt).inSeconds.abs() < 120))
-              ]..sort((a, b) => b.playedAt.compareTo(a.playedAt));
-              if (snapshot.connectionState == ConnectionState.waiting &&
-                  online.isEmpty &&
-                  local.isEmpty) {
-                return const SkeletonPage(rows: 5);
-              }
-              if (snapshot.hasError && online.isEmpty && local.isEmpty) {
-                return _HistoryMessage(
-                  icon: Icons.cloud_off_rounded,
-                  message: 'Match history could not be loaded. Pull to retry.',
-                  detail: '${snapshot.error}',
-                );
-              }
-              if (online.isEmpty && local.isEmpty) {
-                return const _HistoryMessage(
-                  icon: Icons.history_rounded,
-                  message: 'Your completed matches will appear here.',
-                );
-              }
-              return ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                children: <Widget>[
-                  if (_historySyncFailed || snapshot.hasError)
-                    const Text(
-                        'Some account history could not sync. Pull to retry.'),
-                  Builder(builder: (_) {
-                    final outcomes = [
-                      ...local
-                          .where((g) =>
-                              g.mode == 'Play vs AI' || g.mode == '2 Players')
-                          .map((g) => g.playerOutcome),
-                      ...online
-                          .where((g) =>
-                              ['1-0', '0-1', '1/2-1/2'].contains(g.result))
-                          .map((g) => _MatchPresentation(g).draw
-                              ? 'draw'
-                              : _MatchPresentation(g).won
-                                  ? 'win'
-                                  : 'loss')
-                    ];
-                    final wins = outcomes.where((o) => o == 'win').length;
-                    final losses = outcomes.where((o) => o == 'loss').length;
-                    final draws = outcomes.where((o) => o == 'draw').length;
-                    final total = wins + losses + draws;
-                    final gamesPlayed = outcomes.length;
-                    return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text(
-                            'Recorded matches: $gamesPlayed games · $wins wins · $losses losses · $draws draws · ${total == 0 ? 0 : (wins * 100 / total).round()}% wins'));
-                  }),
-                  Wrap(
-                      spacing: 6,
-                      children: ['All', 'Computer', 'Local', 'Online']
-                          .map((f) => ChoiceChip(
-                              label: Text(f),
-                              selected: _filter == f,
-                              onSelected: (_) => setState(() => _filter = f)))
-                          .toList()),
-                  const SizedBox(height: 12),
-                  if (online.isNotEmpty &&
-                      (_filter == 'All' || _filter == 'Online')) ...<Widget>[
-                    const _Heading('ONLINE ARENA'),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Tap a completed game to replay every move.',
-                      style: TextStyle(color: Color(0xFF8FA5B1), fontSize: 12),
-                    ),
-                    const SizedBox(height: 10),
-                    ...online.map(
-                      (OnlineMatchDto match) => _OnlineHistoryCard(
-                        match,
-                        onTap: () => Navigator.of(context).push<void>(
-                          MaterialPageRoute<void>(
-                            builder: (_) =>
-                                OnlineMatchReplayScreen(match: match),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                  if (local.isNotEmpty && _filter != 'Online') ...<Widget>[
-                    const _Heading('SAVED GAMES'),
-                    const SizedBox(height: 10),
-                    ...local
-                        .where((g) =>
-                            _filter == 'All' ||
-                            (_filter == 'Computer'
-                                ? g.mode == 'Play vs AI'
-                                : g.mode == '2 Players'))
-                        .map((g) => GestureDetector(
-                            onTap: () => _openCompleted(g),
-                            child: _LocalHistoryCard(g))),
-                  ],
-                ],
+                title: const Text('Continue computer game'),
+                subtitle: Text(
+                  '${draft.whiteName} vs ${draft.blackName} · ${draft.plyCount} half-moves · Level ${draft.level.toInt()}',
+                ),
+                trailing: FilledButton(
+                  onPressed: widget.onResume == null
+                      ? null
+                      : () async {
+                          await widget.onResume!(draft);
+                          if (mounted) await _refresh();
+                        },
+                  child: const Text('Continue'),
+                ),
               );
             },
           ),
-        )),
-      ]),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _refresh,
+              child: FutureBuilder<List<OnlineMatchDto>>(
+                future: _online,
+                builder:
+                    (
+                      BuildContext context,
+                      AsyncSnapshot<List<OnlineMatchDto>> snapshot,
+                    ) {
+                      final List<OnlineMatchDto> online =
+                          snapshot.data ?? const <OnlineMatchDto>[];
+                      final List<SavedGameRecord> local = [..._cloudGames]
+                        ..sort((a, b) => b.playedAt.compareTo(a.playedAt));
+                      if (snapshot.connectionState == ConnectionState.waiting &&
+                          online.isEmpty &&
+                          local.isEmpty) {
+                        return const SkeletonPage(rows: 5);
+                      }
+                      if (snapshot.hasError &&
+                          online.isEmpty &&
+                          local.isEmpty) {
+                        return _HistoryMessage(
+                          icon: Icons.cloud_off_rounded,
+                          message: 'Match history could not be loaded. Pull to retry.',
+                          detail: '${snapshot.error}',
+                        );
+                      }
+                      if (online.isEmpty && local.isEmpty) {
+                        return const _HistoryMessage(
+                          icon: Icons.history_rounded,
+                          message: 'Your completed matches will appear here.',
+                        );
+                      }
+                      return ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                        children: <Widget>[
+                          if (_historySyncFailed || snapshot.hasError)
+                            const Text(
+                              'Some account history could not sync. Pull to retry.',
+                            ),
+                          Builder(
+                            builder: (_) {
+                              final outcomes = [
+                                ...local
+                                    .where(
+                                      (g) =>
+                                          g.mode == 'Play vs AI' ||
+                                          g.mode == '2 Players',
+                                    )
+                                    .map((g) => g.playerOutcome),
+                                ...online
+                                    .where(
+                                      (g) => [
+                                        '1-0',
+                                        '0-1',
+                                        '1/2-1/2',
+                                      ].contains(g.result),
+                                    )
+                                    .map(
+                                      (g) => _MatchPresentation(g).draw
+                                          ? 'draw'
+                                          : _MatchPresentation(g).won
+                                          ? 'win'
+                                          : 'loss',
+                                    ),
+                              ];
+                              final wins = outcomes
+                                  .where((o) => o == 'win')
+                                  .length;
+                              final losses = outcomes
+                                  .where((o) => o == 'loss')
+                                  .length;
+                              final draws = outcomes
+                                  .where((o) => o == 'draw')
+                                  .length;
+                              final total = wins + losses + draws;
+                              final gamesPlayed = outcomes.length;
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: Text(
+                                  'Recorded matches: $gamesPlayed games · $wins wins · $losses losses · $draws draws · ${total == 0 ? 0 : (wins * 100 / total).round()}% wins',
+                                ),
+                              );
+                            },
+                          ),
+                          Wrap(
+                            spacing: 6,
+                            children: ['All', 'Computer', 'Local', 'Online']
+                                .map(
+                                  (f) => ChoiceChip(
+                                    label: Text(f),
+                                    selected: _filter == f,
+                                    onSelected: (_) =>
+                                        setState(() => _filter = f),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                          const SizedBox(height: 12),
+                          if (online.isNotEmpty &&
+                              (_filter == 'All' ||
+                                  _filter == 'Online')) ...<Widget>[
+                            const _Heading('ONLINE ARENA'),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Tap a completed game to replay every move.',
+                              style: TextStyle(
+                                color: Color(0xFF8FA5B1),
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            ...online.map(
+                              (OnlineMatchDto match) => _OnlineHistoryCard(
+                                match,
+                                onTap: () => Navigator.of(context).push<void>(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) =>
+                                        OnlineMatchReplayScreen(match: match),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                          if (local.isNotEmpty &&
+                              _filter != 'Online') ...<Widget>[
+                            const _Heading('SAVED GAMES'),
+                            const SizedBox(height: 10),
+                            ...local
+                                .where(
+                                  (g) =>
+                                      _filter == 'All' ||
+                                      (_filter == 'Computer'
+                                          ? g.mode == 'Play vs AI'
+                                          : g.mode == '2 Players'),
+                                )
+                                .map(
+                                  (g) => GestureDetector(
+                                    onTap: () => _openCompleted(g),
+                                    child: _LocalHistoryCard(g),
+                                  ),
+                                ),
+                          ],
+                        ],
+                      );
+                    },
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -279,33 +324,33 @@ class _HistoryMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: <Widget>[
-          const SizedBox(height: 180),
-          Icon(icon, size: 58, color: const Color(0xFF607A87)),
-          const SizedBox(height: 14),
-          Center(
-            child: Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF9CB0BA)),
-            ),
+    physics: const AlwaysScrollableScrollPhysics(),
+    children: <Widget>[
+      const SizedBox(height: 180),
+      Icon(icon, size: 58, color: const Color(0xFF607A87)),
+      const SizedBox(height: 14),
+      Center(
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Color(0xFF9CB0BA)),
+        ),
+      ),
+      if (detail != null) ...<Widget>[
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            detail!,
+            textAlign: TextAlign.center,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Color(0xFF607A87), fontSize: 11),
           ),
-          if (detail != null) ...<Widget>[
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                detail!,
-                textAlign: TextAlign.center,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Color(0xFF607A87), fontSize: 11),
-              ),
-            ),
-          ],
-        ],
-      );
+        ),
+      ],
+    ],
+  );
 }
 
 class _Heading extends StatelessWidget {
@@ -571,40 +616,41 @@ class _OnlineMatchReplayScreenState extends State<OnlineMatchReplayScreen> {
 class _ReplayPlayers extends StatelessWidget {
   const _ReplayPlayers({required this.match, required this.presentation});
   final OnlineMatchDto match;
+
   final _MatchPresentation presentation;
   @override
   Widget build(BuildContext context) => _HistoryShell(
-        accent: presentation.accent,
-        child: Column(
+    accent: presentation.accent,
+    child: Column(
+      children: <Widget>[
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: <Widget>[
-                Expanded(child: Text('You • ${match.yourColor}')),
-                Text(
-                  presentation.outcome,
-                  style: TextStyle(
-                    color: presentation.accent,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                Expanded(
-                  child: Text(
-                    presentation.opponent,
-                    textAlign: TextAlign.right,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 5),
+            Expanded(child: Text('You • ${match.yourColor}')),
             Text(
-              '${presentation.reason} • ${_formatDuration(match.durationSeconds)} • ${match.result ?? '—'}',
-              style: const TextStyle(color: Color(0xFF8FA5B1), fontSize: 12),
+              presentation.outcome,
+              style: TextStyle(
+                color: presentation.accent,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            Expanded(
+              child: Text(
+                presentation.opponent,
+                textAlign: TextAlign.right,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
-      );
+        const SizedBox(height: 5),
+        Text(
+          '${presentation.reason} • ${_formatDuration(match.durationSeconds)} • ${match.result ?? '—'}',
+          style: const TextStyle(color: Color(0xFF8FA5B1), fontSize: 12),
+        ),
+      ],
+    ),
+  );
 }
 
 class _ReplayBoard extends StatelessWidget {
@@ -616,42 +662,35 @@ class _ReplayBoard extends StatelessWidget {
   final Map<String, String> pieces;
   final bool flipped;
   final String? lastMove;
-
   @override
-  Widget build(BuildContext context) => ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: GridView.builder(
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 8,
-          ),
-          itemCount: 64,
-          itemBuilder: (BuildContext context, int index) {
-            final int row = index ~/ 8;
-            final int col = index % 8;
-            final int file = flipped ? 7 - col : col;
-            final int rank = flipped ? row + 1 : 8 - row;
-            final String square = '${String.fromCharCode(97 + file)}$rank';
-            final bool highlighted = lastMove != null &&
-                lastMove!.length >= 4 &&
-                (square == lastMove!.substring(0, 2) ||
-                    square == lastMove!.substring(2, 4));
-            return ColoredBox(
-              color: highlighted
-                  ? const Color(0xFFD9A83E)
-                  : (row + col).isEven
-                      ? const Color(0xFFD8C8A8)
-                      : const Color(0xFF775436),
-              child: Center(
-                child: Text(
-                  _pieceGlyph(pieces[square]),
-                  style: const TextStyle(fontSize: 32, height: 1),
-                ),
-              ),
-            );
-          },
-        ),
-      );
+  Widget build(BuildContext context) {
+    final board = pieces.map(
+      (square, code) => MapEntry(
+        square,
+        ChessPiece(code.toUpperCase(), code == code.toUpperCase()),
+      ),
+    );
+    final from = lastMove?.substring(0, 2);
+    final to = lastMove?.substring(2, 4);
+    return ChessBoard(
+      pieces: board,
+      selectedSquare: null,
+      legalTargets: const {},
+      lastFromSquare: from,
+      lastToSquare: to,
+      lastCaptureSquare: null,
+      lastMovedPiece: to == null ? null : board[to],
+      moveSequence: lastMove?.hashCode ?? 0,
+      checkedKingSquare: null,
+      decisiveSquare: null,
+      coachArrowFrom: from,
+      coachArrowTo: to,
+      flipped: flipped,
+      showCoordinates: true,
+      palette: boardPalettes[BoardSkin.royalWalnut]!,
+      onSquareTap: (_) {},
+    );
+  }
 }
 
 class _ReplayPositionBuilder {
@@ -798,19 +837,3 @@ String _formatDate(DateTime date) {
   final String minute = local.minute.toString().padLeft(2, '0');
   return '$day/$month/${local.year} • $hour:$minute';
 }
-
-String _pieceGlyph(String? piece) => switch (piece) {
-      'K' => '♔',
-      'Q' => '♕',
-      'R' => '♖',
-      'B' => '♗',
-      'N' => '♘',
-      'P' => '♙',
-      'k' => '♚',
-      'q' => '♛',
-      'r' => '♜',
-      'b' => '♝',
-      'n' => '♞',
-      'p' => '♟',
-      _ => '',
-    };

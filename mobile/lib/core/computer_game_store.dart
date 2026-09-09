@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'config/app_config.dart';
 import '../features/auth/data/auth_session_store.dart';
-import 'local_game_archive.dart';
 
 class ComputerGameDraft {
   const ComputerGameDraft(
@@ -79,6 +78,11 @@ class ComputerGameStore {
   static final revision = ValueNotifier<int>(0);
   static Future<void> _pending = Future.value();
   static final Map<String, int> _versions = {};
+  @visibleForTesting
+  static void resetForTesting() {
+    _pending = Future.value();
+    _versions.clear();
+  }
   static Future<String> activeOwner() async =>
       (await const AuthSessionStore().read())?.token ?? '';
   static Future<T> _serial<T>(Future<T> Function() action) {
@@ -165,64 +169,23 @@ class ComputerGameStore {
         revision.value++;
       });
   static Future<List<ComputerGameDraft>> history(String owner) async {
-    final localGames = List<SavedGameRecord>.from(LocalGameArchive.games);
-    final response = await client.get(
-        Uri.parse('${AppConfig.apiBaseUrl}/api/v1/computer-game/history'),
-        headers: {
-          'Authorization': 'Bearer $owner'
-        }).timeout(const Duration(seconds: 15));
+    final response = await client
+        .get(
+          Uri.parse('${AppConfig.apiBaseUrl}/api/v1/computer-game/history'),
+          headers: {'Authorization': 'Bearer $owner'},
+        )
+        .timeout(const Duration(seconds: 15));
     if (response.statusCode != 200) {
       throw StateError('History sync unavailable');
     }
     final saved = (jsonDecode(response.body) as List)
-        .map((row) =>
-            ComputerGameDraft.fromJson(Map<String, dynamic>.from(row as Map)))
+        .map(
+          (row) =>
+              ComputerGameDraft.fromJson(Map<String, dynamic>.from(row as Map)),
+        )
         .toList();
-    final missing = localGames
-        .where((g) =>
-            g.mode == 'Play vs AI' &&
-            !saved.any((d) =>
-                d.whiteName == g.whitePlayer &&
-                d.blackName == g.blackPlayer &&
-                d.updatedAt.difference(g.playedAt).inSeconds.abs() < 120 &&
-                (d.state['moves'] as List).reversed.join(',') ==
-                    g.moves.join(',')))
-        .map((g) => ComputerGameDraft(
-                id: 'legacy-${g.playedAt.microsecondsSinceEpoch}',
-                updatedAt: g.playedAt,
-                state: {
-                  'version': 1,
-                  'pieces': <String, String>{},
-                  'moves': g.moves.reversed.toList(),
-                  'whiteName': g.whitePlayer,
-                  'blackName': g.blackPlayer,
-                  'humanWhite': true,
-                  'level': 0,
-                  'whiteSeconds': 0,
-                  'blackSeconds': 0,
-                  'result': g.result,
-                  'detail': g.detail,
-                  'outcome': g.playerOutcome,
-                  'reviews': g.moveReviews.map((r) => r.toJson()).toList(),
-                }))
-        .toList();
-    for (int start = 0; start < missing.length; start += 25) {
-      final batch = missing.skip(start).take(25).toList();
-      final uploaded = await client
-          .post(
-              Uri.parse(
-                  '${AppConfig.apiBaseUrl}/api/v1/computer-game/history/import'),
-              headers: {
-                'Authorization': 'Bearer $owner',
-                'Content-Type': 'application/json'
-              },
-              body: jsonEncode(batch.map((d) => d.toJson()).toList()))
-          .timeout(const Duration(seconds: 15));
-      if (uploaded.statusCode != 200) {
-        throw StateError('Could not sync older games');
-      }
-      saved.addAll(batch);
-    }
-    return saved;
+    // Legacy device imports have no trustworthy account provenance. Keep them
+    // stored, but never expose or re-import them into another account.
+    return saved.where((game) => !game.id.startsWith('legacy-')).toList();
   }
 }

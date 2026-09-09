@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:chessverse_ai/core/computer_game_store.dart';
+import 'package:chessverse_ai/core/local_game_archive.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 ComputerGameDraft draft(String id) =>
     ComputerGameDraft(id: id, updatedAt: DateTime.utc(2026, 9, 9), state: {
@@ -18,6 +20,7 @@ ComputerGameDraft draft(String id) =>
     });
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Map<String, Map<String, dynamic>> accounts;
   setUp(() {
     accounts = {};
@@ -79,5 +82,26 @@ void main() {
   test('network errors are not reported as an empty saved game', () async {
     ComputerGameStore.client = MockClient((_) async => http.Response('', 503));
     await expectLater(ComputerGameStore.load('alice'), throwsStateError);
+  });
+
+  test('history never imports device games into the active account', () async {
+    FlutterSecureStorage.setMockInitialValues({});
+    LocalGameArchive.addGame(SavedGameRecord(
+      mode: 'Play vs AI', result: 'White wins', detail: '', moves: const [],
+      playedAt: DateTime.utc(2026), whitePlayer: 'Kamal', blackPlayer: 'Computer',
+    ));
+    final requests = <http.Request>[];
+    ComputerGameStore.client = MockClient((request) async {
+      requests.add(request);
+      return http.Response(jsonEncode([
+        draft('legacy-unverified').toJson(), draft('owned-by-guest').toJson(),
+      ]), 200);
+    });
+    final games = await ComputerGameStore.history('guest-token');
+    expect(games.map((g) => g.id), ['owned-by-guest']);
+    expect(requests, hasLength(1));
+    expect(requests.single.method, 'GET');
+    expect(requests.single.headers['Authorization'], 'Bearer guest-token');
+    await LocalGameArchive.clearDeviceUserData();
   });
 }

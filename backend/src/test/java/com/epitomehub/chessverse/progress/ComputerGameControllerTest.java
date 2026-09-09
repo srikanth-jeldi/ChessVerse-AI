@@ -30,6 +30,12 @@ class ComputerGameControllerTest {
         assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
         verify(jdbc).update(startsWith("UPDATE computer_game_slot"), eq(draft.toString()), eq(player), eq(7L));
     }
+    @Test void deviceHistoryCannotBeClaimedByAnotherAccount() {
+        var error = assertThrows(ResponseStatusException.class,
+                () -> controller.importHistory("Bearer one", java.util.List.of()));
+        assertEquals(HttpStatus.GONE, error.getStatusCode());
+        verifyNoInteractions(jdbc);
+    }
     @Test void replacementDoesNotDeleteCompletedHistory() {
         when(jdbc.update(startsWith("UPDATE computer_game_slot"), isNull(), eq(player), eq(3L))).thenReturn(1);
         controller.update("Bearer one", new ComputerGameController.Update(3, null));
