@@ -866,6 +866,17 @@ class _SplashGateState extends State<SplashGate> {
       ),
       _PlayDestination(
         onComputer: () => _chooseSideAndOpen(context, GameMode.computer),
+        onMyGames: () => _push(
+          context,
+          MatchHistoryScreen(
+            onDestinationSelected: (index) =>
+                _closeSettingsAndSelect(context, index),
+            onResume: (draft) =>
+                _openGame(context, GameMode.computer, resumeDraft: draft),
+            onPlayAgain: () =>
+                _chooseSideAndOpen(context, GameMode.computer),
+          ),
+        ),
         onOnline: () => _openOnlineGame(context),
         onLocal: () => _chooseSideAndOpen(context, GameMode.local),
         onTournaments: () => setState(() {
@@ -1165,6 +1176,39 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   Future<void> _chooseSideAndOpen(BuildContext context, GameMode mode) async {
+    bool replacePausedComputerGame = false;
+    if (mode == GameMode.computer) {
+      try {
+        final String owner = await ComputerGameStore.activeOwner();
+        final List<ComputerGameDraft> saved =
+            await ComputerGameStore.load(owner);
+        if (!context.mounted) return;
+        if (saved.isNotEmpty) {
+          final bool? startNew = await _askHowToOpenComputerGame(context);
+          if (!context.mounted || startNew == null) return;
+          if (!startNew) {
+            await _openGame(
+              context,
+              mode,
+              resumeDraft: saved.first,
+            );
+            return;
+          }
+          replacePausedComputerGame = true;
+        }
+      } catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Could not check your paused game. Check your connection and retry.',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+    }
     final _GameLaunchChoice? choice =
         await showModalBottomSheet<_GameLaunchChoice>(
       context: context,
@@ -1381,8 +1425,31 @@ class _SplashGateState extends State<SplashGate> {
         mode,
         sideChoice: choice.side,
         aiLevel: choice.aiLevel,
+        replacePausedComputerGame: replacePausedComputerGame,
       );
     }
+  }
+
+  Future<bool?> _askHowToOpenComputerGame(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Continue your computer game?'),
+        content: const Text(
+          'Continue your paused game now, or create a new one. Starting a new game removes the paused game from this account; completed games stay in My Games.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Continue'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('New Game'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _openGame(
@@ -1396,32 +1463,17 @@ class _SplashGateState extends State<SplashGate> {
     String? initialAuthToken,
     String? aiOpponentName,
     ComputerGameDraft? resumeDraft,
+    bool replacePausedComputerGame = false,
   }) async {
     if (mode == GameMode.computer) {
       try {
         final owner = await ComputerGameStore.activeOwner();
         final saved = await ComputerGameStore.load(owner);
         if (!context.mounted) return;
-        if (resumeDraft == null && saved.isNotEmpty) {
-          final replace = await showDialog<bool>(
-            context: context,
-            builder: (dialogContext) => AlertDialog(
-              title: const Text('Continue your computer game?'),
-              content: const Text(
-                'Starting a new computer game removes your paused game from this account. Completed games stay in My Games.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text('Continue'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(dialogContext, true),
-                  child: const Text('New Game'),
-                ),
-              ],
-            ),
-          );
+        if (resumeDraft == null &&
+            saved.isNotEmpty &&
+            !replacePausedComputerGame) {
+          final bool? replace = await _askHowToOpenComputerGame(context);
           if (replace == null) return;
           if (!replace) resumeDraft = saved.first;
         }
@@ -3449,12 +3501,14 @@ class ChessRules {
 class _PlayDestination extends StatelessWidget {
   const _PlayDestination({
     required this.onComputer,
+    required this.onMyGames,
     required this.onOnline,
     required this.onLocal,
     required this.onTournaments,
     required this.onDaily,
   });
   final VoidCallback onComputer;
+  final VoidCallback onMyGames;
   final VoidCallback onOnline;
   final VoidCallback onLocal;
   final VoidCallback onTournaments;
@@ -3518,6 +3572,14 @@ class _PlayDestination extends StatelessWidget {
                     color: const Color(0xFF174A69),
                     asset: 'assets/backgrounds/play-computer-card-v2.png',
                     onTap: onComputer,
+                  ),
+                  _PlayModeCard(
+                    icon: Icons.history_rounded,
+                    title: 'My Games',
+                    subtitle: 'Continue or replay your saved games',
+                    color: const Color(0xFF5A3F78),
+                    asset: 'assets/backgrounds/home-analysis-hero-v1.png',
+                    onTap: onMyGames,
                   ),
                   _PlayModeCard(
                     icon: Icons.groups_rounded,
