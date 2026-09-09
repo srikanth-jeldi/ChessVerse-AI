@@ -290,7 +290,7 @@ class LocalGameArchive {
         _games
           ..clear()
           ..addAll(
-            decoded.take(50).map((dynamic value) {
+            decoded.map((dynamic value) {
               final Map<String, dynamic> game = value as Map<String, dynamic>;
               return SavedGameRecord(
                 mode: game['mode'] as String? ?? 'Game',
@@ -415,9 +415,6 @@ class LocalGameArchive {
 
   static void addGame(SavedGameRecord record) {
     _games.insert(0, record);
-    if (_games.length > 50) {
-      _games.removeLast();
-    }
     unawaited(_persistGames());
     _notifyCloudChange();
   }

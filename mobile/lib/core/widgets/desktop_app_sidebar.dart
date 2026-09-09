@@ -8,6 +8,7 @@ class DesktopAppSidebar extends StatelessWidget {
     required this.selected,
     this.onHome,
     this.onPlay,
+    this.onMyGames,
     this.onPuzzles,
     this.onLearn,
     this.onProfile,
@@ -23,6 +24,7 @@ class DesktopAppSidebar extends StatelessWidget {
   final String selected;
   final VoidCallback? onHome;
   final VoidCallback? onPlay;
+  final VoidCallback? onMyGames;
   final VoidCallback? onPuzzles;
   final VoidCallback? onLearn;
   final VoidCallback? onProfile;
@@ -39,6 +41,8 @@ class DesktopAppSidebar extends StatelessWidget {
         <({IconData icon, String label, VoidCallback? onTap})>[
       (icon: Icons.home_rounded, label: 'Home', onTap: onHome),
       (icon: Icons.sports_esports_rounded, label: 'Play', onTap: onPlay),
+      if (onMyGames != null)
+        (icon: Icons.history_rounded, label: 'My Games', onTap: onMyGames),
       (icon: Icons.extension_rounded, label: 'Puzzles', onTap: onPuzzles),
       (icon: Icons.school_rounded, label: 'Learn', onTap: onLearn),
       (icon: Icons.person_rounded, label: 'Profile', onTap: onProfile),

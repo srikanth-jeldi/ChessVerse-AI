@@ -71,6 +71,15 @@ class HomeDashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
+      appBar: AppBar(
+          toolbarHeight: 42,
+          backgroundColor: Colors.transparent,
+          actions: [
+            TextButton.icon(
+                onPressed: onSavedGames,
+                icon: const Icon(Icons.history),
+                label: const Text('My Games')),
+          ]),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {

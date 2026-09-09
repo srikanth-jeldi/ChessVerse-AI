@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/local_game_archive.dart';
+import '../../../core/computer_game_store.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../data/online_match_api.dart';
+import '../../analysis/domain/ai_review_report.dart';
+import '../../analysis/presentation/adaptive_ai_review.dart';
 
 class MatchHistoryScreen extends StatefulWidget {
-  const MatchHistoryScreen({super.key});
+  const MatchHistoryScreen({super.key, this.onResume, this.onPlayAgain});
+  final Future<void> Function(ComputerGameDraft)? onResume;
+  final Future<void> Function()? onPlayAgain;
 
   @override
   State<MatchHistoryScreen> createState() => _MatchHistoryScreenState();
@@ -16,17 +21,89 @@ class MatchHistoryScreen extends StatefulWidget {
 class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   final OnlineMatchApi _api = const OnlineMatchApi();
   late Future<List<OnlineMatchDto>> _online = _load();
+  List<SavedGameRecord> _cloudGames = [];
+  bool _historySyncFailed = false;
+  String _filter = 'All';
+  late Future<List<ComputerGameDraft>> _drafts = _loadDrafts();
+  Future<List<ComputerGameDraft>> _loadDrafts() async {
+    final owner = await ComputerGameStore.activeOwner();
+    if (owner.isEmpty) return [];
+    return ComputerGameStore.load(owner);
+  }
 
   Future<List<OnlineMatchDto>> _load() async {
     final StoredAuthSession? session = await const AuthSessionStore().read();
     if (session == null) return const <OnlineMatchDto>[];
+    try {
+      final drafts = await ComputerGameStore.history(session.token);
+      _cloudGames = drafts
+          .map((d) => SavedGameRecord(
+              mode: 'Play vs AI',
+              result: d.state['result'] as String,
+              detail: d.state['detail'] as String? ?? '',
+              moves:
+                  List<String>.from(d.state['moves'] as List).reversed.toList(),
+              playedAt: d.updatedAt,
+              whitePlayer: d.whiteName,
+              blackPlayer: d.blackName,
+              playerOutcome: d.state['outcome'] as String?,
+              moveReviews: (d.state['reviews'] as List? ?? [])
+                  .map((r) => SavedMoveReview.fromJson(
+                      Map<String, dynamic>.from(r as Map)))
+                  .toList()))
+          .toList();
+      _historySyncFailed = false;
+    } catch (_) {
+      _historySyncFailed = true;
+    }
     return _api.history(session.token);
   }
 
   Future<void> _refresh() async {
     final Future<List<OnlineMatchDto>> next = _load();
-    setState(() => _online = next);
-    await next;
+    setState(() {
+      _online = next;
+      _drafts = _loadDrafts();
+    });
+    try {
+      await next;
+    } catch (_) {/* FutureBuilder displays the retry state. */}
+  }
+
+  Future<void> _startNewGame() async {
+    await widget.onPlayAgain?.call();
+    if (mounted) await _refresh();
+  }
+
+  void _openCompleted(SavedGameRecord game) async {
+    await Navigator.of(context).push<void>(MaterialPageRoute(
+        builder: (context) => Scaffold(
+              appBar: AppBar(title: const Text('Saved game')),
+              body: ListView(padding: const EdgeInsets.all(16), children: [
+                Text(game.summary,
+                    style: Theme.of(context).textTheme.titleLarge),
+                Text('${game.result} · ${_formatDate(game.playedAt)}'),
+                Text(game.detail),
+                Wrap(spacing: 8, children: [
+                  FilledButton(
+                      onPressed: () => showAdaptiveAiReview(context,
+                          report: AiReviewReport.fromMoves(game.moves,
+                              newestFirst: false,
+                              result: game.result,
+                              knownReviews: game.moveReviews)),
+                      child: const Text('AI Review')),
+                  if (game.mode == 'Play vs AI')
+                    TextButton(
+                        onPressed:
+                            widget.onPlayAgain == null ? null : _startNewGame,
+                        child: const Text('Play Again')),
+                ]),
+                const Text('Moves'),
+                ...game.moves.indexed.map((m) =>
+                    ListTile(leading: Text('${m.$1 + 1}'), title: Text(m.$2))),
+              ]),
+            )));
+    if (mounted) await _refresh();
   }
 
   @override
@@ -34,69 +111,158 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('MATCH HISTORY'),
+        title: const Text('MY GAMES'),
         backgroundColor: const Color(0xD9071827),
       ),
-      body: RefreshIndicator(
-        onRefresh: _refresh,
-        child: FutureBuilder<List<OnlineMatchDto>>(
-          future: _online,
-          builder: (BuildContext context,
-              AsyncSnapshot<List<OnlineMatchDto>> snapshot) {
-            final List<OnlineMatchDto> online =
-                snapshot.data ?? const <OnlineMatchDto>[];
-            final List<SavedGameRecord> local = LocalGameArchive.games;
-            if (snapshot.connectionState == ConnectionState.waiting &&
-                online.isEmpty) {
-              return const SkeletonPage(rows: 5);
-            }
-            if (snapshot.hasError && online.isEmpty && local.isEmpty) {
-              return _HistoryMessage(
-                icon: Icons.cloud_off_rounded,
-                message: 'Match history could not be loaded. Pull to retry.',
-                detail: '${snapshot.error}',
-              );
-            }
-            if (online.isEmpty && local.isEmpty) {
-              return const _HistoryMessage(
-                icon: Icons.history_rounded,
-                message: 'Your completed matches will appear here.',
-              );
-            }
-            return ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-              children: <Widget>[
-                if (online.isNotEmpty) ...<Widget>[
-                  const _Heading('ONLINE ARENA'),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Tap a completed game to replay every move.',
-                    style: TextStyle(color: Color(0xFF8FA5B1), fontSize: 12),
-                  ),
-                  const SizedBox(height: 10),
-                  ...online.map(
-                    (OnlineMatchDto match) => _OnlineHistoryCard(
-                      match,
-                      onTap: () => Navigator.of(context).push<void>(
-                        MaterialPageRoute<void>(
-                          builder: (_) => OnlineMatchReplayScreen(match: match),
+      body: Column(children: [
+        FutureBuilder<List<ComputerGameDraft>>(
+            future: _drafts,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return ListTile(
+                    title: const Text('Saved game could not sync'),
+                    trailing: IconButton(
+                        icon: const Icon(Icons.refresh), onPressed: _refresh));
+              }
+              if (!snapshot.hasData) return const LinearProgressIndicator();
+              if (snapshot.data!.isEmpty) {
+                return ListTile(
+                    title: const Text('No paused computer game'),
+                    trailing: TextButton(
+                        onPressed:
+                            widget.onPlayAgain == null ? null : _startNewGame,
+                        child: const Text('New Game')));
+              }
+              final draft = snapshot.data!.first;
+              return ListTile(
+                  title: const Text('Continue computer game'),
+                  subtitle: Text(
+                      '${draft.whiteName} vs ${draft.blackName} · ${draft.plyCount} half-moves · Level ${draft.level.toInt()}'),
+                  trailing: FilledButton(
+                      onPressed: widget.onResume == null
+                          ? null
+                          : () async {
+                              await widget.onResume!(draft);
+                              if (mounted) await _refresh();
+                            },
+                      child: const Text('Continue')));
+            }),
+        Expanded(
+            child: RefreshIndicator(
+          onRefresh: _refresh,
+          child: FutureBuilder<List<OnlineMatchDto>>(
+            future: _online,
+            builder: (BuildContext context,
+                AsyncSnapshot<List<OnlineMatchDto>> snapshot) {
+              final List<OnlineMatchDto> online =
+                  snapshot.data ?? const <OnlineMatchDto>[];
+              final List<SavedGameRecord> local = [
+                ..._cloudGames,
+                ...LocalGameArchive.games.where((g) => !_cloudGames.any((c) =>
+                    c.summary == g.summary &&
+                    c.moves.join(',') == g.moves.join(',') &&
+                    c.playedAt.difference(g.playedAt).inSeconds.abs() < 120))
+              ]..sort((a, b) => b.playedAt.compareTo(a.playedAt));
+              if (snapshot.connectionState == ConnectionState.waiting &&
+                  online.isEmpty &&
+                  local.isEmpty) {
+                return const SkeletonPage(rows: 5);
+              }
+              if (snapshot.hasError && online.isEmpty && local.isEmpty) {
+                return _HistoryMessage(
+                  icon: Icons.cloud_off_rounded,
+                  message: 'Match history could not be loaded. Pull to retry.',
+                  detail: '${snapshot.error}',
+                );
+              }
+              if (online.isEmpty && local.isEmpty) {
+                return const _HistoryMessage(
+                  icon: Icons.history_rounded,
+                  message: 'Your completed matches will appear here.',
+                );
+              }
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                children: <Widget>[
+                  if (_historySyncFailed || snapshot.hasError)
+                    const Text(
+                        'Some account history could not sync. Pull to retry.'),
+                  Builder(builder: (_) {
+                    final outcomes = [
+                      ...local
+                          .where((g) =>
+                              g.mode == 'Play vs AI' || g.mode == '2 Players')
+                          .map((g) => g.playerOutcome),
+                      ...online
+                          .where((g) =>
+                              ['1-0', '0-1', '1/2-1/2'].contains(g.result))
+                          .map((g) => _MatchPresentation(g).draw
+                              ? 'draw'
+                              : _MatchPresentation(g).won
+                                  ? 'win'
+                                  : 'loss')
+                    ];
+                    final wins = outcomes.where((o) => o == 'win').length;
+                    final losses = outcomes.where((o) => o == 'loss').length;
+                    final draws = outcomes.where((o) => o == 'draw').length;
+                    final total = wins + losses + draws;
+                    final gamesPlayed = outcomes.length;
+                    return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                            'Recorded matches: $gamesPlayed games · $wins wins · $losses losses · $draws draws · ${total == 0 ? 0 : (wins * 100 / total).round()}% wins'));
+                  }),
+                  Wrap(
+                      spacing: 6,
+                      children: ['All', 'Computer', 'Local', 'Online']
+                          .map((f) => ChoiceChip(
+                              label: Text(f),
+                              selected: _filter == f,
+                              onSelected: (_) => setState(() => _filter = f)))
+                          .toList()),
+                  const SizedBox(height: 12),
+                  if (online.isNotEmpty &&
+                      (_filter == 'All' || _filter == 'Online')) ...<Widget>[
+                    const _Heading('ONLINE ARENA'),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Tap a completed game to replay every move.',
+                      style: TextStyle(color: Color(0xFF8FA5B1), fontSize: 12),
+                    ),
+                    const SizedBox(height: 10),
+                    ...online.map(
+                      (OnlineMatchDto match) => _OnlineHistoryCard(
+                        match,
+                        onTap: () => Navigator.of(context).push<void>(
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                OnlineMatchReplayScreen(match: match),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 20),
+                  ],
+                  if (local.isNotEmpty && _filter != 'Online') ...<Widget>[
+                    const _Heading('SAVED GAMES'),
+                    const SizedBox(height: 10),
+                    ...local
+                        .where((g) =>
+                            _filter == 'All' ||
+                            (_filter == 'Computer'
+                                ? g.mode == 'Play vs AI'
+                                : g.mode == '2 Players'))
+                        .map((g) => GestureDetector(
+                            onTap: () => _openCompleted(g),
+                            child: _LocalHistoryCard(g))),
+                  ],
                 ],
-                if (local.isNotEmpty) ...<Widget>[
-                  const _Heading('ON THIS DEVICE'),
-                  const SizedBox(height: 10),
-                  ...local.map(_LocalHistoryCard.new),
-                ],
-              ],
-            );
-          },
-        ),
-      ),
+              );
+            },
+          ),
+        )),
+      ]),
     );
   }
 }

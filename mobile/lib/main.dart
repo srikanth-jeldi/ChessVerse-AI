@@ -16,6 +16,7 @@ import 'core/coach_localizations.dart';
 import 'core/coach_extra_localizations.dart';
 import 'core/live_coach_localizations.dart';
 import 'core/analysis_dashboard_localizations.dart';
+import 'core/computer_game_store.dart';
 import 'core/review_narrative_localizations.dart';
 import 'core/ads/rewarded_coin_service.dart';
 import 'core/ads/post_match_ad_service.dart';
@@ -809,7 +810,13 @@ class _SplashGateState extends State<SplashGate> {
         onFriendsGame: () => _openFriendPlayChooser(context),
         onAnalysis: () => _push(context, const AnalysisScreen()),
         onPuzzles: () => setState(() => _primaryDestination = 2),
-        onSavedGames: () => _push(context, const MatchHistoryScreen()),
+        onSavedGames: () => _push(
+            context,
+            MatchHistoryScreen(
+              onResume: (draft) =>
+                  _openGame(context, GameMode.computer, resumeDraft: draft),
+              onPlayAgain: () => _chooseSideAndOpen(context, GameMode.computer),
+            )),
         onRankings: () => _push(
           context,
           LeaderboardScreen(
@@ -981,6 +988,14 @@ class _SplashGateState extends State<SplashGate> {
                 selected: desktopSections[_primaryDestination],
                 onHome: () => selectDestination(0),
                 onPlay: () => selectDestination(1),
+                onMyGames: () => _push(
+                    context,
+                    MatchHistoryScreen(
+                      onResume: (draft) => _openGame(context, GameMode.computer,
+                          resumeDraft: draft),
+                      onPlayAgain: () =>
+                          _chooseSideAndOpen(context, GameMode.computer),
+                    )),
                 onPuzzles: () => selectDestination(2),
                 onLearn: () => selectDestination(3),
                 onProfile: () => selectDestination(4),
@@ -1376,7 +1391,43 @@ class _SplashGateState extends State<SplashGate> {
     OnlineMatchDto? initialOnlineMatch,
     String? initialAuthToken,
     String? aiOpponentName,
-  }) {
+    ComputerGameDraft? resumeDraft,
+  }) async {
+    if (mode == GameMode.computer && !_isGuest) {
+      try {
+        final owner = await ComputerGameStore.activeOwner();
+        final saved = await ComputerGameStore.load(owner);
+        if (!context.mounted) return;
+        if (resumeDraft == null && saved.isNotEmpty) {
+          final replace = await showDialog<bool>(
+              context: context,
+              builder: (dialogContext) => AlertDialog(
+                    title: const Text('Replace paused game?'),
+                    content: const Text(
+                        'Starting a new computer game removes your paused game from this account. Completed games stay in My Games.'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('Cancel')),
+                      FilledButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          child: const Text('New Game'))
+                    ],
+                  ));
+          if (replace != true) return;
+        }
+        await ComputerGameStore.prepare(owner, resumeDraft,
+            replacing: saved.isEmpty ? null : saved.first);
+        if (!context.mounted) return;
+      } catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text(
+                  'Could not open saved game. Check your connection and refresh My Games.')));
+        }
+        return;
+      }
+    }
     unawaited(DailyReminderService.instance.recordPlayOpened());
     unawaited(AppAnalytics.logGameStarted(
       mode: mode.name,
@@ -1403,6 +1454,7 @@ class _SplashGateState extends State<SplashGate> {
         initialOnlineMatch: initialOnlineMatch,
         initialAuthToken: initialAuthToken,
         aiOpponentName: aiOpponentName,
+        resumeDraft: resumeDraft,
         onLogout: () => _logout(context),
         onDisplayNameChanged: _updateDisplayName,
       ),
@@ -3719,6 +3771,7 @@ class GameScreen extends StatefulWidget {
     this.initialOnlineMatch,
     this.initialAuthToken,
     this.aiOpponentName,
+    this.resumeDraft,
     this.onlineApi,
     this.onLogout,
     this.onDisplayNameChanged,
@@ -3740,6 +3793,7 @@ class GameScreen extends StatefulWidget {
   final OnlineMatchDto? initialOnlineMatch;
   final String? initialAuthToken;
   final String? aiOpponentName;
+  final ComputerGameDraft? resumeDraft;
   final OnlineMatchApi? onlineApi;
   final Future<void> Function()? onLogout;
   final Future<void> Function(String displayName)? onDisplayNameChanged;
@@ -3749,6 +3803,220 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
+  String _draftId = DateTime.now().microsecondsSinceEpoch.toString();
+  String? _draftOwner;
+  String? _lastDraftFingerprint;
+  bool _computerPaused = false;
+  bool _draftConflict = false;
+  bool _draftSaveWarningShown = false;
+  Future<void>? _draftWrite;
+  bool _lastSaveOkay = true;
+  bool _allowComputerExit = false;
+  bool _leavingComputerGame = false;
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    if (_draftOwner != null) scheduleMicrotask(() => _persistComputerDraft());
+  }
+
+  Map<String, dynamic> _encodePosition(GameSnapshot snapshot) => {
+        'pieces': snapshot.pieces.map((square, piece) =>
+            MapEntry(square, '${piece.white ? 'w' : 'b'}${piece.code}')),
+        'moves': List<String>.from(snapshot.moves),
+        'capturedWhite': snapshot.capturedWhite.map((p) => p.code).toList(),
+        'capturedBlack': snapshot.capturedBlack.map((p) => p.code).toList(),
+        'coachNote': snapshot.coachNote,
+        'lastFrom': snapshot.lastFromSquare,
+        'lastTo': snapshot.lastToSquare,
+        'lastCapture': snapshot.lastCaptureSquare,
+        'whiteSeconds': snapshot.whiteSeconds,
+        'blackSeconds': snapshot.blackSeconds,
+      };
+
+  GameSnapshot _decodePosition(Map<String, dynamic> data) => GameSnapshot(
+        pieces: (data['pieces'] as Map).map((square, value) => MapEntry(
+            square as String,
+            ChessPiece((value as String).substring(1), value.startsWith('w')))),
+        moves: List<String>.from(data['moves'] as List),
+        capturedWhite: (data['capturedWhite'] as List? ?? [])
+            .map((p) => ChessPiece(p as String, true))
+            .toList(),
+        capturedBlack: (data['capturedBlack'] as List? ?? [])
+            .map((p) => ChessPiece(p as String, false))
+            .toList(),
+        coachNote: data['coachNote'] as String? ?? 'Select a piece to begin',
+        lastFromSquare: data['lastFrom'] as String?,
+        lastToSquare: data['lastTo'] as String?,
+        lastCaptureSquare: data['lastCapture'] as String?,
+        whiteSeconds: (data['whiteSeconds'] as num).toInt(),
+        blackSeconds: (data['blackSeconds'] as num).toInt(),
+      );
+
+  GameSnapshot get _currentPosition => GameSnapshot(
+      pieces: _pieces,
+      moves: _moves,
+      capturedWhite: _capturedWhite,
+      capturedBlack: _capturedBlack,
+      coachNote: _coachNote,
+      lastFromSquare: _lastFromSquare,
+      lastToSquare: _lastToSquare,
+      lastCaptureSquare: _lastCaptureSquare,
+      whiteSeconds: _whiteSeconds,
+      blackSeconds: _blackSeconds);
+
+  Future<void> _persistComputerDraft({bool force = false}) async {
+    if (_draftWrite != null) {
+      if (!force) return;
+      await _draftWrite;
+    }
+    final write = _writeComputerDraft(force: force);
+    _draftWrite = write;
+    try {
+      await write;
+    } finally {
+      if (identical(_draftWrite, write)) _draftWrite = null;
+    }
+  }
+
+  Future<void> _writeComputerDraft({bool force = false}) async {
+    final owner = _draftOwner;
+    if (owner == null ||
+        owner.isEmpty ||
+        _gameMode != GameMode.computer ||
+        !_signedIn ||
+        widget.initiallyGuest ||
+        _draftConflict) {
+      return;
+    }
+    final id = _draftId;
+    try {
+      if (_gameResultTitle != null) {
+        if (_lastDraftFingerprint == 'finished') return;
+        _lastDraftFingerprint = 'finished';
+        await ComputerGameStore.finish(
+            owner,
+            ComputerGameDraft(id: id, updatedAt: DateTime.now(), state: {
+              ..._encodePosition(_currentPosition),
+              'version': 1,
+              'humanWhite': _humanPlaysWhite,
+              'level': _aiLevel,
+              'whiteName': _whitePlayerName,
+              'blackName': _blackPlayerName,
+              'result': _gameResultTitle,
+              'detail': _gameResultDetail,
+              'outcome': playerOutcomeForResult(_gameResultTitle!,
+                  humanPlaysWhite: _humanPlaysWhite, tracksPlayer: true),
+              'reviews': _moveReviews.map((r) => r.toJson()).toList(),
+            }));
+        _lastSaveOkay = true;
+        return;
+      }
+      // Never store an incomplete promotion decision; the prior legal position remains resumable.
+      if (_pieces.entries.any((e) =>
+          e.value.code == 'P' &&
+          (e.key.endsWith('1') || e.key.endsWith('8')))) {
+        return;
+      }
+      final fingerprint =
+          '${_moves.join(',')}|${_pieces.entries.map((e) => '${e.key}${e.value.code}').join(',')}|${_whiteSeconds ~/ 5}|${_blackSeconds ~/ 5}|${_moveReviews.length}';
+      if (!force && fingerprint == _lastDraftFingerprint) return;
+      final state = <String, dynamic>{
+        ..._encodePosition(_currentPosition),
+        'version': 1,
+        'humanWhite': _humanPlaysWhite,
+        'level': _aiLevel,
+        'whiteName': _whitePlayerName,
+        'blackName': _blackPlayerName,
+        'history': _history.map(_encodePosition).toList(),
+        'reviews': _moveReviews.map((r) => r.toJson()).toList(),
+        'scores': List<int>.from(_playerMoveScores),
+        'mistakes': List<String>.from(_importantMistakes),
+        'turningPoint': _turningPoint,
+        'lastPlayerMove': _lastPlayerMove,
+        'lastPlayerCoachNote': _lastPlayerCoachNote,
+      };
+      _lastDraftFingerprint = fingerprint;
+      await ComputerGameStore.save(owner,
+          ComputerGameDraft(id: id, updatedAt: DateTime.now(), state: state));
+      _lastSaveOkay = true;
+    } on ComputerGameConflict {
+      _draftConflict = true;
+      _computerPaused = true;
+      _aiMoveEpoch++;
+      if (mounted) {
+        await showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (dialogContext) => AlertDialog(
+                  title: const Text('Game changed on another device'),
+                  content: const Text(
+                      'This board can no longer save changes. Open My Games to continue the latest position.'),
+                  actions: [
+                    TextButton(
+                        onPressed: () {
+                          Navigator.pop(dialogContext);
+                          Navigator.of(context).maybePop();
+                        },
+                        child: const Text('Back to My Games'))
+                  ],
+                ));
+      }
+    } catch (_) {
+      _lastSaveOkay = false;
+      _lastDraftFingerprint = null;
+      if (mounted && !_draftSaveWarningShown) {
+        _draftSaveWarningShown = true;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Game is not synced. Reconnect before leaving to continue on another device.')));
+      }
+    }
+  }
+
+  void _restoreComputerDraft(ComputerGameDraft draft) {
+    final data = draft.state;
+    final position = _decodePosition(data);
+    _draftId = draft.id;
+    _pieces = position.pieces;
+    _moves
+      ..clear()
+      ..addAll(position.moves);
+    _capturedWhite
+      ..clear()
+      ..addAll(position.capturedWhite);
+    _capturedBlack
+      ..clear()
+      ..addAll(position.capturedBlack);
+    _whiteSeconds = position.whiteSeconds;
+    _blackSeconds = position.blackSeconds;
+    _coachNote = position.coachNote;
+    _lastFromSquare = position.lastFromSquare;
+    _lastToSquare = position.lastToSquare;
+    _lastCaptureSquare = position.lastCaptureSquare;
+    _humanPlaysWhite = draft.humanWhite;
+    _aiLevel = draft.level;
+    _whitePlayerName = draft.whiteName;
+    _blackPlayerName = draft.blackName;
+    _history
+      ..clear()
+      ..addAll((data['history'] as List? ?? []).map(
+          (row) => _decodePosition(Map<String, dynamic>.from(row as Map))));
+    _moveReviews
+      ..clear()
+      ..addAll((data['reviews'] as List? ?? []).map((row) =>
+          SavedMoveReview.fromJson(Map<String, dynamic>.from(row as Map))));
+    _playerMoveScores
+      ..clear()
+      ..addAll(List<int>.from(data['scores'] as List? ?? []));
+    _importantMistakes
+      ..clear()
+      ..addAll(List<String>.from(data['mistakes'] as List? ?? []));
+    _turningPoint = data['turningPoint'] as String?;
+    _lastPlayerMove = data['lastPlayerMove'] as String?;
+    _lastPlayerCoachNote = data['lastPlayerCoachNote'] as String?;
+  }
+
   static const AuthApi _authApi = AuthApi();
   static const AuthSessionStore _sessionStore = AuthSessionStore();
   static const EngineApi _engineApi = EngineApi();
@@ -3948,6 +4216,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
     _whitePlayerPhotoUrl = widget.initialProfilePhotoUrl;
     _applyPlayerSideNames(playerName);
+    if (_gameMode == GameMode.computer && widget.resumeDraft != null) {
+      _restoreComputerDraft(widget.resumeDraft!);
+    }
+    unawaited(ComputerGameStore.activeOwner().then((owner) {
+      if (!mounted) return;
+      _draftOwner = owner;
+      unawaited(_persistComputerDraft(force: true));
+    }));
     if (_gameMode == GameMode.daily) {
       _applyDailyCompletionState();
       if (!_dailyCompletedToday) {
@@ -3959,7 +4235,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _coachNote =
           '${_activePuzzle.title}: checkmate in ${_dailyChallenge.playerMoveGoal} moves.';
     }
-    if (_gameMode == GameMode.computer && !_humanPlaysWhite) {
+    if (_gameMode == GameMode.computer &&
+        (_moves.length.isEven != _humanPlaysWhite)) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleAiMove());
     }
     WidgetsBinding.instance.addPostFrameCallback((_) => _restartTurnReminder());
@@ -3983,6 +4260,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (!mounted) {
         return;
       }
+      if (_gameMode == GameMode.computer && _computerPaused) return;
       if (_gameResultTitle != null) {
         if (_gameMode == GameMode.daily &&
             _gameResultTitle!.toLowerCase().contains('challenge complete')) {
@@ -4096,6 +4374,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_persistComputerDraft(force: true));
     AppLanguageController.effectiveLanguageChanges
         .removeListener(_onCoachLanguageChanged);
     _clockTimer?.cancel();
@@ -4119,6 +4398,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _computerPaused = state != AppLifecycleState.resumed;
+    if (_computerPaused && _gameMode == GameMode.computer) {
+      _aiMoveEpoch++;
+      _aiThinking = false;
+      unawaited(_persistComputerDraft(force: true));
+    }
     if (state == AppLifecycleState.resumed) {
       if (_gameMode == GameMode.online &&
           _onlineMatch != null &&
@@ -4158,6 +4443,43 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: _gameMode != GameMode.computer ||
+          widget.initiallyGuest ||
+          _allowComputerExit ||
+          _draftConflict,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) unawaited(_pauseComputerAndLeave());
+      },
+      child: _buildGameScreen(context),
+    );
+  }
+
+  Future<void> _pauseComputerAndLeave() async {
+    if (_leavingComputerGame) return;
+    _leavingComputerGame = true;
+    _computerPaused = true;
+    _aiMoveEpoch++;
+    _aiThinking = false;
+    _draftOwner ??= await ComputerGameStore.activeOwner();
+    await _persistComputerDraft(force: true);
+    if (!mounted) return;
+    if (!_lastSaveOkay && !_draftConflict) {
+      _leavingComputerGame = false;
+      _computerPaused = false;
+      _recoverComputerTurnIfNeeded();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Could not pause safely. Reconnect, then go back to save your game.')));
+      return;
+    }
+    setState(() => _allowComputerExit = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  Widget _buildGameScreen(BuildContext context) {
     // Online matchmaking is opened immediately after this route is created.
     // Do not build the local chess position underneath it: on slower phones
     // and during the route transition that board used to flash behind the
@@ -4331,6 +4653,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       tournamentName: _onlineMatch?.tournamentName,
                       tournamentRound: _onlineMatch?.tournamentRound,
                       compactOverlay: compactLandscape,
+                      bottomAction: !wide &&
+                              !compactLandscape &&
+                              _signedIn &&
+                              _onlineMatch?.isActive == true
+                          ? _buildQuickChatButton()
+                          : null,
                     )
                   : BoardStage(palette: palette, child: board);
 
@@ -4627,16 +4955,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                         ),
                       if (_signedIn &&
                           _gameMode == GameMode.online &&
-                          _onlineMatch?.isActive == true)
+                          _onlineMatch?.isActive == true &&
+                          (wide ||
+                              compactLandscape ||
+                              _quickChatMessage != null))
                         Positioned(
                           top: wide
                               ? wideHeaderHeight + 18
                               : compactLandscape
                                   ? mobileHeaderHeight + 8
-                                  : mobileHeaderHeight +
-                                      arenaRailsHeight +
-                                      boardDimension -
-                                      58,
+                                  : mobileHeaderHeight + 100,
                           right: wide ? widePanelWidth + 34 : 10,
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -4662,19 +4990,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                         fontWeight: FontWeight.w800),
                                   ),
                                 ),
-                              IconButton.filled(
-                                key: const ValueKey<String>(
-                                    'online-quick-chat-button'),
-                                tooltip: 'Quick game chat',
-                                onPressed: _showQuickChatPicker,
-                                style: IconButton.styleFrom(
-                                  backgroundColor: const Color(0xEE08283A),
-                                  foregroundColor: const Color(0xFF59E5D2),
-                                  side: const BorderSide(
-                                      color: Color(0xFF59E5D2)),
-                                ),
-                                icon: const Icon(Icons.emoji_emotions_outlined),
-                              ),
+                              if (wide || compactLandscape)
+                                _buildQuickChatButton(),
                             ],
                           ),
                         ),
@@ -5328,6 +5645,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Future<void> _logout() async {
     final Future<void> Function()? onLogout = widget.onLogout;
+    await _persistComputerDraft(force: true);
+    if (!mounted || !_lastSaveOkay) return;
     if (onLogout != null) {
       await onLogout();
       return;
@@ -5355,7 +5674,50 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     });
   }
 
-  void _changeGameMode(GameMode mode) {
+  void _changeGameMode(GameMode mode) async {
+    if (mode == _gameMode) {
+      _confirmNewGame();
+      return;
+    }
+    await _persistComputerDraft(force: true);
+    if (!mounted || !_lastSaveOkay || _draftConflict) return;
+    if (mode == GameMode.computer &&
+        _gameMode != GameMode.computer &&
+        !widget.initiallyGuest) {
+      try {
+        final owner = await ComputerGameStore.activeOwner();
+        final saved = await ComputerGameStore.load(owner);
+        if (!mounted) return;
+        if (saved.isNotEmpty) {
+          final replace = await showDialog<bool>(
+              context: context,
+              builder: (dialogContext) => AlertDialog(
+                    title: const Text('Replace paused computer game?'),
+                    content: const Text(
+                        'Your account can keep one paused computer game. Completed history stays saved.'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('Cancel')),
+                      FilledButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          child: const Text('New Game'))
+                    ],
+                  ));
+          if (replace != true) return;
+        }
+        await ComputerGameStore.prepare(owner, null,
+            replacing: saved.isEmpty ? null : saved.first);
+        if (!mounted) return;
+        _draftOwner = owner;
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Could not sync My Games. Please retry.')));
+        }
+        return;
+      }
+    }
     if (mode == GameMode.online) {
       _showOnlineMatchmakingInfo();
       return;
@@ -5369,7 +5731,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
       _applyPlayerSideNames(_playerDisplayName);
     });
-    _reset();
+    _reset(confirmed: true);
   }
 
   void _openDailyChallenge() {
@@ -5746,6 +6108,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _handleSquareTap(String square) {
+    if (_draftConflict || (_computerPaused && _gameMode == GameMode.computer)) {
+      return;
+    }
     // A playable game must always contain exactly one king per side. Never
     // let a malformed/restored state continue accepting moves as seen in the
     // reported king-less board recording.
@@ -6204,6 +6569,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _scheduleAiMove() {
+    if (_draftConflict || _computerPaused) return;
     if (_isTacticsMode) {
       _scheduleDailyReply();
       return;
@@ -6849,7 +7215,33 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     return ParsedMove(cleaned.substring(0, 2), cleaned.substring(2, 4));
   }
 
-  void _reset() {
+  void _reset({bool confirmed = false}) async {
+    if (_draftConflict) return;
+    if (!confirmed &&
+        _gameMode == GameMode.computer &&
+        _moves.isNotEmpty &&
+        _gameResultTitle == null) {
+      final replace = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+                title: const Text('Replace this game?'),
+                content: const Text(
+                    'Your unfinished computer game will be replaced. Completed history is kept.'),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(dialogContext, false),
+                      child: const Text('Cancel')),
+                  FilledButton(
+                      onPressed: () => Navigator.pop(dialogContext, true),
+                      child: const Text('New Game'))
+                ],
+              ));
+      if (replace != true || !mounted) return;
+    }
+    if (!confirmed) await _persistComputerDraft(force: true);
+    if (!mounted || _draftConflict || !_lastSaveOkay) return;
+    _draftId = DateTime.now().microsecondsSinceEpoch.toString();
+    _lastDraftFingerprint = null;
     if (_gameMode == GameMode.online && _onlineMatch != null) {
       unawaited(_refreshOnlineMatch(forceBoardReplay: true));
       return;
@@ -6941,6 +7333,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _confirmNewGame() async {
+    if (_gameMode == GameMode.computer) {
+      _reset();
+      return;
+    }
     if (_gameMode == GameMode.online && _onlineMatch?.status == 'FINISHED') {
       await _startFreshOnlineGame();
       return;
@@ -7024,10 +7420,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   bool get _isHumanTurnForIdleHint {
-    if (!_showMoveHints || _gameResultTitle != null || _aiThinking) {
+    // Challenges must not reveal a move simply because the player takes time.
+    // Explicitly requested hints remain available through their own controls.
+    if (_isTacticsMode ||
+        !_showMoveHints ||
+        _gameResultTitle != null ||
+        _aiThinking) {
       return false;
     }
-    if (_isTacticsMode && _dailyPlyIndex.isOdd) return false;
     return switch (_gameMode) {
       GameMode.computer => _moves.length.isEven == _humanPlaysWhite,
       GameMode.online => _onlineMatch?.isActive == true &&
@@ -8121,6 +8521,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       'value': value,
     }));
   }
+
+  Widget _buildQuickChatButton() => IconButton.filled(
+        key: const ValueKey<String>('online-quick-chat-button'),
+        tooltip: 'Quick game chat',
+        onPressed: _showQuickChatPicker,
+        style: IconButton.styleFrom(
+          backgroundColor: const Color(0xEE08283A),
+          foregroundColor: const Color(0xFF59E5D2),
+          side: const BorderSide(color: Color(0xFF59E5D2)),
+        ),
+        icon: const Icon(Icons.emoji_emotions_outlined),
+      );
 
   Future<void> _showQuickChatPicker() async {
     const List<String> phrases = <String>[
@@ -11505,6 +11917,7 @@ class _OnlineArenaBoard extends StatelessWidget {
     this.tournamentName,
     this.tournamentRound,
     this.compactOverlay = false,
+    this.bottomAction,
   });
 
   final Widget board;
@@ -11522,6 +11935,7 @@ class _OnlineArenaBoard extends StatelessWidget {
   final String? tournamentName;
   final int? tournamentRound;
   final bool compactOverlay;
+  final Widget? bottomAction;
 
   @override
   Widget build(BuildContext context) {
@@ -11594,10 +12008,36 @@ class _OnlineArenaBoard extends StatelessWidget {
         const SizedBox(height: 4),
         Expanded(child: board),
         const SizedBox(height: 4),
-        SizedBox(height: 48, child: flipped ? black : white),
+        SizedBox(
+          height: 48,
+          child: OnlineQuickChatPlayerRow(
+            playerRail: flipped ? black : white,
+            action: bottomAction,
+          ),
+        ),
       ],
     );
   }
+}
+
+/// Reserve space beside the player clock instead of painting chat over it.
+class OnlineQuickChatPlayerRow extends StatelessWidget {
+  const OnlineQuickChatPlayerRow(
+      {required this.playerRail, this.action, super.key});
+  final Widget playerRail;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) => action == null
+      ? playerRail
+      : Row(
+          textDirection: TextDirection.ltr,
+          children: [
+            Expanded(child: playerRail),
+            const SizedBox(width: 6),
+            SizedBox(width: 48, height: 48, child: action),
+          ],
+        );
 }
 
 class _OnlinePlayerRail extends StatelessWidget {
