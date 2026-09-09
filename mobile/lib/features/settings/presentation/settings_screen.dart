@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/audio/chess_sound_service.dart';
 import '../../../core/app_preferences.dart';
@@ -43,6 +44,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   static const AppPreferences _preferences = AppPreferences();
+  late final Future<PackageInfo> _packageInfo = PackageInfo.fromPlatform();
   bool _soundEnabled = true;
   bool _hintsEnabled = true;
   bool _coachEnabled = true;
@@ -262,14 +264,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           horizontal: desktop ? 26 : 16,
                           vertical: desktop ? 8 : 6,
                         ),
-                        child: _ActionRow(
-                          icon: Icons.help_outline_rounded,
-                          title: 'Help & Support',
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const HelpSupportScreen(),
+                        child: Column(
+                          children: <Widget>[
+                            _ActionRow(
+                              icon: Icons.help_outline_rounded,
+                              title: 'Help & Support',
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const HelpSupportScreen(),
+                                ),
+                              ),
                             ),
-                          ),
+                            const Divider(color: AppColors.border),
+                            FutureBuilder<PackageInfo>(
+                              future: _packageInfo,
+                              builder:
+                                  (
+                                    BuildContext context,
+                                    AsyncSnapshot<PackageInfo> snapshot,
+                                  ) {
+                                    final PackageInfo? info = snapshot.data;
+                                    return ListTile(
+                                      key: const ValueKey<String>(
+                                        'settings-app-version',
+                                      ),
+                                      contentPadding: EdgeInsets.zero,
+                                      leading: const _GoldIcon(
+                                        Icons.info_outline_rounded,
+                                      ),
+                                      title: const Text('ChessVerseAI'),
+                                      subtitle: Text(
+                                        info == null
+                                            ? 'Reading app version…'
+                                            : 'Version ${info.version} (Build ${info.buildNumber})',
+                                      ),
+                                    );
+                                  },
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 18),

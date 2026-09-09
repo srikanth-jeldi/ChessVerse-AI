@@ -47,20 +47,27 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     try {
       final drafts = await ComputerGameStore.history(session.token);
       _cloudGames = drafts
-          .map((d) => SavedGameRecord(
+          .map(
+            (d) => SavedGameRecord(
               mode: 'Play vs AI',
               result: d.state['result'] as String,
               detail: d.state['detail'] as String? ?? '',
-              moves:
-                  List<String>.from(d.state['moves'] as List).reversed.toList(),
+              moves: List<String>.from(
+                d.state['moves'] as List,
+              ).reversed.toList(),
               playedAt: d.updatedAt,
               whitePlayer: d.whiteName,
               blackPlayer: d.blackName,
               playerOutcome: d.state['outcome'] as String?,
               moveReviews: (d.state['reviews'] as List? ?? [])
-                  .map((r) => SavedMoveReview.fromJson(
-                      Map<String, dynamic>.from(r as Map)))
-                  .toList()))
+                  .map(
+                    (r) => SavedMoveReview.fromJson(
+                      Map<String, dynamic>.from(r as Map),
+                    ),
+                  )
+                  .toList(),
+            ),
+          )
           .toList();
       _historySyncFailed = false;
     } catch (_) {
@@ -77,7 +84,9 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     });
     try {
       await next;
-    } catch (_) {/* FutureBuilder displays the retry state. */}
+    } catch (_) {
+      /* FutureBuilder displays the retry state. */
+    }
   }
 
   Future<void> _startNewGame() async {
@@ -86,33 +95,50 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   }
 
   void _openCompleted(SavedGameRecord game) async {
-    await Navigator.of(context).push<void>(MaterialPageRoute(
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
         builder: (context) => Scaffold(
-              appBar: AppBar(title: const Text('Saved game')),
-              body: ListView(padding: const EdgeInsets.all(16), children: [
-                Text(game.summary,
-                    style: Theme.of(context).textTheme.titleLarge),
-                Text('${game.result} · ${_formatDate(game.playedAt)}'),
-                Text(game.detail),
-                Wrap(spacing: 8, children: [
+          appBar: AppBar(title: const Text('Saved game')),
+          body: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Text(game.summary, style: Theme.of(context).textTheme.titleLarge),
+              Text('${game.result} · ${_formatDate(game.playedAt)}'),
+              Text(game.detail),
+              Wrap(
+                spacing: 8,
+                children: [
                   FilledButton(
-                      onPressed: () => showAdaptiveAiReview(context,
-                          report: AiReviewReport.fromMoves(game.moves,
-                              newestFirst: false,
-                              result: game.result,
-                              knownReviews: game.moveReviews)),
-                      child: const Text('AI Review')),
+                    onPressed: () => showAdaptiveAiReview(
+                      context,
+                      report: AiReviewReport.fromMoves(
+                        game.moves,
+                        newestFirst: false,
+                        result: game.result,
+                        knownReviews: game.moveReviews,
+                      ),
+                    ),
+                    child: const Text('AI Review'),
+                  ),
                   if (game.mode == 'Play vs AI')
                     TextButton(
-                        onPressed:
-                            widget.onPlayAgain == null ? null : _startNewGame,
-                        child: const Text('Play Again')),
-                ]),
-                const Text('Moves'),
-                ...game.moves.indexed.map((m) =>
-                    ListTile(leading: Text('${m.$1 + 1}'), title: Text(m.$2))),
-              ]),
-            )));
+                      onPressed: widget.onPlayAgain == null
+                          ? null
+                          : _startNewGame,
+                      child: const Text('Play Again'),
+                    ),
+                ],
+              ),
+              const Text('Moves'),
+              ...game.moves.indexed.map(
+                (m) =>
+                    ListTile(leading: Text('${m.$1 + 1}'), title: Text(m.$2)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
     if (mounted) await _refresh();
   }
 
@@ -125,19 +151,21 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     }
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Row(children: [
-        DesktopAppSidebar(
-          selected: 'My Games',
-          onHome: () => navigate(0),
-          onPlay: () => navigate(1),
-          onMyGames: () {},
-          onPuzzles: () => navigate(2),
-          onLearn: () => navigate(3),
-          onProfile: () => navigate(4),
-          onFriends: () => navigate(5),
-        ),
-        Expanded(child: _buildPage(showBackButton: false)),
-      ]),
+      body: Row(
+        children: [
+          DesktopAppSidebar(
+            selected: 'My Games',
+            onHome: () => navigate(0),
+            onPlay: () => navigate(1),
+            onMyGames: () {},
+            onPuzzles: () => navigate(2),
+            onLearn: () => navigate(3),
+            onProfile: () => navigate(4),
+            onFriends: () => navigate(5),
+          ),
+          Expanded(child: _buildPage(showBackButton: false)),
+        ],
+      ),
     );
   }
 
@@ -149,24 +177,31 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
         title: const Text('MY GAMES'),
         backgroundColor: const Color(0xD9071827),
       ),
-      body: Column(children: [
-        FutureBuilder<List<ComputerGameDraft>>(
+      body: Column(
+        children: [
+          FutureBuilder<List<ComputerGameDraft>>(
             future: _drafts,
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return ListTile(
-                    title: const Text('Saved game could not sync'),
-                    trailing: IconButton(
-                        icon: const Icon(Icons.refresh), onPressed: _refresh));
+                  title: const Text('Saved game could not sync'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: _refresh,
+                  ),
+                );
               }
               if (!snapshot.hasData) return const LinearProgressIndicator();
               if (snapshot.data!.isEmpty) {
                 return ListTile(
-                    title: const Text('No paused computer game'),
-                    trailing: TextButton(
-                        onPressed:
-                            widget.onPlayAgain == null ? null : _startNewGame,
-                        child: const Text('New Game')));
+                  title: const Text('No paused computer game'),
+                  trailing: TextButton(
+                    onPressed: widget.onPlayAgain == null
+                        ? null
+                        : _startNewGame,
+                    child: const Text('New Game'),
+                  ),
+                );
               }
               final draft = snapshot.data!.first;
               return ListTile(
@@ -210,7 +245,8 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                           local.isEmpty) {
                         return _HistoryMessage(
                           icon: Icons.cloud_off_rounded,
-                          message: 'Match history could not be loaded. Pull to retry.',
+                          message:
+                              'Match history could not be loaded. Pull to retry.',
                           detail: '${snapshot.error}',
                         );
                       }
@@ -390,13 +426,13 @@ class _Heading extends StatelessWidget {
   final String label;
   @override
   Widget build(BuildContext context) => Text(
-        label,
-        style: const TextStyle(
-          color: AppColors.accentGold,
-          letterSpacing: 1.2,
-          fontWeight: FontWeight.w900,
-        ),
-      );
+    label,
+    style: const TextStyle(
+      color: AppColors.accentGold,
+      letterSpacing: 1.2,
+      fontWeight: FontWeight.w900,
+    ),
+  );
 }
 
 class _OnlineHistoryCard extends StatelessWidget {
@@ -484,58 +520,54 @@ class _LocalHistoryCard extends StatelessWidget {
   final SavedGameRecord game;
   @override
   Widget build(BuildContext context) => _HistoryShell(
-        accent: const Color(0xFF668CA2),
-        child: Row(
-          children: <Widget>[
-            const Icon(Icons.devices_rounded, color: Color(0xFF63D2B8)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(game.summary,
-                      style: const TextStyle(fontWeight: FontWeight.w800)),
-                  Text(
-                    '${game.mode} • ${game.moves.length} ply • ${_formatDate(game.playedAt)}',
-                    style:
-                        const TextStyle(color: Color(0xFF8FA5B1), fontSize: 11),
-                  ),
-                ],
+    accent: const Color(0xFF668CA2),
+    child: Row(
+      children: <Widget>[
+        const Icon(Icons.devices_rounded, color: Color(0xFF63D2B8)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                game.summary,
+                style: const TextStyle(fontWeight: FontWeight.w800),
               ),
-            ),
-            Text(game.result,
-                style: const TextStyle(fontWeight: FontWeight.w800)),
-          ],
+              Text(
+                '${game.mode} • ${game.moves.length} ply • ${_formatDate(game.playedAt)}',
+                style: const TextStyle(color: Color(0xFF8FA5B1), fontSize: 11),
+              ),
+            ],
+          ),
         ),
-      );
+        Text(game.result, style: const TextStyle(fontWeight: FontWeight.w800)),
+      ],
+    ),
+  );
 }
 
 class _HistoryShell extends StatelessWidget {
-  const _HistoryShell({
-    required this.accent,
-    required this.child,
-    this.onTap,
-  });
+  const _HistoryShell({required this.accent, required this.child, this.onTap});
   final Color accent;
   final Widget child;
   final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: const Color(0xE60C1D2B),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: accent.withValues(alpha: 0.5)),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(18),
-            onTap: onTap,
-            child: Padding(padding: const EdgeInsets.all(14), child: child),
-          ),
-        ),
-      );
+    margin: const EdgeInsets.only(bottom: 10),
+    decoration: BoxDecoration(
+      color: const Color(0xE60C1D2B),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: accent.withValues(alpha: 0.5)),
+    ),
+    child: Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Padding(padding: const EdgeInsets.all(14), child: child),
+      ),
+    ),
+  );
 }
 
 class OnlineMatchReplayScreen extends StatefulWidget {
@@ -566,8 +598,9 @@ class _OnlineMatchReplayScreenState extends State<OnlineMatchReplayScreen> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
-            final double boardSize =
-                constraints.maxWidth.clamp(280.0, 620.0).toDouble();
+            final double boardSize = constraints.maxWidth
+                .clamp(280.0, 620.0)
+                .toDouble();
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
               children: <Widget>[
@@ -592,19 +625,25 @@ class _OnlineMatchReplayScreenState extends State<OnlineMatchReplayScreen> {
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
                 Slider(
+                  key: const ValueKey<String>('game-replay-slider'),
                   value: _ply.toDouble(),
                   max: match.moves.length.toDouble().clamp(1, double.infinity),
-                  divisions: match.moves.isEmpty ? 1 : match.moves.length,
+                  divisions: match.moves.isEmpty ? null : match.moves.length,
                   label: '$_ply',
-                  onChanged: (double value) =>
-                      setState(() => _ply = value.round()),
+                  onChanged: match.moves.isEmpty
+                      ? null
+                      : (double value) => setState(
+                          () =>
+                              _ply = value.round().clamp(0, match.moves.length),
+                        ),
                 ),
                 Row(
                   children: <Widget>[
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed:
-                            _ply == 0 ? null : () => setState(() => _ply--),
+                        onPressed: _ply == 0
+                            ? null
+                            : () => setState(() => _ply--),
                         icon: const Icon(Icons.skip_previous_rounded),
                         label: const Text('Previous'),
                       ),
@@ -784,7 +823,7 @@ class _ReplayPositionBuilder {
 
 class _MatchPresentation {
   _MatchPresentation(this.match)
-      : white = match.yourColor.toLowerCase() == 'white' {
+    : white = match.yourColor.toLowerCase() == 'white' {
     final String result = match.result ?? '';
     won = (result == '1-0' && white) || (result == '0-1' && !white);
     draw = result == '1/2-1/2';
@@ -801,24 +840,27 @@ class _MatchPresentation {
   String get outcome => draw
       ? 'DRAW'
       : won
-          ? 'VICTORY'
-          : 'DEFEAT';
+      ? 'VICTORY'
+      : 'DEFEAT';
   String get reason => (match.resultReason ?? 'FINISHED')
       .replaceAll('_', ' ')
       .toLowerCase()
       .split(' ')
-      .map((String word) =>
-          word.isEmpty ? word : '${word[0].toUpperCase()}${word.substring(1)}')
+      .map(
+        (String word) => word.isEmpty
+            ? word
+            : '${word[0].toUpperCase()}${word.substring(1)}',
+      )
       .join(' ');
   Color get accent => draw
       ? AppColors.accentGold
       : won
-          ? const Color(0xFF63D2B8)
-          : const Color(0xFFF08A6A);
+      ? const Color(0xFF63D2B8)
+      : const Color(0xFFF08A6A);
   int? get ratingDelta =>
       match.ratingBefore == null || match.ratingAfter == null
-          ? null
-          : match.ratingAfter! - match.ratingBefore!;
+      ? null
+      : match.ratingAfter! - match.ratingBefore!;
 }
 
 class _PlayerAvatar extends StatelessWidget {
@@ -836,18 +878,19 @@ class _PlayerAvatar extends StatelessWidget {
     final String initials = clean.isEmpty
         ? '?'
         : clean
-            .split(RegExp(r'\s+'))
-            .take(2)
-            .map((String part) => part[0].toUpperCase())
-            .join();
+              .split(RegExp(r'\s+'))
+              .take(2)
+              .map((String part) => part[0].toUpperCase())
+              .join();
     final Uri? uri = Uri.tryParse(photoUrl ?? '');
     final bool networkPhoto =
         uri != null && (uri.scheme == 'https' || uri.scheme == 'http');
     return CircleAvatar(
       backgroundColor: color.withValues(alpha: 0.18),
       backgroundImage: networkPhoto ? NetworkImage(photoUrl!) : null,
-      child:
-          networkPhoto ? null : Text(initials, style: TextStyle(color: color)),
+      child: networkPhoto
+          ? null
+          : Text(initials, style: TextStyle(color: color)),
     );
   }
 }
