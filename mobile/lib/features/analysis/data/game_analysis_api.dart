@@ -192,8 +192,8 @@ class GameAnalysisApi {
           'clientRequestId': clientRequestId,
           'moves': moves,
           'depth': depth,
-          if (playerColor != null) 'playerColor': playerColor,
-          if (timeControl != null) 'timeControl': timeControl,
+          'playerColor': ?playerColor,
+          'timeControl': ?timeControl,
         },
       );
 

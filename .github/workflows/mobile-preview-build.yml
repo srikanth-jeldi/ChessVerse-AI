@@ -29,6 +29,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.47.2'
           cache: true
 
       - name: Install dependencies
@@ -40,7 +41,8 @@ jobs:
 
       - name: Run Flutter tests
         continue-on-error: true
-        run: flutter test
+        # Golden snapshots use the pinned Windows rasterization baseline.
+        run: flutter test --exclude-tags golden
 
       - name: Build Android debug APK
         run: flutter build apk --debug -t lib/gold_splash_main.dart

@@ -1313,20 +1313,13 @@ class _ChatScreenState extends State<_ChatScreen> {
   }
 
   Future<void> _attach({bool gifOnly = false}) async {
-    final FilePickerResult? result = await FilePicker.platform.pickFiles(
-      withData: true,
-      allowMultiple: false,
+    final PlatformFile? file = await FilePicker.pickFile(
       type: gifOnly ? FileType.custom : FileType.any,
       allowedExtensions: gifOnly ? const <String>['gif'] : null,
     );
-    if (result == null || result.files.isEmpty || !mounted) return;
-    final PlatformFile file = result.files.single;
-    final Uint8List? bytes = file.bytes;
-    if (bytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('This file could not be opened.')));
-      return;
-    }
+    if (file == null || !mounted) return;
+    final Uint8List bytes = await file.readAsBytes();
+    if (!mounted) return;
     if (bytes.length > 10 * 1024 * 1024) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Choose a file smaller than 10 MB.')));
@@ -1885,7 +1878,7 @@ class _OnlineMediaSearchState extends State<_OnlineMediaSearch> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
             scrollDirection: Axis.horizontal,
             itemCount: widget.fallbackStickers.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 6),
+            separatorBuilder: (_, _) => const SizedBox(width: 6),
             itemBuilder: (_, int index) => ActionChip(
               label: Text(widget.fallbackStickers[index]),
               onPressed: () => widget.onFallbackSticker
@@ -1943,7 +1936,7 @@ class _OnlineMediaSearchState extends State<_OnlineMediaSearch> {
                               ? BoxFit.contain
                               : BoxFit.cover,
                           gaplessPlayback: true,
-                          errorBuilder: (_, __, ___) => const Icon(
+                          errorBuilder: (_, _, _) => const Icon(
                               Icons.broken_image_outlined,
                               color: Color(0xFFAAB8C4)),
                         ),
@@ -2165,7 +2158,7 @@ class _GiphyChatMedia extends StatelessWidget {
       height: sticker ? 170 : 190,
       fit: sticker ? BoxFit.contain : BoxFit.cover,
       gaplessPlayback: true,
-      errorBuilder: (_, __, ___) => const SizedBox(
+      errorBuilder: (_, _, _) => const SizedBox(
           width: 170,
           height: 100,
           child: Center(child: Icon(Icons.broken_image_outlined))),
@@ -2312,9 +2305,9 @@ class _ChatAttachmentState extends State<_ChatAttachment> {
     setState(() => _saving = true);
     try {
       final List<int> bytes = await _bytes;
-      await FilePicker.platform.saveFile(
+      await FilePicker.saveFile(
         dialogTitle: 'Save chat attachment',
-        fileName: widget.message.attachmentName,
+        fileName: widget.message.attachmentName ?? 'attachment',
         bytes: Uint8List.fromList(bytes),
       );
     } catch (_) {

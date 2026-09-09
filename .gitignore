@@ -63,6 +63,7 @@ artifacts/
 # Mobile signing material must never be committed.
 mobile/android/key.properties
 mobile/android/keystore/
+mobile/android/.kotlin/
 *.jks
 *.keystore
 *.p12

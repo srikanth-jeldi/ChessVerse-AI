@@ -1,3 +1,13 @@
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    # Upstream packages retain their own lint rules and dev dependencies.
+    # Their runtime code is still compiled by the application build/tests.
+    - third_party/**
 include: package:flutter_lints/flutter.yaml
 
 linter:

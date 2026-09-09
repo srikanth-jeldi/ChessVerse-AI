@@ -7,9 +7,13 @@ import 'package:chessverse_ai/features/puzzles/presentation/puzzle_academy_scree
 import 'package:chessverse_ai/features/library/presentation/reference_screens.dart';
 import 'package:chessverse_ai/main.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setUp(() {
+    FlutterSecureStorage.setMockInitialValues({'settings.language': 'en'});
+  });
   for (final (String name, Size size) in <(String, Size)>[
     ('portrait', const Size(390, 844)),
     ('landscape', const Size(844, 390)),

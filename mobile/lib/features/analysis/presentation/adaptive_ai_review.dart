@@ -725,7 +725,7 @@ class _MoveTimeline extends StatelessWidget {
           Expanded(
             child: ListView.separated(
               itemCount: report.insights.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (BuildContext context, int index) {
                 final AiMoveInsight insight = report.insights[index];
                 final Color color = _qualityColor(insight.label);

@@ -16,7 +16,7 @@
 - Focused backend controller tests cover authentication, stale updates, stale completion, idempotent completion and preserving history when replacing a slot.
 - Flutter tests cover single-slot replacement, account isolation, stale confirmation, stale saves, ordered writes, network errors and restoring the saved board.
 - Emoji/clock layout regression test is retained.
-- Broad game UI test run: 36 passed, 5 failed. The same five failures were reproduced against the committed main.dart baseline in temporary comparison files (then removed). These pre-existing tests need separate maintenance; the full suite is not green.
+- The five pre-existing game UI failures were resolved in maintenance release 1.2.38+158. Full Flutter suite including golden comparisons: 255 passed; see `build-maintenance-158.md`.
 
 ## Before release
 

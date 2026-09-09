@@ -11044,7 +11044,7 @@ class _GameStudioDock extends StatelessWidget {
                             : ListView.separated(
                                 scrollDirection: Axis.horizontal,
                                 itemCount: recentMoves.length,
-                                separatorBuilder: (_, __) =>
+                                separatorBuilder: (_, _) =>
                                     const SizedBox(width: 8),
                                 itemBuilder: (_, int index) => Container(
                                   alignment: Alignment.center,
@@ -12104,7 +12104,7 @@ class _OnlinePlayerRail extends StatelessWidget {
                   : Image.network(
                       usablePhoto,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
+                      errorBuilder: (_, _, _) =>
                           _AvatarInitials(initials: initials),
                     ),
             ),
@@ -12290,7 +12290,7 @@ class GamePanel extends StatelessWidget {
             ? const EmptyMoveState()
             : ListView.separated(
                 itemCount: moves.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (BuildContext context, int index) {
                   final bool whiteMove = (moves.length - 1 - index).isEven;
                   final String move = moves[index];
@@ -16761,7 +16761,7 @@ class _VersusPlayerCard extends StatelessWidget {
                   : Image.network(
                       photoUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Icon(Icons.person_rounded,
+                      errorBuilder: (_, _, _) => Icon(Icons.person_rounded,
                           color: color,
                           size: MediaQuery.sizeOf(context).width >= 760
                               ? 58
@@ -16902,7 +16902,7 @@ class MoveHistorySheet extends StatelessWidget {
                       : ListView.separated(
                           controller: controller,
                           itemCount: chronological.length,
-                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          separatorBuilder: (_, _) => const Divider(height: 1),
                           itemBuilder: (BuildContext context, int index) {
                             final bool whiteMove = index.isEven;
                             return ListTile(
@@ -17728,7 +17728,7 @@ class _OnlineVictoryCelebrationState extends State<OnlineVictoryCelebration>
                   ),
                 ),
               ),
-              if (child != null) child,
+              ?child,
             ],
           ),
         ),

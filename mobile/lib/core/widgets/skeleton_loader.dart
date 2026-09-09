@@ -64,7 +64,7 @@ class SkeletonPage extends StatelessWidget {
         child: ListView.separated(
           padding: const EdgeInsets.all(20),
           itemCount: rows,
-          separatorBuilder: (_, __) => const SizedBox(height: 16),
+          separatorBuilder: (_, _) => const SizedBox(height: 16),
           itemBuilder: (_, int index) => Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(

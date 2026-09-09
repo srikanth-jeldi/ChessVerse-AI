@@ -378,13 +378,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
 
   Future<void> _changeProfilePhoto() async {
-    final result = await FilePicker.platform.pickFiles(
+    final file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: const <String>['jpg', 'jpeg', 'png', 'webp'],
-      withData: true,
     );
-    final file = result?.files.singleOrNull;
-    final bytes = file?.bytes;
+    final bytes = await file?.readAsBytes();
     if (file == null || bytes == null || !mounted) return;
     if (bytes.length > 5 * 1024 * 1024) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -975,7 +973,7 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
                   scrollDirection: Axis.horizontal,
                   itemCount:
                       widget.accountPhotoUrl?.trim().isNotEmpty == true ? 7 : 6,
-                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  separatorBuilder: (_, _) => const SizedBox(width: 10),
                   itemBuilder: (BuildContext context, int itemIndex) {
                     final bool hasAccountPhoto =
                         widget.accountPhotoUrl?.trim().isNotEmpty == true;
@@ -1181,7 +1179,7 @@ class _ProfilePicture extends StatelessWidget {
         width: size,
         height: size,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _Avatar(index: avatar, size: size),
+        errorBuilder: (_, _, _) => _Avatar(index: avatar, size: size),
       ),
     );
   }
@@ -1274,13 +1272,11 @@ class _SectionCard extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.child,
-    this.trailing,
     this.asset,
   });
   final String title;
   final IconData icon;
   final Widget child;
-  final Widget? trailing;
   final String? asset;
 
   @override
@@ -1318,7 +1314,6 @@ class _SectionCard extends StatelessWidget {
                   letterSpacing: 0.8,
                 ),
               ),
-              if (trailing != null) trailing!,
             ],
           ),
           const SizedBox(height: 14),

@@ -1,8 +1,12 @@
 import 'package:chessverse_ai/main.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setUp(() {
+    FlutterSecureStorage.setMockInitialValues({'settings.language': 'en'});
+  });
   testWidgets('independent puzzle never opens the daily challenge lock flow', (
     WidgetTester tester,
   ) async {

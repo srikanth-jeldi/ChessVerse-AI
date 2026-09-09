@@ -122,7 +122,7 @@ class AiCoachApi {
               'fen': fen,
               'playedMove': playedMove,
               'question': question,
-              if (sessionId != null) 'sessionId': sessionId,
+              'sessionId': ?sessionId,
               if (candidateMoves.isNotEmpty) 'candidateMoves': candidateMoves,
               'language': language,
             }),
@@ -188,8 +188,7 @@ class AiCoachApi {
               'openingEco': openingEco,
             if (timeControl != null && timeControl.isNotEmpty)
               'timeControl': timeControl,
-            if (followupCentipawnLoss != null)
-              'followupCentipawnLoss': followupCentipawnLoss,
+            'followupCentipawnLoss': ?followupCentipawnLoss,
           }),
         )
         .timeout(const Duration(seconds: 10));

@@ -83,7 +83,7 @@ class ComputerGameStore {
       (await const AuthSessionStore().read())?.token ?? '';
   static Future<T> _serial<T>(Future<T> Function() action) {
     final result = _pending.then((_) => action());
-    _pending = result.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    _pending = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
     return result;
   }
 

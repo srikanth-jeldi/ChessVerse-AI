@@ -5,7 +5,7 @@ plugins {
     id("com.android.application")
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    // AGP 9 supplies built-in Kotlin; Flutter follows the Android plugin.
     id("dev.flutter.flutter-gradle-plugin")
 }
 

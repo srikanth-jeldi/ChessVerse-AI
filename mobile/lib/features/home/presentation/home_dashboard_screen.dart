@@ -380,7 +380,7 @@ class _MobileHomeState extends State<_MobileHome> {
                     const SizedBox(height: 12),
                     ValueListenableBuilder<int>(
                       valueListenable: LocalGameArchive.activityRevision,
-                      builder: (_, __, ___) => _PersonalTrainingCard(
+                      builder: (_, _, _) => _PersonalTrainingCard(
                         onTrain: widget.onPuzzles,
                         games: widget.activityGames,
                       ),
@@ -669,7 +669,7 @@ class _WideHomeState extends State<_WideHome> {
                         const SizedBox(height: 18),
                         ValueListenableBuilder<int>(
                           valueListenable: LocalGameArchive.activityRevision,
-                          builder: (_, __, ___) => _PersonalTrainingCard(
+                          builder: (_, _, _) => _PersonalTrainingCard(
                             onTrain: widget.onPuzzles,
                             games: widget.activityGames,
                           ),
@@ -2298,7 +2298,7 @@ class _Avatar extends StatelessWidget {
                 ? Image.network(photoUrl!,
                     fit: BoxFit.cover,
                     webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
-                    errorBuilder: (_, __, ___) =>
+                    errorBuilder: (_, _, _) =>
                         const Icon(Icons.person_rounded, color: Colors.white))
                 : useSavedPlayerAvatar
                     ? Icon(playerIcons[avatarIndex], color: Colors.white)

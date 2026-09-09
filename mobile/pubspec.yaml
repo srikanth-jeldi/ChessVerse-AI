@@ -1,15 +1,16 @@
 name: chessverse_ai
 description: Cross-platform ChessVerse AI application.
 publish_to: "none"
-version: 1.2.37+157
+version: 1.2.38+158
 
 environment:
-  sdk: ">=3.4.0 <4.0.0"
+  sdk: ">=3.13.0 <4.0.0"
+  flutter: ">=3.47.2"
 
 dependencies:
   audioplayers: ^6.8.0
   cupertino_icons: ^1.0.8
-  file_picker: ^10.3.10
+  file_picker: ^12.2.0
   firebase_core: ^4.2.1
   firebase_analytics: ^12.5.0
   firebase_messaging: ^16.0.4
@@ -18,7 +19,7 @@ dependencies:
 
   flutter_facebook_auth: ^7.2.0
   flutter_local_notifications: ^19.5.0
-  flutter_timezone: ^4.1.1
+  flutter_timezone: ^5.1.0
 
   flutter_secure_storage: ^10.3.1
 
@@ -27,7 +28,8 @@ dependencies:
   google_mobile_ads: ^9.1.0
   http: ^1.2.2
   http_parser: ^4.1.2
-  in_app_review: ^2.0.12
+  in_app_review:
+    path: third_party/in_app_review
   in_app_purchase: ^3.3.0
   in_app_purchase_android: ^0.5.3
 
@@ -38,9 +40,20 @@ dependencies:
   web_socket_channel: ^3.0.3
   firebase_crashlytics: ^5.3.0
   connectivity_plus: ^7.3.1
-  package_info_plus: ^9.0.1
-  device_info_plus: ^12.4.0
+  package_info_plus: ^10.2.1
+  device_info_plus: ^13.2.0
   url_launcher: ^6.3.2
+
+# Gradle-only patches; runtime sources and licenses are retained verbatim.
+dependency_overrides:
+  firebase_core:
+    path: third_party/firebase_core
+  firebase_analytics:
+    path: third_party/firebase_analytics
+  firebase_crashlytics:
+    path: third_party/firebase_crashlytics
+  flutter_timezone:
+    path: third_party/flutter_timezone
 
 dev_dependencies:
   flutter_test:

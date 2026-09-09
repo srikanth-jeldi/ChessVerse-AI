@@ -121,9 +121,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Text('SETTINGS',
-                style:
-                    TextStyle(letterSpacing: 1.5, fontWeight: FontWeight.w900)),
+            const Text(
+              'SETTINGS',
+              style: TextStyle(letterSpacing: 1.5, fontWeight: FontWeight.w900),
+            ),
             if (wide) ...<Widget>[
               const SizedBox(height: 4),
               const Text(
@@ -188,7 +189,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   const SizedBox(
                                     height: 255,
                                     child: VerticalDivider(
-                                        color: AppColors.border),
+                                      color: AppColors.border,
+                                    ),
                                   ),
                                   const SizedBox(width: 24),
                                   Expanded(
@@ -308,16 +310,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   selected: _boardTheme,
                                   previewBuilder: (String value) =>
                                       _AppearancePreview(
-                                    key: const ValueKey<String>(
-                                        'appearance-choice-preview'),
-                                    boardTheme: value,
-                                    pieceStyle: _pieceStyle,
-                                    pieceSize: _pieceSize,
-                                  ),
+                                        key: const ValueKey<String>(
+                                          'appearance-choice-preview',
+                                        ),
+                                        boardTheme: value,
+                                        pieceStyle: _pieceStyle,
+                                        pieceSize: _pieceSize,
+                                      ),
                                   onSelected: (String value) {
                                     setState(() => _boardTheme = value);
                                     _preferences.writeString(
-                                        'boardTheme', value);
+                                      'boardTheme',
+                                      value,
+                                    );
                                   },
                                 ),
                               ),
@@ -342,24 +347,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   selected: _pieceStyle,
                                   previewBuilder: (String value) =>
                                       _AppearancePreview(
-                                    key: const ValueKey<String>(
-                                        'appearance-choice-preview'),
-                                    boardTheme: _boardTheme,
-                                    pieceStyle: value,
-                                    pieceSize: _pieceSize,
-                                  ),
+                                        key: const ValueKey<String>(
+                                          'appearance-choice-preview',
+                                        ),
+                                        boardTheme: _boardTheme,
+                                        pieceStyle: value,
+                                        pieceSize: _pieceSize,
+                                      ),
                                   onSelected: (String value) {
                                     setState(() => _pieceStyle = value);
                                     _preferences.writeString(
-                                        'pieceStyle', value);
-                                    ChessPieceAppearanceController
-                                            .current.value =
-                                        ChessPieceAppearanceController
-                                            .current.value
-                                            .copyWith(
-                                      style: ChessPieceAppearanceController
-                                          .styleFromLabel(value),
+                                      'pieceStyle',
+                                      value,
                                     );
+                                    ChessPieceAppearanceController
+                                        .current
+                                        .value = ChessPieceAppearanceController
+                                        .current
+                                        .value
+                                        .copyWith(
+                                          style:
+                                              ChessPieceAppearanceController.styleFromLabel(
+                                                value,
+                                              ),
+                                        );
                                   },
                                 ),
                               ),
@@ -384,24 +395,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   selected: _pieceSize,
                                   previewBuilder: (String value) =>
                                       _AppearancePreview(
-                                    key: const ValueKey<String>(
-                                        'appearance-choice-preview'),
-                                    boardTheme: _boardTheme,
-                                    pieceStyle: _pieceStyle,
-                                    pieceSize: value,
-                                  ),
+                                        key: const ValueKey<String>(
+                                          'appearance-choice-preview',
+                                        ),
+                                        boardTheme: _boardTheme,
+                                        pieceStyle: _pieceStyle,
+                                        pieceSize: value,
+                                      ),
                                   onSelected: (String value) {
                                     setState(() => _pieceSize = value);
                                     _preferences.writeString(
-                                        'pieceSize', value);
-                                    ChessPieceAppearanceController
-                                            .current.value =
-                                        ChessPieceAppearanceController
-                                            .current.value
-                                            .copyWith(
-                                      size: ChessPieceAppearanceController
-                                          .sizeFromLabel(value),
+                                      'pieceSize',
+                                      value,
                                     );
+                                    ChessPieceAppearanceController
+                                        .current
+                                        .value = ChessPieceAppearanceController
+                                        .current
+                                        .value
+                                        .copyWith(
+                                          size:
+                                              ChessPieceAppearanceController.sizeFromLabel(
+                                                value,
+                                              ),
+                                        );
                                   },
                                 ),
                               ),
@@ -449,9 +466,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           title: 'Devices & sessions',
                           onTap: () async {
                             final bool? loggedOut = await Navigator.of(context)
-                                .push<bool>(MaterialPageRoute<bool>(
-                              builder: (_) => const DeviceSessionsScreen(),
-                            ));
+                                .push<bool>(
+                                  MaterialPageRoute<bool>(
+                                    builder: (_) =>
+                                        const DeviceSessionsScreen(),
+                                  ),
+                                );
                             if (loggedOut == true) {
                               await widget.onLogout?.call();
                             }
@@ -507,7 +527,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           gradient: const LinearGradient(
                             colors: <Color>[
                               Color(0xFF7D2CF2),
-                              Color(0xFF5122A8)
+                              Color(0xFF5122A8),
                             ],
                           ),
                           boxShadow: const <BoxShadow>[
@@ -532,8 +552,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                   ),
                                   SizedBox(width: 10),
-                                  Icon(Icons.logout_rounded,
-                                      color: Colors.white),
+                                  Icon(
+                                    Icons.logout_rounded,
+                                    color: Colors.white,
+                                  ),
                                 ],
                               ),
                             ),
@@ -547,13 +569,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         icon: _deletingAccount
                             ? const SizedBox.square(
                                 dimension: 20,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(Icons.delete_forever_rounded),
-                        label: Text(_deletingAccount
-                            ? 'Deleting account…'
-                            : 'Delete account permanently'),
+                        label: Text(
+                          _deletingAccount
+                              ? 'Deleting account…'
+                              : 'Delete account permanently',
+                        ),
                         style: TextButton.styleFrom(
                           foregroundColor: const Color(0xFFFF7777),
                           minimumSize: const Size.fromHeight(52),
@@ -583,89 +608,90 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _soundSwitch() => _SettingSwitch(
-        icon: Icons.volume_up_rounded,
-        title: 'Sound effects',
-        subtitle: 'Move sounds, check alerts, and result effects',
-        value: _soundEnabled,
-        onChanged: (bool value) {
-          setState(() => _soundEnabled = value);
-          ChessSoundService.instance.enabled = value;
-          _preferences.writeBool('sound', value);
-        },
-      );
+    icon: Icons.volume_up_rounded,
+    title: 'Sound effects',
+    subtitle: 'Move sounds, check alerts, and result effects',
+    value: _soundEnabled,
+    onChanged: (bool value) {
+      setState(() => _soundEnabled = value);
+      ChessSoundService.instance.enabled = value;
+      _preferences.writeBool('sound', value);
+    },
+  );
 
   Widget _hintsSwitch() => _SettingSwitch(
-        icon: Icons.lightbulb_rounded,
-        title: 'Move hints',
-        subtitle: 'Show legal move and daily challenge hints',
-        value: _hintsEnabled,
-        onChanged: (bool value) {
-          setState(() => _hintsEnabled = value);
-          _preferences.writeBool('hints', value);
-        },
-      );
+    icon: Icons.lightbulb_rounded,
+    title: 'Move hints',
+    subtitle: 'Show legal move and daily challenge hints',
+    value: _hintsEnabled,
+    onChanged: (bool value) {
+      setState(() => _hintsEnabled = value);
+      _preferences.writeBool('hints', value);
+    },
+  );
 
   Widget _coordinatesSwitch() => _SettingSwitch(
-        icon: Icons.grid_4x4_rounded,
-        title: 'Show coordinates',
-        subtitle: 'Display a-h and 1-8 board labels',
-        value: _coordinatesEnabled,
-        onChanged: (bool value) {
-          setState(() => _coordinatesEnabled = value);
-          _preferences.writeBool('coordinates', value);
-        },
-      );
+    icon: Icons.grid_4x4_rounded,
+    title: 'Show coordinates',
+    subtitle: 'Display a-h and 1-8 board labels',
+    value: _coordinatesEnabled,
+    onChanged: (bool value) {
+      setState(() => _coordinatesEnabled = value);
+      _preferences.writeBool('coordinates', value);
+    },
+  );
 
   Widget _coachSwitch() => _SettingSwitch(
-        icon: Icons.psychology_alt_rounded,
-        title: 'AI coach',
-        subtitle: 'Explain moves and tactical ideas',
-        value: _coachEnabled,
-        onChanged: (bool value) {
-          setState(() => _coachEnabled = value);
-          _preferences.writeBool('coach', value);
-        },
-      );
+    icon: Icons.psychology_alt_rounded,
+    title: 'AI coach',
+    subtitle: 'Explain moves and tactical ideas',
+    value: _coachEnabled,
+    onChanged: (bool value) {
+      setState(() => _coachEnabled = value);
+      _preferences.writeBool('coach', value);
+    },
+  );
 
   Widget _animationsSwitch() => _SettingSwitch(
-        icon: Icons.auto_awesome_rounded,
-        title: 'Animations',
-        subtitle: 'Board highlights and smooth transitions',
-        value: _animationsEnabled,
-        onChanged: (bool value) {
-          setState(() => _animationsEnabled = value);
-          _preferences.writeBool('animations', value);
-        },
-      );
+    icon: Icons.auto_awesome_rounded,
+    title: 'Animations',
+    subtitle: 'Board highlights and smooth transitions',
+    value: _animationsEnabled,
+    onChanged: (bool value) {
+      setState(() => _animationsEnabled = value);
+      _preferences.writeBool('animations', value);
+    },
+  );
 
   Widget _dailyReminderSwitch() => _SettingSwitch(
-        icon: Icons.notifications_active_rounded,
-        title: 'Play reminders',
-        subtitle: 'Remind me after 8 hours away, with one gentle follow-up',
-        value: _dailyReminderEnabled,
-        onChanged: (bool value) async {
-          final ScaffoldMessengerState messenger =
-              ScaffoldMessenger.of(context);
-          bool enabled = value;
-          if (value) {
-            enabled = await DailyReminderService.instance.enable();
-          } else {
-            await DailyReminderService.instance.disable();
-          }
-          if (!mounted) return;
-          setState(() => _dailyReminderEnabled = enabled);
-          await _preferences.writeBool('dailyReminder', enabled);
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(enabled
-                  ? 'Play reminders enabled. Quiet hours are 10 PM–8 AM.'
-                  : value
-                      ? 'Notification permission is required.'
-                      : 'Daily reminder disabled.'),
-            ),
-          );
-        },
+    icon: Icons.notifications_active_rounded,
+    title: 'Play reminders',
+    subtitle: 'Remind me after 8 hours away, with one gentle follow-up',
+    value: _dailyReminderEnabled,
+    onChanged: (bool value) async {
+      final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+      bool enabled = value;
+      if (value) {
+        enabled = await DailyReminderService.instance.enable();
+      } else {
+        await DailyReminderService.instance.disable();
+      }
+      if (!mounted) return;
+      setState(() => _dailyReminderEnabled = enabled);
+      await _preferences.writeBool('dailyReminder', enabled);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            enabled
+                ? 'Play reminders enabled. Quiet hours are 10 PM–8 AM.'
+                : value
+                ? 'Notification permission is required.'
+                : 'Daily reminder disabled.',
+          ),
+        ),
       );
+    },
+  );
 
   Future<void> _chooseLanguage() async {
     final String? selected = await showModalBottomSheet<String>(
@@ -678,11 +704,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _language = selected);
     await AppLanguageController.select(selected);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(selected == AppLanguageController.systemCode
-          ? 'Language follows this device.'
-          : 'AI coach language changed to ${AppLanguageController.byCode(selected).englishName}.'),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          selected == AppLanguageController.systemCode
+              ? 'Language follows this device.'
+              : 'AI coach language changed to ${AppLanguageController.byCode(selected).englishName}.',
+        ),
+      ),
+    );
   }
 
   Future<void> _logout() async {
@@ -722,7 +752,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFB3261E)),
+              backgroundColor: const Color(0xFFB3261E),
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete forever'),
           ),
@@ -759,61 +790,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setSheetState) =>
               SafeArea(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(context).height * 0.9,
-              ),
-              child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 760),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                    child: RadioGroup<String>(
-                      groupValue: pendingValue,
-                      onChanged: (String? value) {
-                        if (value != null) {
-                          setSheetState(() => pendingValue = value);
-                        }
-                      },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(title),
-                            subtitle: previewBuilder == null
-                                ? null
-                                : const Text(
-                                    'Select an option to preview it live.'),
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 760),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                        child: RadioGroup<String>(
+                          groupValue: pendingValue,
+                          onChanged: (String? value) {
+                            if (value != null) {
+                              setSheetState(() => pendingValue = value);
+                            }
+                          },
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(title),
+                                subtitle: previewBuilder == null
+                                    ? null
+                                    : const Text(
+                                        'Select an option to preview it live.',
+                                      ),
+                              ),
+                              if (previewBuilder != null) ...<Widget>[
+                                previewBuilder(pendingValue),
+                                const SizedBox(height: 10),
+                              ],
+                              for (final String option in values)
+                                RadioListTile<String>(
+                                  value: option,
+                                  title: Text(option),
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              const SizedBox(height: 8),
+                              FilledButton.icon(
+                                key: const ValueKey<String>(
+                                  'apply-appearance-choice',
+                                ),
+                                onPressed: () =>
+                                    Navigator.pop(sheetContext, pendingValue),
+                                icon: const Icon(Icons.check_rounded),
+                                label: const Text('Apply'),
+                              ),
+                            ],
                           ),
-                          if (previewBuilder != null) ...<Widget>[
-                            previewBuilder(pendingValue),
-                            const SizedBox(height: 10),
-                          ],
-                          for (final String option in values)
-                            RadioListTile<String>(
-                              value: option,
-                              title: Text(option),
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          const SizedBox(height: 8),
-                          FilledButton.icon(
-                            key: const ValueKey<String>(
-                                'apply-appearance-choice'),
-                            onPressed: () =>
-                                Navigator.pop(sheetContext, pendingValue),
-                            icon: const Icon(Icons.check_rounded),
-                            label: const Text('Apply'),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
         );
       },
     );
@@ -821,11 +854,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _openLegal(BuildContext context, LegalPageType type) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => LegalScreen(type: type),
-      ),
-    );
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => LegalScreen(type: type)));
   }
 }
 
@@ -931,9 +961,9 @@ class _AppearancePreview extends StatelessWidget {
                     Text(
                       'LIVE BOARD & PIECE PREVIEW',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: AppColors.accentGold,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        color: AppColors.accentGold,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -976,15 +1006,13 @@ class _AppearancePreview extends StatelessWidget {
     );
   }
 
-  Widget _pieceRow({
-    required bool white,
-    required _PreviewPalette palette,
-  }) {
+  Widget _pieceRow({required bool white, required _PreviewPalette palette}) {
     return Expanded(
       child: Row(
         children: List<Widget>.generate(_pieces.length, (int index) {
-          final Color squareColor =
-              index.isEven == white ? palette.light : palette.dark;
+          final Color squareColor = index.isEven == white
+              ? palette.light
+              : palette.dark;
           return Expanded(
             child: ColoredBox(
               color: squareColor,
@@ -1042,7 +1070,7 @@ class _AppearancePreview extends StatelessWidget {
       'assets/pieces/staunton_${side}_${_pieces[index]}.png',
       fit: BoxFit.contain,
       filterQuality: FilterQuality.high,
-      errorBuilder: (_, __, ___) => FittedBox(
+      errorBuilder: (_, _, _) => FittedBox(
         fit: BoxFit.contain,
         child: Text(glyph, style: TextStyle(fontSize: size, height: 1)),
       ),
@@ -1119,11 +1147,13 @@ class _LanguagePickerState extends State<_LanguagePicker> {
   Widget build(BuildContext context) {
     final String query = _query.trim().toLowerCase();
     final List<AppLanguage> languages = AppLanguageController.supported
-        .where((AppLanguage item) =>
-            query.isEmpty ||
-            item.nativeName.toLowerCase().contains(query) ||
-            item.englishName.toLowerCase().contains(query) ||
-            item.code.toLowerCase().contains(query))
+        .where(
+          (AppLanguage item) =>
+              query.isEmpty ||
+              item.nativeName.toLowerCase().contains(query) ||
+              item.englishName.toLowerCase().contains(query) ||
+              item.code.toLowerCase().contains(query),
+        )
         .toList(growable: false);
     return SafeArea(
       child: SizedBox(
@@ -1131,59 +1161,70 @@ class _LanguagePickerState extends State<_LanguagePicker> {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 720),
-            child: Column(children: <Widget>[
-              const Text('Choose language',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 6),
-              const Text('App interface & AI chess coach',
-                  style: TextStyle(color: AppColors.textSecondary)),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: TextField(
-                  autofocus: false,
-                  onChanged: (String value) => setState(() => _query = value),
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search_rounded),
-                    hintText: 'Search language',
-                    border: OutlineInputBorder(),
+            child: Column(
+              children: <Widget>[
+                const Text(
+                  'Choose language',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'App interface & AI chess coach',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: TextField(
+                    autofocus: false,
+                    onChanged: (String value) => setState(() => _query = value),
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search_rounded),
+                      hintText: 'Search language',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-                  itemCount: languages.length,
-                  separatorBuilder: (_, __) =>
-                      const Divider(color: AppColors.border, height: 1),
-                  itemBuilder: (BuildContext context, int index) {
-                    final AppLanguage language = languages[index];
-                    final bool active = language.code == widget.selected;
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: active
-                            ? AppColors.accentGold
-                            : const Color(0xFF10283A),
-                        child: Icon(
-                          language.code == AppLanguageController.systemCode
-                              ? Icons.phone_android_rounded
-                              : Icons.translate_rounded,
-                          color:
-                              active ? const Color(0xFF071827) : Colors.white,
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                    itemCount: languages.length,
+                    separatorBuilder: (_, _) =>
+                        const Divider(color: AppColors.border, height: 1),
+                    itemBuilder: (BuildContext context, int index) {
+                      final AppLanguage language = languages[index];
+                      final bool active = language.code == widget.selected;
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: active
+                              ? AppColors.accentGold
+                              : const Color(0xFF10283A),
+                          child: Icon(
+                            language.code == AppLanguageController.systemCode
+                                ? Icons.phone_android_rounded
+                                : Icons.translate_rounded,
+                            color: active
+                                ? const Color(0xFF071827)
+                                : Colors.white,
+                          ),
                         ),
-                      ),
-                      title: Text(language.nativeName,
-                          style: const TextStyle(fontWeight: FontWeight.w800)),
-                      subtitle: Text(language.englishName),
-                      trailing: active
-                          ? const Icon(Icons.check_circle_rounded,
-                              color: Color(0xFF42DACA))
-                          : null,
-                      onTap: () => Navigator.pop(context, language.code),
-                    );
-                  },
+                        title: Text(
+                          language.nativeName,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        subtitle: Text(language.englishName),
+                        trailing: active
+                            ? const Icon(
+                                Icons.check_circle_rounded,
+                                color: Color(0xFF42DACA),
+                              )
+                            : null,
+                        onTap: () => Navigator.pop(context, language.code),
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ]),
+              ],
+            ),
           ),
         ),
       ),
@@ -1192,11 +1233,12 @@ class _LanguagePickerState extends State<_LanguagePicker> {
 }
 
 class _SettingRow extends StatelessWidget {
-  const _SettingRow(
-      {required this.icon,
-      required this.title,
-      required this.value,
-      required this.onTap});
+  const _SettingRow({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String title;
@@ -1209,19 +1251,26 @@ class _SettingRow extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: _GoldIcon(icon),
       title: Text(title, style: Theme.of(context).textTheme.titleMedium),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Flexible(
-            child: Text(value,
+      trailing: SizedBox(
+        // ListTile lays out trailing content before its title. An unbounded
+        // Flexible row can consume the whole tile when a value is long.
+        width: MediaQuery.sizeOf(context).width < 600 ? 120 : 180,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Flexible(
+              child: Text(
+                value,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.end,
-                style: Theme.of(context).textTheme.bodySmall),
-          ),
-          const SizedBox(width: 4),
-          const Icon(Icons.chevron_right_rounded),
-        ],
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right_rounded),
+          ],
+        ),
       ),
       onTap: onTap,
     );
@@ -1229,8 +1278,11 @@ class _SettingRow extends StatelessWidget {
 }
 
 class _ActionRow extends StatelessWidget {
-  const _ActionRow(
-      {required this.icon, required this.title, required this.onTap});
+  const _ActionRow({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String title;
@@ -1255,21 +1307,28 @@ class _SettingsSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          const Expanded(child: Divider(color: Color(0x557F642F))),
-          const SizedBox(width: 10),
-          Icon(icon, color: AppColors.accentGold, size: 23),
-          const SizedBox(width: 9),
-          Text(label,
-              style: const TextStyle(
-                  color: AppColors.accentGold,
-                  letterSpacing: 1.4,
-                  fontWeight: FontWeight.w900)),
-          const SizedBox(width: 10),
-          const Expanded(child: Divider(color: Color(0x557F642F))),
-        ],
-      );
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: <Widget>[
+      const Expanded(child: Divider(color: Color(0x557F642F))),
+      const SizedBox(width: 10),
+      Icon(icon, color: AppColors.accentGold, size: 23),
+      const SizedBox(width: 9),
+      Flexible(
+        flex: 8,
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: AppColors.accentGold,
+            letterSpacing: 1.4,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+      const SizedBox(width: 10),
+      const Expanded(child: Divider(color: Color(0x557F642F))),
+    ],
+  );
 }
 
 class _GoldIcon extends StatelessWidget {
@@ -1278,16 +1337,16 @@ class _GoldIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: const Color(0xFF071827),
-          border: Border.all(color: const Color(0xFF19354A)),
-          boxShadow: const <BoxShadow>[
-            BoxShadow(color: Color(0x332D9CF0), blurRadius: 12),
-          ],
-        ),
-        child: Icon(icon, color: AppColors.accentGold, size: 25),
-      );
+    width: 48,
+    height: 48,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: const Color(0xFF071827),
+      border: Border.all(color: const Color(0xFF19354A)),
+      boxShadow: const <BoxShadow>[
+        BoxShadow(color: Color(0x332D9CF0), blurRadius: 12),
+      ],
+    ),
+    child: Icon(icon, color: AppColors.accentGold, size: 25),
+  );
 }

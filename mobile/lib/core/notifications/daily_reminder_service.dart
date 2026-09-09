@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+
 import '../app_preferences.dart';
 
 class DailyReminderService {
@@ -28,8 +29,8 @@ class DailyReminderService {
     if (_initialized || kIsWeb) return;
     tz.initializeTimeZones();
     try {
-      final dynamic timezone = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(timezone.name as String));
+      final TimezoneInfo timezone = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timezone.identifier));
     } on Object {
       // tz.local remains UTC only when a platform cannot report its timezone;
       // Android and iOS normally always provide it.
@@ -41,8 +42,8 @@ class DailyReminderService {
       ),
       onDidReceiveNotificationResponse: _handleNotificationResponse,
     );
-    final NotificationAppLaunchDetails? launchDetails =
-        await _plugin.getNotificationAppLaunchDetails();
+    final NotificationAppLaunchDetails? launchDetails = await _plugin
+        .getNotificationAppLaunchDetails();
     if (launchDetails?.didNotificationLaunchApp ?? false) {
       _handleNotificationResponse(launchDetails!.notificationResponse!);
     }
@@ -78,34 +79,37 @@ class DailyReminderService {
   Future<bool> enable() async {
     if (kIsWeb) return false;
     await initialize();
-    final AndroidFlutterLocalNotificationsPlugin? android =
-        _plugin.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+    final AndroidFlutterLocalNotificationsPlugin? android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     final bool androidAllowed =
         await android?.requestNotificationsPermission() ?? true;
-    final IOSFlutterLocalNotificationsPlugin? ios =
-        _plugin.resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin>();
-    final bool iosAllowed = await ios?.requestPermissions(
-          alert: true,
-          badge: true,
-          sound: true,
-        ) ??
+    final IOSFlutterLocalNotificationsPlugin? ios = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
+    final bool iosAllowed =
+        await ios?.requestPermissions(alert: true, badge: true, sound: true) ??
         true;
     if (!androidAllowed || !iosAllowed) return false;
 
     _enabled = true;
     // Remove the legacy fixed 7 PM reminder when upgrading an installation.
     await _plugin.cancel(_notificationId);
-    final String saved =
-        await _preferences.readString(_activityKey, fallback: '');
+    final String saved = await _preferences.readString(
+      _activityKey,
+      fallback: '',
+    );
     final DateTime? previous = DateTime.tryParse(saved);
     final tz.TZDateTime activity = previous == null
         ? tz.TZDateTime.now(tz.local)
         : tz.TZDateTime.from(previous, tz.local);
     if (previous == null) {
       await _preferences.writeString(
-          _activityKey, activity.toUtc().toIso8601String());
+        _activityKey,
+        activity.toUtc().toIso8601String(),
+      );
     }
     await _schedulePlayReminders(activity);
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
@@ -157,7 +161,9 @@ class DailyReminderService {
     await initialize();
     final tz.TZDateTime activity = tz.TZDateTime.now(tz.local);
     await _preferences.writeString(
-        _activityKey, activity.toUtc().toIso8601String());
+      _activityKey,
+      activity.toUtc().toIso8601String(),
+    );
     await _schedulePlayReminders(activity);
   }
 
@@ -215,22 +221,22 @@ class DailyReminderService {
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     final List<(Duration, String, String)> reminders =
         <(Duration, String, String)>[
-      (
-        const Duration(hours: 24),
-        '$tournamentName starts tomorrow',
-        'Review your preparation and return for your pairing.'
-      ),
-      (
-        const Duration(hours: 1),
-        '$tournamentName starts in 1 hour',
-        'Your registered tournament is almost ready.'
-      ),
-      (
-        const Duration(minutes: 10),
-        '$tournamentName starts in 10 minutes',
-        'Open the tournament bracket and get ready to play.'
-      ),
-    ];
+          (
+            const Duration(hours: 24),
+            '$tournamentName starts tomorrow',
+            'Review your preparation and return for your pairing.',
+          ),
+          (
+            const Duration(hours: 1),
+            '$tournamentName starts in 1 hour',
+            'Your registered tournament is almost ready.',
+          ),
+          (
+            const Duration(minutes: 10),
+            '$tournamentName starts in 10 minutes',
+            'Open the tournament bracket and get ready to play.',
+          ),
+        ];
     for (int index = 0; index < reminders.length; index++) {
       final item = reminders[index];
       final tz.TZDateTime when = start.subtract(item.$1);
@@ -303,10 +309,12 @@ List<tz.TZDateTime> buildPlayReminderPlan(tz.TZDateTime lastActivity) {
   );
   final List<tz.TZDateTime> result = <tz.TZDateTime>[];
   for (int day = 0; day < 14; day++) {
-    final tz.TZDateTime reminder =
-        _outsideQuietHours(first.add(Duration(days: day)));
-    final tz.TZDateTime followUp =
-        _outsideQuietHours(reminder.add(const Duration(hours: 2)));
+    final tz.TZDateTime reminder = _outsideQuietHours(
+      first.add(Duration(days: day)),
+    );
+    final tz.TZDateTime followUp = _outsideQuietHours(
+      reminder.add(const Duration(hours: 2)),
+    );
     result
       ..add(reminder)
       ..add(followUp);
@@ -325,13 +333,7 @@ tz.TZDateTime _outsideQuietHours(tz.TZDateTime value) {
     );
   }
   if (value.hour < 8) {
-    return tz.TZDateTime(
-      value.location,
-      value.year,
-      value.month,
-      value.day,
-      8,
-    );
+    return tz.TZDateTime(value.location, value.year, value.month, value.day, 8);
   }
   return value;
 }

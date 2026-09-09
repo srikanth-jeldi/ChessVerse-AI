@@ -25,18 +25,17 @@ class _FakeOnlineApi extends OnlineMatchApi {
     int ratingRange = 0,
     int entryCoins = 100,
     String connectionQuality = 'STANDARD',
-  }) async =>
-      OnlineMatchDto(
-        id: '11111111-1111-1111-1111-111111111111',
-        roomCode: 'CVTEST',
-        status: active ? 'ACTIVE' : 'WAITING',
-        yourColor: 'WHITE',
-        activeColor: 'WHITE',
-        whitePlayerName: 'Srika',
-        blackPlayerName: active ? 'Online Rival' : null,
-        fen: '',
-        moves: const <OnlineMoveDto>[],
-      );
+  }) async => OnlineMatchDto(
+    id: '11111111-1111-1111-1111-111111111111',
+    roomCode: 'CVTEST',
+    status: active ? 'ACTIVE' : 'WAITING',
+    yourColor: 'WHITE',
+    activeColor: 'WHITE',
+    whitePlayerName: 'Srika',
+    blackPlayerName: active ? 'Online Rival' : null,
+    fen: '',
+    moves: const <OnlineMoveDto>[],
+  );
 
   @override
   Future<OnlineMatchDto> cancelWaiting(String token, String matchId) =>
@@ -48,7 +47,9 @@ class _FakeOnlineApi extends OnlineMatchApi {
 
   @override
   Future<WebSocketChannel> openMatchChannel(
-      String token, String matchId) async {
+    String token,
+    String matchId,
+  ) async {
     throw StateError('Socket intentionally unavailable in widget test');
   }
 }
@@ -91,14 +92,17 @@ class _FinishedOnlineApi extends OnlineMatchApi {
 
   @override
   Future<WebSocketChannel> openMatchChannel(
-      String token, String matchId) async {
+    String token,
+    String matchId,
+  ) async {
     throw StateError('Socket intentionally unavailable in widget test');
   }
 }
 
 void main() {
-  testWidgets('review retry board validates the stored engine move',
-      (WidgetTester tester) async {
+  testWidgets('review retry board validates the stored engine move', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -211,8 +215,10 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(const MaterialApp(home: BrandedSplash()));
 
-    expect(find.byKey(const ValueKey<String>('branded-splash-image')),
-        findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('branded-splash-image')),
+      findsOneWidget,
+    );
 
     await tester.pumpWidget(
       MaterialApp(home: OnboardingScreen(onComplete: () {})),
@@ -286,6 +292,8 @@ void main() {
         ),
       ),
     );
+    // Coach copy is intentionally withheld until the saved language loads.
+    await tester.pump();
     expect(find.text('LOCAL MATCH'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey<String>('square-e2')));
@@ -310,10 +318,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: GameScreen(
-          initiallySignedIn: true,
-          useRemoteEngine: false,
-        ),
+        home: GameScreen(initiallySignedIn: true, useRemoteEngine: false),
       ),
     );
 
@@ -577,9 +582,7 @@ void main() {
     );
     expect(
       tester
-          .getSize(
-            find.byKey(const ValueKey<String>('mobile-ai-coach')),
-          )
+          .getSize(find.byKey(const ValueKey<String>('mobile-ai-coach')))
           .height,
       greaterThanOrEqualTo(360),
     );
@@ -631,13 +634,11 @@ void main() {
 
     await tester.pumpWidget(
       const MaterialApp(
-        home: GameScreen(
-          initiallySignedIn: true,
-          useRemoteEngine: false,
-        ),
+        home: GameScreen(initiallySignedIn: true, useRemoteEngine: false),
       ),
     );
 
+    await tester.pump();
     final Size boardSize = tester.getSize(find.byType(ChessBoard));
     expect(boardSize.width, greaterThan(405));
     expect(boardSize.height, closeTo(boardSize.width, 2));
@@ -663,10 +664,7 @@ void main() {
 
     await tester.pumpWidget(
       const MaterialApp(
-        home: GameScreen(
-          initiallySignedIn: true,
-          useRemoteEngine: false,
-        ),
+        home: GameScreen(initiallySignedIn: true, useRemoteEngine: false),
       ),
     );
     await tester.pump(const Duration(seconds: 9));
@@ -786,10 +784,12 @@ void main() {
     expect(find.text('VS'), findsOneWidget);
     expect(find.text('SEARCH SETTINGS'), findsOneWidget);
     expect(find.text('CANCEL SEARCH'), findsOneWidget);
-    final Size playerCard = tester
-        .getSize(find.byKey(const ValueKey<String>('mobile-player-card')));
-    final Size rivalCard =
-        tester.getSize(find.byKey(const ValueKey<String>('mobile-rival-card')));
+    final Size playerCard = tester.getSize(
+      find.byKey(const ValueKey<String>('mobile-player-card')),
+    );
+    final Size rivalCard = tester.getSize(
+      find.byKey(const ValueKey<String>('mobile-rival-card')),
+    );
     expect(rivalCard, playerCard);
     expect(
       tester.getBottomRight(find.text('CANCEL SEARCH')).dy,
@@ -819,10 +819,12 @@ void main() {
     );
     await tester.pump();
 
-    final Finder hero =
-        find.byKey(const ValueKey<String>('mobile-matchmaking-hero'));
-    final Finder selector =
-        find.byKey(const ValueKey<String>('coin-stake-selector'));
+    final Finder hero = find.byKey(
+      const ValueKey<String>('mobile-matchmaking-hero'),
+    );
+    final Finder selector = find.byKey(
+      const ValueKey<String>('coin-stake-selector'),
+    );
     expect(hero, findsOneWidget);
     expect(selector, findsOneWidget);
     expect(
@@ -922,10 +924,10 @@ void main() {
     expect(find.text('Time control'), findsOneWidget);
     expect(find.text('Region'), findsOneWidget);
     expect(find.text('Rating range'), findsOneWidget);
-    final DropdownButtonFormField<int> timeControl =
-        tester.widget<DropdownButtonFormField<int>>(
-      find.byType(DropdownButtonFormField<int>).first,
-    );
+    final DropdownButtonFormField<int> timeControl = tester
+        .widget<DropdownButtonFormField<int>>(
+          find.byType(DropdownButtonFormField<int>).first,
+        );
     timeControl.onChanged!(5);
     await tester.pump();
     final FilledButton apply = tester.widget<FilledButton>(
@@ -1030,7 +1032,9 @@ void main() {
 
     expect(fallbackName, isNull);
     expect(
-        find.textContaining('No online player was available'), findsOneWidget);
+      find.textContaining('No online player was available'),
+      findsOneWidget,
+    );
     expect(find.text('Find Match'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -1105,18 +1109,24 @@ void main() {
 
     await tester.pumpWidget(
       const MaterialApp(
-        home: GameScreen(
-          initiallySignedIn: true,
-          useRemoteEngine: false,
-        ),
+        home: GameScreen(initiallySignedIn: true, useRemoteEngine: false),
       ),
     );
 
+    await tester.pump();
     await tester.tap(find.text('Analyze'));
     await tester.pumpAndSettle();
 
-    expect(find.text('AI Agent Coach'), findsOneWidget);
-    expect(find.text('Evaluation'), findsOneWidget);
+    final report = find.byType(PositionAnalysisSheet);
+    expect(report, findsOneWidget);
+    expect(
+      find.descendant(of: report, matching: find.text('AI Coach')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: report, matching: find.text('Evaluation')),
+      findsOneWidget,
+    );
     expect(find.text('White legal moves'), findsOneWidget);
     expect(find.textContaining('Recommended:'), findsOneWidget);
   });
