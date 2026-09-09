@@ -7,15 +7,22 @@ import '../../../core/local_game_archive.dart';
 import '../../../core/computer_game_store.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/skeleton_loader.dart';
+import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../data/online_match_api.dart';
 import '../../analysis/domain/ai_review_report.dart';
 import '../../analysis/presentation/adaptive_ai_review.dart';
 
 class MatchHistoryScreen extends StatefulWidget {
-  const MatchHistoryScreen({super.key, this.onResume, this.onPlayAgain});
+  const MatchHistoryScreen({
+    super.key,
+    this.onResume,
+    this.onPlayAgain,
+    this.onDestinationSelected,
+  });
   final Future<void> Function(ComputerGameDraft)? onResume;
   final Future<void> Function()? onPlayAgain;
+  final ValueChanged<int>? onDestinationSelected;
 
   @override
   State<MatchHistoryScreen> createState() => _MatchHistoryScreenState();
@@ -111,9 +118,34 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final navigate = widget.onDestinationSelected;
+    if (navigate == null || size.width < 700 || size.height < 600) {
+      return _buildPage();
+    }
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Row(children: [
+        DesktopAppSidebar(
+          selected: 'My Games',
+          onHome: () => navigate(0),
+          onPlay: () => navigate(1),
+          onMyGames: () {},
+          onPuzzles: () => navigate(2),
+          onLearn: () => navigate(3),
+          onProfile: () => navigate(4),
+          onFriends: () => navigate(5),
+        ),
+        Expanded(child: _buildPage(showBackButton: false)),
+      ]),
+    );
+  }
+
+  Widget _buildPage({bool showBackButton = true}) {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
+        automaticallyImplyLeading: showBackButton,
         title: const Text('MY GAMES'),
         backgroundColor: const Color(0xD9071827),
       ),

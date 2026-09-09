@@ -813,6 +813,8 @@ class _SplashGateState extends State<SplashGate> {
         onSavedGames: () => _push(
             context,
             MatchHistoryScreen(
+              onDestinationSelected: (index) =>
+                  _closeSettingsAndSelect(context, index),
               onResume: (draft) =>
                   _openGame(context, GameMode.computer, resumeDraft: draft),
               onPlayAgain: () => _chooseSideAndOpen(context, GameMode.computer),
@@ -991,6 +993,8 @@ class _SplashGateState extends State<SplashGate> {
                 onMyGames: () => _push(
                     context,
                     MatchHistoryScreen(
+                      onDestinationSelected: (index) =>
+                          _closeSettingsAndSelect(context, index),
                       onResume: (draft) => _openGame(context, GameMode.computer,
                           resumeDraft: draft),
                       onPlayAgain: () =>
