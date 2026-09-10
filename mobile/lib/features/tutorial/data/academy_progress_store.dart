@@ -23,14 +23,62 @@ class AcademyProgressStore {
         .toSet();
   }
 
-  Future<Set<String>> markCompleted(String lessonId) async {
+  Future<Set<String>> markCompleted(String lessonId, {int stars = 1}) async {
     final Set<String> completed = (await readCompleted())..add(lessonId);
     await preferences.writeString(
       await _storageKey(),
       (completed.toList()..sort()).join(','),
     );
+    final Map<String, int> mastery = await readMastery();
+    final int safeStars = stars.clamp(1, 3);
+    if ((mastery[lessonId] ?? 0) < safeStars) {
+      mastery[lessonId] = safeStars;
+      await _writeMastery(mastery);
+    }
     LocalGameArchive.markAcademyLessonComplete(lessonId);
     return completed;
+  }
+
+  Future<Map<String, int>> readMastery() async {
+    final String stored = await preferences.readString(
+      '${await _storageKey()}.mastery',
+      fallback: '',
+    );
+    return <String, int>{
+      for (final String item in stored.split(','))
+        if (item.contains(':'))
+          item.split(':').first: int.tryParse(item.split(':').last) ?? 1,
+    };
+  }
+
+  Future<void> _writeMastery(Map<String, int> mastery) async {
+    final List<String> values = mastery.entries
+        .map((MapEntry<String, int> entry) => '${entry.key}:${entry.value}')
+        .toList()
+      ..sort();
+    await preferences.writeString(
+      '${await _storageKey()}.mastery',
+      values.join(','),
+    );
+  }
+
+  Future<String?> readPlacement() async {
+    final String value = await preferences.readString(
+      '${await _storageKey()}.placement',
+      fallback: '',
+    );
+    return value.isEmpty ? null : value;
+  }
+
+  Future<void> writePlacement(String level) async {
+    await preferences.writeString(await _placementKey(level), level);
+  }
+
+  Future<String> _placementKey(String level) async {
+    if (level != 'beginner' && level != 'intermediate') {
+      throw ArgumentError.value(level, 'level');
+    }
+    return '${await _storageKey()}.placement';
   }
 
   Future<void> writeCompleted(Iterable<String> lessonIds) async {

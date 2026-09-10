@@ -94,6 +94,9 @@ class LearnChessScreen extends StatefulWidget {
 class _LearnChessScreenState extends State<LearnChessScreen> {
   static const AcademyProgressStore _progressStore = AcademyProgressStore();
   Set<String> _completed = <String>{};
+  Map<String, int> _mastery = <String, int>{};
+  String? _placement;
+  bool _assessmentOffered = false;
 
   @override
   void initState() {
@@ -104,10 +107,113 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
   Future<void> _loadProgress() async {
     try {
       final Set<String> completed = await _progressStore.readCompleted();
-      if (mounted) setState(() => _completed = completed);
+      final Map<String, int> mastery = await _progressStore.readMastery();
+      final String? placement = await _progressStore.readPlacement();
+      if (mounted) {
+        setState(() {
+          _completed = completed;
+          _mastery = mastery;
+          _placement = placement;
+        });
+        if (placement == null && !_assessmentOffered) {
+          _assessmentOffered = true;
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _showPlacementAssessment(),
+          );
+        }
+      }
     } on Object {
       // The academy remains usable when browser secure storage is restricted.
     }
+  }
+
+  Future<void> _showPlacementAssessment() async {
+    if (!mounted) return;
+    const List<({String question, List<String> options, int correct})>
+        questions = <({String question, List<String> options, int correct})>[
+      (
+        question: 'A knight on g1 can jump directly to which square?',
+        options: <String>['g3', 'f3', 'e2'],
+        correct: 1,
+      ),
+      (
+        question: 'Your king is in check. What must your next move do?',
+        options: <String>['Attack the queen', 'Create a threat', 'End the check'],
+        correct: 2,
+      ),
+      (
+        question: 'Before choosing a tactic, what should you scan first?',
+        options: <String>['Checks, captures, threats', 'Only pawn moves', 'The clock'],
+        correct: 0,
+      ),
+    ];
+    int index = 0;
+    int score = 0;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) => StatefulBuilder(
+        builder: (BuildContext context, StateSetter setDialogState) {
+          final question = questions[index];
+          return AlertDialog(
+            backgroundColor: const Color(0xFF091C2C),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            title: const Row(children: <Widget>[
+              Icon(Icons.auto_awesome_rounded, color: AppColors.accentGold),
+              SizedBox(width: 10),
+              Expanded(child: Text('FIND YOUR STARTING LEVEL')),
+            ]),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 430),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Text('Question ${index + 1} of ${questions.length}',
+                      style: const TextStyle(
+                        color: Color(0xFF59E4C8),
+                        fontWeight: FontWeight.w900,
+                      )),
+                  const SizedBox(height: 10),
+                  Text(question.question,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        height: 1.35,
+                        fontWeight: FontWeight.w800,
+                      )),
+                  const SizedBox(height: 16),
+                  for (int option = 0;
+                      option < question.options.length;
+                      option++)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 9),
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          if (option == question.correct) score++;
+                          if (index < questions.length - 1) {
+                            setDialogState(() => index++);
+                            return;
+                          }
+                          final String level =
+                              score >= 2 ? 'intermediate' : 'beginner';
+                          await _progressStore.writePlacement(level);
+                          if (dialogContext.mounted) {
+                            Navigator.of(dialogContext).pop();
+                          }
+                          if (mounted) setState(() => _placement = level);
+                        },
+                        child: Text(question.options[option]),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -122,7 +228,9 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
     );
     final AcademyLesson recommended = AcademyCatalog.forChapter(
       LocalGameArchive.games.isEmpty
-          ? 'How pawns move'
+          ? (_placement == 'intermediate'
+              ? 'Check and checkmate'
+              : 'How pawns move')
           : learningProfile.recommendedLesson,
     );
     return Scaffold(
@@ -149,12 +257,20 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
+            _AcademyProgressStrip(
+              placement: _placement,
+              stars: _mastery.values.fold<int>(0, (int a, int b) => a + b),
+              completed: _completed.length,
+            ),
+            const SizedBox(height: 14),
             _CoachHero(compact: compact),
             const SizedBox(height: 16),
             _PersonalizedPathCard(
               lesson: recommended,
               reason: LocalGameArchive.games.isEmpty
-                  ? 'Start with piece movement, then the AI coach will adapt your path after every reviewed game.'
+                  ? (_placement == 'intermediate'
+                      ? 'Your placement shows solid piece knowledge. Start with king safety, then unlock tactical calculation.'
+                      : 'Start with piece movement, then the AI coach will adapt your path after every reviewed game.')
                   : learningProfile.recommendationReason,
             ),
             const SizedBox(height: 14),
@@ -187,7 +303,7 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
               ),
               itemBuilder: (BuildContext context, int index) => _LessonCard(
                 lesson: LearnChessScreen._lessons[index],
-                locked: index > 0 &&
+                locked: index > (_placement == 'intermediate' ? 1 : 0) &&
                     LearnChessScreen._lessons
                         .take(index)
                         .expand((_Lesson course) => course.chapters)
@@ -205,6 +321,67 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
       ),
     );
   }
+}
+
+class _AcademyProgressStrip extends StatelessWidget {
+  const _AcademyProgressStrip({
+    required this.placement,
+    required this.stars,
+    required this.completed,
+  });
+
+  final String? placement;
+  final int stars;
+  final int completed;
+
+  @override
+  Widget build(BuildContext context) => ChessVerseCard(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        child: Wrap(
+          spacing: 18,
+          runSpacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: <Widget>[
+            const Icon(Icons.workspace_premium_rounded,
+                color: AppColors.accentGold),
+            Text(
+              placement == 'intermediate'
+                  ? 'INTERMEDIATE PATH'
+                  : 'BEGINNER PATH',
+              style: const TextStyle(
+                color: Color(0xFF59E4C8),
+                fontWeight: FontWeight.w900,
+                letterSpacing: .8,
+              ),
+            ),
+            _AcademyMetric(icon: Icons.star_rounded, value: '$stars stars'),
+            _AcademyMetric(
+              icon: Icons.bolt_rounded,
+              value: '${stars * 25} XP',
+            ),
+            _AcademyMetric(
+              icon: Icons.task_alt_rounded,
+              value: '$completed mastered',
+            ),
+          ],
+        ),
+      );
+}
+
+class _AcademyMetric extends StatelessWidget {
+  const _AcademyMetric({required this.icon, required this.value});
+  final IconData icon;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 18, color: AppColors.accentGold),
+          const SizedBox(width: 5),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
+        ],
+      );
 }
 
 class _WeeklyAiReportCard extends StatelessWidget {
@@ -896,6 +1073,7 @@ class _CourseScreen extends StatefulWidget {
 class _CourseScreenState extends State<_CourseScreen> {
   static const AcademyProgressStore _progressStore = AcademyProgressStore();
   Set<String> _completed = <String>{};
+  Map<String, int> _mastery = <String, int>{};
 
   _Lesson get course => widget.course;
 
@@ -915,7 +1093,13 @@ class _CourseScreenState extends State<_CourseScreen> {
   Future<void> _loadProgress() async {
     try {
       final Set<String> completed = await _progressStore.readCompleted();
-      if (mounted) setState(() => _completed = completed);
+      final Map<String, int> mastery = await _progressStore.readMastery();
+      if (mounted) {
+        setState(() {
+          _completed = completed;
+          _mastery = mastery;
+        });
+      }
     } on Object {
       // Course navigation remains available without persistent storage.
     }
@@ -1030,12 +1214,33 @@ class _CourseScreenState extends State<_CourseScreen> {
                               : locked
                                   ? 'Complete the previous lesson to unlock'
                                   : 'Learn the idea, then try a position'),
-                      trailing: Icon(
-                          locked
-                              ? Icons.lock_outline_rounded
-                              : Icons.arrow_forward_rounded,
-                          color:
-                              locked ? AppColors.textSecondary : course.accent),
+                      trailing: done
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                ...List<Widget>.generate(
+                                  3,
+                                  (int star) => Icon(
+                                    star < (_mastery[academyLesson.id] ?? 1)
+                                        ? Icons.star_rounded
+                                        : Icons.star_outline_rounded,
+                                    size: 17,
+                                    color: AppColors.accentGold,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                Icon(Icons.arrow_forward_rounded,
+                                    color: course.accent),
+                              ],
+                            )
+                          : Icon(
+                              locked
+                                  ? Icons.lock_outline_rounded
+                                  : Icons.arrow_forward_rounded,
+                              color: locked
+                                  ? AppColors.textSecondary
+                                  : course.accent,
+                            ),
                     ),
                   ),
                 );

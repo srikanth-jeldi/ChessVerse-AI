@@ -63,4 +63,19 @@ void main() {
 
     expect(await store.readCompleted(), <String>{'pawn', 'rook'});
   });
+
+  test('mastery keeps the best stars and placement is persisted', () async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{});
+    const AcademyProgressStore store = AcademyProgressStore();
+
+    await store.markCompleted('pawn', stars: 2);
+    await store.markCompleted('pawn', stars: 1);
+    expect((await store.readMastery())['pawn'], 2);
+
+    await store.markCompleted('pawn', stars: 3);
+    expect((await store.readMastery())['pawn'], 3);
+
+    await store.writePlacement('intermediate');
+    expect(await store.readPlacement(), 'intermediate');
+  });
 }

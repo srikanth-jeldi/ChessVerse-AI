@@ -1,4 +1,5 @@
 import 'package:chessverse_ai/features/tutorial/domain/academy_lesson.dart';
+import 'package:chessverse_ai/features/tutorial/data/academy_progress_store.dart';
 import 'package:chessverse_ai/features/tutorial/presentation/interactive_academy_lesson_screen.dart';
 import 'package:chessverse_ai/features/tutorial/presentation/learn_chess_screen.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,8 @@ void main() {
   setUp(() {
     FlutterSecureStorage.setMockInitialValues(<String, String>{
       'settings.language': 'en',
+      'settings.academy.completed.v2.${AcademyProgressStore.identityHash('signed-out')}.placement':
+          'beginner',
     });
   });
 
@@ -89,7 +92,10 @@ void main() {
 
   testWidgets('academy mastery gate blocks later courses for a new account',
       (WidgetTester tester) async {
-    FlutterSecureStorage.setMockInitialValues(<String, String>{});
+    FlutterSecureStorage.setMockInitialValues(<String, String>{
+      'settings.academy.completed.v2.${AcademyProgressStore.identityHash('signed-out')}.placement':
+          'beginner',
+    });
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.resetPhysicalSize);
@@ -129,6 +135,8 @@ void main() {
       (WidgetTester tester) async {
     FlutterSecureStorage.setMockInitialValues(<String, String>{
       'settings.language': 'te',
+      'settings.academy.completed.v2.${AcademyProgressStore.identityHash('signed-out')}.placement':
+          'beginner',
     });
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
@@ -142,5 +150,21 @@ void main() {
 
     expect(find.text('అధ్యాయం 2 · ధైర్యవంతుడైన సైనికుడు'), findsWidgets);
     expect(find.text(lesson.storyNarration), findsNothing);
+  });
+
+  testWidgets('first visit offers a three-question placement assessment',
+      (WidgetTester tester) async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{
+      'settings.language': 'en',
+    });
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const MaterialApp(home: LearnChessScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('FIND YOUR STARTING LEVEL'), findsOneWidget);
+    expect(find.text('Question 1 of 3'), findsOneWidget);
   });
 }

@@ -80,6 +80,7 @@ class _InteractiveAcademyLessonScreenState
   String? _feedback;
   bool _loadingProgress = true;
   Set<String> _completed = <String>{};
+  Map<String, int> _mastery = <String, int>{};
   int _attempts = 0;
   String? _candidateFeedback;
   String _languageCode = AppLanguageController.resolveCode(
@@ -89,6 +90,7 @@ class _InteractiveAcademyLessonScreenState
   AcademyStoryLocalizations get _copy =>
       AcademyStoryLocalizations(_languageCode);
   CoachLocalizations get _coachCopy => CoachLocalizations(_languageCode);
+  int get _earnedStars => _attempts == 0 ? 3 : (_attempts <= 2 ? 2 : 1);
 
   @override
   void initState() {
@@ -269,6 +271,7 @@ class _InteractiveAcademyLessonScreenState
   Future<void> _loadProgress() async {
     try {
       _completed = await _progressStore.readCompleted();
+      _mastery = await _progressStore.readMastery();
     } on Object {
       // Lessons remain fully usable in privacy-restricted browsers and test
       // environments where secure storage is unavailable.
@@ -311,7 +314,11 @@ class _InteractiveAcademyLessonScreenState
 
   Future<void> _completeLesson() async {
     try {
-      _completed = await _progressStore.markCompleted(widget.lesson.id);
+      _completed = await _progressStore.markCompleted(
+        widget.lesson.id,
+        stars: _earnedStars,
+      );
+      _mastery = await _progressStore.readMastery();
     } on Object {
       // Keep the current-session completion state even if persistence fails.
       _completed.add(widget.lesson.id);
@@ -476,6 +483,9 @@ class _InteractiveAcademyLessonScreenState
               onToggleNarration: () => unawaited(_toggleNarration()),
               onReplayNarration: () => unawaited(_replayNarration()),
               copy: _copy,
+              masteryStars: _phase == _LessonPhase.success
+                  ? _earnedStars
+                  : (_mastery[widget.lesson.id] ?? 0),
             ),
           ),
         ),
@@ -521,6 +531,9 @@ class _InteractiveAcademyLessonScreenState
               onToggleNarration: () => unawaited(_toggleNarration()),
               onReplayNarration: () => unawaited(_replayNarration()),
               copy: _copy,
+              masteryStars: _phase == _LessonPhase.success
+                  ? _earnedStars
+                  : (_mastery[widget.lesson.id] ?? 0),
             ),
           ),
         ),
@@ -557,6 +570,9 @@ class _InteractiveAcademyLessonScreenState
               onToggleNarration: () => unawaited(_toggleNarration()),
               onReplayNarration: () => unawaited(_replayNarration()),
               copy: _copy,
+              masteryStars: _phase == _LessonPhase.success
+                  ? _earnedStars
+                  : (_mastery[widget.lesson.id] ?? 0),
             ),
           ],
         ),
@@ -1053,6 +1069,7 @@ class _CoachPanel extends StatelessWidget {
     required this.onToggleNarration,
     required this.onReplayNarration,
     required this.copy,
+    required this.masteryStars,
   });
 
   final AcademyLesson lesson;
@@ -1067,6 +1084,7 @@ class _CoachPanel extends StatelessWidget {
   final VoidCallback onToggleNarration;
   final VoidCallback onReplayNarration;
   final AcademyStoryLocalizations copy;
+  final int masteryStars;
 
   @override
   Widget build(BuildContext context) {
@@ -1218,6 +1236,35 @@ class _CoachPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          if (phase == _LessonPhase.success) ...<Widget>[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0x2259E4C8),
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(color: const Color(0x7759E4C8)),
+              ),
+              child: Row(children: <Widget>[
+                for (int star = 1; star <= 3; star++)
+                  Icon(
+                    star <= masteryStars
+                        ? Icons.star_rounded
+                        : Icons.star_outline_rounded,
+                    color: AppColors.accentGold,
+                  ),
+                const Spacer(),
+                Text(
+                  '+${masteryStars * 25} XP',
+                  style: const TextStyle(
+                    color: Color(0xFF59E4C8),
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ]),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (phase == _LessonPhase.success)
             Row(
               children: <Widget>[
