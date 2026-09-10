@@ -65,6 +65,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('YOUR AI LEARNING PATH'), findsOneWidget);
+    expect(find.text('TODAY\'S MEMORY WORKOUT'), findsOneWidget);
     expect(find.textContaining('Next:'), findsOneWidget);
     expect(find.byTooltip('Start recommended lesson'), findsOneWidget);
     expect(find.text('1. WATCH'), findsOneWidget);

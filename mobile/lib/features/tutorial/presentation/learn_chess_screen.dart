@@ -97,6 +97,8 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
   Map<String, int> _mastery = <String, int>{};
   String? _placement;
   bool _assessmentOffered = false;
+  List<String> _reviewDue = <String>[];
+  int _learningStreak = 0;
 
   @override
   void initState() {
@@ -109,11 +111,15 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
       final Set<String> completed = await _progressStore.readCompleted();
       final Map<String, int> mastery = await _progressStore.readMastery();
       final String? placement = await _progressStore.readPlacement();
+      final List<String> reviewDue = await _progressStore.readReviewDue();
+      final int learningStreak = await _progressStore.readLearningStreak();
       if (mounted) {
         setState(() {
           _completed = completed;
           _mastery = mastery;
           _placement = placement;
+          _reviewDue = reviewDue;
+          _learningStreak = learningStreak;
         });
         if (placement == null && !_assessmentOffered) {
           _assessmentOffered = true;
@@ -226,13 +232,17 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
       LocalGameArchive.games,
       cloudScores: LocalGameArchive.cloudWeaknessScores,
     );
-    final AcademyLesson recommended = AcademyCatalog.forChapter(
-      LocalGameArchive.games.isEmpty
-          ? (_placement == 'intermediate'
-              ? 'Check and checkmate'
-              : 'How pawns move')
-          : learningProfile.recommendedLesson,
-    );
+    final AcademyLesson recommended = _reviewDue.isNotEmpty
+        ? AcademyCatalog.lessons.firstWhere(
+            (AcademyLesson lesson) => lesson.id == _reviewDue.first,
+          )
+        : AcademyCatalog.forChapter(
+            LocalGameArchive.games.isEmpty
+                ? (_placement == 'intermediate'
+                    ? 'Check and checkmate'
+                    : 'How pawns move')
+                : learningProfile.recommendedLesson,
+          );
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -267,11 +277,20 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
             const SizedBox(height: 16),
             _PersonalizedPathCard(
               lesson: recommended,
-              reason: LocalGameArchive.games.isEmpty
+              reason: _reviewDue.isNotEmpty
+                  ? 'Memory refresh due today. A short replay now keeps this pattern available in your next game.'
+                  : LocalGameArchive.games.isEmpty
                   ? (_placement == 'intermediate'
                       ? 'Your placement shows solid piece knowledge. Start with king safety, then unlock tactical calculation.'
                       : 'Start with piece movement, then the AI coach will adapt your path after every reviewed game.')
                   : learningProfile.recommendationReason,
+            ),
+            const SizedBox(height: 14),
+            _DailyAcademyMissionCard(
+              reviewDue: _reviewDue,
+              completed: _completed,
+              streak: _learningStreak,
+              onProgressChanged: _loadProgress,
             ),
             const SizedBox(height: 14),
             _WeeklyAiReportCard(
@@ -366,6 +385,102 @@ class _AcademyProgressStrip extends StatelessWidget {
           ],
         ),
       );
+}
+
+class _DailyAcademyMissionCard extends StatelessWidget {
+  const _DailyAcademyMissionCard({
+    required this.reviewDue,
+    required this.completed,
+    required this.streak,
+    required this.onProgressChanged,
+  });
+
+  final List<String> reviewDue;
+  final Set<String> completed;
+  final int streak;
+  final VoidCallback onProgressChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<AcademyLesson> mission = <AcademyLesson>[
+      ...reviewDue.map(
+        (String id) => AcademyCatalog.lessons.firstWhere(
+          (AcademyLesson lesson) => lesson.id == id,
+        ),
+      ),
+      ...AcademyCatalog.lessons.where(
+        (AcademyLesson lesson) =>
+            !completed.contains(lesson.id) && !reviewDue.contains(lesson.id),
+      ),
+    ].take(3).toList(growable: false);
+    return ChessVerseCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(children: <Widget>[
+            const Icon(Icons.local_fire_department_rounded,
+                color: Color(0xFFFF8C42)),
+            const SizedBox(width: 9),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text('TODAY\'S MEMORY WORKOUT',
+                      style: TextStyle(
+                        color: AppColors.accentGold,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .8,
+                      )),
+                  Text('Three short lessons selected for lasting recall',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      )),
+                ],
+              ),
+            ),
+            Chip(
+              avatar: const Icon(Icons.local_fire_department_rounded,
+                  size: 17),
+              label: Text('$streak day streak'),
+            ),
+          ]),
+          const SizedBox(height: 13),
+          for (int index = 0; index < mission.length; index++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                dense: true,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: const BorderSide(color: Color(0x4459E4C8)),
+                ),
+                leading: CircleAvatar(
+                  backgroundColor: const Color(0x2259E4C8),
+                  foregroundColor: const Color(0xFF59E4C8),
+                  child: Text('${index + 1}'),
+                ),
+                title: Text(mission[index].title,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                subtitle: Text(reviewDue.contains(mission[index].id)
+                    ? 'Review due · strengthen this memory'
+                    : 'New skill · continue your learning path'),
+                trailing: const Icon(Icons.play_arrow_rounded),
+                onTap: () async {
+                  await Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => InteractiveAcademyLessonScreen(
+                      lesson: mission[index],
+                    ),
+                  ));
+                  onProgressChanged();
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _AcademyMetric extends StatelessWidget {

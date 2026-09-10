@@ -78,4 +78,28 @@ void main() {
     await store.writePlacement('intermediate');
     expect(await store.readPlacement(), 'intermediate');
   });
+
+  test('spaced review intervals adapt to mastery strength', () async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{});
+    const AcademyProgressStore store = AcademyProgressStore();
+    final DateTime today = DateTime.now().toUtc();
+
+    await store.markCompleted('pawn', stars: 1);
+    await store.markCompleted('rook', stars: 3);
+
+    expect(await store.readReviewDue(now: today), isEmpty);
+    expect(
+      await store.readReviewDue(now: today.add(const Duration(days: 1))),
+      contains('pawn'),
+    );
+    expect(
+      await store.readReviewDue(now: today.add(const Duration(days: 6))),
+      isNot(contains('rook')),
+    );
+    expect(
+      await store.readReviewDue(now: today.add(const Duration(days: 7))),
+      contains('rook'),
+    );
+    expect(await store.readLearningStreak(now: today), 1);
+  });
 }

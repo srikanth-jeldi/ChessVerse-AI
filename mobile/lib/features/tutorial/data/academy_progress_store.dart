@@ -35,8 +35,96 @@ class AcademyProgressStore {
       mastery[lessonId] = safeStars;
       await _writeMastery(mastery);
     }
+    await _recordPractice(lessonId, DateTime.now().toUtc());
     LocalGameArchive.markAcademyLessonComplete(lessonId);
     return completed;
+  }
+
+  Future<Map<String, DateTime>> readLastPracticed() async {
+    final String stored = await preferences.readString(
+      '${await _storageKey()}.practice',
+      fallback: '',
+    );
+    final Map<String, DateTime> result = <String, DateTime>{};
+    for (final String item in stored.split(',')) {
+      final int separator = item.indexOf(':');
+      if (separator < 1) continue;
+      final DateTime? date = DateTime.tryParse(item.substring(separator + 1));
+      if (date != null) result[item.substring(0, separator)] = date.toUtc();
+    }
+    return result;
+  }
+
+  Future<void> _recordPractice(String lessonId, DateTime practicedAt) async {
+    final Map<String, DateTime> values = await readLastPracticed();
+    values[lessonId] = DateTime.utc(
+      practicedAt.year,
+      practicedAt.month,
+      practicedAt.day,
+    );
+    final List<String> encoded = values.entries
+        .map((MapEntry<String, DateTime> entry) =>
+            '${entry.key}:${entry.value.toIso8601String()}')
+        .toList()
+      ..sort();
+    await preferences.writeString(
+      '${await _storageKey()}.practice',
+      encoded.join(','),
+    );
+    final Set<String> activity = await _readActivityDays();
+    activity.add(values[lessonId]!.toIso8601String());
+    final List<String> recent = activity.toList()..sort();
+    await preferences.writeString(
+      '${await _storageKey()}.activity',
+      recent.skip(recent.length > 60 ? recent.length - 60 : 0).join(','),
+    );
+  }
+
+  Future<Set<String>> _readActivityDays() async => (await preferences.readString(
+        '${await _storageKey()}.activity',
+        fallback: '',
+      ))
+          .split(',')
+          .where((String value) => value.isNotEmpty)
+          .toSet();
+
+  Future<List<String>> readReviewDue({DateTime? now}) async {
+    final DateTime today = (now ?? DateTime.now()).toUtc();
+    final Map<String, int> mastery = await readMastery();
+    final Map<String, DateTime> practiced = await readLastPracticed();
+    final List<String> due = <String>[];
+    for (final MapEntry<String, int> entry in mastery.entries) {
+      final DateTime? last = practiced[entry.key];
+      if (last == null) continue;
+      final int intervalDays = switch (entry.value) { 1 => 1, 2 => 3, _ => 7 };
+      if (!last.add(Duration(days: intervalDays)).isAfter(today)) {
+        due.add(entry.key);
+      }
+    }
+    due.sort((String a, String b) {
+      final int starOrder = (mastery[a] ?? 1).compareTo(mastery[b] ?? 1);
+      if (starOrder != 0) return starOrder;
+      return practiced[a]!.compareTo(practiced[b]!);
+    });
+    return due;
+  }
+
+  Future<int> readLearningStreak({DateTime? now}) async {
+    final Set<DateTime> days = (await _readActivityDays())
+        .map(DateTime.parse)
+        .map((DateTime date) => date.toUtc())
+        .toSet();
+    DateTime cursor = (now ?? DateTime.now()).toUtc();
+    cursor = DateTime.utc(cursor.year, cursor.month, cursor.day);
+    if (!days.contains(cursor) && days.contains(cursor.subtract(const Duration(days: 1)))) {
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    int streak = 0;
+    while (days.contains(cursor)) {
+      streak++;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    return streak;
   }
 
   Future<Map<String, int>> readMastery() async {
