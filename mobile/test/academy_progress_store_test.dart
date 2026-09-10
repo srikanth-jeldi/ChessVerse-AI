@@ -102,4 +102,11 @@ void main() {
     );
     expect(await store.readLearningStreak(now: today), 1);
   });
+
+  test('course certificates persist in the current account scope', () async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{});
+    const AcademyProgressStore store = AcademyProgressStore();
+    await store.awardCertificate('piece-basics');
+    expect(await store.readCertificates(), contains('piece-basics'));
+  });
 }

@@ -162,6 +162,23 @@ class AcademyProgressStore {
     await preferences.writeString(await _placementKey(level), level);
   }
 
+  Future<Set<String>> readCertificates() async => (await preferences.readString(
+        '${await _storageKey()}.certificates',
+        fallback: '',
+      ))
+          .split(',')
+          .where((String value) => value.isNotEmpty)
+          .toSet();
+
+  Future<Set<String>> awardCertificate(String courseId) async {
+    final Set<String> certificates = await readCertificates()..add(courseId);
+    await preferences.writeString(
+      '${await _storageKey()}.certificates',
+      (certificates.toList()..sort()).join(','),
+    );
+    return certificates;
+  }
+
   Future<String> _placementKey(String level) async {
     if (level != 'beginner' && level != 'intermediate') {
       throw ArgumentError.value(level, 'level');

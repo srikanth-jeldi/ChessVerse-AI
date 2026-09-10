@@ -9,6 +9,7 @@ import '../../../core/widgets/chessverse_card.dart';
 import '../../analysis/domain/player_learning_profile.dart';
 import '../data/academy_progress_store.dart';
 import '../domain/academy_lesson.dart';
+import 'academy_boss_challenge_screen.dart';
 import 'interactive_academy_lesson_screen.dart';
 
 class LearnChessScreen extends StatefulWidget {
@@ -99,6 +100,7 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
   bool _assessmentOffered = false;
   List<String> _reviewDue = <String>[];
   int _learningStreak = 0;
+  Set<String> _certificates = <String>{};
 
   @override
   void initState() {
@@ -113,6 +115,7 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
       final String? placement = await _progressStore.readPlacement();
       final List<String> reviewDue = await _progressStore.readReviewDue();
       final int learningStreak = await _progressStore.readLearningStreak();
+      final Set<String> certificates = await _progressStore.readCertificates();
       if (mounted) {
         setState(() {
           _completed = completed;
@@ -120,6 +123,7 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
           _placement = placement;
           _reviewDue = reviewDue;
           _learningStreak = learningStreak;
+          _certificates = certificates;
         });
         if (placement == null && !_assessmentOffered) {
           _assessmentOffered = true;
@@ -273,6 +277,11 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
               completed: _completed.length,
             ),
             const SizedBox(height: 14),
+            _AcademySkillMap(
+              completed: _completed,
+              certificates: _certificates,
+            ),
+            const SizedBox(height: 14),
             _CoachHero(compact: compact),
             const SizedBox(height: 16),
             _PersonalizedPathCard(
@@ -382,6 +391,130 @@ class _AcademyProgressStrip extends StatelessWidget {
               icon: Icons.task_alt_rounded,
               value: '$completed mastered',
             ),
+          ],
+        ),
+      );
+}
+
+class _AcademySkillMap extends StatelessWidget {
+  const _AcademySkillMap({
+    required this.completed,
+    required this.certificates,
+  });
+
+  final Set<String> completed;
+  final Set<String> certificates;
+
+  @override
+  Widget build(BuildContext context) => ChessVerseCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text('YOUR CHESSVERSE SKILL MAP',
+                style: TextStyle(
+                  color: AppColors.accentGold,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .9,
+                )),
+            const SizedBox(height: 4),
+            const Text('Master the path from first move to confident finisher',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            const SizedBox(height: 14),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: <Widget>[
+                  for (int index = 0;
+                      index < LearnChessScreen._lessons.length;
+                      index++) ...<Widget>[
+                    if (index > 0)
+                      Container(
+                        width: 34,
+                        height: 3,
+                        color: _courseComplete(index - 1)
+                            ? const Color(0xFF59E4C8)
+                            : const Color(0xFF263B55),
+                      ),
+                    _SkillNode(
+                      title: LearnChessScreen._lessons[index].title,
+                      icon: LearnChessScreen._lessons[index].icon,
+                      accent: LearnChessScreen._lessons[index].accent,
+                      progress: _courseProgress(index),
+                      certified: certificates.contains(
+                        LearnChessScreen._lessons[index].title
+                            .toLowerCase()
+                            .replaceAll(' ', '-'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+
+  double _courseProgress(int index) {
+    final _Lesson course = LearnChessScreen._lessons[index];
+    final int done = course.chapters
+        .map(AcademyCatalog.forChapter)
+        .where((AcademyLesson lesson) => completed.contains(lesson.id))
+        .length;
+    return course.chapters.isEmpty ? 0 : done / course.chapters.length;
+  }
+
+  bool _courseComplete(int index) => _courseProgress(index) == 1;
+}
+
+class _SkillNode extends StatelessWidget {
+  const _SkillNode({
+    required this.title,
+    required this.icon,
+    required this.accent,
+    required this.progress,
+    required this.certified,
+  });
+
+  final String title;
+  final IconData icon;
+  final Color accent;
+  final double progress;
+  final bool certified;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: 128,
+        child: Column(
+          children: <Widget>[
+            Stack(
+              clipBehavior: Clip.none,
+              children: <Widget>[
+                SizedBox.square(
+                  dimension: 62,
+                  child: CircularProgressIndicator(
+                    value: progress,
+                    strokeWidth: 5,
+                    backgroundColor: const Color(0xFF263B55),
+                    valueColor: AlwaysStoppedAnimation<Color>(accent),
+                  ),
+                ),
+                Positioned.fill(child: Icon(icon, color: accent, size: 28)),
+                if (certified)
+                  const Positioned(
+                    right: -5,
+                    top: -5,
+                    child: Icon(Icons.verified_rounded,
+                        color: AppColors.accentGold, size: 22),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w800)),
+            Text('${(progress * 100).round()}%',
+                style: TextStyle(color: accent, fontSize: 12)),
           ],
         ),
       );
@@ -1189,8 +1322,10 @@ class _CourseScreenState extends State<_CourseScreen> {
   static const AcademyProgressStore _progressStore = AcademyProgressStore();
   Set<String> _completed = <String>{};
   Map<String, int> _mastery = <String, int>{};
+  Set<String> _certificates = <String>{};
 
   _Lesson get course => widget.course;
+  String get courseId => course.title.toLowerCase().replaceAll(' ', '-');
 
   int get completedCount => course.chapters.where((String chapter) {
         return _completed.contains(AcademyCatalog.forChapter(chapter).id);
@@ -1209,10 +1344,12 @@ class _CourseScreenState extends State<_CourseScreen> {
     try {
       final Set<String> completed = await _progressStore.readCompleted();
       final Map<String, int> mastery = await _progressStore.readMastery();
+      final Set<String> certificates = await _progressStore.readCertificates();
       if (mounted) {
         setState(() {
           _completed = completed;
           _mastery = mastery;
+          _certificates = certificates;
         });
       }
     } on Object {
@@ -1360,6 +1497,78 @@ class _CourseScreenState extends State<_CourseScreen> {
                   ),
                 );
               }),
+              const SizedBox(height: 8),
+              ChessVerseCard(
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: <Widget>[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: course.accent.withValues(alpha: .14),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _certificates.contains(courseId)
+                            ? Icons.workspace_premium_rounded
+                            : Icons.military_tech_rounded,
+                        color: course.accent,
+                      ),
+                    ),
+                    const SizedBox(width: 13),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            _certificates.contains(courseId)
+                                ? 'MASTERY CERTIFICATE EARNED'
+                                : 'FINAL MASTERY CHALLENGE',
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                          Text(
+                            completedCount == course.chapters.length
+                                ? 'Solve 3 no-hint positions and score at least 2.'
+                                : 'Complete every lesson to unlock the course boss.',
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    FilledButton(
+                      onPressed: completedCount != course.chapters.length
+                          ? null
+                          : () async {
+                              final List<AcademyLesson> lessons = course.chapters
+                                  .map(AcademyCatalog.forChapter)
+                                  .toList(growable: false);
+                              final List<AcademyLesson> challenge = <AcademyLesson>[
+                                lessons.first,
+                                lessons[lessons.length ~/ 2],
+                                lessons.last,
+                              ];
+                              await Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => AcademyBossChallengeScreen(
+                                    courseId: courseId,
+                                    courseTitle: course.title,
+                                    lessons: challenge,
+                                    accent: course.accent,
+                                  ),
+                                ),
+                              );
+                              await _loadProgress();
+                            },
+                      child: Text(_certificates.contains(courseId)
+                          ? 'VIEW'
+                          : 'START'),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),

@@ -104,7 +104,7 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: LearnChessScreen()));
     await tester.pumpAndSettle();
 
-    final Finder lockedCourse = find.text('King Safety');
+    final Finder lockedCourse = find.text('King Safety').last;
     await tester.ensureVisible(lockedCourse);
     await tester.tap(lockedCourse);
     await tester.pump();
