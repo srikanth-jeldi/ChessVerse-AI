@@ -39,7 +39,88 @@ class AcademyLesson {
   final String to;
   final List<String> path;
   final List<String> highlighted;
+
+  /// ChessVerseAI's story layer. It turns a rule into a memorable scene while
+  /// keeping the actual chess instruction precise and short enough for TTS.
+  String get storyNarration =>
+      _foundationStories[id] ??
+      'Every position tells a story. Today, your mission is $title. '
+          '$explanation Watch the idea, predict the move, and then prove it on the board.';
+
+  String get storyChapter => _foundationChapterNames[id] ?? 'THE NEXT MOVE';
+
+  bool get usesDecisionCheckpoint => stage != AcademyStage.foundation;
+
+  String get decisionQuestion => switch (stage) {
+        AcademyStage.safety =>
+          'Before the coach moves: which square best protects the king?',
+        AcademyStage.tactics =>
+          'Before the coach moves: which candidate creates the strongest forcing idea?',
+        AcademyStage.endgame =>
+          'Before the coach moves: which candidate follows the key endgame principle?',
+        AcademyStage.foundation => 'Which destination completes the mission?',
+      };
+
+  List<String> get decisionOptions {
+    final List<String> distractors = highlighted
+        .where((String square) => square != from && square != to)
+        .toList();
+    for (final String fallback in const <String>['e4', 'd4', 'f3', 'c3']) {
+      if (fallback != from &&
+          fallback != to &&
+          !distractors.contains(fallback)) {
+        distractors.add(fallback);
+      }
+    }
+    final List<String> options = <String>[to, ...distractors.take(2)];
+    final int rotation = id.codeUnits.fold<int>(0, (int a, int b) => a + b) % 3;
+    return <String>[
+      ...options.skip(rotation),
+      ...options.take(rotation),
+    ];
+  }
+
+  String get decisionInsight => switch (stage) {
+        AcademyStage.safety =>
+          '$to is the safest candidate because it answers the immediate danger before making a new threat.',
+        AcademyStage.tactics =>
+          '$to is strongest. First scan checks, captures, and threats; forcing moves reduce the opponent\'s choices.',
+        AcademyStage.endgame =>
+          '$to follows the position\'s essential endgame principle. Activity and precise king or pawn placement matter more than speed.',
+        AcademyStage.foundation =>
+          '$to completes the move shown in this lesson.',
+      };
 }
+
+const Map<String, String> _foundationChapterNames = <String, String>{
+  'board': 'THE KINGDOM OF 64 SQUARES',
+  'pawn': 'THE BRAVE FIRST STEP',
+  'rook': 'THE CASTLE GUARDIAN',
+  'bishop': 'THE DIAGONAL SCOUT',
+  'knight': 'THE ROYAL JUMPER',
+  'queen': 'THE KINGDOM\'S POWER',
+  'king': 'THE CROWN TO PROTECT',
+  'capture': 'THE FAIR EXCHANGE',
+};
+
+const Map<String, String> _foundationStories = <String, String>{
+  'board':
+      'Welcome to the Kingdom of 64 Squares. Every square has a secret address: a letter for its file and a number for its rank. Your rook is waiting at a1. Guide it through the a-file to a8 and begin your journey.',
+  'pawn':
+      'At the front of the kingdom stands a brave pawn. It normally marches one square, but on its very first move it may charge two. Send the pawn from e2 to e4 to claim the centre.',
+  'rook':
+      'The rook is the castle guardian. It patrols open ranks and files in perfectly straight lines, but no piece may block its road. Clear the route and guide it from a1 to a6.',
+  'bishop':
+      'The bishop is a diagonal scout. It glides across one colour for its entire journey and never changes paths. Follow the light-square road from c1 to g5.',
+  'knight':
+      'The knight is the kingdom\'s fearless jumper. While every other piece needs a clear road, the knight leaps over crowds in an L shape. Jump from g1 to f3 and aim toward the centre.',
+  'queen':
+      'The queen carries the power of both rook and bishop. She can race straight or sweep diagonally, but even the strongest piece needs a clear path. Travel from d1 to h5.',
+  'king':
+      'The king moves only one careful step, because the whole kingdom depends on his safety. Before moving, inspect every enemy attack. Find the safe square from e1 to f2.',
+  'capture':
+      'A wise commander does not capture blindly. Pawns are worth one, bishops and knights three, rooks five, and queens nine. Let your bishop take the loose rook on f7 and win the exchange.',
+};
 
 abstract final class AcademyCatalog {
   static const AcademyPiece whiteKing = AcademyPiece('K', white: true);
@@ -203,7 +284,7 @@ abstract final class AcademyCatalog {
       pieces: <String, AcademyPiece>{
         'a1': whiteRook,
         'g1': whiteKing,
-        'e8': blackKing
+        'e8': blackKing,
       },
       from: 'a1',
       to: 'e1',
@@ -222,7 +303,7 @@ abstract final class AcademyCatalog {
       pieces: <String, AcademyPiece>{
         'e1': whiteKing,
         'e8': blackRook,
-        'a8': blackKing
+        'a8': blackKing,
       },
       from: 'e1',
       to: 'f2',
@@ -240,7 +321,7 @@ abstract final class AcademyCatalog {
       pieces: <String, AcademyPiece>{
         'e1': whiteKing,
         'h1': whiteRook,
-        'e8': blackKing
+        'e8': blackKing,
       },
       from: 'e1',
       to: 'g1',
@@ -302,7 +383,7 @@ abstract final class AcademyCatalog {
       pieces: <String, AcademyPiece>{
         'e7': whitePawn,
         'a1': whiteKing,
-        'h8': blackKing
+        'h8': blackKing,
       },
       from: 'e7',
       to: 'e8',
@@ -321,7 +402,7 @@ abstract final class AcademyCatalog {
       pieces: <String, AcademyPiece>{
         'f6': whiteQueen,
         'f7': whiteKing,
-        'h8': blackKing
+        'h8': blackKing,
       },
       from: 'f6',
       to: 'g7',

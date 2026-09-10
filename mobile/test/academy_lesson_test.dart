@@ -27,15 +27,52 @@ void main() {
       expect(AcademyCatalog.forChapter('En passant capture').id, 'en-passant');
       expect(AcademyCatalog.forChapter('Pins').id, 'pin');
       expect(AcademyCatalog.forChapter('Skewers').id, 'skewer');
-      expect(AcademyCatalog.forChapter('Discovered attacks').id,
-          'discovered-attack');
+      expect(
+        AcademyCatalog.forChapter('Discovered attacks').id,
+        'discovered-attack',
+      );
       expect(AcademyCatalog.forChapter('King opposition').id, 'opposition');
-      expect(AcademyCatalog.forChapter('Rook and king checkmate').id,
-          'rook-king-mate');
+      expect(
+        AcademyCatalog.forChapter('Rook and king checkmate').id,
+        'rook-king-mate',
+      );
       expect(AcademyCatalog.forChapter('Avoiding stalemate').id, 'stalemate');
       expect(AcademyCatalog.forChapter('Deflection tactics').id, 'deflection');
       expect(AcademyCatalog.forChapter('Decoy tactics').id, 'decoy');
       expect(AcademyCatalog.forChapter('Mate in two').id, 'mate-two');
+    });
+
+    test('foundation course has memorable narrated story chapters', () {
+      final Iterable<AcademyLesson> foundation = AcademyCatalog.lessons.where(
+        (AcademyLesson lesson) => lesson.stage == AcademyStage.foundation,
+      );
+      expect(foundation, isNotEmpty);
+      for (final AcademyLesson lesson in foundation) {
+        expect(lesson.storyChapter, isNot('THE NEXT MOVE'));
+        expect(
+          lesson.storyNarration.length,
+          greaterThan(120),
+          reason: '${lesson.id} needs a complete narrated scene',
+        );
+        expect(
+          lesson.storyNarration,
+          contains(lesson.to),
+          reason: '${lesson.id} story must teach the target square',
+        );
+      }
+    });
+
+    test('intermediate lessons require three-candidate thinking', () {
+      final Iterable<AcademyLesson> intermediate = AcademyCatalog.lessons.where(
+        (AcademyLesson lesson) => lesson.stage != AcademyStage.foundation,
+      );
+      for (final AcademyLesson lesson in intermediate) {
+        expect(lesson.usesDecisionCheckpoint, isTrue);
+        expect(lesson.decisionOptions, hasLength(3));
+        expect(lesson.decisionOptions.toSet(), hasLength(3));
+        expect(lesson.decisionOptions, contains(lesson.to));
+        expect(lesson.decisionInsight, contains(lesson.to));
+      }
     });
   });
 }

@@ -7,6 +7,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{
+      'settings.language': 'en',
+    });
+  });
 
   testWidgets('mobile academy exposes animated practice flow',
       (WidgetTester tester) async {
@@ -101,5 +106,41 @@ void main() {
       find.text('Complete the previous academy stage to unlock this course.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('intermediate lesson asks for a candidate before its demo',
+      (WidgetTester tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(MaterialApp(
+      home: InteractiveAcademyLessonScreen(
+        lesson: AcademyCatalog.forChapter('Pins'),
+      ),
+    ));
+    await tester.pump();
+
+    expect(find.text('THINK BEFORE THE DEMO'), findsOneWidget);
+    expect(find.textContaining('three candidates'), findsOneWidget);
+  });
+
+  testWidgets('academy follows the selected offline language',
+      (WidgetTester tester) async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{
+      'settings.language': 'te',
+    });
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final AcademyLesson lesson = AcademyCatalog.forChapter('How pawns move');
+    await tester.pumpWidget(MaterialApp(
+      home: InteractiveAcademyLessonScreen(lesson: lesson),
+    ));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('అధ్యాయం 2 · ధైర్యవంతుడైన సైనికుడు'), findsWidgets);
+    expect(find.text(lesson.storyNarration), findsNothing);
   });
 }

@@ -2,8 +2,12 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
+import '../../../core/academy_story_localizations.dart';
+import '../../../core/app_language.dart';
 import '../../../core/chess_piece_appearance.dart';
+import '../../../core/coach_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../data/academy_progress_store.dart';
@@ -11,11 +15,49 @@ import '../domain/academy_lesson.dart';
 
 enum _LessonPhase { demonstration, practice, success }
 
+enum _NarrationState { stopped, playing, paused }
+
+String _ttsLocale(String code) =>
+    const <String, String>{
+      'en': 'en-US',
+      'te': 'te-IN',
+      'hi': 'hi-IN',
+      'ta': 'ta-IN',
+      'kn': 'kn-IN',
+      'ml': 'ml-IN',
+      'mr': 'mr-IN',
+      'bn': 'bn-IN',
+      'gu': 'gu-IN',
+      'pa': 'pa-IN',
+      'ur': 'ur-PK',
+      'ar': 'ar-SA',
+      'es': 'es-ES',
+      'fr': 'fr-FR',
+      'de': 'de-DE',
+      'it': 'it-IT',
+      'pt': 'pt-BR',
+      'ru': 'ru-RU',
+      'uk': 'uk-UA',
+      'tr': 'tr-TR',
+      'fa': 'fa-IR',
+      'zh': 'zh-CN',
+      'ja': 'ja-JP',
+      'ko': 'ko-KR',
+      'id': 'id-ID',
+      'ms': 'ms-MY',
+      'th': 'th-TH',
+      'vi': 'vi-VN',
+      'pl': 'pl-PL',
+      'nl': 'nl-NL',
+      'sv': 'sv-SE',
+      'el': 'el-GR',
+      'he': 'he-IL',
+      'sw': 'sw-KE',
+    }[code] ??
+    'en-US';
+
 class InteractiveAcademyLessonScreen extends StatefulWidget {
-  const InteractiveAcademyLessonScreen({
-    required this.lesson,
-    super.key,
-  });
+  const InteractiveAcademyLessonScreen({required this.lesson, super.key});
 
   final AcademyLesson lesson;
 
@@ -30,13 +72,23 @@ class _InteractiveAcademyLessonScreenState
   static const AcademyProgressStore _progressStore = AcademyProgressStore();
   late final AnimationController _controller;
   late final Animation<double> _movement;
+  late final FlutterTts _narrator;
   _LessonPhase _phase = _LessonPhase.demonstration;
+  _NarrationState _narrationState = _NarrationState.stopped;
   Timer? _practiceTimer;
   String? _selected;
   String? _feedback;
   bool _loadingProgress = true;
   Set<String> _completed = <String>{};
   int _attempts = 0;
+  String? _candidateFeedback;
+  String _languageCode = AppLanguageController.resolveCode(
+    AppLanguageController.systemCode,
+  );
+
+  AcademyStoryLocalizations get _copy =>
+      AcademyStoryLocalizations(_languageCode);
+  CoachLocalizations get _coachCopy => CoachLocalizations(_languageCode);
 
   @override
   void initState() {
@@ -49,9 +101,169 @@ class _InteractiveAcademyLessonScreenState
       parent: _controller,
       curve: Curves.easeInOutCubicEmphasized,
     );
+    _narrator = FlutterTts()
+      ..setStartHandler(() => _setNarrationState(_NarrationState.playing))
+      ..setCompletionHandler(() => _setNarrationState(_NarrationState.stopped))
+      ..setCancelHandler(() => _setNarrationState(_NarrationState.stopped))
+      ..setErrorHandler((_) => _setNarrationState(_NarrationState.stopped))
+      ..setPauseHandler(() => _setNarrationState(_NarrationState.paused))
+      ..setContinueHandler(() => _setNarrationState(_NarrationState.playing));
+    AppLanguageController.effectiveLanguageChanges.addListener(
+      _handleLanguageChange,
+    );
+    unawaited(_loadLanguage());
+    unawaited(_prepareNarrator());
     _controller.addStatusListener(_handleAnimationStatus);
     unawaited(_loadProgress());
-    WidgetsBinding.instance.addPostFrameCallback((_) => _playDemonstration());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.lesson.usesDecisionCheckpoint) {
+        _showDecisionCheckpoint();
+      } else {
+        _playDemonstration();
+      }
+    });
+  }
+
+  Future<void> _loadLanguage() async {
+    final String code = await AppLanguageController.effectiveCode();
+    if (!mounted) return;
+    setState(() => _languageCode = code);
+    await _prepareNarrator();
+  }
+
+  void _handleLanguageChange() {
+    final String? code = AppLanguageController.effectiveLanguageChanges.value;
+    if (code == null || !mounted) return;
+    setState(() => _languageCode = code);
+    unawaited(_prepareNarrator());
+  }
+
+  Future<void> _showDecisionCheckpoint() async {
+    if (!mounted) return;
+    _candidateFeedback = null;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) => StatefulBuilder(
+        builder: (BuildContext context, StateSetter setDialogState) =>
+            AlertDialog(
+              backgroundColor: const Color(0xFF091C2C),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              title: Row(
+                children: <Widget>[
+                  const Icon(
+                    Icons.psychology_alt_rounded,
+                    color: AppColors.accentGold,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(_copy.text('ui.thinkTitle'))),
+                ],
+              ),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 430),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Text(
+                      _copy.decisionQuestion(widget.lesson.stage),
+                      style: const TextStyle(
+                        color: Color(0xFFEAF2F6),
+                        height: 1.4,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    for (final String square in widget.lesson.decisionOptions)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 9),
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            if (square == widget.lesson.to) {
+                              Navigator.of(dialogContext).pop();
+                              _playDemonstration(
+                                coachFeedback: _copy.decisionInsight(
+                                  widget.lesson,
+                                ),
+                              );
+                            } else {
+                              setDialogState(() {
+                                _candidateFeedback = _copy.text(
+                                  'feedback.wrong',
+                                  values: <String, String>{'square': square},
+                                );
+                              });
+                            }
+                          },
+                          icon: const Icon(Icons.route_rounded),
+                          label: Text('${widget.lesson.from} → $square'),
+                        ),
+                      ),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      child: _candidateFeedback == null
+                          ? Text(
+                              _copy.text('ui.candidateRule'),
+                              key: const ValueKey<String>('candidate-rule'),
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                              ),
+                            )
+                          : Text(
+                              _candidateFeedback!,
+                              key: ValueKey<String>(_candidateFeedback!),
+                              style: const TextStyle(
+                                color: AppColors.accentGold,
+                                height: 1.35,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+      ),
+    );
+  }
+
+  void _setNarrationState(_NarrationState state) {
+    if (mounted) setState(() => _narrationState = state);
+  }
+
+  Future<void> _prepareNarrator() async {
+    try {
+      await _narrator.setLanguage(_ttsLocale(_languageCode));
+      await _narrator.setSpeechRate(.43);
+      await _narrator.setPitch(1.02);
+      await _narrator.setVolume(1);
+    } on Object {
+      // Captions keep every lesson usable when a device has no TTS voice.
+    }
+  }
+
+  Future<void> _toggleNarration() async {
+    try {
+      if (_narrationState == _NarrationState.playing) {
+        await _narrator.pause();
+        return;
+      }
+      await _narrator.speak(_copy.storyNarration(widget.lesson));
+    } on Object {
+      _setNarrationState(_NarrationState.stopped);
+    }
+  }
+
+  Future<void> _replayNarration() async {
+    try {
+      await _narrator.stop();
+      await _narrator.speak(_copy.storyNarration(widget.lesson));
+    } on Object {
+      _setNarrationState(_NarrationState.stopped);
+    }
   }
 
   Future<void> _loadProgress() async {
@@ -75,17 +287,24 @@ class _InteractiveAcademyLessonScreenState
       setState(() {
         _phase = _LessonPhase.practice;
         _selected = null;
-        _feedback = widget.lesson.coachPrompt;
+        _feedback = _languageCode == 'en'
+            ? widget.lesson.coachPrompt
+            : '${_copy.storyChapter(widget.lesson)} · '
+                  '${widget.lesson.from} → ${widget.lesson.to}';
       });
     });
   }
 
-  void _playDemonstration() {
+  void _playDemonstration({String? coachFeedback}) {
     _practiceTimer?.cancel();
     setState(() {
       _phase = _LessonPhase.demonstration;
       _selected = null;
-      _feedback = 'Watch the AI coach demonstrate the move.';
+      _feedback =
+          coachFeedback ??
+          (_languageCode == 'en'
+              ? 'Watch the AI coach demonstrate the move.'
+              : _copy.storyChapter(widget.lesson));
     });
     _controller.forward(from: 0);
   }
@@ -124,7 +343,9 @@ class _InteractiveAcademyLessonScreenState
       setState(() {
         _phase = _LessonPhase.success;
         _selected = null;
-        _feedback = widget.lesson.successMessage;
+        _feedback = _languageCode == 'en'
+            ? widget.lesson.successMessage
+            : _coachCopy.text('bestFound');
       });
       unawaited(_completeLesson());
       return;
@@ -137,6 +358,10 @@ class _InteractiveAcademyLessonScreenState
   }
 
   String _smartCorrection(String square) {
+    if (_languageCode != 'en') {
+      return '${_coachCopy.text('goodTry')} '
+          '${widget.lesson.from} → ${widget.lesson.to}';
+    }
     final AcademyPiece? piece = widget.lesson.pieces[widget.lesson.from];
     final String name = _pieceName(piece?.symbol);
     return switch (piece?.symbol) {
@@ -158,6 +383,10 @@ class _InteractiveAcademyLessonScreenState
   @override
   void dispose() {
     _practiceTimer?.cancel();
+    AppLanguageController.effectiveLanguageChanges.removeListener(
+      _handleLanguageChange,
+    );
+    unawaited(_narrator.stop());
     _controller
       ..removeStatusListener(_handleAnimationStatus)
       ..dispose();
@@ -178,15 +407,23 @@ class _InteractiveAcademyLessonScreenState
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(widget.lesson.title,
-                style: const TextStyle(fontWeight: FontWeight.w900)),
-            Text(widget.lesson.eyebrow,
-                style: const TextStyle(
-                  color: AppColors.accentGold,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.2,
-                )),
+            Text(
+              _languageCode == 'en'
+                  ? widget.lesson.title
+                  : _copy.storyChapter(widget.lesson),
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+            Text(
+              _languageCode == 'en'
+                  ? widget.lesson.eyebrow
+                  : '${widget.lesson.from} → ${widget.lesson.to}',
+              style: const TextStyle(
+                color: AppColors.accentGold,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.2,
+              ),
+            ),
           ],
         ),
         actions: <Widget>[
@@ -201,122 +438,141 @@ class _InteractiveAcademyLessonScreenState
         child: phoneLandscape
             ? _buildPhoneLandscape(context)
             : desktop
-                ? _buildDesktop(context)
-                : _buildMobile(context),
+            ? _buildDesktop(context)
+            : _buildMobile(context),
       ),
     );
   }
 
   Widget _buildPhoneLandscape(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-        child: Row(
-          children: <Widget>[
-            Expanded(
-              child: Center(
-                child: _AnimatedAcademyBoard(
-                  lesson: widget.lesson,
-                  movement: _movement,
-                  phase: _phase,
-                  selected: _selected,
-                  onSquareTap: _onSquareTap,
-                ),
-              ),
+    padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+    child: Row(
+      children: <Widget>[
+        Expanded(
+          child: Center(
+            child: _AnimatedAcademyBoard(
+              lesson: widget.lesson,
+              movement: _movement,
+              phase: _phase,
+              selected: _selected,
+              onSquareTap: _onSquareTap,
             ),
-            const SizedBox(width: 12),
-            SizedBox(
-              width: 330,
-              child: SingleChildScrollView(
-                child: _CoachPanel(
-                  lesson: widget.lesson,
-                  phase: _phase,
-                  feedback: _feedback,
-                  attempts: _attempts,
-                  completed: _completed.contains(widget.lesson.id),
-                  loading: _loadingProgress,
-                  onReplay: _playDemonstration,
-                  onPracticeAgain: _resetPractice,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-      );
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 330,
+          child: SingleChildScrollView(
+            child: _CoachPanel(
+              lesson: widget.lesson,
+              phase: _phase,
+              feedback: _feedback,
+              attempts: _attempts,
+              completed: _completed.contains(widget.lesson.id),
+              loading: _loadingProgress,
+              onReplay: _playDemonstration,
+              onPracticeAgain: _resetPractice,
+              narrationState: _narrationState,
+              onToggleNarration: () => unawaited(_toggleNarration()),
+              onReplayNarration: () => unawaited(_replayNarration()),
+              copy: _copy,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _buildDesktop(BuildContext context) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            SizedBox(width: 230, child: _CurriculumRail(lesson: widget.lesson)),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 680),
-                  child: _AnimatedAcademyBoard(
-                    lesson: widget.lesson,
-                    movement: _movement,
-                    phase: _phase,
-                    selected: _selected,
-                    onSquareTap: _onSquareTap,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 20),
-            SizedBox(
-              width: 330,
-              child: _CoachPanel(
-                lesson: widget.lesson,
-                phase: _phase,
-                feedback: _feedback,
-                attempts: _attempts,
-                completed: _completed.contains(widget.lesson.id),
-                loading: _loadingProgress,
-                onReplay: _playDemonstration,
-                onPracticeAgain: _resetPractice,
-              ),
-            ),
-          ],
-        ),
-      );
-
-  Widget _buildMobile(BuildContext context) => CustomScrollView(
-        slivers: <Widget>[
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(12, 14, 12, 24),
-            sliver: SliverList.list(children: <Widget>[
-              _MobileLessonProgress(phase: _phase),
-              const SizedBox(height: 12),
-              _AnimatedAcademyBoard(
+    padding: const EdgeInsets.all(20),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        SizedBox(width: 230, child: _CurriculumRail(lesson: widget.lesson)),
+        const SizedBox(width: 20),
+        Expanded(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 680),
+              child: _AnimatedAcademyBoard(
                 lesson: widget.lesson,
                 movement: _movement,
                 phase: _phase,
                 selected: _selected,
                 onSquareTap: _onSquareTap,
               ),
-              const SizedBox(height: 14),
-              _CoachPanel(
-                lesson: widget.lesson,
-                phase: _phase,
-                feedback: _feedback,
-                attempts: _attempts,
-                completed: _completed.contains(widget.lesson.id),
-                loading: _loadingProgress,
-                onReplay: _playDemonstration,
-                onPracticeAgain: _resetPractice,
-              ),
-            ]),
+            ),
           ),
-        ],
-      );
+        ),
+        const SizedBox(width: 20),
+        SizedBox(
+          width: 330,
+          child: SingleChildScrollView(
+            child: _CoachPanel(
+              lesson: widget.lesson,
+              phase: _phase,
+              feedback: _feedback,
+              attempts: _attempts,
+              completed: _completed.contains(widget.lesson.id),
+              loading: _loadingProgress,
+              onReplay: _playDemonstration,
+              onPracticeAgain: _resetPractice,
+              narrationState: _narrationState,
+              onToggleNarration: () => unawaited(_toggleNarration()),
+              onReplayNarration: () => unawaited(_replayNarration()),
+              copy: _copy,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _buildMobile(BuildContext context) => CustomScrollView(
+    slivers: <Widget>[
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(12, 14, 12, 24),
+        sliver: SliverList.list(
+          children: <Widget>[
+            _MobileLessonProgress(phase: _phase),
+            const SizedBox(height: 12),
+            _AnimatedAcademyBoard(
+              lesson: widget.lesson,
+              movement: _movement,
+              phase: _phase,
+              selected: _selected,
+              onSquareTap: _onSquareTap,
+            ),
+            const SizedBox(height: 14),
+            _CoachPanel(
+              lesson: widget.lesson,
+              phase: _phase,
+              feedback: _feedback,
+              attempts: _attempts,
+              completed: _completed.contains(widget.lesson.id),
+              loading: _loadingProgress,
+              onReplay: _playDemonstration,
+              onPracticeAgain: _resetPractice,
+              narrationState: _narrationState,
+              onToggleNarration: () => unawaited(_toggleNarration()),
+              onReplayNarration: () => unawaited(_replayNarration()),
+              copy: _copy,
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
 
   void _resetPractice() {
     setState(() {
       _phase = _LessonPhase.practice;
       _selected = null;
       _attempts = 0;
-      _feedback = widget.lesson.coachPrompt;
+      _feedback = _languageCode == 'en'
+          ? widget.lesson.coachPrompt
+          : '${_copy.storyChapter(widget.lesson)} · '
+                '${widget.lesson.from} → ${widget.lesson.to}';
     });
   }
 }
@@ -338,125 +594,133 @@ class _AnimatedAcademyBoard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AspectRatio(
-        aspectRatio: 1,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFF2A91F2), width: 2.4),
-            boxShadow: const <BoxShadow>[
-              BoxShadow(color: Color(0x662A91F2), blurRadius: 30),
-              BoxShadow(
-                  color: Color(0xAA000000),
-                  blurRadius: 24,
-                  offset: Offset(0, 12)),
-            ],
+    aspectRatio: 1,
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFF2A91F2), width: 2.4),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(color: Color(0x662A91F2), blurRadius: 30),
+          BoxShadow(
+            color: Color(0xAA000000),
+            blurRadius: 24,
+            offset: Offset(0, 12),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(21),
-            child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-                final double square = constraints.maxWidth / 8;
-                return AnimatedBuilder(
-                  animation: movement,
-                  builder: (BuildContext context, Widget? child) {
-                    final bool demonstrating =
-                        phase == _LessonPhase.demonstration;
-                    final bool moved = phase == _LessonPhase.success;
-                    final Map<String, AcademyPiece> pieces =
-                        Map<String, AcademyPiece>.from(lesson.pieces);
-                    if (moved) {
-                      final AcademyPiece? piece = pieces.remove(lesson.from);
-                      if (piece != null) pieces[lesson.to] = piece;
-                    }
-                    return Stack(children: <Widget>[
-                      for (int row = 0; row < 8; row++)
-                        for (int col = 0; col < 8; col++)
-                          _BoardSquare(
-                            row: row,
-                            col: col,
-                            size: square,
-                            lesson: lesson,
-                            phase: phase,
-                            selected: selected,
-                            piece: pieces[_squareName(row, col)],
-                            hidePiece: demonstrating &&
-                                _squareName(row, col) == lesson.from,
-                            onTap: onSquareTap,
-                          ),
-                      if (demonstrating)
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            child: CustomPaint(
-                              painter: _AcademyRoutePainter(
-                                from: lesson.from,
-                                to: lesson.to,
-                                progress: movement.value,
-                              ),
-                            ),
-                          ),
-                        ),
-                      if (demonstrating)
-                        _MovingPiece(
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(21),
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final double square = constraints.maxWidth / 8;
+            return AnimatedBuilder(
+              animation: movement,
+              builder: (BuildContext context, Widget? child) {
+                final bool demonstrating = phase == _LessonPhase.demonstration;
+                final bool moved = phase == _LessonPhase.success;
+                final Map<String, AcademyPiece> pieces =
+                    Map<String, AcademyPiece>.from(lesson.pieces);
+                if (moved) {
+                  final AcademyPiece? piece = pieces.remove(lesson.from);
+                  if (piece != null) pieces[lesson.to] = piece;
+                }
+                return Stack(
+                  children: <Widget>[
+                    for (int row = 0; row < 8; row++)
+                      for (int col = 0; col < 8; col++)
+                        _BoardSquare(
+                          row: row,
+                          col: col,
+                          size: square,
                           lesson: lesson,
-                          progress: movement.value,
-                          squareSize: square,
+                          phase: phase,
+                          selected: selected,
+                          piece: pieces[_squareName(row, col)],
+                          hidePiece:
+                              demonstrating &&
+                              _squareName(row, col) == lesson.from,
+                          onTap: onSquareTap,
                         ),
-                      Positioned(
-                        top: 10,
-                        right: 10,
+                    if (demonstrating)
+                      Positioned.fill(
                         child: IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: phase == _LessonPhase.demonstration
-                                  ? const Color(0xEE6D42D8)
-                                  : const Color(0xEE0E5277),
-                              borderRadius: BorderRadius.circular(18),
-                              boxShadow: const <BoxShadow>[
-                                BoxShadow(
-                                    color: Color(0x6659E4C8), blurRadius: 14),
-                              ],
+                          child: CustomPaint(
+                            painter: _AcademyRoutePainter(
+                              from: lesson.from,
+                              to: lesson.to,
+                              progress: movement.value,
+                              curved: lesson.pieces[lesson.from]?.symbol == 'N',
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 7),
-                              child: Text(
-                                phase == _LessonPhase.demonstration
-                                    ? '1  AI DEMO'
-                                    : phase == _LessonPhase.practice
-                                        ? '2  YOUR TURN'
-                                        : '3  MASTERED',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: .8,
-                                ),
+                          ),
+                        ),
+                      ),
+                    if (demonstrating)
+                      _MovingPiece(
+                        lesson: lesson,
+                        progress: movement.value,
+                        squareSize: square,
+                      ),
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: phase == _LessonPhase.demonstration
+                                ? const Color(0xEE6D42D8)
+                                : const Color(0xEE0E5277),
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: const <BoxShadow>[
+                              BoxShadow(
+                                color: Color(0x6659E4C8),
+                                blurRadius: 14,
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 7,
+                            ),
+                            child: Text(
+                              phase == _LessonPhase.demonstration
+                                  ? '1  AI DEMO'
+                                  : phase == _LessonPhase.practice
+                                  ? '2  YOUR TURN'
+                                  : '3  MASTERED',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: .8,
                               ),
                             ),
                           ),
                         ),
                       ),
-                      if (phase == _LessonPhase.success)
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: const Color(0xFF2A91F2),
-                                  width: 5,
-                                ),
+                    ),
+                    if (phase == _LessonPhase.success)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: const Color(0xFF2A91F2),
+                                width: 5,
                               ),
                             ),
                           ),
                         ),
-                    ]);
-                  },
+                      ),
+                  ],
                 );
               },
-            ),
-          ),
+            );
+          },
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _BoardSquare extends StatelessWidget {
@@ -490,8 +754,9 @@ class _BoardSquare extends StatelessWidget {
     final bool isSelected = selected == squareName;
     final bool target =
         phase == _LessonPhase.practice && squareName == lesson.to;
-    final Color base =
-        light ? const Color(0xFFD8C5A7) : const Color(0xFF6D4A32);
+    final Color base = light
+        ? const Color(0xFFD8C5A7)
+        : const Color(0xFF6D4A32);
     return Positioned(
       left: col * size,
       top: row * size,
@@ -509,60 +774,68 @@ class _BoardSquare extends StatelessWidget {
               color: isSelected
                   ? const Color(0xFF59E4C8)
                   : target
-                      ? const Color(0xFFB9993B)
-                      : highlighted
-                          ? Color.alphaBlend(const Color(0x554DE8D0), base)
-                          : base,
+                  ? const Color(0xFFB9993B)
+                  : highlighted
+                  ? Color.alphaBlend(const Color(0x554DE8D0), base)
+                  : base,
               border: Border.all(
                 color: isSelected
                     ? Colors.white
                     : highlighted
-                        ? const Color(0x8859E4C8)
-                        : Colors.black.withValues(alpha: .08),
+                    ? const Color(0x8859E4C8)
+                    : Colors.black.withValues(alpha: .08),
                 width: isSelected ? 2 : 1,
               ),
             ),
-            child: Stack(children: <Widget>[
-              if (col == 0)
-                Positioned(
-                  left: 5,
-                  top: 3,
-                  child: Text('${8 - row}',
+            child: Stack(
+              children: <Widget>[
+                if (col == 0)
+                  Positioned(
+                    left: 5,
+                    top: 3,
+                    child: Text(
+                      '${8 - row}',
                       style: TextStyle(
                         color: light
                             ? const Color(0xFF6D4A32)
                             : const Color(0xFFD8C5A7),
                         fontSize: math.max(9, size * .15),
                         fontWeight: FontWeight.w900,
-                      )),
-                ),
-              if (row == 7)
-                Positioned(
-                  right: 5,
-                  bottom: 2,
-                  child: Text(String.fromCharCode(97 + col),
-                      style: TextStyle(
-                        color: light
-                            ? const Color(0xFF6D4A32)
-                            : const Color(0xFFD8C5A7),
-                        fontSize: math.max(9, size * .15),
-                        fontWeight: FontWeight.w900,
-                      )),
-                ),
-              if (target && piece == null)
-                Center(
-                  child: Container(
-                    width: size * .24,
-                    height: size * .24,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(0xCC071A29),
+                      ),
                     ),
                   ),
-                ),
-              if (!hidePiece && piece != null)
-                Center(child: _PieceGlyph(piece: piece!, size: size * .72)),
-            ]),
+                if (row == 7)
+                  Positioned(
+                    right: 5,
+                    bottom: 2,
+                    child: Text(
+                      String.fromCharCode(97 + col),
+                      style: TextStyle(
+                        color: light
+                            ? const Color(0xFF6D4A32)
+                            : const Color(0xFFD8C5A7),
+                        fontSize: math.max(9, size * .15),
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                if (target && piece == null)
+                  Center(
+                    child: Container(
+                      width: size * .24,
+                      height: size * .24,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xCC071A29),
+                      ),
+                    ),
+                  ),
+                if (!hidePiece && piece != null)
+                  Center(
+                    child: _PieceGlyph(piece: piece!, size: size * .72),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -575,11 +848,13 @@ class _AcademyRoutePainter extends CustomPainter {
     required this.from,
     required this.to,
     required this.progress,
+    required this.curved,
   });
 
   final String from;
   final String to;
   final double progress;
+  final bool curved;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -598,10 +873,14 @@ class _AcademyRoutePainter extends CustomPainter {
     if (delta.distance < 1) return;
     final Offset direction = delta / delta.distance;
     final Offset normal = Offset(-direction.dy, direction.dx);
-    final Offset control = Offset.lerp(start, target, .5)! + normal * cell * .2;
-    final Path fullRoute = Path()
-      ..moveTo(start.dx, start.dy)
-      ..quadraticBezierTo(control.dx, control.dy, target.dx, target.dy);
+    final Path fullRoute = Path()..moveTo(start.dx, start.dy);
+    if (curved) {
+      final Offset control =
+          Offset.lerp(start, target, .5)! + normal * cell * .28;
+      fullRoute.quadraticBezierTo(control.dx, control.dy, target.dx, target.dy);
+    } else {
+      fullRoute.lineTo(target.dx, target.dy);
+    }
     final metric = fullRoute.computeMetrics().first;
     final Path route = metric.extractPath(0, metric.length * progress);
     final Offset end =
@@ -627,17 +906,14 @@ class _AcademyRoutePainter extends CustomPainter {
         cell * (.13 + .05 * math.sin(progress * math.pi * 4).abs()),
         Paint()..color = const Color(0x9959E4C8),
       )
-      ..drawCircle(
-        end,
-        cell * .075,
-        Paint()..color = Colors.white,
-      );
+      ..drawCircle(end, cell * .075, Paint()..color = Colors.white);
   }
 
   @override
   bool shouldRepaint(_AcademyRoutePainter oldDelegate) =>
       oldDelegate.from != from ||
       oldDelegate.to != to ||
+      oldDelegate.curved != curved ||
       oldDelegate.progress != progress;
 }
 
@@ -657,8 +933,10 @@ class _MovingPiece extends StatelessWidget {
     final Offset from = _squareOffset(lesson.from);
     final Offset to = _squareOffset(lesson.to);
     final Offset current = Offset.lerp(from, to, progress)!;
-    final double lift = math.sin(progress * math.pi) * squareSize * .18;
     final AcademyPiece piece = lesson.pieces[lesson.from]!;
+    final bool isKnight = piece.symbol == 'N';
+    final double lift =
+        math.sin(progress * math.pi) * squareSize * (isKnight ? .34 : .06);
     return Positioned(
       left: current.dx * squareSize,
       top: current.dy * squareSize - lift,
@@ -666,9 +944,12 @@ class _MovingPiece extends StatelessWidget {
       height: squareSize,
       child: IgnorePointer(
         child: Transform.scale(
-          scale: 1 + math.sin(progress * math.pi) * .13,
-          child:
-              _PieceGlyph(piece: piece, size: squareSize * .76, glowing: true),
+          scale: 1 + math.sin(progress * math.pi) * (isKnight ? .16 : .06),
+          child: _PieceGlyph(
+            piece: piece,
+            size: squareSize * .76,
+            glowing: true,
+          ),
         ),
       ),
     );
@@ -676,84 +957,83 @@ class _MovingPiece extends StatelessWidget {
 }
 
 class _PieceGlyph extends StatelessWidget {
-  const _PieceGlyph(
-      {required this.piece, required this.size, this.glowing = false});
+  const _PieceGlyph({
+    required this.piece,
+    required this.size,
+    this.glowing = false,
+  });
 
   final AcademyPiece piece;
   final double size;
   final bool glowing;
 
   @override
-  Widget build(BuildContext context) =>
-      ValueListenableBuilder<ChessPieceAppearance>(
-        valueListenable: ChessPieceAppearanceController.current,
-        builder: (BuildContext context, ChessPieceAppearance appearance, _) {
-          final double scale = switch (appearance.size) {
-            ChessPieceVisualSize.large => 1.14,
-            ChessPieceVisualSize.extraLarge => 1.28,
-            ChessPieceVisualSize.doubleExtraLarge => 1.40,
-          };
-          final Widget visual;
-          if (appearance.style == ChessPieceVisualStyle.classic2d) {
-            visual = Text(
-              _pieceGlyph(piece),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'serif',
-                fontSize: size * .9,
-                height: 1,
-                color: piece.white
-                    ? const Color(0xFFFFF4D0)
-                    : const Color(0xFF111722),
-                shadows: const <Shadow>[
-                  Shadow(color: Colors.black87, blurRadius: 3),
-                ],
-              ),
-            );
-          } else {
-            Widget image = Image.asset(
-              _academyPieceAsset(piece),
-              fit: BoxFit.contain,
-              filterQuality: FilterQuality.high,
-              semanticLabel:
-                  '${piece.white ? 'White' : 'Black'} ${_pieceName(piece.symbol)}',
-            );
-            if (appearance.style == ChessPieceVisualStyle.highContrast) {
-              image = ColorFiltered(
-                colorFilter: ColorFilter.mode(
-                  piece.white
-                      ? const Color(0xFFFFF0B8)
-                      : const Color(0xFF89BFFF),
-                  BlendMode.modulate,
-                ),
-                child: image,
-              );
-            }
-            visual = image;
-          }
-          return SizedBox.square(
-            dimension: size,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: <BoxShadow>[
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: .42),
-                    blurRadius: size * .09,
-                    offset: Offset(0, size * .06),
-                  ),
-                  if (glowing)
-                    const BoxShadow(color: Color(0xFF59E4C8), blurRadius: 18),
-                ],
-              ),
-              child: Transform.scale(
-                scale: scale,
-                child: visual,
-              ),
+  Widget build(
+    BuildContext context,
+  ) => ValueListenableBuilder<ChessPieceAppearance>(
+    valueListenable: ChessPieceAppearanceController.current,
+    builder: (BuildContext context, ChessPieceAppearance appearance, _) {
+      final double scale = switch (appearance.size) {
+        ChessPieceVisualSize.large => 1.14,
+        ChessPieceVisualSize.extraLarge => 1.28,
+        ChessPieceVisualSize.doubleExtraLarge => 1.40,
+      };
+      final Widget visual;
+      if (appearance.style == ChessPieceVisualStyle.classic2d) {
+        visual = Text(
+          _pieceGlyph(piece),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'serif',
+            fontSize: size * .9,
+            height: 1,
+            color: piece.white
+                ? const Color(0xFFFFF4D0)
+                : const Color(0xFF111722),
+            shadows: const <Shadow>[
+              Shadow(color: Colors.black87, blurRadius: 3),
+            ],
+          ),
+        );
+      } else {
+        Widget image = Image.asset(
+          _academyPieceAsset(piece),
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+          semanticLabel:
+              '${piece.white ? 'White' : 'Black'} ${_pieceName(piece.symbol)}',
+        );
+        if (appearance.style == ChessPieceVisualStyle.highContrast) {
+          image = ColorFiltered(
+            colorFilter: ColorFilter.mode(
+              piece.white ? const Color(0xFFFFF0B8) : const Color(0xFF89BFFF),
+              BlendMode.modulate,
             ),
+            child: image,
           );
-        },
+        }
+        visual = image;
+      }
+      return SizedBox.square(
+        dimension: size,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: .42),
+                blurRadius: size * .09,
+                offset: Offset(0, size * .06),
+              ),
+              if (glowing)
+                const BoxShadow(color: Color(0xFF59E4C8), blurRadius: 18),
+            ],
+          ),
+          child: Transform.scale(scale: scale, child: visual),
+        ),
       );
+    },
+  );
 }
 
 String _academyPieceAsset(AcademyPiece piece) =>
@@ -769,6 +1049,10 @@ class _CoachPanel extends StatelessWidget {
     required this.loading,
     required this.onReplay,
     required this.onPracticeAgain,
+    required this.narrationState,
+    required this.onToggleNarration,
+    required this.onReplayNarration,
+    required this.copy,
   });
 
   final AcademyLesson lesson;
@@ -779,61 +1063,138 @@ class _CoachPanel extends StatelessWidget {
   final bool loading;
   final VoidCallback onReplay;
   final VoidCallback onPracticeAgain;
+  final _NarrationState narrationState;
+  final VoidCallback onToggleNarration;
+  final VoidCallback onReplayNarration;
+  final AcademyStoryLocalizations copy;
 
   @override
   Widget build(BuildContext context) {
     final Color accent = phase == _LessonPhase.success
         ? const Color(0xFF59E4C8)
         : phase == _LessonPhase.practice
-            ? AppColors.accentGold
-            : AppColors.accentGold;
+        ? AppColors.accentGold
+        : AppColors.accentGold;
     return ChessVerseCard(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Row(children: <Widget>[
-            Container(
-              padding: const EdgeInsets.all(9),
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: .14),
-                shape: BoxShape.circle,
+          Row(
+            children: <Widget>[
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: .14),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.psychology_alt_rounded, color: accent),
               ),
-              child: Icon(Icons.psychology_alt_rounded, color: accent),
-            ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text('AI COACH',
-                      style: TextStyle(
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      copy.text('ui.aiCoach'),
+                      style: const TextStyle(
                         color: Color(0xFF59E4C8),
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.2,
-                      )),
-                  Text('WATCH • UNDERSTAND • PRACTICE',
-                      style: TextStyle(
+                      ),
+                    ),
+                    Text(
+                      copy.text('ui.strapline'),
+                      style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
-                      )),
-                ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            if (!loading && completed)
-              const Icon(Icons.verified_rounded, color: Color(0xFF59E4C8)),
-          ]),
+              if (!loading && completed)
+                const Icon(Icons.verified_rounded, color: Color(0xFF59E4C8)),
+            ],
+          ),
           const SizedBox(height: 18),
-          Text(lesson.explanation,
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: <Color>[Color(0x332A91F2), Color(0x2259E4C8)],
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0x6659E4C8)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  copy.storyChapter(lesson),
+                  style: const TextStyle(
+                    color: AppColors.accentGold,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  copy.storyNarration(lesson),
+                  style: const TextStyle(
+                    color: Color(0xFFEAF2F6),
+                    height: 1.42,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: <Widget>[
+                    FilledButton.tonalIcon(
+                      onPressed: onToggleNarration,
+                      icon: Icon(
+                        narrationState == _NarrationState.playing
+                            ? Icons.pause_rounded
+                            : Icons.volume_up_rounded,
+                      ),
+                      label: Text(
+                        narrationState == _NarrationState.playing
+                            ? copy.text('ui.pause')
+                            : narrationState == _NarrationState.paused
+                            ? copy.text('ui.continue')
+                            : copy.text('ui.listen'),
+                      ),
+                    ),
+                    IconButton.outlined(
+                      tooltip: copy.text('ui.restart'),
+                      onPressed: onReplayNarration,
+                      icon: const Icon(Icons.replay_rounded),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (copy.code == 'en') ...<Widget>[
+            Text(
+              lesson.explanation,
               style: const TextStyle(
                 color: Color(0xFFD9E4EB),
                 fontSize: 15,
                 height: 1.45,
                 fontWeight: FontWeight.w600,
-              )),
-          const SizedBox(height: 16),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           AnimatedContainer(
             duration: const Duration(milliseconds: 360),
             width: double.infinity,
@@ -858,40 +1219,53 @@ class _CoachPanel extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           if (phase == _LessonPhase.success)
-            Row(children: <Widget>[
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: onPracticeAgain,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF1769E0),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    elevation: 5,
-                    shadowColor: const Color(0x992A91F2),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: onPracticeAgain,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF1769E0),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      elevation: 5,
+                      shadowColor: const Color(0x992A91F2),
+                    ),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: Text(
+                      copy.code == 'en'
+                          ? 'PRACTICE AGAIN'
+                          : copy.text('ui.restart'),
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
                   ),
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('PRACTICE AGAIN',
-                      style: TextStyle(fontWeight: FontWeight.w900)),
-                ),
-              ),
-            ])
-          else
-            Row(children: <Widget>[
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onReplay,
-                  icon: const Icon(Icons.play_circle_outline_rounded),
-                  label: const Text('REPLAY'),
-                ),
-              ),
-              if (phase == _LessonPhase.practice) ...<Widget>[
-                const SizedBox(width: 10),
-                Chip(
-                  avatar: const Icon(Icons.touch_app_rounded, size: 17),
-                  label: Text(attempts == 0 ? 'Your turn' : '$attempts tries'),
                 ),
               ],
-            ]),
+            )
+          else
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onReplay,
+                    icon: const Icon(Icons.play_circle_outline_rounded),
+                    label: Text(
+                      copy.code == 'en' ? 'REPLAY' : copy.text('ui.restart'),
+                    ),
+                  ),
+                ),
+                if (phase == _LessonPhase.practice &&
+                    copy.code == 'en') ...<Widget>[
+                  const SizedBox(width: 10),
+                  Chip(
+                    avatar: const Icon(Icons.touch_app_rounded, size: 17),
+                    label: Text(
+                      attempts == 0 ? 'Your turn' : '$attempts tries',
+                    ),
+                  ),
+                ],
+              ],
+            ),
         ],
       ),
     );
@@ -904,88 +1278,108 @@ class _CurriculumRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ChessVerseCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const Text('LESSON FLOW',
-                style: TextStyle(
-                  color: AppColors.accentGold,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.1,
-                )),
-            const SizedBox(height: 18),
-            const _RailStep(
-                number: '01', title: 'Watch', icon: Icons.animation_rounded),
-            const _RailLine(),
-            const _RailStep(
-                number: '02',
-                title: 'Understand',
-                icon: Icons.psychology_rounded),
-            const _RailLine(),
-            const _RailStep(
-                number: '03', title: 'Practice', icon: Icons.touch_app_rounded),
-            const _RailLine(),
-            const _RailStep(
-                number: '04',
-                title: 'Master',
-                icon: Icons.workspace_premium_rounded),
-            const Spacer(),
-            Text(lesson.eyebrow,
-                style: const TextStyle(
-                  color: Color(0xFF59E4C8),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                )),
-            const SizedBox(height: 6),
-            Text(lesson.title,
-                style:
-                    const TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
-          ],
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const Text(
+          'LESSON FLOW',
+          style: TextStyle(
+            color: AppColors.accentGold,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.1,
+          ),
         ),
-      );
+        const SizedBox(height: 18),
+        const _RailStep(
+          number: '01',
+          title: 'Watch',
+          icon: Icons.animation_rounded,
+        ),
+        const _RailLine(),
+        const _RailStep(
+          number: '02',
+          title: 'Understand',
+          icon: Icons.psychology_rounded,
+        ),
+        const _RailLine(),
+        const _RailStep(
+          number: '03',
+          title: 'Practice',
+          icon: Icons.touch_app_rounded,
+        ),
+        const _RailLine(),
+        const _RailStep(
+          number: '04',
+          title: 'Master',
+          icon: Icons.workspace_premium_rounded,
+        ),
+        const Spacer(),
+        Text(
+          lesson.eyebrow,
+          style: const TextStyle(
+            color: Color(0xFF59E4C8),
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          lesson.title,
+          style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
+        ),
+      ],
+    ),
+  );
 }
 
 class _RailStep extends StatelessWidget {
-  const _RailStep(
-      {required this.number, required this.title, required this.icon});
+  const _RailStep({
+    required this.number,
+    required this.title,
+    required this.icon,
+  });
   final String number;
   final String title;
   final IconData icon;
 
   @override
-  Widget build(BuildContext context) => Row(children: <Widget>[
-        CircleAvatar(
-          radius: 19,
-          backgroundColor: const Color(0xFF10344A),
-          child: Icon(icon, color: const Color(0xFF59E4C8), size: 20),
+  Widget build(BuildContext context) => Row(
+    children: <Widget>[
+      CircleAvatar(
+        radius: 19,
+        backgroundColor: const Color(0xFF10344A),
+        child: Icon(icon, color: const Color(0xFF59E4C8), size: 20),
+      ),
+      const SizedBox(width: 11),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              number,
+              style: const TextStyle(
+                color: AppColors.accentGold,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          ],
         ),
-        const SizedBox(width: 11),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(number,
-                  style: const TextStyle(
-                    color: AppColors.accentGold,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                  )),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-            ],
-          ),
-        ),
-      ]);
+      ),
+    ],
+  );
 }
 
 class _RailLine extends StatelessWidget {
   const _RailLine();
   @override
   Widget build(BuildContext context) => Container(
-        width: 2,
-        height: 28,
-        margin: const EdgeInsets.only(left: 18),
-        color: const Color(0xFF1D4252),
-      );
+    width: 2,
+    height: 28,
+    margin: const EdgeInsets.only(left: 18),
+    color: const Color(0xFF1D4252),
+  );
 }
 
 class _MobileLessonProgress extends StatelessWidget {
@@ -1010,8 +1404,8 @@ class _MobileLessonProgress extends StatelessWidget {
                 borderRadius: BorderRadius.circular(99),
                 color: index <= active
                     ? (active == 2
-                        ? const Color(0xFF59E4C8)
-                        : AppColors.accentGold)
+                          ? const Color(0xFF59E4C8)
+                          : AppColors.accentGold)
                     : const Color(0xFF233846),
               ),
             ),
@@ -1056,11 +1450,11 @@ String _pieceGlyph(AcademyPiece piece) {
 }
 
 String _pieceName(String? symbol) => switch (symbol) {
-      'P' => 'pawn',
-      'N' => 'knight',
-      'B' => 'bishop',
-      'R' => 'rook',
-      'Q' => 'queen',
-      'K' => 'king',
-      _ => 'piece',
-    };
+  'P' => 'pawn',
+  'N' => 'knight',
+  'B' => 'bishop',
+  'R' => 'rook',
+  'Q' => 'queen',
+  'K' => 'king',
+  _ => 'piece',
+};
