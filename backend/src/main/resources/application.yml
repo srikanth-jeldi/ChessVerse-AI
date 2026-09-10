@@ -26,6 +26,8 @@ spring:
             required: true
 
 chessverse:
+  contact:
+    recipient: ${CONTACT_EMAIL:contactus@epitomehub.com}
   chat:
     giphy:
       api-key: ${GIPHY_API_KEY:}

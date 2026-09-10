@@ -120,7 +120,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       {required String subject, required String body}) async {
     final Uri email = Uri(
       scheme: 'mailto',
-      path: 'chessverseai@gmail.com',
+      path: 'contactus@epitomehub.com',
       queryParameters: <String, String>{'subject': subject, 'body': body},
     );
     if (!await launchUrl(email, mode: LaunchMode.externalApplication)) {

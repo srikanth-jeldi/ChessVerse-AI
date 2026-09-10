@@ -61,7 +61,7 @@ Welcome to the new ChessVerse AI experience.
 - Privacy policy: https://chessverseai.com/privacy.html
 - Terms: https://chessverseai.com/terms.html
 - Account/data deletion: https://chessverseai.com/data-deletion.html
-- Support email: chessverseai@gmail.com
+- Support email: contactus@epitomehub.com
 
 ## Data Safety draft
 

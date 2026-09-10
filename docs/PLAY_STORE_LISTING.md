@@ -49,4 +49,4 @@ Highlights:
 ChessVerse AI is actively developed. Online ratings, expanded curated puzzle
 sets and additional competitive features will continue to improve.
 
-Support: chessverseai@gmail.com
+Support: contactus@epitomehub.com

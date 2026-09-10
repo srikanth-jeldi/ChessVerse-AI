@@ -35,7 +35,7 @@ class LegalScreen extends StatelessWidget {
             ),
             _LegalSection(
               'Social and attachment safety',
-              'Only share content you have the right to share. Images and files are chosen through the system picker without broad storage access. Abuse, cheating and child-safety concerns can be reported to chessverseai@gmail.com.',
+              'Only share content you have the right to share. Images and files are chosen through the system picker without broad storage access. Abuse, cheating and child-safety concerns can be reported to contactus@epitomehub.com.',
             ),
           ]
         : const <_LegalSection>[

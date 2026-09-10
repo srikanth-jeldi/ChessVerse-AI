@@ -8,7 +8,7 @@
 - Privacy policy: `https://chessverseai.com/privacy`
 - Terms: `https://chessverseai.com/terms`
 - Data deletion: `https://chessverseai.com/data-deletion`
-- Support email: `chessverseai@gmail.com`
+- Support email: `contactus@epitomehub.com`
 
 ## App content declarations
 
