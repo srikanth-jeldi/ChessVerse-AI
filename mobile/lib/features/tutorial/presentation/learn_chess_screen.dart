@@ -19,7 +19,7 @@ class LearnChessScreen extends StatefulWidget {
       icon: Icons.account_tree_rounded,
       title: 'Piece Basics',
       body: 'Learn how every piece moves and captures.',
-      asset: 'assets/backgrounds/home-online-hero-v1.png',
+      asset: 'assets/backgrounds/home-online-hero-v1.webp',
       accent: Color(0xFF59E4C8),
       chapters: <String>[
         'Meet the chessboard',
@@ -36,7 +36,7 @@ class LearnChessScreen extends StatefulWidget {
       icon: Icons.security_rounded,
       title: 'King Safety',
       body: 'Understand check, escape squares, and pins.',
-      asset: 'assets/backgrounds/home-settings-hero-v1.png',
+      asset: 'assets/backgrounds/home-settings-hero-v1.webp',
       accent: AppColors.info,
       chapters: <String>[
         'Check and checkmate',
@@ -51,7 +51,7 @@ class LearnChessScreen extends StatefulWidget {
       icon: Icons.bolt_rounded,
       title: 'Tactics',
       body: 'Forks, skewers, discovered attacks, and mates.',
-      asset: 'assets/backgrounds/home-puzzles-hero-v1.png',
+      asset: 'assets/backgrounds/home-puzzles-hero-v1.webp',
       accent: Color(0xFFE9B84C),
       chapters: <String>[
         'Hanging pieces',
@@ -72,7 +72,7 @@ class LearnChessScreen extends StatefulWidget {
       icon: Icons.emoji_events_rounded,
       title: 'Endgames',
       body: 'Finish cleanly with rook, queen, and pawn endings.',
-      asset: 'assets/backgrounds/home-rankings-hero-v1.png',
+      asset: 'assets/backgrounds/home-rankings-hero-v1.webp',
       accent: AppColors.accentGold,
       chapters: <String>[
         'King and pawn basics',
@@ -575,7 +575,7 @@ class _CoachHero extends StatelessWidget {
           borderRadius: BorderRadius.circular(26),
           border: Border.all(color: const Color(0xFF2C8FCA), width: 1.2),
           image: const DecorationImage(
-            image: AssetImage('assets/backgrounds/learn-academy-hero-v1.png'),
+            image: AssetImage('assets/backgrounds/learn-academy-hero-v1.webp'),
             fit: BoxFit.cover,
             alignment: Alignment.centerRight,
           ),

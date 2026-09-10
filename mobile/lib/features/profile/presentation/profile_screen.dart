@@ -160,7 +160,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _SectionCard(
             title: 'PLAYER PROGRESS',
             icon: Icons.military_tech_rounded,
-            asset: 'assets/backgrounds/home-analysis-hero-v1.png',
+            asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
@@ -233,7 +233,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 10),
           _SectionCard(
             title: 'ACCOUNT',
-            asset: 'assets/backgrounds/home-settings-hero-v1.png',
+            asset: 'assets/backgrounds/home-settings-hero-v1.webp',
             icon: widget.isGuest
                 ? Icons.person_outline_rounded
                 : Icons.verified_rounded,
@@ -591,7 +591,7 @@ class _ProfileHero extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         image: const DecorationImage(
-          image: AssetImage('assets/backgrounds/home-rankings-hero-v1.png'),
+          image: AssetImage('assets/backgrounds/home-rankings-hero-v1.webp'),
           fit: BoxFit.cover,
           alignment: Alignment.centerRight,
           opacity: .32,
@@ -1367,10 +1367,10 @@ class _Stat extends StatelessWidget {
   final String value;
   final IconData icon;
   String get asset => switch (label) {
-        'Games' => 'assets/backgrounds/home-online-hero-v1.png',
-        'Wins' => 'assets/backgrounds/home-rankings-hero-v1.png',
-        'Win rate' => 'assets/backgrounds/home-analysis-hero-v1.png',
-        _ => 'assets/backgrounds/home-puzzles-hero-v1.png',
+        'Games' => 'assets/backgrounds/home-online-hero-v1.webp',
+        'Wins' => 'assets/backgrounds/home-rankings-hero-v1.webp',
+        'Win rate' => 'assets/backgrounds/home-analysis-hero-v1.webp',
+        _ => 'assets/backgrounds/home-puzzles-hero-v1.webp',
       };
 
   @override

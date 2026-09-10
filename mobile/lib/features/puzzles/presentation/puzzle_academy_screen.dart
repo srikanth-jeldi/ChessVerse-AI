@@ -510,7 +510,7 @@ class _PuzzleHero extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
           image: const DecorationImage(
-            image: AssetImage('assets/backgrounds/puzzle-academy-hero-v2.png'),
+            image: AssetImage('assets/backgrounds/puzzle-academy-hero-v2.webp'),
             fit: BoxFit.cover,
             alignment: Alignment.centerRight,
             opacity: .82,

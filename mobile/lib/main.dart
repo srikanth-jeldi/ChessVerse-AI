@@ -2234,7 +2234,7 @@ class _WideChessVerseLoadingPanel extends StatelessWidget {
                 Positioned.fill(
                   left: 500,
                   child: Image.asset(
-                    'assets/backgrounds/home-online-hero-v1.png',
+                    'assets/backgrounds/home-online-hero-v1.webp',
                     fit: BoxFit.cover,
                     alignment: Alignment.centerRight,
                   ),
@@ -3562,7 +3562,7 @@ class _PlayDestination extends StatelessWidget {
                     title: 'Play Online',
                     subtitle: 'Find a live rival worldwide',
                     color: const Color(0xFF0F6B61),
-                    asset: 'assets/backgrounds/home-online-hero-v1.png',
+                    asset: 'assets/backgrounds/home-online-hero-v1.webp',
                     onTap: onOnline,
                   ),
                   _PlayModeCard(
@@ -3570,7 +3570,7 @@ class _PlayDestination extends StatelessWidget {
                     title: 'Play Computer',
                     subtitle: 'Challenge ChessVerseAI',
                     color: const Color(0xFF174A69),
-                    asset: 'assets/backgrounds/play-computer-card-v2.png',
+                    asset: 'assets/backgrounds/play-computer-card-v2.webp',
                     onTap: onComputer,
                   ),
                   _PlayModeCard(
@@ -3578,7 +3578,7 @@ class _PlayDestination extends StatelessWidget {
                     title: 'My Games',
                     subtitle: 'Continue or replay your saved games',
                     color: const Color(0xFF5A3F78),
-                    asset: 'assets/backgrounds/home-analysis-hero-v1.png',
+                    asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
                     onTap: onMyGames,
                   ),
                   _PlayModeCard(
@@ -3586,7 +3586,7 @@ class _PlayDestination extends StatelessWidget {
                     title: 'Local Match',
                     subtitle: 'Two players on one board',
                     color: const Color(0xFF25664F),
-                    asset: 'assets/backgrounds/local-match-card-v2.png',
+                    asset: 'assets/backgrounds/local-match-card-v2.webp',
                     onTap: onLocal,
                   ),
                   _PlayModeCard(
@@ -3595,7 +3595,7 @@ class _PlayDestination extends StatelessWidget {
                     subtitle: 'Enter the World Chess Circuit',
                     color: const Color(0xFFD5A63B),
                     asset:
-                        'assets/backgrounds/tournament-new-york-grand-final-v1.png',
+                        'assets/backgrounds/tournament-new-york-grand-final-v1.webp',
                     onTap: onTournaments,
                   ),
                   _PlayModeCard(
@@ -3603,7 +3603,7 @@ class _PlayDestination extends StatelessWidget {
                     title: 'Daily Challenge',
                     subtitle: 'Solve today’s featured position',
                     color: const Color(0xFF8A5A21),
-                    asset: 'assets/backgrounds/daily-challenge-card-v2.png',
+                    asset: 'assets/backgrounds/daily-challenge-card-v2.webp',
                     onTap: onDaily,
                   ),
                 ],
@@ -13827,7 +13827,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                         image: !compactLobby
                             ? const DecorationImage(
                                 image: AssetImage(
-                                  'assets/backgrounds/online-matchmaking-hero-v1.png',
+                                  'assets/backgrounds/online-matchmaking-hero-v1.webp',
                                 ),
                                 fit: BoxFit.contain,
                                 alignment: Alignment.center,
@@ -13921,7 +13921,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                   // into a shallow banner on phones.
                                   aspectRatio: 1.62,
                                   child: Image.asset(
-                                    'assets/backgrounds/online-matchmaking-hero-v1.png',
+                                    'assets/backgrounds/online-matchmaking-hero-v1.webp',
                                     fit: BoxFit.contain,
                                     alignment: Alignment.center,
                                     filterQuality: FilterQuality.high,
@@ -14279,7 +14279,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                       decoration: BoxDecoration(
                         image: const DecorationImage(
                           image: AssetImage(
-                              'assets/backgrounds/online-matchmaking-hero-v1.png'),
+                              'assets/backgrounds/online-matchmaking-hero-v1.webp'),
                           fit: BoxFit.cover,
                         ),
                         borderRadius: BorderRadius.circular(25),

@@ -178,7 +178,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           fit: StackFit.expand,
                           children: <Widget>[
                             Image.asset(
-                              'assets/backgrounds/home-online-hero-v1.png',
+                              'assets/backgrounds/home-online-hero-v1.webp',
                               fit: BoxFit.cover,
                             ),
                             const DecoratedBox(
@@ -265,7 +265,7 @@ class _AuthScreenState extends State<AuthScreen> {
           fit: StackFit.expand,
           children: <Widget>[
             Image.asset(
-              'assets/backgrounds/home-online-hero-v1.png',
+              'assets/backgrounds/home-online-hero-v1.webp',
               fit: BoxFit.cover,
               alignment: Alignment.centerRight,
             ),
@@ -398,7 +398,7 @@ class _AuthScreenState extends State<AuthScreen> {
             child: Opacity(
               opacity: 0.32,
               child: Image.asset(
-                'assets/backgrounds/home-online-hero-v1.png',
+                'assets/backgrounds/home-online-hero-v1.webp',
                 fit: BoxFit.cover,
                 alignment: const Alignment(.72, .18),
               ),

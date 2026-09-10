@@ -920,9 +920,9 @@ class _ClubCard extends StatelessWidget {
         icon: identity.$1,
         color: identity.$2,
         artwork: switch (club.name) {
-          'Blitz Warriors' => 'assets/backgrounds/home-online-hero-v1.png',
-          'Checkmate Academy' => 'assets/backgrounds/home-learn-hero-v1.png',
-          'Royal Knights' => 'assets/backgrounds/home-friends-hero-v1.png',
+          'Blitz Warriors' => 'assets/backgrounds/home-online-hero-v1.webp',
+          'Checkmate Academy' => 'assets/backgrounds/home-learn-hero-v1.webp',
+          'Royal Knights' => 'assets/backgrounds/home-friends-hero-v1.webp',
           _ => 'assets/backgrounds/grandmaster-table-v1.webp',
         },
         title: club.name,
@@ -2432,7 +2432,7 @@ class _Hero extends StatelessWidget {
             border: Border.all(color: const Color(0xFF3ED7C0)),
             image: const DecorationImage(
                 image:
-                    AssetImage('assets/backgrounds/home-friends-hero-v1.png'),
+                    AssetImage('assets/backgrounds/home-friends-hero-v1.webp'),
                 fit: BoxFit.cover,
                 alignment: Alignment.centerRight,
                 opacity: .38)),
@@ -2637,7 +2637,7 @@ class _PlayerCard extends StatelessWidget {
               border: Border.all(color: const Color(0x6636AFA5)),
               image: const DecorationImage(
                   image:
-                      AssetImage('assets/backgrounds/home-friends-hero-v1.png'),
+                      AssetImage('assets/backgrounds/home-friends-hero-v1.webp'),
                   fit: BoxFit.cover,
                   alignment: Alignment.centerRight,
                   opacity: .16),

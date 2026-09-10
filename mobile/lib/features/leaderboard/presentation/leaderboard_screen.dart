@@ -363,7 +363,7 @@ class _RatingHero extends StatelessWidget {
           border:
               Border.all(color: AppColors.accentGold.withValues(alpha: .88)),
           image: const DecorationImage(
-              image: AssetImage('assets/backgrounds/home-rankings-hero-v1.png'),
+              image: AssetImage('assets/backgrounds/home-rankings-hero-v1.webp'),
               fit: BoxFit.cover,
               alignment: Alignment.center,
               opacity: .38),

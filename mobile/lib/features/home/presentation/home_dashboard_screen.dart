@@ -237,7 +237,7 @@ class _MobileHomeState extends State<_MobileHome> {
                               'Find a live opponent from around the world',
                           icon: Icons.public_rounded,
                           buttonLabel: 'Play Now',
-                          asset: 'assets/backgrounds/home-online-hero-v1.png',
+                          asset: 'assets/backgrounds/home-online-hero-v1.webp',
                           statusLabel: _onlineStatus(widget.onlinePlayerCount),
                           onTap: widget.onOnlineGame,
                         ),
@@ -246,7 +246,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           subtitle: 'Challenge ChessVerseAI at any level',
                           icon: Icons.computer_rounded,
                           buttonLabel: 'Choose Side',
-                          asset: 'assets/backgrounds/home-computer-hero-v1.png',
+                          asset: 'assets/backgrounds/home-computer-hero-v1.webp',
                           onTap: widget.onPlayVsAi,
                         ),
                         _tournamentHero(
@@ -258,7 +258,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           subtitle: 'Create a private room or join with a code',
                           icon: Icons.groups_rounded,
                           buttonLabel: 'Open Rooms',
-                          asset: 'assets/backgrounds/home-friends-hero-v1.png',
+                          asset: 'assets/backgrounds/home-friends-hero-v1.webp',
                           onTap: widget.onFriendsGame,
                         ),
                         _HomeHeroData(
@@ -266,7 +266,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           subtitle: 'Train with 150 tactical challenges',
                           icon: Icons.extension_rounded,
                           buttonLabel: 'Solve Now',
-                          asset: 'assets/backgrounds/home-puzzles-hero-v1.png',
+                          asset: 'assets/backgrounds/home-puzzles-hero-v1.webp',
                           onTap: widget.onPuzzles,
                         ),
                         _HomeHeroData(
@@ -274,7 +274,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           subtitle: 'Track your ELO and global position',
                           icon: Icons.leaderboard_rounded,
                           buttonLabel: 'View Rankings',
-                          asset: 'assets/backgrounds/home-rankings-hero-v1.png',
+                          asset: 'assets/backgrounds/home-rankings-hero-v1.webp',
                           onTap: widget.onRankings,
                         ),
                         _HomeHeroData(
@@ -283,7 +283,7 @@ class _MobileHomeState extends State<_MobileHome> {
                               'Personalize your board and game experience',
                           icon: Icons.tune_rounded,
                           buttonLabel: 'Open Settings',
-                          asset: 'assets/backgrounds/home-settings-hero-v1.png',
+                          asset: 'assets/backgrounds/home-settings-hero-v1.webp',
                           onTap: widget.onSettings,
                         ),
                       ],
@@ -300,7 +300,7 @@ class _MobileHomeState extends State<_MobileHome> {
                             subtitle: 'Challenge the AI',
                             color: const Color(0xFF143D58),
                             asset:
-                                'assets/backgrounds/home-computer-hero-v1.png',
+                                'assets/backgrounds/home-computer-hero-v1.webp',
                             onTap: widget.onPlayVsAi,
                           ),
                         ),
@@ -313,7 +313,7 @@ class _MobileHomeState extends State<_MobileHome> {
                             subtitle: 'Create or join room',
                             color: const Color(0xFF15513F),
                             asset:
-                                'assets/backgrounds/home-friends-hero-v1.png',
+                                'assets/backgrounds/home-friends-hero-v1.webp',
                             onTap: widget.onFriendsGame,
                           ),
                         ),
@@ -332,7 +332,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.extension_rounded,
                           label: 'Puzzles',
                           color: AppColors.accentGold,
-                          asset: 'assets/backgrounds/home-puzzles-hero-v1.png',
+                          asset: 'assets/backgrounds/home-puzzles-hero-v1.webp',
                           onTap: widget.onPuzzles,
                         ),
                         _MiniCard(
@@ -340,7 +340,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.leaderboard_rounded,
                           label: 'Rankings',
                           color: const Color(0xFFF3B84F),
-                          asset: 'assets/backgrounds/home-rankings-hero-v1.png',
+                          asset: 'assets/backgrounds/home-rankings-hero-v1.webp',
                           onTap: widget.onRankings,
                         ),
                         _MiniCard(
@@ -348,7 +348,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.groups_2_rounded,
                           label: 'Community',
                           color: const Color(0xFF55E1CF),
-                          asset: 'assets/backgrounds/home-friends-hero-v1.png',
+                          asset: 'assets/backgrounds/home-friends-hero-v1.webp',
                           onTap: widget.onCommunity,
                         ),
                         _MiniCard(
@@ -356,7 +356,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.trending_up_rounded,
                           label: 'Analysis',
                           color: const Color(0xFF3DA2FF),
-                          asset: 'assets/backgrounds/home-analysis-hero-v1.png',
+                          asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
                           onTap: widget.onAnalysis,
                         ),
                         _MiniCard(
@@ -364,7 +364,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.school_rounded,
                           label: 'Learn',
                           color: const Color(0xFFA879F5),
-                          asset: 'assets/backgrounds/home-learn-hero-v1.png',
+                          asset: 'assets/backgrounds/home-learn-hero-v1.webp',
                           onTap: widget.onLearnChess,
                         ),
                         _MiniCard(
@@ -372,7 +372,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.history_rounded,
                           label: 'My Games',
                           color: const Color(0xFF55E1CF),
-                          asset: 'assets/backgrounds/home-analysis-hero-v1.png',
+                          asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
                           onTap: widget.onSavedGames,
                         ),
                       ],
@@ -522,7 +522,7 @@ class _WideHomeState extends State<_WideHome> {
                               icon: Icons.public_rounded,
                               buttonLabel: 'Play Now',
                               asset:
-                                  'assets/backgrounds/home-online-hero-v1.png',
+                                  'assets/backgrounds/home-online-hero-v1.webp',
                               statusLabel:
                                   _onlineStatus(widget.onlinePlayerCount),
                               onTap: widget.onOnlineGame,
@@ -533,7 +533,7 @@ class _WideHomeState extends State<_WideHome> {
                               icon: Icons.computer_rounded,
                               buttonLabel: 'Choose Side',
                               asset:
-                                  'assets/backgrounds/home-computer-hero-v1.png',
+                                  'assets/backgrounds/home-computer-hero-v1.webp',
                               onTap: widget.onPlayVsAi,
                             ),
                             _tournamentHero(
@@ -547,7 +547,7 @@ class _WideHomeState extends State<_WideHome> {
                               icon: Icons.groups_rounded,
                               buttonLabel: 'Open Rooms',
                               asset:
-                                  'assets/backgrounds/home-friends-hero-v1.png',
+                                  'assets/backgrounds/home-friends-hero-v1.webp',
                               onTap: widget.onFriendsGame,
                             ),
                             _HomeHeroData(
@@ -556,7 +556,7 @@ class _WideHomeState extends State<_WideHome> {
                               icon: Icons.extension_rounded,
                               buttonLabel: 'Solve Now',
                               asset:
-                                  'assets/backgrounds/home-puzzles-hero-v1.png',
+                                  'assets/backgrounds/home-puzzles-hero-v1.webp',
                               onTap: widget.onPuzzles,
                             ),
                             _HomeHeroData(
@@ -565,7 +565,7 @@ class _WideHomeState extends State<_WideHome> {
                               icon: Icons.leaderboard_rounded,
                               buttonLabel: 'View Rankings',
                               asset:
-                                  'assets/backgrounds/home-rankings-hero-v1.png',
+                                  'assets/backgrounds/home-rankings-hero-v1.webp',
                               onTap: widget.onRankings,
                             ),
                             _HomeHeroData(
@@ -575,7 +575,7 @@ class _WideHomeState extends State<_WideHome> {
                               icon: Icons.tune_rounded,
                               buttonLabel: 'Open Settings',
                               asset:
-                                  'assets/backgrounds/home-settings-hero-v1.png',
+                                  'assets/backgrounds/home-settings-hero-v1.webp',
                               onTap: widget.onSettings,
                             ),
                           ],
@@ -593,7 +593,7 @@ class _WideHomeState extends State<_WideHome> {
                                 subtitle: 'Challenge the AI at any level',
                                 color: const Color(0xFF123B58),
                                 asset:
-                                    'assets/backgrounds/home-computer-hero-v1.png',
+                                    'assets/backgrounds/home-computer-hero-v1.webp',
                                 onTap: widget.onPlayVsAi,
                               ),
                             ),
@@ -607,7 +607,7 @@ class _WideHomeState extends State<_WideHome> {
                                 subtitle: 'Create or join a room',
                                 color: const Color(0xFF14513F),
                                 asset:
-                                    'assets/backgrounds/home-friends-hero-v1.png',
+                                    'assets/backgrounds/home-friends-hero-v1.webp',
                                 onTap: widget.onFriendsGame,
                               ),
                             ),
@@ -620,7 +620,7 @@ class _WideHomeState extends State<_WideHome> {
                                     subtitle: 'Sharpen your skills',
                                     color: AppColors.accentGold,
                                     asset:
-                                        'assets/backgrounds/home-puzzles-hero-v1.png',
+                                        'assets/backgrounds/home-puzzles-hero-v1.webp',
                                     onTap: widget.onPuzzles)),
                             const SizedBox(width: 14),
                             Expanded(
@@ -631,7 +631,7 @@ class _WideHomeState extends State<_WideHome> {
                                     subtitle: 'See stats & progress',
                                     color: const Color(0xFFF1B74D),
                                     asset:
-                                        'assets/backgrounds/home-rankings-hero-v1.png',
+                                        'assets/backgrounds/home-rankings-hero-v1.webp',
                                     onTap: widget.onRankings)),
                             const SizedBox(width: 14),
                             Expanded(
@@ -642,7 +642,7 @@ class _WideHomeState extends State<_WideHome> {
                                     subtitle: 'Friends, clubs & events',
                                     color: const Color(0xFF55E1CF),
                                     asset:
-                                        'assets/backgrounds/home-friends-hero-v1.png',
+                                        'assets/backgrounds/home-friends-hero-v1.webp',
                                     onTap: widget.onCommunity)),
                             const SizedBox(width: 14),
                             Expanded(
@@ -653,7 +653,7 @@ class _WideHomeState extends State<_WideHome> {
                                     subtitle: 'Review your games',
                                     color: const Color(0xFF3DA2FF),
                                     asset:
-                                        'assets/backgrounds/home-analysis-hero-v1.png',
+                                        'assets/backgrounds/home-analysis-hero-v1.webp',
                                     onTap: widget.onAnalysis)),
                             const SizedBox(width: 14),
                             Expanded(
@@ -664,7 +664,7 @@ class _WideHomeState extends State<_WideHome> {
                                     subtitle: 'Improve & grow',
                                     color: const Color(0xFFA879F5),
                                     asset:
-                                        'assets/backgrounds/home-learn-hero-v1.png',
+                                        'assets/backgrounds/home-learn-hero-v1.webp',
                                     onTap: widget.onLearnChess)),
                             const SizedBox(width: 14),
                             Expanded(
@@ -675,7 +675,7 @@ class _WideHomeState extends State<_WideHome> {
                                     subtitle: 'Continue or replay',
                                     color: const Color(0xFF55E1CF),
                                     asset:
-                                        'assets/backgrounds/home-analysis-hero-v1.png',
+                                        'assets/backgrounds/home-analysis-hero-v1.webp',
                                     onTap: widget.onSavedGames)),
                           ],
                         ),
@@ -991,7 +991,7 @@ class _WideDashboardRowState extends State<_WideDashboardRow> {
                   borderRadius: BorderRadius.circular(14),
                   image: const DecorationImage(
                     image: AssetImage(
-                        'assets/backgrounds/home-puzzles-hero-v1.png'),
+                        'assets/backgrounds/home-puzzles-hero-v1.webp'),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -1061,7 +1061,7 @@ class _CompactDailyPuzzle extends StatelessWidget {
   Widget build(BuildContext context) => Row(children: <Widget>[
         ClipRRect(
           borderRadius: BorderRadius.circular(14),
-          child: Image.asset('assets/backgrounds/home-puzzles-hero-v1.png',
+          child: Image.asset('assets/backgrounds/home-puzzles-hero-v1.webp',
               width: 116, height: 116, fit: BoxFit.cover),
         ),
         const SizedBox(width: 16),
@@ -1599,7 +1599,7 @@ _HomeHeroData _tournamentHero(
     subtitle: nextEvent,
     icon: Icons.emoji_events_rounded,
     buttonLabel: 'View Tournaments',
-    asset: 'assets/backgrounds/tournament-new-york-grand-final-v1.png',
+    asset: 'assets/backgrounds/tournament-new-york-grand-final-v1.webp',
     statusLabel:
         tournament == null ? 'Open tournaments and upcoming events' : null,
     countdownTarget: tournament?.startsAt,
@@ -1897,7 +1897,7 @@ class _OnlineHero extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: const Color(0xFF2A91F2), width: 1.3),
             image: const DecorationImage(
-              image: AssetImage('assets/backgrounds/home-online-hero-v1.png'),
+              image: AssetImage('assets/backgrounds/home-online-hero-v1.webp'),
               fit: BoxFit.cover,
               alignment: Alignment.centerRight,
               opacity: .9,
