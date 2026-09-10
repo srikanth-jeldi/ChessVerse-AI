@@ -13,6 +13,7 @@ void main() {
     int? onlinePlayerCount,
     int? coinBalance,
     TournamentDto? nextTournament,
+    VoidCallback? onSavedGames,
   }) {
     return MaterialApp(
       theme: AppTheme.darkTheme,
@@ -27,7 +28,7 @@ void main() {
         onOnlineGame: onOnline,
         onAnalysis: () {},
         onPuzzles: () {},
-        onSavedGames: () {},
+        onSavedGames: onSavedGames ?? () {},
         onLearnChess: () {},
         onProfile: () {},
         onSettings: () {},
@@ -84,6 +85,36 @@ void main() {
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Profile'), findsOneWidget);
     expect(find.bySemanticsLabel('ChessVerseAI'), findsOneWidget);
+  });
+
+  testWidgets('My Games is a dashboard card instead of an app-bar action', (
+    WidgetTester tester,
+  ) async {
+    var opens = 0;
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      app(
+        onOnline: () {},
+        onComputer: () {},
+        onSavedGames: () => opens++,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AppBar), findsNothing);
+    final myGames = find.byKey(const ValueKey<String>('my-games')).first;
+    await tester.scrollUntilVisible(
+      myGames,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(myGames);
+    expect(opens, 1);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('home uses the navigation rail on tablet and web widths', (

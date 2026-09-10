@@ -71,15 +71,6 @@ class HomeDashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-          toolbarHeight: 42,
-          backgroundColor: Colors.transparent,
-          actions: [
-            TextButton.icon(
-                onPressed: onSavedGames,
-                icon: const Icon(Icons.history),
-                label: const Text('My Games')),
-          ]),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
@@ -99,6 +90,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 onFriendsGame: onFriendsGame,
                 onAnalysis: onAnalysis,
                 onPuzzles: onPuzzles,
+                onSavedGames: onSavedGames,
                 onLearnChess: onLearnChess,
                 onProfile: onProfile,
                 onRankings: onRankings,
@@ -375,6 +367,14 @@ class _MobileHomeState extends State<_MobileHome> {
                           asset: 'assets/backgrounds/home-learn-hero-v1.png',
                           onTap: widget.onLearnChess,
                         ),
+                        _MiniCard(
+                          keyName: 'my-games',
+                          icon: Icons.history_rounded,
+                          label: 'My Games',
+                          color: const Color(0xFF55E1CF),
+                          asset: 'assets/backgrounds/home-analysis-hero-v1.png',
+                          onTap: widget.onSavedGames,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -418,6 +418,7 @@ class _WideHome extends StatefulWidget {
     required this.onLocalGame,
     required this.onAnalysis,
     required this.onPuzzles,
+    required this.onSavedGames,
     required this.onLearnChess,
     required this.onProfile,
     required this.onRankings,
@@ -442,6 +443,7 @@ class _WideHome extends StatefulWidget {
   final VoidCallback onLocalGame;
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
+  final VoidCallback onSavedGames;
   final VoidCallback onLearnChess;
   final VoidCallback onProfile;
   final VoidCallback onRankings;
@@ -664,6 +666,17 @@ class _WideHomeState extends State<_WideHome> {
                                     asset:
                                         'assets/backgrounds/home-learn-hero-v1.png',
                                     onTap: widget.onLearnChess)),
+                            const SizedBox(width: 14),
+                            Expanded(
+                                child: _MiniCard(
+                                    keyName: 'my-games',
+                                    icon: Icons.history_rounded,
+                                    label: 'My Games',
+                                    subtitle: 'Continue or replay',
+                                    color: const Color(0xFF55E1CF),
+                                    asset:
+                                        'assets/backgrounds/home-analysis-hero-v1.png',
+                                    onTap: widget.onSavedGames)),
                           ],
                         ),
                         const SizedBox(height: 18),

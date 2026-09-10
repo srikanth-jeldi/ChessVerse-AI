@@ -294,9 +294,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ),
                                       title: const Text('ChessVerseAI'),
                                       subtitle: Text(
-                                        info == null
-                                            ? 'Reading app version…'
-                                            : 'Version ${info.version} (Build ${info.buildNumber})',
+                                    info == null
+                                        ? 'Reading app version…'
+                                        : 'Version ${info.version}',
                                       ),
                                     );
                                   },

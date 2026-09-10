@@ -102,7 +102,7 @@ class TournamentCircuitView extends StatelessWidget {
               child: _CircuitProgress(points: circuitPoints),
             ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 36),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 148),
               sliver: SliverLayoutBuilder(builder: (context, constraints) {
                 final width = constraints.crossAxisExtent;
                 final columns = width >= 1000

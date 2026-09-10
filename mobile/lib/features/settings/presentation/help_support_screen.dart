@@ -41,7 +41,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                     title: const Text('ChessVerseAI'),
                     subtitle: Text(info == null
                         ? 'Reading app version…'
-                        : 'Version ${info.version} (${info.buildNumber})'),
+                        : 'Version ${info.version}'),
                   );
                 },
               ),
