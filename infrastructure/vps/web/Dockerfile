@@ -33,8 +33,5 @@ COPY infrastructure/vps/web/landing/flutter_service_worker.js /srv/flutter_servi
 COPY infrastructure/vps/web/landing/robots.txt /srv/robots.txt
 COPY infrastructure/vps/web/landing/sitemap.xml /srv/sitemap.xml
 COPY infrastructure/vps/web/landing/app-ads.txt /srv/app-ads.txt
-COPY mobile/assets/branding/app_icon.png /srv/landing-assets/app-icon.png
-COPY mobile/assets/backgrounds/home-analysis-hero-v1.webp /srv/landing-assets/analysis.webp
-COPY mobile/assets/backgrounds/home-online-hero-v1.webp /srv/landing-assets/online.webp
-COPY mobile/assets/backgrounds/home-puzzles-hero-v1.webp /srv/landing-assets/puzzles.webp
+COPY infrastructure/vps/web/landing/landing-assets/ /srv/landing-assets/
 COPY infrastructure/vps/web/legal/ /srv/
