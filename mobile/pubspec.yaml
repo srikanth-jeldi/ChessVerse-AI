@@ -56,6 +56,8 @@ dependency_overrides:
     path: third_party/firebase_crashlytics
   flutter_timezone:
     path: third_party/flutter_timezone
+  flutter_tts:
+    path: third_party/flutter_tts
 
 dev_dependencies:
   flutter_test:
