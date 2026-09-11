@@ -10,6 +10,7 @@ import '../../../core/chess_piece_appearance.dart';
 import '../../../core/coach_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
+import '../../../core/widgets/ai_language_picker.dart';
 import '../data/academy_progress_store.dart';
 import '../domain/academy_lesson.dart';
 
@@ -92,6 +93,14 @@ class _InteractiveAcademyLessonScreenState
       AcademyStoryLocalizations(_languageCode);
   CoachLocalizations get _coachCopy => CoachLocalizations(_languageCode);
   int get _earnedStars => _attempts == 0 ? 3 : (_attempts <= 2 ? 2 : 1);
+  AcademyLesson? get _nextLesson {
+    final int index = AcademyCatalog.lessons.indexWhere(
+      (AcademyLesson lesson) => lesson.id == widget.lesson.id,
+    );
+    return index >= 0 && index + 1 < AcademyCatalog.lessons.length
+        ? AcademyCatalog.lessons[index + 1]
+        : null;
+  }
 
   @override
   void initState() {
@@ -139,6 +148,27 @@ class _InteractiveAcademyLessonScreenState
     if (code == null || !mounted) return;
     setState(() => _languageCode = code);
     unawaited(_prepareNarrator());
+  }
+
+  Future<void> _chooseLanguage() async {
+    final String? code = await selectAndSaveAiLanguage(context);
+    if (code == null || !mounted) return;
+    setState(() => _languageCode = code);
+    await _prepareNarrator();
+  }
+
+  void _continueLearning() {
+    unawaited(_narrator.stop());
+    final AcademyLesson? next = _nextLesson;
+    if (next == null) {
+      Navigator.of(context).pop();
+      return;
+    }
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => InteractiveAcademyLessonScreen(lesson: next),
+      ),
+    );
   }
 
   Future<void> _showDecisionCheckpoint() async {
@@ -444,6 +474,22 @@ class _InteractiveAcademyLessonScreenState
           ],
         ),
         actions: <Widget>[
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: OutlinedButton.icon(
+              key: const ValueKey<String>('lesson-language-picker'),
+              onPressed: _chooseLanguage,
+              icon: const Icon(Icons.translate_rounded, size: 18),
+              label: Text(
+                AppLanguageController.byCode(_languageCode).nativeName,
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.accentGold,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ),
           IconButton(
             tooltip: 'Replay demonstration',
             onPressed: _playDemonstration,
@@ -490,6 +536,8 @@ class _InteractiveAcademyLessonScreenState
               loading: _loadingProgress,
               onReplay: _playDemonstration,
               onPracticeAgain: _resetPractice,
+              onContinueLearning: _continueLearning,
+              nextLesson: _nextLesson,
               narrationState: _narrationState,
               onToggleNarration: () => unawaited(_toggleNarration()),
               onReplayNarration: () => unawaited(_replayNarration()),
@@ -539,6 +587,8 @@ class _InteractiveAcademyLessonScreenState
               loading: _loadingProgress,
               onReplay: _playDemonstration,
               onPracticeAgain: _resetPractice,
+              onContinueLearning: _continueLearning,
+              nextLesson: _nextLesson,
               narrationState: _narrationState,
               onToggleNarration: () => unawaited(_toggleNarration()),
               onReplayNarration: () => unawaited(_replayNarration()),
@@ -579,6 +629,8 @@ class _InteractiveAcademyLessonScreenState
               loading: _loadingProgress,
               onReplay: _playDemonstration,
               onPracticeAgain: _resetPractice,
+              onContinueLearning: _continueLearning,
+              nextLesson: _nextLesson,
               narrationState: _narrationState,
               onToggleNarration: () => unawaited(_toggleNarration()),
               onReplayNarration: () => unawaited(_replayNarration()),
@@ -1095,6 +1147,8 @@ class _CoachPanel extends StatelessWidget {
     required this.loading,
     required this.onReplay,
     required this.onPracticeAgain,
+    required this.onContinueLearning,
+    required this.nextLesson,
     required this.narrationState,
     required this.onToggleNarration,
     required this.onReplayNarration,
@@ -1110,6 +1164,8 @@ class _CoachPanel extends StatelessWidget {
   final bool loading;
   final VoidCallback onReplay;
   final VoidCallback onPracticeAgain;
+  final VoidCallback onContinueLearning;
+  final AcademyLesson? nextLesson;
   final _NarrationState narrationState;
   final VoidCallback onToggleNarration;
   final VoidCallback onReplayNarration;
@@ -1302,25 +1358,50 @@ class _CoachPanel extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           if (phase == _LessonPhase.success)
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: onPracticeAgain,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF1769E0),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      elevation: 5,
-                      shadowColor: const Color(0x992A91F2),
-                    ),
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: Text(
-                      copy.code == 'en'
-                          ? 'PRACTICE AGAIN'
-                          : copy.text('ui.restart'),
-                      style: const TextStyle(fontWeight: FontWeight.w900),
-                    ),
+                FilledButton.icon(
+                  key: const ValueKey<String>('next-academy-lesson'),
+                  onPressed: onContinueLearning,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.accentGold,
+                    foregroundColor: const Color(0xFF071827),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    elevation: 6,
+                  ),
+                  icon: Icon(
+                    nextLesson == null
+                        ? Icons.school_rounded
+                        : Icons.arrow_forward_rounded,
+                  ),
+                  label: Text(
+                    nextLesson == null
+                        ? copy.text('academy.title').toUpperCase()
+                        : copy
+                              .text(
+                                'path.next',
+                                values: <String, String>{
+                                  'lesson': copy.storyChapter(nextLesson!),
+                                },
+                              )
+                              .toUpperCase(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: onPracticeAgain,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: Text(
+                    copy.code == 'en'
+                        ? 'PRACTICE AGAIN'
+                        : copy.text('ui.restart'),
+                    style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
                 ),
               ],

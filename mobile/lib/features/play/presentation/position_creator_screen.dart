@@ -246,6 +246,7 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
           runSpacing: 8,
           children: _palette.map((String? piece) {
             final bool selected = _brush == piece;
+            final bool blackPiece = piece?.startsWith('b') ?? false;
             return InkWell(
               key: ValueKey<String>('palette-${piece ?? 'erase'}'),
               onTap: () => setState(() => _brush = piece),
@@ -257,12 +258,18 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: selected
-                      ? const Color(0xFF174C4A)
-                      : const Color(0xFF071625),
+                      ? (blackPiece
+                            ? const Color(0xFFDDF8F0)
+                            : const Color(0xFF174C4A))
+                      : (blackPiece
+                            ? const Color(0xFFF5EEDC)
+                            : const Color(0xFF071625)),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: selected
                         ? const Color(0xFF63D2B8)
+                        : blackPiece
+                        ? const Color(0xFFD8B567)
                         : const Color(0xFF294157),
                     width: selected ? 2 : 1,
                   ),

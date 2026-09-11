@@ -667,12 +667,17 @@ class _LeaderboardTile extends StatelessWidget {
                             fontSize: 16, fontWeight: FontWeight.w900)),
                   ),
                 ]),
-                Text(
-                    '${entry.country}  ·  ${entry.gamesPlayed} games  ·  ${entry.wins}W ${entry.draws}D ${entry.losses}L  ·  🪙 ${entry.careerCoinsWon} won',
+                Text('${entry.country}  ·  ${entry.gamesPlayed} games',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         color: Color(0xFF9BAEB9), fontSize: 11)),
+                Text(
+                    '${entry.wins}W ${entry.draws}D ${entry.losses}L  ·  🪙 ${entry.careerCoinsWon} won',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: Color(0xFF7F96A5), fontSize: 10)),
               ]),
         ),
         const SizedBox(width: 8),

@@ -9,6 +9,7 @@ import '../../../core/layout/responsive_page.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
+import '../../../core/widgets/ai_language_picker.dart';
 import '../../analysis/domain/player_learning_profile.dart';
 import '../data/academy_progress_store.dart';
 import '../domain/academy_lesson.dart';
@@ -188,6 +189,11 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
 
   void _handleLanguageChange() {
     final String? code = AppLanguageController.effectiveLanguageChanges.value;
+    if (code != null && mounted) setState(() => _languageCode = code);
+  }
+
+  Future<void> _chooseLanguage() async {
+    final String? code = await selectAndSaveAiLanguage(context);
     if (code != null && mounted) setState(() => _languageCode = code);
   }
 
@@ -393,6 +399,13 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
           ],
         ),
         backgroundColor: const Color(0xE6071827),
+        actions: <Widget>[
+          _LessonLanguageAction(
+            languageCode: _languageCode,
+            onPressed: _chooseLanguage,
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: ResponsivePage(
         maxWidth: wide ? 1240 : null,
@@ -406,14 +419,6 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
               copy: _copy,
             ),
             const SizedBox(height: 14),
-            _AcademySkillMap(
-              completed: _completed,
-              certificates: _certificates,
-              copy: _copy,
-            ),
-            const SizedBox(height: 14),
-            _CoachHero(compact: compact, copy: _copy),
-            const SizedBox(height: 16),
             _PersonalizedPathCard(
               lesson: recommended,
               copy: _copy,
@@ -428,6 +433,14 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
                     ),
             ),
             const SizedBox(height: 14),
+            _AcademySkillMap(
+              completed: _completed,
+              certificates: _certificates,
+              copy: _copy,
+            ),
+            const SizedBox(height: 14),
+            _CoachHero(compact: compact, copy: _copy),
+            const SizedBox(height: 16),
             _DailyAcademyMissionCard(
               reviewDue: _reviewDue,
               completed: _completed,
@@ -762,12 +775,14 @@ class _MasterGamesCard extends StatelessWidget {
                             width: 34,
                             height: 34,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF071827)
-                                  .withValues(alpha: .72),
+                              color: const Color(
+                                0xFF071827,
+                              ).withValues(alpha: .72),
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: const Color(0xFF63D2B8)
-                                    .withValues(alpha: .4),
+                                color: const Color(
+                                  0xFF63D2B8,
+                                ).withValues(alpha: .4),
                               ),
                             ),
                             child: Icon(
@@ -1709,6 +1724,8 @@ class _LessonCard extends StatelessWidget {
   double get progress =>
       lesson.chapters.isEmpty ? 0 : completedCount / lesson.chapters.length;
 
+  double get visibleProgress => locked ? 0 : progress;
+
   @override
   Widget build(BuildContext context) => Material(
     color: Colors.transparent,
@@ -1812,7 +1829,7 @@ class _LessonCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(99),
                 child: LinearProgressIndicator(
-                  value: progress,
+                  value: visibleProgress,
                   minHeight: 5,
                   backgroundColor: const Color(0xFF263948),
                   valueColor: AlwaysStoppedAnimation<Color>(lesson.accent),
@@ -1824,7 +1841,7 @@ class _LessonCard extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     copy.text(
-                      progress == 0 ? 'course.start' : 'course.continue',
+                      visibleProgress == 0 ? 'course.start' : 'course.continue',
                     ),
                     style: const TextStyle(
                       fontWeight: FontWeight.w900,
@@ -1941,6 +1958,35 @@ class _CourseScreen extends StatefulWidget {
   State<_CourseScreen> createState() => _CourseScreenState();
 }
 
+class _LessonLanguageAction extends StatelessWidget {
+  const _LessonLanguageAction({
+    required this.languageCode,
+    required this.onPressed,
+  });
+
+  final String languageCode;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLanguage language = AppLanguageController.byCode(languageCode);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: OutlinedButton.icon(
+        key: const ValueKey<String>('lesson-language-picker'),
+        onPressed: onPressed,
+        icon: const Icon(Icons.translate_rounded, size: 18),
+        label: Text(language.nativeName),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.accentGold,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          visualDensity: VisualDensity.compact,
+        ),
+      ),
+    );
+  }
+}
+
 class _CourseScreenState extends State<_CourseScreen> {
   static const AcademyProgressStore _progressStore = AcademyProgressStore();
   Set<String> _completed = <String>{};
@@ -1962,6 +2008,13 @@ class _CourseScreenState extends State<_CourseScreen> {
   double get progress =>
       course.chapters.isEmpty ? 0 : completedCount / course.chapters.length;
 
+  _Lesson? get nextCourse {
+    final int index = LearnChessScreen._journey.indexOf(course);
+    return index >= 0 && index + 1 < LearnChessScreen._journey.length
+        ? LearnChessScreen._journey[index + 1]
+        : null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1977,6 +2030,22 @@ class _CourseScreenState extends State<_CourseScreen> {
   void _handleCourseLanguageChange() {
     final String? code = AppLanguageController.effectiveLanguageChanges.value;
     if (code != null && mounted) setState(() => _languageCode = code);
+  }
+
+  Future<void> _chooseLanguage() async {
+    final String? code = await selectAndSaveAiLanguage(context);
+    if (code != null && mounted) setState(() => _languageCode = code);
+  }
+
+  void _continueCourseJourney() {
+    final _Lesson? next = nextCourse;
+    if (next == null) {
+      Navigator.of(context).pop();
+      return;
+    }
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(builder: (_) => _CourseScreen(course: next)),
+    );
   }
 
   @override
@@ -2019,7 +2088,47 @@ class _CourseScreenState extends State<_CourseScreen> {
           ),
         ],
       ),
+      actions: <Widget>[
+        _LessonLanguageAction(
+          languageCode: _languageCode,
+          onPressed: _chooseLanguage,
+        ),
+        const SizedBox(width: 8),
+      ],
     ),
+    bottomNavigationBar: progress < 1
+        ? null
+        : SafeArea(
+            minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: FilledButton.icon(
+              key: const ValueKey<String>('completed-course-next-action'),
+              onPressed: _continueCourseJourney,
+              icon: Icon(
+                nextCourse == null
+                    ? Icons.school_rounded
+                    : Icons.arrow_forward_rounded,
+              ),
+              label: Text(
+                nextCourse == null
+                    ? _copy.text('academy.title').toUpperCase()
+                    : _copy
+                          .text(
+                            'path.next',
+                            values: <String, String>{
+                              'lesson': _localizedCourseTitle(_copy, nextCourse!),
+                            },
+                          )
+                          .toUpperCase(),
+                textAlign: TextAlign.center,
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.accentGold,
+                foregroundColor: const Color(0xFF071827),
+                minimumSize: const Size.fromHeight(52),
+                textStyle: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
     body: ResponsivePage(
       maxWidth: 980,
       child: Column(

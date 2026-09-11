@@ -305,7 +305,8 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                             const _SectionHeading(
                               eyebrow: 'SPEED ARENA',
                               title: 'Think fast. Stay accurate.',
-                              subtitle: 'Three competitive sessions powered by real curated positions.',
+                              subtitle:
+                                  'Three competitive sessions powered by real curated positions.',
                             ),
                             const SizedBox(height: 14),
                             _SprintModeStrip(
@@ -316,7 +317,8 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                             const _SectionHeading(
                               eyebrow: 'TACTICAL TRAINING',
                               title: 'Choose your challenge',
-                              subtitle: 'Every position is interactive and validated by the ChessVerseAI rules engine.',
+                              subtitle:
+                                  'Every position is interactive and validated by the ChessVerseAI rules engine.',
                             ),
                             const SizedBox(height: 14),
                             _DifficultyCard(
@@ -457,7 +459,8 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
                           const _SectionHeading(
                             eyebrow: 'TACTICAL TRAINING',
                             title: 'Choose your challenge',
-                            subtitle: 'Every position is interactive and validated by the ChessVerseAI rules engine.',
+                            subtitle:
+                                'Every position is interactive and validated by the ChessVerseAI rules engine.',
                           ),
                           const SizedBox(height: 12),
                           _SprintModeStrip(
@@ -673,6 +676,7 @@ class _PuzzleSprintSheetState extends State<_PuzzleSprintSheet> {
   Timer? _timer;
   bool _launching = false;
   bool _submitted = false;
+  bool? _lastAttemptSolved;
 
   @override
   void initState() {
@@ -738,9 +742,13 @@ class _PuzzleSprintSheetState extends State<_PuzzleSprintSheet> {
     final bool solvedAfter = LocalGameArchive.completedPuzzleIds.contains(
       puzzle.id,
     );
-    _session.recordResult(solved: !solvedBefore && solvedAfter);
+    final bool solved = !solvedBefore && solvedAfter;
+    _session.recordResult(solved: solved);
     if (_finished) unawaited(_submitResult());
-    setState(() => _launching = false);
+    setState(() {
+      _launching = false;
+      _lastAttemptSolved = solved;
+    });
   }
 
   @override
@@ -790,7 +798,7 @@ class _PuzzleSprintSheetState extends State<_PuzzleSprintSheet> {
           ),
           const SizedBox(height: 24),
           Text(
-            _finished ? 'SESSION COMPLETE' : 'Puzzle ${_session.attempted + 1}',
+            _finished ? 'SESSION COMPLETE' : 'Puzzle ${_session.score + 1}',
             style: const TextStyle(
               color: AppColors.accentGold,
               fontWeight: FontWeight.w900,
@@ -802,6 +810,44 @@ class _PuzzleSprintSheetState extends State<_PuzzleSprintSheet> {
                 ? 'You solved ${_session.score} of ${_session.attempted} positions.'
                 : '${_session.current!.rating} rating · ${_session.current!.playerMoveGoal} move challenge',
           ),
+          if (!_finished && _lastAttemptSolved != null) ...<Widget>[
+            const SizedBox(height: 14),
+            Semantics(
+              liveRegion: true,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color:
+                      (_lastAttemptSolved!
+                              ? AppColors.success
+                              : Colors.redAccent)
+                          .withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: _lastAttemptSolved!
+                        ? AppColors.success
+                        : Colors.redAccent,
+                  ),
+                ),
+                child: Text(
+                  _lastAttemptSolved!
+                      ? 'Solved — the next puzzle is ready.'
+                      : 'Not solved — 1 life lost. Retry the same puzzle.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _lastAttemptSolved!
+                        ? AppColors.success
+                        : Colors.redAccent,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -813,7 +859,13 @@ class _PuzzleSprintSheetState extends State<_PuzzleSprintSheet> {
                     ? Icons.hourglass_top_rounded
                     : Icons.play_arrow_rounded,
               ),
-              label: Text(_launching ? 'OPENING BOARD…' : 'PLAY NEXT PUZZLE'),
+              label: Text(
+                _launching
+                    ? 'OPENING BOARD…'
+                    : _lastAttemptSolved == false
+                    ? 'RETRY SAME PUZZLE'
+                    : 'PLAY NEXT PUZZLE',
+              ),
             ),
           ),
         ],

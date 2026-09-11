@@ -22,6 +22,27 @@ void main() {
     expect(session.isTimedOutAt(start.add(const Duration(minutes: 3))), isTrue);
   });
 
+  test('a miss costs one life and keeps the same puzzle for retry', () {
+    final PuzzleSprintSession session = PuzzleSprintSession(
+      mode: PuzzleSprintMode.rush,
+      startedAt: start,
+    );
+    final String puzzleId = session.current!.id;
+
+    session.recordResult(solved: false);
+
+    expect(session.lives, 2);
+    expect(session.score, 0);
+    expect(session.attempted, 1);
+    expect(session.current!.id, puzzleId);
+
+    session.recordResult(solved: true);
+
+    expect(session.score, 1);
+    expect(session.attempted, 2);
+    expect(session.current!.id, isNot(puzzleId));
+  });
+
   test('survival ends after three misses and has no timer', () {
     final PuzzleSprintSession session = PuzzleSprintSession(
       mode: PuzzleSprintMode.survival,

@@ -646,6 +646,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                         onCreateClubTournament: _createClubTournament,
                         api: _communityApi,
                         token: _session!.token,
+                        onFindFriends: () => setState(() => _section = 0),
                         onOpenMatch: widget.onOpenMatch),
       );
 }
@@ -733,6 +734,7 @@ class _CommunitySection extends StatelessWidget {
       required this.onCreateClubTournament,
       required this.api,
       required this.token,
+      required this.onFindFriends,
       required this.onOpenMatch});
   final int section;
   final CommunityDto community;
@@ -743,6 +745,7 @@ class _CommunitySection extends StatelessWidget {
   final VoidCallback onCreateClubTournament;
   final CommunityApi api;
   final String token;
+  final VoidCallback onFindFriends;
   final ValueChanged<OnlineMatchDto>? onOpenMatch;
   @override
   Widget build(BuildContext context) {
@@ -829,7 +832,7 @@ class _CommunitySection extends StatelessWidget {
                               const SizedBox(height: 12),
                             ],
                             if (cards.isEmpty)
-                              const _EmptyCommunity()
+                              _EmptyCommunity(onFindFriends: onFindFriends)
                             else
                               LayoutBuilder(
                                   builder: (context, c) => c.maxWidth > 760
@@ -1057,7 +1060,8 @@ class _ChatCard extends StatelessWidget {
 }
 
 class _EmptyCommunity extends StatelessWidget {
-  const _EmptyCommunity();
+  const _EmptyCommunity({required this.onFindFriends});
+  final VoidCallback onFindFriends;
   @override
   Widget build(BuildContext context) => Container(
       constraints: const BoxConstraints(minHeight: 330),
@@ -1067,22 +1071,28 @@ class _EmptyCommunity extends StatelessWidget {
               colors: <Color>[Color(0xF20A1D2D), Color(0xF2071624)]),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: const Color(0xFF315166))),
-      child: const Column(
+      child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            CircleAvatar(
+            const CircleAvatar(
                 radius: 52,
                 backgroundColor: Color(0xFF082A36),
                 child: Icon(Icons.forum_outlined,
                     size: 52, color: Color(0xFF55E4CF))),
-            SizedBox(height: 24),
-            Text('Nothing here yet.',
+            const SizedBox(height: 24),
+            const Text('Nothing here yet.',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-            SizedBox(height: 8),
-            Text('Add a friend to start your\nchess network.',
+            const SizedBox(height: 8),
+            const Text('Add a friend to start your\nchess network.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    color: Color(0xFFAAB8C4), fontSize: 17, height: 1.35))
+                    color: Color(0xFFAAB8C4), fontSize: 17, height: 1.35)),
+            const SizedBox(height: 22),
+            FilledButton.icon(
+                key: const ValueKey<String>('empty-chat-find-friends'),
+                onPressed: onFindFriends,
+                icon: const Icon(Icons.person_add_alt_1_rounded),
+                label: const Text('FIND OR ADD FRIENDS'))
           ]));
 }
 

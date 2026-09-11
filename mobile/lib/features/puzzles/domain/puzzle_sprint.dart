@@ -69,10 +69,10 @@ class PuzzleSprintSession {
     attempted++;
     if (solved) {
       score++;
+      _index++;
     } else {
       lives--;
     }
-    _index++;
   }
 
   static List<ChessPuzzle> _buildQueue(

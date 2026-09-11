@@ -544,13 +544,19 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       children: [
         Icon(_badgeIcon(item.assetKey), color: accent, size: 88),
         Positioned(
+          left: 8,
+          right: 8,
           bottom: 14,
-          child: Text(
-            item.name.toUpperCase(),
-            style: TextStyle(
-              color: accent,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.4,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              item.name.toUpperCase(),
+              maxLines: 1,
+              style: TextStyle(
+                color: accent,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.1,
+              ),
             ),
           ),
         ),

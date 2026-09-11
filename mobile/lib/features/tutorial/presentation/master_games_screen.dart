@@ -308,10 +308,19 @@ class _MasterGameCard extends StatelessWidget {
   final bool completed;
   final VoidCallback onReturned;
 
-  IconData get _icon => switch (lesson.style) {
-    MasterThinkingStyle.attack => Icons.local_fire_department_rounded,
-    MasterThinkingStyle.calculation => Icons.psychology_alt_rounded,
-    MasterThinkingStyle.endurance => Icons.hourglass_bottom_rounded,
+  IconData get _icon => switch (lesson.id) {
+    'kasparov-topalov-1999' => Icons.bolt_rounded,
+    'aronian-anand-2013' => Icons.hub_rounded,
+    'carlsen-nepomniachtchi-2021' => Icons.hourglass_bottom_rounded,
+    'morphy-opera-1858' => Icons.local_fire_department_rounded,
+    'byrne-fischer-1956' => Icons.auto_awesome_rounded,
+    'kasparov-anand-1995-game10' => Icons.sports_mma_rounded,
+    'capablanca-marshall-1918' => Icons.shield_rounded,
+    _ => switch (lesson.style) {
+      MasterThinkingStyle.attack => Icons.local_fire_department_rounded,
+      MasterThinkingStyle.calculation => Icons.psychology_alt_rounded,
+      MasterThinkingStyle.endurance => Icons.hourglass_bottom_rounded,
+    },
   };
 
   @override
@@ -658,8 +667,9 @@ class _MasterGameStudyScreenState extends State<_MasterGameStudyScreen> {
                             ],
                           ),
                           border: Border.all(
-                            color: const Color(0xFF63D2B8)
-                                .withValues(alpha: .55),
+                            color: const Color(
+                              0xFF63D2B8,
+                            ).withValues(alpha: .55),
                           ),
                           boxShadow: const <BoxShadow>[
                             BoxShadow(color: Color(0x334CDCC1), blurRadius: 28),
