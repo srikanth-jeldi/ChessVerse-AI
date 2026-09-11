@@ -325,6 +325,12 @@ class _InteractiveAcademyLessonScreenState
   }
 
   Future<String?> _resolveNarratorLocale(String requestedLocale) async {
+    if (kIsWeb) {
+      final String? browserLocale = await _resolveWebNarratorLocale(
+        requestedLocale,
+      );
+      if (browserLocale != null) return browserLocale;
+    }
     final dynamic directlyAvailable = await _narrator.isLanguageAvailable(
       requestedLocale,
     );
@@ -346,10 +352,53 @@ class _InteractiveAcademyLessonScreenState
     return null;
   }
 
+  Future<String?> _resolveWebNarratorLocale(String requestedLocale) async {
+    final String normalizedRequest = requestedLocale
+        .replaceAll('_', '-')
+        .toLowerCase();
+    final String requestedLanguage = normalizedRequest.split('-').first;
+    for (int attempt = 0; attempt < 6; attempt++) {
+      final dynamic rawVoices = await _narrator.getVoices;
+      if (rawVoices is Iterable<dynamic>) {
+        String? compatibleLocale;
+        for (final dynamic rawVoice in rawVoices) {
+          if (rawVoice is! Map<dynamic, dynamic>) continue;
+          final String locale = (rawVoice['locale'] ?? '')
+              .toString()
+              .replaceAll('_', '-');
+          final String normalizedLocale = locale.toLowerCase();
+          if (normalizedLocale == normalizedRequest) return locale;
+          if (compatibleLocale == null &&
+              normalizedLocale.split('-').first == requestedLanguage) {
+            compatibleLocale = locale;
+          }
+        }
+        if (compatibleLocale != null) return compatibleLocale;
+      }
+      if (attempt < 5) {
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+      }
+    }
+    return null;
+  }
+
   Future<bool> _ensureNarratorVoice() async {
     if (_narratorVoiceReady || await _prepareNarrator()) return true;
     if (!mounted) return false;
     final AppLanguage language = AppLanguageController.byCode(_languageCode);
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              '${language.nativeName} speech voice is not available in this '
+              'browser. The complete translated lesson is still shown on screen.',
+            ),
+          ),
+        );
+      return false;
+    }
     final bool install =
         await showDialog<bool>(
           context: context,
