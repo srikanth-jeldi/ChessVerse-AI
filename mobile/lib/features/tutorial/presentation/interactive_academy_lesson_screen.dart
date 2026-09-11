@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
 import '../../../core/academy_story_localizations.dart';
@@ -71,6 +73,9 @@ class _InteractiveAcademyLessonScreenState
     extends State<InteractiveAcademyLessonScreen>
     with SingleTickerProviderStateMixin {
   static const AcademyProgressStore _progressStore = AcademyProgressStore();
+  static const MethodChannel _voiceSettingsChannel = MethodChannel(
+    'com.epitomehub.chessverse/tts_settings',
+  );
   late final AnimationController _controller;
   late final Animation<double> _movement;
   late final FlutterTts _narrator;
@@ -80,6 +85,7 @@ class _InteractiveAcademyLessonScreenState
   String? _selected;
   String? _feedback;
   bool _loadingProgress = true;
+  bool _narratorVoiceReady = false;
   Set<String> _completed = <String>{};
   Map<String, int> _mastery = <String, int>{};
   int _attempts = 0;
@@ -140,6 +146,11 @@ class _InteractiveAcademyLessonScreenState
     final String code = await AppLanguageController.effectiveCode();
     if (!mounted) return;
     setState(() => _languageCode = code);
+    try {
+      await _narrator.stop();
+    } on Object {
+      // Language copy must still update when TTS is unavailable.
+    }
     await _prepareNarrator();
   }
 
@@ -147,13 +158,27 @@ class _InteractiveAcademyLessonScreenState
     final String? code = AppLanguageController.effectiveLanguageChanges.value;
     if (code == null || !mounted) return;
     setState(() => _languageCode = code);
-    unawaited(_prepareNarrator());
+    unawaited(_resetNarratorLanguage());
   }
 
   Future<void> _chooseLanguage() async {
     final String? code = await selectAndSaveAiLanguage(context);
     if (code == null || !mounted) return;
     setState(() => _languageCode = code);
+    try {
+      await _narrator.stop();
+    } on Object {
+      // Language copy must still update when TTS is unavailable.
+    }
+    await _prepareNarrator();
+  }
+
+  Future<void> _resetNarratorLanguage() async {
+    try {
+      await _narrator.stop();
+    } on Object {
+      // The selected captions remain usable without a speech engine.
+    }
     await _prepareNarrator();
   }
 
@@ -267,15 +292,102 @@ class _InteractiveAcademyLessonScreenState
     if (mounted) setState(() => _narrationState = state);
   }
 
-  Future<void> _prepareNarrator() async {
+  Future<bool> _prepareNarrator() async {
     try {
-      await _narrator.setLanguage(_ttsLocale(_languageCode));
+      final String requestedLocale = _ttsLocale(_languageCode);
+      final String? locale = await _resolveNarratorLocale(requestedLocale);
+      if (locale == null) {
+        _narratorVoiceReady = false;
+        return false;
+      }
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        final dynamic installed = await _narrator.isLanguageInstalled(locale);
+        if (installed != true) {
+          _narratorVoiceReady = false;
+          return false;
+        }
+      }
+      final dynamic selected = await _narrator.setLanguage(locale);
+      if (selected == false || selected == 0) {
+        _narratorVoiceReady = false;
+        return false;
+      }
       await _narrator.setSpeechRate(.43);
       await _narrator.setPitch(1.02);
       await _narrator.setVolume(1);
+      _narratorVoiceReady = true;
+      return true;
     } on Object {
       // Captions keep every lesson usable when a device has no TTS voice.
+      _narratorVoiceReady = false;
+      return false;
     }
+  }
+
+  Future<String?> _resolveNarratorLocale(String requestedLocale) async {
+    final dynamic directlyAvailable = await _narrator.isLanguageAvailable(
+      requestedLocale,
+    );
+    if (directlyAvailable == true) return requestedLocale;
+
+    final dynamic rawLanguages = await _narrator.getLanguages;
+    if (rawLanguages is! Iterable<dynamic>) return null;
+    final String requestedLanguage = requestedLocale
+        .replaceAll('_', '-')
+        .toLowerCase()
+        .split('-')
+        .first;
+    for (final dynamic rawLanguage in rawLanguages) {
+      final String candidate = rawLanguage.toString().replaceAll('_', '-');
+      if (candidate.toLowerCase().split('-').first == requestedLanguage) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  Future<bool> _ensureNarratorVoice() async {
+    if (_narratorVoiceReady || await _prepareNarrator()) return true;
+    if (!mounted) return false;
+    final AppLanguage language = AppLanguageController.byCode(_languageCode);
+    final bool install =
+        await showDialog<bool>(
+          context: context,
+          builder: (BuildContext dialogContext) => AlertDialog(
+            backgroundColor: const Color(0xFF091C2C),
+            title: Text('${language.nativeName} voice required'),
+            content: Text(
+              'The lesson is translated, but this phone does not have the '
+              '${language.englishName} speech voice installed. Install it to '
+              'hear the complete story. On-screen lessons remain available offline.',
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('NOT NOW'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('INSTALL VOICE'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (install && !kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        await _voiceSettingsChannel.invokeMethod<void>('installVoiceData');
+      } on PlatformException {
+        // The captions remain the reliable fallback on restricted devices.
+      }
+    }
+    return false;
+  }
+
+  Future<void> _speakStory() async {
+    if (!await _ensureNarratorVoice()) return;
+    await _narrator.stop();
+    await _narrator.speak(_copy.storyNarration(widget.lesson), focus: true);
   }
 
   Future<void> _toggleNarration() async {
@@ -284,7 +396,7 @@ class _InteractiveAcademyLessonScreenState
         await _narrator.pause();
         return;
       }
-      await _narrator.speak(_copy.storyNarration(widget.lesson));
+      await _speakStory();
     } on Object {
       _setNarrationState(_NarrationState.stopped);
     }
@@ -292,8 +404,7 @@ class _InteractiveAcademyLessonScreenState
 
   Future<void> _replayNarration() async {
     try {
-      await _narrator.stop();
-      await _narrator.speak(_copy.storyNarration(widget.lesson));
+      await _speakStory();
     } on Object {
       _setNarrationState(_NarrationState.stopped);
     }
