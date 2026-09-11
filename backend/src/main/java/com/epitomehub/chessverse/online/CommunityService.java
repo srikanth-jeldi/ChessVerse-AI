@@ -275,12 +275,17 @@ class CommunityService {
     }
 
     @Transactional
-    CommunityDtos.MessageDto sendAttachment(AuthenticatedPlayer player, UUID recipientId, String body, MultipartFile file) {
+    CommunityDtos.MessageDto sendAttachment(AuthenticatedPlayer player, UUID recipientId, String body, MultipartFile file, boolean encrypted) {
         requireFriends(player.id(), recipientId);
         if (file == null || file.isEmpty()) throw new OnlineMatchException(HttpStatus.BAD_REQUEST,"Choose a file to attach.");
         if (file.getSize() > AttachmentPolicy.MAX_BYTES) throw new OnlineMatchException(HttpStatus.PAYLOAD_TOO_LARGE,"Attachments must be 10 MB or smaller.");
         AttachmentPolicy.AcceptedAttachment accepted;
-        try { accepted = AttachmentPolicy.inspect(file.getBytes(), file.getOriginalFilename()); }
+        try {
+            byte[] uploaded = file.getBytes();
+            accepted = encrypted
+                    ? new AttachmentPolicy.AcceptedAttachment("encrypted-attachment.cve", "application/octet-stream", ".cve", uploaded)
+                    : AttachmentPolicy.inspect(uploaded, file.getOriginalFilename());
+        }
         catch (IOException error) { throw new OnlineMatchException(HttpStatus.BAD_REQUEST,"The attachment could not be read."); }
         String original = accepted.filename();
         String type = accepted.mediaType();
@@ -301,10 +306,11 @@ class CommunityService {
             throw new OnlineMatchException(HttpStatus.INTERNAL_SERVER_ERROR,"The attachment could not be stored.");
         }
         String clean = body == null ? "" : body.trim();
-        jdbc.update("insert into direct_message(id,sender_id,recipient_id,body,sent_at,attachment_name,attachment_type,attachment_size,attachment_path) values(?,?,?,?,?,?,?,?,?)",
-                id,player.id(),recipientId,clean,Timestamp.from(now),original,type,(long)accepted.bytes().length,stored);
-        notifications.create(recipientId,"MESSAGE_RECEIVED","New attachment from "+player.displayName(),original,"CHAT",player.id());
-        return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,original,type,(long)accepted.bytes().length,false,List.of(),false);
+        if (encrypted && !clean.startsWith("cv1:")) throw new OnlineMatchException(HttpStatus.BAD_REQUEST,"Invalid encrypted attachment envelope.");
+        jdbc.update("insert into direct_message(id,sender_id,recipient_id,body,sent_at,attachment_name,attachment_type,attachment_size,attachment_path,encrypted) values(?,?,?,?,?,?,?,?,?,?)",
+                id,player.id(),recipientId,clean,Timestamp.from(now),original,type,(long)accepted.bytes().length,stored,encrypted);
+        notifications.create(recipientId,"MESSAGE_RECEIVED","New attachment from "+player.displayName(),encrypted ? "Encrypted attachment" : original,"CHAT",player.id());
+        return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,original,type,(long)accepted.bytes().length,false,List.of(),encrypted);
     }
 
     @Transactional

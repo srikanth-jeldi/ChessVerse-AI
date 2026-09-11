@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:chessverse_ai/features/social/data/community_api.dart';
 import 'package:chessverse_ai/features/social/data/e2ee_chat_service.dart';
 import 'package:chessverse_ai/features/social/data/social_api.dart';
@@ -106,6 +108,26 @@ void main() {
     expect(envelope, isNot(contains('private chess plan')));
     expect(await first.decrypt(envelope, mine: true), 'private chess plan');
     expect(await second.decrypt(envelope, mine: false), 'private chess plan');
+
+    final EncryptedChatAttachment attachment = await first.encryptAttachment(
+      bytes: <int>[1, 2, 3, 4, 5],
+      name: 'analysis.png',
+      type: 'image/png',
+      caption: 'private position',
+    );
+    expect(attachment.bytes, isNot(<int>[1, 2, 3, 4, 5]));
+    final Map<String, dynamic> attachmentMetadata = jsonDecode(
+      await second.decrypt(attachment.envelope, mine: false),
+    ) as Map<String, dynamic>;
+    expect(attachmentMetadata['name'], 'analysis.png');
+    expect(attachmentMetadata['caption'], 'private position');
+    expect(
+      await second.decryptAttachment(
+        attachment.bytes,
+        attachmentMetadata['key'] as String,
+      ),
+      <int>[1, 2, 3, 4, 5],
+    );
 
     final E2eeChatService restored =
         E2eeChatService(api: api, storage: _MemoryStorage());

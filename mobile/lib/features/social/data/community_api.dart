@@ -249,9 +249,11 @@ class MessageDto {
       this.deletedForEveryone = false,
       this.reactions = const <MessageReactionDto>[],
       this.pending = false,
-      this.encrypted = false});
+      this.encrypted = false,
+      this.attachmentKey});
   final String id, senderId, recipientId, body;
   final bool mine, delivered, seen, pending, encrypted;
+  final String? attachmentKey;
   final String? attachmentName, attachmentType;
   final int? attachmentSize;
   final bool deletedForEveryone;
@@ -426,7 +428,8 @@ class CommunityApi {
       MessageDto.fromJson(await _request(token, 'PUT',
           '/api/v1/community/messages/$messageId/reaction?emoji=${Uri.encodeQueryComponent(emoji ?? '')}'));
   Future<MessageDto> sendAttachment(String token, String recipientId,
-      String name, List<int> bytes, String? mimeType, String body) async {
+      String name, List<int> bytes, String? mimeType, String body,
+      {bool encrypted = false}) async {
     try {
       final request = http.MultipartRequest(
           'POST',
@@ -435,6 +438,7 @@ class CommunityApi {
         ..headers['Authorization'] = 'Bearer $token'
         ..fields['recipientId'] = recipientId
         ..fields['body'] = body
+        ..fields['encrypted'] = encrypted.toString()
         ..files.add(http.MultipartFile.fromBytes('file', bytes,
             filename: name,
             contentType: mimeType == null ? null : MediaType.parse(mimeType)));

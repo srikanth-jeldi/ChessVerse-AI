@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -1218,18 +1219,37 @@ class _ChatScreenState extends State<_ChatScreen> {
     if (!message.encrypted) return message;
     final String plaintext =
         await _e2ee.decrypt(message.body, mine: message.mine);
+    String body = plaintext;
+    String? attachmentName = message.attachmentName;
+    String? attachmentType = message.attachmentType;
+    int? attachmentSize = message.attachmentSize;
+    String? attachmentKey;
+    try {
+      final dynamic decoded = jsonDecode(plaintext);
+      if (decoded is Map<String, dynamic> &&
+          decoded['kind'] == 'attachment') {
+        body = decoded['caption'] as String? ?? '';
+        attachmentName = decoded['name'] as String?;
+        attachmentType = decoded['type'] as String?;
+        attachmentSize = (decoded['size'] as num?)?.toInt();
+        attachmentKey = decoded['key'] as String?;
+      }
+    } on FormatException {
+      // Regular encrypted chat text is not JSON.
+    }
     return MessageDto(
       id: message.id,
       senderId: message.senderId,
       recipientId: message.recipientId,
-      body: plaintext,
+      body: body,
       mine: message.mine,
       sentAt: message.sentAt,
       delivered: message.delivered,
       seen: message.seen,
-      attachmentName: message.attachmentName,
-      attachmentType: message.attachmentType,
-      attachmentSize: message.attachmentSize,
+      attachmentName: attachmentName,
+      attachmentType: attachmentType,
+      attachmentSize: attachmentSize,
+      attachmentKey: attachmentKey,
       deletedForEveryone: message.deletedForEveryone,
       reactions: message.reactions,
       pending: message.pending,
@@ -1456,13 +1476,23 @@ class _ChatScreenState extends State<_ChatScreen> {
     final String caption = _text.text.trim();
     _text.clear();
     try {
-      final MessageDto message = await widget.api.sendAttachment(
+      final String type = _mimeFor(file.name);
+      final EncryptedChatAttachment attachment =
+          await _e2ee.encryptAttachment(
+        bytes: bytes,
+        name: file.name,
+        type: type,
+        caption: caption,
+      );
+      final MessageDto encrypted = await widget.api.sendAttachment(
           widget.token,
           widget.friend.playerId,
-          file.name,
-          bytes,
-          _mimeFor(file.name),
-          caption);
+          '${DateTime.now().microsecondsSinceEpoch}.cve',
+          attachment.bytes,
+          'application/octet-stream',
+          attachment.envelope,
+          encrypted: true);
+      final MessageDto message = await _decryptMessage(encrypted);
       if (mounted) {
         setState(() => _messages = <MessageDto>[..._messages, message]);
       }
@@ -1757,6 +1787,7 @@ class _ChatScreenState extends State<_ChatScreen> {
         message: message,
         token: widget.token,
         api: widget.api,
+        e2ee: _e2ee,
         onActions: () => _messageActions(message),
         onReply: () {
           setState(() => _replyingTo = message);
@@ -2134,12 +2165,14 @@ class _MessageBubble extends StatelessWidget {
       required this.onReply,
       required this.onActions,
       required this.token,
-      required this.api});
+      required this.api,
+      required this.e2ee});
   final MessageDto message;
   final VoidCallback onReply;
   final VoidCallback onActions;
   final String token;
   final CommunityApi api;
+  final E2eeChatService e2ee;
   @override
   Widget build(BuildContext context) {
     final h = message.sentAt.hour;
@@ -2207,7 +2240,8 @@ class _MessageBubble extends StatelessWidget {
                                     _ChatAttachment(
                                         message: message,
                                         token: token,
-                                        api: api),
+                                        api: api,
+                                        e2ee: e2ee),
                                   if (mediaUrl != null)
                                     _GiphyChatMedia(
                                         url: mediaUrl,
@@ -2398,10 +2432,14 @@ class _ReceiptTicks extends StatelessWidget {
 
 class _ChatAttachment extends StatefulWidget {
   const _ChatAttachment(
-      {required this.message, required this.token, required this.api});
+      {required this.message,
+      required this.token,
+      required this.api,
+      required this.e2ee});
   final MessageDto message;
   final String token;
   final CommunityApi api;
+  final E2eeChatService e2ee;
 
   @override
   State<_ChatAttachment> createState() => _ChatAttachmentState();
@@ -2409,8 +2447,14 @@ class _ChatAttachment extends StatefulWidget {
 
 class _ChatAttachmentState extends State<_ChatAttachment> {
   bool _saving = false;
-  late final Future<List<int>> _bytes =
-      widget.api.attachmentBytes(widget.token, widget.message.id);
+  late final Future<List<int>> _bytes = _loadBytes();
+
+  Future<List<int>> _loadBytes() async {
+    final List<int> bytes =
+        await widget.api.attachmentBytes(widget.token, widget.message.id);
+    final String? key = widget.message.attachmentKey;
+    return key == null ? bytes : widget.e2ee.decryptAttachment(bytes, key);
+  }
 
   Future<void> _previewImage() async {
     try {

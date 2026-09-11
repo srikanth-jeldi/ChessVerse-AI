@@ -20,6 +20,12 @@ class E2eeSetupResult {
   final String? recoveryKey;
 }
 
+class EncryptedChatAttachment {
+  const EncryptedChatAttachment({required this.bytes, required this.envelope});
+  final List<int> bytes;
+  final String envelope;
+}
+
 /// Zero-knowledge direct-message encryption. The backend stores only public
 /// keys, ciphertext and a recovery-key-wrapped copy of the private key.
 class E2eeChatService {
@@ -151,6 +157,42 @@ class E2eeChatService {
       's': await _seal(plaintext, senderSecret),
     };
     return '$_prefix${_encode(utf8.encode(jsonEncode(envelope)))}';
+  }
+
+  Future<EncryptedChatAttachment> encryptAttachment({
+    required List<int> bytes,
+    required String name,
+    required String type,
+    required String caption,
+  }) async {
+    final List<int> contentKey = _randomBytes(32);
+    final SecretBox box = await _aes.encrypt(
+      bytes,
+      secretKey: SecretKey(contentKey),
+      nonce: _randomBytes(12),
+    );
+    final String metadata = jsonEncode(<String, Object>{
+      'kind': 'attachment',
+      'key': _encode(contentKey),
+      'name': name,
+      'type': type,
+      'size': bytes.length,
+      'caption': caption,
+    });
+    return EncryptedChatAttachment(
+      bytes: box.concatenation(),
+      envelope: await encrypt(metadata),
+    );
+  }
+
+  Future<List<int>> decryptAttachment(
+      List<int> ciphertext, String encodedKey) async {
+    final SecretBox box = SecretBox.fromConcatenation(
+      ciphertext,
+      nonceLength: 12,
+      macLength: 16,
+    );
+    return _aes.decrypt(box, secretKey: SecretKey(_decode(encodedKey)));
   }
 
   Future<String> decrypt(String envelope, {required bool mine}) async {

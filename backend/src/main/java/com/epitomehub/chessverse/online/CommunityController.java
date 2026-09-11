@@ -34,7 +34,8 @@ class CommunityController {
     @PostMapping(value="/messages/attachments",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     CommunityDtos.MessageDto attachment(@RequestHeader("Authorization")String auth,@RequestParam UUID recipientId,
                                          @RequestParam(required=false,defaultValue="") String body,
-                                         @RequestPart("file") MultipartFile file){return community.sendAttachment(player(auth),recipientId,body,file);}
+                                         @RequestParam(required=false,defaultValue="false") boolean encrypted,
+                                         @RequestPart("file") MultipartFile file){return community.sendAttachment(player(auth),recipientId,body,file,encrypted);}
     @GetMapping("/messages/{messageId}/attachment")
     ResponseEntity<Resource> attachment(@RequestHeader("Authorization")String auth,@PathVariable UUID messageId){return community.attachment(player(auth),messageId);}
     @DeleteMapping("/messages/{messageId}")
