@@ -3,6 +3,12 @@ import 'package:chessverse_ai/features/tutorial/domain/academy_lesson.dart';
 
 void main() {
   group('AcademyCatalog', () {
+    test('single-move lessons expose a sequence-compatible demo line', () {
+      final AcademyLesson lesson = AcademyCatalog.forChapter('How pawns move');
+      expect(lesson.demonstrationLine, hasLength(1));
+      expect(lesson.demonstrationLine.single.from, lesson.from);
+      expect(lesson.demonstrationLine.single.to, lesson.to);
+    });
     test('contains unique, playable core lessons', () {
       final Set<String> ids = <String>{};
       for (final AcademyLesson lesson in AcademyCatalog.lessons) {
@@ -16,6 +22,25 @@ void main() {
         }
       }
       expect(AcademyCatalog.lessons.length, greaterThanOrEqualTo(27));
+    });
+
+    test('every animated demonstration is internally consistent', () {
+      for (final AcademyLesson lesson in AcademyCatalog.lessons) {
+        final Map<String, AcademyPiece> position =
+            Map<String, AcademyPiece>.from(lesson.pieces);
+        final List<AcademyDemoMove> line = lesson.demonstrationLine;
+        expect(line.last.from, lesson.from, reason: lesson.id);
+        expect(line.last.to, lesson.to, reason: lesson.id);
+        for (final AcademyDemoMove move in line) {
+          expect(
+            position[move.from],
+            isNotNull,
+            reason: '${lesson.id}: ${move.from} must contain a piece',
+          );
+          final AcademyPiece piece = position.remove(move.from)!;
+          position[move.to] = piece;
+        }
+      }
     });
 
     test('maps the public course chapter names to focused lessons', () {
@@ -40,6 +65,102 @@ void main() {
       expect(AcademyCatalog.forChapter('Deflection tactics').id, 'deflection');
       expect(AcademyCatalog.forChapter('Decoy tactics').id, 'decoy');
       expect(AcademyCatalog.forChapter('Mate in two').id, 'mate-two');
+      expect(AcademyCatalog.forChapter('Smothered mate').id, 'smothered-mate');
+      expect(
+        AcademyCatalog.forChapter('Bishop and knight checkmate').id,
+        'bishop-knight-mate',
+      );
+      expect(
+        AcademyCatalog.forChapter('Building a king shelter').id,
+        'king-shelter',
+      );
+      expect(AcademyCatalog.forChapter('Hanging pieces').id, 'hanging-piece');
+      expect(AcademyCatalog.forChapter('Double attacks').id, 'double-attack');
+      expect(
+        AcademyCatalog.forChapter('Removing the defender').id,
+        'remove-defender',
+      );
+      expect(
+        AcademyCatalog.forChapter('King and pawn basics').id,
+        'king-pawn-basics',
+      );
+      expect(AcademyCatalog.forChapter('Basic rook endings').id, 'rook-ending');
+      expect(
+        AcademyCatalog.forChapter('Control the centre').id,
+        'opening-centre',
+      );
+      expect(
+        AcademyCatalog.forChapter('Develop minor pieces').id,
+        'opening-develop',
+      );
+      expect(
+        AcademyCatalog.forChapter('Do not move twice').id,
+        'opening-tempo',
+      );
+      expect(AcademyCatalog.forChapter('Castle early').id, 'opening-castle');
+      expect(
+        AcademyCatalog.forChapter('Connect the rooks').id,
+        'opening-rooks',
+      );
+      expect(
+        AcademyCatalog.forChapter('Opening checklist').id,
+        'opening-checklist',
+      );
+      expect(AcademyCatalog.forChapter('Italian Game').id, 'opening-italian');
+      expect(AcademyCatalog.forChapter('Ruy Lopez').id, 'opening-ruy-lopez');
+      expect(
+        AcademyCatalog.forChapter('Sicilian Defense').id,
+        'opening-sicilian',
+      );
+      expect(
+        AcademyCatalog.forChapter("Queen's Gambit").id,
+        'opening-queens-gambit',
+      );
+      expect(
+        AcademyCatalog.forChapter('Caro-Kann Defense').id,
+        'opening-caro-kann',
+      );
+      expect(
+        AcademyCatalog.forChapter('Punish early queen moves').id,
+        'opening-punish-queen',
+      );
+      expect(
+        AcademyCatalog.forChapter('Improve the worst piece').id,
+        'plan-worst-piece',
+      );
+      expect(AcademyCatalog.forChapter('Use open files').id, 'plan-open-file');
+      expect(
+        AcademyCatalog.forChapter('Exploit weak squares').id,
+        'plan-weak-square',
+      );
+      expect(
+        AcademyCatalog.forChapter('Prepare a pawn break').id,
+        'plan-pawn-break',
+      );
+      expect(
+        AcademyCatalog.forChapter('Stop the opponent plan').id,
+        'plan-prophylaxis',
+      );
+      expect(
+        AcademyCatalog.forChapter('Build a three-step plan').id,
+        'plan-three-step',
+      );
+      expect(
+        AcademyCatalog.forChapter('Build a thinking budget').id,
+        'clock-budget',
+      );
+      expect(
+        AcademyCatalog.forChapter('Run the emergency scan').id,
+        'clock-forcing-scan',
+      );
+      expect(
+        AcademyCatalog.forChapter('Use increment to reset').id,
+        'clock-increment',
+      );
+      expect(
+        AcademyCatalog.forChapter('Choose a safe premove').id,
+        'clock-safe-premove',
+      );
     });
 
     test('foundation course has memorable narrated story chapters', () {

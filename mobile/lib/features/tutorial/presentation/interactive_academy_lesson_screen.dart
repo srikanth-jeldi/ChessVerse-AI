@@ -83,6 +83,7 @@ class _InteractiveAcademyLessonScreenState
   Map<String, int> _mastery = <String, int>{};
   int _attempts = 0;
   String? _candidateFeedback;
+  int _demoStepIndex = 0;
   String _languageCode = AppLanguageController.resolveCode(
     AppLanguageController.systemCode,
   );
@@ -285,6 +286,14 @@ class _InteractiveAcademyLessonScreenState
   void _handleAnimationStatus(AnimationStatus status) {
     if (status != AnimationStatus.completed || !mounted) return;
     _practiceTimer?.cancel();
+    if (_demoStepIndex + 1 < widget.lesson.demonstrationLine.length) {
+      _practiceTimer = Timer(const Duration(milliseconds: 320), () {
+        if (!mounted) return;
+        setState(() => _demoStepIndex++);
+        _controller.forward(from: 0);
+      });
+      return;
+    }
     _practiceTimer = Timer(const Duration(milliseconds: 850), () {
       if (!mounted) return;
       setState(() {
@@ -302,6 +311,7 @@ class _InteractiveAcademyLessonScreenState
     _practiceTimer?.cancel();
     setState(() {
       _phase = _LessonPhase.demonstration;
+      _demoStepIndex = 0;
       _selected = null;
       _feedback =
           coachFeedback ??
@@ -459,6 +469,7 @@ class _InteractiveAcademyLessonScreenState
           child: Center(
             child: _AnimatedAcademyBoard(
               lesson: widget.lesson,
+              demoStepIndex: _demoStepIndex,
               movement: _movement,
               phase: _phase,
               selected: _selected,
@@ -506,6 +517,7 @@ class _InteractiveAcademyLessonScreenState
               constraints: const BoxConstraints(maxWidth: 680),
               child: _AnimatedAcademyBoard(
                 lesson: widget.lesson,
+                demoStepIndex: _demoStepIndex,
                 movement: _movement,
                 phase: _phase,
                 selected: _selected,
@@ -551,6 +563,7 @@ class _InteractiveAcademyLessonScreenState
             const SizedBox(height: 12),
             _AnimatedAcademyBoard(
               lesson: widget.lesson,
+              demoStepIndex: _demoStepIndex,
               movement: _movement,
               phase: _phase,
               selected: _selected,
@@ -596,6 +609,7 @@ class _InteractiveAcademyLessonScreenState
 class _AnimatedAcademyBoard extends StatelessWidget {
   const _AnimatedAcademyBoard({
     required this.lesson,
+    required this.demoStepIndex,
     required this.movement,
     required this.phase,
     required this.selected,
@@ -603,6 +617,7 @@ class _AnimatedAcademyBoard extends StatelessWidget {
   });
 
   final AcademyLesson lesson;
+  final int demoStepIndex;
   final Animation<double> movement;
   final _LessonPhase phase;
   final String? selected;
@@ -636,9 +651,19 @@ class _AnimatedAcademyBoard extends StatelessWidget {
                 final bool moved = phase == _LessonPhase.success;
                 final Map<String, AcademyPiece> pieces =
                     Map<String, AcademyPiece>.from(lesson.pieces);
+                final List<AcademyDemoMove> line = lesson.demonstrationLine;
+                final int activeIndex = demoStepIndex.clamp(0, line.length - 1);
+                for (int index = 0; index < activeIndex; index++) {
+                  final AcademyDemoMove step = line[index];
+                  final AcademyPiece? piece = pieces.remove(step.from);
+                  pieces.remove(step.to);
+                  if (piece != null) pieces[step.to] = piece;
+                }
+                final AcademyDemoMove activeStep = line[activeIndex];
                 if (moved) {
-                  final AcademyPiece? piece = pieces.remove(lesson.from);
-                  if (piece != null) pieces[lesson.to] = piece;
+                  final AcademyPiece? piece = pieces.remove(activeStep.from);
+                  pieces.remove(activeStep.to);
+                  if (piece != null) pieces[activeStep.to] = piece;
                 }
                 return Stack(
                   children: <Widget>[
@@ -654,7 +679,7 @@ class _AnimatedAcademyBoard extends StatelessWidget {
                           piece: pieces[_squareName(row, col)],
                           hidePiece:
                               demonstrating &&
-                              _squareName(row, col) == lesson.from,
+                              _squareName(row, col) == activeStep.from,
                           onTap: onSquareTap,
                         ),
                     if (demonstrating)
@@ -662,17 +687,19 @@ class _AnimatedAcademyBoard extends StatelessWidget {
                         child: IgnorePointer(
                           child: CustomPaint(
                             painter: _AcademyRoutePainter(
-                              from: lesson.from,
-                              to: lesson.to,
+                              from: activeStep.from,
+                              to: activeStep.to,
                               progress: movement.value,
-                              curved: lesson.pieces[lesson.from]?.symbol == 'N',
+                              curved: pieces[activeStep.from]?.symbol == 'N',
                             ),
                           ),
                         ),
                       ),
                     if (demonstrating)
                       _MovingPiece(
-                        lesson: lesson,
+                        piece: pieces[activeStep.from]!,
+                        from: activeStep.from,
+                        to: activeStep.to,
                         progress: movement.value,
                         squareSize: square,
                       ),
@@ -935,21 +962,24 @@ class _AcademyRoutePainter extends CustomPainter {
 
 class _MovingPiece extends StatelessWidget {
   const _MovingPiece({
-    required this.lesson,
+    required this.piece,
+    required this.from,
+    required this.to,
     required this.progress,
     required this.squareSize,
   });
 
-  final AcademyLesson lesson;
+  final AcademyPiece piece;
+  final String from;
+  final String to;
   final double progress;
   final double squareSize;
 
   @override
   Widget build(BuildContext context) {
-    final Offset from = _squareOffset(lesson.from);
-    final Offset to = _squareOffset(lesson.to);
-    final Offset current = Offset.lerp(from, to, progress)!;
-    final AcademyPiece piece = lesson.pieces[lesson.from]!;
+    final Offset fromOffset = _squareOffset(from);
+    final Offset toOffset = _squareOffset(to);
+    final Offset current = Offset.lerp(fromOffset, toOffset, progress)!;
     final bool isKnight = piece.symbol == 'N';
     final double lift =
         math.sin(progress * math.pi) * squareSize * (isKnight ? .34 : .06);
@@ -1138,6 +1168,10 @@ class _CoachPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
+          if (lesson.id.startsWith('clock-')) ...<Widget>[
+            _TimePressureBanner(phase: phase),
+            const SizedBox(height: 14),
+          ],
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -1245,23 +1279,25 @@ class _CoachPanel extends StatelessWidget {
                 borderRadius: BorderRadius.circular(15),
                 border: Border.all(color: const Color(0x7759E4C8)),
               ),
-              child: Row(children: <Widget>[
-                for (int star = 1; star <= 3; star++)
-                  Icon(
-                    star <= masteryStars
-                        ? Icons.star_rounded
-                        : Icons.star_outline_rounded,
-                    color: AppColors.accentGold,
+              child: Row(
+                children: <Widget>[
+                  for (int star = 1; star <= 3; star++)
+                    Icon(
+                      star <= masteryStars
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
+                      color: AppColors.accentGold,
+                    ),
+                  const Spacer(),
+                  Text(
+                    '+${masteryStars * 25} XP',
+                    style: const TextStyle(
+                      color: Color(0xFF59E4C8),
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                const Spacer(),
-                Text(
-                  '+${masteryStars * 25} XP',
-                  style: const TextStyle(
-                    color: Color(0xFF59E4C8),
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ]),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
           ],
@@ -1427,6 +1463,55 @@ class _RailLine extends StatelessWidget {
     margin: const EdgeInsets.only(left: 18),
     color: const Color(0xFF1D4252),
   );
+}
+
+class _TimePressureBanner extends StatelessWidget {
+  const _TimePressureBanner({required this.phase});
+
+  final _LessonPhase phase;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool solved = phase == _LessonPhase.success;
+    return AnimatedContainer(
+      key: const ValueKey<String>('time-pressure-banner'),
+      duration: const Duration(milliseconds: 350),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          colors: solved
+              ? const <Color>[Color(0xFF164C46), Color(0xFF0C2D31)]
+              : const <Color>[Color(0xFF48282B), Color(0xFF211B27)],
+        ),
+        border: Border.all(
+          color: solved ? const Color(0xFF59E4C8) : const Color(0xFFFF8A72),
+        ),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(
+            solved ? Icons.timer_outlined : Icons.timer_rounded,
+            color: solved ? const Color(0xFF59E4C8) : const Color(0xFFFF8A72),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            solved ? '+ 00:02' : '00:10',
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+          ),
+          const Spacer(),
+          for (final IconData icon in const <IconData>[
+            Icons.add_circle_outline_rounded,
+            Icons.close_fullscreen_rounded,
+            Icons.bolt_rounded,
+          ]) ...<Widget>[
+            Icon(icon, size: 17, color: AppColors.accentGold),
+            const SizedBox(width: 7),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class _MobileLessonProgress extends StatelessWidget {

@@ -109,4 +109,41 @@ void main() {
     await store.awardCertificate('piece-basics');
     expect(await store.readCertificates(), contains('piece-basics'));
   });
+
+  test('blindfold best score, sessions, and practice streak persist', () async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{});
+    const AcademyProgressStore store = AcademyProgressStore();
+
+    await store.recordBlindfoldSession(2);
+    await store.recordBlindfoldSession(1);
+
+    expect(await store.readBlindfoldBestScore(), 2);
+    expect(await store.readBlindfoldSessions(), 2);
+    expect(await store.readLearningStreak(), 1);
+  });
+
+  test('completed master games are deduplicated and account scoped', () async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{});
+    const AcademyProgressStore store = AcademyProgressStore();
+
+    await store.markMasterGameCompleted('aronian-anand-2013');
+    await store.markMasterGameCompleted('aronian-anand-2013');
+
+    expect(await store.readCompletedMasterGames(), <String>{
+      'aronian-anand-2013',
+    });
+  });
+
+  test(
+    'solved mistake positions are deduplicated in the account scope',
+    () async {
+      FlutterSecureStorage.setMockInitialValues(<String, String>{});
+      const AcademyProgressStore store = AcademyProgressStore();
+
+      await store.markMistakeSolved('game-1-ply-12');
+      await store.markMistakeSolved('game-1-ply-12');
+
+      expect(await store.readSolvedMistakes(), <String>{'game-1-ply-12'});
+    },
+  );
 }

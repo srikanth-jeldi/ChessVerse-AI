@@ -24,13 +24,25 @@ final class CommunityDtos {
     record MessageDto(UUID id, UUID senderId, UUID recipientId, String body,
                       Instant sentAt, boolean mine, boolean delivered, boolean seen,
                       String attachmentName, String attachmentType, Long attachmentSize,
-                      boolean deletedForEveryone, List<MessageReactionDto> reactions) {}
+                      boolean deletedForEveryone, List<MessageReactionDto> reactions,
+                      boolean encrypted) {}
     record MessageReactionDto(UUID playerId, String emoji, boolean mine) {}
     record HubDto(List<ClubDto> clubs, List<TournamentDto> tournaments,
                   List<ConversationDto> conversations, int fairPlayScore,
                   int circuitPoints) {}
     record MessageRequest(@NotNull UUID recipientId,
-                          @NotBlank @Size(max = 500) String body) {}
+                          @NotBlank @Size(max = 4096) String body,
+                          boolean encrypted) {}
+    record E2eePublicKeyDto(UUID playerId, String publicKey, Instant updatedAt) {}
+    record E2eeIdentityDto(UUID playerId, String publicKey, String encryptedPrivateKey,
+                           String backupSalt, String backupNonce, int backupKdfIterations,
+                           Instant updatedAt) {}
+    record E2eeIdentityRequest(
+            @NotBlank @Size(max = 128) String publicKey,
+            @NotBlank @Size(max = 512) String encryptedPrivateKey,
+            @NotBlank @Size(max = 128) String backupSalt,
+            @NotBlank @Size(max = 128) String backupNonce,
+            @Min(100000) @Max(2000000) int backupKdfIterations) {}
     record CreateClubTournamentRequest(
             @NotBlank @Size(max = 100) String name,
             @NotBlank @Size(max = 300) String description,

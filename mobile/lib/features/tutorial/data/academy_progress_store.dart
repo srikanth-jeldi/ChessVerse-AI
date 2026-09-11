@@ -62,11 +62,14 @@ class AcademyProgressStore {
       practicedAt.month,
       practicedAt.day,
     );
-    final List<String> encoded = values.entries
-        .map((MapEntry<String, DateTime> entry) =>
-            '${entry.key}:${entry.value.toIso8601String()}')
-        .toList()
-      ..sort();
+    final List<String> encoded =
+        values.entries
+            .map(
+              (MapEntry<String, DateTime> entry) =>
+                  '${entry.key}:${entry.value.toIso8601String()}',
+            )
+            .toList()
+          ..sort();
     await preferences.writeString(
       '${await _storageKey()}.practice',
       encoded.join(','),
@@ -80,13 +83,11 @@ class AcademyProgressStore {
     );
   }
 
-  Future<Set<String>> _readActivityDays() async => (await preferences.readString(
+  Future<Set<String>> _readActivityDays() async =>
+      (await preferences.readString(
         '${await _storageKey()}.activity',
         fallback: '',
-      ))
-          .split(',')
-          .where((String value) => value.isNotEmpty)
-          .toSet();
+      )).split(',').where((String value) => value.isNotEmpty).toSet();
 
   Future<List<String>> readReviewDue({DateTime? now}) async {
     final DateTime today = (now ?? DateTime.now()).toUtc();
@@ -96,7 +97,11 @@ class AcademyProgressStore {
     for (final MapEntry<String, int> entry in mastery.entries) {
       final DateTime? last = practiced[entry.key];
       if (last == null) continue;
-      final int intervalDays = switch (entry.value) { 1 => 1, 2 => 3, _ => 7 };
+      final int intervalDays = switch (entry.value) {
+        1 => 1,
+        2 => 3,
+        _ => 7,
+      };
       if (!last.add(Duration(days: intervalDays)).isAfter(today)) {
         due.add(entry.key);
       }
@@ -116,7 +121,8 @@ class AcademyProgressStore {
         .toSet();
     DateTime cursor = (now ?? DateTime.now()).toUtc();
     cursor = DateTime.utc(cursor.year, cursor.month, cursor.day);
-    if (!days.contains(cursor) && days.contains(cursor.subtract(const Duration(days: 1)))) {
+    if (!days.contains(cursor) &&
+        days.contains(cursor.subtract(const Duration(days: 1)))) {
       cursor = cursor.subtract(const Duration(days: 1));
     }
     int streak = 0;
@@ -125,6 +131,72 @@ class AcademyProgressStore {
       cursor = cursor.subtract(const Duration(days: 1));
     }
     return streak;
+  }
+
+  Future<int> readBlindfoldBestScore() async =>
+      int.tryParse(
+        await preferences.readString(
+          '${await _storageKey()}.blindfold.best',
+          fallback: '0',
+        ),
+      ) ??
+      0;
+
+  Future<int> readBlindfoldSessions() async =>
+      int.tryParse(
+        await preferences.readString(
+          '${await _storageKey()}.blindfold.sessions',
+          fallback: '0',
+        ),
+      ) ??
+      0;
+
+  Future<void> recordBlindfoldSession(int score) async {
+    final int best = await readBlindfoldBestScore();
+    final int sessions = await readBlindfoldSessions();
+    await preferences.writeString(
+      '${await _storageKey()}.blindfold.best',
+      score > best ? '$score' : '$best',
+    );
+    await preferences.writeString(
+      '${await _storageKey()}.blindfold.sessions',
+      '${sessions + 1}',
+    );
+    await _recordPractice('blindfold-visualization', DateTime.now().toUtc());
+  }
+
+  Future<Set<String>> readCompletedMasterGames() async =>
+      (await preferences.readString(
+        '${await _storageKey()}.masterGames',
+        fallback: '',
+      )).split(',').where((String value) => value.isNotEmpty).toSet();
+
+  Future<Set<String>> markMasterGameCompleted(String gameId) async {
+    final Set<String> completed = await readCompletedMasterGames()
+      ..add(gameId);
+    await preferences.writeString(
+      '${await _storageKey()}.masterGames',
+      (completed.toList()..sort()).join(','),
+    );
+    await _recordPractice('master-game-$gameId', DateTime.now().toUtc());
+    return completed;
+  }
+
+  Future<Set<String>> readSolvedMistakes() async =>
+      (await preferences.readString(
+        '${await _storageKey()}.mistakeBank.solved',
+        fallback: '',
+      )).split(',').where((String value) => value.isNotEmpty).toSet();
+
+  Future<Set<String>> markMistakeSolved(String mistakeId) async {
+    final Set<String> solved = await readSolvedMistakes()
+      ..add(mistakeId);
+    await preferences.writeString(
+      '${await _storageKey()}.mistakeBank.solved',
+      (solved.toList()..sort()).join(','),
+    );
+    await _recordPractice('mistake-bank-$mistakeId', DateTime.now().toUtc());
+    return solved;
   }
 
   Future<Map<String, int>> readMastery() async {
@@ -140,10 +212,11 @@ class AcademyProgressStore {
   }
 
   Future<void> _writeMastery(Map<String, int> mastery) async {
-    final List<String> values = mastery.entries
-        .map((MapEntry<String, int> entry) => '${entry.key}:${entry.value}')
-        .toList()
-      ..sort();
+    final List<String> values =
+        mastery.entries
+            .map((MapEntry<String, int> entry) => '${entry.key}:${entry.value}')
+            .toList()
+          ..sort();
     await preferences.writeString(
       '${await _storageKey()}.mastery',
       values.join(','),
@@ -163,15 +236,13 @@ class AcademyProgressStore {
   }
 
   Future<Set<String>> readCertificates() async => (await preferences.readString(
-        '${await _storageKey()}.certificates',
-        fallback: '',
-      ))
-          .split(',')
-          .where((String value) => value.isNotEmpty)
-          .toSet();
+    '${await _storageKey()}.certificates',
+    fallback: '',
+  )).split(',').where((String value) => value.isNotEmpty).toSet();
 
   Future<Set<String>> awardCertificate(String courseId) async {
-    final Set<String> certificates = await readCertificates()..add(courseId);
+    final Set<String> certificates = await readCertificates()
+      ..add(courseId);
     await preferences.writeString(
       '${await _storageKey()}.certificates',
       (certificates.toList()..sort()).join(','),

@@ -10,6 +10,7 @@ import '../../auth/data/auth_session_store.dart';
 import '../../online/data/online_match_api.dart';
 import '../data/social_api.dart';
 import '../data/community_api.dart';
+import '../data/e2ee_chat_service.dart';
 import 'tournament_detail_screen.dart';
 import 'tournament_circuit_view.dart';
 import '../../notifications/presentation/notification_center_screen.dart';
@@ -1104,20 +1105,136 @@ class _ChatScreenState extends State<_ChatScreen> {
   Timer? _pollTimer;
   Timer? _presenceTimer;
   bool _presenceLoading = false;
+  late final E2eeChatService _e2ee;
+  bool _encryptionLoading = true;
+  bool _friendEncryptionReady = false;
   late bool _friendOnline;
   @override
   void initState() {
     super.initState();
     _friendOnline = widget.friend.online;
+    _e2ee = E2eeChatService(api: widget.api);
     _composerFocus.addListener(() {
       if (_composerFocus.hasFocus) _scrollToLatest();
     });
-    _load();
+    _initializeEncryption();
     _refreshPresence();
     _presenceTimer =
         Timer.periodic(const Duration(seconds: 15), (_) => _refreshPresence());
     _pollTimer =
         Timer.periodic(const Duration(seconds: 5), (_) => _load(silent: true));
+  }
+
+  Future<void> _initializeEncryption() async {
+    try {
+      final E2eeSetupResult result =
+          await _e2ee.initialize(widget.token, widget.friend.playerId);
+      if (!mounted) return;
+      setState(() {
+        _encryptionLoading = false;
+        _friendEncryptionReady = result.friendReady;
+      });
+      if (result.recoveryKey != null) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _showNewRecoveryKey(result.recoveryKey!),
+        );
+      }
+    } on SocialException catch (error) {
+      if (mounted) {
+        setState(() => _encryptionLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      }
+    } finally {
+      await _load();
+    }
+  }
+
+  Future<void> _showNewRecoveryKey(String key) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        icon: const Icon(Icons.key_rounded, color: Color(0xFFE0AA42)),
+        title: const Text('Save your chat recovery key'),
+        content: SelectableText(
+          '$key\n\nKeep this offline. It is the only way to restore encrypted chats on a new device. ChessVerseAI cannot recover it for you.',
+        ),
+        actions: <Widget>[
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('I saved it'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showRestoreKey() async {
+    final TextEditingController controller = TextEditingController();
+    final bool? restore = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        icon: const Icon(Icons.lock_reset_rounded),
+        title: const Text('Restore encrypted chats'),
+        content: TextField(
+          controller: controller,
+          autocorrect: false,
+          enableSuggestions: false,
+          decoration: const InputDecoration(labelText: 'Recovery key'),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Restore'),
+          ),
+        ],
+      ),
+    );
+    if (restore != true || controller.text.trim().isEmpty) {
+      controller.dispose();
+      return;
+    }
+    try {
+      await _e2ee.restore(widget.token, controller.text);
+      await _initializeEncryption();
+    } on SocialException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  Future<MessageDto> _decryptMessage(MessageDto message) async {
+    if (!message.encrypted) return message;
+    final String plaintext =
+        await _e2ee.decrypt(message.body, mine: message.mine);
+    return MessageDto(
+      id: message.id,
+      senderId: message.senderId,
+      recipientId: message.recipientId,
+      body: plaintext,
+      mine: message.mine,
+      sentAt: message.sentAt,
+      delivered: message.delivered,
+      seen: message.seen,
+      attachmentName: message.attachmentName,
+      attachmentType: message.attachmentType,
+      attachmentSize: message.attachmentSize,
+      deletedForEveryone: message.deletedForEveryone,
+      reactions: message.reactions,
+      pending: message.pending,
+      encrypted: true,
+    );
   }
 
   @override
@@ -1165,7 +1282,12 @@ class _ChatScreenState extends State<_ChatScreen> {
 
   Future<void> _load({bool silent = false}) async {
     try {
-      final v = await widget.api.messages(widget.token, widget.friend.playerId);
+      final List<MessageDto> encrypted =
+          await widget.api.messages(widget.token, widget.friend.playerId);
+      final List<MessageDto> v = <MessageDto>[];
+      for (final MessageDto message in encrypted) {
+        v.add(await _decryptMessage(message));
+      }
       if (mounted) {
         setState(() {
           _messages = v;
@@ -1207,8 +1329,14 @@ class _ChatScreenState extends State<_ChatScreen> {
     }
     _scrollToLatest();
     try {
-      final m = await widget.api
-          .send(widget.token, widget.friend.playerId, outgoingBody);
+      final String envelope = await _e2ee.encrypt(outgoingBody);
+      final MessageDto encrypted = await widget.api.send(
+        widget.token,
+        widget.friend.playerId,
+        envelope,
+        encrypted: true,
+      );
+      final MessageDto m = await _decryptMessage(encrypted);
       if (mounted) {
         setState(() => _messages =
             _messages.map((item) => item.id == pending.id ? m : item).toList());
@@ -1577,6 +1705,9 @@ class _ChatScreenState extends State<_ChatScreen> {
                           maxLength: 500,
                           style: const TextStyle(fontSize: 14),
                           textInputAction: TextInputAction.send,
+                          enabled: !_encryptionLoading &&
+                              _e2ee.ready &&
+                              _friendEncryptionReady,
                           onSubmitted: (_) => _send(),
                           decoration: InputDecoration(
                               counterText: '',
@@ -1597,7 +1728,11 @@ class _ChatScreenState extends State<_ChatScreen> {
                 foregroundColor: const Color(0xFF151109),
                 minimumSize: const Size(48, 48),
                 shape: const CircleBorder()),
-            onPressed: _send,
+            onPressed: !_encryptionLoading &&
+                    _e2ee.ready &&
+                    _friendEncryptionReady
+                ? _send
+                : null,
             icon: const Icon(Icons.send_rounded)),
       ]),
     ]);
@@ -1684,6 +1819,22 @@ class _ChatScreenState extends State<_ChatScreen> {
                 ]))
           ]),
           actions: <Widget>[
+            IconButton(
+              tooltip: _e2ee.ready
+                  ? (_friendEncryptionReady
+                      ? 'End-to-end encrypted'
+                      : 'Waiting for friend encryption')
+                  : 'Restore encrypted chats',
+              onPressed: _e2ee.ready ? _initializeEncryption : _showRestoreKey,
+              icon: Icon(
+                _e2ee.ready && _friendEncryptionReady
+                    ? Icons.lock_rounded
+                    : Icons.lock_clock_rounded,
+                color: _e2ee.ready && _friendEncryptionReady
+                    ? const Color(0xFF45DCCB)
+                    : const Color(0xFFE0AA42),
+              ),
+            ),
             IconButton.outlined(
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.info_outline_rounded,
@@ -1708,6 +1859,25 @@ class _ChatScreenState extends State<_ChatScreen> {
               Color(0x00020D16)
             ])))),
         Column(children: <Widget>[
+          if (!_encryptionLoading && (!_e2ee.ready || !_friendEncryptionReady))
+            MaterialBanner(
+              content: Text(_e2ee.ready
+                  ? 'Encrypted chat is ready on your account. Your friend must open this chat once before new messages can be sent.'
+                  : 'This device needs your recovery key to read and send encrypted messages.'),
+              leading: const Icon(Icons.lock_outline_rounded),
+              actions: <Widget>[
+                if (!_e2ee.ready)
+                  TextButton(
+                    onPressed: _showRestoreKey,
+                    child: const Text('RESTORE'),
+                  )
+                else
+                  TextButton(
+                    onPressed: _initializeEncryption,
+                    child: const Text('CHECK AGAIN'),
+                  ),
+              ],
+            ),
           Expanded(
               child: _busy
                   ? const Center(child: CircularProgressIndicator())

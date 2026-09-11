@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/academy_story_localizations.dart';
+import '../../../core/analysis_dashboard_localizations.dart';
+import '../../../core/app_language.dart';
 import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/chess_piece_appearance.dart';
 import '../../../core/layout/responsive_page.dart';
@@ -10,7 +13,10 @@ import '../../analysis/domain/player_learning_profile.dart';
 import '../data/academy_progress_store.dart';
 import '../domain/academy_lesson.dart';
 import 'academy_boss_challenge_screen.dart';
+import 'blindfold_training_screen.dart';
 import 'interactive_academy_lesson_screen.dart';
+import 'master_games_screen.dart';
+import '../../analysis/presentation/mistake_bank_screen.dart';
 
 class LearnChessScreen extends StatefulWidget {
   const LearnChessScreen({super.key});
@@ -65,6 +71,7 @@ class LearnChessScreen extends StatefulWidget {
         'Deflection',
         'Decoy tactics',
         'Back-rank mates',
+        'Smothered mate',
         'Mate in one',
         'Mate in two',
       ],
@@ -83,9 +90,69 @@ class LearnChessScreen extends StatefulWidget {
         'Rook ladder mate',
         'Rook and king mate',
         'Basic rook endings',
+        'Bishop and knight checkmate',
         'Drawing positions',
       ],
     ),
+    _Lesson(
+      icon: Icons.rocket_launch_rounded,
+      title: 'Opening Principles',
+      body: 'Build a strong position before launching an attack.',
+      asset: 'assets/backgrounds/home-online-hero-v1.webp',
+      accent: Color(0xFF65B8FF),
+      chapters: <String>[
+        'Control the centre',
+        'Develop minor pieces',
+        'Do not move twice',
+        'Castle early',
+        'Connect the rooks',
+        'Opening checklist',
+        'Italian Game',
+        'Ruy Lopez',
+        'Sicilian Defense',
+        "Queen's Gambit",
+        'Caro-Kann Defense',
+        'Punish early queen moves',
+      ],
+    ),
+    _Lesson(
+      icon: Icons.psychology_alt_rounded,
+      title: 'Middlegame Planning',
+      body: 'Turn positional clues into a clear practical plan.',
+      asset: 'assets/backgrounds/home-puzzles-hero-v1.webp',
+      accent: Color(0xFFB38CFF),
+      chapters: <String>[
+        'Improve the worst piece',
+        'Use open files',
+        'Exploit weak squares',
+        'Prepare a pawn break',
+        'Stop the opponent plan',
+        'Build a three-step plan',
+      ],
+    ),
+    _Lesson(
+      icon: Icons.timer_rounded,
+      title: 'Time Management',
+      body: 'Think clearly, use increment, and play safe moves under pressure.',
+      asset: 'assets/backgrounds/home-online-hero-v1.webp',
+      accent: Color(0xFFFF8A72),
+      chapters: <String>[
+        'Build a thinking budget',
+        'Run the emergency scan',
+        'Use increment to reset',
+        'Choose a safe premove',
+      ],
+    ),
+  ];
+
+  static final List<_Lesson> _journey = <_Lesson>[
+    _lessons[0],
+    _lessons[4],
+    _lessons[1],
+    _lessons[2],
+    _lessons[5],
+    _lessons[6],
+    _lessons[3],
   ];
 
   @override
@@ -101,11 +168,35 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
   List<String> _reviewDue = <String>[];
   int _learningStreak = 0;
   Set<String> _certificates = <String>{};
+  String _languageCode = AppLanguageController.resolveCode(
+    AppLanguageController.systemCode,
+  );
+  AcademyStoryLocalizations get _copy =>
+      AcademyStoryLocalizations(_languageCode);
 
   @override
   void initState() {
     super.initState();
+    AppLanguageController.effectiveLanguageChanges.addListener(
+      _handleLanguageChange,
+    );
+    AppLanguageController.effectiveCode().then((String code) {
+      if (mounted) setState(() => _languageCode = code);
+    });
     _loadProgress();
+  }
+
+  void _handleLanguageChange() {
+    final String? code = AppLanguageController.effectiveLanguageChanges.value;
+    if (code != null && mounted) setState(() => _languageCode = code);
+  }
+
+  @override
+  void dispose() {
+    AppLanguageController.effectiveLanguageChanges.removeListener(
+      _handleLanguageChange,
+    );
+    super.dispose();
   }
 
   Future<void> _loadProgress() async {
@@ -139,21 +230,33 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
 
   Future<void> _showPlacementAssessment() async {
     if (!mounted) return;
-    const List<({String question, List<String> options, int correct})>
-        questions = <({String question, List<String> options, int correct})>[
+    final List<({String question, List<String> options, int correct})>
+    questions = <({String question, List<String> options, int correct})>[
       (
-        question: 'A knight on g1 can jump directly to which square?',
-        options: <String>['g3', 'f3', 'e2'],
+        question: _copy.text('placement.q1'),
+        options: <String>[
+          _copy.text('placement.q1a'),
+          _copy.text('placement.q1b'),
+          _copy.text('placement.q1c'),
+        ],
         correct: 1,
       ),
       (
-        question: 'Your king is in check. What must your next move do?',
-        options: <String>['Attack the queen', 'Create a threat', 'End the check'],
+        question: _copy.text('placement.q2'),
+        options: <String>[
+          _copy.text('placement.q2a'),
+          _copy.text('placement.q2b'),
+          _copy.text('placement.q2c'),
+        ],
         correct: 2,
       ),
       (
-        question: 'Before choosing a tactic, what should you scan first?',
-        options: <String>['Checks, captures, threats', 'Only pawn moves', 'The clock'],
+        question: _copy.text('placement.q3'),
+        options: <String>[
+          _copy.text('placement.q3a'),
+          _copy.text('placement.q3b'),
+          _copy.text('placement.q3c'),
+        ],
         correct: 0,
       ),
     ];
@@ -170,33 +273,50 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
-            title: const Row(children: <Widget>[
-              Icon(Icons.auto_awesome_rounded, color: AppColors.accentGold),
-              SizedBox(width: 10),
-              Expanded(child: Text('FIND YOUR STARTING LEVEL')),
-            ]),
+            title: Row(
+              children: <Widget>[
+                const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AppColors.accentGold,
+                ),
+                const SizedBox(width: 10),
+                Expanded(child: Text(_copy.text('placement.title'))),
+              ],
+            ),
             content: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 430),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  Text('Question ${index + 1} of ${questions.length}',
-                      style: const TextStyle(
-                        color: Color(0xFF59E4C8),
-                        fontWeight: FontWeight.w900,
-                      )),
+                  Text(
+                    _copy.text(
+                      'placement.progress',
+                      values: <String, String>{
+                        'current': '${index + 1}',
+                        'total': '${questions.length}',
+                      },
+                    ),
+                    style: const TextStyle(
+                      color: Color(0xFF59E4C8),
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                   const SizedBox(height: 10),
-                  Text(question.question,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        height: 1.35,
-                        fontWeight: FontWeight.w800,
-                      )),
+                  Text(
+                    question.question,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      height: 1.35,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 16),
-                  for (int option = 0;
-                      option < question.options.length;
-                      option++)
+                  for (
+                    int option = 0;
+                    option < question.options.length;
+                    option++
+                  )
                     Padding(
                       padding: const EdgeInsets.only(bottom: 9),
                       child: OutlinedButton(
@@ -206,8 +326,9 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
                             setDialogState(() => index++);
                             return;
                           }
-                          final String level =
-                              score >= 2 ? 'intermediate' : 'beginner';
+                          final String level = score >= 2
+                              ? 'intermediate'
+                              : 'beginner';
                           await _progressStore.writePlacement(level);
                           if (dialogContext.mounted) {
                             Navigator.of(dialogContext).pop();
@@ -233,9 +354,9 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
     final bool compact = viewport.width < 520;
     final PlayerLearningProfile learningProfile =
         PlayerLearningProfile.fromGames(
-      LocalGameArchive.games,
-      cloudScores: LocalGameArchive.cloudWeaknessScores,
-    );
+          LocalGameArchive.games,
+          cloudScores: LocalGameArchive.cloudWeaknessScores,
+        );
     final AcademyLesson recommended = _reviewDue.isNotEmpty
         ? AcademyCatalog.lessons.firstWhere(
             (AcademyLesson lesson) => lesson.id == _reviewDue.first,
@@ -243,25 +364,32 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
         : AcademyCatalog.forChapter(
             LocalGameArchive.games.isEmpty
                 ? (_placement == 'intermediate'
-                    ? 'Check and checkmate'
-                    : 'How pawns move')
+                      ? 'Check and checkmate'
+                      : 'How pawns move')
                 : learningProfile.recommendedLesson,
           );
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         toolbarHeight: wide ? 72 : 62,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('LEARN CHESS',
-                style:
-                    TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
-            Text('Build skills one lesson at a time',
-                style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500)),
+            Text(
+              _copy.text('academy.title'),
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1,
+              ),
+            ),
+            Text(
+              _copy.text('academy.subtitle'),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
         backgroundColor: const Color(0xE6071827),
@@ -275,24 +403,29 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
               placement: _placement,
               stars: _mastery.values.fold<int>(0, (int a, int b) => a + b),
               completed: _completed.length,
+              copy: _copy,
             ),
             const SizedBox(height: 14),
             _AcademySkillMap(
               completed: _completed,
               certificates: _certificates,
+              copy: _copy,
             ),
             const SizedBox(height: 14),
-            _CoachHero(compact: compact),
+            _CoachHero(compact: compact, copy: _copy),
             const SizedBox(height: 16),
             _PersonalizedPathCard(
               lesson: recommended,
+              copy: _copy,
               reason: _reviewDue.isNotEmpty
-                  ? 'Memory refresh due today. A short replay now keeps this pattern available in your next game.'
+                  ? _copy.text('path.reasonReview')
                   : LocalGameArchive.games.isEmpty
                   ? (_placement == 'intermediate'
-                      ? 'Your placement shows solid piece knowledge. Start with king safety, then unlock tactical calculation.'
-                      : 'Start with piece movement, then the AI coach will adapt your path after every reviewed game.')
-                  : learningProfile.recommendationReason,
+                        ? _copy.text('path.reasonIntermediate')
+                        : _copy.text('path.reasonBeginner'))
+                  : _copy.text(
+                      'reason.${learningProfile.primaryWeakness.name}',
+                    ),
             ),
             const SizedBox(height: 14),
             _DailyAcademyMissionCard(
@@ -300,50 +433,63 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
               completed: _completed,
               streak: _learningStreak,
               onProgressChanged: _loadProgress,
+              copy: _copy,
             ),
             const SizedBox(height: 14),
             _WeeklyAiReportCard(
               profile: learningProfile,
               gamesReviewed: LocalGameArchive.games.length,
+              copy: _copy,
             ),
             const SizedBox(height: 14),
-            const _LearningMethodCard(),
+            _MistakeBankCard(languageCode: _languageCode),
+            const SizedBox(height: 14),
+            _BlindfoldLabCard(copy: _copy),
+            const SizedBox(height: 14),
+            _MasterGamesCard(copy: _copy),
+            const SizedBox(height: 14),
+            _LearningMethodCard(copy: _copy),
             const SizedBox(height: 24),
-            const _SectionHeading(
-              eyebrow: 'CHESS ACADEMY',
-              title: 'Your lessons, in order',
-              subtitle:
-                  'Start with every coin, then learn king safety, tactics and checkmate.',
+            _SectionHeading(
+              eyebrow: _copy.text('academy.sectionEyebrow'),
+              title: _copy.text('academy.sectionTitle'),
+              subtitle: _copy.text('academy.sectionSubtitle'),
             ),
             const SizedBox(height: 14),
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: LearnChessScreen._lessons.length,
+              itemCount: LearnChessScreen._journey.length,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 // Phone cards need the same complete learning information as
                 // tablet/web. A single column keeps the artwork, lesson count,
                 // progress bar and action readable without clipping.
-                crossAxisCount: wide ? 4 : (compact ? 1 : 2),
+                crossAxisCount: viewport.width >= 1100 ? 4 : (compact ? 1 : 2),
                 crossAxisSpacing: 14,
                 mainAxisSpacing: 14,
-                childAspectRatio: wide ? 0.78 : (compact ? 1.22 : 0.78),
+                childAspectRatio: viewport.width >= 1100
+                    ? 0.78
+                    : (compact ? 1.22 : 0.9),
               ),
               itemBuilder: (BuildContext context, int index) => _LessonCard(
-                lesson: LearnChessScreen._lessons[index],
-                locked: index > (_placement == 'intermediate' ? 1 : 0) &&
-                    LearnChessScreen._lessons
+                lesson: LearnChessScreen._journey[index],
+                locked:
+                    index > (_placement == 'intermediate' ? 1 : 0) &&
+                    LearnChessScreen._journey
                         .take(index)
                         .expand((_Lesson course) => course.chapters)
                         .map(AcademyCatalog.forChapter)
-                        .any((AcademyLesson lesson) =>
-                            !_completed.contains(lesson.id)),
+                        .any(
+                          (AcademyLesson lesson) =>
+                              !_completed.contains(lesson.id),
+                        ),
                 completedLessonIds: _completed,
                 onProgressChanged: _loadProgress,
+                copy: _copy,
               ),
             ),
             const SizedBox(height: 24),
-            const _CoachEvaluationPanel(),
+            _CoachEvaluationPanel(copy: _copy),
           ],
         ),
       ),
@@ -351,112 +497,440 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
   }
 }
 
+class _MistakeBankCard extends StatelessWidget {
+  const _MistakeBankCard({required this.languageCode});
+
+  final String languageCode;
+
+  @override
+  Widget build(BuildContext context) {
+    final int count = LocalGameArchive.games
+        .expand((SavedGameRecord game) => game.moveReviews)
+        .where(
+          (SavedMoveReview review) => const <String>{
+            'inaccuracy',
+            'mistake',
+            'blunder',
+          }.contains(review.classification.toLowerCase()),
+        )
+        .length;
+    return ChessVerseCard(
+      key: const ValueKey<String>('mistake-bank-card'),
+      onTap: () => Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(builder: (_) => const MistakeBankScreen()),
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFFFF8A72).withValues(alpha: .12),
+              border: Border.all(color: const Color(0xFFFF8A72)),
+            ),
+            child: const Icon(
+              Icons.psychology_alt_rounded,
+              color: Color(0xFFFF8A72),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  analysisDashboardText('mistakeReplay', languageCode),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 17,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  analysisDashboardText(
+                    'focusedPositions',
+                    languageCode,
+                    <String, String>{'focus': '$count'},
+                  ),
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.accentGold.withValues(alpha: .12),
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: Text(
+              '$count',
+              style: const TextStyle(
+                color: AppColors.accentGold,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BlindfoldLabCard extends StatelessWidget {
+  const _BlindfoldLabCard({required this.copy});
+
+  final AcademyStoryLocalizations copy;
+
+  @override
+  Widget build(BuildContext context) => ChessVerseCard(
+    key: const ValueKey<String>('blindfold-lab-card'),
+    onTap: () => Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const BlindfoldTrainingScreen()),
+    ),
+    child: Row(
+      children: <Widget>[
+        const CircleAvatar(
+          radius: 28,
+          backgroundColor: Color(0xFF153F4B),
+          child: Icon(
+            Icons.visibility_off_rounded,
+            color: Color(0xFF63D2B8),
+            size: 28,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                copy.text('blindfold.cardTitle'),
+                style: const TextStyle(
+                  color: AppColors.accentGold,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              SizedBox(height: 5),
+              Text(
+                copy.text('blindfold.cardBody'),
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+        const Icon(Icons.arrow_forward_rounded),
+      ],
+    ),
+  );
+}
+
+class _MasterGamesCard extends StatelessWidget {
+  const _MasterGamesCard({required this.copy});
+
+  final AcademyStoryLocalizations copy;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const ValueKey<String>('master-games-card'),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(26),
+      gradient: const LinearGradient(
+        colors: <Color>[
+          Color(0xFF123A48),
+          Color(0xFF0B2030),
+          Color(0xFF081522),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      border: Border.all(color: AppColors.accentGold.withValues(alpha: .72)),
+      boxShadow: const <BoxShadow>[
+        BoxShadow(
+          color: Color(0x334CDCC1),
+          blurRadius: 28,
+          offset: Offset(0, 12),
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(26),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(builder: (_) => const MasterGamesScreen()),
+          ),
+          child: Stack(
+            children: <Widget>[
+              const Positioned(
+                right: -22,
+                bottom: -34,
+                child: Icon(
+                  Icons.workspace_premium_rounded,
+                  size: 150,
+                  color: Color(0x183FE3C0),
+                ),
+              ),
+              Positioned(
+                right: 18,
+                top: 16,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentGold.withValues(alpha: .12),
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(
+                      color: AppColors.accentGold.withValues(alpha: .55),
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 14,
+                        color: AppColors.accentGold,
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        '3',
+                        style: TextStyle(
+                          color: AppColors.accentGold,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: AppColors.goldGradient,
+                        boxShadow: const <BoxShadow>[
+                          BoxShadow(color: Color(0x55EABF61), blurRadius: 18),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.workspace_premium_rounded,
+                        color: Color(0xFF071827),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      copy.text('master.cardTitle'),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 20,
+                        height: 1.08,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      child: Text(
+                        copy.text('master.cardBody'),
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                          height: 1.45,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: <Widget>[
+                        for (final IconData icon in const <IconData>[
+                          Icons.local_fire_department_rounded,
+                          Icons.psychology_alt_rounded,
+                          Icons.hourglass_bottom_rounded,
+                        ]) ...<Widget>[
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF071827)
+                                  .withValues(alpha: .72),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFF63D2B8)
+                                    .withValues(alpha: .4),
+                              ),
+                            ),
+                            child: Icon(
+                              icon,
+                              size: 17,
+                              color: const Color(0xFF63D2B8),
+                            ),
+                          ),
+                          const SizedBox(width: 7),
+                        ],
+                        const Spacer(),
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: const BoxDecoration(
+                            color: AppColors.accentGold,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Color(0xFF071827),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class _AcademyProgressStrip extends StatelessWidget {
   const _AcademyProgressStrip({
     required this.placement,
     required this.stars,
     required this.completed,
+    required this.copy,
   });
 
   final String? placement;
   final int stars;
   final int completed;
+  final AcademyStoryLocalizations copy;
 
   @override
   Widget build(BuildContext context) => ChessVerseCard(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        child: Wrap(
-          spacing: 18,
-          runSpacing: 10,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: <Widget>[
-            const Icon(Icons.workspace_premium_rounded,
-                color: AppColors.accentGold),
-            Text(
-              placement == 'intermediate'
-                  ? 'INTERMEDIATE PATH'
-                  : 'BEGINNER PATH',
-              style: const TextStyle(
-                color: Color(0xFF59E4C8),
-                fontWeight: FontWeight.w900,
-                letterSpacing: .8,
-              ),
-            ),
-            _AcademyMetric(icon: Icons.star_rounded, value: '$stars stars'),
-            _AcademyMetric(
-              icon: Icons.bolt_rounded,
-              value: '${stars * 25} XP',
-            ),
-            _AcademyMetric(
-              icon: Icons.task_alt_rounded,
-              value: '$completed mastered',
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+    child: Wrap(
+      spacing: 18,
+      runSpacing: 10,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: <Widget>[
+        const Icon(
+          Icons.workspace_premium_rounded,
+          color: AppColors.accentGold,
         ),
-      );
+        Text(
+          copy.text(
+            placement == 'intermediate' ? 'path.intermediate' : 'path.beginner',
+          ),
+          style: const TextStyle(
+            color: Color(0xFF59E4C8),
+            fontWeight: FontWeight.w900,
+            letterSpacing: .8,
+          ),
+        ),
+        _AcademyMetric(
+          icon: Icons.star_rounded,
+          value: copy.text(
+            'metric.stars',
+            values: <String, String>{'count': '$stars'},
+          ),
+        ),
+        _AcademyMetric(icon: Icons.bolt_rounded, value: '${stars * 25} XP'),
+        _AcademyMetric(
+          icon: Icons.task_alt_rounded,
+          value: copy.text(
+            'metric.mastered',
+            values: <String, String>{'count': '$completed'},
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _AcademySkillMap extends StatelessWidget {
   const _AcademySkillMap({
     required this.completed,
     required this.certificates,
+    required this.copy,
   });
 
   final Set<String> completed;
   final Set<String> certificates;
+  final AcademyStoryLocalizations copy;
 
   @override
   Widget build(BuildContext context) => ChessVerseCard(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const Text('YOUR CHESSVERSE SKILL MAP',
-                style: TextStyle(
-                  color: AppColors.accentGold,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: .9,
-                )),
-            const SizedBox(height: 4),
-            const Text('Master the path from first move to confident finisher',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-            const SizedBox(height: 14),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: <Widget>[
-                  for (int index = 0;
-                      index < LearnChessScreen._lessons.length;
-                      index++) ...<Widget>[
-                    if (index > 0)
-                      Container(
-                        width: 34,
-                        height: 3,
-                        color: _courseComplete(index - 1)
-                            ? const Color(0xFF59E4C8)
-                            : const Color(0xFF263B55),
-                      ),
-                    _SkillNode(
-                      title: LearnChessScreen._lessons[index].title,
-                      icon: LearnChessScreen._lessons[index].icon,
-                      accent: LearnChessScreen._lessons[index].accent,
-                      progress: _courseProgress(index),
-                      certified: certificates.contains(
-                        LearnChessScreen._lessons[index].title
-                            .toLowerCase()
-                            .replaceAll(' ', '-'),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          copy.text('skillMap.title'),
+          style: const TextStyle(
+            color: AppColors.accentGold,
+            fontWeight: FontWeight.w900,
+            letterSpacing: .9,
+          ),
         ),
-      );
+        const SizedBox(height: 4),
+        Text(
+          copy.text('skillMap.subtitle'),
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+        ),
+        const SizedBox(height: 14),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: <Widget>[
+              for (
+                int index = 0;
+                index < LearnChessScreen._journey.length;
+                index++
+              ) ...<Widget>[
+                if (index > 0)
+                  Container(
+                    width: 34,
+                    height: 3,
+                    color: _courseComplete(index - 1)
+                        ? const Color(0xFF59E4C8)
+                        : const Color(0xFF263B55),
+                  ),
+                _SkillNode(
+                  title: _localizedCourseTitle(
+                    copy,
+                    LearnChessScreen._journey[index],
+                  ),
+                  icon: LearnChessScreen._journey[index].icon,
+                  accent: LearnChessScreen._journey[index].accent,
+                  progress: _courseProgress(index),
+                  certified: certificates.contains(
+                    LearnChessScreen._journey[index].title
+                        .toLowerCase()
+                        .replaceAll(' ', '-'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 
   double _courseProgress(int index) {
-    final _Lesson course = LearnChessScreen._lessons[index];
+    final _Lesson course = LearnChessScreen._journey[index];
     final int done = course.chapters
         .map(AcademyCatalog.forChapter)
         .where((AcademyLesson lesson) => completed.contains(lesson.id))
@@ -484,40 +958,47 @@ class _SkillNode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        width: 128,
-        child: Column(
+    width: 128,
+    child: Column(
+      children: <Widget>[
+        Stack(
+          clipBehavior: Clip.none,
           children: <Widget>[
-            Stack(
-              clipBehavior: Clip.none,
-              children: <Widget>[
-                SizedBox.square(
-                  dimension: 62,
-                  child: CircularProgressIndicator(
-                    value: progress,
-                    strokeWidth: 5,
-                    backgroundColor: const Color(0xFF263B55),
-                    valueColor: AlwaysStoppedAnimation<Color>(accent),
-                  ),
-                ),
-                Positioned.fill(child: Icon(icon, color: accent, size: 28)),
-                if (certified)
-                  const Positioned(
-                    right: -5,
-                    top: -5,
-                    child: Icon(Icons.verified_rounded,
-                        color: AppColors.accentGold, size: 22),
-                  ),
-              ],
+            SizedBox.square(
+              dimension: 62,
+              child: CircularProgressIndicator(
+                value: progress,
+                strokeWidth: 5,
+                backgroundColor: const Color(0xFF263B55),
+                valueColor: AlwaysStoppedAnimation<Color>(accent),
+              ),
             ),
-            const SizedBox(height: 8),
-            Text(title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.w800)),
-            Text('${(progress * 100).round()}%',
-                style: TextStyle(color: accent, fontSize: 12)),
+            Positioned.fill(child: Icon(icon, color: accent, size: 28)),
+            if (certified)
+              const Positioned(
+                right: -5,
+                top: -5,
+                child: Icon(
+                  Icons.verified_rounded,
+                  color: AppColors.accentGold,
+                  size: 22,
+                ),
+              ),
           ],
         ),
-      );
+        const SizedBox(height: 8),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+        Text(
+          '${(progress * 100).round()}%',
+          style: TextStyle(color: accent, fontSize: 12),
+        ),
+      ],
+    ),
+  );
 }
 
 class _DailyAcademyMissionCard extends StatelessWidget {
@@ -526,12 +1007,14 @@ class _DailyAcademyMissionCard extends StatelessWidget {
     required this.completed,
     required this.streak,
     required this.onProgressChanged,
+    required this.copy,
   });
 
   final List<String> reviewDue;
   final Set<String> completed;
   final int streak;
   final VoidCallback onProgressChanged;
+  final AcademyStoryLocalizations copy;
 
   @override
   Widget build(BuildContext context) {
@@ -551,34 +1034,49 @@ class _DailyAcademyMissionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Row(children: <Widget>[
-            const Icon(Icons.local_fire_department_rounded,
-                color: Color(0xFFFF8C42)),
-            const SizedBox(width: 9),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text('TODAY\'S MEMORY WORKOUT',
-                      style: TextStyle(
+          Row(
+            children: <Widget>[
+              const Icon(
+                Icons.local_fire_department_rounded,
+                color: Color(0xFFFF8C42),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      copy.text('mission.title'),
+                      style: const TextStyle(
                         color: AppColors.accentGold,
                         fontWeight: FontWeight.w900,
                         letterSpacing: .8,
-                      )),
-                  Text('Three short lessons selected for lasting recall',
-                      style: TextStyle(
+                      ),
+                    ),
+                    Text(
+                      copy.text('mission.subtitle'),
+                      style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
-                      )),
-                ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Chip(
-              avatar: const Icon(Icons.local_fire_department_rounded,
-                  size: 17),
-              label: Text('$streak day streak'),
-            ),
-          ]),
+              Chip(
+                avatar: const Icon(
+                  Icons.local_fire_department_rounded,
+                  size: 17,
+                ),
+                label: Text(
+                  copy.text(
+                    'mission.streak',
+                    values: <String, String>{'count': '$streak'},
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 13),
           for (int index = 0; index < mission.length; index++)
             Padding(
@@ -594,18 +1092,24 @@ class _DailyAcademyMissionCard extends StatelessWidget {
                   foregroundColor: const Color(0xFF59E4C8),
                   child: Text('${index + 1}'),
                 ),
-                title: Text(mission[index].title,
-                    style: const TextStyle(fontWeight: FontWeight.w800)),
-                subtitle: Text(reviewDue.contains(mission[index].id)
-                    ? 'Review due · strengthen this memory'
-                    : 'New skill · continue your learning path'),
+                title: Text(
+                  copy.storyChapter(mission[index]),
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text(
+                  reviewDue.contains(mission[index].id)
+                      ? copy.text('mission.reviewDue')
+                      : copy.text('mission.newSkill'),
+                ),
                 trailing: const Icon(Icons.play_arrow_rounded),
                 onTap: () async {
-                  await Navigator.of(context).push(MaterialPageRoute<void>(
-                    builder: (_) => InteractiveAcademyLessonScreen(
-                      lesson: mission[index],
+                  await Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => InteractiveAcademyLessonScreen(
+                        lesson: mission[index],
+                      ),
                     ),
-                  ));
+                  );
                   onProgressChanged();
                 },
               ),
@@ -623,23 +1127,31 @@ class _AcademyMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 18, color: AppColors.accentGold),
-          const SizedBox(width: 5),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      Icon(icon, size: 18, color: AppColors.accentGold),
+      const SizedBox(width: 5),
+      Flexible(
+        child: Text(
+          value,
+          softWrap: true,
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+      ),
+    ],
+  );
 }
 
 class _WeeklyAiReportCard extends StatelessWidget {
   const _WeeklyAiReportCard({
     required this.profile,
     required this.gamesReviewed,
+    required this.copy,
   });
 
   final PlayerLearningProfile profile;
   final int gamesReviewed;
+  final AcademyStoryLocalizations copy;
 
   @override
   Widget build(BuildContext context) {
@@ -652,14 +1164,14 @@ class _WeeklyAiReportCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Row(
+          Row(
             children: <Widget>[
-              Icon(Icons.insights_rounded, color: AppColors.accentGold),
-              SizedBox(width: 9),
+              const Icon(Icons.insights_rounded, color: AppColors.accentGold),
+              const SizedBox(width: 9),
               Expanded(
                 child: Text(
-                  'WEEKLY AI IMPROVEMENT REPORT',
-                  style: TextStyle(
+                  copy.text('report.title'),
+                  style: const TextStyle(
                     color: AppColors.accentGold,
                     fontWeight: FontWeight.w900,
                     letterSpacing: .8,
@@ -671,10 +1183,19 @@ class _WeeklyAiReportCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             gamesReviewed == 0
-                ? 'Complete a game to activate your personal skill map.'
-                : '$gamesReviewed recent games reviewed • strongest: '
-                    '${PlayerLearningProfile.labelFor(profile.strongestSkill)} • '
-                    'focus: ${PlayerLearningProfile.labelFor(profile.primaryWeakness)}',
+                ? copy.text('report.empty')
+                : copy.text(
+                    'report.summary',
+                    values: <String, String>{
+                      'count': '$gamesReviewed',
+                      'strongest': copy.text(
+                        'weakness.${profile.strongestSkill.name}',
+                      ),
+                      'focus': copy.text(
+                        'weakness.${profile.primaryWeakness.name}',
+                      ),
+                    },
+                  ),
             style: const TextStyle(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 14),
@@ -688,7 +1209,7 @@ class _WeeklyAiReportCard extends StatelessWidget {
                   SizedBox(
                     width: 112,
                     child: Text(
-                      PlayerLearningProfile.labelFor(weakness),
+                      copy.text('weakness.${weakness.name}'),
                       style: const TextStyle(fontSize: 12),
                     ),
                   ),
@@ -716,42 +1237,44 @@ class _WeeklyAiReportCard extends StatelessWidget {
 }
 
 class _LearningMethodCard extends StatelessWidget {
-  const _LearningMethodCard();
+  const _LearningMethodCard({required this.copy});
+
+  final AcademyStoryLocalizations copy;
 
   @override
   Widget build(BuildContext context) => ChessVerseCard(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: const <Widget>[
-            Expanded(
-              child: _LearningStep(
-                number: '1',
-                title: 'WATCH',
-                body: 'AI shows the move',
-                icon: Icons.smart_display_rounded,
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded, color: AppColors.accentGold),
-            Expanded(
-              child: _LearningStep(
-                number: '2',
-                title: 'PRACTICE',
-                body: 'You repeat it',
-                icon: Icons.touch_app_rounded,
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded, color: AppColors.accentGold),
-            Expanded(
-              child: _LearningStep(
-                number: '3',
-                title: 'MASTER',
-                body: 'AI corrects you',
-                icon: Icons.workspace_premium_rounded,
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.all(14),
+    child: Row(
+      children: <Widget>[
+        Expanded(
+          child: _LearningStep(
+            number: '1',
+            title: copy.text('method.watch'),
+            body: copy.text('method.watchBody'),
+            icon: Icons.smart_display_rounded,
+          ),
         ),
-      );
+        const Icon(Icons.chevron_right_rounded, color: AppColors.accentGold),
+        Expanded(
+          child: _LearningStep(
+            number: '2',
+            title: copy.text('method.practice'),
+            body: copy.text('method.practiceBody'),
+            icon: Icons.touch_app_rounded,
+          ),
+        ),
+        const Icon(Icons.chevron_right_rounded, color: AppColors.accentGold),
+        Expanded(
+          child: _LearningStep(
+            number: '3',
+            title: copy.text('method.master'),
+            body: copy.text('method.masterBody'),
+            icon: Icons.workspace_premium_rounded,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _LearningStep extends StatelessWidget {
@@ -769,32 +1292,43 @@ class _LearningStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        children: <Widget>[
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: const Color(0xFF123B52),
-            child: Icon(icon, size: 19, color: const Color(0xFF59E4C8)),
-          ),
-          const SizedBox(height: 7),
-          Text('$number. $title',
-              textAlign: TextAlign.center,
-              style:
-                  const TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 2),
-          Text(body,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 10, height: 1.2)),
-        ],
-      );
+    children: <Widget>[
+      CircleAvatar(
+        radius: 18,
+        backgroundColor: const Color(0xFF123B52),
+        child: Icon(icon, size: 19, color: const Color(0xFF59E4C8)),
+      ),
+      const SizedBox(height: 7),
+      Text(
+        '$number. $title',
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+      ),
+      const SizedBox(height: 2),
+      Text(
+        body,
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 10,
+          height: 1.2,
+        ),
+      ),
+    ],
+  );
 }
 
 class _PersonalizedPathCard extends StatelessWidget {
-  const _PersonalizedPathCard({required this.lesson, required this.reason});
+  const _PersonalizedPathCard({
+    required this.lesson,
+    required this.reason,
+    required this.copy,
+  });
 
   final AcademyLesson lesson;
   final String reason;
+  final AcademyStoryLocalizations copy;
 
   @override
   Widget build(BuildContext context) {
@@ -811,66 +1345,85 @@ class _PersonalizedPathCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Row(children: <Widget>[
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: <Color>[Color(0xFF123B52), Color(0xFF59E4C8)],
+          Row(
+            children: <Widget>[
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: <Color>[Color(0xFF123B52), Color(0xFF59E4C8)],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                borderRadius: BorderRadius.circular(16),
+                child: const Icon(Icons.route_rounded, color: Colors.white),
               ),
-              child: const Icon(Icons.route_rounded, color: Colors.white),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  const Text('YOUR AI LEARNING PATH',
-                      style: TextStyle(
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      copy.text('path.title'),
+                      style: const TextStyle(
                         color: Color(0xFF59E4C8),
                         fontSize: 11,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1,
-                      )),
-                  const SizedBox(height: 4),
-                  Text('Next: ${lesson.title}',
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      copy.text(
+                        'path.next',
+                        values: <String, String>{
+                          'lesson': copy.storyChapter(lesson),
+                        },
+                      ),
                       style: const TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 3),
-                  Text(reason,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      reason,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          color: AppColors.textSecondary, height: 1.35)),
-                ],
+                        color: AppColors.textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            IconButton.filled(
-              tooltip: 'Start recommended lesson',
-              onPressed: () => _openAcademyLesson(context, lesson),
-              icon: const Icon(Icons.play_arrow_rounded),
-            ),
-          ]),
+              const SizedBox(width: 10),
+              IconButton.filled(
+                tooltip: copy.text('path.start'),
+                onPressed: () => _openAcademyLesson(context, lesson),
+                icon: const Icon(Icons.play_arrow_rounded),
+              ),
+            ],
+          ),
           const SizedBox(height: 14),
           const Divider(color: Color(0xFF263B55), height: 1),
           const SizedBox(height: 12),
-          const Text('LEARN EVERY PIECE',
-              style: TextStyle(
-                color: AppColors.accentGold,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1,
-              )),
+          Text(
+            copy.text('path.pieces'),
+            style: const TextStyle(
+              color: AppColors.accentGold,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1,
+            ),
+          ),
           const SizedBox(height: 9),
           Row(
             children: pieceLessons
                 .map(
                   (AcademyLesson item) => Expanded(
-                    child: _PieceQuickLesson(lesson: item),
+                    child: _PieceQuickLesson(lesson: item, copy: copy),
                   ),
                 )
                 .toList(growable: false),
@@ -882,30 +1435,34 @@ class _PersonalizedPathCard extends StatelessWidget {
 }
 
 void _openAcademyLesson(BuildContext context, AcademyLesson lesson) {
-  Navigator.of(context).push(MaterialPageRoute<void>(
-    builder: (_) => InteractiveAcademyLessonScreen(lesson: lesson),
-  ));
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => InteractiveAcademyLessonScreen(lesson: lesson),
+    ),
+  );
 }
 
 class _PieceQuickLesson extends StatelessWidget {
-  const _PieceQuickLesson({required this.lesson});
+  const _PieceQuickLesson({required this.lesson, required this.copy});
 
   final AcademyLesson lesson;
+  final AcademyStoryLocalizations copy;
 
   @override
   Widget build(BuildContext context) {
     final AcademyPiece piece = lesson.pieces[lesson.from]!;
-    final String name = switch (piece.symbol) {
-      'P' => 'Pawn',
-      'R' => 'Rook',
-      'B' => 'Bishop',
-      'N' => 'Knight',
-      'Q' => 'Queen',
-      _ => 'King',
+    final String pieceKey = switch (piece.symbol) {
+      'P' => 'pawn',
+      'R' => 'rook',
+      'B' => 'bishop',
+      'N' => 'knight',
+      'Q' => 'queen',
+      _ => 'king',
     };
+    final String name = copy.text('piece.$pieceKey');
     return Semantics(
       button: true,
-      label: 'Learn $name',
+      label: copy.text('piece.learn', values: <String, String>{'piece': name}),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () => _openAcademyLesson(context, lesson),
@@ -919,53 +1476,58 @@ class _PieceQuickLesson extends StatelessWidget {
                 child: Center(
                   child: ValueListenableBuilder<ChessPieceAppearance>(
                     valueListenable: ChessPieceAppearanceController.current,
-                    builder: (BuildContext context,
-                        ChessPieceAppearance appearance, _) {
-                      if (appearance.style == ChessPieceVisualStyle.classic2d) {
-                        const Map<String, String> glyphs = <String, String>{
-                          'Pawn': '\u2659',
-                          'Rook': '\u2656',
-                          'Knight': '\u2658',
-                          'Bishop': '\u2657',
-                          'Queen': '\u2655',
-                          'King': '\u2654',
-                        };
-                        return Text(
-                          glyphs[name]!,
-                          style: const TextStyle(
-                            fontFamily: 'serif',
-                            fontSize: 48,
-                            height: 1,
-                            color: Color(0xFFFFF4D0),
-                          ),
-                        );
-                      }
-                      Widget image = Image.asset(
-                        'assets/pieces/staunton_white_${name.toLowerCase()}.png',
-                        width: 50,
-                        height: 50,
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.high,
-                      );
-                      if (appearance.style ==
-                          ChessPieceVisualStyle.highContrast) {
-                        image = ColorFiltered(
-                          colorFilter: const ColorFilter.mode(
-                            Color(0xFFFFF0B8),
-                            BlendMode.modulate,
-                          ),
-                          child: image,
-                        );
-                      }
-                      return Transform.scale(
-                        scale: switch (appearance.size) {
-                          ChessPieceVisualSize.large => 1.05,
-                          ChessPieceVisualSize.extraLarge => 1.18,
-                          ChessPieceVisualSize.doubleExtraLarge => 1.30,
+                    builder:
+                        (
+                          BuildContext context,
+                          ChessPieceAppearance appearance,
+                          _,
+                        ) {
+                          if (appearance.style ==
+                              ChessPieceVisualStyle.classic2d) {
+                            const Map<String, String> glyphs = <String, String>{
+                              'pawn': '\u2659',
+                              'rook': '\u2656',
+                              'knight': '\u2658',
+                              'bishop': '\u2657',
+                              'queen': '\u2655',
+                              'king': '\u2654',
+                            };
+                            return Text(
+                              glyphs[pieceKey]!,
+                              style: const TextStyle(
+                                fontFamily: 'serif',
+                                fontSize: 48,
+                                height: 1,
+                                color: Color(0xFFFFF4D0),
+                              ),
+                            );
+                          }
+                          Widget image = Image.asset(
+                            'assets/pieces/staunton_white_$pieceKey.png',
+                            width: 50,
+                            height: 50,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.high,
+                          );
+                          if (appearance.style ==
+                              ChessPieceVisualStyle.highContrast) {
+                            image = ColorFiltered(
+                              colorFilter: const ColorFilter.mode(
+                                Color(0xFFFFF0B8),
+                                BlendMode.modulate,
+                              ),
+                              child: image,
+                            );
+                          }
+                          return Transform.scale(
+                            scale: switch (appearance.size) {
+                              ChessPieceVisualSize.large => 1.05,
+                              ChessPieceVisualSize.extraLarge => 1.18,
+                              ChessPieceVisualSize.doubleExtraLarge => 1.30,
+                            },
+                            child: image,
+                          );
                         },
-                        child: image,
-                      );
-                    },
                   ),
                 ),
               ),
@@ -990,120 +1552,140 @@ class _PieceQuickLesson extends StatelessWidget {
 }
 
 class _CoachHero extends StatelessWidget {
-  const _CoachHero({required this.compact});
+  const _CoachHero({required this.compact, required this.copy});
   final bool compact;
+  final AcademyStoryLocalizations copy;
 
   @override
   Widget build(BuildContext context) => Container(
-        height: compact ? 296 : 270,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(26),
-          border: Border.all(color: const Color(0xFF2C8FCA), width: 1.2),
-          image: const DecorationImage(
-            image: AssetImage('assets/backgrounds/learn-academy-hero-v1.webp'),
-            fit: BoxFit.cover,
-            alignment: Alignment.centerRight,
-          ),
-          boxShadow: const <BoxShadow>[
-            BoxShadow(color: Color(0x552374B8), blurRadius: 28),
+    constraints: BoxConstraints(minHeight: compact ? 296 : 270),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(26),
+      border: Border.all(color: const Color(0xFF2C8FCA), width: 1.2),
+      image: const DecorationImage(
+        image: AssetImage('assets/backgrounds/learn-academy-hero-v1.webp'),
+        fit: BoxFit.cover,
+        alignment: Alignment.centerRight,
+      ),
+      boxShadow: const <BoxShadow>[
+        BoxShadow(color: Color(0x552374B8), blurRadius: 28),
+      ],
+    ),
+    child: Container(
+      padding: EdgeInsets.all(compact ? 20 : 28),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(25),
+        gradient: const LinearGradient(
+          colors: <Color>[
+            Color(0xF2071A2A),
+            Color(0xC9071A2A),
+            Color(0x05071A2A),
           ],
+          stops: <double>[0, .48, .76],
         ),
-        child: Container(
-          padding: EdgeInsets.all(compact ? 20 : 28),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(25),
-            gradient: const LinearGradient(
-              colors: <Color>[
-                Color(0xF2071A2A),
-                Color(0xC9071A2A),
-                Color(0x05071A2A),
-              ],
-              stops: <double>[0, .48, .76],
-            ),
-          ),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: compact ? 260 : 520),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
+      ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: compact ? 260 : 520),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Icon(Icons.auto_awesome_rounded,
-                          color: Color(0xFF59E4C8), size: 20),
-                      SizedBox(width: 8),
-                      Flexible(
-                        child: Text('AI-GUIDED TRAINING',
-                            maxLines: 1,
-                            overflow: TextOverflow.fade,
-                            style: TextStyle(
-                                color: Color(0xFF59E4C8),
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1.1)),
+                  const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: Color(0xFF59E4C8),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      copy.text('hero.eyebrow'),
+                      maxLines: 1,
+                      overflow: TextOverflow.fade,
+                      style: const TextStyle(
+                        color: Color(0xFF59E4C8),
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.1,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text('ChessVerseAI Coach',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: compact ? 28 : 36,
-                          fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 8),
-                  Text(
-                    compact
-                        ? 'Learn from every important move.'
-                        : 'Understand every important move with clear, practical coaching.',
-                    style: const TextStyle(
-                        color: Color(0xFFC4D2DE), fontSize: 15, height: 1.4),
-                  ),
-                  const SizedBox(height: 20),
-                  FilledButton.icon(
-                    onPressed: () =>
-                        _openLesson(context, LearnChessScreen._lessons.first),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.accentGold,
-                      foregroundColor: const Color(0xFF07131E),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 22, vertical: 14),
                     ),
-                    icon: const Icon(Icons.play_arrow_rounded),
-                    label: const Text('CONTINUE LEARNING',
-                        style: TextStyle(fontWeight: FontWeight.w900)),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 12),
+              Text(
+                copy.text('hero.title'),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: compact ? 28 : 36,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                copy.text(compact ? 'hero.compact' : 'hero.expanded'),
+                style: const TextStyle(
+                  color: Color(0xFFC4D2DE),
+                  fontSize: 15,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: () =>
+                    _openLesson(context, LearnChessScreen._journey.first),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.accentGold,
+                  foregroundColor: const Color(0xFF07131E),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 22,
+                    vertical: 14,
+                  ),
+                ),
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: Text(
+                  copy.text('hero.continue'),
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _SectionHeading extends StatelessWidget {
-  const _SectionHeading(
-      {required this.eyebrow, required this.title, required this.subtitle});
+  const _SectionHeading({
+    required this.eyebrow,
+    required this.title,
+    required this.subtitle,
+  });
   final String eyebrow;
   final String title;
   final String subtitle;
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(eyebrow,
-              style: const TextStyle(
-                  color: AppColors.accentGold,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.2)),
-          const SizedBox(height: 4),
-          Text(title, style: Theme.of(context).textTheme.headlineSmall),
-          Text(subtitle,
-              style: const TextStyle(color: AppColors.textSecondary)),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      Text(
+        eyebrow,
+        style: const TextStyle(
+          color: AppColors.accentGold,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.2,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(title, style: Theme.of(context).textTheme.headlineSmall),
+      Text(subtitle, style: const TextStyle(color: AppColors.textSecondary)),
+    ],
+  );
 }
 
 class _LessonCard extends StatelessWidget {
@@ -1112,189 +1694,230 @@ class _LessonCard extends StatelessWidget {
     required this.completedLessonIds,
     required this.onProgressChanged,
     required this.locked,
+    required this.copy,
   });
   final _Lesson lesson;
   final Set<String> completedLessonIds;
   final Future<void> Function() onProgressChanged;
   final bool locked;
+  final AcademyStoryLocalizations copy;
 
   int get completedCount => lesson.chapters.where((String chapter) {
-        return completedLessonIds
-            .contains(AcademyCatalog.forChapter(chapter).id);
-      }).length;
+    return completedLessonIds.contains(AcademyCatalog.forChapter(chapter).id);
+  }).length;
 
   double get progress =>
       lesson.chapters.isEmpty ? 0 : completedCount / lesson.chapters.length;
 
   @override
   Widget build(BuildContext context) => Material(
-        color: Colors.transparent,
-        child: InkWell(
+    color: Colors.transparent,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: () async {
+        if (locked) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(copy.text('course.lockMessage'))),
+          );
+          return;
+        }
+        await _openLesson(context, lesson);
+        await onProgressChanged();
+      },
+      child: Ink(
+        decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(22),
-          onTap: () async {
-            if (locked) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                      'Complete the previous academy stage to unlock this course.'),
-                ),
-              );
-              return;
-            }
-            await _openLesson(context, lesson);
-            await onProgressChanged();
-          },
-          child: Ink(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: lesson.accent.withValues(alpha: .65)),
-              image: DecorationImage(
-                image: AssetImage(lesson.asset),
-                fit: BoxFit.cover,
-                alignment: Alignment.centerRight,
-              ),
+          border: Border.all(color: lesson.accent.withValues(alpha: .65)),
+          image: DecorationImage(
+            image: AssetImage(lesson.asset),
+            fit: BoxFit.cover,
+            alignment: Alignment.centerRight,
+          ),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(21),
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[
+                Color(0x15031520),
+                Color(0xCC061622),
+                Color(0xFA061622),
+              ],
+              stops: <double>[.15, .58, 1],
             ),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(21),
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: <Color>[
-                    Color(0x15031520),
-                    Color(0xCC061622),
-                    Color(0xFA061622),
-                  ],
-                  stops: <double>[.15, .58, 1],
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Spacer(),
+              Row(
                 children: <Widget>[
-                  const Spacer(),
-                  Row(
-                    children: <Widget>[
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xCC071A29),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(locked ? Icons.lock_rounded : lesson.icon,
-                            color: lesson.accent, size: 21),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(lesson.title,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 19,
-                                fontWeight: FontWeight.w900)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 5),
-                  Text(lesson.body,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: Color(0xFFC2CFD9),
-                          fontSize: 12,
-                          height: 1.35)),
-                  const SizedBox(height: 12),
-                  Text(
-                      locked
-                          ? 'LOCKED • Finish the previous stage'
-                          : '$completedCount of ${lesson.chapters.length} lessons',
-                      style: TextStyle(
-                          color: lesson.accent,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11)),
-                  const SizedBox(height: 7),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(99),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 5,
-                      backgroundColor: const Color(0xFF263948),
-                      valueColor: AlwaysStoppedAnimation<Color>(lesson.accent),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xCC071A29),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      locked ? Icons.lock_rounded : lesson.icon,
+                      color: lesson.accent,
+                      size: 21,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: <Widget>[
-                      Text(progress == 0 ? 'START LESSON' : 'CONTINUE',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w900, fontSize: 11)),
-                      Icon(Icons.arrow_forward_rounded,
-                          color: lesson.accent, size: 20),
-                    ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _localizedCourseTitle(copy, lesson),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 5),
+              Text(
+                _localizedCourseBody(copy, lesson),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFFC2CFD9),
+                  fontSize: 12,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                locked
+                    ? copy.text('course.locked')
+                    : copy.text(
+                        'course.progress',
+                        values: <String, String>{
+                          'done': '$completedCount',
+                          'total': '${lesson.chapters.length}',
+                        },
+                      ),
+                style: TextStyle(
+                  color: lesson.accent,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                ),
+              ),
+              const SizedBox(height: 7),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 5,
+                  backgroundColor: const Color(0xFF263948),
+                  valueColor: AlwaysStoppedAnimation<Color>(lesson.accent),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  Text(
+                    copy.text(
+                      progress == 0 ? 'course.start' : 'course.continue',
+                    ),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 11,
+                    ),
+                  ),
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    color: lesson.accent,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _CoachEvaluationPanel extends StatelessWidget {
-  const _CoachEvaluationPanel();
+  const _CoachEvaluationPanel({required this.copy});
+
+  final AcademyStoryLocalizations copy;
 
   @override
   Widget build(BuildContext context) => ChessVerseCard(
-        padding: const EdgeInsets.all(20),
-        child: Wrap(
-          spacing: 22,
-          runSpacing: 16,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: <Widget>[
-            const SizedBox(
-              width: 300,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    padding: const EdgeInsets.all(20),
+    child: Wrap(
+      spacing: 22,
+      runSpacing: 16,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: <Widget>[
+        SizedBox(
+          width: 300,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
                 children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Icon(Icons.psychology_alt_rounded,
-                          color: AppColors.accentGold),
-                      SizedBox(width: 9),
-                      Expanded(
-                        child: Text('HOW THE AI COACH RESPONDS',
-                            maxLines: 2,
-                            style: TextStyle(fontWeight: FontWeight.w900)),
-                      ),
-                    ],
+                  const Icon(
+                    Icons.psychology_alt_rounded,
+                    color: AppColors.accentGold,
                   ),
-                  SizedBox(height: 7),
-                  Text(
-                    'Every key move receives a clear quality label and a short improvement idea.',
-                    style: TextStyle(color: AppColors.textSecondary),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      copy.text('coachResponse.title'),
+                      maxLines: 2,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
                   ),
                 ],
               ),
+              const SizedBox(height: 7),
+              Text(
+                copy.text('coachResponse.body'),
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: <Widget>[
+            _QualityChip(
+              label: copy.text('quality.great'),
+              color: const Color(0xFF63D2B8),
             ),
-            const Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: <Widget>[
-                _QualityChip(label: 'Great', color: Color(0xFF63D2B8)),
-                _QualityChip(label: 'Good', color: Color(0xFFD6A84F)),
-                _QualityChip(label: 'Average', color: Color(0xFF8A8F9D)),
-                _QualityChip(label: 'Bad', color: Color(0xFFE15F5F)),
-              ],
+            _QualityChip(
+              label: copy.text('quality.good'),
+              color: const Color(0xFFD6A84F),
+            ),
+            _QualityChip(
+              label: copy.text('quality.average'),
+              color: const Color(0xFF8A8F9D),
+            ),
+            _QualityChip(
+              label: copy.text('quality.bad'),
+              color: const Color(0xFFE15F5F),
             ),
           ],
         ),
-      );
+      ],
+    ),
+  );
 }
 
-Future<void> _openLesson(BuildContext context, _Lesson lesson) =>
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => _CourseScreen(course: lesson),
-    ));
+Future<void> _openLesson(BuildContext context, _Lesson lesson) => Navigator.of(
+  context,
+).push(MaterialPageRoute<void>(builder: (_) => _CourseScreen(course: lesson)));
 
 class _QualityChip extends StatelessWidget {
   const _QualityChip({required this.label, required this.color});
@@ -1303,11 +1926,11 @@ class _QualityChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Chip(
-        avatar: CircleAvatar(backgroundColor: color, radius: 6),
-        label: Text(label),
-        side: BorderSide(color: color.withValues(alpha: .55)),
-        backgroundColor: color.withValues(alpha: .12),
-      );
+    avatar: CircleAvatar(backgroundColor: color, radius: 6),
+    label: Text(label),
+    side: BorderSide(color: color.withValues(alpha: .55)),
+    backgroundColor: color.withValues(alpha: .12),
+  );
 }
 
 class _CourseScreen extends StatefulWidget {
@@ -1323,13 +1946,18 @@ class _CourseScreenState extends State<_CourseScreen> {
   Set<String> _completed = <String>{};
   Map<String, int> _mastery = <String, int>{};
   Set<String> _certificates = <String>{};
+  String _languageCode = AppLanguageController.resolveCode(
+    AppLanguageController.systemCode,
+  );
+  AcademyStoryLocalizations get _copy =>
+      AcademyStoryLocalizations(_languageCode);
 
   _Lesson get course => widget.course;
   String get courseId => course.title.toLowerCase().replaceAll(' ', '-');
 
   int get completedCount => course.chapters.where((String chapter) {
-        return _completed.contains(AcademyCatalog.forChapter(chapter).id);
-      }).length;
+    return _completed.contains(AcademyCatalog.forChapter(chapter).id);
+  }).length;
 
   double get progress =>
       course.chapters.isEmpty ? 0 : completedCount / course.chapters.length;
@@ -1337,7 +1965,26 @@ class _CourseScreenState extends State<_CourseScreen> {
   @override
   void initState() {
     super.initState();
+    AppLanguageController.effectiveLanguageChanges.addListener(
+      _handleCourseLanguageChange,
+    );
+    AppLanguageController.effectiveCode().then((String code) {
+      if (mounted) setState(() => _languageCode = code);
+    });
     _loadProgress();
+  }
+
+  void _handleCourseLanguageChange() {
+    final String? code = AppLanguageController.effectiveLanguageChanges.value;
+    if (code != null && mounted) setState(() => _languageCode = code);
+  }
+
+  @override
+  void dispose() {
+    AppLanguageController.effectiveLanguageChanges.removeListener(
+      _handleCourseLanguageChange,
+    );
+    super.dispose();
   }
 
   Future<void> _loadProgress() async {
@@ -1359,221 +2006,277 @@ class _CourseScreenState extends State<_CourseScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: const Color(0xFF06131D),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF071827),
-          title: Row(
-            children: <Widget>[
-              Icon(course.icon, color: course.accent),
-              const SizedBox(width: 10),
-              Text(course.title,
-                  style: const TextStyle(fontWeight: FontWeight.w900)),
-            ],
+    backgroundColor: const Color(0xFF06131D),
+    appBar: AppBar(
+      backgroundColor: const Color(0xFF071827),
+      title: Row(
+        children: <Widget>[
+          Icon(course.icon, color: course.accent),
+          const SizedBox(width: 10),
+          Text(
+            _localizedCourseTitle(_copy, course),
+            style: const TextStyle(fontWeight: FontWeight.w900),
           ),
-        ),
-        body: ResponsivePage(
-          maxWidth: 980,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(22),
-                  border:
-                      Border.all(color: course.accent.withValues(alpha: .65)),
-                  image: DecorationImage(
-                    image: AssetImage(course.asset),
-                    fit: BoxFit.cover,
-                    colorFilter: const ColorFilter.mode(
-                        Color(0xB8061725), BlendMode.srcOver),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(course.body,
-                        style: const TextStyle(
-                            color: Color(0xFFD2DDE5),
-                            fontSize: 17,
-                            height: 1.4)),
-                    const SizedBox(height: 16),
-                    Text('$completedCount of ${course.chapters.length} lessons',
-                        style: TextStyle(
-                            color: course.accent, fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 8),
-                    LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 7,
-                      borderRadius: BorderRadius.circular(99),
-                      backgroundColor: const Color(0xFF263948),
-                      valueColor: AlwaysStoppedAnimation<Color>(course.accent),
-                    ),
-                  ],
+        ],
+      ),
+    ),
+    body: ResponsivePage(
+      maxWidth: 980,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: course.accent.withValues(alpha: .65)),
+              image: DecorationImage(
+                image: AssetImage(course.asset),
+                fit: BoxFit.cover,
+                colorFilter: const ColorFilter.mode(
+                  Color(0xB8061725),
+                  BlendMode.srcOver,
                 ),
               ),
-              const SizedBox(height: 22),
-              const Text('COURSE LESSONS',
-                  style: TextStyle(
-                      color: AppColors.accentGold,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.1)),
-              const SizedBox(height: 12),
-              ...List<Widget>.generate(course.chapters.length, (int index) {
-                final AcademyLesson academyLesson =
-                    AcademyCatalog.forChapter(course.chapters[index]);
-                final bool done = _completed.contains(academyLesson.id);
-                final bool active = !done && index == completedCount;
-                final bool locked = !done && index > completedCount;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: ChessVerseCard(
-                    padding: EdgeInsets.zero,
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 7),
-                      onTap: locked
-                          ? null
-                          : () async {
-                              await Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) =>
-                                      InteractiveAcademyLessonScreen(
-                                    lesson: academyLesson,
-                                  ),
-                                ),
-                              );
-                              await _loadProgress();
-                            },
-                      leading: CircleAvatar(
-                        backgroundColor: course.accent.withValues(alpha: .16),
-                        foregroundColor: course.accent,
-                        child: done
-                            ? const Icon(Icons.check_rounded)
-                            : locked
-                                ? const Icon(Icons.lock_rounded, size: 18)
-                                : Text('${index + 1}',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w900)),
-                      ),
-                      title: Text(course.chapters[index],
-                          style: const TextStyle(fontWeight: FontWeight.w800)),
-                      subtitle: Text(active
-                          ? 'Continue this lesson'
-                          : done
-                              ? 'Completed'
-                              : locked
-                                  ? 'Complete the previous lesson to unlock'
-                                  : 'Learn the idea, then try a position'),
-                      trailing: done
-                          ? Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                ...List<Widget>.generate(
-                                  3,
-                                  (int star) => Icon(
-                                    star < (_mastery[academyLesson.id] ?? 1)
-                                        ? Icons.star_rounded
-                                        : Icons.star_outline_rounded,
-                                    size: 17,
-                                    color: AppColors.accentGold,
-                                  ),
-                                ),
-                                const SizedBox(width: 5),
-                                Icon(Icons.arrow_forward_rounded,
-                                    color: course.accent),
-                              ],
-                            )
-                          : Icon(
-                              locked
-                                  ? Icons.lock_outline_rounded
-                                  : Icons.arrow_forward_rounded,
-                              color: locked
-                                  ? AppColors.textSecondary
-                                  : course.accent,
-                            ),
-                    ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  _localizedCourseBody(_copy, course),
+                  style: const TextStyle(
+                    color: Color(0xFFD2DDE5),
+                    fontSize: 17,
+                    height: 1.4,
                   ),
-                );
-              }),
-              const SizedBox(height: 8),
-              ChessVerseCard(
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: <Widget>[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: course.accent.withValues(alpha: .14),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        _certificates.contains(courseId)
-                            ? Icons.workspace_premium_rounded
-                            : Icons.military_tech_rounded,
-                        color: course.accent,
-                      ),
-                    ),
-                    const SizedBox(width: 13),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            _certificates.contains(courseId)
-                                ? 'MASTERY CERTIFICATE EARNED'
-                                : 'FINAL MASTERY CHALLENGE',
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '$completedCount of ${course.chapters.length} lessons',
+                  style: TextStyle(
+                    color: course.accent,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 7,
+                  borderRadius: BorderRadius.circular(99),
+                  backgroundColor: const Color(0xFF263948),
+                  valueColor: AlwaysStoppedAnimation<Color>(course.accent),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
+          const Text(
+            'COURSE LESSONS',
+            style: TextStyle(
+              color: AppColors.accentGold,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...List<Widget>.generate(course.chapters.length, (int index) {
+            final AcademyLesson academyLesson = AcademyCatalog.forChapter(
+              course.chapters[index],
+            );
+            final bool done = _completed.contains(academyLesson.id);
+            final bool active = !done && index == completedCount;
+            final bool locked = !done && index > completedCount;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: ChessVerseCard(
+                padding: EdgeInsets.zero,
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 7,
+                  ),
+                  onTap: locked
+                      ? null
+                      : () async {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => InteractiveAcademyLessonScreen(
+                                lesson: academyLesson,
+                              ),
+                            ),
+                          );
+                          await _loadProgress();
+                        },
+                  leading: CircleAvatar(
+                    backgroundColor: course.accent.withValues(alpha: .16),
+                    foregroundColor: course.accent,
+                    child: done
+                        ? const Icon(Icons.check_rounded)
+                        : locked
+                        ? const Icon(Icons.lock_rounded, size: 18)
+                        : Text(
+                            '${index + 1}',
                             style: const TextStyle(fontWeight: FontWeight.w900),
                           ),
-                          Text(
-                            completedCount == course.chapters.length
-                                ? 'Solve 3 no-hint positions and score at least 2.'
-                                : 'Complete every lesson to unlock the course boss.',
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 12,
+                  ),
+                  title: Text(
+                    course.chapters[index],
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  subtitle: Text(
+                    active
+                        ? 'Continue this lesson'
+                        : done
+                        ? 'Completed'
+                        : locked
+                        ? 'Complete the previous lesson to unlock'
+                        : 'Learn the idea, then try a position',
+                  ),
+                  trailing: done
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            ...List<Widget>.generate(
+                              3,
+                              (int star) => Icon(
+                                star < (_mastery[academyLesson.id] ?? 1)
+                                    ? Icons.star_rounded
+                                    : Icons.star_outline_rounded,
+                                size: 17,
+                                color: AppColors.accentGold,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    FilledButton(
-                      onPressed: completedCount != course.chapters.length
-                          ? null
-                          : () async {
-                              final List<AcademyLesson> lessons = course.chapters
-                                  .map(AcademyCatalog.forChapter)
-                                  .toList(growable: false);
-                              final List<AcademyLesson> challenge = <AcademyLesson>[
-                                lessons.first,
-                                lessons[lessons.length ~/ 2],
-                                lessons.last,
-                              ];
-                              await Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => AcademyBossChallengeScreen(
-                                    courseId: courseId,
-                                    courseTitle: course.title,
-                                    lessons: challenge,
-                                    accent: course.accent,
-                                  ),
-                                ),
-                              );
-                              await _loadProgress();
-                            },
-                      child: Text(_certificates.contains(courseId)
-                          ? 'VIEW'
-                          : 'START'),
-                    ),
-                  ],
+                            const SizedBox(width: 5),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              color: course.accent,
+                            ),
+                          ],
+                        )
+                      : Icon(
+                          locked
+                              ? Icons.lock_outline_rounded
+                              : Icons.arrow_forward_rounded,
+                          color: locked
+                              ? AppColors.textSecondary
+                              : course.accent,
+                        ),
                 ),
               ),
-            ],
+            );
+          }),
+          const SizedBox(height: 8),
+          ChessVerseCard(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: <Widget>[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: course.accent.withValues(alpha: .14),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _certificates.contains(courseId)
+                        ? Icons.workspace_premium_rounded
+                        : Icons.military_tech_rounded,
+                    color: course.accent,
+                  ),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        _certificates.contains(courseId)
+                            ? _copy.text('boss.earned')
+                            : _copy.text(
+                                'boss.title',
+                                values: <String, String>{
+                                  'course': _localizedCourseTitle(
+                                    _copy,
+                                    course,
+                                  ),
+                                },
+                              ),
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                      Text(
+                        _copy.text(
+                          completedCount == course.chapters.length
+                              ? 'boss.unlocked'
+                              : 'boss.locked',
+                        ),
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                FilledButton(
+                  onPressed: completedCount != course.chapters.length
+                      ? null
+                      : () async {
+                          final List<AcademyLesson> lessons = course.chapters
+                              .map(AcademyCatalog.forChapter)
+                              .toList(growable: false);
+                          final List<AcademyLesson> challenge = <AcademyLesson>[
+                            lessons.first,
+                            lessons[lessons.length ~/ 2],
+                            lessons.last,
+                          ];
+                          await Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => AcademyBossChallengeScreen(
+                                courseId: courseId,
+                                courseTitle: _localizedCourseTitle(
+                                  _copy,
+                                  course,
+                                ),
+                                lessons: challenge,
+                                accent: course.accent,
+                              ),
+                            ),
+                          );
+                          await _loadProgress();
+                        },
+                  child: Text(
+                    _copy.text(
+                      _certificates.contains(courseId)
+                          ? 'boss.view'
+                          : 'boss.start',
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }
+
+String _courseLocalizationStem(_Lesson lesson) => switch (lesson.title) {
+  'Piece Basics' => 'pieces',
+  'King Safety' => 'safety',
+  'Tactics' => 'tactics',
+  'Endgames' => 'endgames',
+  'Opening Principles' => 'openings',
+  'Middlegame Planning' => 'middlegame',
+  'Time Management' => 'time',
+  _ => 'pieces',
+};
+
+String _localizedCourseTitle(AcademyStoryLocalizations copy, _Lesson lesson) =>
+    copy.text('course.${_courseLocalizationStem(lesson)}');
+
+String _localizedCourseBody(AcademyStoryLocalizations copy, _Lesson lesson) =>
+    copy.text('course.${_courseLocalizationStem(lesson)}Body');
 
 class _Lesson {
   const _Lesson({

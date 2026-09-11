@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 interface OnlineMatchRepository extends JpaRepository<OnlineMatch, UUID> {
+    List<OnlineMatch> findTop20ByStatusOrderByUpdatedAtDesc(OnlineMatchStatus status);
     Optional<OnlineMatch> findByRoomCodeIgnoreCase(String roomCode);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

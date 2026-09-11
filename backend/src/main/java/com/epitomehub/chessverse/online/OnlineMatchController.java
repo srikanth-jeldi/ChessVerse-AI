@@ -98,6 +98,21 @@ public class OnlineMatchController {
         return matches.history(player(authorization));
     }
 
+    @GetMapping("/matches/live")
+    List<OnlineDtos.MatchDto> liveGames(
+            @RequestHeader("Authorization") String authorization) {
+        player(authorization);
+        return matches.liveGames();
+    }
+
+    @GetMapping("/matches/{matchId}/spectate")
+    OnlineDtos.MatchDto spectate(
+            @RequestHeader("Authorization") String authorization,
+            @PathVariable UUID matchId) {
+        player(authorization);
+        return matches.spectate(matchId);
+    }
+
     @DeleteMapping("/matches/{matchId}/waiting")
     OnlineDtos.MatchDto cancelWaiting(
             @RequestHeader("Authorization") String authorization,

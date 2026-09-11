@@ -102,11 +102,11 @@ class OnlineMatchDto {
   bool get whiteToMove => activeColor == 'WHITE';
   bool get isYourTurn => isActive && activeColor == yourColor;
   String get scoreLabel => switch (result) {
-        '1-0' => '1 - 0',
-        '0-1' => '0 - 1',
-        '1/2-1/2' => '1/2 - 1/2',
-        _ => '',
-      };
+    '1-0' => '1 - 0',
+    '0-1' => '0 - 1',
+    '1/2-1/2' => '1/2 - 1/2',
+    _ => '',
+  };
   String get perspectiveScoreLabel {
     if (result == '1/2-1/2') return '1/2 - 1/2';
     final bool userIsWhite = yourColor.toUpperCase() == 'WHITE';
@@ -139,10 +139,12 @@ class OnlineMatchDto {
       activeColor: (json['activeColor'] as String? ?? 'white').toUpperCase(),
       whitePlayerName: json['whitePlayerName'] as String?,
       blackPlayerName: json['blackPlayerName'] as String?,
-      whitePlayerPhotoUrl:
-          _absoluteOnlinePhotoUrl(json['whitePlayerPhotoUrl'] as String?),
-      blackPlayerPhotoUrl:
-          _absoluteOnlinePhotoUrl(json['blackPlayerPhotoUrl'] as String?),
+      whitePlayerPhotoUrl: _absoluteOnlinePhotoUrl(
+        json['whitePlayerPhotoUrl'] as String?,
+      ),
+      blackPlayerPhotoUrl: _absoluteOnlinePhotoUrl(
+        json['blackPlayerPhotoUrl'] as String?,
+      ),
       fen: json['fen'] as String? ?? '',
       moves: (json['moves'] as List<dynamic>? ?? <dynamic>[])
           .whereType<Map<String, dynamic>>()
@@ -153,8 +155,9 @@ class OnlineMatchDto {
       serverNow: DateTime.tryParse(json['serverNow'] as String? ?? ''),
       turnStartedAt: DateTime.tryParse(json['turnStartedAt'] as String? ?? ''),
       disconnectedColor: json['disconnectedColor'] as String?,
-      disconnectDeadline:
-          DateTime.tryParse(json['disconnectDeadline'] as String? ?? ''),
+      disconnectDeadline: DateTime.tryParse(
+        json['disconnectDeadline'] as String? ?? '',
+      ),
       result: json['result'] as String?,
       resultReason: json['resultReason'] as String?,
       drawOfferedByColor: json['drawOfferedByColor'] as String?,
@@ -190,14 +193,18 @@ class OnlineMatchApi {
   Future<int> onlinePlayerCount(String token) async {
     final Uri uri = Uri.parse('${AppConfig.apiBaseUrl}/api/v1/online/presence');
     try {
-      final http.Response response = await http.post(
-        uri,
-        headers: <String, String>{'Authorization': 'Bearer $token'},
-      ).timeout(const Duration(seconds: 10));
-      final Object? decoded =
-          response.body.isEmpty ? null : jsonDecode(response.body);
-      final Map<String, dynamic> json =
-          decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+      final http.Response response = await http
+          .post(
+            uri,
+            headers: <String, String>{'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 10));
+      final Object? decoded = response.body.isEmpty
+          ? null
+          : jsonDecode(response.body);
+      final Map<String, dynamic> json = decoded is Map<String, dynamic>
+          ? decoded
+          : <String, dynamic>{};
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw OnlineMatchException(
           json['message'] as String? ?? 'Online presence request failed.',
@@ -225,35 +232,49 @@ class OnlineMatchApi {
     int ratingRange = 0,
     int entryCoins = 100,
     String connectionQuality = 'STANDARD',
-  }) =>
-      _request(
-        token,
-        'POST',
-        '/api/v1/online/queue',
-        body: <String, Object?>{
-          'timeControlMinutes': timeControlMinutes,
-          'region': region,
-          'ratingRange': ratingRange,
-          'entryCoins': entryCoins,
-          'connectionQuality': connectionQuality,
-        },
-      );
+  }) => _request(
+    token,
+    'POST',
+    '/api/v1/online/queue',
+    body: <String, Object?>{
+      'timeControlMinutes': timeControlMinutes,
+      'region': region,
+      'ratingRange': ratingRange,
+      'entryCoins': entryCoins,
+      'connectionQuality': connectionQuality,
+    },
+  );
 
   Future<OnlineMatchDto> createRoom(String token) =>
       _request(token, 'POST', '/api/v1/online/rooms');
 
   Future<OnlineMatchDto> joinRoom(String token, String roomCode) => _request(
-        token,
-        'POST',
-        '/api/v1/online/rooms/join',
-        body: <String, Object?>{'roomCode': roomCode.trim().toUpperCase()},
-      );
+    token,
+    'POST',
+    '/api/v1/online/rooms/join',
+    body: <String, Object?>{'roomCode': roomCode.trim().toUpperCase()},
+  );
 
   Future<OnlineMatchDto> reconnect(String token) =>
       _request(token, 'GET', '/api/v1/online/matches/current');
 
   Future<OnlineMatchDto> getMatch(String token, String matchId) =>
       _request(token, 'GET', '/api/v1/online/matches/$matchId');
+
+  Future<OnlineMatchDto> spectate(String token, String matchId) =>
+      _request(token, 'GET', '/api/v1/online/matches/$matchId/spectate');
+
+  Future<List<OnlineMatchDto>> liveGames(String token) async {
+    final Object? decoded = await _requestJson(
+      token,
+      'GET',
+      '/api/v1/online/matches/live',
+    );
+    return (decoded as List<dynamic>? ?? const <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .map(OnlineMatchDto.fromJson)
+        .toList(growable: false);
+  }
 
   Future<OnlineMatchDto> cancelWaiting(String token, String matchId) =>
       _request(token, 'DELETE', '/api/v1/online/matches/$matchId/waiting');
@@ -263,16 +284,15 @@ class OnlineMatchApi {
     String matchId, {
     required String uci,
     required int expectedPly,
-  }) =>
-      _request(
-        token,
-        'POST',
-        '/api/v1/online/matches/$matchId/moves',
-        body: <String, Object?>{
-          'uci': uci.toLowerCase(),
-          'expectedPly': expectedPly,
-        },
-      );
+  }) => _request(
+    token,
+    'POST',
+    '/api/v1/online/matches/$matchId/moves',
+    body: <String, Object?>{
+      'uci': uci.toLowerCase(),
+      'expectedPly': expectedPly,
+    },
+  );
 
   Future<OnlineMatchDto> resign(String token, String matchId) =>
       _request(token, 'POST', '/api/v1/online/matches/$matchId/resign');
@@ -284,20 +304,22 @@ class OnlineMatchApi {
     String token,
     String matchId, {
     required bool accept,
-  }) =>
-      _request(
-        token,
-        'POST',
-        '/api/v1/online/matches/$matchId/draw/respond',
-        body: <String, Object?>{'accept': accept},
-      );
+  }) => _request(
+    token,
+    'POST',
+    '/api/v1/online/matches/$matchId/draw/respond',
+    body: <String, Object?>{'accept': accept},
+  );
 
   Future<OnlineMatchDto> requestRematch(String token, String matchId) =>
       _request(token, 'POST', '/api/v1/online/matches/$matchId/rematch');
 
   Future<List<OnlineMatchDto>> history(String token) async {
-    final Object? decoded =
-        await _requestJson(token, 'GET', '/api/v1/online/matches/history');
+    final Object? decoded = await _requestJson(
+      token,
+      'GET',
+      '/api/v1/online/matches/history',
+    );
     return (decoded as List<dynamic>? ?? <dynamic>[])
         .whereType<Map<String, dynamic>>()
         .map(OnlineMatchDto.fromJson)
@@ -305,7 +327,9 @@ class OnlineMatchApi {
   }
 
   Future<WebSocketChannel> openMatchChannel(
-      String token, String matchId) async {
+    String token,
+    String matchId,
+  ) async {
     final Uri api = Uri.parse(AppConfig.apiBaseUrl);
     final Uri socketUri = api.replace(
       scheme: api.scheme == 'https' ? 'wss' : 'ws',
@@ -320,15 +344,20 @@ class OnlineMatchApi {
         'POST',
         '/api/v1/online/matches/$matchId/ws-ticket',
       );
-      ticket =
-          decoded is Map<String, dynamic> ? decoded['ticket'] as String? : null;
+      ticket = decoded is Map<String, dynamic>
+          ? decoded['ticket'] as String?
+          : null;
       if (ticket == null || ticket.isEmpty) {
         throw const OnlineMatchException(
-            'A secure live connection could not be created.');
+          'A secure live connection could not be created.',
+        );
       }
     }
-    final WebSocketChannel channel =
-        connectOnlineSocket(socketUri, token, ticket);
+    final WebSocketChannel channel = connectOnlineSocket(
+      socketUri,
+      token,
+      ticket,
+    );
     // A channel can be constructed before the HTTP upgrade completes. Awaiting
     // readiness keeps ordinary offline/server-restart failures inside the
     // caller's reconnect path instead of surfacing as uncaught Flutter errors
@@ -344,8 +373,9 @@ class OnlineMatchApi {
     Map<String, Object?>? body,
   }) async {
     final Object? decoded = await _requestJson(token, method, path, body: body);
-    final Map<String, dynamic> json =
-        decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    final Map<String, dynamic> json = decoded is Map<String, dynamic>
+        ? decoded
+        : <String, dynamic>{};
     return OnlineMatchDto.fromJson(json);
   }
 
@@ -365,16 +395,17 @@ class OnlineMatchApi {
         'GET' => http.get(uri, headers: headers),
         'DELETE' => http.delete(uri, headers: headers),
         _ => http.post(
-            uri,
-            headers: headers,
-            body: body == null ? null : jsonEncode(body),
-          ),
-      }
-          .timeout(const Duration(seconds: 15));
-      final Object? decoded =
-          response.body.isEmpty ? null : jsonDecode(response.body);
-      final Map<String, dynamic> json =
-          decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+          uri,
+          headers: headers,
+          body: body == null ? null : jsonEncode(body),
+        ),
+      }.timeout(const Duration(seconds: 15));
+      final Object? decoded = response.body.isEmpty
+          ? null
+          : jsonDecode(response.body);
+      final Map<String, dynamic> json = decoded is Map<String, dynamic>
+          ? decoded
+          : <String, dynamic>{};
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw OnlineMatchException(
           onlineResponseErrorMessage(json, response.statusCode),
@@ -415,8 +446,7 @@ String onlineResponseErrorMessage(Map<String, dynamic> json, int statusCode) {
     409 =>
       'Online play could not start because of an account or coin conflict.',
     429 => 'Too many requests. Please wait a moment and try again.',
-    >= 500 =>
-      'The ChessVerseAI server could not start online play. Please try again shortly.',
+    >= 500 => 'The ChessVerseAI server could not start online play. Please try again shortly.',
     _ => 'Online play request failed (HTTP $statusCode).',
   };
 }

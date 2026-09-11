@@ -30,9 +30,11 @@ class _AnalysisLocale extends InheritedWidget {
   bool updateShouldNotify(_AnalysisLocale oldWidget) => oldWidget.code != code;
 }
 
-String _d(BuildContext context, String key,
-        [Map<String, String> values = const {}]) =>
-    analysisDashboardText(key, _AnalysisLocale.of(context), values);
+String _d(
+  BuildContext context,
+  String key, [
+  Map<String, String> values = const {},
+]) => analysisDashboardText(key, _AnalysisLocale.of(context), values);
 
 @visibleForTesting
 String localizeAnalysisDashboardNarrative(String value, String code) =>
@@ -81,25 +83,29 @@ String _analysisNarrative(String value, String code) {
   final key = direct[value];
   if (key != null) return analysisDashboardText(key, code);
   final familiar = RegExp(
-          r'^Your most familiar opening is (.+)\. Review its first 8 moves, then add one response to the opponent’s main alternative\.$')
-      .firstMatch(value);
+    r'^Your most familiar opening is (.+)\. Review its first 8 moves, then add one response to the opponent’s main alternative\.$',
+  ).firstMatch(value);
   if (familiar != null) {
-    return analysisDashboardText('familiar', code,
-        {'opening': localizeReviewNarrative(familiar[1]!, code)});
+    return analysisDashboardText('familiar', code, {
+      'opening': localizeReviewNarrative(familiar[1]!, code),
+    });
   }
   final focused = RegExp(r'^5 positions focused on (.+)\.$').firstMatch(value);
   if (focused != null) {
-    return analysisDashboardText('focusedPositions', code,
-        {'focus': _analysisNarrative(focused[1]!, code)});
+    return analysisDashboardText('focusedPositions', code, {
+      'focus': _analysisNarrative(focused[1]!, code),
+    });
   }
   return localizeLiveCoach(
-      localizeAnalysisMetadata(
-          localizeReviewTraining(
-              localizeReviewNarrative(
-                  CoachLocalizations(code).source(value), code),
-              code),
-          code),
-      code);
+    localizeAnalysisMetadata(
+      localizeReviewTraining(
+        localizeReviewNarrative(CoachLocalizations(code).source(value), code),
+        code,
+      ),
+      code,
+    ),
+    code,
+  );
 }
 
 class AnalysisScreen extends StatefulWidget {
@@ -118,19 +124,22 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   @override
   void initState() {
     super.initState();
-    AppLanguageController.effectiveLanguageChanges
-        .addListener(_languageChanged);
-    AppLanguageController.effectiveCode().then((code) {
-      if (mounted) {
-        setState(() {
-          _language =
-              AppLanguageController.effectiveLanguageChanges.value ?? code;
-          _languageReady = true;
+    AppLanguageController.effectiveLanguageChanges.addListener(
+      _languageChanged,
+    );
+    AppLanguageController.effectiveCode()
+        .then((code) {
+          if (mounted) {
+            setState(() {
+              _language =
+                  AppLanguageController.effectiveLanguageChanges.value ?? code;
+              _languageReady = true;
+            });
+          }
+        })
+        .catchError((Object error) {
+          if (mounted) setState(() => _languageReady = true);
         });
-      }
-    }).catchError((Object error) {
-      if (mounted) setState(() => _languageReady = true);
-    });
   }
 
   void _languageChanged() {
@@ -145,8 +154,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
   @override
   void dispose() {
-    AppLanguageController.effectiveLanguageChanges
-        .removeListener(_languageChanged);
+    AppLanguageController.effectiveLanguageChanges.removeListener(
+      _languageChanged,
+    );
     super.dispose();
   }
 
@@ -194,11 +204,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       0,
       (int total, SavedGameRecord game) => total + game.moves.length,
     );
-    final int averageMoves =
-        games.isEmpty ? 0 : (totalMoves / games.length).round();
+    final int averageMoves = games.isEmpty
+        ? 0
+        : (totalMoves / games.length).round();
     final int losses = games
-        .where((SavedGameRecord game) =>
-            game.result.toLowerCase().contains('loss'))
+        .where(
+          (SavedGameRecord game) => game.result.toLowerCase().contains('loss'),
+        )
         .length;
     final SavedGameRecord? latest = games.isEmpty ? null : games.first;
     final AiReviewReport? latestReport = latest == null
@@ -210,9 +222,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             knownReviews: latest.moveReviews,
             knownOpeningName: latest.openingName == null
                 ? null
-                : '${latest.openingEco ?? 'ECO'} • ${n(latest.openingName!)} • ${t('bookMetadata', {
-                        'count': '${latest.bookPlies}'
-                      })}${latest.firstDeviationPly == null ? '' : ' • ${t('deviation', {'count': '${latest.firstDeviationPly}'})}'}',
+                : '${latest.openingEco ?? 'ECO'} • ${n(latest.openingName!)} • ${t('bookMetadata', {'count': '${latest.bookPlies}'})}${latest.firstDeviationPly == null ? '' : ' • ${t('deviation', {'count': '${latest.firstDeviationPly}'})}'}',
           );
     final String focus = _trainingFocus(games, averageMoves, losses);
     final LearningIntelligence intelligence = LearningIntelligence.fromGames(
@@ -220,253 +230,278 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       cloudScores: LocalGameArchive.cloudWeaknessScores,
     );
     return _AnalysisLocale(
-        code: _language,
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: AppBar(
-            title: Text(t('analysis')),
-            actions: <Widget>[
-              TextButton.icon(
-                key: const ValueKey<String>('analysis-ai-language'),
-                onPressed: () => chooseAndSaveAiLanguage(context),
-                icon: const Icon(Icons.translate_rounded),
-                label: Text(t('language')),
+      code: _language,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: Text(t('analysis')),
+          actions: <Widget>[
+            TextButton.icon(
+              key: const ValueKey<String>('analysis-ai-language'),
+              onPressed: () => chooseAndSaveAiLanguage(context),
+              icon: const Icon(Icons.translate_rounded),
+              label: Text(t('language')),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: ResponsivePage(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              ChessVerseCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        gradient: AppColors.primaryGradient,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: const Icon(Icons.analytics_rounded, size: 30),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      t('gameAnalysis'),
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      games.isEmpty
+                          ? t('unlock')
+                          : t('reviewedIntro', {
+                              'games': '${games.length}',
+                              'moves': '$totalMoves',
+                            }),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 8),
-            ],
-          ),
-          body: ResponsivePage(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                ChessVerseCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          gradient: AppColors.primaryGradient,
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: const Icon(Icons.analytics_rounded, size: 30),
+              const SizedBox(height: 18),
+              Text(
+                t('snapshot'),
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              _AnalysisFeatureCard(
+                icon: Icons.timeline_rounded,
+                title: latestReport == null
+                    ? t('analyzed', {'count': '${games.length}'})
+                    : t('latestAccuracy', {
+                        'count': '${latestReport.accuracy}',
+                      }),
+                subtitle: latestReport == null
+                    ? t('averageMoves', {'count': '$averageMoves'})
+                    : n(latestReport.headline),
+              ),
+              const SizedBox(height: 12),
+              _AnalysisFeatureCard(
+                icon: Icons.psychology_alt_rounded,
+                title: t('focus'),
+                subtitle: latestReport == null
+                    ? focus
+                    : '${n(latestReport.trainingFocus)} ${t('recommended')}: ${n(latestReport.recommendedLesson)}.',
+              ),
+              const SizedBox(height: 12),
+              _AnalysisFeatureCard(
+                icon: Icons.warning_amber_rounded,
+                title: latest == null ? t('latestReport') : n(latest.result),
+                subtitle: latest == null
+                    ? t('latestEmpty')
+                    : n(
+                        latestReport?.turningPoint ??
+                            '${latest.summary} • ${latest.detail}',
                       ),
-                      const SizedBox(height: 18),
-                      Text(
-                        t('gameAnalysis'),
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        games.isEmpty
-                            ? t('unlock')
-                            : t('reviewedIntro', {
-                                'games': '${games.length}',
-                                'moves': '$totalMoves'
-                              }),
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(t('snapshot'),
-                    style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 12),
-                _AnalysisFeatureCard(
-                  icon: Icons.timeline_rounded,
-                  title: latestReport == null
-                      ? t('analyzed', {'count': '${games.length}'})
-                      : t('latestAccuracy',
-                          {'count': '${latestReport.accuracy}'}),
-                  subtitle: latestReport == null
-                      ? t('averageMoves', {'count': '$averageMoves'})
-                      : n(latestReport.headline),
-                ),
-                const SizedBox(height: 12),
-                _AnalysisFeatureCard(
-                  icon: Icons.psychology_alt_rounded,
-                  title: t('focus'),
-                  subtitle: latestReport == null
-                      ? focus
-                      : '${n(latestReport.trainingFocus)} ${t('recommended')}: ${n(latestReport.recommendedLesson)}.',
-                ),
-                const SizedBox(height: 12),
-                _AnalysisFeatureCard(
-                  icon: Icons.warning_amber_rounded,
-                  title: latest == null ? t('latestReport') : n(latest.result),
-                  subtitle: latest == null
-                      ? t('latestEmpty')
-                      : n(latestReport?.turningPoint ??
-                          '${latest.summary} • ${latest.detail}'),
-                ),
-                const SizedBox(height: 18),
-                Text(t('weekly'),
-                    style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 12),
-                _WeeklyDashboard(report: intelligence.weekly),
-                const SizedBox(height: 12),
-                FutureBuilder<AiCoachImpact?>(
-                  future: _coachImpact,
-                  builder: (BuildContext context,
-                      AsyncSnapshot<AiCoachImpact?> snapshot) {
-                    final AiCoachImpact? impact = snapshot.data;
-                    if (impact == null) return const SizedBox.shrink();
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _AnalysisFeatureCard(
-                        icon: impact.enoughEvidence
-                            ? Icons.verified_rounded
-                            : Icons.hourglass_bottom_rounded,
-                        title: impact.enoughEvidence
-                            ? t('qualityChange', {
-                                'count':
-                                    '${impact.improvementPercent >= 0 ? '+' : ''}${impact.improvementPercent}'
-                              })
-                            : t('measurement'),
-                        subtitle: '${t('impactStats', {
-                              'games': '${impact.analyzedGames}',
-                              'moves': '${impact.measuredMoves}',
-                              'percent': '${impact.helpfulPercent}'
-                            })} ${n(impact.evidenceMessage)}',
-                      ),
-                    );
-                  },
-                ),
-                _ProgressTrend(points: intelligence.trend),
-                const SizedBox(height: 12),
-                FutureBuilder<AnalysisTrends?>(
-                  future: _serverTrends,
-                  builder: (BuildContext context,
-                      AsyncSnapshot<AnalysisTrends?> snapshot) {
-                    final AnalysisTrends? trends = snapshot.data;
-                    if (trends == null) return const SizedBox.shrink();
-                    return Column(children: <Widget>[
-                      ChessVerseCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(t('serverTrends'),
-                                style: TextStyle(
+              ),
+              const SizedBox(height: 18),
+              Text(t('weekly'), style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              _WeeklyDashboard(report: intelligence.weekly),
+              const SizedBox(height: 12),
+              FutureBuilder<AiCoachImpact?>(
+                future: _coachImpact,
+                builder: (BuildContext context, AsyncSnapshot<AiCoachImpact?> snapshot) {
+                  final AiCoachImpact? impact = snapshot.data;
+                  if (impact == null) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _AnalysisFeatureCard(
+                      icon: impact.enoughEvidence
+                          ? Icons.verified_rounded
+                          : Icons.hourglass_bottom_rounded,
+                      title: impact.enoughEvidence
+                          ? t('qualityChange', {
+                              'count':
+                                  '${impact.improvementPercent >= 0 ? '+' : ''}${impact.improvementPercent}',
+                            })
+                          : t('measurement'),
+                      subtitle:
+                          '${t('impactStats', {'games': '${impact.analyzedGames}', 'moves': '${impact.measuredMoves}', 'percent': '${impact.helpfulPercent}'})} ${n(impact.evidenceMessage)}',
+                    ),
+                  );
+                },
+              ),
+              _ProgressTrend(points: intelligence.trend),
+              const SizedBox(height: 12),
+              FutureBuilder<AnalysisTrends?>(
+                future: _serverTrends,
+                builder:
+                    (
+                      BuildContext context,
+                      AsyncSnapshot<AnalysisTrends?> snapshot,
+                    ) {
+                      final AnalysisTrends? trends = snapshot.data;
+                      if (trends == null) return const SizedBox.shrink();
+                      return Column(
+                        children: <Widget>[
+                          ChessVerseCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  t('serverTrends'),
+                                  style: TextStyle(
                                     color: AppColors.accentGold,
                                     fontSize: 11,
-                                    fontWeight: FontWeight.w900)),
-                            const SizedBox(height: 10),
-                            for (final MapEntry<String,
-                                    AnalysisWindowTrend> item
-                                in trends.windows.entries)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 7),
-                                child: Text(
-                                  t('trendLine', {
-                                    'games': item.key.replaceFirst('last', ''),
-                                    'accuracy': '${item.value.averageAccuracy}',
-                                    'loss':
-                                        '${item.value.averageCentipawnLoss}',
-                                    'blunders': '${item.value.blunders}'
-                                  }),
+                                    fontWeight: FontWeight.w900,
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(height: 10),
+                                for (final MapEntry<String, AnalysisWindowTrend>
+                                    item
+                                    in trends.windows.entries)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 7),
+                                    child: Text(
+                                      t('trendLine', {
+                                        'games': item.key.replaceFirst(
+                                          'last',
+                                          '',
+                                        ),
+                                        'accuracy':
+                                            '${item.value.averageAccuracy}',
+                                        'loss':
+                                            '${item.value.averageCentipawnLoss}',
+                                        'blunders': '${item.value.blunders}',
+                                      }),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          if (trends
+                              .recommendationOutcomes
+                              .isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 12),
+                            _AnalysisFeatureCard(
+                              icon: Icons.fact_check_rounded,
+                              title: t('outcomeTitle'),
+                              subtitle: trends.recommendationOutcomes
+                                  .take(6)
+                                  .map(
+                                    (RecommendationDimension item) =>
+                                        t('outcomeLine', {
+                                          'dimension': n(item.dimension),
+                                          'value': n(item.value),
+                                          'percent': '${item.successPercent}',
+                                          'count': '${item.resolved}',
+                                        }),
+                                  )
+                                  .join(' • '),
+                            ),
                           ],
-                        ),
+                          const SizedBox(height: 12),
+                        ],
+                      );
+                    },
+              ),
+              _AnalysisFeatureCard(
+                icon: Icons.menu_book_rounded,
+                title: t('openingRec'),
+                subtitle: n(intelligence.openingRecommendation),
+              ),
+              const SizedBox(height: 18),
+              Text(t('plan'), style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              ChessVerseCard(
+                child: Column(
+                  children: <Widget>[
+                    for (
+                      int index = 0;
+                      index < intelligence.dailyPlan.length;
+                      index++
+                    ) ...<Widget>[
+                      _DailyPlanRow(
+                        index: index + 1,
+                        item: intelligence.dailyPlan[index],
                       ),
-                      if (trends.recommendationOutcomes.isNotEmpty) ...<Widget>[
-                        const SizedBox(height: 12),
-                        _AnalysisFeatureCard(
-                          icon: Icons.fact_check_rounded,
-                          title: t('outcomeTitle'),
-                          subtitle: trends.recommendationOutcomes
-                              .take(6)
+                      if (index + 1 < intelligence.dailyPlan.length)
+                        const Divider(height: 22),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              FutureBuilder<Map<String, int>>(
+                future: _cloudHistory,
+                builder:
+                    (
+                      BuildContext context,
+                      AsyncSnapshot<Map<String, int>> snapshot,
+                    ) {
+                      final Map<String, int> history =
+                          snapshot.data ?? <String, int>{};
+                      if (history.isEmpty) return const SizedBox.shrink();
+                      final List<MapEntry<String, int>> ranked =
+                          history.entries.toList()..sort(
+                            (
+                              MapEntry<String, int> a,
+                              MapEntry<String, int> b,
+                            ) => b.value.compareTo(a.value),
+                          );
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _AnalysisFeatureCard(
+                          icon: Icons.cloud_done_rounded,
+                          title: t('cloudHistory', {
+                            'count':
+                                '${history.values.fold<int>(0, (int a, int b) => a + b)}',
+                          }),
+                          subtitle: ranked
+                              .take(3)
                               .map(
-                                (RecommendationDimension item) =>
-                                    t('outcomeLine', {
-                                  'dimension': n(item.dimension),
-                                  'value': n(item.value),
-                                  'percent': '${item.successPercent}',
-                                  'count': '${item.resolved}'
-                                }),
+                                (MapEntry<String, int> item) =>
+                                    '${n(item.key)}: ${item.value}',
                               )
                               .join(' • '),
                         ),
-                      ],
-                      const SizedBox(height: 12),
-                    ]);
-                  },
-                ),
-                _AnalysisFeatureCard(
-                  icon: Icons.menu_book_rounded,
-                  title: t('openingRec'),
-                  subtitle: n(intelligence.openingRecommendation),
-                ),
-                const SizedBox(height: 18),
-                Text(t('plan'), style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 12),
-                ChessVerseCard(
-                  child: Column(
-                    children: <Widget>[
-                      for (int index = 0;
-                          index < intelligence.dailyPlan.length;
-                          index++) ...<Widget>[
-                        _DailyPlanRow(
-                          index: index + 1,
-                          item: intelligence.dailyPlan[index],
-                        ),
-                        if (index + 1 < intelligence.dailyPlan.length)
-                          const Divider(height: 22),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                FutureBuilder<Map<String, int>>(
-                  future: _cloudHistory,
-                  builder: (BuildContext context,
-                      AsyncSnapshot<Map<String, int>> snapshot) {
-                    final Map<String, int> history =
-                        snapshot.data ?? <String, int>{};
-                    if (history.isEmpty) return const SizedBox.shrink();
-                    final List<MapEntry<String, int>> ranked = history.entries
-                        .toList()
-                      ..sort(
-                          (MapEntry<String, int> a, MapEntry<String, int> b) =>
-                              b.value.compareTo(a.value));
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _AnalysisFeatureCard(
-                        icon: Icons.cloud_done_rounded,
-                        title: t('cloudHistory', {
-                          'count':
-                              '${history.values.fold<int>(0, (int a, int b) => a + b)}'
-                        }),
-                        subtitle: ranked
-                            .take(3)
-                            .map((MapEntry<String, int> item) =>
-                                '${n(item.key)}: ${item.value}')
-                            .join(' • '),
+                      );
+                    },
+              ),
+              _WeaknessHistory(history: intelligence.weaknessHistory),
+              const SizedBox(height: 18),
+              ChessVerseButton(
+                label: games.isEmpty ? t('noSaved') : t('openReview'),
+                icon: Icons.auto_graph_rounded,
+                onPressed: games.isEmpty
+                    ? null
+                    : () => showAdaptiveAiReview(
+                        context,
+                        report: latestReport!,
+                        openingEco: latest?.openingEco,
+                        timeControl: latest?.mode == 'Play vs AI'
+                            ? '10+0'
+                            : null,
                       ),
-                    );
-                  },
-                ),
-                _WeaknessHistory(history: intelligence.weaknessHistory),
-                const SizedBox(height: 18),
-                ChessVerseButton(
-                  label: games.isEmpty ? t('noSaved') : t('openReview'),
-                  icon: Icons.auto_graph_rounded,
-                  onPressed: games.isEmpty
-                      ? null
-                      : () => showAdaptiveAiReview(
-                            context,
-                            report: latestReport!,
-                            openingEco: latest?.openingEco,
-                            timeControl:
-                                latest?.mode == 'Play vs AI' ? '10+0' : null,
-                          ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ));
+        ),
+      ),
+    );
   }
 
   String _trainingFocus(
@@ -496,38 +531,74 @@ class _WeeklyDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ChessVerseCard(
-        child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(children: <Widget>[
-                const Icon(Icons.auto_awesome_rounded,
-                    color: Color(0xFF59E4C8)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                      _d(context, 'weeklyStats', {
-                        'games': '${report.games}',
-                        'wins': '${report.wins}'
-                      }),
-                      style: Theme.of(context).textTheme.titleMedium),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            const Icon(Icons.auto_awesome_rounded, color: Color(0xFF59E4C8)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _d(context, 'weeklyStats', {
+                  'games': '${report.games}',
+                  'wins': '${report.wins}',
+                }),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: <Widget>[
+            _MetricChip('${report.averageAccuracy}%', _d(context, 'accuracy')),
+            _MetricChip(
+              '${report.reviewedMoves}',
+              _d(context, 'movesReviewed'),
+            ),
+            _MetricChip(
+              '${report.accuracyChange >= 0 ? '+' : ''}${report.accuracyChange}',
+              _d(context, 'weeklyTrend'),
+            ),
+            _MetricChip('${report.mistakes}', _d(context, 'mistakeReplay')),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: <Widget>[
+            Icon(
+              report.mistakeChange <= 0
+                  ? Icons.trending_down_rounded
+                  : Icons.trending_up_rounded,
+              color: report.mistakeChange <= 0
+                  ? const Color(0xFF63D2B8)
+                  : const Color(0xFFF08A6B),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                report.mistakeChange == 0
+                    ? _d(context, 'measurement')
+                    : '${report.mistakeChange.abs()} ${_d(context, 'mistakeReplay')} • ${report.mistakeChange < 0 ? '↓' : '↑'}',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
                 ),
-              ]),
-              const SizedBox(height: 12),
-              Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
-                _MetricChip(
-                    '${report.averageAccuracy}%', _d(context, 'accuracy')),
-                _MetricChip(
-                    '${report.reviewedMoves}', _d(context, 'movesReviewed')),
-                _MetricChip(
-                    '${report.accuracyChange >= 0 ? '+' : ''}${report.accuracyChange}',
-                    _d(context, 'weeklyTrend')),
-              ]),
-              const SizedBox(height: 12),
-              Text(
-                  '${_d(context, 'strongest')}: ${_analysisNarrative(report.strongestSkill, _AnalysisLocale.of(context))} • ${_d(context, 'nextFocus')}: ${_analysisNarrative(report.focusArea, _AnalysisLocale.of(context))}',
-                  style: const TextStyle(color: AppColors.textSecondary)),
-            ]),
-      );
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          '${_d(context, 'strongest')}: ${_analysisNarrative(report.strongestSkill, _AnalysisLocale.of(context))} • ${_d(context, 'nextFocus')}: ${_analysisNarrative(report.focusArea, _AnalysisLocale.of(context))}',
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
+      ],
+    ),
+  );
 }
 
 class _MetricChip extends StatelessWidget {
@@ -536,15 +607,17 @@ class _MetricChip extends StatelessWidget {
   final String label;
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0x1859E4C8),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0x6659E4C8)),
-        ),
-        child: Text('$value $label',
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+    decoration: BoxDecoration(
+      color: const Color(0x1859E4C8),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: const Color(0x6659E4C8)),
+    ),
+    child: Text(
+      '$value $label',
+      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+    ),
+  );
 }
 
 class _ProgressTrend extends StatelessWidget {
@@ -552,61 +625,69 @@ class _ProgressTrend extends StatelessWidget {
   final List<ProgressTrendPoint> points;
   @override
   Widget build(BuildContext context) => ChessVerseCard(
-        child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(_d(context, 'accuracyTrend'),
-                  style: TextStyle(
-                      color: AppColors.accentGold,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 11,
-                      letterSpacing: .8)),
-              const SizedBox(height: 12),
-              if (points.isEmpty)
-                Text(_d(context, 'emptyTrend'),
-                    style: TextStyle(color: AppColors.textSecondary))
-              else
-                SizedBox(
-                  height: 105,
-                  child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: <Widget>[
-                        for (final ProgressTrendPoint point in points)
-                          Expanded(
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 2),
-                              child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: <Widget>[
-                                    Text('${point.accuracy}',
-                                        style: const TextStyle(fontSize: 9)),
-                                    const SizedBox(height: 3),
-                                    Container(
-                                      height: 8 +
-                                          point.accuracy.clamp(0, 100) * .65,
-                                      decoration: BoxDecoration(
-                                        color: point.accuracy == 0
-                                            ? const Color(0xFF304552)
-                                            : const Color(0xFF59E4C8),
-                                        borderRadius: BorderRadius.circular(5),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(point.label.replaceFirst('G', ''),
-                                        semanticsLabel: _d(
-                                            context, 'gameLabel', {
-                                          'count':
-                                              point.label.replaceFirst('G', '')
-                                        }),
-                                        style: const TextStyle(fontSize: 9)),
-                                  ]),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          _d(context, 'accuracyTrend'),
+          style: TextStyle(
+            color: AppColors.accentGold,
+            fontWeight: FontWeight.w900,
+            fontSize: 11,
+            letterSpacing: .8,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (points.isEmpty)
+          Text(
+            _d(context, 'emptyTrend'),
+            style: TextStyle(color: AppColors.textSecondary),
+          )
+        else
+          SizedBox(
+            height: 105,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: <Widget>[
+                for (final ProgressTrendPoint point in points)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: <Widget>[
+                          Text(
+                            '${point.accuracy}',
+                            style: const TextStyle(fontSize: 9),
+                          ),
+                          const SizedBox(height: 3),
+                          Container(
+                            height: 8 + point.accuracy.clamp(0, 100) * .65,
+                            decoration: BoxDecoration(
+                              color: point.accuracy == 0
+                                  ? const Color(0xFF304552)
+                                  : const Color(0xFF59E4C8),
+                              borderRadius: BorderRadius.circular(5),
                             ),
                           ),
-                      ]),
-                ),
-            ]),
-      );
+                          const SizedBox(height: 3),
+                          Text(
+                            point.label.replaceFirst('G', ''),
+                            semanticsLabel: _d(context, 'gameLabel', {
+                              'count': point.label.replaceFirst('G', ''),
+                            }),
+                            style: const TextStyle(fontSize: 9),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 class _DailyPlanRow extends StatelessWidget {
@@ -614,25 +695,38 @@ class _DailyPlanRow extends StatelessWidget {
   final int index;
   final DailyPlanItem item;
   @override
-  Widget build(BuildContext context) => Row(children: <Widget>[
-        CircleAvatar(radius: 16, child: Text('$index')),
-        const SizedBox(width: 11),
-        Expanded(
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-              Text(_analysisNarrative(item.title, _AnalysisLocale.of(context)),
-                  style: const TextStyle(fontWeight: FontWeight.w900)),
-              Text(_analysisNarrative(item.detail, _AnalysisLocale.of(context)),
-                  style: const TextStyle(
-                      color: AppColors.textSecondary, fontSize: 12)),
-            ])),
-        Text(_d(context, 'minutes', {'count': '${item.minutes}'}),
-            style: const TextStyle(
-                color: AppColors.accentGold,
-                fontWeight: FontWeight.w800,
-                fontSize: 12)),
-      ]);
+  Widget build(BuildContext context) => Row(
+    children: <Widget>[
+      CircleAvatar(radius: 16, child: Text('$index')),
+      const SizedBox(width: 11),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              _analysisNarrative(item.title, _AnalysisLocale.of(context)),
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+            Text(
+              _analysisNarrative(item.detail, _AnalysisLocale.of(context)),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+      Text(
+        _d(context, 'minutes', {'count': '${item.minutes}'}),
+        style: const TextStyle(
+          color: AppColors.accentGold,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
+      ),
+    ],
+  );
 }
 
 class _WeaknessHistory extends StatelessWidget {
@@ -640,48 +734,65 @@ class _WeaknessHistory extends StatelessWidget {
   final Map<String, List<int>> history;
   @override
   Widget build(BuildContext context) {
-    final List<MapEntry<String, List<int>>> active = history.entries
-        .where((MapEntry<String, List<int>> item) =>
-            item.value.fold<int>(0, (int a, int b) => a + b) > 0)
-        .toList()
-      ..sort((a, b) => b.value.last.compareTo(a.value.last));
+    final List<MapEntry<String, List<int>>> active =
+        history.entries
+            .where(
+              (MapEntry<String, List<int>> item) =>
+                  item.value.fold<int>(0, (int a, int b) => a + b) > 0,
+            )
+            .toList()
+          ..sort((a, b) => b.value.last.compareTo(a.value.last));
     return ChessVerseCard(
       child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(_d(context, 'history'),
-                style: TextStyle(
-                    color: AppColors.accentGold,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 11,
-                    letterSpacing: .8)),
-            const SizedBox(height: 10),
-            if (active.isEmpty)
-              Text(_d(context, 'historyEmpty'),
-                  style: TextStyle(color: AppColors.textSecondary))
-            else
-              for (final MapEntry<String, List<int>> item in active.take(4))
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 9),
-                  child: Row(children: <Widget>[
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            _d(context, 'history'),
+            style: TextStyle(
+              color: AppColors.accentGold,
+              fontWeight: FontWeight.w900,
+              fontSize: 11,
+              letterSpacing: .8,
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (active.isEmpty)
+            Text(
+              _d(context, 'historyEmpty'),
+              style: TextStyle(color: AppColors.textSecondary),
+            )
+          else
+            for (final MapEntry<String, List<int>> item in active.take(4))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 9),
+                child: Row(
+                  children: <Widget>[
                     SizedBox(
-                        width: 105,
-                        child: Text(
-                            _analysisNarrative(
-                                item.key, _AnalysisLocale.of(context)),
-                            style: const TextStyle(fontSize: 12))),
+                      width: 105,
+                      child: Text(
+                        _analysisNarrative(
+                          item.key,
+                          _AnalysisLocale.of(context),
+                        ),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
                     for (final int value in item.value)
                       Expanded(
-                          child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                        child: LinearProgressIndicator(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: LinearProgressIndicator(
                             value: (value / 8).clamp(0, 1),
                             minHeight: 8,
-                            borderRadius: BorderRadius.circular(8)),
-                      )),
-                  ]),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-          ]),
+              ),
+        ],
+      ),
     );
   }
 }

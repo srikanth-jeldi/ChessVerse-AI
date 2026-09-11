@@ -44,6 +44,8 @@ void main() {
     expect(intelligence.weekly.wins, 2);
     expect(intelligence.weekly.reviewedMoves, 2);
     expect(intelligence.weekly.accuracyChange, greaterThan(0));
+    expect(intelligence.weekly.mistakes, 0);
+    expect(intelligence.weekly.mistakeChange, lessThan(0));
     expect(intelligence.dailyPlan, hasLength(3));
     expect(intelligence.trend, hasLength(3));
     expect(intelligence.openingRecommendation, contains("King's Pawn"));

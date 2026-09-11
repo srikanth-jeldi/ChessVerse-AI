@@ -89,6 +89,8 @@ jobs:
       - name: Build signed production bundle
         run: >-
           flutter build appbundle --release
+          --obfuscate
+          --split-debug-info=build/symbols
           --dart-define=CHESSVERSE_ENV=production
           --dart-define=API_BASE_URL=https://api.chessverseai.com
           --dart-define=WEB_BASE_URL=https://chessverseai.com
@@ -117,5 +119,6 @@ jobs:
           path: |
             mobile/build/app/outputs/bundle/release/app-release.aab
             mobile/build/app/outputs/bundle/release/app-release.aab.sha256
+            mobile/build/symbols/**
           if-no-files-found: error
           retention-days: 30

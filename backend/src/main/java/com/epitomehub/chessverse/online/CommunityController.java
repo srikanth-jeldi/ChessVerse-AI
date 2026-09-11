@@ -26,7 +26,10 @@ class CommunityController {
     @PutMapping("/tournaments/{id}") CommunityDtos.HubDto tournament(@RequestHeader("Authorization")String auth,@PathVariable UUID id,@RequestParam boolean join){return community.joinTournament(player(auth),id,join);}
     @GetMapping("/tournaments/{id}") TournamentDtos.DetailDto tournamentDetail(@RequestHeader("Authorization")String auth,@PathVariable UUID id){return tournaments.detail(player(auth),id);}
     @GetMapping("/messages/{friendId}") List<CommunityDtos.MessageDto> messages(@RequestHeader("Authorization")String auth,@PathVariable UUID friendId){return community.messages(player(auth),friendId);}
-    @PostMapping("/messages") CommunityDtos.MessageDto message(@RequestHeader("Authorization")String auth,@Valid @RequestBody CommunityDtos.MessageRequest request){return community.send(player(auth),request.recipientId(),request.body());}
+    @PostMapping("/messages") CommunityDtos.MessageDto message(@RequestHeader("Authorization")String auth,@Valid @RequestBody CommunityDtos.MessageRequest request){return community.send(player(auth),request.recipientId(),request.body(),request.encrypted());}
+    @GetMapping("/e2ee/identity") CommunityDtos.E2eeIdentityDto e2eeIdentity(@RequestHeader("Authorization") String auth) { return community.e2eeIdentity(player(auth)); }
+    @PutMapping("/e2ee/identity") CommunityDtos.E2eeIdentityDto saveE2eeIdentity(@RequestHeader("Authorization") String auth, @Valid @RequestBody CommunityDtos.E2eeIdentityRequest request) { return community.saveE2eeIdentity(player(auth), request); }
+    @GetMapping("/e2ee/public-key/{friendId}") CommunityDtos.E2eePublicKeyDto e2eePublicKey(@RequestHeader("Authorization") String auth, @PathVariable UUID friendId) { return community.e2eePublicKey(player(auth), friendId); }
     @PostMapping("/messages/delivered") void delivered(@RequestHeader("Authorization")String auth){community.markDelivered(player(auth));}
     @PostMapping(value="/messages/attachments",consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
     CommunityDtos.MessageDto attachment(@RequestHeader("Authorization")String auth,@RequestParam UUID recipientId,

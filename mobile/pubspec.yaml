@@ -1,7 +1,7 @@
 name: chessverse_ai
 description: Cross-platform ChessVerse AI application.
 publish_to: "none"
-version: 1.2.43+163
+version: 1.2.44+164
 
 environment:
   sdk: ">=3.13.0 <4.0.0"
@@ -41,6 +41,7 @@ dependencies:
   web_socket_channel: ^3.0.3
   firebase_crashlytics: ^5.3.0
   connectivity_plus: ^7.3.1
+  cryptography: ^2.7.0
   package_info_plus: ^10.2.1
   device_info_plus: ^13.2.0
   url_launcher: ^6.3.2
@@ -68,7 +69,14 @@ flutter:
   assets:
     - assets/audio/
     - assets/backgrounds/
-    - assets/branding/
+    - assets/branding/app_icon.png
+    - assets/branding/chessverse_king_dual_splash.jpg
+    - assets/branding/splash_screen_mobile_v2.jpg
+    - assets/branding/trophy-dubai-gold-v1.webp
+    - assets/branding/trophy-hyderabad-royal-v1.webp
+    - assets/branding/trophy-london-classic-v1.webp
+    - assets/branding/trophy-new-york-grand-final-v1.webp
+    - assets/branding/trophy-tokyo-neon-v1.webp
     - assets/matchmaking/
     - assets/pieces/
 

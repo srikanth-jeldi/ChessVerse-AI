@@ -11,6 +11,7 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'core/analytics/app_analytics.dart';
+import 'core/ai_bot_preset_store.dart';
 import 'core/app_language.dart';
 import 'core/coach_localizations.dart';
 import 'core/coach_extra_localizations.dart';
@@ -49,6 +50,7 @@ import 'features/library/presentation/reference_screens.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/online/data/online_match_api.dart';
 import 'features/online/presentation/match_history_screen.dart';
+import 'features/online/presentation/spectator_screen.dart';
 import 'features/notifications/data/notification_api.dart';
 import 'features/notifications/presentation/notification_center_screen.dart';
 import 'features/leaderboard/presentation/leaderboard_screen.dart';
@@ -57,6 +59,7 @@ import 'features/missions/presentation/missions_screen.dart';
 import 'features/shop/presentation/cosmetic_shop_screen.dart';
 import 'features/shop/data/economy_rewards_api.dart';
 import 'features/puzzles/domain/puzzle_catalog.dart';
+import 'features/play/presentation/position_creator_screen.dart';
 import 'features/progress/data/cloud_progress_api.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/social/presentation/social_hub_screen.dart';
@@ -65,26 +68,28 @@ import 'features/tutorial/presentation/learn_chess_screen.dart';
 import 'features/tutorial/data/academy_progress_store.dart';
 
 List<SavedMoveReview> _savedReviewsFromCloud(CloudAnalysisJob job) => job.plies
-    .map((CloudAnalysisPly ply) => SavedMoveReview(
-          ply: ply.ply,
-          fenBefore: ply.fenBefore,
-          playedMove: ply.playedMove,
-          bestMove: ply.bestMove,
-          classification: ply.classification,
-          coachingTheme: ply.coachingTheme,
-          centipawnLoss: ply.centipawnLoss,
-          evaluationBeforeCp: ply.evaluationBeforeCp,
-          evaluationAfterCp: ply.evaluationAfterCp,
-          mateBefore: ply.mateBefore,
-          mateAfter: ply.mateAfter,
-          opponentThreat: ply.principalVariation.length > 1
-              ? ply.principalVariation[1]
-              : '',
-          explanation: ply.classification == 'Best'
-              ? 'This matched Stockfish’s strongest continuation.'
-              : '${ply.bestMove} was stronger by ${ply.centipawnLoss} centipawns.',
-          principalVariation: ply.principalVariation,
-        ))
+    .map(
+      (CloudAnalysisPly ply) => SavedMoveReview(
+        ply: ply.ply,
+        fenBefore: ply.fenBefore,
+        playedMove: ply.playedMove,
+        bestMove: ply.bestMove,
+        classification: ply.classification,
+        coachingTheme: ply.coachingTheme,
+        centipawnLoss: ply.centipawnLoss,
+        evaluationBeforeCp: ply.evaluationBeforeCp,
+        evaluationAfterCp: ply.evaluationAfterCp,
+        mateBefore: ply.mateBefore,
+        mateAfter: ply.mateAfter,
+        opponentThreat: ply.principalVariation.length > 1
+            ? ply.principalVariation[1]
+            : '',
+        explanation: ply.classification == 'Best'
+            ? 'This matched Stockfish’s strongest continuation.'
+            : '${ply.bestMove} was stronger by ${ply.centipawnLoss} centipawns.',
+        principalVariation: ply.principalVariation,
+      ),
+    )
     .toList(growable: false);
 
 Future<void> main() async {
@@ -95,9 +100,9 @@ Future<void> main() async {
   await AppAnalytics.initialize();
   await AppDiagnostics.initialize();
   if (!kIsWeb) {
-    await SystemChrome.setPreferredOrientations(
-      const <DeviceOrientation>[DeviceOrientation.portraitUp],
-    );
+    await SystemChrome.setPreferredOrientations(const <DeviceOrientation>[
+      DeviceOrientation.portraitUp,
+    ]);
   }
   if (kIsWeb) {
     try {
@@ -131,9 +136,7 @@ class ChessVerseApp extends StatelessWidget {
       theme: ChessVerseTheme.dark(),
       builder: (BuildContext context, Widget? child) {
         return NetworkStatusLayer(
-          child: ChessVerseAppBackdrop(
-            child: child ?? const SizedBox.shrink(),
-          ),
+          child: ChessVerseAppBackdrop(child: child ?? const SizedBox.shrink()),
         );
       },
       home: const SplashGate(),
@@ -141,11 +144,13 @@ class ChessVerseApp extends StatelessWidget {
   }
 }
 
-const List<NavigationDestination> _primaryNavigationDestinations =
-    <NavigationDestination>[
+const List<NavigationDestination>
+_primaryNavigationDestinations = <NavigationDestination>[
   NavigationDestination(icon: Icon(Icons.home_rounded), label: 'Home'),
   NavigationDestination(
-      icon: Icon(Icons.sports_esports_rounded), label: 'Play'),
+    icon: Icon(Icons.sports_esports_rounded),
+    label: 'Play',
+  ),
   NavigationDestination(icon: Icon(Icons.extension_rounded), label: 'Puzzles'),
   NavigationDestination(icon: Icon(Icons.school_rounded), label: 'Learn'),
   NavigationDestination(icon: Icon(Icons.person_rounded), label: 'Profile'),
@@ -332,7 +337,8 @@ class _SplashGateState extends State<SplashGate> {
     final Size viewport = MediaQuery.sizeOf(context);
     // Match BrandedSplash exactly: every landscape surface preloads the wide
     // artwork, including phones rotated before or during app startup.
-    final bool useWideArtwork = viewport.width > viewport.height ||
+    final bool useWideArtwork =
+        viewport.width > viewport.height ||
         (viewport.shortestSide >= 600 && viewport.width >= 720);
     final String artwork = useWideArtwork
         ? 'assets/branding/chessverse_king_dual_splash.jpg'
@@ -393,10 +399,12 @@ class _SplashGateState extends State<SplashGate> {
     if (restoredSession.refreshToken != null &&
         restoredSession.refreshToken!.isNotEmpty) {
       try {
-        final Map<String, dynamic> rotated =
-            await _authApi.refresh(restoredSession.refreshToken!);
-        final DateTime? rotatedExpiry =
-            DateTime.tryParse(rotated['expiresAt'] as String? ?? '');
+        final Map<String, dynamic> rotated = await _authApi.refresh(
+          restoredSession.refreshToken!,
+        );
+        final DateTime? rotatedExpiry = DateTime.tryParse(
+          rotated['expiresAt'] as String? ?? '',
+        );
         final String rotatedToken = rotated['token'] as String? ?? '';
         if (rotatedToken.isNotEmpty && rotatedExpiry != null) {
           restoredSession = StoredAuthSession(
@@ -408,8 +416,9 @@ class _SplashGateState extends State<SplashGate> {
             photoUrl: restoredSession.photoUrl,
             isGuest: restoredSession.isGuest,
             refreshToken: rotated['refreshToken'] as String?,
-            refreshExpiresAt:
-                DateTime.tryParse(rotated['refreshExpiresAt'] as String? ?? ''),
+            refreshExpiresAt: DateTime.tryParse(
+              rotated['refreshExpiresAt'] as String? ?? '',
+            ),
             sessionId: rotated['sessionId'] as String?,
           );
           await _sessionStore.write(restoredSession);
@@ -428,9 +437,11 @@ class _SplashGateState extends State<SplashGate> {
     String? photoUrl = restoredSession.photoUrl;
     bool isGuest = restoredSession.isGuest;
     try {
-      final Map<String, dynamic> player =
-          await _authApi.currentPlayer(restoredSession.token);
-      playerName = _profileValue(player['displayName']) ??
+      final Map<String, dynamic> player = await _authApi.currentPlayer(
+        restoredSession.token,
+      );
+      playerName =
+          _profileValue(player['displayName']) ??
           _profileValue(player['username']) ??
           playerName;
       username = _profileValue(player['username']) ?? username;
@@ -474,24 +485,29 @@ class _SplashGateState extends State<SplashGate> {
     unawaited(_refreshCoinBalance(restoredSession.token));
     _startNotificationPolling(restoredSession.token);
     _startSessionValidation(restoredSession.token);
-    unawaited(FirebasePushService.instance
-        .configureForSession(restoredSession.token));
+    unawaited(
+      FirebasePushService.instance.configureForSession(restoredSession.token),
+    );
   }
 
   Future<void> _resumeCloudAnalysisJobs(String token) async {
     final List<SavedGameRecord> pending = LocalGameArchive.games
-        .where((SavedGameRecord game) =>
-            game.cloudAnalysisJobId != null &&
-            game.cloudAnalysisStatus != 'COMPLETED')
+        .where(
+          (SavedGameRecord game) =>
+              game.cloudAnalysisJobId != null &&
+              game.cloudAnalysisStatus != 'COMPLETED',
+        )
         .toList(growable: false);
     for (final SavedGameRecord game in pending) {
       final String jobId = game.cloudAnalysisJobId!;
       try {
         CloudAnalysisJob job = await _gameAnalysisApi.results(token, jobId);
-        for (int attempt = 0;
-            attempt < 600 &&
-                (job.status == 'QUEUED' || job.status == 'ANALYZING');
-            attempt++) {
+        for (
+          int attempt = 0;
+          attempt < 600 &&
+              (job.status == 'QUEUED' || job.status == 'ANALYZING');
+          attempt++
+        ) {
           await Future<void>.delayed(const Duration(seconds: 2));
           job = await _gameAnalysisApi.results(token, jobId);
         }
@@ -503,12 +519,18 @@ class _SplashGateState extends State<SplashGate> {
           openingName: job.openingName,
           bookPlies: job.bookPlies,
           firstDeviationPly: job.firstDeviationPly,
-          reviews:
-              job.status == 'COMPLETED' ? _savedReviewsFromCloud(job) : null,
+          reviews: job.status == 'COMPLETED'
+              ? _savedReviewsFromCloud(job)
+              : null,
         );
       } on GameAnalysisApiException catch (error, stackTrace) {
-        unawaited(AppDiagnostics.recordError(error, stackTrace,
-            reason: 'resume cloud game analysis'));
+        unawaited(
+          AppDiagnostics.recordError(
+            error,
+            stackTrace,
+            reason: 'resume cloud game analysis',
+          ),
+        );
       }
     }
   }
@@ -562,19 +584,23 @@ class _SplashGateState extends State<SplashGate> {
   Future<void> _refreshNextTournament(String token) async {
     try {
       final CommunityDto community = await const CommunityApi().load(token);
-      final List<TournamentDto> current = community.tournaments
-          .where((event) => event.status == 'OPEN' || event.status == 'ACTIVE')
-          .toList()
-        ..sort((a, b) {
-          if (a.status == 'ACTIVE' && b.status != 'ACTIVE') return -1;
-          if (b.status == 'ACTIVE' && a.status != 'ACTIVE') return 1;
-          final DateTime aStart = a.startsAt ?? DateTime(2999);
-          final DateTime bStart = b.startsAt ?? DateTime(2999);
-          return aStart.compareTo(bStart);
-        });
+      final List<TournamentDto> current =
+          community.tournaments
+              .where(
+                (event) => event.status == 'OPEN' || event.status == 'ACTIVE',
+              )
+              .toList()
+            ..sort((a, b) {
+              if (a.status == 'ACTIVE' && b.status != 'ACTIVE') return -1;
+              if (b.status == 'ACTIVE' && a.status != 'ACTIVE') return 1;
+              final DateTime aStart = a.startsAt ?? DateTime(2999);
+              final DateTime bStart = b.startsAt ?? DateTime(2999);
+              return aStart.compareTo(bStart);
+            });
       if (mounted) {
         setState(
-            () => _nextTournament = current.isEmpty ? null : current.first);
+          () => _nextTournament = current.isEmpty ? null : current.first,
+        );
       }
     } on Object {
       // The home remains usable offline; Community refresh retries on entry.
@@ -592,8 +618,9 @@ class _SplashGateState extends State<SplashGate> {
 
   Future<void> _refreshCoinBalance(String token) async {
     try {
-      final EconomyRewardStatus status =
-          await const EconomyRewardsApi().status(token);
+      final EconomyRewardStatus status = await const EconomyRewardsApi().status(
+        token,
+      );
       if (mounted) setState(() => _coinBalance = status.coins);
     } on Object {
       // Balance stays hidden while offline; the backend remains authoritative.
@@ -624,11 +651,13 @@ class _SplashGateState extends State<SplashGate> {
       return;
     }
     try {
-      final NotificationInboxDto inbox =
-          await const NotificationApi().load(token);
+      final NotificationInboxDto inbox = await const NotificationApi().load(
+        token,
+      );
       final List<PlayerNotificationDto> fresh = inbox.notifications
-          .where((value) =>
-              !value.read && !_seenNotificationIds.contains(value.id))
+          .where(
+            (value) => !value.read && !_seenNotificationIds.contains(value.id),
+          )
           .toList();
       _seenNotificationIds.addAll(inbox.notifications.map((value) => value.id));
       if (initial) return;
@@ -664,8 +693,10 @@ class _SplashGateState extends State<SplashGate> {
     _openingNotificationMatch = true;
     _openedNotificationMatchIds.add(matchId);
     try {
-      final OnlineMatchDto match =
-          await const OnlineMatchApi().getMatch(token, matchId);
+      final OnlineMatchDto match = await const OnlineMatchApi().getMatch(
+        token,
+        matchId,
+      );
       if (!mounted || !match.isActive) return;
       await _openGame(
         context,
@@ -682,8 +713,9 @@ class _SplashGateState extends State<SplashGate> {
 
   Future<void> _restoreActiveOnlineMatch(String token) async {
     try {
-      final OnlineMatchDto match =
-          await const OnlineMatchApi().reconnect(token);
+      final OnlineMatchDto match = await const OnlineMatchApi().reconnect(
+        token,
+      );
       if (!mounted || _stage != _RootStage.home || !match.isActive) return;
       await _openGame(
         context,
@@ -749,46 +781,44 @@ class _SplashGateState extends State<SplashGate> {
       switchOutCurve: Curves.easeInCubic,
       child: switch (_stage) {
         _RootStage.splash => const BrandedSplash(
-            key: ValueKey<String>('splash'),
-          ),
+          key: ValueKey<String>('splash'),
+        ),
         _RootStage.loading => const ChessVerseLoadingScreen(
-            key: ValueKey<String>('loading'),
-          ),
+          key: ValueKey<String>('loading'),
+        ),
         _RootStage.onboarding => OnboardingScreen(
-            key: const ValueKey<String>('onboarding'),
-            onComplete: () => setState(() => _stage = _RootStage.auth),
-          ),
+          key: const ValueKey<String>('onboarding'),
+          onComplete: () => setState(() => _stage = _RootStage.auth),
+        ),
         _RootStage.auth => AuthScreen(
-            key: const ValueKey<String>('auth'),
-            onAuthenticated: (ChessVerseAuthResult result) async {
-              final StoredAuthSession? session = await _sessionStore.read();
-              if (session == null || !mounted) return;
-              await LocalGameArchive.activateIdentity(
-                await _sessionStore.progressIdentity(session),
-              );
-              if (!mounted) return;
-              setState(() {
-                _playerName = result.playerName;
-                _username = result.username;
-                _email = result.email;
-                _photoUrl = result.photoUrl;
-                _isGuest = result.isGuest;
-                _stage = _RootStage.home;
-              });
-              _openPlayFromReminder();
-              _openTournamentsFromReminder();
-              unawaited(
-                AppAnalytics.logAuthentication(guest: result.isGuest),
-              );
-              if (result.token != null) {
-                _enableCloudSync(result.token!);
-                unawaited(_syncCloudProgress(result.token!));
-                _startOnlinePresence(result.token!);
-                unawaited(_refreshCoinBalance(result.token!));
-                _startNotificationPolling(result.token!);
-              }
-            },
-          ),
+          key: const ValueKey<String>('auth'),
+          onAuthenticated: (ChessVerseAuthResult result) async {
+            final StoredAuthSession? session = await _sessionStore.read();
+            if (session == null || !mounted) return;
+            await LocalGameArchive.activateIdentity(
+              await _sessionStore.progressIdentity(session),
+            );
+            if (!mounted) return;
+            setState(() {
+              _playerName = result.playerName;
+              _username = result.username;
+              _email = result.email;
+              _photoUrl = result.photoUrl;
+              _isGuest = result.isGuest;
+              _stage = _RootStage.home;
+            });
+            _openPlayFromReminder();
+            _openTournamentsFromReminder();
+            unawaited(AppAnalytics.logAuthentication(guest: result.isGuest));
+            if (result.token != null) {
+              _enableCloudSync(result.token!);
+              unawaited(_syncCloudProgress(result.token!));
+              _startOnlinePresence(result.token!);
+              unawaited(_refreshCoinBalance(result.token!));
+              _startNotificationPolling(result.token!);
+            }
+          },
+        ),
         _RootStage.home => _buildPrimaryShell(context),
       },
     );
@@ -811,21 +841,22 @@ class _SplashGateState extends State<SplashGate> {
         onAnalysis: () => _push(context, const AnalysisScreen()),
         onPuzzles: () => setState(() => _primaryDestination = 2),
         onSavedGames: () => _push(
-            context,
-            MatchHistoryScreen(
-              onDestinationSelected: (index) =>
-                  _closeSettingsAndSelect(context, index),
-              onResume: (draft) =>
-                  _openGame(context, GameMode.computer, resumeDraft: draft),
-              onPlayAgain: () => _chooseSideAndOpen(context, GameMode.computer),
-            )),
+          context,
+          MatchHistoryScreen(
+            onDestinationSelected: (index) =>
+                _closeSettingsAndSelect(context, index),
+            onResume: (draft) =>
+                _openGame(context, GameMode.computer, resumeDraft: draft),
+            onPlayAgain: () => _chooseSideAndOpen(context, GameMode.computer),
+          ),
+        ),
         onRankings: () => _push(
           context,
           LeaderboardScreen(
             profilePhotoUrl: _photoUrl,
             onOpenMatch: (OnlineMatchDto match) async {
-              final StoredAuthSession? session =
-                  await const AuthSessionStore().read();
+              final StoredAuthSession? session = await const AuthSessionStore()
+                  .read();
               if (!context.mounted || session == null) return;
               await _openGame(
                 context,
@@ -866,6 +897,8 @@ class _SplashGateState extends State<SplashGate> {
       ),
       _PlayDestination(
         onComputer: () => _chooseSideAndOpen(context, GameMode.computer),
+        onPositionCreator: () => _openPositionCreator(context),
+        onSpectate: () => _openSpectator(context),
         onMyGames: () => _push(
           context,
           MatchHistoryScreen(
@@ -873,8 +906,7 @@ class _SplashGateState extends State<SplashGate> {
                 _closeSettingsAndSelect(context, index),
             onResume: (draft) =>
                 _openGame(context, GameMode.computer, resumeDraft: draft),
-            onPlayAgain: () =>
-                _chooseSideAndOpen(context, GameMode.computer),
+            onPlayAgain: () => _chooseSideAndOpen(context, GameMode.computer),
           ),
         ),
         onOnline: () => _openOnlineGame(context),
@@ -887,11 +919,8 @@ class _SplashGateState extends State<SplashGate> {
       ),
       PuzzlesScreen(
         showPrimaryNavigation: false,
-        onStartPuzzle: (String puzzleId) => _openGame(
-          context,
-          GameMode.puzzle,
-          puzzleId: puzzleId,
-        ),
+        onStartPuzzle: (String puzzleId) =>
+            _openGame(context, GameMode.puzzle, puzzleId: puzzleId),
       ),
       const LearnChessScreen(),
       ProfileScreen(
@@ -911,16 +940,15 @@ class _SplashGateState extends State<SplashGate> {
             context,
             MissionsScreen(
               token: session.token,
-              onRewardClaimed: () => unawaited(
-                _refreshCoinBalance(session.token),
-              ),
+              onRewardClaimed: () =>
+                  unawaited(_refreshCoinBalance(session.token)),
             ),
           );
           await _refreshCoinBalance(session.token);
         },
         onShop: () async {
-          final StoredAuthSession? session =
-              await const AuthSessionStore().read();
+          final StoredAuthSession? session = await const AuthSessionStore()
+              .read();
           if (!context.mounted || session == null) return;
           await _push(context, CosmeticShopScreen(token: session.token));
           await _refreshCoinBalance(session.token);
@@ -929,8 +957,8 @@ class _SplashGateState extends State<SplashGate> {
       SocialHubScreen(
         initialSection: _communitySection,
         onOpenMatch: (OnlineMatchDto match) async {
-          final StoredAuthSession? session =
-              await const AuthSessionStore().read();
+          final StoredAuthSession? session = await const AuthSessionStore()
+              .read();
           if (!context.mounted || session == null) return;
           await _openGame(
             context,
@@ -996,28 +1024,34 @@ class _SplashGateState extends State<SplashGate> {
 
           return Scaffold(
             backgroundColor: Colors.transparent,
-            body: Row(children: <Widget>[
-              DesktopAppSidebar(
-                selected: desktopSections[_primaryDestination],
-                onHome: () => selectDestination(0),
-                onPlay: () => selectDestination(1),
-                onMyGames: () => _push(
+            body: Row(
+              children: <Widget>[
+                DesktopAppSidebar(
+                  selected: desktopSections[_primaryDestination],
+                  onHome: () => selectDestination(0),
+                  onPlay: () => selectDestination(1),
+                  onMyGames: () => _push(
                     context,
                     MatchHistoryScreen(
                       onDestinationSelected: (index) =>
                           _closeSettingsAndSelect(context, index),
-                      onResume: (draft) => _openGame(context, GameMode.computer,
-                          resumeDraft: draft),
+                      onResume: (draft) => _openGame(
+                        context,
+                        GameMode.computer,
+                        resumeDraft: draft,
+                      ),
                       onPlayAgain: () =>
                           _chooseSideAndOpen(context, GameMode.computer),
-                    )),
-                onPuzzles: () => selectDestination(2),
-                onLearn: () => selectDestination(3),
-                onProfile: () => selectDestination(4),
-                onFriends: () => selectDestination(5),
-              ),
-              Expanded(child: content),
-            ]),
+                    ),
+                  ),
+                  onPuzzles: () => selectDestination(2),
+                  onLearn: () => selectDestination(3),
+                  onProfile: () => selectDestination(4),
+                  onFriends: () => selectDestination(5),
+                ),
+                Expanded(child: content),
+              ],
+            ),
           );
         }
         return Scaffold(
@@ -1047,18 +1081,18 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   Future<void> _openLanguageCentre(BuildContext context) => _push(
-        context,
-        SettingsScreen(
-          openLanguagePickerOnStart: true,
-          onLogout: () => _logout(context),
-          onDeleteAccount: () => _deleteAccount(context),
-          onHome: () => _closeSettingsAndSelect(context, 0),
-          onPlay: () => _closeSettingsAndSelect(context, 1),
-          onPuzzles: () => _closeSettingsAndSelect(context, 2),
-          onLearn: () => _closeSettingsAndSelect(context, 3),
-          onProfile: () => _closeSettingsAndSelect(context, 4),
-        ),
-      );
+    context,
+    SettingsScreen(
+      openLanguagePickerOnStart: true,
+      onLogout: () => _logout(context),
+      onDeleteAccount: () => _deleteAccount(context),
+      onHome: () => _closeSettingsAndSelect(context, 0),
+      onPlay: () => _closeSettingsAndSelect(context, 1),
+      onPuzzles: () => _closeSettingsAndSelect(context, 2),
+      onLearn: () => _closeSettingsAndSelect(context, 3),
+      onProfile: () => _closeSettingsAndSelect(context, 4),
+    ),
+  );
 
   Future<void> _openNotificationCenter(BuildContext context) async {
     await _push(
@@ -1088,8 +1122,8 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   Future<void> _openFriendPlayChooser(BuildContext context) async {
-    final _FriendPlayChoice? choice =
-        await showModalBottomSheet<_FriendPlayChoice>(
+    final _FriendPlayChoice?
+    choice = await showModalBottomSheet<_FriendPlayChoice>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -1147,15 +1181,15 @@ class _SplashGateState extends State<SplashGate> {
                     title: 'Online with Friend',
                     subtitle: 'Create a private room or join with a room code.',
                     accent: const Color(0xFF4FD9C5),
-                    onTap: () => Navigator.of(sheetContext)
-                        .pop(_FriendPlayChoice.online),
+                    onTap: () =>
+                        Navigator.of(sheetContext)
+                            .pop(_FriendPlayChoice.online),
                   ),
                   const SizedBox(height: 12),
                   _FriendPlayChoiceCard(
                     icon: Icons.people_alt_rounded,
                     title: 'Two Players — Same Device',
-                    subtitle:
-                        'Player 1 • White   /   Player 2 • Black. Board stays fixed.',
+                    subtitle: 'Player 1 • White   /   Player 2 • Black. Board stays fixed.',
                     accent: const Color(0xFFE2AE49),
                     onTap: () =>
                         Navigator.of(sheetContext).pop(_FriendPlayChoice.local),
@@ -1180,18 +1214,15 @@ class _SplashGateState extends State<SplashGate> {
     if (mode == GameMode.computer) {
       try {
         final String owner = await ComputerGameStore.activeOwner();
-        final List<ComputerGameDraft> saved =
-            await ComputerGameStore.load(owner);
+        final List<ComputerGameDraft> saved = await ComputerGameStore.load(
+          owner,
+        );
         if (!context.mounted) return;
         if (saved.isNotEmpty) {
           final bool? startNew = await _askHowToOpenComputerGame(context);
           if (!context.mounted || startNew == null) return;
           if (!startNew) {
-            await _openGame(
-              context,
-              mode,
-              resumeDraft: saved.first,
-            );
+            await _openGame(context, mode, resumeDraft: saved.first);
             return;
           }
           replacePausedComputerGame = true;
@@ -1209,24 +1240,34 @@ class _SplashGateState extends State<SplashGate> {
         return;
       }
     }
-    final _GameLaunchChoice? choice =
-        await showModalBottomSheet<_GameLaunchChoice>(
+    List<AiBotPreset> botPresets = <AiBotPreset>[];
+    if (mode == GameMode.computer) {
+      try {
+        botPresets = await AiBotPresetStore().list();
+      } on Object {
+        // Playing remains available while optional preset sync is offline.
+      }
+      if (!context.mounted) return;
+    }
+    final _GameLaunchChoice?
+    choice = await showModalBottomSheet<_GameLaunchChoice>(
       context: context,
       isScrollControlled: true,
       showDragHandle: false,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         PlayerSideChoice selected = PlayerSideChoice.white;
-        double selectedAiLevel = 4;
+        double selectedRating = 1400;
+        AiBotStyle selectedStyle = AiBotStyle.balanced;
         return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setSheetState) =>
-              SafeArea(
+          builder: (BuildContext context, StateSetter setSheetState) => SafeArea(
             child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
                 final bool shortLandscape =
                     constraints.maxWidth > constraints.maxHeight &&
-                        constraints.maxHeight < 500;
-                final bool wide = constraints.maxWidth >= 700 &&
+                    constraints.maxHeight < 500;
+                final bool wide =
+                    constraints.maxWidth >= 700 &&
                     MediaQuery.sizeOf(context).shortestSide >= 600;
                 return ConstrainedBox(
                   constraints: BoxConstraints(
@@ -1254,8 +1295,11 @@ class _SplashGateState extends State<SplashGate> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: <Widget>[
-                          const Icon(Icons.workspace_premium_rounded,
-                              color: Color(0xFFE2AE49), size: 52),
+                          const Icon(
+                            Icons.workspace_premium_rounded,
+                            color: Color(0xFFE2AE49),
+                            size: 52,
+                          ),
                           Text(
                             'Choose Your Side',
                             style: TextStyle(
@@ -1279,21 +1323,23 @@ class _SplashGateState extends State<SplashGate> {
                               final bool active = side == selected;
                               return Expanded(
                                 child: Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 5),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                  ),
                                   child: InkWell(
                                     onTap: () =>
                                         setSheetState(() => selected = side),
                                     borderRadius: BorderRadius.circular(20),
                                     child: AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 180),
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
                                       padding: EdgeInsets.symmetric(
                                         vertical: shortLandscape
                                             ? 12
                                             : wide
-                                                ? 30
-                                                : 24,
+                                            ? 30
+                                            : 24,
                                         horizontal: 8,
                                       ),
                                       decoration: BoxDecoration(
@@ -1315,16 +1361,18 @@ class _SplashGateState extends State<SplashGate> {
                                             size: shortLandscape
                                                 ? 54
                                                 : wide
-                                                    ? 150
-                                                    : 92,
+                                                ? 150
+                                                : 92,
                                             active: active,
                                           ),
                                           const SizedBox(height: 10),
-                                          Text(side.label,
-                                              style: TextStyle(
-                                                fontSize: wide ? 24 : 16,
-                                                fontWeight: FontWeight.w900,
-                                              )),
+                                          Text(
+                                            side.label,
+                                            style: TextStyle(
+                                              fontSize: wide ? 24 : 16,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
                                           if (wide) ...<Widget>[
                                             const SizedBox(height: 6),
                                             Text(
@@ -1351,7 +1399,7 @@ class _SplashGateState extends State<SplashGate> {
                             Align(
                               alignment: Alignment.centerLeft,
                               child: Text(
-                                'AI LEVEL  •  ${aiProfileFor(selectedAiLevel.round()).name}',
+                                'CUSTOM AI  •  ${selectedRating.round()} ELO',
                                 style: const TextStyle(
                                   color: Color(0xFFE2AE49),
                                   fontWeight: FontWeight.w900,
@@ -1360,23 +1408,149 @@ class _SplashGateState extends State<SplashGate> {
                             ),
                             Slider(
                               key: const ValueKey<String>('computer-ai-level'),
-                              value: selectedAiLevel,
-                              min: 1,
-                              max: 10,
-                              divisions: 9,
-                              label: aiProfileFor(selectedAiLevel.round()).name,
-                              onChanged: (double value) => setSheetState(
-                                () => selectedAiLevel = value,
-                              ),
+                              value: selectedRating,
+                              min: 400,
+                              max: 3000,
+                              divisions: 26,
+                              label: '${selectedRating.round()} Elo',
+                              onChanged: (double value) =>
+                                  setSheetState(() => selectedRating = value),
                             ),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: const <Widget>[
-                                Text('New to Chess',
-                                    style: TextStyle(fontSize: 12)),
-                                Text('Grandmaster',
-                                    style: TextStyle(fontSize: 12)),
+                                Text('400', style: TextStyle(fontSize: 12)),
+                                Text('3000', style: TextStyle(fontSize: 12)),
                               ],
+                            ),
+                            const SizedBox(height: 12),
+                            SegmentedButton<AiBotStyle>(
+                              segments: AiBotStyle.values
+                                  .map(
+                                    (AiBotStyle style) =>
+                                        ButtonSegment<AiBotStyle>(
+                                          value: style,
+                                          label: Text(style.label),
+                                        ),
+                                  )
+                                  .toList(),
+                              selected: <AiBotStyle>{selectedStyle},
+                              onSelectionChanged: (Set<AiBotStyle> value) =>
+                                  setSheetState(
+                                    () => selectedStyle = value.first,
+                                  ),
+                            ),
+                            if (botPresets.isNotEmpty) ...<Widget>[
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: botPresets
+                                    .map(
+                                      (AiBotPreset preset) => InputChip(
+                                        label: Text(
+                                          '${preset.name} · ${preset.rating}',
+                                        ),
+                                        onPressed: () => setSheetState(() {
+                                          selectedRating = preset.rating
+                                              .toDouble();
+                                          selectedStyle = preset.style;
+                                        }),
+                                        onDeleted: () async {
+                                          try {
+                                            await AiBotPresetStore().delete(
+                                              preset.id,
+                                            );
+                                            setSheetState(
+                                              () => botPresets = botPresets
+                                                  .where(
+                                                    (AiBotPreset item) =>
+                                                        item.id != preset.id,
+                                                  )
+                                                  .toList(),
+                                            );
+                                          } on Object {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Could not delete preset. Check your connection.',
+                                                      ),
+                                                    ),
+                                                  );
+                                            }
+                                          }
+                                        },
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            ],
+                            const SizedBox(height: 10),
+                            OutlinedButton.icon(
+                              key: const ValueKey<String>('save-ai-preset'),
+                              onPressed: () async {
+                                final TextEditingController nameController =
+                                    TextEditingController();
+                                final String? name = await showDialog<String>(
+                                  context: context,
+                                  builder: (BuildContext dialogContext) =>
+                                      AlertDialog(
+                                        title: const Text('Save AI preset'),
+                                        content: TextField(
+                                          controller: nameController,
+                                          autofocus: true,
+                                          maxLength: 30,
+                                          decoration: const InputDecoration(
+                                            hintText: 'Example: Tactical Tiger',
+                                          ),
+                                        ),
+                                        actions: <Widget>[
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(dialogContext),
+                                            child: const Text('Cancel'),
+                                          ),
+                                          FilledButton(
+                                            onPressed: () => Navigator.pop(
+                                              dialogContext,
+                                              nameController.text.trim(),
+                                            ),
+                                            child: const Text('Save'),
+                                          ),
+                                        ],
+                                      ),
+                                );
+                                nameController.dispose();
+                                if (name == null || name.isEmpty) return;
+                                try {
+                                  final AiBotPreset saved =
+                                      await AiBotPresetStore().save(
+                                        name: name,
+                                        rating: selectedRating.round(),
+                                        style: selectedStyle,
+                                      );
+                                  setSheetState(
+                                    () => botPresets = <AiBotPreset>[
+                                      saved,
+                                      ...botPresets,
+                                    ],
+                                  );
+                                } on Object {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Could not save preset. Sign in, check connection, or remove an old preset.',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.bookmark_add_rounded),
+                              label: const Text('SAVE ACCOUNT PRESET'),
                             ),
                           ],
                           SizedBox(height: shortLandscape ? 10 : 22),
@@ -1388,8 +1562,9 @@ class _SplashGateState extends State<SplashGate> {
                               decoration: BoxDecoration(
                                 color: const Color(0x99101F2B),
                                 borderRadius: BorderRadius.circular(16),
-                                border:
-                                    Border.all(color: const Color(0xFF5A4B2A)),
+                                border: Border.all(
+                                  color: const Color(0xFF5A4B2A),
+                                ),
                               ),
                               child: const Text(
                                 'Balanced match  •  Fair play  •  AI Opponent',
@@ -1401,11 +1576,17 @@ class _SplashGateState extends State<SplashGate> {
                             width: double.infinity,
                             child: FilledButton.icon(
                               onPressed: () => Navigator.of(context).pop(
-                                _GameLaunchChoice(selected, selectedAiLevel),
+                                _GameLaunchChoice(
+                                  selected,
+                                  ratingToEngineLevel(selectedRating.round())
+                                      .toDouble(),
+                                  selectedStyle,
+                                ),
                               ),
                               icon: const Icon(Icons.play_arrow_rounded),
                               label: Text(
-                                  'START AS ${selected.label.toUpperCase()}'),
+                                'START AS ${selected.label.toUpperCase()}',
+                              ),
                             ),
                           ),
                         ],
@@ -1425,9 +1606,83 @@ class _SplashGateState extends State<SplashGate> {
         mode,
         sideChoice: choice.side,
         aiLevel: choice.aiLevel,
+        aiStyle: choice.aiStyle,
         replacePausedComputerGame: replacePausedComputerGame,
       );
     }
+  }
+
+  Future<void> _openPositionCreator(BuildContext context) async {
+    final PositionSetup? setup = await Navigator.of(context)
+        .push<PositionSetup>(
+          MaterialPageRoute<PositionSetup>(
+            builder: (_) => const PositionCreatorScreen(),
+          ),
+        );
+    if (!context.mounted || setup == null) return;
+    final String player = _playerName.trim().isNotEmpty
+        ? _playerName.trim()
+        : 'Player';
+    final ComputerGameDraft draft = ComputerGameDraft(
+      id: 'custom-${DateTime.now().microsecondsSinceEpoch}',
+      updatedAt: DateTime.now(),
+      state: <String, dynamic>{
+        'version': 1,
+        'pieces': setup.pieces,
+        'moves': <String>[],
+        'capturedWhite': <String>[],
+        'capturedBlack': <String>[],
+        'coachNote': 'Custom position ready. White moves first.',
+        'lastFrom': null,
+        'lastTo': null,
+        'lastCapture': null,
+        'whiteSeconds': 600,
+        'blackSeconds': 600,
+        'humanWhite': setup.humanWhite,
+        'level': 4.0,
+        'aiStyle': AiBotStyle.balanced.name,
+        'whiteName': setup.humanWhite ? player : 'ChessVerseAI',
+        'blackName': setup.humanWhite ? 'ChessVerseAI' : player,
+        'history': <Object>[],
+        'reviews': <Object>[],
+        'scores': <int>[],
+        'mistakes': <String>[],
+      },
+    );
+    await _openGame(
+      context,
+      GameMode.computer,
+      resumeDraft: draft,
+      replacePausedComputerGame: true,
+      customPosition: true,
+    );
+  }
+
+  Future<void> _openSpectator(BuildContext context) async {
+    final StoredAuthSession? session = await const AuthSessionStore().read();
+    if (!context.mounted || session == null) return;
+    final OnlineMatchDto? match = await Navigator.of(context)
+        .push<OnlineMatchDto>(
+          MaterialPageRoute<OnlineMatchDto>(
+            builder: (_) => SpectatorScreen(token: session.token),
+          ),
+        );
+    if (!context.mounted || match == null) return;
+    await _push(
+      context,
+      GameScreen(
+        initiallySignedIn: true,
+        initialGameMode: GameMode.online,
+        initialOnlineMatch: match,
+        initialAuthToken: session.token,
+        initialPlayerName: _playerName,
+        initialUsername: _username,
+        initialEmail: _email,
+        initialProfilePhotoUrl: _photoUrl,
+        initiallyGuest: _isGuest,
+        spectatorMode: true,
+      ),
+    );
   }
 
   Future<bool?> _askHowToOpenComputerGame(BuildContext context) {
@@ -1457,6 +1712,7 @@ class _SplashGateState extends State<SplashGate> {
     GameMode mode, {
     PlayerSideChoice sideChoice = PlayerSideChoice.white,
     double aiLevel = 4,
+    AiBotStyle aiStyle = AiBotStyle.balanced,
     DailyChallengeDifficulty? dailyDifficulty,
     String? puzzleId,
     OnlineMatchDto? initialOnlineMatch,
@@ -1464,6 +1720,7 @@ class _SplashGateState extends State<SplashGate> {
     String? aiOpponentName,
     ComputerGameDraft? resumeDraft,
     bool replacePausedComputerGame = false,
+    bool customPosition = false,
   }) async {
     if (mode == GameMode.computer) {
       try {
@@ -1477,23 +1734,27 @@ class _SplashGateState extends State<SplashGate> {
           if (replace == null) return;
           if (!replace) resumeDraft = saved.first;
         }
-        await ComputerGameStore.prepare(owner, resumeDraft,
-            replacing: saved.isEmpty ? null : saved.first);
+        await ComputerGameStore.prepare(
+          owner,
+          customPosition ? null : resumeDraft,
+          replacing: saved.isEmpty ? null : saved.first,
+        );
         if (!context.mounted) return;
       } catch (_) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
               content: Text(
-                  'Could not open saved game. Check your connection and refresh My Games.')));
+                'Could not open saved game. Check your connection and refresh My Games.',
+              ),
+            ),
+          );
         }
         return;
       }
     }
     unawaited(DailyReminderService.instance.recordPlayOpened());
-    unawaited(AppAnalytics.logGameStarted(
-      mode: mode.name,
-      guest: _isGuest,
-    ));
+    unawaited(AppAnalytics.logGameStarted(mode: mode.name, guest: _isGuest));
     return _push(
       context,
       GameScreen(
@@ -1510,6 +1771,7 @@ class _SplashGateState extends State<SplashGate> {
         initiallyGuest: _isGuest,
         initialSideChoice: sideChoice,
         initialAiLevel: aiLevel,
+        initialAiStyle: aiStyle,
         initialDailyDifficulty: dailyDifficulty,
         initialPuzzleId: puzzleId,
         initialOnlineMatch: initialOnlineMatch,
@@ -1530,47 +1792,47 @@ class _SplashGateState extends State<SplashGate> {
     final StoredAuthSession? session = await const AuthSessionStore().read();
     if (!context.mounted) return;
     if (session == null || session.token.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sign in to play online.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Sign in to play online.')));
       return;
     }
-    final OnlineMatchDto? match =
-        await Navigator.of(context).push<OnlineMatchDto>(
-      MaterialPageRoute<OnlineMatchDto>(
-        fullscreenDialog: true,
-        builder: (_) => Scaffold(
-          backgroundColor: const Color(0xFF06131F),
-          body: DecoratedBox(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: <Color>[Color(0xFF0A2231), Color(0xFF040B13)],
+    final OnlineMatchDto? match = await Navigator.of(context)
+        .push<OnlineMatchDto>(
+          MaterialPageRoute<OnlineMatchDto>(
+            fullscreenDialog: true,
+            builder: (_) => Scaffold(
+              backgroundColor: const Color(0xFF06131F),
+              body: DecoratedBox(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[Color(0xFF0A2231), Color(0xFF040B13)],
+                  ),
+                ),
+                child: OnlineMatchmakingSheet(
+                  api: const OnlineMatchApi(),
+                  token: session.token,
+                  initialMode: lobbyMode,
+                  onProfile: () {
+                    Navigator.of(context).pop();
+                    if (mounted) setState(() => _primaryDestination = 4);
+                  },
+                  onAiFallback: (String rivalName) async {
+                    if (!context.mounted) return;
+                    await _openGame(
+                      context,
+                      GameMode.computer,
+                      aiLevel: 5,
+                      aiOpponentName: rivalName,
+                    );
+                  },
+                ),
               ),
             ),
-            child: OnlineMatchmakingSheet(
-              api: const OnlineMatchApi(),
-              token: session.token,
-              initialMode: lobbyMode,
-              onProfile: () {
-                Navigator.of(context).pop();
-                if (mounted) setState(() => _primaryDestination = 4);
-              },
-              onAiFallback: (String rivalName) async {
-                if (!context.mounted) return;
-                await _openGame(
-                  context,
-                  GameMode.computer,
-                  aiLevel: 5,
-                  aiOpponentName: rivalName,
-                );
-              },
-            ),
           ),
-        ),
-      ),
-    );
+        );
     if (match != null && context.mounted) {
       await _openGame(
         context,
@@ -1660,19 +1922,23 @@ class _SplashGateState extends State<SplashGate> {
     if (session == null) {
       throw const AuthApiException('Sign in to update your display name.');
     }
-    final Map<String, dynamic> player =
-        await _authApi.updateProfile(session.token, displayName);
+    final Map<String, dynamic> player = await _authApi.updateProfile(
+      session.token,
+      displayName,
+    );
     final String savedName =
         _profileValue(player['displayName']) ?? displayName;
-    await _sessionStore.write(StoredAuthSession(
-      token: session.token,
-      expiresAt: session.expiresAt,
-      displayName: savedName,
-      username: session.username,
-      email: session.email,
-      photoUrl: session.photoUrl,
-      isGuest: session.isGuest,
-    ));
+    await _sessionStore.write(
+      StoredAuthSession(
+        token: session.token,
+        expiresAt: session.expiresAt,
+        displayName: savedName,
+        username: session.username,
+        email: session.email,
+        photoUrl: session.photoUrl,
+        isGuest: session.isGuest,
+      ),
+    );
     if (!mounted) return;
     setState(() => _playerName = savedName);
   }
@@ -1688,18 +1954,20 @@ class _SplashGateState extends State<SplashGate> {
       filename,
     );
     final photoUrl = _profileValue(player['photoUrl']);
-    await _sessionStore.write(StoredAuthSession(
-      token: session.token,
-      expiresAt: session.expiresAt,
-      displayName: session.displayName,
-      username: session.username,
-      email: session.email,
-      photoUrl: photoUrl,
-      isGuest: session.isGuest,
-      refreshToken: session.refreshToken,
-      refreshExpiresAt: session.refreshExpiresAt,
-      sessionId: session.sessionId,
-    ));
+    await _sessionStore.write(
+      StoredAuthSession(
+        token: session.token,
+        expiresAt: session.expiresAt,
+        displayName: session.displayName,
+        username: session.username,
+        email: session.email,
+        photoUrl: photoUrl,
+        isGuest: session.isGuest,
+        refreshToken: session.refreshToken,
+        refreshExpiresAt: session.refreshExpiresAt,
+        sessionId: session.sessionId,
+      ),
+    );
     if (mounted) setState(() => _photoUrl = photoUrl);
     return photoUrl;
   }
@@ -1739,9 +2007,8 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   Future<void> _push(BuildContext context, Widget screen) {
-    return Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => screen));
+    return Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
   void _enableCloudSync(String token) {
@@ -1794,7 +2061,8 @@ class BrandedSplash extends StatelessWidget {
           final Size viewport = MediaQuery.sizeOf(context);
           final bool phoneSized = viewport.shortestSide < 600;
           final bool landscape = viewport.width > viewport.height;
-          final bool wide = landscape ||
+          final bool wide =
+              landscape ||
               (!phoneSized &&
                   (constraints.maxWidth >= 720 || constraints.maxWidth <= 0));
           const String wideAsset =
@@ -2013,16 +2281,14 @@ class _MobilePremiumSplash extends StatelessWidget {
                       ),
                       boxShadow: <BoxShadow>[
                         BoxShadow(
-                          color: const Color(
-                            0xFF63D2B8,
-                          ).withValues(alpha: 0.34),
+                          color: const Color(0xFF63D2B8)
+                              .withValues(alpha: 0.34),
                           blurRadius: 52,
                           spreadRadius: 10,
                         ),
                         BoxShadow(
-                          color: const Color(
-                            0xFFD6A84F,
-                          ).withValues(alpha: 0.18),
+                          color: const Color(0xFFD6A84F)
+                              .withValues(alpha: 0.18),
                           blurRadius: 30,
                           offset: const Offset(0, 14),
                         ),
@@ -2043,10 +2309,10 @@ class _MobilePremiumSplash extends StatelessWidget {
                       'CHESSVERSEAI',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                            color: const Color(0xFFF8F2E4),
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2.2,
-                          ),
+                        color: const Color(0xFFF8F2E4),
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2.2,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -2054,10 +2320,10 @@ class _MobilePremiumSplash extends StatelessWidget {
                     'Think • Move • Master',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: const Color(0xFFE0B85E),
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.5,
-                        ),
+                      color: const Color(0xFFE0B85E),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.5,
+                    ),
                   ),
                   const SizedBox(height: 32),
                   Container(
@@ -2091,9 +2357,9 @@ class _MobilePremiumSplash extends StatelessWidget {
                   Text(
                     'Powered by EpitomeHub',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: const Color(0xCCF8F2E4),
-                          letterSpacing: 0.8,
-                        ),
+                      color: const Color(0xCCF8F2E4),
+                      letterSpacing: 0.8,
+                    ),
                   ),
                 ],
               ),
@@ -2185,8 +2451,10 @@ class _MobileChessVerseLoadingPanel extends StatelessWidget {
     return Center(
       child: SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
-        padding:
-            EdgeInsets.symmetric(horizontal: 30, vertical: compact ? 18 : 32),
+        padding: EdgeInsets.symmetric(
+          horizontal: 30,
+          vertical: compact ? 18 : 32,
+        ),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 390),
           child: Column(
@@ -2268,7 +2536,9 @@ class _WideChessVerseLoadingPanel extends StatelessWidget {
                       ),
                       const SizedBox(height: 42),
                       const SizedBox(
-                          width: 520, child: _LoadingProgress(centered: false)),
+                        width: 520,
+                        child: _LoadingProgress(centered: false),
+                      ),
                       const SizedBox(height: 42),
                       const _LoadingFeatureStrip(),
                     ],
@@ -2318,14 +2588,18 @@ class _LoadingBrand extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment:
-          centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      crossAxisAlignment: centered
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
       children: <Widget>[
         Text.rich(
           const TextSpan(
             children: <InlineSpan>[
               TextSpan(text: 'CHESSVERSE'),
-              TextSpan(text: ' AI', style: TextStyle(color: Color(0xFFF2BF4D))),
+              TextSpan(
+                text: ' AI',
+                style: TextStyle(color: Color(0xFFF2BF4D)),
+              ),
             ],
           ),
           textAlign: centered ? TextAlign.center : TextAlign.left,
@@ -2361,8 +2635,9 @@ class _LoadingProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment:
-          centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      crossAxisAlignment: centered
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
       children: <Widget>[
         Text(
           'Preparing your board',
@@ -2411,22 +2686,28 @@ class _LoadingFeatureStrip extends StatelessWidget {
       child: const Row(
         children: <Widget>[
           Expanded(
-              child: _LoadingFeature(
-                  icon: Icons.extension_rounded,
-                  title: 'Smart Puzzles',
-                  subtitle: 'Train your mind daily')),
+            child: _LoadingFeature(
+              icon: Icons.extension_rounded,
+              title: 'Smart Puzzles',
+              subtitle: 'Train your mind daily',
+            ),
+          ),
           VerticalDivider(color: Color(0x445A7178)),
           Expanded(
-              child: _LoadingFeature(
-                  icon: Icons.emoji_events_outlined,
-                  title: 'Compete',
-                  subtitle: 'Challenge players worldwide')),
+            child: _LoadingFeature(
+              icon: Icons.emoji_events_outlined,
+              title: 'Compete',
+              subtitle: 'Challenge players worldwide',
+            ),
+          ),
           VerticalDivider(color: Color(0x445A7178)),
           Expanded(
-              child: _LoadingFeature(
-                  icon: Icons.trending_up_rounded,
-                  title: 'Track Progress',
-                  subtitle: 'Improve and climb ranks')),
+            child: _LoadingFeature(
+              icon: Icons.trending_up_rounded,
+              title: 'Track Progress',
+              subtitle: 'Improve and climb ranks',
+            ),
+          ),
         ],
       ),
     );
@@ -2434,8 +2715,11 @@ class _LoadingFeatureStrip extends StatelessWidget {
 }
 
 class _LoadingFeature extends StatelessWidget {
-  const _LoadingFeature(
-      {required this.icon, required this.title, required this.subtitle});
+  const _LoadingFeature({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
 
   final IconData icon;
   final String title;
@@ -2451,15 +2735,19 @@ class _LoadingFeature extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(title,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800)),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(subtitle,
-                  style:
-                      const TextStyle(color: Color(0xFFADB7C1), fontSize: 13)),
+              Text(
+                subtitle,
+                style: const TextStyle(color: Color(0xFFADB7C1), fontSize: 13),
+              ),
             ],
           ),
         ),
@@ -2528,8 +2816,9 @@ class ChessVerseTheme {
           backgroundColor: brass,
           foregroundColor: ink,
           minimumSize: const Size(48, 46),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -2537,15 +2826,17 @@ class ChessVerseTheme {
           foregroundColor: const Color(0xFFF6F1E8),
           side: const BorderSide(color: Color(0xFF61553F)),
           minimumSize: const Size(48, 46),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
           foregroundColor: const Color(0xFFF6F1E8),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       ),
     );
@@ -2585,7 +2876,8 @@ const List<String> dailyChallengeQueenFiles = <String>[
 ];
 
 String dailyChallengeQueenFileForPattern(int pattern) {
-  final int normalized = ((pattern % dailyChallengeQueenFiles.length) +
+  final int normalized =
+      ((pattern % dailyChallengeQueenFiles.length) +
           dailyChallengeQueenFiles.length) %
       dailyChallengeQueenFiles.length;
   return dailyChallengeQueenFiles[normalized];
@@ -2598,32 +2890,32 @@ List<String> dailyChallengeSolutionFor(
   final String file = dailyChallengeQueenFileForPattern(pattern);
   return switch (difficulty) {
     DailyChallengeDifficulty.easy => <String>[
-        '${file}1${file}3',
-        'a7a6',
-        '${file}3h3',
-        'a6a5',
-        'h3h7',
-      ],
+      '${file}1${file}3',
+      'a7a6',
+      '${file}3h3',
+      'a6a5',
+      'h3h7',
+    ],
     DailyChallengeDifficulty.medium => <String>[
-        '${file}1${file}2',
-        'a7a6',
-        '${file}2${file}3',
-        'a6a5',
-        '${file}3h3',
-        'b7b6',
-        'h3h7',
-      ],
+      '${file}1${file}2',
+      'a7a6',
+      '${file}2${file}3',
+      'a6a5',
+      '${file}3h3',
+      'b7b6',
+      'h3h7',
+    ],
     DailyChallengeDifficulty.hard => <String>[
-        '${file}1${file}2',
-        'a7a6',
-        '${file}2${file}3',
-        'a6a5',
-        '${file}3h3',
-        'b7b6',
-        'h3h4',
-        'b6b5',
-        'h4h7',
-      ],
+      '${file}1${file}2',
+      'a7a6',
+      '${file}2${file}3',
+      'a6a5',
+      '${file}3h3',
+      'b7b6',
+      'h3h4',
+      'b6b5',
+      'h4h7',
+    ],
   };
 }
 
@@ -2707,16 +2999,19 @@ class _FriendPlayChoiceCard extends StatelessWidget {
 }
 
 class _GameLaunchChoice {
-  const _GameLaunchChoice(this.side, this.aiLevel);
+  const _GameLaunchChoice(this.side, this.aiLevel, this.aiStyle);
 
   final PlayerSideChoice side;
   final double aiLevel;
+  final AiBotStyle aiStyle;
 }
 
 Future<void> _restoreDailyReminder() async {
   const AppPreferences preferences = AppPreferences();
-  final bool enabled =
-      await preferences.readBool('dailyReminder', fallback: true);
+  final bool enabled = await preferences.readBool(
+    'dailyReminder',
+    fallback: true,
+  );
   if (enabled) {
     final bool allowed = await DailyReminderService.instance.enable();
     await preferences.writeBool('dailyReminder', allowed);
@@ -2751,8 +3046,10 @@ class _MobileLoadingFeature extends StatelessWidget {
       children: <Widget>[
         Icon(icon, color: const Color(0xFF59D4C1), size: 26),
         const SizedBox(height: 6),
-        Text(label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+        ),
       ],
     );
   }
@@ -2760,30 +3057,30 @@ class _MobileLoadingFeature extends StatelessWidget {
 
 extension PlayerSideChoiceDetails on PlayerSideChoice {
   String get label => switch (this) {
-        PlayerSideChoice.white => 'White',
-        PlayerSideChoice.random => 'Random',
-        PlayerSideChoice.black => 'Black',
-      };
+    PlayerSideChoice.white => 'White',
+    PlayerSideChoice.random => 'Random',
+    PlayerSideChoice.black => 'Black',
+  };
 
   IconData get icon => switch (this) {
-        PlayerSideChoice.white => Icons.circle_outlined,
-        PlayerSideChoice.random => Icons.shuffle_rounded,
-        PlayerSideChoice.black => Icons.circle,
-      };
+    PlayerSideChoice.white => Icons.circle_outlined,
+    PlayerSideChoice.random => Icons.shuffle_rounded,
+    PlayerSideChoice.black => Icons.circle,
+  };
 }
 
 extension DailyChallengeDifficultyDetails on DailyChallengeDifficulty {
   String get label => switch (this) {
-        DailyChallengeDifficulty.easy => 'Easy - mate in 3',
-        DailyChallengeDifficulty.medium => 'Medium - mate in 4',
-        DailyChallengeDifficulty.hard => 'Hard - mate in 5',
-      };
+    DailyChallengeDifficulty.easy => 'Easy - mate in 3',
+    DailyChallengeDifficulty.medium => 'Medium - mate in 4',
+    DailyChallengeDifficulty.hard => 'Hard - mate in 5',
+  };
 
   int get moveGoal => switch (this) {
-        DailyChallengeDifficulty.easy => 3,
-        DailyChallengeDifficulty.medium => 4,
-        DailyChallengeDifficulty.hard => 5,
-      };
+    DailyChallengeDifficulty.easy => 3,
+    DailyChallengeDifficulty.medium => 4,
+    DailyChallengeDifficulty.hard => 5,
+  };
 }
 
 class DailyChallenge {
@@ -2828,45 +3125,93 @@ class AiProfile {
 
 AiProfile aiProfileFor(int level) {
   return switch (level.clamp(1, 10)) {
-    1 => const AiProfile('New to Chess', 600, 'Frequent human-like mistakes',
-        engineMoveProbability: 0, mistakeProbability: .58),
+    1 => const AiProfile(
+      'New to Chess',
+      600,
+      'Frequent human-like mistakes',
+      engineMoveProbability: 0,
+      mistakeProbability: .58,
+    ),
     2 => const AiProfile(
-        'Beginner', 850, 'Sees simple captures, still blunders',
-        engineMoveProbability: .05, mistakeProbability: .44),
-    3 => const AiProfile('Learner', 1100, 'Basic tactics and development',
-        engineMoveProbability: .15, mistakeProbability: .32),
-    4 => const AiProfile('Intermediate', 1400, 'Plans one or two ideas ahead',
-        engineMoveProbability: .35, mistakeProbability: .23),
+      'Beginner',
+      850,
+      'Sees simple captures, still blunders',
+      engineMoveProbability: .05,
+      mistakeProbability: .44,
+    ),
+    3 => const AiProfile(
+      'Learner',
+      1100,
+      'Basic tactics and development',
+      engineMoveProbability: .15,
+      mistakeProbability: .32,
+    ),
+    4 => const AiProfile(
+      'Intermediate',
+      1400,
+      'Plans one or two ideas ahead',
+      engineMoveProbability: .35,
+      mistakeProbability: .23,
+    ),
     5 => const AiProfile(
-        'Club', 1600, 'Solid play with occasional inaccuracies',
-        engineMoveProbability: .50, mistakeProbability: .17),
-    6 => const AiProfile('Advanced', 1800, 'Finds tactical combinations',
-        engineMoveProbability: .65, mistakeProbability: .11),
-    7 => const AiProfile('Expert', 2000, 'Deep calculation and defense',
-        engineMoveProbability: .78, mistakeProbability: .07),
-    8 => const AiProfile('Candidate Master', 2200, 'Tournament strength',
-        engineMoveProbability: .90, mistakeProbability: .035),
-    9 => const AiProfile('Master', 2500, 'Elite engine pressure',
-        engineMoveProbability: .97, mistakeProbability: .012),
-    _ => const AiProfile('Grandmaster', 2900, 'Maximum challenge',
-        engineMoveProbability: 1, mistakeProbability: 0),
+      'Club',
+      1600,
+      'Solid play with occasional inaccuracies',
+      engineMoveProbability: .50,
+      mistakeProbability: .17,
+    ),
+    6 => const AiProfile(
+      'Advanced',
+      1800,
+      'Finds tactical combinations',
+      engineMoveProbability: .65,
+      mistakeProbability: .11,
+    ),
+    7 => const AiProfile(
+      'Expert',
+      2000,
+      'Deep calculation and defense',
+      engineMoveProbability: .78,
+      mistakeProbability: .07,
+    ),
+    8 => const AiProfile(
+      'Candidate Master',
+      2200,
+      'Tournament strength',
+      engineMoveProbability: .90,
+      mistakeProbability: .035,
+    ),
+    9 => const AiProfile(
+      'Master',
+      2500,
+      'Elite engine pressure',
+      engineMoveProbability: .97,
+      mistakeProbability: .012,
+    ),
+    _ => const AiProfile(
+      'Grandmaster',
+      2900,
+      'Maximum challenge',
+      engineMoveProbability: 1,
+      mistakeProbability: 0,
+    ),
   };
 }
 
 Duration aiThinkDelayFor(int level) => Duration(
-      milliseconds: switch (level.clamp(1, 10)) {
-        1 => 1250,
-        2 => 1050,
-        3 => 850,
-        4 => 700,
-        5 => 620,
-        6 => 540,
-        7 => 470,
-        8 => 410,
-        9 => 360,
-        _ => 320,
-      },
-    );
+  milliseconds: switch (level.clamp(1, 10)) {
+    1 => 1250,
+    2 => 1050,
+    3 => 850,
+    4 => 700,
+    5 => 620,
+    6 => 540,
+    7 => 470,
+    8 => 410,
+    9 => 360,
+    _ => 320,
+  },
+);
 
 class _SideChoiceArtwork extends StatelessWidget {
   const _SideChoiceArtwork({
@@ -2900,7 +3245,7 @@ class _SideChoiceArtwork extends StatelessWidget {
         border: Border.all(color: glow.withValues(alpha: active ? .85 : .35)),
         boxShadow: active
             ? <BoxShadow>[
-                BoxShadow(color: glow.withValues(alpha: .24), blurRadius: 22)
+                BoxShadow(color: glow.withValues(alpha: .24), blurRadius: 22),
               ]
             : const <BoxShadow>[],
       ),
@@ -2927,14 +3272,14 @@ class AiCandidate {
 }
 
 double _aiPieceValue(String code) => switch (code) {
-      'P' => 1.0,
-      'N' => 3.2,
-      'B' => 3.3,
-      'R' => 5.0,
-      'Q' => 9.0,
-      'K' => 100.0,
-      _ => 0.0,
-    };
+  'P' => 1.0,
+  'N' => 3.2,
+  'B' => 3.3,
+  'R' => 5.0,
+  'Q' => 9.0,
+  'K' => 100.0,
+  _ => 0.0,
+};
 
 /// Scores a local AI move defensively when Stockfish cannot be reached.
 /// The previous offline fallback ignored the opponent's next reply and could
@@ -2959,11 +3304,11 @@ double scoreOfflineAiCandidate(
   }
 
   double material(Map<String, ChessPiece> board) => board.values.fold<double>(
-        0,
-        (double total, ChessPiece piece) =>
-            total +
-            (piece.white == aiPlaysWhite ? 1 : -1) * _aiPieceValue(piece.code),
-      );
+    0,
+    (double total, ChessPiece piece) =>
+        total +
+        (piece.white == aiPlaysWhite ? 1 : -1) * _aiPieceValue(piece.code),
+  );
 
   double worstReply = material(after);
   bool opponentHasReply = false;
@@ -3239,47 +3584,47 @@ class ChessRules {
     return switch (piece.code) {
       'P' => _pawnTargets(from, piece, pieces),
       'N' => _jumpTargets(from, piece, pieces, const <SquarePosition>[
-          SquarePosition(1, 2),
-          SquarePosition(2, 1),
-          SquarePosition(2, -1),
-          SquarePosition(1, -2),
-          SquarePosition(-1, -2),
-          SquarePosition(-2, -1),
-          SquarePosition(-2, 1),
-          SquarePosition(-1, 2),
-        ]),
+        SquarePosition(1, 2),
+        SquarePosition(2, 1),
+        SquarePosition(2, -1),
+        SquarePosition(1, -2),
+        SquarePosition(-1, -2),
+        SquarePosition(-2, -1),
+        SquarePosition(-2, 1),
+        SquarePosition(-1, 2),
+      ]),
       'B' => _rayTargets(from, piece, pieces, const <SquarePosition>[
-          SquarePosition(1, 1),
-          SquarePosition(1, -1),
-          SquarePosition(-1, 1),
-          SquarePosition(-1, -1),
-        ]),
+        SquarePosition(1, 1),
+        SquarePosition(1, -1),
+        SquarePosition(-1, 1),
+        SquarePosition(-1, -1),
+      ]),
       'R' => _rayTargets(from, piece, pieces, const <SquarePosition>[
-          SquarePosition(1, 0),
-          SquarePosition(-1, 0),
-          SquarePosition(0, 1),
-          SquarePosition(0, -1),
-        ]),
+        SquarePosition(1, 0),
+        SquarePosition(-1, 0),
+        SquarePosition(0, 1),
+        SquarePosition(0, -1),
+      ]),
       'Q' => _rayTargets(from, piece, pieces, const <SquarePosition>[
-          SquarePosition(1, 0),
-          SquarePosition(-1, 0),
-          SquarePosition(0, 1),
-          SquarePosition(0, -1),
-          SquarePosition(1, 1),
-          SquarePosition(1, -1),
-          SquarePosition(-1, 1),
-          SquarePosition(-1, -1),
-        ]),
+        SquarePosition(1, 0),
+        SquarePosition(-1, 0),
+        SquarePosition(0, 1),
+        SquarePosition(0, -1),
+        SquarePosition(1, 1),
+        SquarePosition(1, -1),
+        SquarePosition(-1, 1),
+        SquarePosition(-1, -1),
+      ]),
       'K' => _jumpTargets(from, piece, pieces, const <SquarePosition>[
-          SquarePosition(1, 0),
-          SquarePosition(-1, 0),
-          SquarePosition(0, 1),
-          SquarePosition(0, -1),
-          SquarePosition(1, 1),
-          SquarePosition(1, -1),
-          SquarePosition(-1, 1),
-          SquarePosition(-1, -1),
-        ]),
+        SquarePosition(1, 0),
+        SquarePosition(-1, 0),
+        SquarePosition(0, 1),
+        SquarePosition(0, -1),
+        SquarePosition(1, 1),
+        SquarePosition(1, -1),
+        SquarePosition(-1, 1),
+        SquarePosition(-1, -1),
+      ]),
       _ => <String>[],
     };
   }
@@ -3349,21 +3694,26 @@ class ChessRules {
 
     return switch (piece.code) {
       'P' => rankDelta == (piece.white ? 1 : -1) && fileDelta.abs() == 1,
-      'N' => (fileDelta.abs() == 1 && rankDelta.abs() == 2) ||
-          (fileDelta.abs() == 2 && rankDelta.abs() == 1),
-      'K' => fileDelta.abs() <= 1 &&
-          rankDelta.abs() <= 1 &&
-          (fileDelta != 0 || rankDelta != 0),
-      'B' => (fileDelta != 0 || rankDelta != 0) &&
-          fileDelta.abs() == rankDelta.abs() &&
-          _rayIsClear(origin, attacked, pieces),
-      'R' => (fileDelta == 0 || rankDelta == 0) &&
-          (fileDelta != 0 || rankDelta != 0) &&
-          _rayIsClear(origin, attacked, pieces),
-      'Q' => ((fileDelta == 0 || rankDelta == 0) ||
-              fileDelta.abs() == rankDelta.abs()) &&
-          (fileDelta != 0 || rankDelta != 0) &&
-          _rayIsClear(origin, attacked, pieces),
+      'N' =>
+        (fileDelta.abs() == 1 && rankDelta.abs() == 2) ||
+            (fileDelta.abs() == 2 && rankDelta.abs() == 1),
+      'K' =>
+        fileDelta.abs() <= 1 &&
+            rankDelta.abs() <= 1 &&
+            (fileDelta != 0 || rankDelta != 0),
+      'B' =>
+        (fileDelta != 0 || rankDelta != 0) &&
+            fileDelta.abs() == rankDelta.abs() &&
+            _rayIsClear(origin, attacked, pieces),
+      'R' =>
+        (fileDelta == 0 || rankDelta == 0) &&
+            (fileDelta != 0 || rankDelta != 0) &&
+            _rayIsClear(origin, attacked, pieces),
+      'Q' =>
+        ((fileDelta == 0 || rankDelta == 0) ||
+                fileDelta.abs() == rankDelta.abs()) &&
+            (fileDelta != 0 || rankDelta != 0) &&
+            _rayIsClear(origin, attacked, pieces),
       _ => false,
     };
   }
@@ -3502,6 +3852,8 @@ class _PlayDestination extends StatelessWidget {
   const _PlayDestination({
     required this.onComputer,
     required this.onMyGames,
+    required this.onPositionCreator,
+    required this.onSpectate,
     required this.onOnline,
     required this.onLocal,
     required this.onTournaments,
@@ -3509,6 +3861,8 @@ class _PlayDestination extends StatelessWidget {
   });
   final VoidCallback onComputer;
   final VoidCallback onMyGames;
+  final VoidCallback onPositionCreator;
+  final VoidCallback onSpectate;
   final VoidCallback onOnline;
   final VoidCallback onLocal;
   final VoidCallback onTournaments;
@@ -3527,16 +3881,23 @@ class _PlayDestination extends StatelessWidget {
           child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text('PLAY',
-                  style: TextStyle(
-                      letterSpacing: 1.8, fontWeight: FontWeight.w900)),
-              Text('Choose your battle mode',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      color: Color(0xFFAEC0D1),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400)),
+              Text(
+                'PLAY',
+                style: TextStyle(
+                  letterSpacing: 1.8,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                'Choose your battle mode',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Color(0xFFAEC0D1),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
             ],
           ),
         ),
@@ -3550,64 +3911,80 @@ class _PlayDestination extends StatelessWidget {
             child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints size) =>
                   GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: wide ? 4 : 1,
-                mainAxisSpacing: wide ? 18 : 14,
-                crossAxisSpacing: wide ? 16 : 14,
-                childAspectRatio: wide ? .56 : 2.25,
-                children: <Widget>[
-                  _PlayModeCard(
-                    icon: Icons.public_rounded,
-                    title: 'Play Online',
-                    subtitle: 'Find a live rival worldwide',
-                    color: const Color(0xFF0F6B61),
-                    asset: 'assets/backgrounds/home-online-hero-v1.webp',
-                    onTap: onOnline,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: wide ? 4 : 1,
+                    mainAxisSpacing: wide ? 18 : 14,
+                    crossAxisSpacing: wide ? 16 : 14,
+                    childAspectRatio: wide ? .56 : 2.25,
+                    children: <Widget>[
+                      _PlayModeCard(
+                        icon: Icons.public_rounded,
+                        title: 'Play Online',
+                        subtitle: 'Find a live rival worldwide',
+                        color: const Color(0xFF0F6B61),
+                        asset: 'assets/backgrounds/home-online-hero-v1.webp',
+                        onTap: onOnline,
+                      ),
+                      _PlayModeCard(
+                        icon: Icons.computer_rounded,
+                        title: 'Play Computer',
+                        subtitle: 'Challenge ChessVerseAI',
+                        color: const Color(0xFF174A69),
+                        asset: 'assets/backgrounds/play-computer-card-v2.webp',
+                        onTap: onComputer,
+                      ),
+                      _PlayModeCard(
+                        icon: Icons.history_rounded,
+                        title: 'My Games',
+                        subtitle: 'Continue or replay your saved games',
+                        color: const Color(0xFF5A3F78),
+                        asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
+                        onTap: onMyGames,
+                      ),
+                      _PlayModeCard(
+                        icon: Icons.dashboard_customize_rounded,
+                        title: 'Position Creator',
+                        subtitle: 'Build any legal setup and challenge the AI',
+                        color: const Color(0xFF7B5DA8),
+                        asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
+                        onTap: onPositionCreator,
+                      ),
+                      _PlayModeCard(
+                        icon: Icons.visibility_rounded,
+                        title: 'Watch & Learn',
+                        subtitle: 'Spectate live games with AI insights',
+                        color: const Color(0xFF2B8C83),
+                        asset: 'assets/backgrounds/home-online-hero-v1.webp',
+                        onTap: onSpectate,
+                      ),
+                      _PlayModeCard(
+                        icon: Icons.groups_rounded,
+                        title: 'Local Match',
+                        subtitle: 'Two players on one board',
+                        color: const Color(0xFF25664F),
+                        asset: 'assets/backgrounds/local-match-card-v2.webp',
+                        onTap: onLocal,
+                      ),
+                      _PlayModeCard(
+                        icon: Icons.emoji_events_rounded,
+                        title: 'Tournaments',
+                        subtitle: 'Enter the World Chess Circuit',
+                        color: const Color(0xFFD5A63B),
+                        asset: 'assets/backgrounds/tournament-new-york-grand-final-v1.webp',
+                        onTap: onTournaments,
+                      ),
+                      _PlayModeCard(
+                        icon: Icons.calendar_month_rounded,
+                        title: 'Daily Challenge',
+                        subtitle: 'Solve today’s featured position',
+                        color: const Color(0xFF8A5A21),
+                        asset:
+                            'assets/backgrounds/daily-challenge-card-v2.webp',
+                        onTap: onDaily,
+                      ),
+                    ],
                   ),
-                  _PlayModeCard(
-                    icon: Icons.computer_rounded,
-                    title: 'Play Computer',
-                    subtitle: 'Challenge ChessVerseAI',
-                    color: const Color(0xFF174A69),
-                    asset: 'assets/backgrounds/play-computer-card-v2.webp',
-                    onTap: onComputer,
-                  ),
-                  _PlayModeCard(
-                    icon: Icons.history_rounded,
-                    title: 'My Games',
-                    subtitle: 'Continue or replay your saved games',
-                    color: const Color(0xFF5A3F78),
-                    asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
-                    onTap: onMyGames,
-                  ),
-                  _PlayModeCard(
-                    icon: Icons.groups_rounded,
-                    title: 'Local Match',
-                    subtitle: 'Two players on one board',
-                    color: const Color(0xFF25664F),
-                    asset: 'assets/backgrounds/local-match-card-v2.webp',
-                    onTap: onLocal,
-                  ),
-                  _PlayModeCard(
-                    icon: Icons.emoji_events_rounded,
-                    title: 'Tournaments',
-                    subtitle: 'Enter the World Chess Circuit',
-                    color: const Color(0xFFD5A63B),
-                    asset:
-                        'assets/backgrounds/tournament-new-york-grand-final-v1.webp',
-                    onTap: onTournaments,
-                  ),
-                  _PlayModeCard(
-                    icon: Icons.calendar_month_rounded,
-                    title: 'Daily Challenge',
-                    subtitle: 'Solve today’s featured position',
-                    color: const Color(0xFF8A5A21),
-                    asset: 'assets/backgrounds/daily-challenge-card-v2.webp',
-                    onTap: onDaily,
-                  ),
-                ],
-              ),
             ),
           ),
         ),
@@ -3638,8 +4015,8 @@ class _PlayModeCard extends StatelessWidget {
     final Alignment imageAlignment = title == 'Play Online'
         ? const Alignment(0.5, 0)
         : title == 'Tournaments'
-            ? const Alignment(0.72, 0)
-            : Alignment.center;
+        ? const Alignment(0.72, 0)
+        : Alignment.center;
     return Card(
       color: const Color(0xFF071827),
       shape: RoundedRectangleBorder(
@@ -3740,12 +4117,12 @@ class _PlayModeCard extends StatelessWidget {
                                 title == 'Daily Challenge'
                                     ? 'Solve Now'
                                     : title == 'Tournaments'
-                                        ? 'View Tournaments'
-                                        : title == 'Local Match'
-                                            ? 'Start Match'
-                                            : title == 'Play Computer'
-                                                ? 'Start Game'
-                                                : 'Play Now',
+                                    ? 'View Tournaments'
+                                    : title == 'Local Match'
+                                    ? 'Start Match'
+                                    : title == 'Play Computer'
+                                    ? 'Start Game'
+                                    : 'Play Now',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
@@ -3753,8 +4130,10 @@ class _PlayModeCard extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 16),
-                              const Icon(Icons.chevron_right_rounded,
-                                  color: Colors.white),
+                              const Icon(
+                                Icons.chevron_right_rounded,
+                                color: Colors.white,
+                              ),
                             ],
                           ),
                         ),
@@ -3768,40 +4147,47 @@ class _PlayModeCard extends StatelessWidget {
                   horizontal: compact ? 16 : 24,
                   vertical: compact ? 12 : 18,
                 ),
-                child: Row(children: <Widget>[
-                  CircleAvatar(
-                    radius: compact ? 29 : 34,
-                    backgroundColor: const Color(0xB3071A2A),
-                    child: Icon(icon, color: color, size: compact ? 29 : 34),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(title,
+                child: Row(
+                  children: <Widget>[
+                    CircleAvatar(
+                      radius: compact ? 29 : 34,
+                      backgroundColor: const Color(0xB3071A2A),
+                      child: Icon(icon, color: color, size: compact ? 29 : 34),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                                color: Color(0xFFFFF8ED),
-                                fontSize: compact ? 22 : 26,
-                                height: 1.05,
-                                fontWeight: FontWeight.w900)),
-                        const SizedBox(height: 4),
-                        Text(subtitle,
+                              color: Color(0xFFFFF8ED),
+                              fontSize: compact ? 22 : 26,
+                              height: 1.05,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: Color(0xFFC5D5E0),
                               fontSize: compact ? 13 : 14,
                               height: 1.2,
-                            )),
-                      ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: color, size: 34),
-                ]),
+                    Icon(Icons.chevron_right_rounded, color: color, size: 34),
+                  ],
+                ),
               );
             },
           ),
@@ -3837,6 +4223,7 @@ class GameScreen extends StatefulWidget {
     this.initiallyGuest = true,
     this.initialSideChoice = PlayerSideChoice.white,
     this.initialAiLevel = 4,
+    this.initialAiStyle = AiBotStyle.balanced,
     this.initialDailyDifficulty,
     this.initialPuzzleId,
     this.initialOnlineMatch,
@@ -3844,6 +4231,7 @@ class GameScreen extends StatefulWidget {
     this.aiOpponentName,
     this.resumeDraft,
     this.onlineApi,
+    this.spectatorMode = false,
     this.onLogout,
     this.onDisplayNameChanged,
     super.key,
@@ -3859,6 +4247,7 @@ class GameScreen extends StatefulWidget {
   final bool initiallyGuest;
   final PlayerSideChoice initialSideChoice;
   final double initialAiLevel;
+  final AiBotStyle initialAiStyle;
   final DailyChallengeDifficulty? initialDailyDifficulty;
   final String? initialPuzzleId;
   final OnlineMatchDto? initialOnlineMatch;
@@ -3866,6 +4255,7 @@ class GameScreen extends StatefulWidget {
   final String? aiOpponentName;
   final ComputerGameDraft? resumeDraft;
   final OnlineMatchApi? onlineApi;
+  final bool spectatorMode;
   final Future<void> Function()? onLogout;
   final Future<void> Function(String displayName)? onDisplayNameChanged;
 
@@ -3892,49 +4282,55 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Map<String, dynamic> _encodePosition(GameSnapshot snapshot) => {
-        'pieces': snapshot.pieces.map((square, piece) =>
-            MapEntry(square, '${piece.white ? 'w' : 'b'}${piece.code}')),
-        'moves': List<String>.from(snapshot.moves),
-        'capturedWhite': snapshot.capturedWhite.map((p) => p.code).toList(),
-        'capturedBlack': snapshot.capturedBlack.map((p) => p.code).toList(),
-        'coachNote': snapshot.coachNote,
-        'lastFrom': snapshot.lastFromSquare,
-        'lastTo': snapshot.lastToSquare,
-        'lastCapture': snapshot.lastCaptureSquare,
-        'whiteSeconds': snapshot.whiteSeconds,
-        'blackSeconds': snapshot.blackSeconds,
-      };
+    'pieces': snapshot.pieces.map(
+      (square, piece) =>
+          MapEntry(square, '${piece.white ? 'w' : 'b'}${piece.code}'),
+    ),
+    'moves': List<String>.from(snapshot.moves),
+    'capturedWhite': snapshot.capturedWhite.map((p) => p.code).toList(),
+    'capturedBlack': snapshot.capturedBlack.map((p) => p.code).toList(),
+    'coachNote': snapshot.coachNote,
+    'lastFrom': snapshot.lastFromSquare,
+    'lastTo': snapshot.lastToSquare,
+    'lastCapture': snapshot.lastCaptureSquare,
+    'whiteSeconds': snapshot.whiteSeconds,
+    'blackSeconds': snapshot.blackSeconds,
+  };
 
   GameSnapshot _decodePosition(Map<String, dynamic> data) => GameSnapshot(
-        pieces: (data['pieces'] as Map).map((square, value) => MapEntry(
-            square as String,
-            ChessPiece((value as String).substring(1), value.startsWith('w')))),
-        moves: List<String>.from(data['moves'] as List),
-        capturedWhite: (data['capturedWhite'] as List? ?? [])
-            .map((p) => ChessPiece(p as String, true))
-            .toList(),
-        capturedBlack: (data['capturedBlack'] as List? ?? [])
-            .map((p) => ChessPiece(p as String, false))
-            .toList(),
-        coachNote: data['coachNote'] as String? ?? 'Select a piece to begin',
-        lastFromSquare: data['lastFrom'] as String?,
-        lastToSquare: data['lastTo'] as String?,
-        lastCaptureSquare: data['lastCapture'] as String?,
-        whiteSeconds: (data['whiteSeconds'] as num).toInt(),
-        blackSeconds: (data['blackSeconds'] as num).toInt(),
-      );
+    pieces: (data['pieces'] as Map).map(
+      (square, value) => MapEntry(
+        square as String,
+        ChessPiece((value as String).substring(1), value.startsWith('w')),
+      ),
+    ),
+    moves: List<String>.from(data['moves'] as List),
+    capturedWhite: (data['capturedWhite'] as List? ?? [])
+        .map((p) => ChessPiece(p as String, true))
+        .toList(),
+    capturedBlack: (data['capturedBlack'] as List? ?? [])
+        .map((p) => ChessPiece(p as String, false))
+        .toList(),
+    coachNote: data['coachNote'] as String? ?? 'Select a piece to begin',
+    lastFromSquare: data['lastFrom'] as String?,
+    lastToSquare: data['lastTo'] as String?,
+    lastCaptureSquare: data['lastCapture'] as String?,
+    whiteSeconds: (data['whiteSeconds'] as num).toInt(),
+    blackSeconds: (data['blackSeconds'] as num).toInt(),
+  );
 
   GameSnapshot get _currentPosition => GameSnapshot(
-      pieces: _pieces,
-      moves: _moves,
-      capturedWhite: _capturedWhite,
-      capturedBlack: _capturedBlack,
-      coachNote: _coachNote,
-      lastFromSquare: _lastFromSquare,
-      lastToSquare: _lastToSquare,
-      lastCaptureSquare: _lastCaptureSquare,
-      whiteSeconds: _whiteSeconds,
-      blackSeconds: _blackSeconds);
+    pieces: _pieces,
+    moves: _moves,
+    capturedWhite: _capturedWhite,
+    capturedBlack: _capturedBlack,
+    coachNote: _coachNote,
+    lastFromSquare: _lastFromSquare,
+    lastToSquare: _lastToSquare,
+    lastCaptureSquare: _lastCaptureSquare,
+    whiteSeconds: _whiteSeconds,
+    blackSeconds: _blackSeconds,
+  );
 
   Future<void> _persistComputerDraft({bool force = false}) async {
     if (_draftWrite != null) {
@@ -3964,28 +4360,38 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (_gameResultTitle != null) {
         if (_lastDraftFingerprint == 'finished') return;
         await ComputerGameStore.finish(
-            owner,
-            ComputerGameDraft(id: id, updatedAt: DateTime.now(), state: {
+          owner,
+          ComputerGameDraft(
+            id: id,
+            updatedAt: DateTime.now(),
+            state: {
               ..._encodePosition(_currentPosition),
               'version': 1,
               'humanWhite': _humanPlaysWhite,
               'level': _aiLevel,
+              'aiStyle': _aiStyle.name,
               'whiteName': _whitePlayerName,
               'blackName': _blackPlayerName,
               'result': _gameResultTitle,
               'detail': _gameResultDetail,
-              'outcome': playerOutcomeForResult(_gameResultTitle!,
-                  humanPlaysWhite: _humanPlaysWhite, tracksPlayer: true),
+              'outcome': playerOutcomeForResult(
+                _gameResultTitle!,
+                humanPlaysWhite: _humanPlaysWhite,
+                tracksPlayer: true,
+              ),
               'reviews': _moveReviews.map((r) => r.toJson()).toList(),
-            }));
+            },
+          ),
+        );
         _lastDraftFingerprint = 'finished';
         _lastSaveOkay = true;
         return;
       }
       // Never store an incomplete promotion decision; the prior legal position remains resumable.
-      if (_pieces.entries.any((e) =>
-          e.value.code == 'P' &&
-          (e.key.endsWith('1') || e.key.endsWith('8')))) {
+      if (_pieces.entries.any(
+        (e) =>
+            e.value.code == 'P' && (e.key.endsWith('1') || e.key.endsWith('8')),
+      )) {
         return;
       }
       final fingerprint =
@@ -3996,6 +4402,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         'version': 1,
         'humanWhite': _humanPlaysWhite,
         'level': _aiLevel,
+        'aiStyle': _aiStyle.name,
         'whiteName': _whitePlayerName,
         'blackName': _blackPlayerName,
         'history': _history.map(_encodePosition).toList(),
@@ -4006,8 +4413,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         'lastPlayerMove': _lastPlayerMove,
         'lastPlayerCoachNote': _lastPlayerCoachNote,
       };
-      await ComputerGameStore.save(owner,
-          ComputerGameDraft(id: id, updatedAt: DateTime.now(), state: state));
+      await ComputerGameStore.save(
+        owner,
+        ComputerGameDraft(id: id, updatedAt: DateTime.now(), state: state),
+      );
       _lastDraftFingerprint = fingerprint;
       _lastSaveOkay = true;
     } on ComputerGameConflict {
@@ -4016,30 +4425,37 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _aiMoveEpoch++;
       if (mounted) {
         await showDialog<void>(
-            context: context,
-            barrierDismissible: false,
-            builder: (dialogContext) => AlertDialog(
-                  title: const Text('Game changed on another device'),
-                  content: const Text(
-                      'This board can no longer save changes. Open My Games to continue the latest position.'),
-                  actions: [
-                    TextButton(
-                        onPressed: () {
-                          Navigator.pop(dialogContext);
-                          Navigator.of(context).maybePop();
-                        },
-                        child: const Text('Back to My Games'))
-                  ],
-                ));
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Game changed on another device'),
+            content: const Text(
+              'This board can no longer save changes. Open My Games to continue the latest position.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                  Navigator.of(context).maybePop();
+                },
+                child: const Text('Back to My Games'),
+              ),
+            ],
+          ),
+        );
       }
     } catch (_) {
       _lastSaveOkay = false;
       _lastDraftFingerprint = null;
       if (mounted && !_draftSaveWarningShown) {
         _draftSaveWarningShown = true;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
             content: Text(
-                'Game is not synced. Reconnect before leaving to continue on another device.')));
+              'Game is not synced. Reconnect before leaving to continue on another device.',
+            ),
+          ),
+        );
       }
     }
   }
@@ -4066,16 +4482,27 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _lastCaptureSquare = position.lastCaptureSquare;
     _humanPlaysWhite = draft.humanWhite;
     _aiLevel = draft.level;
+    _aiStyle = AiBotStyle.values.firstWhere(
+      (AiBotStyle style) => style.name == data['aiStyle'],
+      orElse: () => AiBotStyle.balanced,
+    );
     _whitePlayerName = draft.whiteName;
     _blackPlayerName = draft.blackName;
     _history
       ..clear()
-      ..addAll((data['history'] as List? ?? []).map(
-          (row) => _decodePosition(Map<String, dynamic>.from(row as Map))));
+      ..addAll(
+        (data['history'] as List? ?? []).map(
+          (row) => _decodePosition(Map<String, dynamic>.from(row as Map)),
+        ),
+      );
     _moveReviews
       ..clear()
-      ..addAll((data['reviews'] as List? ?? []).map((row) =>
-          SavedMoveReview.fromJson(Map<String, dynamic>.from(row as Map))));
+      ..addAll(
+        (data['reviews'] as List? ?? []).map(
+          (row) =>
+              SavedMoveReview.fromJson(Map<String, dynamic>.from(row as Map)),
+        ),
+      );
     _playerMoveScores
       ..clear()
       ..addAll(List<int>.from(data['scores'] as List? ?? []));
@@ -4124,6 +4551,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String? _quickChatMessage;
   bool _quickChatMine = false;
   String? _selectedSquare;
+  String? _premoveFrom;
+  String? _premoveTo;
   String? _lastFromSquare;
   String? _lastToSquare;
   String? _lastCaptureSquare;
@@ -4151,6 +4580,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   BoardSkin _skin = BoardSkin.royalWalnut;
   GameMode _gameMode = GameMode.computer;
   double _aiLevel = 4;
+  AiBotStyle _aiStyle = AiBotStyle.balanced;
   bool _aiThinking = false;
   int _aiMoveEpoch = 0;
   bool _coachEnabled = true;
@@ -4239,8 +4669,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     super.initState();
     unawaited(_loadGamePreferences());
     unawaited(_loadCoachLanguage());
-    AppLanguageController.effectiveLanguageChanges
-        .addListener(_onCoachLanguageChanged);
+    AppLanguageController.effectiveLanguageChanges.addListener(
+      _onCoachLanguageChanged,
+    );
     WidgetsBinding.instance.addObserver(this);
     _dailyDifficulty =
         widget.initialDailyDifficulty ?? DailyChallengeDifficulty.medium;
@@ -4260,6 +4691,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     );
     _gameMode = widget.initialGameMode;
     _aiLevel = widget.initialAiLevel.clamp(1, 10).toDouble();
+    _aiStyle = widget.initialAiStyle;
     _humanPlaysWhite = switch (widget.initialSideChoice) {
       PlayerSideChoice.white => true,
       PlayerSideChoice.black => false,
@@ -4272,12 +4704,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         ? _dailyStartingPosition(_dailyChallenge)
         : Map<String, ChessPiece>.from(_initialPieces);
     _signedIn = widget.initiallySignedIn;
-    final String playerName = widget.initialPlayerName != null &&
+    final String playerName =
+        widget.initialPlayerName != null &&
             widget.initialPlayerName!.trim().isNotEmpty
         ? widget.initialPlayerName!.trim()
         : widget.initiallySignedIn
-            ? 'Guest Player'
-            : 'Guest Player';
+        ? 'Guest Player'
+        : 'Guest Player';
     if (widget.initialPlayerName != null &&
         widget.initialPlayerName!.trim().isNotEmpty) {
       _whitePlayerName = playerName;
@@ -4289,11 +4722,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (_gameMode == GameMode.computer && widget.resumeDraft != null) {
       _restoreComputerDraft(widget.resumeDraft!);
     }
-    unawaited(ComputerGameStore.activeOwner().then((owner) {
-      if (!mounted) return;
-      _draftOwner = owner;
-      unawaited(_persistComputerDraft(force: true));
-    }));
+    unawaited(
+      ComputerGameStore.activeOwner().then((owner) {
+        if (!mounted) return;
+        _draftOwner = owner;
+        unawaited(_persistComputerDraft(force: true));
+      }),
+    );
     if (_gameMode == GameMode.daily) {
       _applyDailyCompletionState();
       if (!_dailyCompletedToday) {
@@ -4316,7 +4751,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _beginOnlineMatch(
-              widget.initialOnlineMatch!, widget.initialAuthToken!);
+            widget.initialOnlineMatch!,
+            widget.initialAuthToken!,
+          );
         }
       });
     } else if (_gameMode == GameMode.online) {
@@ -4427,14 +4864,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           : switch (boardTheme) {
               'Jade Glass' ||
               'Ocean Teal' ||
-              'Royal Emerald' =>
-                BoardSkin.jadeGlass,
+              'Royal Emerald' => BoardSkin.jadeGlass,
               'Tournament' => BoardSkin.tournament,
               'Marble' => BoardSkin.marble,
               'Sapphire' ||
               'Midnight Sapphire' ||
-              'Neon Arena' =>
-                BoardSkin.sapphire,
+              'Neon Arena' => BoardSkin.sapphire,
               _ => BoardSkin.royalWalnut,
             };
     });
@@ -4445,8 +4880,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_persistComputerDraft(force: true));
-    AppLanguageController.effectiveLanguageChanges
-        .removeListener(_onCoachLanguageChanged);
+    AppLanguageController.effectiveLanguageChanges.removeListener(
+      _onCoachLanguageChanged,
+    );
     _clockTimer?.cancel();
     _moveQualityTimer?.cancel();
     _aiWatchdogTimer?.cancel();
@@ -4538,9 +4974,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _leavingComputerGame = false;
       _computerPaused = false;
       _recoverComputerTurnIfNeeded();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
           content: Text(
-              'Could not pause safely. Reconnect, then go back to save your game.')));
+            'Could not pause safely. Reconnect, then go back to save your game.',
+          ),
+        ),
+      );
       return;
     }
     setState(() => _allowComputerExit = true);
@@ -4580,11 +5020,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final BoardPalette palette = boardPalettes[_skin]!;
     final bool sideToMoveWhite =
         _gameMode == GameMode.online && _onlineMatch != null
-            ? _onlineMatch!.whiteToMove
-            : _moves.length.isEven;
+        ? _onlineMatch!.whiteToMove
+        : _moves.length.isEven;
     final bool sideInCheck = ChessRules.isKingInCheck(sideToMoveWhite, _pieces);
-    final String? checkedKingSquare =
-        sideInCheck ? _kingSquare(sideToMoveWhite) : null;
+    final String? checkedKingSquare = sideInCheck
+        ? _kingSquare(sideToMoveWhite)
+        : null;
     final Set<String> legalTargets = !_showMoveHints || _selectedSquare == null
         ? <String>{}
         : _legalTargetsFor(_selectedSquare!).toSet();
@@ -4633,8 +5074,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               final double mobileHeaderHeight = wide
                   ? 0
                   : compactLandscape
-                      ? 48
-                      : 58;
+                  ? 48
+                  : 58;
               final double widePanelWidth = math.min(
                 410,
                 math.max(320, constraints.maxWidth * 0.30),
@@ -4650,22 +5091,22 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   showOnlineArena && !compactLandscape ? 136 : 0;
               final double boardWidth = wide
                   ? constraints.maxWidth -
-                      pagePadding.horizontal -
-                      widePanelWidth -
-                      24
+                        pagePadding.horizontal -
+                        widePanelWidth -
+                        24
                   : compactLandscape
-                      ? constraints.maxWidth *
-                          (_landscapeCoachCollapsed ? 0.94 : 0.68)
-                      : constraints.maxWidth - pagePadding.horizontal;
+                  ? constraints.maxWidth *
+                        (_landscapeCoachCollapsed ? 0.94 : 0.68)
+                  : constraints.maxWidth - pagePadding.horizontal;
               final double boardHeight = wide
                   ? availableHeight -
-                      wideHeaderHeight -
-                      wideDockHeight -
-                      arenaRailsHeight -
-                      18
+                        wideHeaderHeight -
+                        wideDockHeight -
+                        arenaRailsHeight -
+                        18
                   : compactLandscape
-                      ? availableHeight - mobileHeaderHeight - 4
-                      : boardWidth;
+                  ? availableHeight - mobileHeaderHeight - 4
+                  : boardWidth;
               // Portrait is a vertically scrolling composition. Limiting its
               // board by the viewport height left only ~145px for the online
               // AI Coach after the two player rails, so the action row was
@@ -4680,7 +5121,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               final bool terminalCheckmate = _gameMode == GameMode.online
                   ? _onlineMatch?.resultReason == 'CHECKMATE'
                   : _gameResultDetail == 'Checkmate';
-              final bool losingKingWhite = _gameMode == GameMode.online &&
+              final bool losingKingWhite =
+                  _gameMode == GameMode.online &&
                       _onlineMatch?.resultReason == 'CHECKMATE'
                   ? _onlineMatch!.result == '0-1'
                   : sideToMoveWhite;
@@ -4699,9 +5141,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 decisiveSquare: terminalCheckmate ? _lastToSquare : null,
                 fallenKingSquare: terminalCheckmate
                     ? (_kingSquare(losingKingWhite) ??
-                        (_lastCapturedPiece?.code == 'K'
-                            ? _lastCaptureSquare
-                            : null))
+                          (_lastCapturedPiece?.code == 'K'
+                              ? _lastCaptureSquare
+                              : null))
                     : null,
                 fallenKingWhite: losingKingWhite,
                 coachArrowFrom: _coachArrowFrom,
@@ -4731,8 +5173,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       tournamentName: _onlineMatch?.tournamentName,
                       tournamentRound: _onlineMatch?.tournamentRound,
                       compactOverlay: compactLandscape,
-                      bottomAction: !wide &&
+                      bottomAction:
+                          !wide &&
                               !compactLandscape &&
+                              !widget.spectatorMode &&
                               _signedIn &&
                               _onlineMatch?.isActive == true
                           ? _buildQuickChatButton()
@@ -4746,13 +5190,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       gameMode: _gameMode,
                       activeColor: _gameMode == GameMode.computer
                           ? (sideToMoveWhite == _humanPlaysWhite && !_aiThinking
-                              ? 'YOUR TURN'
-                              : 'AI TURN')
+                                ? 'YOUR TURN'
+                                : 'AI TURN')
                           : _gameMode == GameMode.online && _onlineMatch != null
-                              ? (_onlineStatusText(_onlineMatch!))
-                              : _moves.length.isEven
-                                  ? 'PLAYER 1 • WHITE'
-                                  : 'PLAYER 2 • BLACK',
+                          ? (_onlineStatusText(_onlineMatch!))
+                          : _moves.length.isEven
+                          ? 'PLAYER 1 • WHITE'
+                          : 'PLAYER 2 • BLACK',
                       aiThinking: _aiThinking,
                       coachEnabled: _coachEnabled,
                       coachNote: _localizedLiveCoachText(
@@ -4763,11 +5207,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       onLanguage: _chooseGameCoachLanguage,
                       evaluationPawns: _engineEvaluationPawns,
                       lastMove: _lastPlayerMove,
-                      lastMoveOwner:
-                          _lastPlayerMove == null ? null : 'Your move',
+                      lastMoveOwner: _lastPlayerMove == null
+                          ? null
+                          : 'Your move',
                       dailyProgress: _dailyPlayerMovesCompleted,
                       dailyGoal: _dailyChallenge.playerMoveGoal,
-                      canUndo: _gameMode != GameMode.online &&
+                      canUndo:
+                          _gameMode != GameMode.online &&
                           _gameResultTitle == null &&
                           _history.isNotEmpty,
                       hintLabel: switch (_hintStage) {
@@ -4779,24 +5225,25 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       analyzeLabel: _moveQualityText == null
                           ? 'Analyze'
                           : _moveQualityIsWeak
-                              ? 'Why weak?'
-                              : 'Analyze move',
+                          ? 'Why weak?'
+                          : 'Analyze move',
                       onHint: _showHint,
                       onAnalyze: _showAnalysis,
                       onTryAgain: _gameMode == GameMode.online
                           ? () => unawaited(
-                                _refreshOnlineMatch(forceBoardReplay: true),
-                              )
+                              _refreshOnlineMatch(forceBoardReplay: true),
+                            )
                           : _isTacticsMode
-                              ? (_gameResultTitle
-                                          ?.toLowerCase()
-                                          .contains('challenge missed') ==
-                                      true
-                                  ? _reset
-                                  : null)
-                              : _confirmNewGame,
+                          ? (_gameResultTitle?.toLowerCase().contains(
+                                      'challenge missed',
+                                    ) ==
+                                    true
+                                ? _reset
+                                : null)
+                          : _confirmNewGame,
                       onUndo: _undo,
-                      puzzleComplete: _gameMode == GameMode.puzzle &&
+                      puzzleComplete:
+                          _gameMode == GameMode.puzzle &&
                           _gameResultTitle == 'Puzzle complete',
                       onNextPuzzle: _startNextPuzzle,
                       onBackToAcademy: () => Navigator.of(context).pop(),
@@ -4804,9 +5251,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               final bool yourTurn = switch (_gameMode) {
                 GameMode.computer =>
                   sideToMoveWhite == _humanPlaysWhite && !_aiThinking,
-                GameMode.online => _onlineMatch != null &&
-                    _onlineMatch!.activeColor.toLowerCase() ==
-                        _onlineMatch!.yourColor.toLowerCase(),
+                GameMode.online =>
+                  _onlineMatch != null &&
+                      _onlineMatch!.activeColor.toLowerCase() ==
+                          _onlineMatch!.yourColor.toLowerCase(),
                 _ => true,
               };
               return Padding(
@@ -4859,7 +5307,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                           alignment: Alignment.center,
                                           child: SizedBox(
                                             width: boardDimension,
-                                            height: boardDimension +
+                                            height:
+                                                boardDimension +
                                                 arenaRailsHeight,
                                             child: arenaBoard,
                                           ),
@@ -5013,11 +5462,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                               const SizedBox(height: 8),
                               SizedBox(
                                 key: const ValueKey<String>('mobile-ai-coach'),
-                                height: (constraints.maxHeight * 0.46)
-                                    .clamp(360.0, 440.0),
+                                height: (constraints.maxHeight * 0.46).clamp(
+                                  360.0,
+                                  440.0,
+                                ),
                                 child: Padding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(6, 0, 6, 0),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    6,
+                                    0,
+                                    6,
+                                    0,
+                                  ),
                                   child: studioCoach,
                                 ),
                               ),
@@ -5035,8 +5490,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           child: _TurnBanner(
                             label: _gameMode == GameMode.local
                                 ? (_moves.length.isEven
-                                    ? 'PLAYER 1 • WHITE'
-                                    : 'PLAYER 2 • BLACK')
+                                      ? 'PLAYER 1 • WHITE'
+                                      : 'PLAYER 2 • BLACK')
                                 : 'YOUR TURN',
                           ),
                         ),
@@ -5050,31 +5505,36 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           top: wide
                               ? wideHeaderHeight + 18
                               : compactLandscape
-                                  ? mobileHeaderHeight + 8
-                                  : mobileHeaderHeight + 100,
+                              ? mobileHeaderHeight + 8
+                              : mobileHeaderHeight + 100,
                           right: wide ? widePanelWidth + 34 : 10,
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
                               if (_quickChatMessage != null)
                                 Container(
-                                  constraints:
-                                      const BoxConstraints(maxWidth: 190),
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 190,
+                                  ),
                                   margin: const EdgeInsets.only(right: 6),
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 8),
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: _quickChatMine
                                         ? const Color(0xEE0D746A)
                                         : const Color(0xEE132C3A),
                                     borderRadius: BorderRadius.circular(18),
                                     border: Border.all(
-                                        color: const Color(0xFF52DCCB)),
+                                      color: const Color(0xFF52DCCB),
+                                    ),
                                   ),
                                   child: Text(
                                     _quickChatMessage!,
                                     style: const TextStyle(
-                                        fontWeight: FontWeight.w800),
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
                                 ),
                               if (wide || compactLandscape)
@@ -5133,6 +5593,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           ),
                         ),
                       if (_signedIn &&
+                          !widget.spectatorMode &&
                           _gameResultTitle != null &&
                           _resultVisible)
                         Positioned.fill(
@@ -5154,8 +5615,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             onNewGame: _gameMode == GameMode.online
                                 ? _startFreshOnlineGame
                                 : _gameMode == GameMode.puzzle
-                                    ? _startNextPuzzle
-                                    : _reset,
+                                ? _startNextPuzzle
+                                : _reset,
                             newGameLabel: _gameMode == GameMode.puzzle
                                 ? 'Next puzzle'
                                 : null,
@@ -5184,7 +5645,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                 'Play and improve at chessverseai.com',
                               ].join('\n');
                               await Clipboard.setData(
-                                  ClipboardData(text: result));
+                                ClipboardData(text: result),
+                              );
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
@@ -5199,9 +5661,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           _gameResultTitle != null &&
                           !_resultVisible &&
                           !_gameResultTitle!.toLowerCase().contains('draw') &&
-                          !_gameResultTitle!
-                              .toLowerCase()
-                              .contains('challenge missed'))
+                          !_gameResultTitle!.toLowerCase().contains(
+                            'challenge missed',
+                          ))
                         Positioned(
                           // On desktop the board and coach share the body. The
                           // completion badge belongs over the board, so centre
@@ -5237,20 +5699,21 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             child: Center(
                               child: DecoratedBox(
                                 decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFF16171C,
-                                  ).withValues(alpha: 0.92),
+                                  color: const Color(0xFF16171C)
+                                      .withValues(alpha: 0.92),
                                   borderRadius: BorderRadius.circular(999),
                                   border: Border.all(
-                                    color: (_moveQualityIsWeak
-                                            ? const Color(0xFFD6A84F)
-                                            : const Color(0xFF55D6B9))
-                                        .withValues(alpha: 0.78),
+                                    color:
+                                        (_moveQualityIsWeak
+                                                ? const Color(0xFFD6A84F)
+                                                : const Color(0xFF55D6B9))
+                                            .withValues(alpha: 0.78),
                                   ),
                                   boxShadow: <BoxShadow>[
                                     BoxShadow(
-                                      color:
-                                          Colors.black.withValues(alpha: 0.32),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.32,
+                                      ),
                                       blurRadius: 24,
                                       offset: const Offset(0, 12),
                                     ),
@@ -5337,8 +5800,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _authLoading = false;
       _authHasError = false;
       _awaitingCode = false;
-      _coachNote =
-          'Guest Player mode is ready. Create an account later to save progress.';
+      _coachNote = 'Guest Player mode is ready. Create an account later to save progress.';
     });
   }
 
@@ -5366,9 +5828,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
       final Map<String, dynamic> response = await _authApi.post(
         'facebook',
-        <String, String>{
-          'accessToken': result.accessToken!.tokenString,
-        },
+        <String, String>{'accessToken': result.accessToken!.tokenString},
       );
       if (!mounted) return;
       await _completeLogin(response);
@@ -5494,7 +5954,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                         'Password updated. Sign in with your new password.';
                   });
                 } else {
-                  final String baseMessage = response['message'] as String? ??
+                  final String baseMessage =
+                      response['message'] as String? ??
                       'If the account exists, a reset code was sent.';
                   final String? developmentCode =
                       response['developmentCode'] as String?;
@@ -5577,8 +6038,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               ),
               actions: <Widget>[
                 TextButton(
-                  onPressed:
-                      loading ? null : () => Navigator.of(dialogContext).pop(),
+                  onPressed: loading
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
                   child: const Text('Cancel'),
                 ),
                 FilledButton(
@@ -5606,8 +6068,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             _authPassword.length < 8)) {
       setState(() {
         _authHasError = true;
-        _authMessage =
-            'Enter a user id, display name, valid email and an 8+ character password.';
+        _authMessage = 'Enter a user id, display name, valid email and an 8+ character password.';
       });
       return;
     }
@@ -5632,24 +6093,27 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _authMessage = _awaitingCode
           ? 'Verifying your code...'
           : _registerMode
-              ? 'Sending a secure verification code...'
-              : 'Signing you in...';
+          ? 'Sending a secure verification code...'
+          : 'Signing you in...';
     });
 
     try {
       if (_registerMode && !_awaitingCode) {
-        final Map<String, dynamic> response =
-            await _authApi.post('register', <String, String>{
-          'username': _authUsername,
-          'displayName': _authDisplayName,
-          'email': _authIdentity,
-          'password': _authPassword,
-        });
+        final Map<String, dynamic> response = await _authApi.post(
+          'register',
+          <String, String>{
+            'username': _authUsername,
+            'displayName': _authDisplayName,
+            'email': _authIdentity,
+            'password': _authPassword,
+          },
+        );
         if (!mounted) return;
         setState(() {
           _awaitingCode = true;
           _authHasError = false;
-          final String baseMessage = response['message'] as String? ??
+          final String baseMessage =
+              response['message'] as String? ??
               'Verification code sent. Check your inbox.';
           final String? developmentCode =
               response['developmentCode'] as String?;
@@ -5712,8 +6176,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         expiresAt: expiresAt,
         displayName: displayName,
         refreshToken: response['refreshToken'] as String?,
-        refreshExpiresAt:
-            DateTime.tryParse(response['refreshExpiresAt'] as String? ?? ''),
+        refreshExpiresAt: DateTime.tryParse(
+          response['refreshExpiresAt'] as String? ?? '',
+        ),
         sessionId: response['sessionId'] as String?,
       ),
     );
@@ -5775,30 +6240,40 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         if (!mounted) return;
         if (saved.isNotEmpty) {
           final replace = await showDialog<bool>(
-              context: context,
-              builder: (dialogContext) => AlertDialog(
-                    title: const Text('Replace paused computer game?'),
-                    content: const Text(
-                        'Your account can keep one paused computer game. Completed history stays saved.'),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(dialogContext, false),
-                          child: const Text('Cancel')),
-                      FilledButton(
-                          onPressed: () => Navigator.pop(dialogContext, true),
-                          child: const Text('New Game'))
-                    ],
-                  ));
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('Replace paused computer game?'),
+              content: const Text(
+                'Your account can keep one paused computer game. Completed history stays saved.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('New Game'),
+                ),
+              ],
+            ),
+          );
           if (replace != true) return;
         }
-        await ComputerGameStore.prepare(owner, null,
-            replacing: saved.isEmpty ? null : saved.first);
+        await ComputerGameStore.prepare(
+          owner,
+          null,
+          replacing: saved.isEmpty ? null : saved.first,
+        );
         if (!mounted) return;
         _draftOwner = owner;
       } catch (_) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text('Could not sync My Games. Please retry.')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not sync My Games. Please retry.'),
+            ),
+          );
         }
         return;
       }
@@ -5840,8 +6315,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       case GameMode.computer:
         final String rivalName =
             widget.aiOpponentName?.trim().isNotEmpty == true
-                ? '${widget.aiOpponentName!.trim()} • AI Rival'
-                : 'ChessVerseAI';
+            ? '${widget.aiOpponentName!.trim()} • AI Rival'
+            : 'ChessVerseAI';
         _whitePlayerName = _humanPlaysWhite ? playerName : rivalName;
         _blackPlayerName = _humanPlaysWhite ? rivalName : playerName;
       case GameMode.daily:
@@ -5914,7 +6389,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }) {
     final bool givesCheck = ChessRules.isKingInCheck(!piece.white, _pieces);
     final SquarePosition target = ChessRules.positionOf(to);
-    final bool central = target.file >= 2 &&
+    final bool central =
+        target.file >= 2 &&
         target.file <= 5 &&
         target.rank >= 3 &&
         target.rank <= 6;
@@ -6045,8 +6521,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (_gameMode == GameMode.puzzle && challenge.initialFen != null) {
       return _piecesFromFen(challenge.initialFen!);
     }
-    final String queenFile =
-        dailyChallengeQueenFileForPattern(challenge.pattern);
+    final String queenFile = dailyChallengeQueenFileForPattern(
+      challenge.pattern,
+    );
     final Map<String, ChessPiece> base = <String, ChessPiece>{
       // White mating force. Keep the king on f4 so the puzzle starts from a
       // legal position: f6 is attacked by the black g7 pawn, which made the
@@ -6085,7 +6562,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       ];
       final int sceneryIndex =
           (challenge.pattern ~/ dailyChallengeQueenFiles.length) %
-              dailyScenery.length;
+          dailyScenery.length;
       for (final MapEntry<String, bool> entry
           in dailyScenery[sceneryIndex].entries) {
         base[entry.key] = ChessPiece('P', entry.value);
@@ -6118,8 +6595,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           throw StateError('Invalid curated puzzle FEN: $fen');
         }
         final bool white = token == token.toUpperCase();
-        pieces['${files[fileIndex]}${8 - rankIndex}'] =
-            ChessPiece(token.toUpperCase(), white);
+        pieces['${files[fileIndex]}${8 - rankIndex}'] = ChessPiece(
+          token.toUpperCase(),
+          white,
+        );
         fileIndex++;
       }
       if (fileIndex != 8) {
@@ -6161,8 +6640,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _completePuzzle() {
-    final bool firstCompletion =
-        !LocalGameArchive.isPuzzleComplete(_activePuzzle.id);
+    final bool firstCompletion = !LocalGameArchive.isPuzzleComplete(
+      _activePuzzle.id,
+    );
     if (firstCompletion) {
       LocalGameArchive.markPuzzleSolved(_activePuzzle.id);
     }
@@ -6204,8 +6684,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         setState(() {
-          _coachNote =
-              'Invalid board detected and safely reset. Kings cannot be captured.';
+          _coachNote = 'Invalid board detected and safely reset. Kings cannot be captured.';
         });
       });
       return;
@@ -6230,11 +6709,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         setState(() => _coachNote = 'Waiting for an online opponent.');
         return;
       }
+      if (widget.spectatorMode) {
+        setState(
+          () => _coachNote =
+              'Spectator mode • Watch the live position and AI insights.',
+        );
+        return;
+      }
       if (_onlineSubmitting) {
         return;
       }
       if (!onlineMatch.isYourTurn) {
-        setState(() => _coachNote = _onlineStatusText(onlineMatch));
+        _handlePremoveTap(square);
         return;
       }
     }
@@ -6255,8 +6741,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     setState(() {
       final bool whitesTurn =
           _gameMode == GameMode.online && onlineMatch != null
-              ? onlineMatch.whiteToMove
-              : _moves.length.isEven;
+          ? onlineMatch.whiteToMove
+          : _moves.length.isEven;
       if (_gameMode == GameMode.online && whitesTurn != _humanPlaysWhite) {
         _coachNote = 'Waiting for your opponent to move.';
         return;
@@ -6309,8 +6795,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (_gameMode == GameMode.puzzle &&
           !_puzzleExplorationMode &&
           _dailyPlyIndex < _dailyChallenge.solution.length) {
-        final String expected =
-            _dailyChallenge.solution[_dailyPlyIndex].toLowerCase();
+        final String expected = _dailyChallenge.solution[_dailyPlyIndex]
+            .toLowerCase();
         if (!expected.startsWith('$from$square')) {
           // Every chess-legal move is playable. Leaving the curated line
           // starts exploration mode, where the defense continues replying.
@@ -6355,14 +6841,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         final String move = castleMove
             ? (square.startsWith('g') ? 'O-O' : 'O-O-O')
             : enPassantCaptureSquare != null
-                ? '$from x $square e.p.'
-                : captured == null
-                    ? '$from$square'
-                    : '$from x $square';
+            ? '$from x $square e.p.'
+            : captured == null
+            ? '$from$square'
+            : '$from x $square';
         _moves.insert(0, move);
         engineReviewPly = _moves.length;
         if (_gameMode == GameMode.online) {
-          final bool promotes = piece.code == 'P' &&
+          final bool promotes =
+              piece.code == 'P' &&
               ((piece.white && square.endsWith('8')) ||
                   (!piece.white && square.endsWith('1')));
           onlineUci = '$from$square${promotes ? 'q' : ''}';
@@ -6401,8 +6888,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           _moveQualityText = widget.useRemoteEngine
               ? 'AI review in progress…'
               : locallyWeak
-                  ? '$moveFeedback Tap “Why is this weak?” to understand the safer plan.'
-                  : 'Move review • $moveFeedback';
+              ? '$moveFeedback Tap “Why is this weak?” to understand the safer plan.'
+              : 'Move review • $moveFeedback';
         }
         _hintStage = 0;
         _lastPlayerMove = move;
@@ -6432,11 +6919,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             // End this attempt instead of allowing a long branch that can
             // eventually surface normal-game draw/stalemate results.
             _gameResultTitle = 'Challenge missed';
-            _gameResultDetail =
-                'That move leaves the puzzle solution. Find the forcing line and try again.';
+            _gameResultDetail = 'That move leaves the puzzle solution. Find the forcing line and try again.';
             _resultVisible = true;
-            _coachNote =
-                'That is a legal chess move, but not the tactic. Tap Try again and look for checks, captures, and threats.';
+            _coachNote = 'That is a legal chess move, but not the tactic. Tap Try again and look for checks, captures, and threats.';
             _lastPlayerCoachNote = _coachNote;
             unawaited(ChessSoundService.instance.error());
           } else if (_isTacticsMode && !_puzzleExplorationMode) {
@@ -6493,6 +6978,77 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _restartTurnReminder();
       }
     }
+  }
+
+  void _handlePremoveTap(String square) {
+    final ChessPiece? tapped = _pieces[square];
+    if (_selectedSquare == null) {
+      if (tapped?.white != _humanPlaysWhite) {
+        setState(() {
+          _premoveFrom = null;
+          _premoveTo = null;
+          _coachNote = 'Premove cancelled. Select one of your pieces.';
+        });
+        return;
+      }
+      setState(() {
+        _selectedSquare = square;
+        _premoveFrom = null;
+        _premoveTo = null;
+        _coachNote = 'Premove: choose where $square should move.';
+      });
+      return;
+    }
+    final String from = _selectedSquare!;
+    final List<String> targets = _legalTargetsFor(from);
+    setState(() {
+      _selectedSquare = null;
+      if (!targets.contains(square)) {
+        _premoveFrom = null;
+        _premoveTo = null;
+        _coachNote = 'That premove is not legal on the current board.';
+        return;
+      }
+      _premoveFrom = from;
+      _premoveTo = square;
+      _coachArrowFrom = from;
+      _coachArrowTo = square;
+      _coachNote =
+          'Premove queued: $from → $square. Tap another piece to replace it.';
+    });
+    unawaited(ChessSoundService.instance.tap());
+  }
+
+  void _executePremoveIfReady(OnlineMatchDto match) {
+    final String? from = _premoveFrom;
+    final String? to = _premoveTo;
+    if (!match.isActive ||
+        !match.isYourTurn ||
+        from == null ||
+        to == null ||
+        _onlineSubmitting) {
+      return;
+    }
+    final ChessPiece? piece = _pieces[from];
+    final bool legal =
+        piece?.white == _humanPlaysWhite && _legalTargetsFor(from).contains(to);
+    setState(() {
+      _premoveFrom = null;
+      _premoveTo = null;
+      _coachArrowFrom = null;
+      _coachArrowTo = null;
+      _coachNote = legal
+          ? 'Playing premove $from → $to…'
+          : 'Premove cancelled because the position changed.';
+    });
+    if (!legal) return;
+    final bool promotes =
+        piece!.code == 'P' &&
+        ((piece.white && to.endsWith('8')) ||
+            (!piece.white && to.endsWith('1')));
+    unawaited(
+      _submitOnlineMove('$from$to${promotes ? 'q' : ''}', match.plyCount),
+    );
   }
 
   void _dismissTurnReminder() {
@@ -6552,7 +7108,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           classification == 'Mistake' || classification == 'Blunder';
       final String recommendation =
           '${bestMove.substring(0, 2)} to ${bestMove.substring(2, 4)}';
-      final String explanation = engine['explanation'] as String? ??
+      final String explanation =
+          engine['explanation'] as String? ??
           (best
               ? 'You found the strongest continuation.'
               : '$recommendation was more accurate.');
@@ -6724,13 +7281,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         final double captureScore = captured == null
             ? 0
             : <String, double>{
-                  'P': 1,
-                  'N': 3.2,
-                  'B': 3.3,
-                  'R': 5,
-                  'Q': 9,
-                }[captured.code] ??
-                0;
+                    'P': 1,
+                    'N': 3.2,
+                    'B': 3.3,
+                    'R': 5,
+                    'Q': 9,
+                  }[captured.code] ??
+                  0;
         replies.add(
           AiCandidate(
             entry.key,
@@ -6799,7 +7356,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (castleMove) {
         _moveCastlingRook(to, piece.white);
       }
-      final bool promotes = piece.code == 'P' &&
+      final bool promotes =
+          piece.code == 'P' &&
           ((piece.white && to.endsWith('8')) ||
               (!piece.white && to.endsWith('1')));
       if (promotes) {
@@ -6808,8 +7366,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       final String notation = castleMove
           ? (to.startsWith('g') ? 'O-O' : 'O-O-O')
           : captured == null
-              ? '$from$to${promotes ? '=${reply.promotion ?? 'Q'}' : ''}'
-              : '$from x $to${promotes ? '=${reply.promotion ?? 'Q'}' : ''}';
+          ? '$from$to${promotes ? '=${reply.promotion ?? 'Q'}' : ''}'
+          : '$from x $to${promotes ? '=${reply.promotion ?? 'Q'}' : ''}';
       _moves.insert(0, notation);
       unawaited(
         ChessSoundService.instance.pieceMove(
@@ -6888,8 +7446,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _history.clear();
         _capturedWhite.clear();
         _capturedBlack.clear();
-        _coachNote =
-            'An invalid board was detected and safely reset. No king can be captured.';
+        _coachNote = 'An invalid board was detected and safely reset. No king can be captured.';
       });
       return;
     }
@@ -6902,7 +7459,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       for (final String target in _legalTargetsFor(entry.key)) {
         final ChessPiece? captured = _pieces[target];
         final SquarePosition targetPosition = ChessRules.positionOf(target);
-        final double centerBonus = 3.5 -
+        final double centerBonus =
+            3.5 -
             (targetPosition.file - 3.5).abs() +
             3.5 -
             (targetPosition.rank - 4.5).abs();
@@ -6920,9 +7478,27 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           _pieces,
           aiPlaysWhite: aiPlaysWhite,
         );
+        final Map<String, ChessPiece> after = ChessRules.applyMove(
+          entry.key,
+          target,
+          _pieces,
+        );
+        final bool givesCheck = ChessRules.isKingInCheck(!aiPlaysWhite, after);
+        final double styleBonus = aiStyleMoveBonus(
+          _aiStyle,
+          capturedValue: captured == null ? 0 : _aiPieceValue(captured.code),
+          givesCheck: givesCheck,
+          castles: _isCastleMove(entry.key, target),
+          queenMove: entry.value.code == 'Q',
+          movesPlayed: _moves.length,
+        );
         candidates.add(
-          AiCandidate(entry.key, target, safeScore,
-              promotion: candidate.promotion),
+          AiCandidate(
+            entry.key,
+            target,
+            safeScore + styleBonus,
+            promotion: candidate.promotion,
+          ),
         );
       }
     }
@@ -6987,8 +7563,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       final String notation = castleMove
           ? (move.to.startsWith('g') ? 'O-O' : 'O-O-O')
           : captured == null
-              ? '${move.from}${move.to}${move.promotion == null ? '' : '=${move.promotion}'}'
-              : '${move.from} x ${move.to}${move.promotion == null ? '' : '=${move.promotion}'}';
+          ? '${move.from}${move.to}${move.promotion == null ? '' : '=${move.promotion}'}'
+          : '${move.from} x ${move.to}${move.promotion == null ? '' : '=${move.promotion}'}';
       _moves.insert(0, notation);
       unawaited(
         ChessSoundService.instance.pieceMove(
@@ -7267,8 +7843,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         final int chronologicalPly = _moves.length - 1 - index;
         final bool whiteCastled = chronologicalPly.isEven;
         final String homeRank = whiteCastled ? '1' : '8';
-        final String rookSquare =
-            move.startsWith('O-O-O') ? 'a$homeRank' : 'h$homeRank';
+        final String rookSquare = move.startsWith('O-O-O')
+            ? 'a$homeRank'
+            : 'h$homeRank';
         if (square == 'e$homeRank' || square == rookSquare) {
           return true;
         }
@@ -7292,8 +7869,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return null;
     }
 
-    final String cleaned =
-        move.replaceAll(' x ', '').replaceAll(' e.p.', '').split('=').first;
+    final String cleaned = move
+        .replaceAll(' x ', '')
+        .replaceAll(' e.p.', '')
+        .split('=')
+        .first;
     if (cleaned.length < 4) {
       return null;
     }
@@ -7307,20 +7887,24 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _moves.isNotEmpty &&
         _gameResultTitle == null) {
       final replace = await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-                title: const Text('Replace this game?'),
-                content: const Text(
-                    'Your unfinished computer game will be replaced. Completed history is kept.'),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(dialogContext, false),
-                      child: const Text('Cancel')),
-                  FilledButton(
-                      onPressed: () => Navigator.pop(dialogContext, true),
-                      child: const Text('New Game'))
-                ],
-              ));
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Replace this game?'),
+          content: const Text(
+            'Your unfinished computer game will be replaced. Completed history is kept.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('New Game'),
+            ),
+          ],
+        ),
+      );
       if (replace != true || !mounted) return;
     }
     if (!confirmed) await _persistComputerDraft(force: true);
@@ -7380,11 +7964,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _aiThinking = false;
       _coachNote = _gameMode == GameMode.daily
           ? completedToday
-              ? _dailyUnlockMessage()
-              : 'Move any legal white coin. Checkmate in ${challenge.playerMoveGoal} moves.'
+                ? _dailyUnlockMessage()
+                : 'Move any legal white coin. Checkmate in ${challenge.playerMoveGoal} moves.'
           : _gameMode == GameMode.puzzle
-              ? '${_activePuzzle.title}: checkmate in ${challenge.playerMoveGoal} moves.'
-              : 'Select a coin to see legal moves.';
+          ? '${_activePuzzle.title}: checkmate in ${challenge.playerMoveGoal} moves.'
+          : 'Select a coin to see legal moves.';
       _gameResultTitle = completedToday && _gameMode == GameMode.daily
           ? 'Challenge complete'
           : null;
@@ -7515,9 +8099,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
     return switch (_gameMode) {
       GameMode.computer => _moves.length.isEven == _humanPlaysWhite,
-      GameMode.online => _onlineMatch?.isActive == true &&
-          _onlineMatch?.isYourTurn == true &&
-          !_onlineSubmitting,
+      GameMode.online =>
+        _onlineMatch?.isActive == true &&
+            _onlineMatch?.isYourTurn == true &&
+            !_onlineSubmitting,
       _ => true,
     };
   }
@@ -7546,9 +8131,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           : _moves.length;
       if (currentPly != scheduledPly) return;
       final ({String from, String to})? hint = _bestLocalHintMove(
-          _gameMode == GameMode.online
-              ? (_onlineMatch?.whiteToMove ?? _moves.length.isEven)
-              : (_isTacticsMode ? true : _moves.length.isEven));
+        _gameMode == GameMode.online
+            ? (_onlineMatch?.whiteToMove ?? _moves.length.isEven)
+            : (_isTacticsMode ? true : _moves.length.isEven),
+      );
       if (hint == null) return;
       setState(() {
         _idleHintFrom = hint.from;
@@ -7604,10 +8190,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         bookPlies: job.bookPlies,
         firstDeviationPly: job.firstDeviationPly,
       );
-      for (int attempt = 0;
-          attempt < 600 &&
-              (job.status == 'QUEUED' || job.status == 'ANALYZING');
-          attempt++) {
+      for (
+        int attempt = 0;
+        attempt < 600 && (job.status == 'QUEUED' || job.status == 'ANALYZING');
+        attempt++
+      ) {
         await Future<void>.delayed(const Duration(seconds: 2));
         job = await _gameAnalysisApi.results(token, job.id);
         LocalGameArchive.updateCloudAnalysisForGame(
@@ -7633,11 +8220,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         );
       }
     } on GameAnalysisApiException catch (error, stackTrace) {
-      unawaited(AppDiagnostics.recordError(
-        error,
-        stackTrace,
-        reason: 'cloud game analysis submission',
-      ));
+      unawaited(
+        AppDiagnostics.recordError(
+          error,
+          stackTrace,
+          reason: 'cloud game analysis submission',
+        ),
+      );
     }
   }
 
@@ -7656,10 +8245,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
       final ParsedMove? parsed = _parseMove(notation);
       if (parsed == null) return null;
-      final RegExpMatch? promotion =
-          RegExp(r'=([QRBN])', caseSensitive: false).firstMatch(notation);
+      final RegExpMatch? promotion = RegExp(
+        r'=([QRBN])',
+        caseSensitive: false,
+      ).firstMatch(notation);
       result.add(
-          '${parsed.from}${parsed.to}${promotion?.group(1)?.toLowerCase() ?? ''}');
+        '${parsed.from}${parsed.to}${promotion?.group(1)?.toLowerCase() ?? ''}',
+      );
     }
     return result;
   }
@@ -7720,11 +8312,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _generateMistakePuzzles() {
     final List<SavedMoveReview> puzzles = _moveReviews
-        .where((SavedMoveReview review) =>
-            review.fenBefore.isNotEmpty &&
-            review.bestMove.length >= 4 &&
-            const <String>{'Inaccuracy', 'Mistake', 'Blunder'}
-                .contains(review.classification))
+        .where(
+          (SavedMoveReview review) =>
+              review.fenBefore.isNotEmpty &&
+              review.bestMove.length >= 4 &&
+              const <String>{
+                'Inaccuracy',
+                'Mistake',
+                'Blunder',
+              }.contains(review.classification),
+        )
         .toList(growable: false)
         .reversed
         .toList(growable: false);
@@ -7744,7 +8341,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _openMistakePuzzle(
-      List<SavedMoveReview> puzzles, int index) async {
+    List<SavedMoveReview> puzzles,
+    int index,
+  ) async {
     if (!mounted || index >= puzzles.length) return;
     final language = await AppLanguageController.effectiveCode();
     if (!mounted) return;
@@ -7760,10 +8359,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         bestMove: puzzle.bestMove,
         languageCode: language,
         explanation: puzzle.explanation,
-        progressLabel: coachExtraText('mistakePuzzle', language,
-            {'index': '${index + 1}', 'total': '${puzzles.length}'}),
+        progressLabel: coachExtraText('mistakePuzzle', language, {
+          'index': '${index + 1}',
+          'total': '${puzzles.length}',
+        }),
         nextLabel: coachExtraText(
-            index + 1 < puzzles.length ? 'nextPuzzle' : 'finishSet', language),
+          index + 1 < puzzles.length ? 'nextPuzzle' : 'finishSet',
+          language,
+        ),
         onNext: () {
           Navigator.of(context).pop();
           if (index + 1 < puzzles.length) {
@@ -7773,8 +8376,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           } else {
             ScaffoldMessenger.of(this.context).showSnackBar(
               SnackBar(
-                content: Text(coachExtraText('trainingComplete', language,
-                    {'count': '${puzzles.length}'})),
+                content: Text(
+                  coachExtraText('trainingComplete', language, {
+                    'count': '${puzzles.length}',
+                  }),
+                ),
               ),
             );
           }
@@ -7827,13 +8433,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     // turn. This works both while AI is thinking (one ply to undo) and after
     // its reply (two plies), without leaving an unscheduled AI turn.
     final int snapshotIndex = _gameMode == GameMode.computer
-        ? computerUndoSnapshotIndex(
-            _history,
-            humanPlaysWhite: _humanPlaysWhite,
-          )
+        ? computerUndoSnapshotIndex(_history, humanPlaysWhite: _humanPlaysWhite)
         : (_isTacticsMode && _history.length >= 2
-            ? _history.length - 2
-            : _history.length - 1);
+              ? _history.length - 2
+              : _history.length - 1);
     if (snapshotIndex < 0) return;
     _aiMoveEpoch++;
     _aiWatchdogTimer?.cancel();
@@ -7962,19 +8565,23 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final ChessPiece? piece = _pieces[from];
     final String name = piece == null ? 'piece' : pieceName(piece.code);
     final SquarePosition target = ChessRules.positionOf(to);
-    final String direction =
-        target.file >= 4 ? 'toward the king side' : 'toward the queen side';
+    final String direction = target.file >= 4
+        ? 'toward the king side'
+        : 'toward the queen side';
     final bool simpleLanguage = _aiLevel <= 3;
     return switch (stage) {
-      1 => simpleLanguage
-          ? 'Hint 1/3 • Start with the $name on $from.'
-          : 'Piece hint 1/3 • Candidate: $name on $from. Check its forcing options.',
-      2 => simpleLanguage
-          ? 'Hint 2/3 • Move that $name $direction.'
-          : 'Direction hint 2/3 • Improve the $name $direction and challenge the centre.',
-      _ => simpleLanguage
-          ? 'Hint 3/3 • Try $from → $to. $explanation'
-          : 'Exact move 3/3 • Calculate $from → $to. $explanation',
+      1 =>
+        simpleLanguage
+            ? 'Hint 1/3 • Start with the $name on $from.'
+            : 'Piece hint 1/3 • Candidate: $name on $from. Check its forcing options.',
+      2 =>
+        simpleLanguage
+            ? 'Hint 2/3 • Move that $name $direction.'
+            : 'Direction hint 2/3 • Improve the $name $direction and challenge the centre.',
+      _ =>
+        simpleLanguage
+            ? 'Hint 3/3 • Try $from → $to. $explanation'
+            : 'Exact move 3/3 • Calculate $from → $to. $explanation',
     };
   }
 
@@ -8014,7 +8621,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           quality: mate == null
               ? 'Stockfish depth ${engine['depth']}'
               : 'Forced mate',
-          coachLine: '${_engineEvaluationExplanation(engine, whiteToMove)} '
+          coachLine:
+              '${_engineEvaluationExplanation(engine, whiteToMove)} '
               '${pv.isEmpty ? '' : 'Plan: ${pv.take(5).join(' → ')}.'}',
           inCheck: analysis.inCheck,
         );
@@ -8041,8 +8649,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) => PositionAnalysisSheet(
-          analysis: analysis,
-          languageCode: _effectiveLiveCoachLanguage(_coachLanguageCode)),
+        analysis: analysis,
+        languageCode: _effectiveLiveCoachLanguage(_coachLanguageCode),
+      ),
     );
   }
 
@@ -8083,21 +8692,21 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final String quality = bestMove == null
         ? 'No move'
         : bestScore >= 14
-            ? 'Best move'
-            : bestScore >= 7
-                ? 'Good move'
-                : bestScore >= 3
-                    ? 'Ordinary move'
-                    : 'Quiet move';
+        ? 'Best move'
+        : bestScore >= 7
+        ? 'Good move'
+        : bestScore >= 3
+        ? 'Ordinary move'
+        : 'Quiet move';
     final String coachLine = bestMove == null
         ? 'No legal move is available in this position.'
         : bestScore >= 14
-            ? 'This move creates a strong tactical threat or wins material.'
-            : bestScore >= 7
-                ? 'This is a healthy move: it improves the position and keeps pressure.'
-                : bestScore >= 3
-                    ? 'Playable, but keep looking for forcing checks, captures, or threats.'
-                    : 'Safe but quiet. A sharper move may exist if you calculate forcing lines.';
+        ? 'This move creates a strong tactical threat or wins material.'
+        : bestScore >= 7
+        ? 'This is a healthy move: it improves the position and keeps pressure.'
+        : bestScore >= 3
+        ? 'Playable, but keep looking for forcing checks, captures, or threats.'
+        : 'Safe but quiet. A sharper move may exist if you calculate forcing lines.';
     return PositionAnalysis(
       side: whiteToMove ? 'White' : 'Black',
       evaluation: evaluation,
@@ -8151,44 +8760,46 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       );
       return;
     }
-    final OnlineMatchDto? match =
-        await Navigator.of(context).push<OnlineMatchDto>(
-      MaterialPageRoute<OnlineMatchDto>(
-        fullscreenDialog: true,
-        builder: (BuildContext context) => Scaffold(
-          backgroundColor: const Color(0xFF06131F),
-          body: DecoratedBox(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: <Color>[Color(0xFF0A2231), Color(0xFF040B13)],
+    final OnlineMatchDto? match = await Navigator.of(context)
+        .push<OnlineMatchDto>(
+          MaterialPageRoute<OnlineMatchDto>(
+            fullscreenDialog: true,
+            builder: (BuildContext context) => Scaffold(
+              backgroundColor: const Color(0xFF06131F),
+              body: DecoratedBox(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[Color(0xFF0A2231), Color(0xFF040B13)],
+                  ),
+                ),
+                child: OnlineMatchmakingSheet(
+                  api: _onlineApi,
+                  token: token!,
+                  onProfile: _openProfile,
+                  onAiFallback: (String rivalName) async {
+                    if (!mounted) return;
+                    _onlinePollTimer?.cancel();
+                    _onlineMatch = null;
+                    setState(() {
+                      _gameMode = GameMode.computer;
+                      _humanPlaysWhite = true;
+                      _whitePlayerName = _playerDisplayName;
+                      _blackPlayerName = '$rivalName • AI Rival';
+                    });
+                    _reset();
+                    if (mounted) {
+                      setState(
+                        () => _blackPlayerName = '$rivalName • AI Rival',
+                      );
+                    }
+                  },
+                ),
               ),
             ),
-            child: OnlineMatchmakingSheet(
-              api: _onlineApi,
-              token: token!,
-              onProfile: _openProfile,
-              onAiFallback: (String rivalName) async {
-                if (!mounted) return;
-                _onlinePollTimer?.cancel();
-                _onlineMatch = null;
-                setState(() {
-                  _gameMode = GameMode.computer;
-                  _humanPlaysWhite = true;
-                  _whitePlayerName = _playerDisplayName;
-                  _blackPlayerName = '$rivalName • AI Rival';
-                });
-                _reset();
-                if (mounted) {
-                  setState(() => _blackPlayerName = '$rivalName • AI Rival');
-                }
-              },
-            ),
           ),
-        ),
-      ),
-    );
+        );
     if (match != null && mounted) {
       _beginOnlineMatch(match, token);
     } else if (mounted &&
@@ -8210,19 +8821,23 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _skin = tournamentBoardSkin(match.tournamentName);
         ChessPieceAppearanceController.current.value =
             const ChessPieceAppearance(
-          style: ChessPieceVisualStyle.premium3d,
-          size: ChessPieceVisualSize.extraLarge,
-        );
+              style: ChessPieceVisualStyle.premium3d,
+              size: ChessPieceVisualSize.extraLarge,
+            );
       }
       _gameMode = GameMode.online;
       _humanPlaysWhite = match.yourColor.toLowerCase() == 'white';
       _whitePlayerName = match.whitePlayerName ?? 'White player';
       _blackPlayerName = match.blackPlayerName ?? 'Black player';
-      _whitePlayerPhotoUrl = match.whitePlayerPhotoUrl ??
+      _whitePlayerPhotoUrl =
+          match.whitePlayerPhotoUrl ??
           (_humanPlaysWhite ? widget.initialProfilePhotoUrl : null);
-      _blackPlayerPhotoUrl = match.blackPlayerPhotoUrl ??
+      _blackPlayerPhotoUrl =
+          match.blackPlayerPhotoUrl ??
           (!_humanPlaysWhite ? widget.initialProfilePhotoUrl : null);
-      _coachNote = _onlineStatusText(match);
+      _coachNote = widget.spectatorMode
+          ? 'Live spectator • ${match.activeColor} to move. Tap Analyze for AI insight.'
+          : _onlineStatusText(match);
       if (newMatch) {
         _onlineResultPresentationTimer?.cancel();
         _onlineCelebrationMatchId = null;
@@ -8249,26 +8864,27 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       const Duration(seconds: 2),
       (_) => unawaited(_refreshOnlineMatch()),
     );
-    unawaited(_connectOnlineSocket(token, match.id));
+    if (!widget.spectatorMode) {
+      unawaited(_connectOnlineSocket(token, match.id));
+    }
   }
 
   Future<void> _connectOnlineSocket(String token, String matchId) async {
     _onlineSocketReconnectTimer?.cancel();
     _onlineHeartbeatTimer?.cancel();
     try {
-      final WebSocketChannel channel =
-          await _onlineApi.openMatchChannel(token, matchId);
-      _onlineChannel = channel;
-      _onlineHeartbeatTimer = Timer.periodic(
-        const Duration(seconds: 2),
-        (_) {
-          try {
-            channel.sink.add('{"type":"heartbeat"}');
-          } on Object {
-            // Stream callbacks schedule the reconnect path.
-          }
-        },
+      final WebSocketChannel channel = await _onlineApi.openMatchChannel(
+        token,
+        matchId,
       );
+      _onlineChannel = channel;
+      _onlineHeartbeatTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+        try {
+          channel.sink.add('{"type":"heartbeat"}');
+        } on Object {
+          // Stream callbacks schedule the reconnect path.
+        }
+      });
       _onlineSocketSubscription = channel.stream.listen(
         (dynamic event) {
           _handleOnlineSocketEvent(event);
@@ -8298,6 +8914,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   String _onlineStatusText(OnlineMatchDto match) {
+    if (widget.spectatorMode) {
+      return match.status == 'FINISHED'
+          ? 'Spectator • Game finished ${match.scoreLabel}'
+          : 'Spectator • ${match.activeColor} to move. Analyze the live position.';
+    }
     if (match.status == 'FINISHED') {
       return _onlineResultDetail(match);
     }
@@ -8311,7 +8932,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return 'Opponent connection lost. Waiting for reconnect...';
     }
     if (match.drawOfferedByColor != null) {
-      final bool yours = match.drawOfferedByColor!.toLowerCase() ==
+      final bool yours =
+          match.drawOfferedByColor!.toLowerCase() ==
           match.yourColor.toLowerCase();
       if (yours) return 'Draw offer sent. Waiting for your opponent.';
       return 'Your opponent offered a draw.';
@@ -8323,20 +8945,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         : 'Waiting for ${match.activeColor} to move.';
   }
 
-  Future<void> _refreshOnlineMatch({
-    bool forceBoardReplay = false,
-  }) async {
+  Future<void> _refreshOnlineMatch({bool forceBoardReplay = false}) async {
     final OnlineMatchDto? current = _onlineMatch;
     final String? token = _authToken;
     if (current == null || token == null || _onlineSubmitting) return;
     try {
-      final OnlineMatchDto latest =
-          await _onlineApi.getMatch(token, current.id);
+      final OnlineMatchDto latest = widget.spectatorMode
+          ? await _onlineApi.spectate(token, current.id)
+          : await _onlineApi.getMatch(token, current.id);
       if (!mounted) return;
-      _rebuildFromOnline(
-        latest,
-        forceBoardReplay: forceBoardReplay,
-      );
+      _rebuildFromOnline(latest, forceBoardReplay: forceBoardReplay);
     } on OnlineMatchException catch (error) {
       if (!mounted) return;
       setState(() => _coachNote = 'Reconnect pending: ${error.message}');
@@ -8348,12 +8966,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     bool forceBoardReplay = false,
   }) {
     final OnlineMatchDto? previous = _onlineMatch;
-    final bool shouldRestartIdleHint = forceBoardReplay ||
+    final bool shouldRestartIdleHint =
+        forceBoardReplay ||
         previous == null ||
         previous.id != match.id ||
         previous.plyCount != match.plyCount ||
         previous.isYourTurn != match.isYourTurn;
-    final bool sameBoard = !forceBoardReplay &&
+    final bool sameBoard =
+        !forceBoardReplay &&
         previous != null &&
         previous.id == match.id &&
         previous.plyCount == match.plyCount &&
@@ -8372,8 +8992,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
       return;
     }
-    final Map<String, ChessPiece> board =
-        Map<String, ChessPiece>.from(_initialPieces);
+    final Map<String, ChessPiece> board = Map<String, ChessPiece>.from(
+      _initialPieces,
+    );
     final List<String> history = <String>[];
     final List<ChessPiece> capturedWhite = <ChessPiece>[];
     final List<ChessPiece> capturedBlack = <ChessPiece>[];
@@ -8410,10 +9031,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       replayLastMovedPiece = piece;
       replayLastCapturedPiece = captured;
       replayLastCaptureSquare = captured == null ? null : to;
-      history.insert(
-        0,
-        captured == null ? '$from$to' : '$from x $to',
-      );
+      history.insert(0, captured == null ? '$from$to' : '$from x $to');
     }
     setState(() {
       _onlineMatch = match;
@@ -8430,9 +9048,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _history.clear();
       _whitePlayerName = match.whitePlayerName ?? 'White player';
       _blackPlayerName = match.blackPlayerName ?? 'Black player';
-      _whitePlayerPhotoUrl = match.whitePlayerPhotoUrl ??
+      _whitePlayerPhotoUrl =
+          match.whitePlayerPhotoUrl ??
           (_humanPlaysWhite ? widget.initialProfilePhotoUrl : null);
-      _blackPlayerPhotoUrl = match.blackPlayerPhotoUrl ??
+      _blackPlayerPhotoUrl =
+          match.blackPlayerPhotoUrl ??
           (!_humanPlaysWhite ? widget.initialProfilePhotoUrl : null);
       _whiteSeconds = (match.whiteTimeMs / 1000).ceil();
       _blackSeconds = (match.blackTimeMs / 1000).ceil();
@@ -8454,6 +9074,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
     });
     _applyOnlineLifecycle(match);
+    _executePremoveIfReady(match);
     if (shouldRestartIdleHint) {
       _scheduleIdleMoveHint(clearVisibleHint: true);
     }
@@ -8484,7 +9105,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       (_) => unawaited(_refreshOnlineMatch()),
     );
     unawaited(_refreshOnlineMatch(forceBoardReplay: true));
-    unawaited(_connectOnlineSocket(token, match.id));
+    if (!widget.spectatorMode) {
+      unawaited(_connectOnlineSocket(token, match.id));
+    }
   }
 
   Future<void> _startFreshOnlineGame() async {
@@ -8596,28 +9219,27 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void _sendQuickChat(String value) {
     final WebSocketChannel? channel = _onlineChannel;
     if (channel == null || !_onlineSocketConnected) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Reconnect to send a game message.'),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Reconnect to send a game message.')),
+      );
       return;
     }
-    channel.sink.add(jsonEncode(<String, String>{
-      'type': 'quick_chat',
-      'value': value,
-    }));
+    channel.sink.add(
+      jsonEncode(<String, String>{'type': 'quick_chat', 'value': value}),
+    );
   }
 
   Widget _buildQuickChatButton() => IconButton.filled(
-        key: const ValueKey<String>('online-quick-chat-button'),
-        tooltip: 'Quick game chat',
-        onPressed: _showQuickChatPicker,
-        style: IconButton.styleFrom(
-          backgroundColor: const Color(0xEE08283A),
-          foregroundColor: const Color(0xFF59E5D2),
-          side: const BorderSide(color: Color(0xFF59E5D2)),
-        ),
-        icon: const Icon(Icons.emoji_emotions_outlined),
-      );
+    key: const ValueKey<String>('online-quick-chat-button'),
+    tooltip: 'Quick game chat',
+    onPressed: _showQuickChatPicker,
+    style: IconButton.styleFrom(
+      backgroundColor: const Color(0xEE08283A),
+      foregroundColor: const Color(0xFF59E5D2),
+      side: const BorderSide(color: Color(0xFF59E5D2)),
+    ),
+    icon: const Icon(Icons.emoji_emotions_outlined),
+  );
 
   Future<void> _showQuickChatPicker() async {
     const List<String> phrases = <String>[
@@ -8650,35 +9272,46 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Text('QUICK GAME CHAT',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
+              const Text(
+                'QUICK GAME CHAT',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: phrases
-                    .map((String message) => ActionChip(
-                          label: Text(message),
-                          onPressed: () => Navigator.pop(context, message),
-                        ))
+                    .map(
+                      (String message) => ActionChip(
+                        label: Text(message),
+                        onPressed: () => Navigator.pop(context, message),
+                      ),
+                    )
                     .toList(growable: false),
               ),
               const SizedBox(height: 14),
-              const Text('REACTIONS',
-                  style: TextStyle(
-                      color: Color(0xFF59E5D2),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900)),
+              const Text(
+                'REACTIONS',
+                style: TextStyle(
+                  color: Color(0xFF59E5D2),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: emojis
-                    .map((String emoji) => ActionChip(
-                          label:
-                              Text(emoji, style: const TextStyle(fontSize: 22)),
-                          onPressed: () => Navigator.pop(context, emoji),
-                        ))
+                    .map(
+                      (String emoji) => ActionChip(
+                        label: Text(
+                          emoji,
+                          style: const TextStyle(fontSize: 22),
+                        ),
+                        onPressed: () => Navigator.pop(context, emoji),
+                      ),
+                    )
                     .toList(growable: false),
               ),
             ],
@@ -8712,8 +9345,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _coachNote = 'Rematch requested. Waiting for your opponent...';
     });
     try {
-      final OnlineMatchDto next =
-          await _onlineApi.requestRematch(token, match.id);
+      final OnlineMatchDto next = await _onlineApi.requestRematch(
+        token,
+        match.id,
+      );
       if (!mounted) return;
       if (next.id != match.id) {
         _beginOnlineMatch(next, token);
@@ -8726,6 +9361,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _applyOnlineLifecycle(OnlineMatchDto match) {
+    if (widget.spectatorMode) {
+      if (match.status == 'FINISHED' && mounted) {
+        setState(
+          () => _coachNote =
+              'Game finished ${match.scoreLabel}. Open Watch & Learn for another live game.',
+        );
+      }
+      return;
+    }
     final String? rematchId = match.rematchMatchId;
     if (rematchId != null &&
         rematchId != match.id &&
@@ -8749,8 +9393,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _gameResultTitle = draw
             ? 'Draw'
             : userWon
-                ? 'You win'
-                : 'Opponent wins';
+            ? 'You win'
+            : 'Opponent wins';
         _gameResultDetail = _onlineResultDetail(match);
         if (firstPresentation) {
           // Keep the decisive move visible. The celebration occupies the
@@ -8817,8 +9461,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Future<void> _joinCreatedRematch(String token, String rematchId) async {
     try {
-      final OnlineMatchDto rematch =
-          await _onlineApi.getMatch(token, rematchId);
+      final OnlineMatchDto rematch = await _onlineApi.getMatch(
+        token,
+        rematchId,
+      );
       if (!mounted || _joiningRematchId != rematchId) return;
       _joiningRematchId = null;
       _beginOnlineMatch(rematch, token);
@@ -8826,7 +9472,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (!mounted) return;
       _joiningRematchId = null;
       setState(
-          () => _coachNote = 'Rematch reconnect pending: ${error.message}');
+        () => _coachNote = 'Rematch reconnect pending: ${error.message}',
+      );
     }
   }
 
@@ -8843,22 +9490,23 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     };
     final int? ratingDelta =
         match.ratingBefore == null || match.ratingAfter == null
-            ? null
-            : match.ratingAfter! - match.ratingBefore!;
+        ? null
+        : match.ratingAfter! - match.ratingBefore!;
     final String ratingText = ratingDelta == null
         ? ''
         : ' • ELO ${ratingDelta >= 0 ? '+' : ''}$ratingDelta';
     final bool draw = match.result == '1/2-1/2';
     final bool userIsWhite = match.yourColor.toUpperCase() == 'WHITE';
-    final bool userWon = (match.result == '1-0' && userIsWhite) ||
+    final bool userWon =
+        (match.result == '1-0' && userIsWhite) ||
         (match.result == '0-1' && !userIsWhite);
     final String coinText = match.entryCoins <= 0
         ? ''
         : draw
-            ? ' • ${match.entryCoins} coins refunded'
-            : userWon
-                ? ' • Prize +${match.coinsEarned} coins'
-                : ' • Entry -${match.entryCoins} coins';
+        ? ' • ${match.entryCoins} coins refunded'
+        : userWon
+        ? ' • Prize +${match.coinsEarned} coins'
+        : ' • Entry -${match.entryCoins} coins';
     return '${match.result ?? ''} • $reason$ratingText$coinText';
   }
 
@@ -8935,17 +9583,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (stalemate) {
       if (_isTacticsMode) {
         _gameResultTitle = 'Challenge missed';
-        _gameResultDetail =
-            'Stalemate is not the checkmate objective. Try the forcing line again.';
+        _gameResultDetail = 'Stalemate is not the checkmate objective. Try the forcing line again.';
         _resultVisible = true;
         unawaited(ChessSoundService.instance.error());
         return 'Stalemate avoids checkmate. Try again.';
       }
       _gameResultTitle = 'Draw';
       _gameResultDetail = 'Stalemate';
-      _delayLocalResultOverlay(
-        delay: const Duration(milliseconds: 900),
-      );
+      _delayLocalResultOverlay(delay: const Duration(milliseconds: 900));
       _archiveFinishedGame();
       unawaited(ChessSoundService.instance.draw());
       return 'Stalemate. No legal move for $side.';
@@ -8961,13 +9606,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }) {
     _onlineResultPresentationTimer?.cancel();
     _resultVisible = false;
-    _onlineResultPresentationTimer = Timer(
-      delay,
-      () {
-        if (!mounted || _gameMode == GameMode.online) return;
-        setState(() => _resultVisible = true);
-      },
-    );
+    _onlineResultPresentationTimer = Timer(delay, () {
+      if (!mounted || _gameMode == GameMode.online) return;
+      setState(() => _resultVisible = true);
+    });
   }
 
   String _coachMoveExplanation({
@@ -8990,10 +9632,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       !piece.white,
       _pieces,
     );
-    final bool movedPieceGivesCheck = enemyKingSquare != null &&
+    final bool movedPieceGivesCheck =
+        enemyKingSquare != null &&
         ChessRules.attacksSquare(to, enemyKingSquare, _pieces);
     final SquarePosition target = ChessRules.positionOf(to);
-    final bool controlsCenter = target.file >= 2 &&
+    final bool controlsCenter =
+        target.file >= 2 &&
         target.file <= 5 &&
         target.rank >= 3 &&
         target.rank <= 6;
@@ -9003,18 +9647,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         ? '$movedPieceName moved from $sourceSquare to $targetSquare.'
         : '$movedPieceName captured ${_pieceName(captured.code)} on $targetSquare.';
     final String piecePurpose = switch (piece.code) {
-      'P' => controlsCenter
-          ? 'The pawn claims central space and opens lines for your pieces.'
-          : 'The pawn changes the structure; check the squares it now protects.',
-      'N' =>
-        'The knight attacks in an L-shape; inspect its new forks and protected squares.',
+      'P' =>
+        controlsCenter
+            ? 'The pawn claims central space and opens lines for your pieces.'
+            : 'The pawn changes the structure; check the squares it now protects.',
+      'N' => 'The knight attacks in an L-shape; inspect its new forks and protected squares.',
       'B' => 'The bishop opens a diagonal; trace it until the first blocker.',
-      'R' =>
-        'The rook works on ranks and files; look for an open file or king pressure.',
-      'Q' =>
-        'The queen creates threats in several directions; verify it cannot be chased.',
-      'K' =>
-        'The king move changes king safety; recheck every enemy check on the new square.',
+      'R' => 'The rook works on ranks and files; look for an open file or king pressure.',
+      'Q' => 'The queen creates threats in several directions; verify it cannot be chased.',
+      'K' => 'The king move changes king safety; recheck every enemy check on the new square.',
       _ => 'Compare the checks, captures, and threats created by the move.',
     };
     if (givesCheck && captured != null) {
@@ -9045,14 +9686,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   String _pieceName(String code) => switch (code) {
-        'P' => 'a pawn',
-        'N' => 'a knight',
-        'B' => 'a bishop',
-        'R' => 'a rook',
-        'Q' => 'the queen',
-        'K' => 'the king',
-        _ => 'a piece',
-      };
+    'P' => 'a pawn',
+    'N' => 'a knight',
+    'B' => 'a bishop',
+    'R' => 'a rook',
+    'Q' => 'the queen',
+    'K' => 'the king',
+    _ => 'a piece',
+  };
 
   Future<void> _playCheckWarning() async {
     if (!ChessSoundService.instance.enabled) {
@@ -9067,10 +9708,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
   }
 
-  String _engineEvaluationExplanation(
-    Map<String, dynamic> engine,
-    bool _,
-  ) {
+  String _engineEvaluationExplanation(Map<String, dynamic> engine, bool _) {
     final int? mate = (engine['mateIn'] as num?)?.toInt();
     if (mate != null) {
       return mate > 0
@@ -9139,9 +9777,8 @@ class CompactHeader extends StatelessWidget {
               ],
             ),
             semanticsLabel: 'ChessVerseAI',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(context).textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w800),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -9328,8 +9965,10 @@ class _ReviewedPositionRetryDialogState
     final StringBuffer missing = StringBuffer();
     for (final MapEntry<String, int> entry in starting.entries) {
       final int present = widget.initialPieces.values
-          .where((ChessPiece piece) =>
-              piece.white == white && piece.code == entry.key)
+          .where(
+            (ChessPiece piece) =>
+                piece.white == white && piece.code == entry.key,
+          )
           .length;
       for (int count = present; count < entry.value; count++) {
         missing.write((white ? whiteGlyphs : blackGlyphs)[entry.key]);
@@ -9347,8 +9986,10 @@ class _ReviewedPositionRetryDialogState
   Set<String> get _legalTargets {
     final String? selected = _selected;
     if (selected == null || _answered) return <String>{};
-    final Set<String> targets =
-        ChessRules.safeLegalTargets(selected, _pieces).toSet();
+    final Set<String> targets = ChessRules.safeLegalTargets(
+      selected,
+      _pieces,
+    ).toSet();
     if (widget.bestMove.startsWith(selected) && widget.bestMove.length >= 4) {
       final String target = widget.bestMove.substring(2, 4);
       if (_isLegalFenSpecialMove(selected, target)) targets.add(target);
@@ -9374,8 +10015,9 @@ class _ReviewedPositionRetryDialogState
     final bool kingSide = target == (piece.white ? 'g1' : 'g8');
     final bool queenSide = target == (piece.white ? 'c1' : 'c8');
     if (!kingSide && !queenSide) return false;
-    final String right =
-        piece.white ? (kingSide ? 'K' : 'Q') : (kingSide ? 'k' : 'q');
+    final String right = piece.white
+        ? (kingSide ? 'K' : 'Q')
+        : (kingSide ? 'k' : 'q');
     if (!parts[2].contains(right) ||
         ChessRules.isKingInCheck(piece.white, _pieces)) {
       return false;
@@ -9391,11 +10033,17 @@ class _ReviewedPositionRetryDialogState
         _pieces[rookSquare]?.white != piece.white) {
       return false;
     }
-    final Map<String, ChessPiece> transitBoard =
-        ChessRules.applyMove(from, transit, _pieces);
+    final Map<String, ChessPiece> transitBoard = ChessRules.applyMove(
+      from,
+      transit,
+      _pieces,
+    );
     if (ChessRules.isKingInCheck(piece.white, transitBoard)) return false;
-    final Map<String, ChessPiece> destinationBoard =
-        ChessRules.applyMove(transit, target, transitBoard);
+    final Map<String, ChessPiece> destinationBoard = ChessRules.applyMove(
+      transit,
+      target,
+      transitBoard,
+    );
     return !ChessRules.isKingInCheck(piece.white, destinationBoard);
   }
 
@@ -9415,8 +10063,9 @@ class _ReviewedPositionRetryDialogState
     if (piece != null) {
       final bool promotion =
           piece.code == 'P' && (target.endsWith('8') || target.endsWith('1'));
-      final String promoted =
-          widget.bestMove.length >= 5 ? widget.bestMove[4].toUpperCase() : 'Q';
+      final String promoted = widget.bestMove.length >= 5
+          ? widget.bestMove[4].toUpperCase()
+          : 'Q';
       next[target] = promotion ? ChessPiece(promoted, piece.white) : piece;
       if (piece.code == 'K' &&
           (from.codeUnitAt(0) - target.codeUnitAt(0)).abs() == 2) {
@@ -9454,7 +10103,8 @@ class _ReviewedPositionRetryDialogState
       _lastTo = square;
       _selected = null;
       _answered = true;
-      _message = '${_copy.text(correct ? 'bestFound' : 'goodTry')} '
+      _message =
+          '${_copy.text(correct ? 'bestFound' : 'goodTry')} '
           '${_copy.text('preferred', {'move': widget.bestMove})} '
           '${localizeLiveCoach(localizeReviewNarrative(widget.explanation, widget.languageCode), widget.languageCode)}';
     });
@@ -9475,8 +10125,9 @@ class _ReviewedPositionRetryDialogState
   Widget build(BuildContext context) {
     final BoardPalette palette = boardPalettes[BoardSkin.sapphire]!;
     final bool inCheck = ChessRules.isKingInCheck(widget.whiteToMove, _pieces);
-    final String? checkedKing =
-        inCheck ? ChessRules.kingSquare(widget.whiteToMove, _pieces) : null;
+    final String? checkedKing = inCheck
+        ? ChessRules.kingSquare(widget.whiteToMove, _pieces)
+        : null;
     return Dialog(
       backgroundColor: const Color(0xFF061722),
       insetPadding: const EdgeInsets.all(16),
@@ -9490,21 +10141,26 @@ class _ReviewedPositionRetryDialogState
             children: <Widget>[
               Row(
                 children: <Widget>[
-                  const Icon(Icons.replay_circle_filled_rounded,
-                      color: Color(0xFF59E4C8)),
+                  const Icon(
+                    Icons.replay_circle_filled_rounded,
+                    color: Color(0xFF59E4C8),
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       widget.progressLabel.startsWith('POSITION BEFORE MOVE ')
                           ? _copy.text('positionBefore', {
-                              'move': widget.progressLabel
-                                  .substring('POSITION BEFORE MOVE '.length)
+                              'move': widget.progressLabel.substring(
+                                'POSITION BEFORE MOVE '.length,
+                              ),
                             })
                           : widget.progressLabel == 'RETRY THIS POSITION'
-                              ? _copy.text('retry')
-                              : widget.progressLabel,
+                          ? _copy.text('retry')
+                          : widget.progressLabel,
                       style: const TextStyle(
-                          fontSize: 19, fontWeight: FontWeight.w900),
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -9515,27 +10171,29 @@ class _ReviewedPositionRetryDialogState
               ),
               Text(
                 _copy.text('findContinuation', {
-                  'side': _copy.text(widget.whiteToMove ? 'white' : 'black')
+                  'side': _copy.text(widget.whiteToMove ? 'white' : 'black'),
                 }),
                 style: const TextStyle(color: Color(0xFF9DB0BE)),
               ),
               const SizedBox(height: 6),
-              Builder(builder: (BuildContext context) {
-                final String whiteCaptured = _capturedPieces(true);
-                final String blackCaptured = _capturedPieces(false);
-                return Text(
-                  _copy.language != 'en'
-                      ? '${_copy.text('restored')} · ${_copy.text('white')}: −${whiteCaptured.isEmpty ? '0' : whiteCaptured} · ${_copy.text('black')}: −${blackCaptured.isEmpty ? '0' : blackCaptured}'
-                      : whiteCaptured.isEmpty && blackCaptured.isEmpty
-                          ? 'Starting position restored • All pieces on board'
-                          : 'Exact game snapshot restored • Missing White: ${whiteCaptured.isEmpty ? '—' : whiteCaptured}  Black: ${blackCaptured.isEmpty ? '—' : blackCaptured}',
-                  style: const TextStyle(
-                    color: Color(0xFF63D2B8),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                );
-              }),
+              Builder(
+                builder: (BuildContext context) {
+                  final String whiteCaptured = _capturedPieces(true);
+                  final String blackCaptured = _capturedPieces(false);
+                  return Text(
+                    _copy.language != 'en'
+                        ? '${_copy.text('restored')} · ${_copy.text('white')}: −${whiteCaptured.isEmpty ? '0' : whiteCaptured} · ${_copy.text('black')}: −${blackCaptured.isEmpty ? '0' : blackCaptured}'
+                        : whiteCaptured.isEmpty && blackCaptured.isEmpty
+                        ? 'Starting position restored • All pieces on board'
+                        : 'Exact game snapshot restored • Missing White: ${whiteCaptured.isEmpty ? '—' : whiteCaptured}  Black: ${blackCaptured.isEmpty ? '—' : blackCaptured}',
+                    style: const TextStyle(
+                      color: Color(0xFF63D2B8),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  );
+                },
+              ),
               const SizedBox(height: 14),
               AspectRatio(
                 aspectRatio: 1,
@@ -9549,10 +10207,12 @@ class _ReviewedPositionRetryDialogState
                   moveSequence: _answered ? 1 : 0,
                   checkedKingSquare: checkedKing,
                   decisiveSquare: null,
-                  coachArrowFrom:
-                      _answered ? widget.bestMove.substring(0, 2) : null,
-                  coachArrowTo:
-                      _answered ? widget.bestMove.substring(2, 4) : null,
+                  coachArrowFrom: _answered
+                      ? widget.bestMove.substring(0, 2)
+                      : null,
+                  coachArrowTo: _answered
+                      ? widget.bestMove.substring(2, 4)
+                      : null,
                   idleHintFrom: null,
                   idleHintTo: null,
                   flipped: !widget.whiteToMove,
@@ -9587,9 +10247,11 @@ class _ReviewedPositionRetryDialogState
                   FilledButton(
                     onPressed:
                         widget.onNext ?? () => Navigator.of(context).pop(),
-                    child: Text(widget.nextLabel == 'Back to review'
-                        ? _copy.text('back')
-                        : widget.nextLabel),
+                    child: Text(
+                      widget.nextLabel == 'Back to review'
+                          ? _copy.text('back')
+                          : widget.nextLabel,
+                    ),
                   ),
                 ],
               ),
@@ -9680,9 +10342,7 @@ class _ChessBoardState extends State<ChessBoard> {
     _animationTimer?.cancel();
     setState(() => _activeMoveToken = token);
     _animationTimer = Timer(
-      Duration(
-        milliseconds: widget.lastCapturedPiece == null ? 400 : 520,
-      ),
+      Duration(milliseconds: widget.lastCapturedPiece == null ? 400 : 520),
       () {
         if (!mounted || _activeMoveToken != token) {
           return;
@@ -9758,10 +10418,10 @@ class _ChessBoardState extends State<ChessBoard> {
                 final ChessPiece? boardPiece = pieces[square];
                 final ChessPiece? piece = kingFallen
                     ? (boardPiece ??
-                        ChessPiece('K', widget.fallenKingWhite ?? true))
+                          ChessPiece('K', widget.fallenKingWhite ?? true))
                     : moveAnimating && square == lastToSquare
-                        ? null
-                        : boardPiece;
+                    ? null
+                    : boardPiece;
                 final bool legalTarget = legalTargets.contains(square);
                 final bool captureTarget =
                     legalTarget && piece != null && square != selectedSquare;
@@ -9834,19 +10494,19 @@ class _ChessBoardState extends State<ChessBoard> {
                     curve: Curves.easeOutCubic,
                     builder:
                         (BuildContext context, double progress, Widget? child) {
-                      return CustomPaint(
-                        painter: LastMoveTrailPainter(
-                          from: lastFromSquare,
-                          to: lastToSquare,
-                          flipped: flipped,
-                          progress: progress,
-                          accent: palette.accent,
-                          // Keep the latest move visible until the next move.
-                          // The old fade made the arrow look like a brief flash.
-                          fadeOut: false,
-                        ),
-                      );
-                    },
+                          return CustomPaint(
+                            painter: LastMoveTrailPainter(
+                              from: lastFromSquare,
+                              to: lastToSquare,
+                              flipped: flipped,
+                              progress: progress,
+                              accent: palette.accent,
+                              // Keep the latest move visible until the next move.
+                              // The old fade made the arrow look like a brief flash.
+                              fadeOut: false,
+                            ),
+                          );
+                        },
                   ),
                 ),
               ),
@@ -9920,8 +10580,9 @@ class LastMoveTrailPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final double drawProgress =
-        fadeOut ? (progress / 0.68).clamp(0.0, 1.0) : progress.clamp(0.0, 1.0);
+    final double drawProgress = fadeOut
+        ? (progress / 0.68).clamp(0.0, 1.0)
+        : progress.clamp(0.0, 1.0);
     final double opacity = fadeOut && progress > 0.68
         ? ((1 - progress) / 0.32).clamp(0.0, 1.0)
         : 1;
@@ -10048,8 +10709,10 @@ class MoveAndCaptureOverlay extends StatelessWidget {
             final double hitDirection = target.dx >= start.dx ? 1 : -1;
             // The victim stays at the target only until impact, then is
             // knocked away quickly instead of lingering over the new board.
-            final double impactProgress =
-                ((progress - 0.30) / 0.70).clamp(0.0, 1.0);
+            final double impactProgress = ((progress - 0.30) / 0.70).clamp(
+              0.0,
+              1.0,
+            );
             return Stack(
               clipBehavior: Clip.none,
               children: <Widget>[
@@ -10161,21 +10824,20 @@ class BoardSquare extends StatelessWidget {
             base,
           )
         : decisiveMove
-            ? Color.alphaBlend(palette.accent.withValues(alpha: 0.62), base)
-            : lastCapture
-                ? Color.alphaBlend(
-                    const Color(0xFFE11D48).withValues(alpha: 0.62),
-                    base,
-                  )
-                : selected
-                    ? Color.alphaBlend(
-                        palette.accent.withValues(alpha: 0.55), base)
-                    : lastMoveSquare
-                        ? Color.alphaBlend(
-                            const Color(0xFFFFFFFF).withValues(alpha: 0.26),
-                            base,
-                          )
-                        : base;
+        ? Color.alphaBlend(palette.accent.withValues(alpha: 0.62), base)
+        : lastCapture
+        ? Color.alphaBlend(
+            const Color(0xFFE11D48).withValues(alpha: 0.62),
+            base,
+          )
+        : selected
+        ? Color.alphaBlend(palette.accent.withValues(alpha: 0.55), base)
+        : lastMoveSquare
+        ? Color.alphaBlend(
+            const Color(0xFFFFFFFF).withValues(alpha: 0.26),
+            base,
+          )
+        : base;
 
     final bool idleHint = idleHintSource || idleHintTarget;
 
@@ -10183,13 +10845,14 @@ class BoardSquare extends StatelessWidget {
       key: idleHintSource
           ? const ValueKey<String>('idle-hint-source')
           : idleHintTarget
-              ? const ValueKey<String>('idle-hint-target')
-              : null,
+          ? const ValueKey<String>('idle-hint-target')
+          : null,
       onTap: onTap,
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(
           begin: 0,
-          end: selected ||
+          end:
+              selected ||
                   legalTarget ||
                   lastCapture ||
                   checkedKing ||
@@ -10225,45 +10888,42 @@ class BoardSquare extends StatelessWidget {
                 color: idleHint
                     ? const Color(0xFF68C8FF)
                     : selected
-                        ? const Color(0xFFF8E7B0)
-                        : (dark ? Colors.black : Colors.white).withValues(
-                            alpha: 0.08,
-                          ),
+                    ? const Color(0xFFF8E7B0)
+                    : (dark ? Colors.black : Colors.white).withValues(
+                        alpha: 0.08,
+                      ),
                 width: idleHint
                     ? 3.2
                     : selected
-                        ? 3
-                        : 1,
+                    ? 3
+                    : 1,
               ),
               boxShadow: <BoxShadow>[
                 if (idleHint)
                   BoxShadow(
-                    color:
-                        const Color(0xFF42B8FF).withValues(alpha: 0.9 * glow),
+                    color: const Color(0xFF42B8FF)
+                        .withValues(alpha: 0.9 * glow),
                     blurRadius: 26,
                     spreadRadius: 5,
                   ),
                 if (legalTarget)
                   BoxShadow(
-                    color: const Color(
-                      0xFFBDE6FF,
-                    ).withValues(alpha: 0.72 * glow),
+                    color: const Color(0xFFBDE6FF)
+                        .withValues(alpha: 0.72 * glow),
                     blurRadius: 22,
                     spreadRadius: 4,
                   ),
                 if (lastCapture || captureTarget)
                   BoxShadow(
-                    color: const Color(
-                      0xFFFF1744,
-                    ).withValues(alpha: 0.55 * glow),
+                    color: const Color(0xFFFF1744)
+                        .withValues(alpha: 0.55 * glow),
                     blurRadius: 24,
                     spreadRadius: 3,
                   ),
                 if (checkedKing)
                   BoxShadow(
-                    color: const Color(
-                      0xFFFF1744,
-                    ).withValues(alpha: 0.9 * glow),
+                    color: const Color(0xFFFF1744)
+                        .withValues(alpha: 0.9 * glow),
                     blurRadius: 28,
                     spreadRadius: 5,
                   ),
@@ -10364,9 +11024,8 @@ class BoardSquare extends StatelessWidget {
                       ),
                       boxShadow: <BoxShadow>[
                         BoxShadow(
-                          color: const Color(
-                            0xFFFF1744,
-                          ).withValues(alpha: 0.72),
+                          color: const Color(0xFFFF1744)
+                              .withValues(alpha: 0.72),
                           blurRadius: 20,
                           spreadRadius: 3,
                         ),
@@ -10405,16 +11064,19 @@ class BoardSquare extends StatelessWidget {
                       curve: Curves.easeInOutBack,
                       builder:
                           (BuildContext context, double fall, Widget? child) {
-                        return Transform.translate(
-                          offset: Offset(0, fall * 9),
-                          child: Transform.rotate(
-                            alignment: Alignment.bottomCenter,
-                            angle:
-                                (piece!.white ? 1 : -1) * math.pi * .48 * fall,
-                            child: child,
-                          ),
-                        );
-                      },
+                            return Transform.translate(
+                              offset: Offset(0, fall * 9),
+                              child: Transform.rotate(
+                                alignment: Alignment.bottomCenter,
+                                angle:
+                                    (piece!.white ? 1 : -1) *
+                                    math.pi *
+                                    .48 *
+                                    fall,
+                                child: child,
+                              ),
+                            );
+                          },
                       child: ChessCoin(
                         key: ValueKey<String>(
                           '$square-${piece!.white}-${piece!.code}',
@@ -10525,131 +11187,132 @@ class ChessCoin extends StatelessWidget {
       valueListenable: ChessPieceAppearanceController.current,
       builder: (BuildContext context, ChessPieceAppearance appearance, _) {
         return LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-          final double size = math.min(
-            constraints.maxWidth,
-            constraints.maxHeight,
-          );
-          final bool classic2d =
-              appearance.style == ChessPieceVisualStyle.classic2d;
-          final double pieceScale = switch (appearance.size) {
-            ChessPieceVisualSize.large => classic2d ? 1.31 : 1.43,
-            ChessPieceVisualSize.extraLarge => classic2d ? 1.44 : 1.58,
-            ChessPieceVisualSize.doubleExtraLarge => classic2d ? 1.56 : 1.72,
-          };
-          final double pieceSize = size * pieceScale;
-          final double silhouetteScale = switch (piece.code) {
-            'K' => 1.00,
-            'Q' => .98,
-            'N' => .96,
-            'B' => .94,
-            'R' => .91,
-            _ => .88,
-          };
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final double size = math.min(
+              constraints.maxWidth,
+              constraints.maxHeight,
+            );
+            final bool classic2d =
+                appearance.style == ChessPieceVisualStyle.classic2d;
+            final double pieceScale = switch (appearance.size) {
+              ChessPieceVisualSize.large => classic2d ? 1.31 : 1.43,
+              ChessPieceVisualSize.extraLarge => classic2d ? 1.44 : 1.58,
+              ChessPieceVisualSize.doubleExtraLarge => classic2d ? 1.56 : 1.72,
+            };
+            final double pieceSize = size * pieceScale;
+            final double silhouetteScale = switch (piece.code) {
+              'K' => 1.00,
+              'Q' => .98,
+              'N' => .96,
+              'B' => .94,
+              'R' => .91,
+              _ => .88,
+            };
 
-          return AnimatedRotation(
-            turns: selected ? -0.012 : 0,
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutBack,
-            child: AnimatedScale(
+            return AnimatedRotation(
+              turns: selected ? -0.012 : 0,
               duration: const Duration(milliseconds: 220),
-              scale: selected ? 1.13 : 1,
               curve: Curves.easeOutBack,
-              child: SizedBox(
-                width: pieceSize,
-                height: pieceSize,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: <Widget>[
-                    Positioned(
-                      bottom: pieceSize * 0.08,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: <Color>[
-                              (piece.white
-                                      ? const Color(0xFFFFF0C8)
-                                      : const Color(0xFF5D6674))
-                                  .withValues(alpha: 0.28),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                        child: SizedBox(
-                          width: pieceSize * 0.72,
-                          height: pieceSize * 0.34,
-                        ),
-                      ),
-                    ),
-                    if (!classic2d)
+              child: AnimatedScale(
+                duration: const Duration(milliseconds: 220),
+                scale: selected ? 1.13 : 1,
+                curve: Curves.easeOutBack,
+                child: SizedBox(
+                  width: pieceSize,
+                  height: pieceSize,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: <Widget>[
                       Positioned(
-                        bottom: pieceSize * 0.045,
+                        bottom: pieceSize * 0.08,
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(pieceSize),
-                            boxShadow: <BoxShadow>[
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.48),
-                                blurRadius: pieceSize * 0.07,
-                                spreadRadius: pieceSize * 0.012,
-                              ),
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.2),
-                                blurRadius: pieceSize * 0.11,
-                                offset: Offset(0, pieceSize * 0.08),
-                              ),
-                              if (selected)
-                                BoxShadow(
-                                  color: accent.withValues(alpha: 0.68),
-                                  blurRadius: pieceSize * 0.2,
-                                  spreadRadius: pieceSize * 0.06,
-                                ),
-                            ],
-                          ),
-                          child: SizedBox(
-                            width: pieceSize * 0.42,
-                            height: pieceSize * 0.035,
-                          ),
-                        ),
-                      ),
-                    Transform.translate(
-                      offset: Offset(0, selected ? -pieceSize * 0.035 : 0),
-                      child: Transform.scale(
-                        scale: silhouetteScale,
-                        child: _pieceVisual(appearance, pieceSize),
-                      ),
-                    ),
-                    Positioned(
-                      top: pieceSize * 0.11,
-                      left: pieceSize * 0.25,
-                      child: IgnorePointer(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(
-                              alpha: piece.white ? 0.2 : 0.12,
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: <Color>[
+                                (piece.white
+                                        ? const Color(0xFFFFF0C8)
+                                        : const Color(0xFF5D6674))
+                                    .withValues(alpha: 0.28),
+                                Colors.transparent,
+                              ],
                             ),
-                            borderRadius: BorderRadius.circular(pieceSize),
-                            boxShadow: <BoxShadow>[
-                              BoxShadow(
-                                color: Colors.white.withValues(alpha: 0.22),
-                                blurRadius: pieceSize * 0.09,
-                              ),
-                            ],
                           ),
                           child: SizedBox(
-                            width: pieceSize * 0.13,
-                            height: pieceSize * 0.035,
+                            width: pieceSize * 0.72,
+                            height: pieceSize * 0.34,
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      if (!classic2d)
+                        Positioned(
+                          bottom: pieceSize * 0.045,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(pieceSize),
+                              boxShadow: <BoxShadow>[
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.48),
+                                  blurRadius: pieceSize * 0.07,
+                                  spreadRadius: pieceSize * 0.012,
+                                ),
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: pieceSize * 0.11,
+                                  offset: Offset(0, pieceSize * 0.08),
+                                ),
+                                if (selected)
+                                  BoxShadow(
+                                    color: accent.withValues(alpha: 0.68),
+                                    blurRadius: pieceSize * 0.2,
+                                    spreadRadius: pieceSize * 0.06,
+                                  ),
+                              ],
+                            ),
+                            child: SizedBox(
+                              width: pieceSize * 0.42,
+                              height: pieceSize * 0.035,
+                            ),
+                          ),
+                        ),
+                      Transform.translate(
+                        offset: Offset(0, selected ? -pieceSize * 0.035 : 0),
+                        child: Transform.scale(
+                          scale: silhouetteScale,
+                          child: _pieceVisual(appearance, pieceSize),
+                        ),
+                      ),
+                      Positioned(
+                        top: pieceSize * 0.11,
+                        left: pieceSize * 0.25,
+                        child: IgnorePointer(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(
+                                alpha: piece.white ? 0.2 : 0.12,
+                              ),
+                              borderRadius: BorderRadius.circular(pieceSize),
+                              boxShadow: <BoxShadow>[
+                                BoxShadow(
+                                  color: Colors.white.withValues(alpha: 0.22),
+                                  blurRadius: pieceSize * 0.09,
+                                ),
+                              ],
+                            ),
+                            child: SizedBox(
+                              width: pieceSize * 0.13,
+                              height: pieceSize * 0.035,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
-        });
+            );
+          },
+        );
       },
     );
   }
@@ -10662,10 +11325,12 @@ class ChessCoin extends StatelessWidget {
       // black glyphs made the classic white pawn retain a black silhouette on
       // several browser/Android serif fonts.
       final String solidGlyph = pieceGlyph(piece);
-      final Color fill =
-          piece.white ? const Color(0xFFFFF4D0) : const Color(0xFF10243A);
-      final Color outline =
-          piece.white ? const Color(0xFF9A6A16) : const Color(0xFFE7C67E);
+      final Color fill = piece.white
+          ? const Color(0xFFFFF4D0)
+          : const Color(0xFF10243A);
+      final Color outline = piece.white
+          ? const Color(0xFF9A6A16)
+          : const Color(0xFFE7C67E);
       return Semantics(
         label: label,
         child: Stack(
@@ -10706,11 +11371,11 @@ class ChessCoin extends StatelessWidget {
       );
     }
     Widget pieceImage({String? semanticLabel}) => Image.asset(
-          pieceAsset(piece),
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.high,
-          semanticLabel: semanticLabel,
-        );
+      pieceAsset(piece),
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
+      semanticLabel: semanticLabel,
+    );
     Widget image = pieceImage(semanticLabel: label);
     if (appearance.style == ChessPieceVisualStyle.highContrast) {
       image = ColorFiltered(
@@ -10721,10 +11386,7 @@ class ChessCoin extends StatelessWidget {
         child: image,
       );
     }
-    return Semantics(
-      label: label,
-      child: image,
-    );
+    return Semantics(label: label, child: image);
   }
 }
 
@@ -10814,10 +11476,12 @@ class PieceSculpturePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final double w = size.width;
     final double h = size.height;
-    final Color body =
-        light ? const Color(0xFFF7E9C9) : const Color(0xFF252A32);
-    final Color edge =
-        light ? const Color(0xFFC09035) : const Color(0xFF68707D);
+    final Color body = light
+        ? const Color(0xFFF7E9C9)
+        : const Color(0xFF252A32);
+    final Color edge = light
+        ? const Color(0xFFC09035)
+        : const Color(0xFF68707D);
     final Paint shadow = Paint()
       ..color = Colors.black.withValues(alpha: 0.28)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
@@ -10949,8 +11613,8 @@ class _GameStudioHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool compact = MediaQuery.sizeOf(context).width <
-        (onPause == null ? 1050 : 1500);
+    final bool compact =
+        MediaQuery.sizeOf(context).width < (onPause == null ? 1050 : 1500);
     final String title = switch (gameMode) {
       GameMode.daily => 'Daily Challenge',
       GameMode.puzzle => 'Puzzle Academy',
@@ -10961,9 +11625,7 @@ class _GameStudioHeader extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: const Color(0xFF071425).withValues(alpha: 0.96),
-        border: const Border(
-          bottom: BorderSide(color: Color(0xFFB47A2B)),
-        ),
+        border: const Border(bottom: BorderSide(color: Color(0xFFB47A2B))),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -11021,8 +11683,10 @@ class _GameStudioHeader extends StatelessWidget {
               onTap: onDailyChallenge,
               borderRadius: BorderRadius.circular(12),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 child: Row(
                   children: <Widget>[
                     const Icon(
@@ -11085,10 +11749,7 @@ class _GameStudioHeader extends StatelessWidget {
                 ),
                 label: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 150),
-                  child: Text(
-                    playerName,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  child: Text(playerName, overflow: TextOverflow.ellipsis),
                 ),
               ),
           ],
@@ -11294,22 +11955,28 @@ class _StudioCoachPanel extends StatelessWidget {
       GameMode.online => 'Play a live opponent',
     };
     final String localizedGoal = localizeLiveCoach(
-        _localizedCoachGoal(goal, languageCode), languageCode);
-    final String? localizedMoveOwner =
-        lastMoveOwner == null ? null : _localizedYourMoveLabel(languageCode);
+      _localizedCoachGoal(goal, languageCode),
+      languageCode,
+    );
+    final String? localizedMoveOwner = lastMoveOwner == null
+        ? null
+        : _localizedYourMoveLabel(languageCode);
     final AppLanguage selectedLanguage =
         languageCode == AppLanguageController.systemCode
-            ? const AppLanguage(
-                AppLanguageController.systemCode, 'Device', 'Automatic')
-            : AppLanguageController.byCode(languageCode);
+        ? const AppLanguage(
+            AppLanguageController.systemCode,
+            'Device',
+            'Automatic',
+          )
+        : AppLanguageController.byCode(languageCode);
     final int progress =
         (gameMode == GameMode.daily || gameMode == GameMode.puzzle)
-            ? dailyProgress.clamp(0, dailyGoal)
-            : (lastMove == null ? 0 : 1);
+        ? dailyProgress.clamp(0, dailyGoal)
+        : (lastMove == null ? 0 : 1);
     final int goalSteps =
         (gameMode == GameMode.daily || gameMode == GameMode.puzzle)
-            ? dailyGoal
-            : 3;
+        ? dailyGoal
+        : 3;
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
@@ -11325,7 +11992,8 @@ class _StudioCoachPanel extends StatelessWidget {
                   ? coachNote
                   : localizeLiveCoach(
                       'Turn Coach on in Game controls for live move explanations.',
-                      languageCode),
+                      languageCode,
+                    ),
               style: const TextStyle(
                 color: Color(0xFFF2EDE4),
                 fontSize: 15,
@@ -11362,8 +12030,9 @@ class _StudioCoachPanel extends StatelessWidget {
                           child: OutlinedButton.icon(
                             onPressed: onBackToAcademy,
                             icon: const Icon(Icons.school_rounded),
-                            label: Text(localizeLiveCoach(
-                                'Puzzle Academy', languageCode)),
+                            label: Text(
+                              localizeLiveCoach('Puzzle Academy', languageCode),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -11372,7 +12041,8 @@ class _StudioCoachPanel extends StatelessWidget {
                             onPressed: onNextPuzzle,
                             icon: const Icon(Icons.arrow_forward_rounded),
                             label: Text(
-                                coachExtraText('nextPuzzle', languageCode)),
+                              coachExtraText('nextPuzzle', languageCode),
+                            ),
                           ),
                         ),
                       ],
@@ -11415,13 +12085,16 @@ class _StudioCoachPanel extends StatelessWidget {
                           onPressed: onLanguage,
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 9, vertical: 8),
+                              horizontal: 9,
+                              vertical: 8,
+                            ),
                             foregroundColor: const Color(0xFFF1BE57),
                           ),
                           icon: const Icon(Icons.translate_rounded, size: 17),
                           label: ConstrainedBox(
-                            constraints:
-                                BoxConstraints(maxWidth: compact ? 58 : 82),
+                            constraints: BoxConstraints(
+                              maxWidth: compact ? 58 : 82,
+                            ),
                             child: Text(
                               '${selectedLanguage.englishName} ▾',
                               maxLines: 1,
@@ -11467,10 +12140,11 @@ class _StudioCoachPanel extends StatelessWidget {
                         aiThinking
                             ? localizeLiveCoach(
                                 'ChessVerseAI is calculating its reply.',
-                                languageCode)
+                                languageCode,
+                              )
                             : lastMove == null
-                                ? _coachCopy(languageCode)[2]
-                                : '${localizedMoveOwner ?? 'Last move'}: $lastMove',
+                            ? _coachCopy(languageCode)[2]
+                            : '${localizedMoveOwner ?? 'Last move'}: $lastMove',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -11493,7 +12167,8 @@ class _StudioCoachPanel extends StatelessWidget {
                                       ? coachNote
                                       : localizeLiveCoach(
                                           'Turn Coach on from Game controls to receive move-by-move explanations.',
-                                          languageCode),
+                                          languageCode,
+                                        ),
                                   style: TextStyle(
                                     color: const Color(0xFFF2EDE4),
                                     fontFamily: 'serif',
@@ -11516,7 +12191,8 @@ class _StudioCoachPanel extends StatelessWidget {
                                       ? coachNote
                                       : localizeLiveCoach(
                                           'Turn Coach on from Game controls to receive move-by-move explanations.',
-                                          languageCode),
+                                          languageCode,
+                                        ),
                                   style: TextStyle(
                                     color: const Color(0xFFF2EDE4),
                                     fontFamily: 'serif',
@@ -11552,8 +12228,9 @@ class _StudioCoachPanel extends StatelessWidget {
                           label: FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text(
-                                localizeLiveCoach(hintLabel, languageCode),
-                                maxLines: 1),
+                              localizeLiveCoach(hintLabel, languageCode),
+                              maxLines: 1,
+                            ),
                           ),
                         ),
                       ),
@@ -11565,8 +12242,9 @@ class _StudioCoachPanel extends StatelessWidget {
                           label: FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text(
-                                localizeLiveCoach(analyzeLabel, languageCode),
-                                maxLines: 1),
+                              localizeLiveCoach(analyzeLabel, languageCode),
+                              maxLines: 1,
+                            ),
                           ),
                         ),
                       ),
@@ -11585,7 +12263,9 @@ class _StudioCoachPanel extends StatelessWidget {
                               gameMode == GameMode.online
                                   ? localizeLiveCoach('Sync', languageCode)
                                   : localizeLiveCoach(
-                                      'Try again', languageCode),
+                                      'Try again',
+                                      languageCode,
+                                    ),
                               maxLines: 1,
                             ),
                           ),
@@ -11610,107 +12290,107 @@ const Map<String, List<String>> _liveCoachCopy = <String, List<String>>{
   'en': <String>[
     'Goal',
     'Find the strongest move',
-    'Select a piece to see legal moves.'
+    'Select a piece to see legal moves.',
   ],
   'te': <String>[
     'లక్ష్యం',
     'అత్యుత్తమ ఎత్తును కనుగొనండి',
-    'చట్టబద్ధమైన ఎత్తులను చూడటానికి ఒక పావును ఎంచుకోండి.'
+    'చట్టబద్ధమైన ఎత్తులను చూడటానికి ఒక పావును ఎంచుకోండి.',
   ],
   'hi': <String>[
     'लक्ष्य',
     'सबसे मजबूत चाल खोजें',
-    'वैध चालें देखने के लिए एक मोहरा चुनें।'
+    'वैध चालें देखने के लिए एक मोहरा चुनें।',
   ],
   'ta': <String>[
     'இலக்கு',
     'சிறந்த நகர்வைக் கண்டறியுங்கள்',
-    'சட்டபூர்வ நகர்வுகளைக் காண ஒரு காயைத் தேர்ந்தெடுக்கவும்.'
+    'சட்டபூர்வ நகர்வுகளைக் காண ஒரு காயைத் தேர்ந்தெடுக்கவும்.',
   ],
   'kn': <String>[
     'ಗುರಿ',
     'ಅತ್ಯುತ್ತಮ ನಡೆಯನ್ನು ಹುಡುಕಿ',
-    'ಕಾನೂನುಬದ್ಧ ನಡೆಗಳನ್ನು ನೋಡಲು ಒಂದು ಕಾಯಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ.'
+    'ಕಾನೂನುಬದ್ಧ ನಡೆಗಳನ್ನು ನೋಡಲು ಒಂದು ಕಾಯಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ.',
   ],
   'ml': <String>[
     'ലക്ഷ്യം',
     'ഏറ്റവും മികച്ച നീക്കം കണ്ടെത്തുക',
-    'നിയമാനുസൃത നീക്കങ്ങൾ കാണാൻ ഒരു കരു തിരഞ്ഞെടുക്കുക.'
+    'നിയമാനുസൃത നീക്കങ്ങൾ കാണാൻ ഒരു കരു തിരഞ്ഞെടുക്കുക.',
   ],
   'mr': <String>[
     'ध्येय',
     'सर्वोत्तम चाल शोधा',
-    'वैध चाली पाहण्यासाठी एक मोहरा निवडा.'
+    'वैध चाली पाहण्यासाठी एक मोहरा निवडा.',
   ],
   'bn': <String>[
     'লক্ষ্য',
     'সবচেয়ে শক্তিশালী চালটি খুঁজুন',
-    'বৈধ চাল দেখতে একটি ঘুঁটি নির্বাচন করুন।'
+    'বৈধ চাল দেখতে একটি ঘুঁটি নির্বাচন করুন।',
   ],
   'gu': <String>[
     'લક્ષ્ય',
     'સૌથી મજબૂત ચાલ શોધો',
-    'માન્ય ચાલ જોવા માટે એક મહોરું પસંદ કરો.'
+    'માન્ય ચાલ જોવા માટે એક મહોરું પસંદ કરો.',
   ],
   'pa': <String>[
     'ਟੀਚਾ',
     'ਸਭ ਤੋਂ ਮਜ਼ਬੂਤ ਚਾਲ ਲੱਭੋ',
-    'ਕਾਨੂੰਨੀ ਚਾਲਾਂ ਦੇਖਣ ਲਈ ਇੱਕ ਮੋਹਰਾ ਚੁਣੋ।'
+    'ਕਾਨੂੰਨੀ ਚਾਲਾਂ ਦੇਖਣ ਲਈ ਇੱਕ ਮੋਹਰਾ ਚੁਣੋ।',
   ],
   'ur': <String>[
     'مقصد',
     'سب سے مضبوط چال تلاش کریں',
-    'قانونی چالیں دیکھنے کے لیے ایک مہرہ منتخب کریں۔'
+    'قانونی چالیں دیکھنے کے لیے ایک مہرہ منتخب کریں۔',
   ],
   'ar': <String>[
     'الهدف',
     'اعثر على أقوى نقلة',
-    'اختر قطعة لرؤية النقلات القانونية.'
+    'اختر قطعة لرؤية النقلات القانونية.',
   ],
   'es': <String>[
     'Objetivo',
     'Encuentra la jugada más fuerte',
-    'Selecciona una pieza para ver los movimientos legales.'
+    'Selecciona una pieza para ver los movimientos legales.',
   ],
   'fr': <String>[
     'Objectif',
     'Trouvez le meilleur coup',
-    'Sélectionnez une pièce pour voir les coups légaux.'
+    'Sélectionnez une pièce pour voir les coups légaux.',
   ],
   'de': <String>[
     'Ziel',
     'Finde den stärksten Zug',
-    'Wähle eine Figur, um die legalen Züge zu sehen.'
+    'Wähle eine Figur, um die legalen Züge zu sehen.',
   ],
   'it': <String>[
     'Obiettivo',
     'Trova la mossa migliore',
-    'Seleziona un pezzo per vedere le mosse legali.'
+    'Seleziona un pezzo per vedere le mosse legali.',
   ],
   'pt': <String>[
     'Objetivo',
     'Encontre a jogada mais forte',
-    'Selecione uma peça para ver as jogadas legais.'
+    'Selecione uma peça para ver as jogadas legais.',
   ],
   'ru': <String>[
     'Цель',
     'Найдите сильнейший ход',
-    'Выберите фигуру, чтобы увидеть допустимые ходы.'
+    'Выберите фигуру, чтобы увидеть допустимые ходы.',
   ],
   'uk': <String>[
     'Мета',
     'Знайдіть найсильніший хід',
-    'Виберіть фігуру, щоб побачити дозволені ходи.'
+    'Виберіть фігуру, щоб побачити дозволені ходи.',
   ],
   'tr': <String>[
     'Hedef',
     'En güçlü hamleyi bul',
-    'Yasal hamleleri görmek için bir taş seçin.'
+    'Yasal hamleleri görmek için bir taş seçin.',
   ],
   'fa': <String>[
     'هدف',
     'قوی‌ترین حرکت را پیدا کنید',
-    'برای دیدن حرکت‌های مجاز یک مهره را انتخاب کنید.'
+    'برای دیدن حرکت‌های مجاز یک مهره را انتخاب کنید.',
   ],
   'zh': <String>['目标', '找出最佳着法', '选择一个棋子以查看合法走法。'],
   'ja': <String>['目標', '最善手を見つける', '合法手を表示するには駒を選択してください。'],
@@ -11718,52 +12398,52 @@ const Map<String, List<String>> _liveCoachCopy = <String, List<String>>{
   'id': <String>[
     'Tujuan',
     'Temukan langkah terbaik',
-    'Pilih bidak untuk melihat langkah yang sah.'
+    'Pilih bidak untuk melihat langkah yang sah.',
   ],
   'ms': <String>[
     'Matlamat',
     'Cari langkah terbaik',
-    'Pilih buah untuk melihat langkah yang sah.'
+    'Pilih buah untuk melihat langkah yang sah.',
   ],
   'th': <String>[
     'เป้าหมาย',
     'ค้นหาตาที่ดีที่สุด',
-    'เลือกตัวหมากเพื่อดูตาเดินที่ถูกต้อง'
+    'เลือกตัวหมากเพื่อดูตาเดินที่ถูกต้อง',
   ],
   'vi': <String>[
     'Mục tiêu',
     'Tìm nước đi mạnh nhất',
-    'Chọn một quân để xem các nước đi hợp lệ.'
+    'Chọn một quân để xem các nước đi hợp lệ.',
   ],
   'pl': <String>[
     'Cel',
     'Znajdź najlepszy ruch',
-    'Wybierz figurę, aby zobaczyć dozwolone ruchy.'
+    'Wybierz figurę, aby zobaczyć dozwolone ruchy.',
   ],
   'nl': <String>[
     'Doel',
     'Vind de sterkste zet',
-    'Selecteer een stuk om geldige zetten te zien.'
+    'Selecteer een stuk om geldige zetten te zien.',
   ],
   'sv': <String>[
     'Mål',
     'Hitta det starkaste draget',
-    'Välj en pjäs för att se giltiga drag.'
+    'Välj en pjäs för att se giltiga drag.',
   ],
   'el': <String>[
     'Στόχος',
     'Βρείτε την ισχυρότερη κίνηση',
-    'Επιλέξτε ένα κομμάτι για να δείτε τις νόμιμες κινήσεις.'
+    'Επιλέξτε ένα κομμάτι για να δείτε τις νόμιμες κινήσεις.',
   ],
   'he': <String>[
     'מטרה',
     'מצא את המסע החזק ביותר',
-    'בחר כלי כדי לראות מסעים חוקיים.'
+    'בחר כלי כדי לראות מסעים חוקיים.',
   ],
   'sw': <String>[
     'Lengo',
     'Tafuta hatua bora zaidi',
-    'Chagua kete ili kuona hatua halali.'
+    'Chagua kete ili kuona hatua halali.',
   ],
 };
 
@@ -11784,7 +12464,9 @@ String _localizedYourMoveLabel(String languageCode) =>
 
 String _localizedCoachUiLabel(String key, String languageCode) =>
     localizeLiveCoach(
-        key == 'progress' ? 'Step progress' : 'Evaluation', languageCode);
+      key == 'progress' ? 'Step progress' : 'Evaluation',
+      languageCode,
+    );
 
 class _CoachInsightCard extends StatelessWidget {
   const _CoachInsightCard({
@@ -11809,8 +12491,9 @@ class _CoachInsightCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFF8C622D)),
       ),
       child: Row(
-        crossAxisAlignment:
-            alignStart ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        crossAxisAlignment: alignStart
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.center,
         children: <Widget>[
           Icon(icon, color: accent, size: 25),
           const SizedBox(width: 8),
@@ -11856,8 +12539,9 @@ class _CoachProgress extends StatelessWidget {
                 minHeight: 8,
                 value: progress / safeGoal,
                 backgroundColor: const Color(0xFF27344A),
-                valueColor:
-                    const AlwaysStoppedAnimation<Color>(Color(0xFF63D2B8)),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  Color(0xFF63D2B8),
+                ),
               ),
             ),
           ),
@@ -11957,13 +12641,14 @@ class _OnlineConnectionBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool healthy = !reconnecting && !opponentAway;
-    final Color color =
-        healthy ? const Color(0xFF63D2B8) : const Color(0xFFE5B856);
+    final Color color = healthy
+        ? const Color(0xFF63D2B8)
+        : const Color(0xFFE5B856);
     final String connection = reconnecting
         ? 'Reconnecting to match…'
         : opponentAway
-            ? 'Opponent offline — waiting for reconnect'
-            : 'Both players online';
+        ? 'Opponent offline — waiting for reconnect'
+        : 'Both players online';
     final String label = tournamentName == null
         ? connection
         : '${tournamentName!.toUpperCase()} • ROUND ${tournamentRound ?? 1} • $connection';
@@ -12126,8 +12811,11 @@ class _OnlineArenaBoard extends StatelessWidget {
 
 /// Reserve space beside the player clock instead of painting chat over it.
 class OnlineQuickChatPlayerRow extends StatelessWidget {
-  const OnlineQuickChatPlayerRow(
-      {required this.playerRail, this.action, super.key});
+  const OnlineQuickChatPlayerRow({
+    required this.playerRail,
+    this.action,
+    super.key,
+  });
   final Widget playerRail;
   final Widget? action;
 
@@ -12487,8 +13175,9 @@ class GamePanel extends StatelessWidget {
           if (collapsible)
             Semantics(
               button: true,
-              label:
-                  expanded ? 'Collapse game controls' : 'Expand game controls',
+              label: expanded
+                  ? 'Collapse game controls'
+                  : 'Expand game controls',
               child: InkWell(
                 key: const ValueKey<String>('game-controls-handle'),
                 onTap: onToggleExpanded,
@@ -12528,9 +13217,9 @@ class GamePanel extends StatelessWidget {
                   },
                   style: compact
                       ? Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                          )
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                        )
                       : Theme.of(context).textTheme.headlineMedium,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -12691,9 +13380,9 @@ class GamePanel extends StatelessWidget {
                 .map(
                   (MapEntry<BoardSkin, BoardPalette> entry) =>
                       DropdownMenuItem<BoardSkin>(
-                    value: entry.key,
-                    child: BoardThemeMenuItem(palette: entry.value),
-                  ),
+                        value: entry.key,
+                        child: BoardThemeMenuItem(palette: entry.value),
+                      ),
                 )
                 .toList(),
             onChanged: (BoardSkin? selectedSkin) {
@@ -12920,80 +13609,81 @@ class GameModeLauncher extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: choices.map((choice) {
-        final bool active = selected == choice.mode;
-        return SizedBox(
-          width: compact ? 148 : 178,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () => onChanged(choice.mode),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
+      children: choices
+          .map((choice) {
+            final bool active = selected == choice.mode;
+            return SizedBox(
+              width: compact ? 148 : 178,
+              child: InkWell(
                 borderRadius: BorderRadius.circular(14),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: active
-                      ? const <Color>[Color(0xFF2B2140), Color(0xFF6D4FD8)]
-                      : <Color>[
-                          const Color(0xFF211D24),
-                          const Color(0xFF111C18).withValues(alpha: 0.92),
-                        ],
-                ),
-                border: Border.all(
-                  color: active
-                      ? const Color(0xFFE2B458)
-                      : const Color(0xFF7A6038).withValues(alpha: 0.55),
-                ),
-                boxShadow: <BoxShadow>[
-                  if (active)
-                    BoxShadow(
-                      color: const Color(
-                        0xFF6D4FD8,
-                      ).withValues(alpha: 0.28),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
+                onTap: () => onChanged(choice.mode),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: active
+                          ? const <Color>[Color(0xFF2B2140), Color(0xFF6D4FD8)]
+                          : <Color>[
+                              const Color(0xFF211D24),
+                              const Color(0xFF111C18).withValues(alpha: 0.92),
+                            ],
                     ),
-                ],
-              ),
-              child: Row(
-                children: <Widget>[
-                  Icon(
-                    choice.icon,
-                    color: const Color(0xFFE2B458),
-                    size: 22,
-                  ),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          choice.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          choice.subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
+                    border: Border.all(
+                      color: active
+                          ? const Color(0xFFE2B458)
+                          : const Color(0xFF7A6038).withValues(alpha: 0.55),
                     ),
+                    boxShadow: <BoxShadow>[
+                      if (active)
+                        BoxShadow(
+                          color: const Color(0xFF6D4FD8)
+                              .withValues(alpha: 0.28),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                    ],
                   ),
-                ],
+                  child: Row(
+                    children: <Widget>[
+                      Icon(
+                        choice.icon,
+                        color: const Color(0xFFE2B458),
+                        size: 22,
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              choice.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              choice.subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
-        );
-      }).toList(growable: false),
+            );
+          })
+          .toList(growable: false),
     );
   }
 }
@@ -13027,19 +13717,21 @@ class DailyDifficultyChips extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: DailyChallengeDifficulty.values.map((difficulty) {
-        final bool active = selected == difficulty;
-        return ChoiceChip(
-          selected: active,
-          avatar: Icon(
-            Icons.emoji_events_outlined,
-            size: 18,
-            color: active ? Colors.black : const Color(0xFFE2B458),
-          ),
-          label: Text(difficulty.label),
-          onSelected: (_) => onChanged(difficulty),
-        );
-      }).toList(growable: false),
+      children: DailyChallengeDifficulty.values
+          .map((difficulty) {
+            final bool active = selected == difficulty;
+            return ChoiceChip(
+              selected: active,
+              avatar: Icon(
+                Icons.emoji_events_outlined,
+                size: 18,
+                color: active ? Colors.black : const Color(0xFFE2B458),
+              ),
+              label: Text(difficulty.label),
+              onSelected: (_) => onChanged(difficulty),
+            );
+          })
+          .toList(growable: false),
     );
   }
 }
@@ -13074,8 +13766,11 @@ class BoardThemeMenuItem extends StatelessWidget {
 }
 
 class PositionAnalysisSheet extends StatelessWidget {
-  const PositionAnalysisSheet(
-      {required this.analysis, this.languageCode = 'en', super.key});
+  const PositionAnalysisSheet({
+    required this.analysis,
+    this.languageCode = 'en',
+    super.key,
+  });
 
   final PositionAnalysis analysis;
   final String languageCode;
@@ -13085,13 +13780,14 @@ class PositionAnalysisSheet extends StatelessWidget {
     final String evaluation = analysis.evaluation == 0
         ? localizeLiveCoach('Equal', languageCode)
         : analysis.evaluation > 0
-            ? '${CoachLocalizations(languageCode).source('White')} +${analysis.evaluation.toStringAsFixed(1)}'
-            : '${CoachLocalizations(languageCode).source('Black')} +${analysis.evaluation.abs().toStringAsFixed(1)}';
+        ? '${CoachLocalizations(languageCode).source('White')} +${analysis.evaluation.toStringAsFixed(1)}'
+        : '${CoachLocalizations(languageCode).source('Black')} +${analysis.evaluation.abs().toStringAsFixed(1)}';
 
     return SafeArea(
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints viewport) {
-          final bool shortLandscape = viewport.maxWidth > viewport.maxHeight &&
+          final bool shortLandscape =
+              viewport.maxWidth > viewport.maxHeight &&
               viewport.maxHeight < 500;
           return Align(
             alignment: Alignment.bottomCenter,
@@ -13159,41 +13855,50 @@ class PositionAnalysisSheet extends StatelessWidget {
                       AnalysisMetric(
                         icon: Icons.route_rounded,
                         label: localizeLiveCoach(
-                            '${analysis.side} legal moves', languageCode),
+                          '${analysis.side} legal moves',
+                          languageCode,
+                        ),
                         value: '${analysis.legalMoves}',
                       ),
                       AnalysisMetric(
                         icon: Icons.gps_fixed_rounded,
                         label: localizeLiveCoach(
-                            'Immediate captures', languageCode),
+                          'Immediate captures',
+                          languageCode,
+                        ),
                         value: '${analysis.captures}',
                       ),
                       AnalysisMetric(
                         icon: Icons.auto_graph_rounded,
                         label: CoachLocalizations(languageCode)
                             .text('moveQuality'),
-                        value:
-                            localizeLiveCoach(analysis.quality, languageCode),
+                        value: localizeLiveCoach(
+                          analysis.quality,
+                          languageCode,
+                        ),
                       ),
                       AnalysisMetric(
                         icon: analysis.inCheck
                             ? Icons.warning_amber_rounded
                             : Icons.shield_outlined,
-                        label:
-                            analysisDashboardText('kingSafety', languageCode),
+                        label: analysisDashboardText(
+                          'kingSafety',
+                          languageCode,
+                        ),
                         value: localizeLiveCoach(
-                            analysis.inCheck ? 'In check' : 'Safe',
-                            languageCode),
+                          analysis.inCheck ? 'In check' : 'Safe',
+                          languageCode,
+                        ),
                       ),
                       SizedBox(height: shortLandscape ? 6 : 12),
                       DecoratedBox(
                         decoration: BoxDecoration(
-                          color:
-                              const Color(0xFFD6A84F).withValues(alpha: 0.12),
+                          color: const Color(0xFFD6A84F)
+                              .withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(7),
                           border: Border.all(
-                            color:
-                                const Color(0xFFD6A84F).withValues(alpha: 0.48),
+                            color: const Color(0xFFD6A84F)
+                                .withValues(alpha: 0.48),
                           ),
                         ),
                         child: Padding(
@@ -13209,7 +13914,9 @@ class PositionAnalysisSheet extends StatelessWidget {
                                 child: Text(
                                   analysis.bestMove == null
                                       ? localizeLiveCoach(
-                                          'No legal move', languageCode)
+                                          'No legal move',
+                                          languageCode,
+                                        )
                                       : '${CoachLocalizations(languageCode).text('recommended')}: ${analysis.bestMove}\n${localizeLiveCoach(analysis.coachLine, languageCode)}',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w800,
@@ -13331,8 +14038,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
 
   Future<void> _refreshCoinBalance() async {
     try {
-      final EconomyRewardStatus status =
-          await const EconomyRewardsApi().status(widget.token);
+      final EconomyRewardStatus status = await const EconomyRewardsApi().status(
+        widget.token,
+      );
       if (mounted) setState(() => _coinBalance = status.coins);
     } on Object {
       // The server still performs the authoritative balance check.
@@ -13360,27 +14068,26 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: const Color(0xFFD6A84F)),
         ),
-        child: Row(children: <Widget>[
-          const Icon(Icons.monetization_on_rounded, color: Color(0xFFD6A84F)),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              'Not enough play coins. Claim the free daily reward or watch rewarded videos—no purchase needed.',
-              style: TextStyle(color: Color(0xFFFFE2A3)),
+        child: Row(
+          children: <Widget>[
+            const Icon(Icons.monetization_on_rounded, color: Color(0xFFD6A84F)),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Not enough play coins. Claim the free daily reward or watch rewarded videos—no purchase needed.',
+                style: TextStyle(color: Color(0xFFFFE2A3)),
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          FilledButton(
-            onPressed: _openEarnCoins,
-            child: const Text('Earn free coins'),
-          ),
-        ]),
+            const SizedBox(width: 10),
+            FilledButton(
+              onPressed: _openEarnCoins,
+              child: const Text('Earn free coins'),
+            ),
+          ],
+        ),
       );
     }
-    return Text(
-      _error!,
-      style: const TextStyle(color: Color(0xFFFF6B6B)),
-    );
+    return Text(_error!, style: const TextStyle(color: Color(0xFFFF6B6B)));
   }
 
   @override
@@ -13421,12 +14128,15 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
       _accept(match);
     } on OnlineMatchException catch (error) {
       if (mounted) {
-        final bool insufficientCoins = error.statusCode == 409 &&
+        final bool insufficientCoins =
+            error.statusCode == 409 &&
             _coinBalance != null &&
             _coinBalance! < _entryCoins;
-        setState(() => _error = insufficientCoins
-            ? 'Insufficient coins to enter this match.'
-            : error.message);
+        setState(
+          () => _error = insufficientCoins
+              ? 'Insufficient coins to enter this match.'
+              : error.message,
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -13444,8 +14154,8 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
           _connectionQuality = latency.elapsedMilliseconds <= 180
               ? 'EXCELLENT'
               : latency.elapsedMilliseconds <= 650
-                  ? 'STANDARD'
-                  : 'LIMITED';
+              ? 'STANDARD'
+              : 'LIMITED';
         });
       }
     } on OnlineMatchException {
@@ -13455,13 +14165,13 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
   }
 
   Future<OnlineMatchDto> _requestRandomMatch() => widget.api.randomMatch(
-        widget.token,
-        timeControlMinutes: _timeControlMinutes,
-        region: _searchRegion,
-        ratingRange: _ratingRange,
-        entryCoins: _entryCoins,
-        connectionQuality: _connectionQuality,
-      );
+    widget.token,
+    timeControlMinutes: _timeControlMinutes,
+    region: _searchRegion,
+    ratingRange: _ratingRange,
+    entryCoins: _entryCoins,
+    connectionQuality: _connectionQuality,
+  );
 
   Future<void> _applySearchPreferences(_SearchPreferences preferences) async {
     final OnlineMatchDto? waiting = _match;
@@ -13556,8 +14266,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
       // The lobby may already have expired server-side.
     }
     if (!mounted || _match?.id != waiting.id || _foundMatch != null) return;
-    final String rivalName = _aiRivalNames[
-        DateTime.now().millisecondsSinceEpoch % _aiRivalNames.length];
+    final String rivalName =
+        _aiRivalNames[DateTime.now().millisecondsSinceEpoch %
+            _aiRivalNames.length];
     final Future<void> Function(String rivalName)? fallback =
         widget.onAiFallback;
     if (fallback == null) {
@@ -13598,8 +14309,11 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
           borderRadius: BorderRadius.circular(24),
           side: const BorderSide(color: Color(0xFFF0B84B), width: 1.2),
         ),
-        icon: const Icon(Icons.person_search_rounded,
-            color: Color(0xFF58DFC9), size: 44),
+        icon: const Icon(
+          Icons.person_search_rounded,
+          color: Color(0xFF58DFC9),
+          size: 44,
+        ),
         title: const Text(
           'No online player found',
           textAlign: TextAlign.center,
@@ -13634,8 +14348,10 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     unawaited(_socketSubscription?.cancel());
     unawaited(_channel?.sink.close());
     try {
-      final WebSocketChannel channel =
-          await widget.api.openMatchChannel(widget.token, match.id);
+      final WebSocketChannel channel = await widget.api.openMatchChannel(
+        widget.token,
+        match.id,
+      );
       _channel = channel;
       _socketSubscription = channel.stream.listen(
         (_) => unawaited(_poll()),
@@ -13661,8 +14377,10 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
     final OnlineMatchDto? current = _match;
     if (current == null) return;
     try {
-      final OnlineMatchDto latest =
-          await widget.api.getMatch(widget.token, current.id);
+      final OnlineMatchDto latest = await widget.api.getMatch(
+        widget.token,
+        current.id,
+      );
       if (!mounted) return;
       _accept(latest);
     } on OnlineMatchException catch (error) {
@@ -13798,10 +14516,15 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                           widget.initialMode == OnlineLobbyMode.random
                               ? 'Play Online'
                               : 'Play with Friends',
-                          style: (wideLayout
-                                  ? Theme.of(context).textTheme.headlineMedium
-                                  : Theme.of(context).textTheme.headlineSmall)
-                              ?.copyWith(fontWeight: FontWeight.w900),
+                          style:
+                              (wideLayout
+                                      ? Theme.of(context)
+                                            .textTheme
+                                            .headlineMedium
+                                      : Theme.of(context)
+                                            .textTheme
+                                            .headlineSmall)
+                                  ?.copyWith(fontWeight: FontWeight.w900),
                         ),
                       ),
                       IconButton(
@@ -13869,17 +14592,18 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                   child: Text(
                                     'Random Match',
                                     maxLines: 1,
-                                    style: (wideLayout
-                                            ? Theme.of(context)
-                                                .textTheme
-                                                .headlineMedium
-                                            : Theme.of(context)
-                                                .textTheme
-                                                .titleLarge)
-                                        ?.copyWith(
-                                      fontSize: wideLayout ? null : 20,
-                                      fontWeight: FontWeight.w900,
-                                    ),
+                                    style:
+                                        (wideLayout
+                                                ? Theme.of(context)
+                                                      .textTheme
+                                                      .headlineMedium
+                                                : Theme.of(context)
+                                                      .textTheme
+                                                      .titleLarge)
+                                            ?.copyWith(
+                                              fontSize: wideLayout ? null : 20,
+                                              fontWeight: FontWeight.w900,
+                                            ),
                                   ),
                                 ),
                                 if (_loading)
@@ -13958,9 +14682,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                   onPressed: _loading
                                       ? null
                                       : () => _run(
-                                            _requestRandomMatch,
-                                            randomSearch: true,
-                                          ),
+                                          _requestRandomMatch,
+                                          randomSearch: true,
+                                        ),
                                   icon: Icon(
                                     Icons.bolt_rounded,
                                     size: wideLayout ? 22 : 20,
@@ -14085,21 +14809,21 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                           onPressed: _loading
                               ? null
                               : () => _run(
-                                    () => widget.api.createRoom(widget.token),
-                                  ),
+                                  () => widget.api.createRoom(widget.token),
+                                ),
                           icon: const Icon(Icons.group_add_rounded),
                           label: const Text('Create Room'),
                         ),
                         FilledButton.icon(
                           onPressed:
                               _loading || _roomController.text.trim().isEmpty
-                                  ? null
-                                  : () => _run(
-                                        () => widget.api.joinRoom(
-                                          widget.token,
-                                          _roomController.text,
-                                        ),
-                                      ),
+                              ? null
+                              : () => _run(
+                                  () => widget.api.joinRoom(
+                                    widget.token,
+                                    _roomController.text,
+                                  ),
+                                ),
                           icon: const Icon(Icons.sports_esports_rounded),
                           label: const Text('Join Room'),
                         ),
@@ -14110,9 +14834,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                     borderRadius: BorderRadius.circular(18),
                     onTap: _loading
                         ? null
-                        : () => _run(
-                              () => widget.api.reconnect(widget.token),
-                            ),
+                        : () => _run(() => widget.api.reconnect(widget.token)),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 18,
@@ -14224,8 +14946,12 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(compactDesktop ? 24 : 38,
-                    compactDesktop ? 18 : 22, compactDesktop ? 24 : 36, 32),
+                padding: EdgeInsets.fromLTRB(
+                  compactDesktop ? 24 : 38,
+                  compactDesktop ? 18 : 22,
+                  compactDesktop ? 24 : 36,
+                  32,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
@@ -14239,31 +14965,40 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                             color: const Color(0xFF082431),
                             border: Border.all(color: teal),
                           ),
-                          child: const Icon(Icons.language_rounded,
-                              color: teal, size: 34),
+                          child: const Icon(
+                            Icons.language_rounded,
+                            color: teal,
+                            size: 34,
+                          ),
                         ),
                         const SizedBox(width: 18),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              Text('Online 2 Players',
-                                  style: textTheme.headlineLarge?.copyWith(
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 32)),
+                              Text(
+                                'Online 2 Players',
+                                style: textTheme.headlineLarge?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 32,
+                                ),
+                              ),
                               const SizedBox(height: 5),
                               const Text(
                                 'Play online with a random opponent or invite a friend to a private room.',
                                 style: TextStyle(
-                                    color: Color(0xFFB8C3D1), fontSize: 16),
+                                  color: Color(0xFFB8C3D1),
+                                  fontSize: 16,
+                                ),
                               ),
                             ],
                           ),
                         ),
                         IconButton.filled(
                           style: IconButton.styleFrom(
-                              backgroundColor: const Color(0xFF0A1A2B),
-                              padding: const EdgeInsets.all(12)),
+                            backgroundColor: const Color(0xFF0A1A2B),
+                            padding: const EdgeInsets.all(12),
+                          ),
                           onPressed: () => Navigator.of(context).pop(),
                           icon: const Icon(Icons.close_rounded, size: 26),
                         ),
@@ -14279,12 +15014,15 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                       decoration: BoxDecoration(
                         image: const DecorationImage(
                           image: AssetImage(
-                              'assets/backgrounds/online-matchmaking-hero-v1.webp'),
+                            'assets/backgrounds/online-matchmaking-hero-v1.webp',
+                          ),
                           fit: BoxFit.cover,
                         ),
                         borderRadius: BorderRadius.circular(25),
                         border: Border.all(
-                            color: const Color(0xFF2F9CFF), width: 1.6),
+                          color: const Color(0xFF2F9CFF),
+                          width: 1.6,
+                        ),
                         boxShadow: const <BoxShadow>[
                           BoxShadow(color: Color(0x442F9CFF), blurRadius: 18),
                         ],
@@ -14303,18 +15041,22 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
-                                Text('Random Match',
-                                    maxLines: 1,
-                                    style: textTheme.headlineMedium?.copyWith(
-                                        fontSize: 30,
-                                        fontWeight: FontWeight.w900)),
+                                Text(
+                                  'Random Match',
+                                  maxLines: 1,
+                                  style: textTheme.headlineMedium?.copyWith(
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
                                 const SizedBox(height: 8),
                                 const Text(
                                   'We’ll find a player for you\nfrom around the world.',
                                   style: TextStyle(
-                                      color: Color(0xFFC8D1DD),
-                                      fontSize: 17,
-                                      height: 1.35),
+                                    color: Color(0xFFC8D1DD),
+                                    fontSize: 17,
+                                    height: 1.35,
+                                  ),
                                 ),
                                 const SizedBox(height: 14),
                                 _CoinStakeSelector(
@@ -14342,8 +15084,10 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                     ),
                                     onPressed: _loading
                                         ? null
-                                        : () => _run(_requestRandomMatch,
-                                            randomSearch: true),
+                                        : () => _run(
+                                            _requestRandomMatch,
+                                            randomSearch: true,
+                                          ),
                                     icon: const Icon(
                                       Icons.bolt_rounded,
                                       size: 21,
@@ -14374,33 +15118,43 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
-                                Row(children: <Widget>[
-                                  Container(
-                                    width: 56,
-                                    height: 56,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                          color: const Color(0xFF267D72)),
+                                Row(
+                                  children: <Widget>[
+                                    Container(
+                                      width: 56,
+                                      height: 56,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: const Color(0xFF267D72),
+                                        ),
+                                      ),
+                                      child: const Icon(
+                                        Icons.group_rounded,
+                                        color: teal,
+                                        size: 31,
+                                      ),
                                     ),
-                                    child: const Icon(Icons.group_rounded,
-                                        color: teal, size: 31),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  const Text('Play with Friend',
+                                    const SizedBox(width: 16),
+                                    const Text(
+                                      'Play with Friend',
                                       style: TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.w900)),
-                                ]),
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                                 const SizedBox(height: 8),
                                 const Padding(
                                   padding: EdgeInsets.only(left: 72),
                                   child: Text(
                                     'Create a private room or join\none using a room code.',
                                     style: TextStyle(
-                                        color: Color(0xFFB8C3D1),
-                                        fontSize: 16,
-                                        height: 1.4),
+                                      color: Color(0xFFB8C3D1),
+                                      fontSize: 16,
+                                      height: 1.4,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 16),
@@ -14433,17 +15187,25 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: Colors.white,
                                       side: const BorderSide(
-                                          color: Color(0xFF23D8C2)),
+                                        color: Color(0xFF23D8C2),
+                                      ),
                                       textStyle: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w800),
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                                     onPressed: _loading
                                         ? null
-                                        : () => _run(() => widget.api
-                                            .createRoom(widget.token)),
-                                    icon: const Icon(Icons.person_add_rounded,
-                                        color: teal, size: 27),
+                                        : () => _run(
+                                            () => widget.api.createRoom(
+                                              widget.token,
+                                            ),
+                                          ),
+                                    icon: const Icon(
+                                      Icons.person_add_rounded,
+                                      color: teal,
+                                      size: 27,
+                                    ),
                                     label: const Text('Create Room'),
                                   ),
                                 ),
@@ -14452,15 +15214,20 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                   width: double.infinity,
                                   height: 62,
                                   child: OutlinedButton.icon(
-                                    onPressed: _loading ||
+                                    onPressed:
+                                        _loading ||
                                             _roomController.text.trim().isEmpty
                                         ? null
-                                        : () => _run(() => widget.api.joinRoom(
-                                            widget.token,
-                                            _roomController.text)),
+                                        : () => _run(
+                                            () => widget.api.joinRoom(
+                                              widget.token,
+                                              _roomController.text,
+                                            ),
+                                          ),
                                     icon: const Icon(
-                                        Icons.sports_esports_rounded,
-                                        size: 27),
+                                      Icons.sports_esports_rounded,
+                                      size: 27,
+                                    ),
                                     label: const Text('Join Room'),
                                   ),
                                 ),
@@ -14479,7 +15246,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                       onTap: _loading
                           ? null
                           : () =>
-                              _run(() => widget.api.reconnect(widget.token)),
+                                _run(() => widget.api.reconnect(widget.token)),
                     ),
                     const SizedBox(height: 18),
                     const _DesktopOnlineValidationRow(),
@@ -14510,69 +15277,84 @@ class _DesktopOnlineActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
+    borderRadius: BorderRadius.circular(20),
+    onTap: onTap,
+    child: Container(
+      height: 104,
+      padding: const EdgeInsets.symmetric(horizontal: 28),
+      decoration: BoxDecoration(
+        color: const Color(0xFF071725),
         borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Container(
-          height: 104,
-          padding: const EdgeInsets.symmetric(horizontal: 28),
-          decoration: BoxDecoration(
-            color: const Color(0xFF071725),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFF233B51)),
+        border: Border.all(color: const Color(0xFF233B51)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 68,
+            height: 68,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFF233B51)),
+            ),
+            child: Icon(icon, color: iconColor, size: 39),
           ),
-          child: Row(children: <Widget>[
-            Container(
-              width: 68,
-              height: 68,
-              decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF233B51))),
-              child: Icon(icon, color: iconColor, size: 39),
+          const SizedBox(width: 22),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Color(0xFFB8C3D1),
+                    fontSize: 17,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 22),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(title,
-                      style: const TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 4),
-                  Text(subtitle,
-                      style: const TextStyle(
-                          color: Color(0xFFB8C3D1), fontSize: 17)),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right_rounded, size: 34),
-          ]),
-        ),
-      );
+          ),
+          const Icon(Icons.chevron_right_rounded, size: 34),
+        ],
+      ),
+    ),
+  );
 }
 
 class _DesktopOnlineValidationRow extends StatelessWidget {
   const _DesktopOnlineValidationRow();
   @override
   Widget build(BuildContext context) => Container(
-        height: 98,
-        padding: const EdgeInsets.symmetric(horizontal: 28),
-        decoration: BoxDecoration(
-          color: const Color(0xFF071725),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF233B51)),
-        ),
-        child: const Row(children: <Widget>[
-          Icon(Icons.verified_user_outlined,
-              color: Color(0xFF43D6C1), size: 48),
-          SizedBox(width: 22),
-          Text(
-            'Moves are validated by ChessVerseAI servers.\nActive matches restore after an app restart.',
-            style:
-                TextStyle(color: Color(0xFFB8C3D1), fontSize: 17, height: 1.45),
+    height: 98,
+    padding: const EdgeInsets.symmetric(horizontal: 28),
+    decoration: BoxDecoration(
+      color: const Color(0xFF071725),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: const Color(0xFF233B51)),
+    ),
+    child: const Row(
+      children: <Widget>[
+        Icon(Icons.verified_user_outlined, color: Color(0xFF43D6C1), size: 48),
+        SizedBox(width: 22),
+        Text(
+          'Moves are validated by ChessVerseAI servers.\nActive matches restore after an app restart.',
+          style: TextStyle(
+            color: Color(0xFFB8C3D1),
+            fontSize: 17,
+            height: 1.45,
           ),
-        ]),
-      );
+        ),
+      ],
+    ),
+  );
 }
 
 class _MatchSearchingView extends StatefulWidget {
@@ -14684,9 +15466,8 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: const Color(
-                              0xFF63D2B8,
-                            ).withValues(alpha: 0.12 + value * 0.28),
+                            color: const Color(0xFF63D2B8)
+                                .withValues(alpha: 0.12 + value * 0.28),
                             width: 2,
                           ),
                         ),
@@ -14795,8 +15576,9 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
     final String? resolvedName = userIsWhite
         ? widget.match.whitePlayerName
         : widget.match.blackPlayerName;
-    final String playerName =
-        resolvedName?.trim().isNotEmpty == true ? resolvedName!.trim() : 'You';
+    final String playerName = resolvedName?.trim().isNotEmpty == true
+        ? resolvedName!.trim()
+        : 'You';
     final String rating = widget.match.ratingBefore?.toString() ?? 'Unrated';
     final int remaining = math.max(0, 20 - widget.elapsedSeconds);
 
@@ -14826,14 +15608,20 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
             const Positioned(
               left: -48,
               bottom: -74,
-              child: Icon(Icons.castle_rounded,
-                  size: 300, color: Color(0x1558DFC9)),
+              child: Icon(
+                Icons.castle_rounded,
+                size: 300,
+                color: Color(0x1558DFC9),
+              ),
             ),
             const Positioned(
               right: -38,
               bottom: -52,
-              child: Icon(Icons.castle_outlined,
-                  size: 330, color: Color(0x14F0B84B)),
+              child: Icon(
+                Icons.castle_outlined,
+                size: 330,
+                color: Color(0x14F0B84B),
+              ),
             ),
             SafeArea(
               child: LayoutBuilder(
@@ -14841,7 +15629,11 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                   final bool compactHeight = constraints.maxHeight < 760;
                   return SingleChildScrollView(
                     padding: EdgeInsets.fromLTRB(
-                        30, compactHeight ? 16 : 24, 30, 24),
+                      30,
+                      compactHeight ? 16 : 24,
+                      30,
+                      24,
+                    ),
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 1320),
@@ -14873,23 +15665,29 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                             const Text(
                               'Searching worldwide for the best available match',
                               style: TextStyle(
-                                  color: Color(0xFFB5BEC8), fontSize: 15),
+                                color: Color(0xFFB5BEC8),
+                                fontSize: 15,
+                              ),
                             ),
                             const SizedBox(height: 10),
                             _CoinPoolBanner(
-                                entryCoins: widget.preferences.entryCoins),
+                              entryCoins: widget.preferences.entryCoins,
+                            ),
                             SizedBox(height: compactHeight ? 14 : 22),
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: <Widget>[
                                 SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(-.65, 0),
-                                    end: Offset.zero,
-                                  ).animate(CurvedAnimation(
-                                    parent: _entrance,
-                                    curve: Curves.easeOutBack,
-                                  )),
+                                  position:
+                                      Tween<Offset>(
+                                        begin: const Offset(-.65, 0),
+                                        end: Offset.zero,
+                                      ).animate(
+                                        CurvedAnimation(
+                                          parent: _entrance,
+                                          curve: Curves.easeOutBack,
+                                        ),
+                                      ),
                                   child: FadeTransition(
                                     opacity: _entrance,
                                     child: SizedBox(
@@ -14915,13 +15713,16 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                   ),
                                 ),
                                 SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(.65, 0),
-                                    end: Offset.zero,
-                                  ).animate(CurvedAnimation(
-                                    parent: _entrance,
-                                    curve: Curves.easeOutBack,
-                                  )),
+                                  position:
+                                      Tween<Offset>(
+                                        begin: const Offset(.65, 0),
+                                        end: Offset.zero,
+                                      ).animate(
+                                        CurvedAnimation(
+                                          parent: _entrance,
+                                          curve: Curves.easeOutBack,
+                                        ),
+                                      ),
                                   child: FadeTransition(
                                     opacity: _entrance,
                                     child: SizedBox(
@@ -14940,19 +15741,23 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                               constraints: const BoxConstraints(maxWidth: 620),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 11),
+                                  horizontal: 14,
+                                  vertical: 11,
+                                ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xD9071725),
                                   borderRadius: BorderRadius.circular(15),
                                   border: Border.all(
-                                      color: const Color(0xFF655A3D)),
+                                    color: const Color(0xFF655A3D),
+                                  ),
                                 ),
                                 child: Row(
                                   children: <Widget>[
                                     Expanded(
                                       child: _MobileSearchFact(
                                         icon: Icons.groups_rounded,
-                                        value: widget.onlinePlayerCount
+                                        value:
+                                            widget.onlinePlayerCount
                                                 ?.toString() ??
                                             '—',
                                         label: 'Players online',
@@ -14970,8 +15775,8 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                     Expanded(
                                       child: _MobileSearchFact(
                                         icon: Icons.gps_fixed_rounded,
-                                        value: widget.preferences.ratingRange ==
-                                                0
+                                        value:
+                                            widget.preferences.ratingRange == 0
                                             ? 'Open'
                                             : '±${widget.preferences.ratingRange}',
                                         label: 'Rating range',
@@ -14992,10 +15797,13 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: gold,
                                     side: const BorderSide(
-                                        color: gold, width: 1.4),
+                                      color: gold,
+                                      width: 1.4,
+                                    ),
                                     textStyle: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w900),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                    ),
                                   ),
                                   icon: const Icon(Icons.close_rounded),
                                   label: const Text('CANCEL SEARCH'),
@@ -15012,7 +15820,9 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                               'Keep this screen open. Your match starts automatically.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                  color: Color(0xFF98A4B0), fontSize: 13),
+                                color: Color(0xFF98A4B0),
+                                fontSize: 13,
+                              ),
                             ),
                           ],
                         ),
@@ -15034,15 +15844,16 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
     const Color teal = Color(0xFF58DFC9);
     const Color gold = Color(0xFFE7B64F);
     final bool userIsWhite = widget.match.yourColor == 'WHITE';
-    final String playerName = (userIsWhite
+    final String playerName =
+        (userIsWhite
                     ? widget.match.whitePlayerName
                     : widget.match.blackPlayerName)
                 ?.trim()
                 .isNotEmpty ==
             true
         ? (userIsWhite
-            ? widget.match.whitePlayerName!
-            : widget.match.blackPlayerName!)
+              ? widget.match.whitePlayerName!
+              : widget.match.blackPlayerName!)
         : 'ChessVerseAI Player';
     final String rating = widget.match.ratingBefore?.toString() ?? 'Unrated';
     final int remaining = math.max(0, 20 - widget.elapsedSeconds);
@@ -15069,14 +15880,20 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
             const Positioned(
               left: 18,
               bottom: -46,
-              child: Icon(Icons.castle_rounded,
-                  size: 210, color: Color(0x0D58DFC9)),
+              child: Icon(
+                Icons.castle_rounded,
+                size: 210,
+                color: Color(0x0D58DFC9),
+              ),
             ),
             const Positioned(
               right: 12,
               top: -48,
-              child: Icon(Icons.castle_outlined,
-                  size: 230, color: Color(0x0DE7B64F)),
+              child: Icon(
+                Icons.castle_outlined,
+                size: 230,
+                color: Color(0x0DE7B64F),
+              ),
             ),
             Column(
               mainAxisSize: MainAxisSize.min,
@@ -15091,24 +15908,34 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                         shape: BoxShape.circle,
                         border: Border.all(color: teal.withValues(alpha: .65)),
                       ),
-                      child: const Icon(Icons.language_rounded,
-                          color: teal, size: 24),
+                      child: const Icon(
+                        Icons.language_rounded,
+                        color: teal,
+                        size: 24,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     const Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Text('CHESSVERSEAI MATCHMAKING',
-                              style: TextStyle(
-                                  color: gold,
-                                  fontSize: 13,
-                                  letterSpacing: 1.35,
-                                  fontWeight: FontWeight.w900)),
+                          Text(
+                            'CHESSVERSEAI MATCHMAKING',
+                            style: TextStyle(
+                              color: gold,
+                              fontSize: 13,
+                              letterSpacing: 1.35,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
                           SizedBox(height: 2),
-                          Text('Finding the strongest available rival',
-                              style: TextStyle(
-                                  color: Color(0xFF9FB1C2), fontSize: 13)),
+                          Text(
+                            'Finding the strongest available rival',
+                            style: TextStyle(
+                              color: Color(0xFF9FB1C2),
+                              fontSize: 13,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -15141,8 +15968,9 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                           AnimatedBuilder(
                             animation: _pulse,
                             builder: (BuildContext context, Widget? child) {
-                              final double value =
-                                  Curves.easeInOut.transform(_pulse.value);
+                              final double value = Curves.easeInOut.transform(
+                                _pulse.value,
+                              );
                               return Transform.scale(
                                 scale: .94 + value * .08,
                                 child: Container(
@@ -15152,8 +15980,9 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     gradient: SweepGradient(
-                                      transform:
-                                          GradientRotation(value * math.pi * 2),
+                                      transform: GradientRotation(
+                                        value * math.pi * 2,
+                                      ),
                                       colors: const <Color>[
                                         Color(0x0058DFC9),
                                         teal,
@@ -15165,7 +15994,8 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                     boxShadow: <BoxShadow>[
                                       BoxShadow(
                                         color: teal.withValues(
-                                            alpha: .18 + value * .16),
+                                          alpha: .18 + value * .16,
+                                        ),
                                         blurRadius: 26,
                                         spreadRadius: 4,
                                       ),
@@ -15179,31 +16009,40 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                       color: Color(0xFF071A2A),
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Text('VS',
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 28,
-                                            fontWeight: FontWeight.w900)),
+                                    child: const Text(
+                                      'VS',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               );
                             },
                           ),
                           const SizedBox(height: 12),
-                          const Text('SEARCHING',
-                              style: TextStyle(
-                                  color: teal,
-                                  fontSize: 12,
-                                  letterSpacing: 1.8,
-                                  fontWeight: FontWeight.w900)),
+                          const Text(
+                            'SEARCHING',
+                            style: TextStyle(
+                              color: teal,
+                              fontSize: 12,
+                              letterSpacing: 1.8,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
                           const SizedBox(height: 4),
-                          Text(timer,
-                              style: const TextStyle(
-                                  fontSize: 25,
-                                  fontWeight: FontWeight.w900,
-                                  fontFeatures: <ui.FontFeature>[
-                                    ui.FontFeature.tabularFigures(),
-                                  ])),
+                          Text(
+                            timer,
+                            style: const TextStyle(
+                              fontSize: 25,
+                              fontWeight: FontWeight.w900,
+                              fontFeatures: <ui.FontFeature>[
+                                ui.FontFeature.tabularFigures(),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -15222,8 +16061,10 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                 ),
                 const SizedBox(height: 22),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xAA071725),
                     borderRadius: BorderRadius.circular(16),
@@ -15255,7 +16096,9 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                           foregroundColor: Colors.white,
                           side: const BorderSide(color: Color(0xFF806B45)),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 16),
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
                         ),
                         icon: const Icon(Icons.close_rounded, size: 19),
                         label: const Text('Cancel search'),
@@ -15278,8 +16121,9 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
     final String? resolvedName = userIsWhite
         ? widget.match.whitePlayerName
         : widget.match.blackPlayerName;
-    final String playerName =
-        resolvedName?.trim().isNotEmpty == true ? resolvedName!.trim() : 'You';
+    final String playerName = resolvedName?.trim().isNotEmpty == true
+        ? resolvedName!.trim()
+        : 'You';
     final String rating = widget.match.ratingBefore?.toString() ?? 'Unrated';
     final int remaining = math.max(0, 20 - widget.elapsedSeconds);
 
@@ -15292,14 +16136,20 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
             const Positioned(
               left: -64,
               bottom: 80,
-              child: Icon(Icons.castle_rounded,
-                  size: 220, color: Color(0x0C58DFC9)),
+              child: Icon(
+                Icons.castle_rounded,
+                size: 220,
+                color: Color(0x0C58DFC9),
+              ),
             ),
             const Positioned(
               right: -66,
               bottom: 130,
-              child: Icon(Icons.castle_outlined,
-                  size: 220, color: Color(0x0CF0B84B)),
+              child: Icon(
+                Icons.castle_outlined,
+                size: 220,
+                color: Color(0x0CF0B84B),
+              ),
             ),
             SafeArea(
               child: SingleChildScrollView(
@@ -15311,8 +16161,10 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                         IconButton(
                           tooltip: 'Cancel search',
                           onPressed: widget.onCancel,
-                          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                              color: gold),
+                          icon: const Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            color: gold,
+                          ),
                         ),
                         Expanded(
                           child: Text(
@@ -15357,13 +16209,16 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                       children: <Widget>[
                         Expanded(
                           child: SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(-.7, 0),
-                              end: Offset.zero,
-                            ).animate(CurvedAnimation(
-                              parent: _entrance,
-                              curve: Curves.easeOutBack,
-                            )),
+                            position:
+                                Tween<Offset>(
+                                  begin: const Offset(-.7, 0),
+                                  end: Offset.zero,
+                                ).animate(
+                                  CurvedAnimation(
+                                    parent: _entrance,
+                                    curve: Curves.easeOutBack,
+                                  ),
+                                ),
                             child: FadeTransition(
                               opacity: _entrance,
                               child: _MobileMatchPlayerCard(
@@ -15384,8 +16239,9 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                           child: AnimatedBuilder(
                             animation: _pulse,
                             builder: (BuildContext context, Widget? child) {
-                              final double value =
-                                  Curves.easeInOut.transform(_pulse.value);
+                              final double value = Curves.easeInOut.transform(
+                                _pulse.value,
+                              );
                               return Container(
                                 width: 50 + value * 4,
                                 height: 50 + value * 4,
@@ -15397,30 +16253,37 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                   boxShadow: <BoxShadow>[
                                     BoxShadow(
                                       color: gold.withValues(
-                                          alpha: .13 + value * .16),
+                                        alpha: .13 + value * .16,
+                                      ),
                                       blurRadius: 18,
                                       spreadRadius: 2,
                                     ),
                                   ],
                                 ),
-                                child: const Text('VS',
-                                    style: TextStyle(
-                                        color: gold,
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w900)),
+                                child: const Text(
+                                  'VS',
+                                  style: TextStyle(
+                                    color: gold,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
                               );
                             },
                           ),
                         ),
                         Expanded(
                           child: SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(.7, 0),
-                              end: Offset.zero,
-                            ).animate(CurvedAnimation(
-                              parent: _entrance,
-                              curve: Curves.easeOutBack,
-                            )),
+                            position:
+                                Tween<Offset>(
+                                  begin: const Offset(.7, 0),
+                                  end: Offset.zero,
+                                ).animate(
+                                  CurvedAnimation(
+                                    parent: _entrance,
+                                    curve: Curves.easeOutBack,
+                                  ),
+                                ),
                             child: FadeTransition(
                               opacity: _entrance,
                               child: _SearchingRivalCard(
@@ -15436,40 +16299,44 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                     AnimatedBuilder(
                       animation: _pulse,
                       builder: (BuildContext context, Widget? child) {
-                        final double value =
-                            Curves.easeInOut.transform(_pulse.value);
+                        final double value = Curves.easeInOut.transform(
+                          _pulse.value,
+                        );
                         return SizedBox.square(
                           dimension: 212,
                           child: Stack(
                             alignment: Alignment.center,
                             children: <Widget>[
                               for (int index = 0; index < 4; index++)
-                                Builder(builder: (BuildContext context) {
-                                  final double wave = (value + index / 4) % 1.0;
-                                  return Container(
-                                    width: 106 + wave * 104,
-                                    height: 106 + wave * 104,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: (index.isEven ? teal : gold)
-                                            .withValues(
-                                          alpha: (.52 * (1 - wave)) + .04,
-                                        ),
-                                        width: 1.2 + (1 - wave),
-                                      ),
-                                      boxShadow: <BoxShadow>[
-                                        BoxShadow(
+                                Builder(
+                                  builder: (BuildContext context) {
+                                    final double wave =
+                                        (value + index / 4) % 1.0;
+                                    return Container(
+                                      width: 106 + wave * 104,
+                                      height: 106 + wave * 104,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
                                           color: (index.isEven ? teal : gold)
                                               .withValues(
-                                            alpha: .13 * (1 - wave),
-                                          ),
-                                          blurRadius: 14,
+                                                alpha: (.52 * (1 - wave)) + .04,
+                                              ),
+                                          width: 1.2 + (1 - wave),
                                         ),
-                                      ],
-                                    ),
-                                  );
-                                }),
+                                        boxShadow: <BoxShadow>[
+                                          BoxShadow(
+                                            color: (index.isEven ? teal : gold)
+                                                .withValues(
+                                                  alpha: .13 * (1 - wave),
+                                                ),
+                                            blurRadius: 14,
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
                               Container(
                                 width: 158,
                                 height: 158,
@@ -15483,7 +16350,8 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                     ],
                                   ),
                                   border: Border.all(
-                                      color: teal.withValues(alpha: .7)),
+                                    color: teal.withValues(alpha: .7),
+                                  ),
                                   boxShadow: <BoxShadow>[
                                     BoxShadow(
                                       color: teal.withValues(alpha: .2),
@@ -15505,23 +16373,31 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                         );
                       },
                     ),
-                    const Text('SEARCH TIME',
-                        style: TextStyle(
-                            color: Color(0xFFAAB5C1),
-                            fontSize: 12,
-                            letterSpacing: 1.4)),
-                    Text(timer,
-                        style: const TextStyle(
-                            color: teal,
-                            fontSize: 34,
-                            fontWeight: FontWeight.w900,
-                            fontFeatures: <ui.FontFeature>[
-                              ui.FontFeature.tabularFigures(),
-                            ])),
+                    const Text(
+                      'SEARCH TIME',
+                      style: TextStyle(
+                        color: Color(0xFFAAB5C1),
+                        fontSize: 12,
+                        letterSpacing: 1.4,
+                      ),
+                    ),
+                    Text(
+                      timer,
+                      style: const TextStyle(
+                        color: teal,
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
+                        fontFeatures: <ui.FontFeature>[
+                          ui.FontFeature.tabularFigures(),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 9),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 9),
+                        horizontal: 8,
+                        vertical: 9,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xD9071725),
                         borderRadius: BorderRadius.circular(17),
@@ -15574,7 +16450,9 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                           foregroundColor: gold,
                           side: const BorderSide(color: gold, width: 1.4),
                           textStyle: const TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w900),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                         icon: const Icon(Icons.close_rounded),
                         label: const Text('CANCEL SEARCH'),
@@ -15600,8 +16478,8 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
     String region = widget.preferences.region;
     int range = widget.preferences.ratingRange;
     int entryCoins = widget.preferences.entryCoins;
-    final _SearchPreferences? selected =
-        await showModalBottomSheet<_SearchPreferences>(
+    final _SearchPreferences?
+    selected = await showModalBottomSheet<_SearchPreferences>(
       context: context,
       backgroundColor: const Color(0xFF071725),
       showDragHandle: true,
@@ -15609,110 +16487,143 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
       builder: (BuildContext sheetContext) => StatefulBuilder(
         builder: (BuildContext context, StateSetter setSheetState) =>
             MediaQuery.withClampedTextScaling(
-          maxScaleFactor: 1.1,
-          child: SafeArea(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                24,
-                8,
-                24,
-                28 + MediaQuery.viewInsetsOf(context).bottom,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  const Text('Search settings',
-                      style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<int>(
-                    isExpanded: true,
-                    initialValue: minutes,
-                    decoration: const InputDecoration(
-                      labelText: 'Time control',
-                      prefixIcon: Icon(Icons.speed_rounded),
-                    ),
-                    items: const <DropdownMenuItem<int>>[
-                      DropdownMenuItem(value: 3, child: Text('Blitz • 3 min')),
-                      DropdownMenuItem(value: 5, child: Text('Blitz • 5 min')),
-                      DropdownMenuItem(
-                          value: 10, child: Text('Rapid • 10 min')),
-                      DropdownMenuItem(
-                          value: 15, child: Text('Rapid • 15 min')),
+              maxScaleFactor: 1.1,
+              child: SafeArea(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    8,
+                    24,
+                    28 + MediaQuery.viewInsetsOf(context).bottom,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      const Text(
+                        'Search settings',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<int>(
+                        isExpanded: true,
+                        initialValue: minutes,
+                        decoration: const InputDecoration(
+                          labelText: 'Time control',
+                          prefixIcon: Icon(Icons.speed_rounded),
+                        ),
+                        items: const <DropdownMenuItem<int>>[
+                          DropdownMenuItem(
+                            value: 3,
+                            child: Text('Blitz • 3 min'),
+                          ),
+                          DropdownMenuItem(
+                            value: 5,
+                            child: Text('Blitz • 5 min'),
+                          ),
+                          DropdownMenuItem(
+                            value: 10,
+                            child: Text('Rapid • 10 min'),
+                          ),
+                          DropdownMenuItem(
+                            value: 15,
+                            child: Text('Rapid • 15 min'),
+                          ),
+                        ],
+                        onChanged: (int? value) =>
+                            setSheetState(() => minutes = value ?? 10),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<int>(
+                        isExpanded: true,
+                        initialValue: entryCoins,
+                        decoration: const InputDecoration(
+                          labelText: 'Play coin entry',
+                          prefixIcon: Icon(Icons.monetization_on_rounded),
+                        ),
+                        items: const <DropdownMenuItem<int>>[
+                          DropdownMenuItem(
+                            value: 100,
+                            child: Text('100 entry • 200 prize'),
+                          ),
+                          DropdownMenuItem(
+                            value: 200,
+                            child: Text('200 entry • 400 prize'),
+                          ),
+                          DropdownMenuItem(
+                            value: 500,
+                            child: Text('500 entry • 1,000 prize'),
+                          ),
+                        ],
+                        onChanged: (int? value) =>
+                            setSheetState(() => entryCoins = value ?? 100),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        initialValue: region,
+                        decoration: const InputDecoration(
+                          labelText: 'Region',
+                          prefixIcon: Icon(Icons.public_rounded),
+                        ),
+                        items: const <DropdownMenuItem<String>>[
+                          DropdownMenuItem(
+                            value: 'WORLDWIDE',
+                            child: Text('Worldwide'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'COUNTRY',
+                            child: Text('My country'),
+                          ),
+                        ],
+                        onChanged: (String? value) =>
+                            setSheetState(() => region = value ?? 'WORLDWIDE'),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<int>(
+                        isExpanded: true,
+                        initialValue: range,
+                        decoration: const InputDecoration(
+                          labelText: 'Rating range',
+                          prefixIcon: Icon(Icons.tune_rounded),
+                        ),
+                        items: const <DropdownMenuItem<int>>[
+                          DropdownMenuItem(
+                            value: 100,
+                            child: Text('±100 rating'),
+                          ),
+                          DropdownMenuItem(
+                            value: 250,
+                            child: Text('±250 rating'),
+                          ),
+                          DropdownMenuItem(
+                            value: 500,
+                            child: Text('±500 rating'),
+                          ),
+                          DropdownMenuItem(value: 0, child: Text('Open pool')),
+                        ],
+                        onChanged: (int? value) =>
+                            setSheetState(() => range = value ?? 0),
+                      ),
+                      const SizedBox(height: 18),
+                      FilledButton.icon(
+                        onPressed: () => Navigator.of(sheetContext).pop((
+                          timeControlMinutes: minutes,
+                          region: region,
+                          ratingRange: range,
+                          entryCoins: entryCoins,
+                        )),
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('APPLY & RESTART SEARCH'),
+                      ),
                     ],
-                    onChanged: (int? value) =>
-                        setSheetState(() => minutes = value ?? 10),
                   ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<int>(
-                    isExpanded: true,
-                    initialValue: entryCoins,
-                    decoration: const InputDecoration(
-                      labelText: 'Play coin entry',
-                      prefixIcon: Icon(Icons.monetization_on_rounded),
-                    ),
-                    items: const <DropdownMenuItem<int>>[
-                      DropdownMenuItem(
-                          value: 100, child: Text('100 entry • 200 prize')),
-                      DropdownMenuItem(
-                          value: 200, child: Text('200 entry • 400 prize')),
-                      DropdownMenuItem(
-                          value: 500, child: Text('500 entry • 1,000 prize')),
-                    ],
-                    onChanged: (int? value) =>
-                        setSheetState(() => entryCoins = value ?? 100),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    initialValue: region,
-                    decoration: const InputDecoration(
-                      labelText: 'Region',
-                      prefixIcon: Icon(Icons.public_rounded),
-                    ),
-                    items: const <DropdownMenuItem<String>>[
-                      DropdownMenuItem(
-                          value: 'WORLDWIDE', child: Text('Worldwide')),
-                      DropdownMenuItem(
-                          value: 'COUNTRY', child: Text('My country')),
-                    ],
-                    onChanged: (String? value) =>
-                        setSheetState(() => region = value ?? 'WORLDWIDE'),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<int>(
-                    isExpanded: true,
-                    initialValue: range,
-                    decoration: const InputDecoration(
-                      labelText: 'Rating range',
-                      prefixIcon: Icon(Icons.tune_rounded),
-                    ),
-                    items: const <DropdownMenuItem<int>>[
-                      DropdownMenuItem(value: 100, child: Text('±100 rating')),
-                      DropdownMenuItem(value: 250, child: Text('±250 rating')),
-                      DropdownMenuItem(value: 500, child: Text('±500 rating')),
-                      DropdownMenuItem(value: 0, child: Text('Open pool')),
-                    ],
-                    onChanged: (int? value) =>
-                        setSheetState(() => range = value ?? 0),
-                  ),
-                  const SizedBox(height: 18),
-                  FilledButton.icon(
-                    onPressed: () => Navigator.of(sheetContext).pop((
-                      timeControlMinutes: minutes,
-                      region: region,
-                      ratingRange: range,
-                      entryCoins: entryCoins,
-                    )),
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('APPLY & RESTART SEARCH'),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
       ),
     );
     if (selected != null && selected != widget.preferences) {
@@ -15759,10 +16670,12 @@ class _WideSearchPlayerCard extends StatelessWidget {
             height: 104,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: RadialGradient(colors: <Color>[
-                accent.withValues(alpha: .27),
-                const Color(0xFF061522),
-              ]),
+              gradient: RadialGradient(
+                colors: <Color>[
+                  accent.withValues(alpha: .27),
+                  const Color(0xFF061522),
+                ],
+              ),
               border: Border.all(color: accent, width: 1.5),
               boxShadow: <BoxShadow>[
                 BoxShadow(color: accent.withValues(alpha: .2), blurRadius: 20),
@@ -15771,22 +16684,31 @@ class _WideSearchPlayerCard extends StatelessWidget {
             child: Icon(icon, color: accent, size: 58),
           ),
           const SizedBox(height: 14),
-          Text(title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style:
-                  const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+          ),
           const SizedBox(height: 8),
-          Text('🏆  $rating',
-              style:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          Text(
+            '🏆  $rating',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 7),
-          Text(detail,
-              style: TextStyle(
-                  color: accent, fontSize: 16, fontWeight: FontWeight.w800)),
+          Text(
+            detail,
+            style: TextStyle(
+              color: accent,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           const SizedBox(height: 6),
-          Text(footer,
-              style: const TextStyle(color: Color(0xFFA6B2BE), fontSize: 13)),
+          Text(
+            footer,
+            style: const TextStyle(color: Color(0xFFA6B2BE), fontSize: 13),
+          ),
         ],
       ),
     );
@@ -15822,28 +16744,32 @@ class _WideSearchCore extends StatelessWidget {
                 alignment: Alignment.center,
                 children: <Widget>[
                   for (int index = 0; index < 5; index++)
-                    Builder(builder: (BuildContext context) {
-                      final double wave = (value + index / 5) % 1;
-                      return Container(
-                        width: dimension * (.5 + wave * .48),
-                        height: dimension * (.5 + wave * .48),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: (index.isEven ? teal : gold)
-                                .withValues(alpha: .5 * (1 - wave) + .03),
-                            width: 1.2,
-                          ),
-                          boxShadow: <BoxShadow>[
-                            BoxShadow(
-                              color: (index.isEven ? teal : gold)
-                                  .withValues(alpha: .12 * (1 - wave)),
-                              blurRadius: 18,
+                    Builder(
+                      builder: (BuildContext context) {
+                        final double wave = (value + index / 5) % 1;
+                        return Container(
+                          width: dimension * (.5 + wave * .48),
+                          height: dimension * (.5 + wave * .48),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: (index.isEven ? teal : gold).withValues(
+                                alpha: .5 * (1 - wave) + .03,
+                              ),
+                              width: 1.2,
                             ),
-                          ],
-                        ),
-                      );
-                    }),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: (index.isEven ? teal : gold).withValues(
+                                  alpha: .12 * (1 - wave),
+                                ),
+                                blurRadius: 18,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   for (int index = 0; index < 8; index++)
                     Transform.translate(
                       offset: Offset(
@@ -15862,8 +16788,9 @@ class _WideSearchCore extends StatelessWidget {
                           shape: BoxShape.circle,
                           boxShadow: <BoxShadow>[
                             BoxShadow(
-                              color: (index.isEven ? teal : gold)
-                                  .withValues(alpha: .75),
+                              color: (index.isEven ? teal : gold).withValues(
+                                alpha: .75,
+                              ),
                               blurRadius: 12,
                               spreadRadius: 2,
                             ),
@@ -15881,12 +16808,15 @@ class _WideSearchCore extends StatelessWidget {
                         padding: EdgeInsets.all(dimension * .055),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: RadialGradient(colors: <Color>[
-                            teal.withValues(alpha: .22 + value * .08),
-                            const Color(0xFF03111D),
-                          ]),
-                          border:
-                              Border.all(color: teal.withValues(alpha: .72)),
+                          gradient: RadialGradient(
+                            colors: <Color>[
+                              teal.withValues(alpha: .22 + value * .08),
+                              const Color(0xFF03111D),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: teal.withValues(alpha: .72),
+                          ),
                           boxShadow: <BoxShadow>[
                             BoxShadow(
                               color: teal.withValues(alpha: .18 + value * .18),
@@ -15912,33 +16842,44 @@ class _WideSearchCore extends StatelessWidget {
                       border: Border.all(color: gold, width: 1.4),
                       boxShadow: <BoxShadow>[
                         BoxShadow(
-                            color: gold.withValues(alpha: .25), blurRadius: 22),
+                          color: gold.withValues(alpha: .25),
+                          blurRadius: 22,
+                        ),
                       ],
                     ),
-                    child: const Text('VS',
-                        style: TextStyle(
-                            color: gold,
-                            fontFamily: 'serif',
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900)),
+                    child: const Text(
+                      'VS',
+                      style: TextStyle(
+                        color: gold,
+                        fontFamily: 'serif',
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                   ),
                 ],
               ),
             );
           },
         ),
-        const Text('SEARCH TIME',
-            style: TextStyle(
-                color: Color(0xFFAAB5C1), fontSize: 12, letterSpacing: 1.6)),
-        Text(timer,
-            style: const TextStyle(
-                color: teal,
-                fontSize: 38,
-                height: 1.1,
-                fontWeight: FontWeight.w900,
-                fontFeatures: <ui.FontFeature>[
-                  ui.FontFeature.tabularFigures(),
-                ])),
+        const Text(
+          'SEARCH TIME',
+          style: TextStyle(
+            color: Color(0xFFAAB5C1),
+            fontSize: 12,
+            letterSpacing: 1.6,
+          ),
+        ),
+        Text(
+          timer,
+          style: const TextStyle(
+            color: teal,
+            fontSize: 38,
+            height: 1.1,
+            fontWeight: FontWeight.w900,
+            fontFeatures: <ui.FontFeature>[ui.FontFeature.tabularFigures()],
+          ),
+        ),
       ],
     );
   }
@@ -15962,50 +16903,55 @@ class _MobileMatchPlayerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        height: 112,
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: const Color(0xD9071928),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: accent.withValues(alpha: .75)),
+    width: double.infinity,
+    height: 112,
+    padding: const EdgeInsets.all(8),
+    decoration: BoxDecoration(
+      color: const Color(0xD9071928),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: accent.withValues(alpha: .75)),
+    ),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        Container(
+          width: 39,
+          height: 39,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: accent.withValues(alpha: .13),
+            border: Border.all(color: accent.withValues(alpha: .7)),
+          ),
+          child: Icon(icon, color: accent, size: 24),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Container(
-              width: 39,
-              height: 39,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: accent.withValues(alpha: .13),
-                border: Border.all(color: accent.withValues(alpha: .7)),
-              ),
-              child: Icon(icon, color: accent, size: 24),
-            ),
-            const SizedBox(height: 3),
-            Text(title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style:
-                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 2),
-            Text(rating,
-                maxLines: 1,
-                style: TextStyle(
-                    color: accent, fontSize: 12, fontWeight: FontWeight.w800)),
-            Text(subtitle,
-                style: const TextStyle(color: Color(0xFF91A3B4), fontSize: 10)),
-          ],
+        const SizedBox(height: 3),
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
         ),
-      );
+        const SizedBox(height: 2),
+        Text(
+          rating,
+          maxLines: 1,
+          style: TextStyle(
+            color: accent,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        Text(
+          subtitle,
+          style: const TextStyle(color: Color(0xFF91A3B4), fontSize: 10),
+        ),
+      ],
+    ),
+  );
 }
 
 class _SearchingRivalCard extends StatelessWidget {
-  const _SearchingRivalCard({
-    required this.animation,
-    required this.wide,
-  });
+  const _SearchingRivalCard({required this.animation, required this.wide});
 
   final Animation<double> animation;
   final bool wide;
@@ -16054,19 +17000,16 @@ class _SearchingRivalCard extends StatelessWidget {
           switchOutCurve: Curves.easeInCubic,
           transitionBuilder: (Widget child, Animation<double> transition) =>
               FadeTransition(
-            opacity: transition,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(.12, 0),
-                end: Offset.zero,
-              ).animate(transition),
-              child: child,
-            ),
-          ),
-          child: KeyedSubtree(
-            key: ValueKey<int>(candidate),
-            child: card,
-          ),
+                opacity: transition,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(.12, 0),
+                    end: Offset.zero,
+                  ).animate(transition),
+                  child: child,
+                ),
+              ),
+          child: KeyedSubtree(key: ValueKey<int>(candidate), child: card),
         );
       },
     );
@@ -16086,26 +17029,28 @@ class _MobileSearchFact extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        children: <Widget>[
-          Icon(icon, color: const Color(0xFF58DFC9), size: 22),
-          const SizedBox(height: 3),
-          Text(value,
-              maxLines: 1, style: const TextStyle(fontWeight: FontWeight.w900)),
-          Text(label,
-              style: const TextStyle(color: Color(0xFF94A5B5), fontSize: 10)),
-        ],
-      );
+    children: <Widget>[
+      Icon(icon, color: const Color(0xFF58DFC9), size: 22),
+      const SizedBox(height: 3),
+      Text(
+        value,
+        maxLines: 1,
+        style: const TextStyle(fontWeight: FontWeight.w900),
+      ),
+      Text(
+        label,
+        style: const TextStyle(color: Color(0xFF94A5B5), fontSize: 10),
+      ),
+    ],
+  );
 }
 
 class _MobileFactDivider extends StatelessWidget {
   const _MobileFactDivider();
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: 1,
-        height: 48,
-        color: const Color(0xFF334A5B),
-      );
+  Widget build(BuildContext context) =>
+      Container(width: 1, height: 48, color: const Color(0xFF334A5B));
 }
 
 // ignore: unused_element
@@ -16122,16 +17067,16 @@ class _SearchSettingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        child: Row(
-          children: <Widget>[
-            Icon(icon, color: const Color(0xFF58DFC9)),
-            const SizedBox(width: 14),
-            Expanded(child: Text(label)),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
-          ],
-        ),
-      );
+    padding: const EdgeInsets.symmetric(vertical: 9),
+    child: Row(
+      children: <Widget>[
+        Icon(icon, color: const Color(0xFF58DFC9)),
+        const SizedBox(width: 14),
+        Expanded(child: Text(label)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
+      ],
+    ),
+  );
 }
 
 class _MatchPlayerCard extends StatelessWidget {
@@ -16155,54 +17100,58 @@ class _MatchPlayerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          color: const Color(0xD9071929),
-          borderRadius: BorderRadius.circular(22),
-          border:
-              Border.all(color: accent.withValues(alpha: active ? .75 : .4)),
+    padding: const EdgeInsets.all(22),
+    decoration: BoxDecoration(
+      color: const Color(0xD9071929),
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: accent.withValues(alpha: active ? .75 : .4)),
+    ),
+    child: Column(
+      children: <Widget>[
+        Text(
+          eyebrow,
+          style: TextStyle(
+            color: accent,
+            fontSize: 12,
+            letterSpacing: 1.6,
+            fontWeight: FontWeight.w900,
+          ),
         ),
-        child: Column(
+        const SizedBox(height: 14),
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: accent.withValues(alpha: .11),
+            border: Border.all(color: accent.withValues(alpha: .72)),
+          ),
+          child: Icon(icon, color: accent, size: 38),
+        ),
+        const SizedBox(height: 13),
+        Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 7),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 7,
           children: <Widget>[
-            Text(eyebrow,
-                style: TextStyle(
-                    color: accent,
-                    fontSize: 12,
-                    letterSpacing: 1.6,
-                    fontWeight: FontWeight.w900)),
-            const SizedBox(height: 14),
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: accent.withValues(alpha: .11),
-                border: Border.all(color: accent.withValues(alpha: .72)),
-              ),
-              child: Icon(icon, color: accent, size: 38),
-            ),
-            const SizedBox(height: 13),
-            Text(name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 7),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 7,
-              children: <Widget>[
-                Icon(Icons.military_tech_rounded, color: accent, size: 17),
-                Text(rating,
-                    style: const TextStyle(fontWeight: FontWeight.w800)),
-              ],
-            ),
-            const SizedBox(height: 5),
-            Text(detail,
-                style: const TextStyle(color: Color(0xFF95A8BA), fontSize: 12)),
+            Icon(Icons.military_tech_rounded, color: accent, size: 17),
+            Text(rating, style: const TextStyle(fontWeight: FontWeight.w800)),
           ],
         ),
-      );
+        const SizedBox(height: 5),
+        Text(
+          detail,
+          style: const TextStyle(color: Color(0xFF95A8BA), fontSize: 12),
+        ),
+      ],
+    ),
+  );
 }
 
 class _SearchFact extends StatelessWidget {
@@ -16218,22 +17167,23 @@ class _SearchFact extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      Icon(icon, size: 21, color: const Color(0xFF58DFC9)),
+      const SizedBox(width: 8),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Icon(icon, size: 21, color: const Color(0xFF58DFC9)),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
-              Text(label,
-                  style:
-                      const TextStyle(color: Color(0xFF8FA3B6), fontSize: 11)),
-            ],
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
+          Text(
+            label,
+            style: const TextStyle(color: Color(0xFF8FA3B6), fontSize: 11),
           ),
         ],
-      );
+      ),
+    ],
+  );
 }
 
 class _CoinPoolBanner extends StatelessWidget {
@@ -16243,39 +17193,45 @@ class _CoinPoolBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => TweenAnimationBuilder<double>(
-        tween: Tween<double>(begin: .94, end: 1),
-        duration: const Duration(milliseconds: 650),
-        curve: Curves.easeOutBack,
-        builder: (BuildContext context, double value, Widget? child) =>
-            Transform.scale(scale: value, child: child),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFF241D0D),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: const Color(0xFFF1B94C), width: 1.4),
-            boxShadow: const <BoxShadow>[
-              BoxShadow(color: Color(0x55F1B94C), blurRadius: 20),
-            ],
-          ),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
-              const Icon(Icons.monetization_on_rounded,
-                  color: Color(0xFFF1B94C), size: 22),
-              const SizedBox(width: 8),
-              Text(
-                '$entryCoins + $entryCoins  =  ${entryCoins * 2} COIN POOL',
-                style: const TextStyle(
-                  color: Color(0xFFFFE2A3),
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: .8,
-                ),
+    tween: Tween<double>(begin: .94, end: 1),
+    duration: const Duration(milliseconds: 650),
+    curve: Curves.easeOutBack,
+    builder: (BuildContext context, double value, Widget? child) =>
+        Transform.scale(scale: value, child: child),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF241D0D),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFF1B94C), width: 1.4),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(color: Color(0x55F1B94C), blurRadius: 20),
+        ],
+      ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const Icon(
+              Icons.monetization_on_rounded,
+              color: Color(0xFFF1B94C),
+              size: 22,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$entryCoins + $entryCoins  =  ${entryCoins * 2} COIN POOL',
+              style: const TextStyle(
+                color: Color(0xFFFFE2A3),
+                fontWeight: FontWeight.w900,
+                letterSpacing: .8,
               ),
-            ]),
-          ),
+            ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _SearchDivider extends StatelessWidget {
@@ -16283,11 +17239,11 @@ class _SearchDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 1,
-        height: 32,
-        margin: const EdgeInsets.symmetric(horizontal: 20),
-        color: const Color(0xFF294255),
-      );
+    width: 1,
+    height: 32,
+    margin: const EdgeInsets.symmetric(horizontal: 20),
+    color: const Color(0xFF294255),
+  );
 }
 
 class _CoinStakeSelector extends StatelessWidget {
@@ -16321,7 +17277,10 @@ class _CoinStakeSelector extends StatelessWidget {
         border: Border.all(color: const Color(0xFF476076)),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-              color: Color(0x33000000), blurRadius: 18, offset: Offset(0, 8)),
+            color: Color(0x33000000),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
         ],
       ),
       child: Column(
@@ -16369,86 +17328,91 @@ class _CoinStakeSelector extends StatelessWidget {
               return Wrap(
                 spacing: gap,
                 runSpacing: gap,
-                children: <int>[100, 200, 500].map((int coins) {
-                  final bool selected = entryCoins == coins;
-                  final bool affordable = balance == null || balance! >= coins;
-                  return SizedBox(
-                    width: tileWidth,
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: enabled && affordable
-                            ? () => onSelected(coins)
-                            : null,
-                        borderRadius: BorderRadius.circular(12),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 5,
-                            vertical: 9,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: selected
-                                ? const LinearGradient(
-                                    colors: <Color>[
-                                      Color(0xFFFFD568),
-                                      Color(0xFFE5A72F),
-                                    ],
-                                  )
+                children: <int>[100, 200, 500]
+                    .map((int coins) {
+                      final bool selected = entryCoins == coins;
+                      final bool affordable =
+                          balance == null || balance! >= coins;
+                      return SizedBox(
+                        width: tileWidth,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: enabled && affordable
+                                ? () => onSelected(coins)
                                 : null,
-                            color: selected ? null : const Color(0xFF0B2A3C),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: selected
-                                  ? const Color(0xFFFFE59B)
-                                  : const Color(0xFF385C72),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 9,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: selected
+                                    ? const LinearGradient(
+                                        colors: <Color>[
+                                          Color(0xFFFFD568),
+                                          Color(0xFFE5A72F),
+                                        ],
+                                      )
+                                    : null,
+                                color: selected
+                                    ? null
+                                    : const Color(0xFF0B2A3C),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: selected
+                                      ? const Color(0xFFFFE59B)
+                                      : const Color(0xFF385C72),
+                                ),
+                              ),
+                              child: Column(
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.monetization_on_rounded,
+                                    size: 17,
+                                    color: selected
+                                        ? const Color(0xFF07131D)
+                                        : (affordable
+                                              ? gold
+                                              : const Color(0xFF647684)),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '${formatCoinAmount(coins)} ENTRY',
+                                    maxLines: 1,
+                                    style: TextStyle(
+                                      color: selected
+                                          ? const Color(0xFF07131D)
+                                          : (affordable
+                                                ? Colors.white
+                                                : const Color(0xFF718391)),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${formatCoinAmount(coins * 2)} PRIZE',
+                                    maxLines: 1,
+                                    style: TextStyle(
+                                      color: selected
+                                          ? const Color(0xFF17303D)
+                                          : (affordable
+                                                ? teal
+                                                : const Color(0xFF647684)),
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          child: Column(
-                            children: <Widget>[
-                              Icon(
-                                Icons.monetization_on_rounded,
-                                size: 17,
-                                color: selected
-                                    ? const Color(0xFF07131D)
-                                    : (affordable
-                                        ? gold
-                                        : const Color(0xFF647684)),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                '${formatCoinAmount(coins)} ENTRY',
-                                maxLines: 1,
-                                style: TextStyle(
-                                  color: selected
-                                      ? const Color(0xFF07131D)
-                                      : (affordable
-                                          ? Colors.white
-                                          : const Color(0xFF718391)),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              Text(
-                                '${formatCoinAmount(coins * 2)} PRIZE',
-                                maxLines: 1,
-                                style: TextStyle(
-                                  color: selected
-                                      ? const Color(0xFF17303D)
-                                      : (affordable
-                                          ? teal
-                                          : const Color(0xFF647684)),
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
-                      ),
-                    ),
-                  );
-                }).toList(growable: false),
+                      );
+                    })
+                    .toList(growable: false),
               );
             },
           ),
@@ -16475,41 +17439,43 @@ class _StakeSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisAlignment:
-            alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children: <Widget>[
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 7),
-          Flexible(
-            child: Column(
-              crossAxisAlignment:
-                  alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  label,
-                  maxLines: 1,
-                  style: const TextStyle(
-                    color: Color(0xFF91A6B6),
-                    fontSize: 9,
-                    letterSpacing: .8,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
+    mainAxisAlignment: alignEnd
+        ? MainAxisAlignment.end
+        : MainAxisAlignment.start,
+    children: <Widget>[
+      Icon(icon, color: color, size: 20),
+      const SizedBox(width: 7),
+      Flexible(
+        child: Column(
+          crossAxisAlignment: alignEnd
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              label,
+              maxLines: 1,
+              style: const TextStyle(
+                color: Color(0xFF91A6B6),
+                fontSize: 9,
+                letterSpacing: .8,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-        ],
-      );
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
 }
 
 class _OpponentFoundView extends StatefulWidget {
@@ -16598,9 +17564,7 @@ class _OpponentFoundViewState extends State<_OpponentFoundView>
                   border: Border.all(color: gold.withValues(alpha: .7)),
                   boxShadow: <BoxShadow>[
                     BoxShadow(
-                      color: const Color(
-                        0xFFE5B856,
-                      ).withValues(alpha: 0.24),
+                      color: const Color(0xFFE5B856).withValues(alpha: 0.24),
                       blurRadius: 46,
                       spreadRadius: 6,
                     ),
@@ -16613,10 +17577,11 @@ class _OpponentFoundViewState extends State<_OpponentFoundView>
                       Text(
                         'RANKED RAPID • ${(match.whiteTimeMs ~/ 60000).clamp(1, 60)} MIN',
                         style: const TextStyle(
-                            color: gold,
-                            fontSize: 12,
-                            letterSpacing: 2,
-                            fontWeight: FontWeight.w900),
+                          color: gold,
+                          fontSize: 12,
+                          letterSpacing: 2,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Text(
@@ -16629,19 +17594,26 @@ class _OpponentFoundViewState extends State<_OpponentFoundView>
                           letterSpacing: 1.6,
                         ),
                       ),
-                      const Text('Your match is ready',
-                          style: TextStyle(
-                              color: Color(0xFFB7C1CB), fontSize: 15)),
+                      const Text(
+                        'Your match is ready',
+                        style: TextStyle(
+                          color: Color(0xFFB7C1CB),
+                          fontSize: 15,
+                        ),
+                      ),
                       SizedBox(height: wide ? 20 : 15),
                       if (match.rewardPoolCoins > 0) ...<Widget>[
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 18, vertical: 10),
+                            horizontal: 18,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
                             color: gold.withValues(alpha: .10),
                             borderRadius: BorderRadius.circular(999),
-                            border:
-                                Border.all(color: gold.withValues(alpha: .65)),
+                            border: Border.all(
+                              color: gold.withValues(alpha: .65),
+                            ),
                           ),
                           child: Text(
                             '${match.entryCoins} + ${match.entryCoins}  •  ${match.rewardPoolCoins} COIN POOL',
@@ -16665,8 +17637,11 @@ class _OpponentFoundViewState extends State<_OpponentFoundView>
                           );
                           final double reveal = CurvedAnimation(
                             parent: _versusEntrance,
-                            curve: const Interval(.48, 1,
-                                curve: Curves.elasticOut),
+                            curve: const Interval(
+                              .48,
+                              1,
+                              curve: Curves.elasticOut,
+                            ),
                           ).value;
                           final double travel = wide ? 190 : 88;
                           return Row(
@@ -16689,7 +17664,8 @@ class _OpponentFoundViewState extends State<_OpponentFoundView>
                               ),
                               Padding(
                                 padding: EdgeInsets.symmetric(
-                                    horizontal: wide ? 28 : 7),
+                                  horizontal: wide ? 28 : 7,
+                                ),
                                 child: Transform.scale(
                                   scale: reveal,
                                   child: Container(
@@ -16699,23 +17675,29 @@ class _OpponentFoundViewState extends State<_OpponentFoundView>
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: const Color(0xFF061522),
-                                      border:
-                                          Border.all(color: gold, width: 1.4),
+                                      border: Border.all(
+                                        color: gold,
+                                        width: 1.4,
+                                      ),
                                       boxShadow: <BoxShadow>[
                                         BoxShadow(
                                           color: gold.withValues(
-                                              alpha: .25 + reveal * .35),
+                                            alpha: .25 + reveal * .35,
+                                          ),
                                           blurRadius: 28 + reveal * 24,
                                           spreadRadius: reveal * 3,
                                         ),
                                       ],
                                     ),
-                                    child: Text('VS',
-                                        style: TextStyle(
-                                            color: gold,
-                                            fontFamily: 'serif',
-                                            fontSize: wide ? 30 : 20,
-                                            fontWeight: FontWeight.w900)),
+                                    child: Text(
+                                      'VS',
+                                      style: TextStyle(
+                                        color: gold,
+                                        fontFamily: 'serif',
+                                        fontSize: wide ? 30 : 20,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -16744,70 +17726,97 @@ class _OpponentFoundViewState extends State<_OpponentFoundView>
                       TweenAnimationBuilder<double>(
                         tween: Tween<double>(begin: 0, end: 1),
                         duration: const Duration(seconds: 3),
-                        builder: (BuildContext context, double progress,
-                                Widget? child) =>
-                            SizedBox.square(
-                          dimension: wide ? 210 : 164,
-                          child: CustomPaint(
-                            painter: _CountdownRingPainter(progress: progress),
-                            child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: <Widget>[
-                                  const Text('MATCH STARTS IN',
+                        builder:
+                            (
+                              BuildContext context,
+                              double progress,
+                              Widget? child,
+                            ) => SizedBox.square(
+                              dimension: wide ? 210 : 164,
+                              child: CustomPaint(
+                                painter: _CountdownRingPainter(
+                                  progress: progress,
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                    const Text(
+                                      'MATCH STARTS IN',
                                       style: TextStyle(
-                                          fontSize: 10,
-                                          letterSpacing: 1.2,
-                                          color: Color(0xFFB4BEC8))),
-                                  Text('$_countdown',
+                                        fontSize: 10,
+                                        letterSpacing: 1.2,
+                                        color: Color(0xFFB4BEC8),
+                                      ),
+                                    ),
+                                    Text(
+                                      '$_countdown',
                                       style: TextStyle(
-                                          color: teal,
-                                          fontSize: wide ? 76 : 62,
-                                          height: 1.05,
-                                          fontWeight: FontWeight.w900,
-                                          shadows: const <Shadow>[
-                                            Shadow(color: teal, blurRadius: 22)
-                                          ])),
-                                ]),
-                          ),
-                        ),
+                                        color: teal,
+                                        fontSize: wide ? 76 : 62,
+                                        height: 1.05,
+                                        fontWeight: FontWeight.w900,
+                                        shadows: const <Shadow>[
+                                          Shadow(color: teal, blurRadius: 22),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                       ),
                       SizedBox(height: wide ? 16 : 12),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
-                            color: const Color(0xD9071928),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFF314A5C))),
-                        child: Row(children: <Widget>[
-                          Expanded(
+                          color: const Color(0xD9071928),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFF314A5C)),
+                        ),
+                        child: Row(
+                          children: <Widget>[
+                            Expanded(
                               child: _FoundFact(
-                                  icon: Icons.schedule_rounded,
-                                  label:
-                                      'Rapid • ${(match.whiteTimeMs ~/ 60000).clamp(1, 60)} min')),
-                          const _MobileFactDivider(),
-                          const Expanded(
+                                icon: Icons.schedule_rounded,
+                                label:
+                                    'Rapid • ${(match.whiteTimeMs ~/ 60000).clamp(1, 60)} min',
+                              ),
+                            ),
+                            const _MobileFactDivider(),
+                            const Expanded(
                               child: _FoundFact(
-                                  icon: Icons.shield_outlined,
-                                  label: 'Rated Match')),
-                          const _MobileFactDivider(),
-                          const Expanded(
+                                icon: Icons.shield_outlined,
+                                label: 'Rated Match',
+                              ),
+                            ),
+                            const _MobileFactDivider(),
+                            const Expanded(
                               child: _FoundFact(
-                                  icon: Icons.wifi_rounded,
-                                  label: 'Live server')),
-                        ]),
+                                icon: Icons.wifi_rounded,
+                                label: 'Live server',
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 13),
                       const Text(
-                          'Preparing the board and synchronizing clocks...',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              color: Color(0xFFB4BEC8), fontSize: 12)),
+                        'Preparing the board and synchronizing clocks...',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Color(0xFFB4BEC8),
+                          fontSize: 12,
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       const LinearProgressIndicator(
-                          minHeight: 4,
-                          color: teal,
-                          backgroundColor: Color(0xFF173344)),
+                        minHeight: 4,
+                        color: teal,
+                        backgroundColor: Color(0xFF173344),
+                      ),
                     ],
                   ),
                 ),
@@ -16841,12 +17850,14 @@ class _VersusPlayerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: MediaQuery.sizeOf(context).width >= 760 ? 16 : 10),
+        horizontal: 8,
+        vertical: MediaQuery.sizeOf(context).width >= 760 ? 16 : 10,
+      ),
       decoration: BoxDecoration(
-          color: const Color(0xC9071928),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: .8))),
+        color: const Color(0xC9071928),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: .8)),
+      ),
       child: Column(
         children: <Widget>[
           Container(
@@ -16859,17 +17870,19 @@ class _VersusPlayerCard extends StatelessWidget {
             ),
             child: ClipOval(
               child: photoUrl == null
-                  ? Icon(Icons.person_rounded,
+                  ? Icon(
+                      Icons.person_rounded,
                       color: color,
-                      size: MediaQuery.sizeOf(context).width >= 760 ? 58 : 40)
+                      size: MediaQuery.sizeOf(context).width >= 760 ? 58 : 40,
+                    )
                   : Image.network(
                       photoUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Icon(Icons.person_rounded,
-                          color: color,
-                          size: MediaQuery.sizeOf(context).width >= 760
-                              ? 58
-                              : 40),
+                      errorBuilder: (_, _, _) => Icon(
+                        Icons.person_rounded,
+                        color: color,
+                        size: MediaQuery.sizeOf(context).width >= 760 ? 58 : 40,
+                      ),
                     ),
             ),
           ),
@@ -16882,9 +17895,14 @@ class _VersusPlayerCard extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 3),
-          Text(rating,
-              style: TextStyle(
-                  color: color, fontSize: 12, fontWeight: FontWeight.w900)),
+          Text(
+            rating,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
           const SizedBox(height: 3),
           Text(
             label,
@@ -16906,19 +17924,24 @@ class _FoundFact extends StatelessWidget {
   final IconData icon;
   final String label;
   @override
-  Widget build(BuildContext context) =>
-      Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-        Icon(icon, color: const Color(0xFF55E5D0), size: 21),
-        const SizedBox(height: 4),
-        Text(label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontSize: 11,
-                color: Color(0xFFD9D5CC),
-                fontWeight: FontWeight.w700)),
-      ]);
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      Icon(icon, color: const Color(0xFF55E5D0), size: 21),
+      const SizedBox(height: 4),
+      Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 11,
+          color: Color(0xFFD9D5CC),
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    ],
+  );
 }
 
 class _CountdownRingPainter extends CustomPainter {
@@ -16942,19 +17965,34 @@ class _CountdownRingPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 6
       ..strokeCap = StrokeCap.round
-      ..shader = const SweepGradient(colors: <Color>[
-        Color(0xFF55E5D0),
-        Color(0xFFF1B94C),
-        Color(0xFF55E5D0)
-      ]).createShader(Rect.fromCircle(center: center, radius: radius));
+      ..shader = const SweepGradient(
+        colors: <Color>[
+          Color(0xFF55E5D0),
+          Color(0xFFF1B94C),
+          Color(0xFF55E5D0),
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: radius));
     canvas.drawCircle(center, radius, track);
     final double sweep = math.pi * 2 * progress;
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius),
-        -math.pi / 2, sweep, false, glow);
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius),
-        -math.pi / 2, sweep, false, arc);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      sweep,
+      false,
+      glow,
+    );
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      sweep,
+      false,
+      arc,
+    );
     canvas.drawCircle(
-        center, radius - 15, track..color = const Color(0xFF27606A));
+      center,
+      radius - 15,
+      track..color = const Color(0xFF27606A),
+    );
   }
 
   @override
@@ -17014,8 +18052,9 @@ class MoveHistorySheet extends StatelessWidget {
                                 backgroundColor: whiteMove
                                     ? const Color(0xFFE9D5B7)
                                     : const Color(0xFF242128),
-                                foregroundColor:
-                                    whiteMove ? Colors.black : Colors.white,
+                                foregroundColor: whiteMove
+                                    ? Colors.black
+                                    : Colors.white,
                                 child: Text('${index + 1}'),
                               ),
                               title: Row(
@@ -17381,8 +18420,9 @@ class AuthOverlay extends StatelessWidget {
                               ? TextInputType.emailAddress
                               : TextInputType.text,
                           decoration: InputDecoration(
-                            labelText:
-                                registerMode ? 'Email' : 'User ID or email',
+                            labelText: registerMode
+                                ? 'Email'
+                                : 'User ID or email',
                             prefixIcon: const Icon(Icons.mail_outline_rounded),
                             border: const OutlineInputBorder(),
                           ),
@@ -17393,11 +18433,13 @@ class AuthOverlay extends StatelessWidget {
                           obscureText: true,
                           onSubmitted: (_) => onSubmit(),
                           decoration: InputDecoration(
-                            labelText:
-                                registerMode ? 'Create password' : 'Password',
+                            labelText: registerMode
+                                ? 'Create password'
+                                : 'Password',
                             prefixIcon: const Icon(Icons.lock_outline_rounded),
-                            helperText:
-                                registerMode ? 'At least 8 characters' : null,
+                            helperText: registerMode
+                                ? 'At least 8 characters'
+                                : null,
                             border: const OutlineInputBorder(),
                           ),
                         ),
@@ -17415,9 +18457,8 @@ class AuthOverlay extends StatelessWidget {
                         Center(
                           child: DecoratedBox(
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFFD6A84F,
-                              ).withValues(alpha: 0.12),
+                              color: const Color(0xFFD6A84F)
+                                  .withValues(alpha: 0.12),
                               shape: BoxShape.circle,
                             ),
                             child: const Padding(
@@ -17452,13 +18493,11 @@ class AuthOverlay extends StatelessWidget {
                         const SizedBox(height: 14),
                         DecoratedBox(
                           decoration: BoxDecoration(
-                            color: const Color(
-                              0xFFEF5350,
-                            ).withValues(alpha: 0.12),
+                            color: const Color(0xFFEF5350)
+                                .withValues(alpha: 0.12),
                             border: Border.all(
-                              color: const Color(
-                                0xFFEF5350,
-                              ).withValues(alpha: 0.65),
+                              color: const Color(0xFFEF5350)
+                                  .withValues(alpha: 0.65),
                             ),
                             borderRadius: BorderRadius.circular(6),
                           ),
@@ -17507,8 +18546,8 @@ class AuthOverlay extends StatelessWidget {
                           awaitingCode
                               ? 'Verify and Continue'
                               : registerMode
-                                  ? 'Send Code'
-                                  : 'Login',
+                              ? 'Send Code'
+                              : 'Login',
                         ),
                       ),
                       if (!awaitingCode) ...<Widget>[
@@ -17690,58 +18729,52 @@ class _DrawResultBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IgnorePointer(
-        child: Center(
-          child: TweenAnimationBuilder<double>(
-            tween: Tween<double>(begin: .72, end: 1),
-            duration: const Duration(milliseconds: 360),
-            curve: Curves.easeOutBack,
-            builder: (BuildContext context, double scale, Widget? child) =>
-                Transform.scale(scale: scale, child: child),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: const Color(0xF2071827),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(
-                  color: const Color(0xFF65C9F4),
-                  width: 1.5,
+    child: Center(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: .72, end: 1),
+        duration: const Duration(milliseconds: 360),
+        curve: Curves.easeOutBack,
+        builder: (BuildContext context, double scale, Widget? child) =>
+            Transform.scale(scale: scale, child: child),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xF2071827),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFF65C9F4), width: 1.5),
+            boxShadow: const <BoxShadow>[
+              BoxShadow(color: Color(0x663CA6FF), blurRadius: 28),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                const Text(
+                  'DRAW',
+                  style: TextStyle(
+                    color: Color(0xFF65C9F4),
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.4,
+                  ),
                 ),
-                boxShadow: const <BoxShadow>[
-                  BoxShadow(color: Color(0x663CA6FF), blurRadius: 28),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 28,
-                  vertical: 16,
+                const SizedBox(height: 3),
+                Text(
+                  detail,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    const Text(
-                      'DRAW',
-                      style: TextStyle(
-                        color: Color(0xFF65C9F4),
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      detail,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ),
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class OnlineVictoryCelebration extends StatefulWidget {
@@ -17776,67 +18809,73 @@ class _OnlineVictoryCelebrationState extends State<OnlineVictoryCelebration>
 
   @override
   Widget build(BuildContext context) => IgnorePointer(
-        child: AnimatedBuilder(
-          animation: _controller,
-          child: widget.showTitle
-              ? TweenAnimationBuilder<double>(
-                  key: ValueKey<String>('victory-title-${widget.title}'),
-                  tween: Tween<double>(begin: .35, end: 1),
-                  duration: const Duration(milliseconds: 950),
-                  curve: Curves.elasticOut,
-                  builder:
-                      (BuildContext context, double scale, Widget? child) =>
-                          Transform.scale(scale: scale, child: child),
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: <Color>[Color(0xFFE5A92F), Color(0xFFFFE18A)],
-                        ),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: Colors.white, width: 1.5),
-                        boxShadow: const <BoxShadow>[
-                          BoxShadow(color: Color(0xAAE5A92F), blurRadius: 30),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 28, vertical: 12),
-                        child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              const Icon(Icons.emoji_events_rounded,
-                                  color: Color(0xFF07131E)),
-                              const SizedBox(width: 9),
-                              Text(widget.title.toUpperCase(),
-                                  style: const TextStyle(
-                                    color: Color(0xFF07131E),
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 1.1,
-                                  )),
-                            ]),
-                      ),
+    child: AnimatedBuilder(
+      animation: _controller,
+      child: widget.showTitle
+          ? TweenAnimationBuilder<double>(
+              key: ValueKey<String>('victory-title-${widget.title}'),
+              tween: Tween<double>(begin: .35, end: 1),
+              duration: const Duration(milliseconds: 950),
+              curve: Curves.elasticOut,
+              builder: (BuildContext context, double scale, Widget? child) =>
+                  Transform.scale(scale: scale, child: child),
+              child: Align(
+                alignment: Alignment.center,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: <Color>[Color(0xFFE5A92F), Color(0xFFFFE18A)],
                     ),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: Colors.white, width: 1.5),
+                    boxShadow: const <BoxShadow>[
+                      BoxShadow(color: Color(0xAAE5A92F), blurRadius: 30),
+                    ],
                   ),
-                )
-              : null,
-          builder: (BuildContext context, Widget? child) => Stack(
-            children: <Widget>[
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _VictoryFireworksPainter(
-                    progress: _controller.value,
-                    winnerAtTop: widget.winnerAtTop,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        const Icon(
+                          Icons.emoji_events_rounded,
+                          color: Color(0xFF07131E),
+                        ),
+                        const SizedBox(width: 9),
+                        Text(
+                          widget.title.toUpperCase(),
+                          style: const TextStyle(
+                            color: Color(0xFF07131E),
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-              ?child,
-            ],
+            )
+          : null,
+      builder: (BuildContext context, Widget? child) => Stack(
+        children: <Widget>[
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _VictoryFireworksPainter(
+                progress: _controller.value,
+                winnerAtTop: widget.winnerAtTop,
+              ),
+            ),
           ),
-        ),
-      );
+          ?child,
+        ],
+      ),
+    ),
+  );
 }
 
 class _VictoryFireworksPainter extends CustomPainter {
@@ -17858,8 +18897,9 @@ class _VictoryFireworksPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final double bandCenter =
-        winnerAtTop ? size.height * .24 : size.height * .76;
+    final double bandCenter = winnerAtTop
+        ? size.height * .24
+        : size.height * .76;
     final Paint paint = Paint()..style = PaintingStyle.fill;
     for (int burst = 0; burst < 5; burst++) {
       final double phase = (progress + burst * .19) % 1;
@@ -17874,8 +18914,9 @@ class _VictoryFireworksPainter extends CustomPainter {
             (18 + 88 * phase) * math.min(1.25, size.shortestSide / 420);
         final Offset particle =
             center + Offset(math.cos(angle) * radius, math.sin(angle) * radius);
-        paint.color =
-            _colors[(burst + ray) % _colors.length].withValues(alpha: opacity);
+        paint.color = _colors[(burst + ray) % _colors.length].withValues(
+          alpha: opacity,
+        );
         canvas.drawCircle(particle, 2.2 + 2.8 * opacity, paint);
       }
     }
@@ -17925,8 +18966,9 @@ class GameResultOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool draw = title.toLowerCase().contains('draw');
     final bool missed = title.toLowerCase().contains('challenge missed');
-    final bool dailyComplete =
-        title.toLowerCase().contains('challenge complete');
+    final bool dailyComplete = title.toLowerCase().contains(
+      'challenge complete',
+    );
     final bool showCoinOutcome =
         (rewardPoolCoins ?? 0) > 0 && (draw || (coinsEarned ?? 0) > 0);
     final Widget resultCard = ColoredBox(
@@ -17936,7 +18978,7 @@ class GameResultOverlay extends StatelessWidget {
           builder: (BuildContext context, BoxConstraints viewport) {
             final bool shortLandscape =
                 viewport.maxWidth > viewport.maxHeight &&
-                    viewport.maxHeight < 500;
+                viewport.maxHeight < 500;
             return Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(
@@ -17964,13 +19006,13 @@ class GameResultOverlay extends StatelessWidget {
                           draw
                               ? Icons.handshake_rounded
                               : missed
-                                  ? Icons.flag_outlined
-                                  : Icons.emoji_events_rounded,
+                              ? Icons.flag_outlined
+                              : Icons.emoji_events_rounded,
                           color: draw
                               ? const Color(0xFFAAA69E)
                               : missed
-                                  ? const Color(0xFF68D2BE)
-                                  : const Color(0xFFD6A84F),
+                              ? const Color(0xFF68D2BE)
+                              : const Color(0xFFD6A84F),
                           size: shortLandscape ? 38 : 56,
                         ),
                         SizedBox(height: shortLandscape ? 6 : 16),
@@ -17983,9 +19025,7 @@ class GameResultOverlay extends StatelessWidget {
                         Text(
                           scoreLabel,
                           textAlign: TextAlign.center,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineLarge
+                          style: Theme.of(context).textTheme.headlineLarge
                               ?.copyWith(
                                 color: missed
                                     ? const Color(0xFF68D2BE)
@@ -18001,53 +19041,63 @@ class GameResultOverlay extends StatelessWidget {
                             tween: Tween<double>(begin: .75, end: 1),
                             duration: const Duration(milliseconds: 850),
                             curve: Curves.elasticOut,
-                            builder: (BuildContext context, double value,
-                                    Widget? child) =>
-                                Transform.scale(scale: value, child: child),
+                            builder: (
+                              BuildContext context,
+                              double value,
+                              Widget? child,
+                            ) => Transform.scale(scale: value, child: child),
                             child: Container(
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 13),
+                                horizontal: 16,
+                                vertical: 13,
+                              ),
                               decoration: BoxDecoration(
                                 color: draw
                                     ? const Color(0xFF13262A)
                                     : (coinsEarned ?? 0) > 0
-                                        ? const Color(0xFF2A210D)
-                                        : const Color(0xFF25171A),
+                                    ? const Color(0xFF2A210D)
+                                    : const Color(0xFF25171A),
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
                                   color: draw
                                       ? const Color(0xFF63D2B8)
                                       : (coinsEarned ?? 0) > 0
-                                          ? const Color(0xFFD6A84F)
-                                          : const Color(0xFFB65B67),
+                                      ? const Color(0xFFD6A84F)
+                                      : const Color(0xFFB65B67),
                                 ),
                               ),
-                              child: Column(children: <Widget>[
-                                Icon(Icons.monetization_on_rounded,
+                              child: Column(
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.monetization_on_rounded,
                                     color: draw
                                         ? const Color(0xFF63D2B8)
                                         : const Color(0xFFD6A84F),
-                                    size: 34),
-                                const SizedBox(height: 5),
-                                Text(
-                                  draw
-                                      ? '${entryCoins ?? 0} COINS REFUNDED'
-                                      : '+${coinsEarned ?? 0} COINS WON',
-                                  style: const TextStyle(
-                                    color: Color(0xFFFFE2A3),
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
+                                    size: 34,
                                   ),
-                                ),
-                                Text(
-                                  draw
-                                      ? 'Draw refund completed'
-                                      : '${entryCoins ?? 0} + ${entryCoins ?? 0} = ${rewardPoolCoins ?? 0} coin pool',
-                                  style: const TextStyle(
-                                      color: Color(0xFFBFC8CF), fontSize: 12),
-                                ),
-                              ]),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    draw
+                                        ? '${entryCoins ?? 0} COINS REFUNDED'
+                                        : '+${coinsEarned ?? 0} COINS WON',
+                                    style: const TextStyle(
+                                      color: Color(0xFFFFE2A3),
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  Text(
+                                    draw
+                                        ? 'Draw refund completed'
+                                        : '${entryCoins ?? 0} + ${entryCoins ?? 0} = ${rewardPoolCoins ?? 0} coin pool',
+                                    style: const TextStyle(
+                                      color: Color(0xFFBFC8CF),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -18092,8 +19142,9 @@ class GameResultOverlay extends StatelessWidget {
                             Expanded(
                               child: (onRematch == null)
                                   ? FilledButton.icon(
-                                      onPressed:
-                                          dailyComplete ? onDismiss : onNewGame,
+                                      onPressed: dailyComplete
+                                          ? onDismiss
+                                          : onNewGame,
                                       icon: Icon(
                                         dailyComplete
                                             ? Icons.schedule_rounded
@@ -18103,8 +19154,8 @@ class GameResultOverlay extends StatelessWidget {
                                         dailyComplete
                                             ? 'Done'
                                             : missed
-                                                ? 'Try again'
-                                                : newGameLabel ?? 'New game',
+                                            ? 'Try again'
+                                            : newGameLabel ?? 'New game',
                                       ),
                                     )
                                   : OutlinedButton.icon(
@@ -18259,10 +19310,10 @@ class CaptureRow extends StatelessWidget {
                       ),
                     ]
                   : pieces
-                      .map(
-                        (ChessPiece piece) => MiniCapturedPiece(piece: piece),
-                      )
-                      .toList(),
+                        .map(
+                          (ChessPiece piece) => MiniCapturedPiece(piece: piece),
+                        )
+                        .toList(),
             ),
           ],
         ),
@@ -18289,8 +19340,9 @@ class MiniCapturedPiece extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(7),
         border: Border.all(
-          color:
-              piece.white ? const Color(0xFF8A909B) : const Color(0xFFFFFFFF),
+          color: piece.white
+              ? const Color(0xFF8A909B)
+              : const Color(0xFFFFFFFF),
         ),
         boxShadow: <BoxShadow>[
           BoxShadow(
@@ -18309,8 +19361,7 @@ class MiniCapturedPiece extends StatelessWidget {
           padding: const EdgeInsets.all(2),
           child: ValueListenableBuilder<ChessPieceAppearance>(
             valueListenable: ChessPieceAppearanceController.current,
-            builder:
-                (BuildContext context, ChessPieceAppearance appearance, _) {
+            builder: (BuildContext context, ChessPieceAppearance appearance, _) {
               if (appearance.style == ChessPieceVisualStyle.classic2d) {
                 return Text(
                   pieceGlyph(piece),
@@ -18362,8 +19413,9 @@ class PlayerAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String initial =
-        name.trim().isEmpty ? 'P' : name.trim().substring(0, 1).toUpperCase();
+    final String initial = name.trim().isEmpty
+        ? 'P'
+        : name.trim().substring(0, 1).toUpperCase();
     return Tooltip(
       message: 'Signed in as $name',
       child: DecoratedBox(

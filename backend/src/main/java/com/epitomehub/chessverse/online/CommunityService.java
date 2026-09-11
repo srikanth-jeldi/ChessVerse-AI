@@ -71,7 +71,7 @@ class CommunityService {
                 rs.getInt("participation_bonus"),uuidOrNull(rs,"club_id")), player.id(),player.id());
         List<CommunityDtos.ConversationDto> conversations = jdbc.query("""
                 select p.id,p.display_name,p.photo_url,
-                (select d.body from direct_message d
+                (select case when d.encrypted then '🔒 Encrypted message' else d.body end from direct_message d
                   where (d.sender_id=? and d.recipient_id=p.id) or (d.sender_id=p.id and d.recipient_id=?)
                   order by d.sent_at desc limit 1) body,
                 (select d.sent_at from direct_message d
@@ -211,13 +211,67 @@ class CommunityService {
     }
 
     @Transactional
-    CommunityDtos.MessageDto send(AuthenticatedPlayer player, UUID recipientId, String body) {
+    CommunityDtos.MessageDto send(AuthenticatedPlayer player, UUID recipientId, String body, boolean encrypted) {
         FriendConnection link = friends.between(player.id(), recipientId).orElse(null);
         if (link == null || !"ACCEPTED".equals(link.status)) throw new OnlineMatchException(HttpStatus.FORBIDDEN,"Messages are available between accepted friends only.");
         UUID id=UUID.randomUUID(); Instant now=Instant.now(); String clean=body.trim();
-        jdbc.update("insert into direct_message(id,sender_id,recipient_id,body,sent_at) values(?,?,?,?,?)",id,player.id(),recipientId,clean,Timestamp.from(now));
-        notifications.create(recipientId,"MESSAGE_RECEIVED","New message from "+player.displayName(),clean,"CHAT",player.id());
-        return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,null,null,null,false,List.of());
+        if (encrypted && !clean.startsWith("cv1:")) throw new OnlineMatchException(HttpStatus.BAD_REQUEST,"Invalid encrypted message envelope.");
+        jdbc.update("insert into direct_message(id,sender_id,recipient_id,body,sent_at,encrypted) values(?,?,?,?,?,?)",id,player.id(),recipientId,clean,Timestamp.from(now),encrypted);
+        notifications.create(recipientId,"MESSAGE_RECEIVED","New message from "+player.displayName(),encrypted ? "Encrypted message" : clean,"CHAT",player.id());
+        return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,null,null,null,false,List.of(),encrypted);
+    }
+
+    @Transactional(readOnly = true)
+    CommunityDtos.E2eeIdentityDto e2eeIdentity(AuthenticatedPlayer player) {
+        return jdbc.query("select * from chat_e2ee_identity where player_id=?", rs -> {
+            if (!rs.next()) throw new OnlineMatchException(HttpStatus.NOT_FOUND,"No encrypted chat identity exists for this account.");
+            return e2eeIdentityDto(rs);
+        }, player.id());
+    }
+
+    @Transactional
+    CommunityDtos.E2eeIdentityDto saveE2eeIdentity(AuthenticatedPlayer player, CommunityDtos.E2eeIdentityRequest request) {
+        requireBase64(request.publicKey(), 32, "Public key");
+        requireBase64(request.backupSalt(), 16, "Recovery salt");
+        requireBase64(request.backupNonce(), 12, "Recovery nonce");
+        byte[] wrapped = requireBase64(request.encryptedPrivateKey(), -1, "Encrypted private key");
+        if (wrapped.length < 48 || wrapped.length > 128) throw new OnlineMatchException(HttpStatus.BAD_REQUEST,"Encrypted private key has an invalid length.");
+        Instant now = Instant.now();
+        jdbc.update("""
+                insert into chat_e2ee_identity(player_id,public_key,encrypted_private_key,backup_salt,backup_nonce,backup_kdf_iterations,updated_at)
+                values(?,?,?,?,?,?,?) on conflict(player_id) do update set
+                public_key=excluded.public_key,encrypted_private_key=excluded.encrypted_private_key,
+                backup_salt=excluded.backup_salt,backup_nonce=excluded.backup_nonce,
+                backup_kdf_iterations=excluded.backup_kdf_iterations,updated_at=excluded.updated_at
+                """, player.id(), request.publicKey(), request.encryptedPrivateKey(), request.backupSalt(),
+                request.backupNonce(), request.backupKdfIterations(), Timestamp.from(now));
+        return new CommunityDtos.E2eeIdentityDto(player.id(), request.publicKey(), request.encryptedPrivateKey(),
+                request.backupSalt(), request.backupNonce(), request.backupKdfIterations(), now);
+    }
+
+    @Transactional(readOnly = true)
+    CommunityDtos.E2eePublicKeyDto e2eePublicKey(AuthenticatedPlayer player, UUID friendId) {
+        requireFriends(player.id(), friendId);
+        return jdbc.query("select player_id,public_key,updated_at from chat_e2ee_identity where player_id=?", rs -> {
+            if (!rs.next()) throw new OnlineMatchException(HttpStatus.NOT_FOUND,"Your friend has not enabled encrypted chat yet.");
+            return new CommunityDtos.E2eePublicKeyDto(uuid(rs,"player_id"),rs.getString("public_key"),rs.getTimestamp("updated_at").toInstant());
+        }, friendId);
+    }
+
+    private CommunityDtos.E2eeIdentityDto e2eeIdentityDto(ResultSet rs) throws SQLException {
+        return new CommunityDtos.E2eeIdentityDto(uuid(rs,"player_id"),rs.getString("public_key"),
+                rs.getString("encrypted_private_key"),rs.getString("backup_salt"),rs.getString("backup_nonce"),
+                rs.getInt("backup_kdf_iterations"),rs.getTimestamp("updated_at").toInstant());
+    }
+
+    private byte[] requireBase64(String value, int expectedLength, String label) {
+        try {
+            byte[] decoded = java.util.Base64.getUrlDecoder().decode(value);
+            if (expectedLength > 0 && decoded.length != expectedLength) throw new IllegalArgumentException();
+            return decoded;
+        } catch (IllegalArgumentException error) {
+            throw new OnlineMatchException(HttpStatus.BAD_REQUEST,label+" is invalid.");
+        }
     }
 
     @Transactional
@@ -250,7 +304,7 @@ class CommunityService {
         jdbc.update("insert into direct_message(id,sender_id,recipient_id,body,sent_at,attachment_name,attachment_type,attachment_size,attachment_path) values(?,?,?,?,?,?,?,?,?)",
                 id,player.id(),recipientId,clean,Timestamp.from(now),original,type,(long)accepted.bytes().length,stored);
         notifications.create(recipientId,"MESSAGE_RECEIVED","New attachment from "+player.displayName(),original,"CHAT",player.id());
-        return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,original,type,(long)accepted.bytes().length,false,List.of());
+        return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,original,type,(long)accepted.bytes().length,false,List.of(),false);
     }
 
     @Transactional
@@ -332,7 +386,7 @@ class CommunityService {
         return new CommunityDtos.MessageDto(id,sender,uuid(rs,"recipient_id"),rs.getString("body"),
                 rs.getTimestamp("sent_at").toInstant(),sender.equals(viewer),rs.getTimestamp("delivered_at")!=null,
                 rs.getTimestamp("read_at")!=null,rs.getString("attachment_name"),rs.getString("attachment_type"),
-                (Long)rs.getObject("attachment_size"),deleted,reactions);
+                (Long)rs.getObject("attachment_size"),deleted,reactions,rs.getBoolean("encrypted"));
     }
 
     private record MessageOwner(UUID sender, UUID recipient, Instant sentAt, String attachmentPath) {}

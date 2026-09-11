@@ -16,17 +16,20 @@ void main() {
     });
   });
 
-  testWidgets('mobile academy exposes animated practice flow',
-      (WidgetTester tester) async {
+  testWidgets('mobile academy exposes animated practice flow', (
+    WidgetTester tester,
+  ) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(MaterialApp(
-      home: InteractiveAcademyLessonScreen(
-        lesson: AcademyCatalog.forChapter('The knight jump'),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InteractiveAcademyLessonScreen(
+          lesson: AcademyCatalog.forChapter('The knight jump'),
+        ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('The knight jump'), findsOneWidget);
@@ -35,17 +38,20 @@ void main() {
     expect(find.text('LESSON FLOW'), findsNothing);
   });
 
-  testWidgets('desktop academy uses the instructor workspace',
-      (WidgetTester tester) async {
+  testWidgets('desktop academy uses the instructor workspace', (
+    WidgetTester tester,
+  ) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(1440, 900);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(MaterialApp(
-      home: InteractiveAcademyLessonScreen(
-        lesson: AcademyCatalog.forChapter('How pawns move'),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InteractiveAcademyLessonScreen(
+          lesson: AcademyCatalog.forChapter('How pawns move'),
+        ),
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('LESSON FLOW'), findsOneWidget);
@@ -55,8 +61,32 @@ void main() {
     expect(find.text('AI COACH'), findsOneWidget);
   });
 
-  testWidgets('learn landing exposes a personalized AI path',
-      (WidgetTester tester) async {
+  testWidgets('time management lesson exposes the clock-pressure HUD', (
+    WidgetTester tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InteractiveAcademyLessonScreen(
+          lesson: AcademyCatalog.forChapter('Build a thinking budget'),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(
+      find.byKey(const ValueKey<String>('time-pressure-banner')),
+      findsOneWidget,
+    );
+    expect(find.text('00:10'), findsOneWidget);
+  });
+
+  testWidgets('learn landing exposes a personalized AI path', (
+    WidgetTester tester,
+  ) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.resetPhysicalSize);
@@ -73,26 +103,31 @@ void main() {
     expect(find.text('3. MASTER'), findsOneWidget);
   });
 
-  testWidgets('landscape phone keeps the academy board and coach side by side',
-      (WidgetTester tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(844, 390);
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(MaterialApp(
-      home: InteractiveAcademyLessonScreen(
-        lesson: AcademyCatalog.forChapter('How pawns move'),
-      ),
-    ));
-    await tester.pump(const Duration(milliseconds: 100));
+  testWidgets(
+    'landscape phone keeps the academy board and coach side by side',
+    (WidgetTester tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(844, 390);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: InteractiveAcademyLessonScreen(
+            lesson: AcademyCatalog.forChapter('How pawns move'),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('AI COACH'), findsOneWidget);
-    expect(find.text('1  AI DEMO'), findsOneWidget);
-    expect(find.text('LESSON FLOW'), findsNothing);
-  });
+      expect(find.text('AI COACH'), findsOneWidget);
+      expect(find.text('1  AI DEMO'), findsOneWidget);
+      expect(find.text('LESSON FLOW'), findsNothing);
+    },
+  );
 
-  testWidgets('academy mastery gate blocks later courses for a new account',
-      (WidgetTester tester) async {
+  testWidgets('academy mastery gate blocks later courses for a new account', (
+    WidgetTester tester,
+  ) async {
     FlutterSecureStorage.setMockInitialValues(<String, String>{
       'settings.academy.completed.v2.${AcademyProgressStore.identityHash('signed-out')}.placement':
           'beginner',
@@ -115,25 +150,29 @@ void main() {
     );
   });
 
-  testWidgets('intermediate lesson asks for a candidate before its demo',
-      (WidgetTester tester) async {
+  testWidgets('intermediate lesson asks for a candidate before its demo', (
+    WidgetTester tester,
+  ) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(MaterialApp(
-      home: InteractiveAcademyLessonScreen(
-        lesson: AcademyCatalog.forChapter('Pins'),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InteractiveAcademyLessonScreen(
+          lesson: AcademyCatalog.forChapter('Pins'),
+        ),
       ),
-    ));
+    );
     await tester.pump();
 
     expect(find.text('THINK BEFORE THE DEMO'), findsOneWidget);
     expect(find.textContaining('three candidates'), findsOneWidget);
   });
 
-  testWidgets('academy follows the selected offline language',
-      (WidgetTester tester) async {
+  testWidgets('academy follows the selected offline language', (
+    WidgetTester tester,
+  ) async {
     FlutterSecureStorage.setMockInitialValues(<String, String>{
       'settings.language': 'te',
       'settings.academy.completed.v2.${AcademyProgressStore.identityHash('signed-out')}.placement':
@@ -144,17 +183,39 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final AcademyLesson lesson = AcademyCatalog.forChapter('How pawns move');
-    await tester.pumpWidget(MaterialApp(
-      home: InteractiveAcademyLessonScreen(lesson: lesson),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(home: InteractiveAcademyLessonScreen(lesson: lesson)),
+    );
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('అధ్యాయం 2 · ధైర్యవంతుడైన సైనికుడు'), findsWidgets);
     expect(find.text(lesson.storyNarration), findsNothing);
   });
 
-  testWidgets('first visit offers a three-question placement assessment',
-      (WidgetTester tester) async {
+  testWidgets('academy journey chrome follows the selected offline language', (
+    WidgetTester tester,
+  ) async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{
+      'settings.language': 'te',
+      'settings.academy.completed.v2.${AcademyProgressStore.identityHash('signed-out')}.placement':
+          'beginner',
+    });
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const MaterialApp(home: LearnChessScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('చెస్ నేర్చుకోండి'), findsOneWidget);
+    expect(find.text('చెస్ అకాడమీ'), findsOneWidget);
+    expect(find.text('పావుల ప్రాథమికాలు'), findsWidgets);
+    expect(find.text('LEARN CHESS'), findsNothing);
+  });
+
+  testWidgets('first visit offers a three-question placement assessment', (
+    WidgetTester tester,
+  ) async {
     FlutterSecureStorage.setMockInitialValues(<String, String>{
       'settings.language': 'en',
     });

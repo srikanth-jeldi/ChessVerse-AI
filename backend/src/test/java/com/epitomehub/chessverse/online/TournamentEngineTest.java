@@ -45,7 +45,7 @@ class TournamentEngineTest {
         jdbc.execute("create table if not exists chess_club_member(club_id uuid,player_id uuid,role varchar(16),joined_at timestamp with time zone,primary key(club_id,player_id))");
         jdbc.execute("alter table chess_tournament add column if not exists club_id uuid");
         jdbc.execute("alter table chess_tournament add column if not exists created_by uuid");
-        jdbc.execute("create table if not exists direct_message(id uuid primary key,sender_id uuid,recipient_id uuid,body varchar(500),sent_at timestamp with time zone,read_at timestamp with time zone,delivered_at timestamp with time zone,attachment_name varchar(255),attachment_type varchar(120),attachment_size bigint,attachment_path varchar(255))");
+        jdbc.execute("create table if not exists direct_message(id uuid primary key,sender_id uuid,recipient_id uuid,body text,sent_at timestamp with time zone,read_at timestamp with time zone,delivered_at timestamp with time zone,attachment_name varchar(255),attachment_type varchar(120),attachment_size bigint,attachment_path varchar(255),encrypted boolean not null default false)");
         jdbc.execute("create table if not exists fair_play_signal(id uuid primary key,player_id uuid,match_id uuid,signal_type varchar(40),severity int,evidence varchar(500),created_at timestamp with time zone)");
         jdbc.update("merge into chess_tournament(id,name,description,time_control_minutes,capacity,starts_at,ends_at,status,current_round,entry_coins,badge_code,champion_bonus,runner_up_bonus,participation_bonus) key(id) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 UUID.fromString("22000000-0000-0000-0000-000000000001"),"Test Cup","Knockout",10,16,

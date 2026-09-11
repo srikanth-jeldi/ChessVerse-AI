@@ -192,6 +192,23 @@ public class OnlineMatchService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<OnlineDtos.MatchDto> liveGames() {
+        return matches.findTop20ByStatusOrderByUpdatedAtDesc(OnlineMatchStatus.ACTIVE)
+                .stream().map(OnlineDtos.MatchDto::spectator).toList();
+    }
+
+    @Transactional
+    public OnlineDtos.MatchDto spectate(UUID matchId) {
+        OnlineMatch match = matches.findById(matchId)
+                .orElseThrow(() -> new OnlineMatchException(HttpStatus.NOT_FOUND, "Live game not found."));
+        if (match.status != OnlineMatchStatus.ACTIVE && match.status != OnlineMatchStatus.FINISHED) {
+            throw new OnlineMatchException(HttpStatus.CONFLICT, "This game is not available to watch.");
+        }
+        reconcileClock(match, Instant.now());
+        return OnlineDtos.MatchDto.spectator(matches.save(match));
+    }
+
     @Transactional
     public OnlineDtos.MatchDto cancelWaiting(AuthenticatedPlayer player, UUID matchId) {
         OnlineMatch match = requireParticipant(player.id(), matchId);

@@ -248,9 +248,10 @@ class MessageDto {
       this.attachmentSize,
       this.deletedForEveryone = false,
       this.reactions = const <MessageReactionDto>[],
-      this.pending = false});
+      this.pending = false,
+      this.encrypted = false});
   final String id, senderId, recipientId, body;
-  final bool mine, delivered, seen, pending;
+  final bool mine, delivered, seen, pending, encrypted;
   final String? attachmentName, attachmentType;
   final int? attachmentSize;
   final bool deletedForEveryone;
@@ -266,6 +267,7 @@ class MessageDto {
           DateTime.now(),
       delivered: j['delivered'] as bool? ?? false,
       seen: j['seen'] as bool? ?? false,
+      encrypted: j['encrypted'] as bool? ?? false,
       attachmentName: j['attachmentName'] as String?,
       attachmentType: j['attachmentType'] as String?,
       attachmentSize: (j['attachmentSize'] as num?)?.toInt(),
@@ -374,11 +376,26 @@ class CommunityApi {
           .whereType<Map<String, dynamic>>()
           .map(MessageDto.fromJson)
           .toList();
-  Future<MessageDto> send(
-          String token, String recipientId, String body) async =>
+  Future<MessageDto> send(String token, String recipientId, String body,
+          {bool encrypted = false}) async =>
       MessageDto.fromJson(await _request(
           token, 'POST', '/api/v1/community/messages',
-          body: <String, Object?>{'recipientId': recipientId, 'body': body}));
+          body: <String, Object?>{
+            'recipientId': recipientId,
+            'body': body,
+            'encrypted': encrypted,
+          }));
+
+  Future<Map<String, dynamic>> e2eeIdentity(String token) =>
+      _request(token, 'GET', '/api/v1/community/e2ee/identity');
+
+  Future<Map<String, dynamic>> saveE2eeIdentity(
+          String token, Map<String, Object?> identity) =>
+      _request(token, 'PUT', '/api/v1/community/e2ee/identity', body: identity);
+
+  Future<Map<String, dynamic>> e2eePublicKey(
+          String token, String friendId) =>
+      _request(token, 'GET', '/api/v1/community/e2ee/public-key/$friendId');
   Future<List<ChatMediaDto>> searchMedia(String token,
       {required String query,
       required String kind,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/layout/app_breakpoints.dart';
@@ -5,7 +7,11 @@ import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../analysis/domain/player_learning_profile.dart';
+import '../../auth/data/auth_session_store.dart';
+import '../data/puzzle_sprint_api.dart';
 import '../domain/puzzle_catalog.dart';
+import '../domain/puzzle_sprint.dart';
+import 'puzzle_sprint_leaderboard_screen.dart';
 
 typedef PuzzleLauncher = Future<void> Function(String puzzleId);
 
@@ -26,10 +32,24 @@ class PuzzleAcademyScreen extends StatefulWidget {
 }
 
 class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
-  void _showTrainingInsights(
-    LocalGameStats stats,
-    RewardSnapshot rewards,
-  ) {
+  void _openSprintRecords() => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => const PuzzleSprintLeaderboardScreen(),
+    ),
+  );
+  Future<void> _openSprint(PuzzleSprintMode mode) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: const Color(0xFF071522),
+      builder: (BuildContext context) =>
+          _PuzzleSprintSheet(mode: mode, onStartPuzzle: widget.onStartPuzzle),
+    );
+    if (mounted) setState(() {});
+  }
+
+  void _showTrainingInsights(LocalGameStats stats, RewardSnapshot rewards) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -103,50 +123,54 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                 child: LayoutBuilder(
                   builder: (BuildContext context, BoxConstraints gridSize) =>
                       GridView.builder(
-                    shrinkWrap: true,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: gridSize.maxWidth >= 900
-                          ? 10
-                          : gridSize.maxWidth >= 600
+                        shrinkWrap: true,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: gridSize.maxWidth >= 900
+                              ? 10
+                              : gridSize.maxWidth >= 600
                               ? 8
                               : 5,
-                      mainAxisSpacing: 9,
-                      crossAxisSpacing: 9,
-                    ),
-                    itemCount: puzzles.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      final ChessPuzzle puzzle = puzzles[index];
-                      final bool solved = LocalGameArchive.completedPuzzleIds
-                          .contains(puzzle.id);
-                      return InkWell(
-                        key: ValueKey<String>('puzzle-level-${puzzle.id}'),
-                        onTap: () => Navigator.of(sheetContext).pop(puzzle.id),
-                        borderRadius: BorderRadius.circular(13),
-                        child: Ink(
-                          decoration: BoxDecoration(
-                            color: solved
-                                ? accent.withValues(alpha: 0.2)
-                                : const Color(0xFF102332),
-                            borderRadius: BorderRadius.circular(13),
-                            border: Border.all(
-                              color: solved ? accent : const Color(0xFF294150),
-                            ),
-                          ),
-                          child: Center(
-                            child: solved
-                                ? Icon(Icons.check_rounded, color: accent)
-                                : Text(
-                                    '${puzzle.number}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                          ),
+                          mainAxisSpacing: 9,
+                          crossAxisSpacing: 9,
                         ),
-                      );
-                    },
-                  ),
+                        itemCount: puzzles.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          final ChessPuzzle puzzle = puzzles[index];
+                          final bool solved = LocalGameArchive
+                              .completedPuzzleIds
+                              .contains(puzzle.id);
+                          return InkWell(
+                            key: ValueKey<String>('puzzle-level-${puzzle.id}'),
+                            onTap: () =>
+                                Navigator.of(sheetContext).pop(puzzle.id),
+                            borderRadius: BorderRadius.circular(13),
+                            child: Ink(
+                              decoration: BoxDecoration(
+                                color: solved
+                                    ? accent.withValues(alpha: 0.2)
+                                    : const Color(0xFF102332),
+                                borderRadius: BorderRadius.circular(13),
+                                border: Border.all(
+                                  color: solved
+                                      ? accent
+                                      : const Color(0xFF294150),
+                                ),
+                              ),
+                              child: Center(
+                                child: solved
+                                    ? Icon(Icons.check_rounded, color: accent)
+                                    : Text(
+                                        '${puzzle.number}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                 ),
               ),
             ],
@@ -165,9 +189,9 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
     final RewardSnapshot rewards = LocalGameArchive.rewards();
     final PlayerLearningProfile learningProfile =
         PlayerLearningProfile.fromGames(
-      LocalGameArchive.games,
-      cloudScores: LocalGameArchive.cloudWeaknessScores,
-    );
+          LocalGameArchive.games,
+          cloudScores: LocalGameArchive.cloudWeaknessScores,
+        );
     final List<ChessPuzzle> adaptivePlan = PuzzleCatalog.adaptivePlan(
       learningProfile.primaryWeakness.name,
       LocalGameArchive.completedPuzzleIds,
@@ -189,7 +213,8 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
           // exceed 980 logical pixels on high-density devices. Keep phones on
           // the mobile composition in both orientations; only tablets/web may
           // use the wide reference layout.
-          final bool desktop = AppBreakpoints.isTabletOrLarger(context) &&
+          final bool desktop =
+              AppBreakpoints.isTabletOrLarger(context) &&
               viewport.maxWidth >= 700;
           if (desktop) {
             return Row(
@@ -209,6 +234,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                     onDifficulty: (PuzzleDifficulty difficulty) =>
                         _openPuzzlePicker(context, difficulty),
                     onViewStats: () => _showTrainingInsights(stats, rewards),
+                    onSprint: _openSprint,
                   ),
                 ),
               ],
@@ -277,10 +303,20 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                             ),
                             const SizedBox(height: 28),
                             const _SectionHeading(
+                              eyebrow: 'SPEED ARENA',
+                              title: 'Think fast. Stay accurate.',
+                              subtitle: 'Three competitive sessions powered by real curated positions.',
+                            ),
+                            const SizedBox(height: 14),
+                            _SprintModeStrip(
+                              onSelect: _openSprint,
+                              onRecords: _openSprintRecords,
+                            ),
+                            const SizedBox(height: 28),
+                            const _SectionHeading(
                               eyebrow: 'TACTICAL TRAINING',
                               title: 'Choose your challenge',
-                              subtitle:
-                                  'Every position is interactive and validated by the ChessVerseAI rules engine.',
+                              subtitle: 'Every position is interactive and validated by the ChessVerseAI rules engine.',
                             ),
                             const SizedBox(height: 14),
                             _DifficultyCard(
@@ -290,8 +326,9 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                               detail: 'Clear forcing mates rated 800–1300.',
                               icon: Icons.school_rounded,
                               accent: const Color(0xFF63D2B8),
-                              solved:
-                                  LocalGameArchive.puzzleSolvedCount('easy'),
+                              solved: LocalGameArchive.puzzleSolvedCount(
+                                'easy',
+                              ),
                               onTap: () => _openPuzzlePicker(
                                 context,
                                 PuzzleDifficulty.easy,
@@ -305,8 +342,9 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                               detail: 'Deeper mating lines rated 1301–1800.',
                               icon: Icons.bolt_rounded,
                               accent: AppColors.accentGold,
-                              solved:
-                                  LocalGameArchive.puzzleSolvedCount('medium'),
+                              solved: LocalGameArchive.puzzleSolvedCount(
+                                'medium',
+                              ),
                               onTap: () => _openPuzzlePicker(
                                 context,
                                 PuzzleDifficulty.medium,
@@ -320,8 +358,9 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                               detail: 'Advanced forced mates rated 1801–2400.',
                               icon: Icons.local_fire_department_rounded,
                               accent: const Color(0xFFF08A4B),
-                              solved:
-                                  LocalGameArchive.puzzleSolvedCount('hard'),
+                              solved: LocalGameArchive.puzzleSolvedCount(
+                                'hard',
+                              ),
                               onTap: () => _openPuzzlePicker(
                                 context,
                                 PuzzleDifficulty.hard,
@@ -352,6 +391,7 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
     required this.onDifficulty,
     required this.onViewStats,
     required this.adaptiveFocus,
+    required this.onSprint,
   });
 
   final LocalGameStats stats;
@@ -360,6 +400,7 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
   final ValueChanged<PuzzleDifficulty> onDifficulty;
   final VoidCallback onViewStats;
   final String adaptiveFocus;
+  final ValueChanged<PuzzleSprintMode> onSprint;
 
   @override
   Widget build(BuildContext context) {
@@ -389,10 +430,7 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
                     SizedBox(height: 2),
                     Text(
                       'Train tactics and sharpen pattern recognition',
-                      style: TextStyle(
-                        color: Color(0xFFA7B7CA),
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Color(0xFFA7B7CA), fontSize: 14),
                     ),
                   ],
                 ),
@@ -419,10 +457,19 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
                           const _SectionHeading(
                             eyebrow: 'TACTICAL TRAINING',
                             title: 'Choose your challenge',
-                            subtitle:
-                                'Every position is interactive and validated by the ChessVerseAI rules engine.',
+                            subtitle: 'Every position is interactive and validated by the ChessVerseAI rules engine.',
                           ),
                           const SizedBox(height: 12),
+                          _SprintModeStrip(
+                            onSelect: onSprint,
+                            onRecords: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) =>
+                                    const PuzzleSprintLeaderboardScreen(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
                           SizedBox(
                             height: 106,
                             child: _difficulty(PuzzleDifficulty.easy),
@@ -468,26 +515,339 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
     return _DifficultyCard(
       keyName: 'puzzle-${difficulty.name}',
       level: difficulty.name.toUpperCase(),
-      title: '${easy ? 'Easy' : medium ? 'Medium' : 'Hard'} Tactics',
+      title:
+          '${easy
+              ? 'Easy'
+              : medium
+              ? 'Medium'
+              : 'Hard'} Tactics',
       detail: easy
           ? 'Clear forcing mates rated 800–1300.'
           : medium
-              ? 'Deeper mating lines rated 1301–1800.'
-              : 'Advanced forced mates rated 1801–2400.',
+          ? 'Deeper mating lines rated 1301–1800.'
+          : 'Advanced forced mates rated 1801–2400.',
       icon: easy
           ? Icons.school_rounded
           : medium
-              ? Icons.bolt_rounded
-              : Icons.local_fire_department_rounded,
+          ? Icons.bolt_rounded
+          : Icons.local_fire_department_rounded,
       accent: easy
           ? const Color(0xFF63D2B8)
           : medium
-              ? AppColors.accentGold
-              : const Color(0xFFF08A4B),
+          ? AppColors.accentGold
+          : const Color(0xFFF08A4B),
       solved: LocalGameArchive.puzzleSolvedCount(difficulty.name),
       onTap: () => onDifficulty(difficulty),
     );
   }
+}
+
+class _SprintModeStrip extends StatelessWidget {
+  const _SprintModeStrip({required this.onSelect, required this.onRecords});
+
+  final ValueChanged<PuzzleSprintMode> onSelect;
+  final VoidCallback onRecords;
+
+  @override
+  Widget build(BuildContext context) {
+    const List<(PuzzleSprintMode, String, String, IconData, Color)> modes =
+        <(PuzzleSprintMode, String, String, IconData, Color)>[
+          (
+            PuzzleSprintMode.rush,
+            'PUZZLE RUSH',
+            '3 minutes · 3 lives',
+            Icons.bolt_rounded,
+            Color(0xFFFFC857),
+          ),
+          (
+            PuzzleSprintMode.survival,
+            'SURVIVAL',
+            'No clock · 3 lives',
+            Icons.shield_rounded,
+            Color(0xFF63D2B8),
+          ),
+          (
+            PuzzleSprintMode.mateInOne,
+            'MATE SPRINT',
+            '60 seconds · Mate in 1',
+            Icons.timer_rounded,
+            Color(0xFFB38CFF),
+          ),
+        ];
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool row = constraints.maxWidth >= 760;
+        final List<Widget> cards = modes
+            .map(
+              ((PuzzleSprintMode, String, String, IconData, Color) item) =>
+                  Padding(
+                    padding: EdgeInsets.only(right: row ? 10 : 0, bottom: 10),
+                    child: Material(
+                      color: const Color(0xFF0D2233),
+                      borderRadius: BorderRadius.circular(18),
+                      child: InkWell(
+                        key: ValueKey<String>('sprint-${item.$1.name}'),
+                        onTap: () => onSelect(item.$1),
+                        borderRadius: BorderRadius.circular(18),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: <Widget>[
+                              CircleAvatar(
+                                backgroundColor: item.$5.withValues(alpha: .16),
+                                child: Icon(item.$4, color: item.$5),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    Text(
+                                      item.$2,
+                                      style: TextStyle(
+                                        color: item.$5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    Text(
+                                      item.$3,
+                                      style: const TextStyle(
+                                        color: Color(0xFFA7B7CA),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right_rounded),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+            )
+            .toList();
+        final Widget modeLayout = row
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: cards
+                    .map((Widget card) => Expanded(child: card))
+                    .toList(),
+              )
+            : Column(children: cards);
+        return Column(
+          children: <Widget>[
+            modeLayout,
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                key: const ValueKey<String>('sprint-records'),
+                onPressed: onRecords,
+                icon: const Icon(Icons.leaderboard_rounded),
+                label: const Text('LEADERBOARD & MY HISTORY'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _PuzzleSprintSheet extends StatefulWidget {
+  const _PuzzleSprintSheet({required this.mode, required this.onStartPuzzle});
+
+  final PuzzleSprintMode mode;
+  final PuzzleLauncher onStartPuzzle;
+
+  @override
+  State<_PuzzleSprintSheet> createState() => _PuzzleSprintSheetState();
+}
+
+class _PuzzleSprintSheetState extends State<_PuzzleSprintSheet> {
+  static const PuzzleSprintApi _api = PuzzleSprintApi();
+  late final PuzzleSprintSession _session;
+  late final DateTime _startedAt;
+  Timer? _timer;
+  bool _launching = false;
+  bool _submitted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startedAt = DateTime.now();
+    _session = PuzzleSprintSession(
+      mode: widget.mode,
+      startedAt: _startedAt,
+      catalog: PuzzleCatalog.all.where(
+        (ChessPuzzle puzzle) =>
+            !LocalGameArchive.completedPuzzleIds.contains(puzzle.id),
+      ),
+    );
+    if (_session.rules.duration != null) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        setState(() {});
+        if (_session.isTimedOutAt(DateTime.now())) {
+          _timer?.cancel();
+          unawaited(_submitResult());
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    if (_session.attempted > 0) unawaited(_submitResult());
+    super.dispose();
+  }
+
+  Future<void> _submitResult() async {
+    if (_submitted || _session.attempted == 0) return;
+    _submitted = true;
+    try {
+      final session = await const AuthSessionStore().read();
+      if (session == null) return;
+      await _api.record(
+        session.token,
+        mode: widget.mode,
+        score: _session.score,
+        attempted: _session.attempted,
+        durationSeconds: DateTime.now().difference(_startedAt).inSeconds,
+      );
+    } on Object {
+      _submitted = false;
+    }
+  }
+
+  bool get _finished =>
+      _session.isFinished || _session.isTimedOutAt(DateTime.now());
+
+  Future<void> _play() async {
+    final ChessPuzzle? puzzle = _session.current;
+    if (puzzle == null || _finished || _launching) return;
+    final bool solvedBefore = LocalGameArchive.completedPuzzleIds.contains(
+      puzzle.id,
+    );
+    setState(() => _launching = true);
+    await widget.onStartPuzzle(puzzle.id);
+    if (!mounted) return;
+    final bool solvedAfter = LocalGameArchive.completedPuzzleIds.contains(
+      puzzle.id,
+    );
+    _session.recordResult(solved: !solvedBefore && solvedAfter);
+    if (_finished) unawaited(_submitResult());
+    setState(() => _launching = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Duration remaining = _session.remainingAt(DateTime.now());
+    final String clock = _session.rules.duration == null
+        ? '∞'
+        : '${remaining.inMinutes}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}';
+    final String title = switch (widget.mode) {
+      PuzzleSprintMode.rush => 'PUZZLE RUSH',
+      PuzzleSprintMode.survival => 'PUZZLE SURVIVAL',
+      PuzzleSprintMode.mateInOne => 'MATE-IN-1 SPEED RUN',
+    };
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: <Widget>[
+              _SprintMetric(label: 'TIME', value: clock),
+              _SprintMetric(label: 'SCORE', value: '${_session.score}'),
+              _SprintMetric(
+                label: 'LIVES',
+                value: List<String>.filled(_session.lives, '♥').join(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Text(
+            _finished ? 'SESSION COMPLETE' : 'Puzzle ${_session.attempted + 1}',
+            style: const TextStyle(
+              color: AppColors.accentGold,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _finished
+                ? 'You solved ${_session.score} of ${_session.attempted} positions.'
+                : '${_session.current!.rating} rating · ${_session.current!.playerMoveGoal} move challenge',
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const ValueKey<String>('sprint-play-next'),
+              onPressed: _finished || _launching ? null : _play,
+              icon: Icon(
+                _launching
+                    ? Icons.hourglass_top_rounded
+                    : Icons.play_arrow_rounded,
+              ),
+              label: Text(_launching ? 'OPENING BOARD…' : 'PLAY NEXT PUZZLE'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SprintMetric extends StatelessWidget {
+  const _SprintMetric({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: <Widget>[
+      Text(
+        value,
+        style: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w900,
+          color: Colors.white,
+        ),
+      ),
+      Text(
+        label,
+        style: const TextStyle(
+          fontSize: 10,
+          letterSpacing: 1.2,
+          color: Color(0xFF9FB0C1),
+        ),
+      ),
+    ],
+  );
 }
 
 class _PuzzleHero extends StatelessWidget {
@@ -503,77 +863,94 @@ class _PuzzleHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (BuildContext context, BoxConstraints size) {
-      final bool wide = size.maxWidth >= 650;
-      return Container(
-        constraints: BoxConstraints(minHeight: wide ? 250 : 300),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          image: const DecorationImage(
-            image: AssetImage('assets/backgrounds/puzzle-academy-hero-v2.webp'),
-            fit: BoxFit.cover,
-            alignment: Alignment.centerRight,
-            opacity: .82,
-          ),
-          gradient: const LinearGradient(colors: <Color>[
-            Color(0xF2122C3A),
-            Color(0xE6061320),
-          ]),
-          border: Border.all(color: AppColors.accentGold, width: 1.2),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints size) {
+        final bool wide = size.maxWidth >= 650;
+        return Container(
+          constraints: BoxConstraints(minHeight: wide ? 250 : 300),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            image: const DecorationImage(
+              image: AssetImage(
+                'assets/backgrounds/puzzle-academy-hero-v2.webp',
+              ),
+              fit: BoxFit.cover,
+              alignment: Alignment.centerRight,
+              opacity: .82,
+            ),
+            gradient: const LinearGradient(
+              colors: <Color>[Color(0xF2122C3A), Color(0xE6061320)],
+            ),
+            border: Border.all(color: AppColors.accentGold, width: 1.2),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
                 color: AppColors.accentGold.withValues(alpha: .18),
-                blurRadius: 26),
-          ],
-        ),
-        child: Stack(children: <Widget>[
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.all(Radius.circular(27)),
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    stops: <double>[0, .52, 1],
-                    colors: <Color>[
-                      Color(0xF9061726),
-                      Color(0xC90A1B29),
-                      Color(0x260A1722),
+                blurRadius: 26,
+              ),
+            ],
+          ),
+          child: Stack(
+            children: <Widget>[
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.all(Radius.circular(27)),
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        stops: <double>[0, .52, 1],
+                        colors: <Color>[
+                          Color(0xF9061726),
+                          Color(0xC90A1B29),
+                          Color(0x260A1722),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 0,
+                left: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: Color(0xCC2C2518),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(27),
+                      bottomRight: Radius.circular(24),
+                    ),
+                  ),
+                  child: const Row(
+                    children: <Widget>[
+                      Icon(
+                        Icons.star_rounded,
+                        color: AppColors.accentGold,
+                        size: 18,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'FEATURED PUZZLE',
+                        style: TextStyle(
+                          color: AppColors.accentGold,
+                          letterSpacing: 1.5,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
-            ),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              decoration: const BoxDecoration(
-                color: Color(0xCC2C2518),
-                borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(27),
-                    bottomRight: Radius.circular(24)),
-              ),
-              child: const Row(children: <Widget>[
-                Icon(Icons.star_rounded, color: AppColors.accentGold, size: 18),
-                SizedBox(width: 8),
-                Text('FEATURED PUZZLE',
-                    style: TextStyle(
-                        color: AppColors.accentGold,
-                        letterSpacing: 1.5,
-                        fontWeight: FontWeight.w900)),
-              ]),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 58, 20, 20),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Row(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 58, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: <Widget>[
                         Container(
@@ -581,63 +958,89 @@ class _PuzzleHero extends StatelessWidget {
                           height: wide ? 118 : 82,
                           padding: const EdgeInsets.all(7),
                           decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(24),
-                              color: const Color(0xE507121C),
-                              border: Border.all(
-                                  color: AppColors.accentGold, width: 1.3)),
+                            borderRadius: BorderRadius.circular(24),
+                            color: const Color(0xE507121C),
+                            border: Border.all(
+                              color: AppColors.accentGold,
+                              width: 1.3,
+                            ),
+                          ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(17),
-                            child: Image.asset('assets/branding/app_icon.png',
-                                fit: BoxFit.cover),
+                            child: Image.asset(
+                              'assets/branding/app_icon.png',
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 18),
                         Expanded(
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                              const Text('Your Adaptive Sprint',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 27,
-                                      fontWeight: FontWeight.w900)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              const Text(
+                                'Your Adaptive Sprint',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 27,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
                               const SizedBox(height: 5),
-                              Text(adaptiveFocus,
-                                  style: const TextStyle(
-                                      color: Color(0xFFAFBFCA), height: 1.35)),
-                            ])),
-                      ]),
-                  const SizedBox(height: 18),
-                  Wrap(
+                              Text(
+                                adaptiveFocus,
+                                style: const TextStyle(
+                                  color: Color(0xFFAFBFCA),
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Wrap(
                       spacing: 8,
                       runSpacing: 10,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: <Widget>[
                         _HeroStat(
-                            icon: Icons.extension_rounded,
-                            value: '$solved solved'),
+                          icon: Icons.extension_rounded,
+                          value: '$solved solved',
+                        ),
                         const _HeroStat(
-                            icon: Icons.grid_view_rounded,
-                            value: '150 puzzles'),
+                          icon: Icons.grid_view_rounded,
+                          value: '150 puzzles',
+                        ),
                         FilledButton.icon(
                           key: const ValueKey<String>('daily-puzzle-start'),
                           onPressed: onStart,
                           style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.accentGold,
-                              foregroundColor: const Color(0xFF24180A),
-                              elevation: 10,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 15)),
+                            backgroundColor: AppColors.accentGold,
+                            foregroundColor: const Color(0xFF24180A),
+                            elevation: 10,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 15,
+                            ),
+                          ),
                           icon: const Icon(Icons.sports_esports_rounded),
-                          label: const Text('SOLVE NOW',
-                              style: TextStyle(fontWeight: FontWeight.w900)),
+                          label: const Text(
+                            'SOLVE NOW',
+                            style: TextStyle(fontWeight: FontWeight.w900),
+                          ),
                         ),
-                      ]),
-                ]),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ]),
-      );
-    });
+        );
+      },
+    );
   }
 }
 
@@ -861,7 +1264,10 @@ class _TrainingStatsPanel extends StatelessWidget {
         border: Border.all(color: const Color(0xFF31536A)),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-              color: Color(0x66000000), blurRadius: 22, offset: Offset(0, 12)),
+            color: Color(0x66000000),
+            blurRadius: 22,
+            offset: Offset(0, 12),
+          ),
         ],
       ),
       child: Column(
@@ -959,11 +1365,14 @@ class _TrainingStatsPanel extends StatelessWidget {
               side: const BorderSide(color: Color(0xFF4398E8)),
               padding: const EdgeInsets.symmetric(vertical: 13),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             icon: const Icon(Icons.bar_chart_rounded),
-            label: const Text('VIEW INSIGHTS',
-                style: TextStyle(letterSpacing: 1.2)),
+            label: const Text(
+              'VIEW INSIGHTS',
+              style: TextStyle(letterSpacing: 1.2),
+            ),
           ),
         ],
       ),
@@ -1117,37 +1526,37 @@ class _InsightMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 145,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF102332),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF294A5D)),
+    width: 145,
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: const Color(0xFF102332),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFF294A5D)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(icon, color: const Color(0xFF62E4D1), size: 20),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Icon(icon, color: const Color(0xFF62E4D1), size: 20),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Color(0xFF91A7B6),
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF91A7B6),
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _DifficultyInsight extends StatelessWidget {
@@ -1188,8 +1597,10 @@ class _DifficultyInsight extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     '${difficulty.name.toUpperCase()} TACTICS',
-                    style:
-                        TextStyle(color: accent, fontWeight: FontWeight.w900),
+                    style: TextStyle(
+                      color: accent,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   LinearProgressIndicator(
@@ -1228,20 +1639,21 @@ class _TrainingStatRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Row(
-          children: <Widget>[
-            Icon(icon, color: color, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child:
-                  Text(label, style: const TextStyle(color: Color(0xFFC0CAD4))),
-            ),
-            Text(value,
-                style: TextStyle(color: color, fontWeight: FontWeight.w900)),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Row(
+      children: <Widget>[
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(label, style: const TextStyle(color: Color(0xFFC0CAD4))),
         ),
-      );
+        Text(
+          value,
+          style: TextStyle(color: color, fontWeight: FontWeight.w900),
+        ),
+      ],
+    ),
+  );
 }
 
 class _TrainingSummary extends StatelessWidget {

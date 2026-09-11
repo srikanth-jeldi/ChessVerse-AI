@@ -43,6 +43,7 @@ class EconomyControllerTest {
         jdbc.execute("merge into cosmetic_item key(id) values('41000000-0000-0000-0000-000000000001','royal-walnut','BOARD','Royal Walnut','Classic','FREE',0,'#E7D6B0','#6E4128',null,10,true)");
         jdbc.execute("merge into cosmetic_item key(id) values('42000000-0000-0000-0000-000000000001','classic-staunton','PIECES','Classic Staunton','Classic','FREE',0,'#FFFFFF','#111111','staunton',10,true)");
         jdbc.execute("merge into cosmetic_item key(id) values('41000000-0000-0000-0000-000000000099','test-board','BOARD','Test Board','Test purchase','COINS',300,'#EEEEEE','#333333',null,99,true)");
+        jdbc.execute("merge into cosmetic_item key(id) values('44000000-0000-0000-0000-000000000099','test-badge','FRAME','Test Badge','Test profile badge','COINS',200,'#F4C75B','#071625','master',99,true)");
         jdbc.execute("merge into purchase_product key(id) values('43000000-0000-0000-0000-000000000001','test_coins','Test Coins','Test pack','COINS',500,38000,'INR',true,1,current_timestamp,current_timestamp)");
     }
 
@@ -86,6 +87,18 @@ class EconomyControllerTest {
         mockMvc.perform(put("/api/v1/shop/loadout/BOARD").header("Authorization", authorization)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"itemId\":\"" + item + "\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.items[1].equipped").value(true));
+    }
+
+    @Test
+    void coinBadgeIsPermanentAndEquipsToAccountFrameSlot() throws Exception {
+        String authorization = "Bearer " + guest(UUID.randomUUID().toString());
+        String item = "44000000-0000-0000-0000-000000000099";
+        mockMvc.perform(post("/api/v1/shop/items/" + item + "/purchase").header("Authorization", authorization))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.wallet.coins").value(500));
+        mockMvc.perform(put("/api/v1/shop/loadout/FRAME").header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"itemId\":\"" + item + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.id == '" + item + "')].equipped").value(true));
     }
 
     @Test

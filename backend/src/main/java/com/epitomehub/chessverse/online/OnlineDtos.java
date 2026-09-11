@@ -140,6 +140,19 @@ final class OnlineDtos {
                     coinsEarned(match, playerId));
         }
 
+        static MatchDto spectator(OnlineMatch match) {
+            MatchDto base = from(match, match.whitePlayerId);
+            return new MatchDto(base.id, base.roomCode, base.status, "spectator",
+                    base.activeColor, base.whitePlayerName, base.blackPlayerName,
+                    base.whitePlayerPhotoUrl, base.blackPlayerPhotoUrl, base.fen,
+                    base.moves, base.whiteTimeMs, base.blackTimeMs, base.serverNow,
+                    base.turnStartedAt, base.disconnectedColor, base.disconnectDeadline,
+                    base.result, base.resultReason, null, false, null, null, null,
+                    base.createdAt, base.startedAt, base.finishedAt, base.durationSeconds,
+                    base.updatedAt, base.tournamentName, base.tournamentRound,
+                    base.entryCoins, base.rewardPoolCoins, 0);
+        }
+
         private static int coinsEarned(OnlineMatch match, UUID playerId) {
             if (match.status != OnlineMatchStatus.FINISHED) return 0;
             if (match.entryCoins > 0) {
