@@ -97,8 +97,9 @@ void main() {
     expect(aliceSetup.recoveryKey, isNotNull);
     expect(aliceSetup.friendReady, isFalse);
 
+    final _MemoryStorage secondStorage = _MemoryStorage();
     final E2eeChatService second =
-        E2eeChatService(api: api, storage: _MemoryStorage());
+        E2eeChatService(api: api, storage: secondStorage);
     final E2eeSetupResult bobSetup = await second.initialize('b', alice);
     expect(bobSetup.friendReady, isTrue);
     await first.initialize('a', bob);
@@ -108,6 +109,12 @@ void main() {
     expect(envelope, isNot(contains('private chess plan')));
     expect(await first.decrypt(envelope, mine: true), 'private chess plan');
     expect(await second.decrypt(envelope, mine: false), 'private chess plan');
+    final E2eeChatService backgroundReceiver =
+        E2eeChatService(api: api, storage: secondStorage);
+    expect(
+      await backgroundReceiver.decryptNotification(envelope),
+      'private chess plan',
+    );
 
     final EncryptedChatAttachment attachment = await first.encryptAttachment(
       bytes: <int>[1, 2, 3, 4, 5],

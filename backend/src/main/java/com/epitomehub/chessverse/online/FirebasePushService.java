@@ -6,6 +6,7 @@ import com.google.firebase.FirebaseOptions;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.AndroidConfig;
 import com.google.firebase.messaging.AndroidNotification;
+import com.google.firebase.messaging.AndroidConfig.Priority;
 import com.google.firebase.messaging.Message;
 import java.io.FileInputStream;
 import java.util.Map;
@@ -41,24 +42,39 @@ class FirebasePushService {
 
     void send(UUID playerId, UUID notificationId, String title, String body,
               String actionType, UUID actionId) {
+        send(playerId, notificationId, title, body, actionType, actionId, null);
+    }
+
+    void sendEncryptedMessage(UUID playerId, UUID notificationId, String title,
+                              String encryptedBody, UUID senderId) {
+        send(playerId, notificationId, title, null, "CHAT", senderId, encryptedBody);
+    }
+
+    private void send(UUID playerId, UUID notificationId, String title, String body,
+                      String actionType, UUID actionId, String encryptedBody) {
         if (messaging == null) return;
         for (String token : jdbc.queryForList(
                 "select token from push_notification_device where player_id=? and enabled=true",
                 String.class, playerId)) {
             try {
                 Message.Builder builder = Message.builder().setToken(token)
-                        .setNotification(com.google.firebase.messaging.Notification.builder()
-                                .setTitle(title).setBody(body).build())
-                        .setAndroidConfig(AndroidConfig.builder()
-                                .setCollapseKey(notificationId.toString())
-                                .setNotification(AndroidNotification.builder()
-                                        .setTag(notificationId.toString())
-                                        .build())
-                                .build())
                         .putAllData(Map.of(
                                 "notificationId", notificationId.toString(),
+                                "title", title,
                                 "actionType", actionType == null ? "notifications" : actionType,
                                 "actionId", actionId == null ? "" : actionId.toString()));
+                AndroidConfig.Builder android = AndroidConfig.builder()
+                        .setCollapseKey(notificationId.toString())
+                        .setPriority(Priority.HIGH);
+                if (encryptedBody == null) {
+                    builder.setNotification(com.google.firebase.messaging.Notification.builder()
+                            .setTitle(title).setBody(body).build());
+                    android.setNotification(AndroidNotification.builder()
+                            .setTag(notificationId.toString()).build());
+                } else {
+                    builder.putData("encryptedBody", encryptedBody);
+                }
+                builder.setAndroidConfig(android.build());
                 messaging.send(builder.build());
             } catch (Exception exception) {
                 log.warn("FCM delivery failed for player {}: {}", playerId, exception.getMessage());

@@ -217,7 +217,8 @@ class CommunityService {
         UUID id=UUID.randomUUID(); Instant now=Instant.now(); String clean=body.trim();
         if (encrypted && !clean.startsWith("cv1:")) throw new OnlineMatchException(HttpStatus.BAD_REQUEST,"Invalid encrypted message envelope.");
         jdbc.update("insert into direct_message(id,sender_id,recipient_id,body,sent_at,encrypted) values(?,?,?,?,?,?)",id,player.id(),recipientId,clean,Timestamp.from(now),encrypted);
-        notifications.create(recipientId,"MESSAGE_RECEIVED","New message from "+player.displayName(),encrypted ? "Encrypted message" : clean,"CHAT",player.id());
+        if (encrypted) notifications.createEncryptedMessage(recipientId,"New message from "+player.displayName(),clean,player.id());
+        else notifications.create(recipientId,"MESSAGE_RECEIVED","New message from "+player.displayName(),clean,"CHAT",player.id());
         return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,null,null,null,false,List.of(),encrypted);
     }
 
@@ -309,7 +310,8 @@ class CommunityService {
         if (encrypted && !clean.startsWith("cv1:")) throw new OnlineMatchException(HttpStatus.BAD_REQUEST,"Invalid encrypted attachment envelope.");
         jdbc.update("insert into direct_message(id,sender_id,recipient_id,body,sent_at,attachment_name,attachment_type,attachment_size,attachment_path,encrypted) values(?,?,?,?,?,?,?,?,?,?)",
                 id,player.id(),recipientId,clean,Timestamp.from(now),original,type,(long)accepted.bytes().length,stored,encrypted);
-        notifications.create(recipientId,"MESSAGE_RECEIVED","New attachment from "+player.displayName(),encrypted ? "Encrypted attachment" : original,"CHAT",player.id());
+        if (encrypted) notifications.createEncryptedMessage(recipientId,"New attachment from "+player.displayName(),clean,player.id());
+        else notifications.create(recipientId,"MESSAGE_RECEIVED","New attachment from "+player.displayName(),original,"CHAT",player.id());
         return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,original,type,(long)accepted.bytes().length,false,List.of(),encrypted);
     }
 

@@ -26,6 +26,15 @@ class PlayerNotificationService {
         push.send(playerId, notificationId, title, body, actionType, actionId);
     }
 
+    void createEncryptedMessage(UUID playerId, String title, String encryptedBody,
+                                UUID senderId) {
+        UUID notificationId = UUID.randomUUID();
+        jdbc.update("insert into player_notification(id,player_id,type,title,body,action_type,action_id,created_at) values(?,?,?,?,?,?,?,?)",
+                notificationId, playerId, "MESSAGE_RECEIVED", title, "New message",
+                "CHAT", senderId, Timestamp.from(Instant.now()));
+        push.sendEncryptedMessage(playerId, notificationId, title, encryptedBody, senderId);
+    }
+
     @Transactional(readOnly = true)
     PlayerNotificationDtos.InboxDto inbox(AuthenticatedPlayer player, int requestedLimit) {
         int limit = Math.max(1, Math.min(100, requestedLimit));

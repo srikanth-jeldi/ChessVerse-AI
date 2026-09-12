@@ -52,6 +52,19 @@ class E2eeChatService {
   bool get ready => _identity != null;
   bool get friendReady => _friendKey != null;
 
+  /// Decrypts an incoming data-only push without contacting the backend.
+  /// The private identity remains inside platform secure storage.
+  Future<String?> decryptNotification(String envelope) async {
+    final String? playerId =
+        await storage.read(key: 'chat-e2ee-current-player');
+    if (playerId == null || playerId.isEmpty) return null;
+    _identity = await _readPair(playerId, null);
+    if (_identity == null) return null;
+    final String plaintext = await decrypt(envelope, mine: false);
+    if (plaintext.startsWith('🔒')) return null;
+    return plaintext;
+  }
+
   Future<E2eeSetupResult> initialize(String token, String friendId) async {
     String? recoveryKey;
     Map<String, dynamic>? cloud;
@@ -279,6 +292,7 @@ class E2eeChatService {
     await storage.write(key: 'chat-e2ee-$playerId-private', value: _encode(pair.bytes));
     final SimplePublicKey publicKey = await pair.extractPublicKey();
     await storage.write(key: 'chat-e2ee-$playerId-public', value: _encode(publicKey.bytes));
+    await storage.write(key: 'chat-e2ee-current-player', value: playerId);
   }
 
   Future<SimpleKeyPairData?> _readPair(

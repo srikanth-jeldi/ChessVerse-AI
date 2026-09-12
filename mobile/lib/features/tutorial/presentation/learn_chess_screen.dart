@@ -2082,9 +2082,16 @@ class _CourseScreenState extends State<_CourseScreen> {
         children: <Widget>[
           Icon(course.icon, color: course.accent),
           const SizedBox(width: 10),
-          Text(
-            _localizedCourseTitle(_copy, course),
-            style: const TextStyle(fontWeight: FontWeight.w900),
+          Expanded(
+            child: Text(
+              _localizedCourseTitle(_copy, course),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
           ),
         ],
       ),
