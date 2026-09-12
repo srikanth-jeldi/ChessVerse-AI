@@ -307,13 +307,15 @@ class _InteractiveAcademyLessonScreenState
           return false;
         }
       }
-      final dynamic selected = await _narrator.setLanguage(locale);
+      final dynamic selected =
+          kIsWeb ? true : await _narrator.setLanguage(locale);
       if (selected == false || selected == 0) {
         _narratorVoiceReady = false;
         return false;
       }
-      await _narrator.setSpeechRate(.43);
-      await _narrator.setPitch(1.02);
+      if (!kIsWeb) await _selectBestNarratorVoice(locale);
+      await _narrator.setSpeechRate(.47);
+      await _narrator.setPitch(1.0);
       await _narrator.setVolume(1);
       _narratorVoiceReady = true;
       return true;
@@ -360,26 +362,91 @@ class _InteractiveAcademyLessonScreenState
     for (int attempt = 0; attempt < 6; attempt++) {
       final dynamic rawVoices = await _narrator.getVoices;
       if (rawVoices is Iterable<dynamic>) {
-        String? compatibleLocale;
+        final List<Map<String, String>> exact = <Map<String, String>>[];
+        final List<Map<String, String>> compatible = <Map<String, String>>[];
         for (final dynamic rawVoice in rawVoices) {
           if (rawVoice is! Map<dynamic, dynamic>) continue;
           final String locale = (rawVoice['locale'] ?? '')
               .toString()
               .replaceAll('_', '-');
+          final Map<String, String> voice = <String, String>{
+            'name': (rawVoice['name'] ?? '').toString(),
+            'locale': locale,
+          };
           final String normalizedLocale = locale.toLowerCase();
-          if (normalizedLocale == normalizedRequest) return locale;
-          if (compatibleLocale == null &&
-              normalizedLocale.split('-').first == requestedLanguage) {
-            compatibleLocale = locale;
+          if (normalizedLocale == normalizedRequest) exact.add(voice);
+          if (normalizedLocale.split('-').first == requestedLanguage) {
+            compatible.add(voice);
           }
         }
-        if (compatibleLocale != null) return compatibleLocale;
+        final List<Map<String, String>> candidates = exact.isNotEmpty
+            ? exact
+            : compatible;
+        if (candidates.isNotEmpty) {
+          candidates.sort(
+            (Map<String, String> a, Map<String, String> b) =>
+                _narratorVoiceQuality(b['name']!).compareTo(
+                  _narratorVoiceQuality(a['name']!),
+                ),
+          );
+          await _narrator.setVoice(candidates.first);
+          return candidates.first['locale'];
+        }
       }
       if (attempt < 5) {
         await Future<void>.delayed(const Duration(milliseconds: 300));
       }
     }
     return null;
+  }
+
+  Future<void> _selectBestNarratorVoice(String requestedLocale) async {
+    final dynamic rawVoices = await _narrator.getVoices;
+    if (rawVoices is! Iterable<dynamic>) return;
+    final String normalizedRequest = requestedLocale
+        .replaceAll('_', '-')
+        .toLowerCase();
+    final String requestedLanguage = normalizedRequest.split('-').first;
+    final List<Map<String, String>> exact = <Map<String, String>>[];
+    final List<Map<String, String>> compatible = <Map<String, String>>[];
+    for (final dynamic rawVoice in rawVoices) {
+      if (rawVoice is! Map<dynamic, dynamic>) continue;
+      final String locale = (rawVoice['locale'] ?? '')
+          .toString()
+          .replaceAll('_', '-');
+      final Map<String, String> voice = <String, String>{
+        'name': (rawVoice['name'] ?? '').toString(),
+        'locale': locale,
+      };
+      final String normalizedLocale = locale.toLowerCase();
+      if (normalizedLocale == normalizedRequest) exact.add(voice);
+      if (normalizedLocale.split('-').first == requestedLanguage) {
+        compatible.add(voice);
+      }
+    }
+    final List<Map<String, String>> candidates = exact.isNotEmpty
+        ? exact
+        : compatible;
+    if (candidates.isEmpty) return;
+    candidates.sort(
+      (Map<String, String> a, Map<String, String> b) =>
+          _narratorVoiceQuality(b['name']!).compareTo(
+            _narratorVoiceQuality(a['name']!),
+          ),
+    );
+    await _narrator.setVoice(candidates.first);
+  }
+
+  int _narratorVoiceQuality(String name) {
+    final String normalized = name.toLowerCase();
+    int score = 0;
+    if (normalized.contains('natural')) score += 50;
+    if (normalized.contains('neural')) score += 45;
+    if (normalized.contains('premium')) score += 40;
+    if (normalized.contains('enhanced')) score += 35;
+    if (normalized.contains('google')) score += 25;
+    if (normalized.contains('microsoft')) score += 20;
+    return score;
   }
 
   Future<bool> _ensureNarratorVoice() async {
