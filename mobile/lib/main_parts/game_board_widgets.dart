@@ -1656,13 +1656,22 @@ class ChessCoin extends StatelessWidget {
         child: image,
       );
     } else if (appearance.style == ChessPieceVisualStyle.premium3d) {
-      final Color? finishColor = _premiumPieceFinishColor(
+      final List<Color>? finishColors = premiumPieceFinishColors(
         appearance.finish,
         piece.white,
       );
-      if (finishColor != null) {
-        image = ColorFiltered(
-          colorFilter: ColorFilter.mode(finishColor, BlendMode.modulate),
+      if (finishColors != null) {
+        // Replace the source RGB while preserving its alpha and sculpted
+        // silhouette. Modulate left the near-black Staunton pixels unchanged,
+        // making every purchased finish look like the default set.
+        image = ShaderMask(
+          blendMode: BlendMode.srcIn,
+          shaderCallback: (Rect bounds) => LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: finishColors,
+            stops: const <double>[0, .22, .52, .78, 1],
+          ).createShader(bounds),
           child: image,
         );
       }
@@ -1671,21 +1680,122 @@ class ChessCoin extends StatelessWidget {
   }
 }
 
-Color? _premiumPieceFinishColor(String finish, bool white) => switch (finish) {
-  'crimson-crown-3d' =>
-    white ? const Color(0xFFFFD37A) : const Color(0xFFFF304F),
-  'inferno-gold' ||
-  'golden-crown' => white ? const Color(0xFFFFE09A) : const Color(0xFFD99016),
-  'ruby-emperor' => white ? const Color(0xFFFFC36A) : const Color(0xFFC9153E),
-  'obsidian-regal' ||
-  'ivory-obsidian' => white ? const Color(0xFFE9EEF5) : const Color(0xFF48505C),
-  'sapphire-elite' => white ? const Color(0xFFBFE7FF) : const Color(0xFF245DFF),
-  'emerald-sovereign' =>
-    white ? const Color(0xFFFFD77A) : const Color(0xFF10A86B),
-  'platinum-staunton' =>
-    white ? const Color(0xFFFFFFFF) : const Color(0xFF98A9BC),
-  _ => null,
-};
+List<Color>? premiumPieceFinishColors(String finish, bool white) =>
+    switch (finish) {
+      'crimson-crown-3d' =>
+        white
+            ? const <Color>[
+                Color(0xFFFFFFFF),
+                Color(0xFFFFE5A6),
+                Color(0xFFD89B2B),
+                Color(0xFFFFF0BE),
+                Color(0xFF8C5410),
+              ]
+            : const <Color>[
+                Color(0xFFFFA0AD),
+                Color(0xFFFF294B),
+                Color(0xFF760019),
+                Color(0xFFFF4963),
+                Color(0xFF280008),
+              ],
+      'inferno-gold' || 'golden-crown' =>
+        white
+            ? const <Color>[
+                Color(0xFFFFFFFF),
+                Color(0xFFFFEDAD),
+                Color(0xFFD99A22),
+                Color(0xFFFFF2B8),
+                Color(0xFF9A5A08),
+              ]
+            : const <Color>[
+                Color(0xFFFFE48A),
+                Color(0xFFD99716),
+                Color(0xFF633200),
+                Color(0xFFFFC844),
+                Color(0xFF3A1B00),
+              ],
+      'ruby-emperor' =>
+        white
+            ? const <Color>[
+                Color(0xFFFFE6CB),
+                Color(0xFFFFAD75),
+                Color(0xFFB52B34),
+                Color(0xFFFFD09A),
+                Color(0xFF6F101C),
+              ]
+            : const <Color>[
+                Color(0xFFFF7B91),
+                Color(0xFFC9153E),
+                Color(0xFF560015),
+                Color(0xFFFF385A),
+                Color(0xFF260009),
+              ],
+      'obsidian-regal' || 'ivory-obsidian' =>
+        white
+            ? const <Color>[
+                Color(0xFFFFFFFF),
+                Color(0xFFE9EEF5),
+                Color(0xFF8793A1),
+                Color(0xFFFFFFFF),
+                Color(0xFF59616C),
+              ]
+            : const <Color>[
+                Color(0xFFB9C2CE),
+                Color(0xFF353C47),
+                Color(0xFF05070A),
+                Color(0xFF697482),
+                Color(0xFF000000),
+              ],
+      'sapphire-elite' =>
+        white
+            ? const <Color>[
+                Color(0xFFFFFFFF),
+                Color(0xFFBFE7FF),
+                Color(0xFF397FE8),
+                Color(0xFFD4F2FF),
+                Color(0xFF1244A0),
+              ]
+            : const <Color>[
+                Color(0xFF8CDFFF),
+                Color(0xFF245DFF),
+                Color(0xFF061450),
+                Color(0xFF298DFF),
+                Color(0xFF020725),
+              ],
+      'emerald-sovereign' =>
+        white
+            ? const <Color>[
+                Color(0xFFFFFFD7),
+                Color(0xFFFFD77A),
+                Color(0xFF399D72),
+                Color(0xFFFFEDAC),
+                Color(0xFF126344),
+              ]
+            : const <Color>[
+                Color(0xFF8DFFD0),
+                Color(0xFF10A86B),
+                Color(0xFF023D2A),
+                Color(0xFF21DB8F),
+                Color(0xFF011F16),
+              ],
+      'platinum-staunton' =>
+        white
+            ? const <Color>[
+                Color(0xFFFFFFFF),
+                Color(0xFFE8F3FF),
+                Color(0xFF8296AA),
+                Color(0xFFFFFFFF),
+                Color(0xFF526678),
+              ]
+            : const <Color>[
+                Color(0xFFE2EDFA),
+                Color(0xFF71869C),
+                Color(0xFF172432),
+                Color(0xFFAEC2D5),
+                Color(0xFF09111A),
+              ],
+      _ => null,
+    };
 
 String pieceAsset(ChessPiece piece) {
   return 'assets/pieces/staunton_${piece.white ? 'white' : 'black'}_${pieceName(piece.code)}.png';

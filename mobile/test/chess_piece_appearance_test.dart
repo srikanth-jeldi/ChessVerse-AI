@@ -23,6 +23,24 @@ void main() {
       );
     });
 
+    test('each Royal Collection finish has a visible five-tone material', () {
+      for (final String finish in <String>[
+        'crimson-crown-3d',
+        'inferno-gold',
+        'ruby-emperor',
+        'obsidian-regal',
+        'sapphire-elite',
+        'emerald-sovereign',
+      ]) {
+        expect(premiumPieceFinishColors(finish, true), hasLength(5));
+        expect(premiumPieceFinishColors(finish, false), hasLength(5));
+        expect(
+          premiumPieceFinishColors(finish, true),
+          isNot(equals(premiumPieceFinishColors(finish, false))),
+        );
+      }
+    });
+
     test('maps current and legacy style labels', () {
       expect(
         ChessPieceAppearanceController.styleFromLabel('Premium 3D'),
