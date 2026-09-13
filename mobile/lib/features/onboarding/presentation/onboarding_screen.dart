@@ -20,6 +20,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'More Than\nJust a Game',
       body: 'Play brilliant games, build real skills, and improve every day.',
       asset: 'assets/backgrounds/onboarding-mastery-v1.png',
+      wideAsset: 'assets/backgrounds/onboarding-mastery-wide-v2.png',
       accent: Color(0xFF56E3CF),
     ),
     _OnboardingPageData(
@@ -27,6 +28,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'AI Coach\nAlways With You',
       body: 'Understand every mistake with clear, personalised feedback.',
       asset: 'assets/backgrounds/onboarding-ai-coach-v1.png',
+      wideAsset: 'assets/backgrounds/onboarding-ai-coach-wide-v2.png',
       accent: Color(0xFF55C9FF),
     ),
     _OnboardingPageData(
@@ -34,6 +36,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: 'Challenge Players\nWorldwide',
       body: 'Find worthy rivals, climb the ranks, and join live tournaments.',
       asset: 'assets/backgrounds/onboarding-worldwide-v1.png',
+      wideAsset: 'assets/backgrounds/onboarding-worldwide-wide-v2.png',
       accent: Color(0xFFF3BE4F),
     ),
   ];
@@ -211,51 +214,30 @@ class _OnboardingStoryCard extends StatelessWidget {
     );
   }
 
-  Widget _wideStory() => Row(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget _wideStory() => Stack(
+    fit: StackFit.expand,
     children: <Widget>[
-      Expanded(
-        flex: 4,
-        child: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: <Color>[Color(0xFF0A2033), Color(0xFF041321)],
-            ),
-          ),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: compact ? 30 : 46,
-              vertical: compact ? 26 : 42,
-            ),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _OnboardingCopy(data: data, wide: true, compact: compact),
-            ),
-          ),
-        ),
-      ),
-      Expanded(
-        flex: 6,
-        child: ColoredBox(
-          color: const Color(0xFF020B17),
-          child: Stack(
-            fit: StackFit.expand,
-            children: <Widget>[
-              Image.asset(data.asset, fit: BoxFit.contain),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: <Color>[Color(0x7A041321), Colors.transparent],
-                  ),
-                ),
-              ),
+      Image.asset(data.wideAsset, fit: BoxFit.cover),
+      const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            stops: <double>[0, .4, .72, 1],
+            colors: <Color>[
+              Color(0xE8051422),
+              Color(0xA8051422),
+              Color(0x20051422),
+              Color(0x05051422),
             ],
           ),
         ),
+      ),
+      Positioned(
+        left: compact ? 34 : 54,
+        bottom: compact ? 28 : 46,
+        width: compact ? 390 : 470,
+        child: _OnboardingCopy(data: data, wide: true, compact: compact),
       ),
     ],
   );
@@ -438,11 +420,13 @@ class _OnboardingPageData {
     required this.title,
     required this.body,
     required this.asset,
+    required this.wideAsset,
     required this.accent,
   });
   final String eyebrow;
   final String title;
   final String body;
   final String asset;
+  final String wideAsset;
   final Color accent;
 }

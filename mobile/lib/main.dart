@@ -568,7 +568,7 @@ class _SplashGateState extends State<SplashGate> {
       _stopNotificationPolling();
       await _sessionStore.clearSession();
       if (!mounted) return;
-      setState(() => _stage = _RootStage.auth);
+      setState(() => _stage = _RootStage.onboarding);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         ScaffoldMessenger.maybeOf(context)?.showSnackBar(
@@ -1917,7 +1917,7 @@ class _SplashGateState extends State<SplashGate> {
       _isGuest = true;
       _onlinePlayerCount = null;
       _coinBalance = null;
-      _stage = _RootStage.auth;
+      _stage = _RootStage.onboarding;
     });
   }
 
@@ -1952,7 +1952,7 @@ class _SplashGateState extends State<SplashGate> {
       _onlinePlayerCount = null;
       _coinBalance = null;
       _primaryDestination = 0;
-      _stage = _RootStage.auth;
+      _stage = _RootStage.onboarding;
     });
   }
 
