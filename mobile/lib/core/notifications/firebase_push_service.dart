@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:firebase_core/firebase_core.dart';
@@ -11,6 +10,7 @@ import '../../features/notifications/data/notification_api.dart';
 import '../../features/social/data/community_api.dart';
 import '../../features/social/data/e2ee_chat_service.dart';
 import 'daily_reminder_service.dart';
+import 'notification_preview.dart';
 
 @pragma('vm:entry-point')
 Future<void> chessVerseFirebaseBackgroundHandler(RemoteMessage message) async {
@@ -20,47 +20,28 @@ Future<void> chessVerseFirebaseBackgroundHandler(RemoteMessage message) async {
 
 Future<void> _showPushMessage(RemoteMessage message) async {
   final RemoteNotification? notification = message.notification;
-  final String title = notification?.title ??
-      message.data['title'] ??
-      'ChessVerseAI';
-  String body = notification?.body ??
-      message.data['body'] ??
-      'You have a new update.';
+  final String title =
+      notification?.title ?? message.data['title'] ?? 'ChessVerseAI';
+  String body =
+      notification?.body ?? message.data['body'] ?? 'You have a new update.';
   final String? encryptedBody = message.data['encryptedBody'];
   if (encryptedBody != null && encryptedBody.isNotEmpty) {
     try {
       final String? plaintext = await E2eeChatService(
         api: const CommunityApi(),
       ).decryptNotification(encryptedBody);
-      body = _notificationPreview(plaintext);
+      body = notificationMessagePreview(plaintext);
     } on Object {
       body = 'New message — open chat to read.';
     }
   }
-  final String stableId = message.data['notificationId'] ??
-      message.messageId ??
-      '$title|$body';
+  final String stableId =
+      message.data['notificationId'] ?? message.messageId ?? '$title|$body';
   await DailyReminderService.instance.showRealtime(
     stableId.hashCode,
     title,
     body,
   );
-}
-
-String _notificationPreview(String? plaintext) {
-  if (plaintext == null || plaintext.trim().isEmpty) {
-    return 'New message — open chat to read.';
-  }
-  try {
-    final dynamic decoded = jsonDecode(plaintext);
-    if (decoded is Map<String, dynamic> && decoded['kind'] == 'attachment') {
-      final String caption = (decoded['caption'] as String? ?? '').trim();
-      return caption.isEmpty ? 'Sent an attachment' : caption;
-    }
-  } on FormatException {
-    // Normal chat messages are plain text after local decryption.
-  }
-  return plaintext.trim();
 }
 
 class FirebasePushService {

@@ -218,8 +218,14 @@ class CommunityService {
         if (encrypted && !clean.startsWith("cv1:")) throw new OnlineMatchException(HttpStatus.BAD_REQUEST,"Invalid encrypted message envelope.");
         jdbc.update("insert into direct_message(id,sender_id,recipient_id,body,sent_at,encrypted) values(?,?,?,?,?,?)",id,player.id(),recipientId,clean,Timestamp.from(now),encrypted);
         if (encrypted) notifications.createEncryptedMessage(recipientId,"New message from "+player.displayName(),clean,player.id());
-        else notifications.create(recipientId,"MESSAGE_RECEIVED","New message from "+player.displayName(),clean,"CHAT",player.id());
+        else notifications.create(recipientId,"MESSAGE_RECEIVED","New message from "+player.displayName(),messageNotificationPreview(clean),"CHAT",player.id());
         return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,null,null,null,false,List.of(),encrypted);
+    }
+
+    private static String messageNotificationPreview(String body) {
+        if (body.startsWith("::giphy::gif::")) return "Shared a GIF";
+        if (body.startsWith("::giphy::sticker::")) return "Shared a sticker";
+        return body;
     }
 
     @Transactional(readOnly = true)

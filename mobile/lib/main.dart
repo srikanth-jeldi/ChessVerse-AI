@@ -30,6 +30,7 @@ import 'core/config/app_config.dart';
 import 'core/diagnostics/app_diagnostics.dart';
 import 'core/local_game_archive.dart';
 import 'core/notifications/daily_reminder_service.dart';
+import 'core/notifications/notification_preview.dart';
 import 'core/notifications/firebase_push_service.dart';
 import 'core/store_review_service.dart';
 import 'core/widgets/chessverse_app_backdrop.dart';
@@ -677,7 +678,7 @@ class _SplashGateState extends State<SplashGate> {
         await DailyReminderService.instance.showRealtime(
           value.id.hashCode & 0x7fffffff,
           value.title,
-          value.body,
+          notificationMessagePreview(value.body),
         );
         if (value.actionType == 'MATCH' && value.actionId != null) {
           unawaited(_openAcceptedChallenge(token, value.actionId!));

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/skeleton_loader.dart';
+import '../../../core/notifications/notification_preview.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../data/notification_api.dart';
 
@@ -63,74 +64,97 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: const Color(0xFF020D16),
-        appBar: AppBar(
-          title: const Text('NOTIFICATIONS',
-              style: TextStyle(fontWeight: FontWeight.w900)),
-          actions: <Widget>[
-            if ((_inbox?.unreadCount ?? 0) > 0)
-              TextButton(
-                  onPressed: _readAll, child: const Text('Mark all read'))
-          ],
-        ),
-        body: _body(),
-      );
+    backgroundColor: const Color(0xFF020D16),
+    appBar: AppBar(
+      title: const Text(
+        'NOTIFICATIONS',
+        style: TextStyle(fontWeight: FontWeight.w900),
+      ),
+      actions: <Widget>[
+        if ((_inbox?.unreadCount ?? 0) > 0)
+          TextButton(onPressed: _readAll, child: const Text('Mark all read')),
+      ],
+    ),
+    body: _body(),
+  );
 
   Widget _body() {
     if (_error != null) {
       return Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-        const Icon(Icons.cloud_off_rounded, size: 48),
-        const SizedBox(height: 12),
-        Text(_error!),
-        const SizedBox(height: 12),
-        FilledButton(onPressed: _load, child: const Text('Retry')),
-      ]));
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const Icon(Icons.cloud_off_rounded, size: 48),
+            const SizedBox(height: 12),
+            Text(_error!),
+            const SizedBox(height: 12),
+            FilledButton(onPressed: _load, child: const Text('Retry')),
+          ],
+        ),
+      );
     }
     if (_inbox == null) return const SkeletonPage(rows: 5);
     if (_inbox!.notifications.isEmpty) {
       return RefreshIndicator(
-          onRefresh: _load,
-          child: ListView(children: const <Widget>[
+        onRefresh: _load,
+        child: ListView(
+          children: const <Widget>[
             SizedBox(height: 180),
-            Icon(Icons.notifications_none_rounded,
-                size: 58, color: Color(0xFF607B8B)),
+            Icon(
+              Icons.notifications_none_rounded,
+              size: 58,
+              color: Color(0xFF607B8B),
+            ),
             SizedBox(height: 12),
             Text('You are all caught up.', textAlign: TextAlign.center),
-          ]));
+          ],
+        ),
+      );
     }
     return RefreshIndicator(
-        onRefresh: _load,
-        child: ListView.builder(
-          padding: const EdgeInsets.all(14),
-          itemCount: _inbox!.notifications.length,
-          itemBuilder: (context, index) {
-            final item = _inbox!.notifications[index];
-            return Card(
-                color: item.read
-                    ? const Color(0xFF0A1C2B)
-                    : const Color(0xFF0A343B),
-                child: ListTile(
-                  onTap: () => _read(item),
-                  leading: CircleAvatar(
-                      backgroundColor: const Color(0xFF153649),
-                      child: Icon(_icon(item.type),
-                          color: item.read
-                              ? const Color(0xFF9CB0BC)
-                              : const Color(0xFF5FE3CE))),
-                  title: Text(item.title,
-                      style: TextStyle(
-                          fontWeight:
-                              item.read ? FontWeight.w600 : FontWeight.w900)),
-                  subtitle: Text('${item.body}\n${_time(item.createdAt)}'),
-                  isThreeLine: true,
-                  trailing: item.read
-                      ? null
-                      : const CircleAvatar(
-                          radius: 5, backgroundColor: Color(0xFFE6B44F)),
-                ));
-          },
-        ));
+      onRefresh: _load,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(14),
+        itemCount: _inbox!.notifications.length,
+        itemBuilder: (context, index) {
+          final item = _inbox!.notifications[index];
+          return Card(
+            color: item.read
+                ? const Color(0xFF0A1C2B)
+                : const Color(0xFF0A343B),
+            child: ListTile(
+              onTap: () => _read(item),
+              leading: CircleAvatar(
+                backgroundColor: const Color(0xFF153649),
+                child: Icon(
+                  _icon(item.type),
+                  color: item.read
+                      ? const Color(0xFF9CB0BC)
+                      : const Color(0xFF5FE3CE),
+                ),
+              ),
+              title: Text(
+                item.title,
+                style: TextStyle(
+                  fontWeight: item.read ? FontWeight.w600 : FontWeight.w900,
+                ),
+              ),
+              subtitle: Text(
+                '${notificationMessagePreview(item.body)}\n'
+                '${_time(item.createdAt)}',
+              ),
+              isThreeLine: true,
+              trailing: item.read
+                  ? null
+                  : const CircleAvatar(
+                      radius: 5,
+                      backgroundColor: Color(0xFFE6B44F),
+                    ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   IconData _icon(String type) {
