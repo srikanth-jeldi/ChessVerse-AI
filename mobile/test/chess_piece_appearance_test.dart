@@ -41,6 +41,25 @@ void main() {
       }
     });
 
+    test('each Royal Collection finish uses a real gameplay atlas', () {
+      for (final String finish in <String>[
+        'crimson-crown-3d',
+        'inferno-gold',
+        'ruby-emperor',
+        'obsidian-regal',
+        'sapphire-elite',
+        'emerald-sovereign',
+      ]) {
+        expect(premiumPieceAtlas(finish), endsWith('-v1.png'));
+      }
+    });
+
+    test('all twelve Royal Collection boards use premium gameplay images', () {
+      for (final BoardPalette palette in boardPalettes.values.take(12)) {
+        expect(premiumBoardAsset(palette.label), endsWith('-v1.webp'));
+      }
+    });
+
     test('maps current and legacy style labels', () {
       expect(
         ChessPieceAppearanceController.styleFromLabel('Premium 3D'),

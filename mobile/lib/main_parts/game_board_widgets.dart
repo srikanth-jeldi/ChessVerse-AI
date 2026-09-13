@@ -709,6 +709,7 @@ class _ChessBoardState extends State<ChessBoard> {
     final bool flipped = widget.flipped;
     final bool showCoordinates = widget.showCoordinates;
     final BoardPalette palette = widget.palette;
+    final String? boardAsset = premiumBoardAsset(palette.label);
     final ValueChanged<String> onSquareTap = widget.onSquareTap;
     final bool moveAnimating =
         _activeMoveToken != null && _activeMoveToken == _moveToken(widget);
@@ -719,6 +720,14 @@ class _ChessBoardState extends State<ChessBoard> {
         borderRadius: BorderRadius.circular(6),
         child: Stack(
           children: <Widget>[
+            if (boardAsset != null)
+              Positioned.fill(
+                child: Image.asset(
+                  boardAsset,
+                  fit: BoxFit.cover,
+                  filterQuality: FilterQuality.high,
+                ),
+              ),
             GridView.builder(
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -770,6 +779,7 @@ class _ChessBoardState extends State<ChessBoard> {
                   idleHintTarget: idleHintTarget,
                   kingFallen: kingFallen,
                   palette: palette,
+                  premiumTexture: boardAsset != null,
                   piece: piece,
                   showRank: showCoordinates && col == 0,
                   showFile: showCoordinates && row == 7,
@@ -1109,6 +1119,7 @@ class BoardSquare extends StatelessWidget {
     required this.idleHintTarget,
     this.kingFallen = false,
     required this.palette,
+    required this.premiumTexture,
     required this.showRank,
     required this.showFile,
     required this.onTap,
@@ -1129,6 +1140,7 @@ class BoardSquare extends StatelessWidget {
   final bool idleHintTarget;
   final bool kingFallen;
   final BoardPalette palette;
+  final bool premiumTexture;
   final bool showRank;
   final bool showFile;
   final VoidCallback onTap;
@@ -1136,7 +1148,9 @@ class BoardSquare extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color base = dark ? palette.dark : palette.light;
+    final Color base = (dark ? palette.dark : palette.light).withValues(
+      alpha: premiumTexture ? (dark ? .72 : .66) : 1,
+    );
     final Color coordinateColor = dark
         ? palette.light.withValues(alpha: 0.72)
         : palette.dark.withValues(alpha: 0.72);
@@ -1709,6 +1723,17 @@ class ChessCoin extends StatelessWidget {
         child: image,
       );
     } else if (appearance.style == ChessPieceVisualStyle.premium3d) {
+      final String? atlas = premiumPieceAtlas(appearance.finish);
+      if (atlas != null) {
+        return Semantics(
+          label: label,
+          child: _PremiumAtlasPiece(
+            asset: atlas,
+            piece: piece,
+            size: pieceSize,
+          ),
+        );
+      }
       final List<Color>? finishColors = premiumPieceFinishColors(
         appearance.finish,
         piece.white,
@@ -1729,6 +1754,82 @@ class ChessCoin extends StatelessWidget {
     return Semantics(label: label, child: image);
   }
 }
+
+class _PremiumAtlasPiece extends StatelessWidget {
+  const _PremiumAtlasPiece({
+    required this.asset,
+    required this.piece,
+    required this.size,
+  });
+
+  final String asset;
+  final ChessPiece piece;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final int column = switch (piece.code) {
+      'K' => 0,
+      'Q' => 1,
+      'R' => 2,
+      'B' => 3,
+      'N' => 4,
+      _ => 5,
+    };
+    final int row = piece.white ? 0 : 1;
+    final double cellWidth = size * .5;
+    return ClipRect(
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
+          children: <Widget>[
+            Positioned(
+              left: size * .25 - column * cellWidth,
+              top: -row * size,
+              width: cellWidth * 6,
+              height: size * 2,
+              child: Image.asset(
+                asset,
+                fit: BoxFit.fill,
+                filterQuality: FilterQuality.high,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String? premiumPieceAtlas(String finish) => switch (finish) {
+  'crimson-crown-3d' => 'assets/pieces/premium_atlas/crimson-crown-3d-v1.png',
+  'inferno-gold' ||
+  'golden-crown' => 'assets/pieces/premium_atlas/inferno-gold-v1.png',
+  'ruby-emperor' => 'assets/pieces/premium_atlas/ruby-emperor-v1.png',
+  'obsidian-regal' ||
+  'ivory-obsidian' => 'assets/pieces/premium_atlas/obsidian-regal-v1.png',
+  'sapphire-elite' => 'assets/pieces/premium_atlas/sapphire-elite-v1.png',
+  'emerald-sovereign' => 'assets/pieces/premium_atlas/emerald-sovereign-v1.png',
+  _ => null,
+};
+
+String? premiumBoardAsset(String label) => switch (label) {
+  'Walnut' => 'assets/boards/collection/royal-walnut-v1.webp',
+  'Ocean Teal' => 'assets/boards/collection/ocean-teal-v1.webp',
+  'Midnight Sapphire' => 'assets/boards/collection/midnight-sapphire-v1.webp',
+  'Emerald Arena' => 'assets/boards/collection/emerald-arena-v1.webp',
+  'Amethyst Clash' => 'assets/boards/collection/amethyst-clash-v1.webp',
+  'Desert Gold' => 'assets/boards/collection/desert-gold-v1.webp',
+  'Frost Marble' => 'assets/boards/collection/frost-marble-v1.webp',
+  'Jade Dynasty' => 'assets/boards/collection/jade-dynasty-v1.webp',
+  'Azure Temple' => 'assets/boards/collection/azure-temple-v1.webp',
+  'Volcanic Obsidian' => 'assets/boards/collection/volcanic-obsidian-v1.webp',
+  'Rose Quartz' => 'assets/boards/collection/rose-quartz-v1.webp',
+  'Celestial Silver' => 'assets/boards/collection/celestial-silver-v1.webp',
+  _ => null,
+};
 
 List<Color>? premiumPieceFinishColors(String finish, bool white) =>
     switch (finish) {
