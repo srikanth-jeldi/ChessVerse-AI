@@ -1522,11 +1522,21 @@ class ChessCoin extends StatelessWidget {
             );
             final bool classic2d =
                 appearance.style == ChessPieceVisualStyle.classic2d;
-            final double pieceScale = switch (appearance.size) {
-              ChessPieceVisualSize.large => classic2d ? 1.31 : 1.43,
-              ChessPieceVisualSize.extraLarge => classic2d ? 1.44 : 1.58,
-              ChessPieceVisualSize.doubleExtraLarge => classic2d ? 1.56 : 1.72,
-            };
+            final bool royalAtlas =
+                appearance.style == ChessPieceVisualStyle.premium3d &&
+                premiumPieceAtlas(appearance.finish) != null;
+            final double pieceScale = royalAtlas
+                ? switch (appearance.size) {
+                    ChessPieceVisualSize.large => .86,
+                    ChessPieceVisualSize.extraLarge => .92,
+                    ChessPieceVisualSize.doubleExtraLarge => .98,
+                  }
+                : switch (appearance.size) {
+                    ChessPieceVisualSize.large => classic2d ? 1.31 : 1.43,
+                    ChessPieceVisualSize.extraLarge => classic2d ? 1.44 : 1.58,
+                    ChessPieceVisualSize.doubleExtraLarge =>
+                      classic2d ? 1.56 : 1.72,
+                  };
             final double pieceSize = size * pieceScale;
             final double silhouetteScale = switch (piece.code) {
               'K' => 1.00,
@@ -1768,7 +1778,10 @@ class _PremiumAtlasPiece extends StatelessWidget {
       _ => 5,
     };
     final int row = piece.white ? 0 : 1;
-    final double cellWidth = size * .5;
+    // Generated atlas cells are portrait (1:2). Widen them slightly for
+    // board readability while keeping the full crown-to-base height inside
+    // the square; the surrounding ChessCoin no longer overscales atlases.
+    final double cellWidth = size * .66;
     return Center(
       child: ClipRect(
         child: SizedBox(
