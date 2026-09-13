@@ -1527,9 +1527,9 @@ class ChessCoin extends StatelessWidget {
                 premiumPieceAtlas(appearance.finish) != null;
             final double pieceScale = royalAtlas
                 ? switch (appearance.size) {
-                    ChessPieceVisualSize.large => .86,
-                    ChessPieceVisualSize.extraLarge => .92,
-                    ChessPieceVisualSize.doubleExtraLarge => .98,
+                    ChessPieceVisualSize.large => .98,
+                    ChessPieceVisualSize.extraLarge => 1.04,
+                    ChessPieceVisualSize.doubleExtraLarge => 1.09,
                   }
                 : switch (appearance.size) {
                     ChessPieceVisualSize.large => classic2d ? 1.31 : 1.43,
@@ -1538,14 +1538,22 @@ class ChessCoin extends StatelessWidget {
                       classic2d ? 1.56 : 1.72,
                   };
             final double pieceSize = size * pieceScale;
-            final double silhouetteScale = switch (piece.code) {
-              'K' => 1.00,
-              'Q' => .98,
-              'N' => .96,
-              'B' => .94,
-              'R' => .91,
-              _ => .88,
-            };
+            final double silhouetteScale = royalAtlas
+                ? switch (piece.code) {
+                    'P' => 1.34,
+                    'R' => 1.10,
+                    'B' => 1.04,
+                    'N' => 1.03,
+                    _ => 1.0,
+                  }
+                : switch (piece.code) {
+                    'K' => 1.00,
+                    'Q' => .98,
+                    'N' => .96,
+                    'B' => .94,
+                    'R' => .91,
+                    _ => .88,
+                  };
 
             return AnimatedRotation(
               turns: selected ? -0.012 : 0,
