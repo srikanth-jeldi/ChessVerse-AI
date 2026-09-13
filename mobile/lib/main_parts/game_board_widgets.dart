@@ -709,7 +709,6 @@ class _ChessBoardState extends State<ChessBoard> {
     final bool flipped = widget.flipped;
     final bool showCoordinates = widget.showCoordinates;
     final BoardPalette palette = widget.palette;
-    final String? boardAsset = premiumBoardAsset(palette.label);
     final ValueChanged<String> onSquareTap = widget.onSquareTap;
     final bool moveAnimating =
         _activeMoveToken != null && _activeMoveToken == _moveToken(widget);
@@ -720,14 +719,6 @@ class _ChessBoardState extends State<ChessBoard> {
         borderRadius: BorderRadius.circular(6),
         child: Stack(
           children: <Widget>[
-            if (boardAsset != null)
-              Positioned.fill(
-                child: Image.asset(
-                  boardAsset,
-                  fit: BoxFit.cover,
-                  filterQuality: FilterQuality.high,
-                ),
-              ),
             GridView.builder(
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -779,7 +770,7 @@ class _ChessBoardState extends State<ChessBoard> {
                   idleHintTarget: idleHintTarget,
                   kingFallen: kingFallen,
                   palette: palette,
-                  premiumTexture: boardAsset != null,
+                  premiumTexture: premiumBoardAsset(palette.label) != null,
                   piece: piece,
                   showRank: showCoordinates && col == 0,
                   showFile: showCoordinates && row == 7,
@@ -1149,7 +1140,7 @@ class BoardSquare extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color base = (dark ? palette.dark : palette.light).withValues(
-      alpha: premiumTexture ? (dark ? .72 : .66) : 1,
+      alpha: premiumTexture ? (dark ? .98 : .96) : 1,
     );
     final Color coordinateColor = dark
         ? palette.light.withValues(alpha: 0.72)
@@ -1778,25 +1769,27 @@ class _PremiumAtlasPiece extends StatelessWidget {
     };
     final int row = piece.white ? 0 : 1;
     final double cellWidth = size * .5;
-    return ClipRect(
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: Stack(
-          clipBehavior: Clip.hardEdge,
-          children: <Widget>[
-            Positioned(
-              left: size * .25 - column * cellWidth,
-              top: -row * size,
-              width: cellWidth * 6,
-              height: size * 2,
-              child: Image.asset(
-                asset,
-                fit: BoxFit.fill,
-                filterQuality: FilterQuality.high,
+    return Center(
+      child: ClipRect(
+        child: SizedBox(
+          width: cellWidth,
+          height: size,
+          child: Stack(
+            clipBehavior: Clip.hardEdge,
+            children: <Widget>[
+              Positioned(
+                left: -column * cellWidth,
+                top: -row * size,
+                width: cellWidth * 6,
+                height: size * 2,
+                child: Image.asset(
+                  asset,
+                  fit: BoxFit.fill,
+                  filterQuality: FilterQuality.high,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
