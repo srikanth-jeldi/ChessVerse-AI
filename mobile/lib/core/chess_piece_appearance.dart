@@ -8,19 +8,22 @@ class ChessPieceAppearance {
   const ChessPieceAppearance({
     this.style = ChessPieceVisualStyle.premium3d,
     this.size = ChessPieceVisualSize.extraLarge,
+    this.finish = 'classic-staunton',
   });
 
   final ChessPieceVisualStyle style;
   final ChessPieceVisualSize size;
+  final String finish;
 
   ChessPieceAppearance copyWith({
     ChessPieceVisualStyle? style,
     ChessPieceVisualSize? size,
-  }) =>
-      ChessPieceAppearance(
-        style: style ?? this.style,
-        size: size ?? this.size,
-      );
+    String? finish,
+  }) => ChessPieceAppearance(
+    style: style ?? this.style,
+    size: size ?? this.size,
+    finish: finish ?? this.finish,
+  );
 }
 
 abstract final class ChessPieceAppearanceController {
@@ -40,26 +43,26 @@ abstract final class ChessPieceAppearanceController {
   ];
 
   static ChessPieceVisualStyle styleFromLabel(String label) => switch (label) {
-        'Classic' || 'Classic 2D' => ChessPieceVisualStyle.classic2d,
-        'Modern' || 'High Contrast' => ChessPieceVisualStyle.highContrast,
-        _ => ChessPieceVisualStyle.premium3d,
-      };
+    'Classic' || 'Classic 2D' => ChessPieceVisualStyle.classic2d,
+    'Modern' || 'High Contrast' => ChessPieceVisualStyle.highContrast,
+    _ => ChessPieceVisualStyle.premium3d,
+  };
 
   static ChessPieceVisualSize sizeFromLabel(String label) => switch (label) {
-        'Double Extra Large' => ChessPieceVisualSize.doubleExtraLarge,
-        'Extra Large' => ChessPieceVisualSize.extraLarge,
-        _ => ChessPieceVisualSize.large,
-      };
+    'Double Extra Large' => ChessPieceVisualSize.doubleExtraLarge,
+    'Extra Large' => ChessPieceVisualSize.extraLarge,
+    _ => ChessPieceVisualSize.large,
+  };
 
   static String styleLabel(ChessPieceVisualStyle style) => switch (style) {
-        ChessPieceVisualStyle.premium3d => 'Premium 3D',
-        ChessPieceVisualStyle.classic2d => 'Classic 2D',
-        ChessPieceVisualStyle.highContrast => 'High Contrast',
-      };
+    ChessPieceVisualStyle.premium3d => 'Premium 3D',
+    ChessPieceVisualStyle.classic2d => 'Classic 2D',
+    ChessPieceVisualStyle.highContrast => 'High Contrast',
+  };
 
   static String sizeLabel(ChessPieceVisualSize size) => switch (size) {
-        ChessPieceVisualSize.large => 'Large',
-        ChessPieceVisualSize.extraLarge => 'Extra Large',
-        ChessPieceVisualSize.doubleExtraLarge => 'Double Extra Large',
-      };
+    ChessPieceVisualSize.large => 'Large',
+    ChessPieceVisualSize.extraLarge => 'Extra Large',
+    ChessPieceVisualSize.doubleExtraLarge => 'Double Extra Large',
+  };
 }

@@ -1,6 +1,23 @@
 part of '../main.dart';
 
-enum BoardSkin { royalWalnut, jadeGlass, tournament, marble, sapphire }
+enum BoardSkin {
+  royalWalnut,
+  oceanTeal,
+  midnightSapphire,
+  emeraldArena,
+  amethystClash,
+  desertGold,
+  frostMarble,
+  jadeDynasty,
+  azureTemple,
+  volcanicObsidian,
+  roseQuartz,
+  celestialSilver,
+  jadeGlass,
+  tournament,
+  marble,
+  sapphire,
+}
 
 enum GameMode { computer, daily, puzzle, local, online }
 
@@ -597,6 +614,83 @@ const Map<BoardSkin, BoardPalette> boardPalettes = <BoardSkin, BoardPalette>{
     dark: Color(0xFF7A4F2A),
     frame: Color(0xFF342113),
     accent: Color(0xFFD6A84F),
+  ),
+  BoardSkin.oceanTeal: BoardPalette(
+    label: 'Ocean Teal',
+    light: Color(0xFFB8E3DF),
+    dark: Color(0xFF176B70),
+    frame: Color(0xFF082E38),
+    accent: Color(0xFF5DE9D3),
+  ),
+  BoardSkin.midnightSapphire: BoardPalette(
+    label: 'Midnight Sapphire',
+    light: Color(0xFFAFC8E8),
+    dark: Color(0xFF183B66),
+    frame: Color(0xFF091A35),
+    accent: Color(0xFF5BA8FF),
+  ),
+  BoardSkin.emeraldArena: BoardPalette(
+    label: 'Emerald Arena',
+    light: Color(0xFFE9E2C5),
+    dark: Color(0xFF226B4B),
+    frame: Color(0xFF0B3527),
+    accent: Color(0xFF63D99E),
+  ),
+  BoardSkin.amethystClash: BoardPalette(
+    label: 'Amethyst Clash',
+    light: Color(0xFF8EEBE7),
+    dark: Color(0xFF603CB2),
+    frame: Color(0xFF241441),
+    accent: Color(0xFFBE7BFF),
+  ),
+  BoardSkin.desertGold: BoardPalette(
+    label: 'Desert Gold',
+    light: Color(0xFFF3D59A),
+    dark: Color(0xFF8A5B2B),
+    frame: Color(0xFF4A2D15),
+    accent: Color(0xFFFFC85A),
+  ),
+  BoardSkin.frostMarble: BoardPalette(
+    label: 'Frost Marble',
+    light: Color(0xFFEEF3F8),
+    dark: Color(0xFF56616F),
+    frame: Color(0xFF28323E),
+    accent: Color(0xFFBEEAFF),
+  ),
+  BoardSkin.jadeDynasty: BoardPalette(
+    label: 'Jade Dynasty',
+    light: Color(0xFFDDE8CF),
+    dark: Color(0xFF176844),
+    frame: Color(0xFF0A3525),
+    accent: Color(0xFFE0B957),
+  ),
+  BoardSkin.azureTemple: BoardPalette(
+    label: 'Azure Temple',
+    light: Color(0xFFCFDFEE),
+    dark: Color(0xFF296990),
+    frame: Color(0xFF12364D),
+    accent: Color(0xFF69C9FF),
+  ),
+  BoardSkin.volcanicObsidian: BoardPalette(
+    label: 'Volcanic Obsidian',
+    light: Color(0xFFD7C2AA),
+    dark: Color(0xFF5B1714),
+    frame: Color(0xFF1C0C0B),
+    accent: Color(0xFFFF6547),
+  ),
+  BoardSkin.roseQuartz: BoardPalette(
+    label: 'Rose Quartz',
+    light: Color(0xFFF5D6DC),
+    dark: Color(0xFFA84D6A),
+    frame: Color(0xFF4D2230),
+    accent: Color(0xFFFF9DB8),
+  ),
+  BoardSkin.celestialSilver: BoardPalette(
+    label: 'Celestial Silver',
+    light: Color(0xFFEEF2F7),
+    dark: Color(0xFF263B62),
+    frame: Color(0xFF111D34),
+    accent: Color(0xFFCADCFF),
   ),
   BoardSkin.jadeGlass: BoardPalette(
     label: 'Jade',

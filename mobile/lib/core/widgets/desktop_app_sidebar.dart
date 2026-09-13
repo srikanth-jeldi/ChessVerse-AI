@@ -18,6 +18,7 @@ class DesktopAppSidebar extends StatelessWidget {
     this.onEvents,
     this.onStore,
     this.onSettings,
+    this.onCollection,
     super.key,
   });
 
@@ -34,21 +35,32 @@ class DesktopAppSidebar extends StatelessWidget {
   final VoidCallback? onEvents;
   final VoidCallback? onStore;
   final VoidCallback? onSettings;
+  final VoidCallback? onCollection;
 
   @override
   Widget build(BuildContext context) {
     final List<({IconData icon, String label, VoidCallback? onTap})> items =
         <({IconData icon, String label, VoidCallback? onTap})>[
-      (icon: Icons.home_rounded, label: 'Home', onTap: onHome),
-      (icon: Icons.sports_esports_rounded, label: 'Play', onTap: onPlay),
-      if (onMyGames != null)
-        (icon: Icons.history_rounded, label: 'My Games', onTap: onMyGames),
-      (icon: Icons.extension_rounded, label: 'Puzzles', onTap: onPuzzles),
-      (icon: Icons.school_rounded, label: 'Learn', onTap: onLearn),
-      (icon: Icons.person_rounded, label: 'Profile', onTap: onProfile),
-      if (onFriends != null)
-        (icon: Icons.groups_2_rounded, label: 'Community', onTap: onFriends),
-    ];
+          (icon: Icons.home_rounded, label: 'Home', onTap: onHome),
+          (icon: Icons.sports_esports_rounded, label: 'Play', onTap: onPlay),
+          if (onMyGames != null)
+            (icon: Icons.history_rounded, label: 'My Games', onTap: onMyGames),
+          (icon: Icons.extension_rounded, label: 'Puzzles', onTap: onPuzzles),
+          (icon: Icons.school_rounded, label: 'Learn', onTap: onLearn),
+          (icon: Icons.person_rounded, label: 'Profile', onTap: onProfile),
+          if (onFriends != null)
+            (
+              icon: Icons.groups_2_rounded,
+              label: 'Community',
+              onTap: onFriends,
+            ),
+          if (onCollection != null || selected == 'Collection')
+            (
+              icon: Icons.workspace_premium_rounded,
+              label: 'Collection',
+              onTap: onCollection,
+            ),
+        ];
     return Container(
       width: 258,
       decoration: const BoxDecoration(
@@ -64,23 +76,29 @@ class DesktopAppSidebar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               Flexible(
-                child: Text('CHESSVERSE',
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                    style: TextStyle(
-                        color: Color(0xFFF5F7FA),
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        decoration: TextDecoration.none,
-                        decorationColor: Colors.transparent)),
-              ),
-              Text('AI',
+                child: Text(
+                  'CHESSVERSE',
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                   style: TextStyle(
-                      color: Color(0xFFE9B84C),
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      decoration: TextDecoration.none,
-                      decorationColor: Colors.transparent)),
+                    color: Color(0xFFF5F7FA),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    decoration: TextDecoration.none,
+                    decorationColor: Colors.transparent,
+                  ),
+                ),
+              ),
+              Text(
+                'AI',
+                style: TextStyle(
+                  color: Color(0xFFE9B84C),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  decoration: TextDecoration.none,
+                  decorationColor: Colors.transparent,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 27),
@@ -105,11 +123,12 @@ class DesktopAppSidebar extends StatelessWidget {
 }
 
 class _DesktopNavItem extends StatelessWidget {
-  const _DesktopNavItem(
-      {required this.icon,
-      required this.label,
-      required this.selected,
-      this.onTap});
+  const _DesktopNavItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    this.onTap,
+  });
   final IconData icon;
   final String label;
   final bool selected;
@@ -136,16 +155,20 @@ class _DesktopNavItem extends StatelessWidget {
             child: Row(
               children: <Widget>[
                 const SizedBox(width: 15),
-                Icon(icon,
-                    size: 25,
-                    color: selected ? activeColor : const Color(0xFF9DAFC2)),
+                Icon(
+                  icon,
+                  size: 25,
+                  color: selected ? activeColor : const Color(0xFF9DAFC2),
+                ),
                 const SizedBox(width: 18),
-                Text(label,
-                    style: TextStyle(
-                        color: selected ? activeColor : const Color(0xFFC4CFDC),
-                        fontSize: 17,
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w500)),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? activeColor : const Color(0xFFC4CFDC),
+                    fontSize: 17,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),

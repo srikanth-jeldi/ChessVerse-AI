@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/app_preferences.dart';
 import '../../../core/ads/rewarded_coin_service.dart';
+import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../data/shop_api.dart';
 import '../data/economy_rewards_api.dart';
 
@@ -21,8 +22,15 @@ String formatFreeCoinCountdown(Duration remaining) {
 }
 
 class CosmeticShopScreen extends StatefulWidget {
-  const CosmeticShopScreen({required this.token, super.key});
+  const CosmeticShopScreen({
+    required this.token,
+    this.onDestinationSelected,
+    this.onMyGames,
+    super.key,
+  });
   final String token;
+  final ValueChanged<int>? onDestinationSelected;
+  final VoidCallback? onMyGames;
   @override
   State<CosmeticShopScreen> createState() => _CosmeticShopScreenState();
 }
@@ -86,7 +94,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         case 'BOARD':
           await const AppPreferences().writeString('boardTheme', item.name);
         case 'PIECES':
-          await const AppPreferences().writeString('pieceStyle', item.name);
+          await const AppPreferences().writeString('pieceFinish', item.slug);
         case 'FRAME':
           await const AppPreferences().writeString('profileBadge', item.slug);
       }
@@ -103,7 +111,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         await const AppPreferences().writeString('boardTheme', item.name);
       }
       if (item.category == 'PIECES') {
-        await const AppPreferences().writeString('pieceStyle', item.name);
+        await const AppPreferences().writeString('pieceFinish', item.slug);
       }
       if (item.category == 'FRAME') {
         await const AppPreferences().writeString('profileBadge', item.slug);
@@ -137,29 +145,76 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final Widget page = Scaffold(
       backgroundColor: const Color(0xFF061524),
       appBar: AppBar(
         backgroundColor: const Color(0xFF071B2D),
-        title: const Text('ROYAL COLLECTION'),
+        title: const Text(
+          'ROYAL COLLECTION',
+          style: TextStyle(
+            color: Color(0xFFFFD77A),
+            fontFamily: 'serif',
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
+          ),
+        ),
         actions: [
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
         ],
       ),
-      body: _busy && _shop == null
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(_error!, style: const TextStyle(color: Colors.white70)),
-                  const SizedBox(height: 12),
-                  FilledButton(onPressed: _load, child: const Text('Retry')),
-                ],
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.topCenter,
+            radius: 1.2,
+            colors: [Color(0xFF103753), Color(0xFF061524), Color(0xFF020B13)],
+          ),
+        ),
+        child: _busy && _shop == null
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton(onPressed: _load, child: const Text('Retry')),
+                  ],
+                ),
+              )
+            : _content(),
+      ),
+    );
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        if (constraints.maxWidth < 1050 || constraints.maxHeight < 600) {
+          return page;
+        }
+        void select(int index) => widget.onDestinationSelected?.call(index);
+        return Scaffold(
+          backgroundColor: const Color(0xFF020B13),
+          body: Row(
+            children: <Widget>[
+              DesktopAppSidebar(
+                selected: 'Collection',
+                onHome: () => select(0),
+                onPlay: () => select(1),
+                onMyGames: widget.onMyGames,
+                onPuzzles: () => select(2),
+                onLearn: () => select(3),
+                onProfile: () => select(4),
+                onFriends: () => select(5),
+                onCollection: () {},
               ),
-            )
-          : _content(),
+              Expanded(child: page),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -190,8 +245,12 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
               ),
               sliver: SliverGrid(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: wide ? 3 : (c.maxWidth > 560 ? 2 : 1),
-                  mainAxisExtent: 330,
+                  crossAxisCount: c.maxWidth >= 1280
+                      ? 4
+                      : wide
+                      ? 3
+                      : (c.maxWidth > 560 ? 2 : 1),
+                  mainAxisExtent: _category == 'FRAME' ? 390 : 330,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
                 ),
@@ -212,9 +271,10 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(26),
       gradient: const LinearGradient(
-        colors: [Color(0xFF123D55), Color(0xFF0B2338)],
+        colors: [Color(0xFF123D55), Color(0xFF071625), Color(0xFF17152C)],
       ),
-      border: Border.all(color: const Color(0x5060E8D0)),
+      border: Border.all(color: const Color(0x99E2B451)),
+      boxShadow: const [BoxShadow(color: Color(0x305DE9D3), blurRadius: 30)],
     ),
     child: Wrap(
       alignment: WrapAlignment.spaceBetween,
@@ -226,27 +286,37 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'MAKE THE BOARD YOURS',
-                style: TextStyle(
-                  color: Color(0xFFF4C75B),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.6,
-                ),
+              Row(
+                children: [
+                  Icon(
+                    Icons.workspace_premium_rounded,
+                    color: Color(0xFFFFD266),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'CHESSVERSEAI ROYAL COLLECTION',
+                    style: TextStyle(
+                      color: Color(0xFFF4C75B),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.6,
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: 7),
               Text(
-                'Boards, pieces & checkmate style',
+                'Collect. Customize. Compete.',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 27,
+                  fontFamily: 'serif',
+                  fontSize: 28,
                   fontWeight: FontWeight.w900,
                 ),
               ),
               SizedBox(height: 6),
               Text(
-                'Cosmetics only. Your skill decides every game.',
+                'Extraordinary boards, pieces and badges for extraordinary minds.',
                 style: TextStyle(color: Color(0xFFB7CAD7)),
               ),
             ],
@@ -463,6 +533,8 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
               padding: const EdgeInsets.all(16),
               child: item.category == 'FRAME'
                   ? _badgePreview(item, a)
+                  : item.category == 'BOARD' && _boardAsset(item.slug) != null
+                  ? _boardPreview(item)
                   : _preview(a, b, item),
             ),
           ),
@@ -538,6 +610,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   }
 
   Widget _badgePreview(CosmeticItemDto item, Color accent) => Container(
+    width: double.infinity,
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(18),
       gradient: const RadialGradient(
@@ -551,20 +624,35 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     child: Stack(
       alignment: Alignment.center,
       children: [
-        Icon(_badgeIcon(item.assetKey), color: accent, size: 88),
+        Positioned.fill(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Image.asset(
+              _badgeAsset(item.slug),
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+              errorBuilder: (_, _, _) =>
+                  Icon(_badgeIcon(item.assetKey), color: accent, size: 88),
+            ),
+          ),
+        ),
         Positioned(
-          left: 8,
-          right: 8,
-          bottom: 14,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
+          right: 10,
+          top: 10,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xD9071625),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: accent.withValues(alpha: .8)),
+            ),
             child: Text(
-              item.name.toUpperCase(),
-              maxLines: 1,
+              _badgeRarity(item.slug),
               style: TextStyle(
                 color: accent,
+                fontSize: 10,
                 fontWeight: FontWeight.w900,
-                letterSpacing: 1.1,
+                letterSpacing: 1,
               ),
             ),
           ),
@@ -573,11 +661,61 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     ),
   );
 
+  String _badgeAsset(String slug) => switch (slug) {
+    'academy-scout' => 'assets/badges/academy-scout-v1.webp',
+    'tactical-eye' => 'assets/badges/tactical-eye-v1.webp',
+    'streak-flame' => 'assets/badges/streak-flame-v1.webp',
+    'royal-master' => 'assets/badges/royal-master-v1.webp',
+    'puzzle-hunter' => 'assets/badges/puzzle-hunter-v1.webp',
+    'opening-sage' => 'assets/badges/opening-sage-v1.webp',
+    'blitz-charger' => 'assets/badges/blitz-charger-v1.webp',
+    'checkmate-crown' => 'assets/badges/checkmate-crown-v1.webp',
+    _ => 'assets/badges/academy-scout-v1.webp',
+  };
+
+  String _badgeRarity(String slug) => switch (slug) {
+    'academy-scout' => 'COMMON',
+    'tactical-eye' ||
+    'streak-flame' ||
+    'puzzle-hunter' ||
+    'blitz-charger' => 'RARE',
+    'royal-master' || 'opening-sage' => 'EPIC',
+    'checkmate-crown' => 'LEGENDARY',
+    _ => 'COLLECTIBLE',
+  };
+
   IconData _badgeIcon(String? key) => switch (key) {
     'tactician' => Icons.center_focus_strong_rounded,
     'streak' => Icons.local_fire_department_rounded,
     'master' => Icons.workspace_premium_rounded,
     _ => Icons.shield_rounded,
+  };
+
+  Widget _boardPreview(CosmeticItemDto item) => ClipRRect(
+    borderRadius: BorderRadius.circular(16),
+    child: SizedBox.expand(
+      child: Image.asset(
+        _boardAsset(item.slug)!,
+        fit: BoxFit.cover,
+        filterQuality: FilterQuality.high,
+      ),
+    ),
+  );
+
+  String? _boardAsset(String slug) => switch (slug) {
+    'royal-walnut' => 'assets/boards/collection/royal-walnut-v1.webp',
+    'ocean-teal' => 'assets/boards/collection/ocean-teal-v1.webp',
+    'midnight-sapphire' => 'assets/boards/collection/midnight-sapphire-v1.webp',
+    'emerald-arena' => 'assets/boards/collection/emerald-arena-v1.webp',
+    'amethyst-clash' => 'assets/boards/collection/amethyst-clash-v1.webp',
+    'desert-gold' => 'assets/boards/collection/desert-gold-v1.webp',
+    'frost-marble' => 'assets/boards/collection/frost-marble-v1.webp',
+    'jade-dynasty' => 'assets/boards/collection/jade-dynasty-v1.webp',
+    'azure-temple' => 'assets/boards/collection/azure-temple-v1.webp',
+    'volcanic-obsidian' => 'assets/boards/collection/volcanic-obsidian-v1.webp',
+    'rose-quartz' => 'assets/boards/collection/rose-quartz-v1.webp',
+    'celestial-silver' => 'assets/boards/collection/celestial-silver-v1.webp',
+    _ => null,
   };
 
   Widget _preview(Color a, Color b, CosmeticItemDto item) => ClipRRect(
@@ -602,16 +740,16 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                 ? null
                 : Padding(
                     padding: const EdgeInsets.all(1.5),
-                    child: Image.asset(
-                      'assets/pieces/staunton_${piece.side}_${piece.name}.png',
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.high,
-                      color: item.slug == 'golden-crown'
-                          ? const Color(0xFFFFC94A)
-                          : null,
-                      colorBlendMode: item.slug == 'golden-crown'
-                          ? BlendMode.modulate
-                          : null,
+                    child: ColorFiltered(
+                      colorFilter: ColorFilter.mode(
+                        _piecePreviewColor(item.slug, piece.side == 'white'),
+                        BlendMode.modulate,
+                      ),
+                      child: Image.asset(
+                        'assets/pieces/staunton_${piece.side}_${piece.name}.png',
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                      ),
                     ),
                   ),
           );
@@ -619,6 +757,20 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       ),
     ),
   );
+
+  Color _piecePreviewColor(String slug, bool white) => switch (slug) {
+    'crimson-crown-3d' =>
+      white ? const Color(0xFFFFD37A) : const Color(0xFFFF304F),
+    'inferno-gold' => white ? const Color(0xFFFFE09A) : const Color(0xFFD99016),
+    'ruby-emperor' => white ? const Color(0xFFFFC36A) : const Color(0xFFC9153E),
+    'obsidian-regal' =>
+      white ? const Color(0xFFE9EEF5) : const Color(0xFF48505C),
+    'sapphire-elite' =>
+      white ? const Color(0xFFBFE7FF) : const Color(0xFF245DFF),
+    'emerald-sovereign' =>
+      white ? const Color(0xFFFFD77A) : const Color(0xFF10A86B),
+    _ => Colors.white,
+  };
 
   _ShopPreviewPiece? _previewPiece(int square) {
     const List<String> backRank = <String>[

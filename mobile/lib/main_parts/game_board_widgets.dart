@@ -47,9 +47,8 @@ class CompactHeader extends StatelessWidget {
               ],
             ),
             semanticsLabel: 'ChessVerseAI',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            style: Theme.of(context).textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w800),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -763,20 +762,21 @@ class _ChessBoardState extends State<ChessBoard> {
                     tween: Tween<double>(begin: 0, end: 1),
                     duration: const Duration(milliseconds: 560),
                     curve: Curves.easeOutCubic,
-                    builder: (BuildContext context, double progress, Widget? child) {
-                      return CustomPaint(
-                        painter: LastMoveTrailPainter(
-                          from: lastFromSquare,
-                          to: lastToSquare,
-                          flipped: flipped,
-                          progress: progress,
-                          accent: palette.accent,
-                          // Keep the latest move visible until the next move.
-                          // The old fade made the arrow look like a brief flash.
-                          fadeOut: false,
-                        ),
-                      );
-                    },
+                    builder:
+                        (BuildContext context, double progress, Widget? child) {
+                          return CustomPaint(
+                            painter: LastMoveTrailPainter(
+                              from: lastFromSquare,
+                              to: lastToSquare,
+                              flipped: flipped,
+                              progress: progress,
+                              accent: palette.accent,
+                              // Keep the latest move visible until the next move.
+                              // The old fade made the arrow look like a brief flash.
+                              fadeOut: false,
+                            ),
+                          );
+                        },
                   ),
                 ),
               ),
@@ -1171,33 +1171,29 @@ class BoardSquare extends StatelessWidget {
               boxShadow: <BoxShadow>[
                 if (idleHint)
                   BoxShadow(
-                    color: const Color(
-                      0xFF42B8FF,
-                    ).withValues(alpha: 0.9 * glow),
+                    color: const Color(0xFF42B8FF)
+                        .withValues(alpha: 0.9 * glow),
                     blurRadius: 26,
                     spreadRadius: 5,
                   ),
                 if (legalTarget)
                   BoxShadow(
-                    color: const Color(
-                      0xFFBDE6FF,
-                    ).withValues(alpha: 0.72 * glow),
+                    color: const Color(0xFFBDE6FF)
+                        .withValues(alpha: 0.72 * glow),
                     blurRadius: 22,
                     spreadRadius: 4,
                   ),
                 if (lastCapture || captureTarget)
                   BoxShadow(
-                    color: const Color(
-                      0xFFFF1744,
-                    ).withValues(alpha: 0.55 * glow),
+                    color: const Color(0xFFFF1744)
+                        .withValues(alpha: 0.55 * glow),
                     blurRadius: 24,
                     spreadRadius: 3,
                   ),
                 if (checkedKing)
                   BoxShadow(
-                    color: const Color(
-                      0xFFFF1744,
-                    ).withValues(alpha: 0.9 * glow),
+                    color: const Color(0xFFFF1744)
+                        .withValues(alpha: 0.9 * glow),
                     blurRadius: 28,
                     spreadRadius: 5,
                   ),
@@ -1298,9 +1294,8 @@ class BoardSquare extends StatelessWidget {
                       ),
                       boxShadow: <BoxShadow>[
                         BoxShadow(
-                          color: const Color(
-                            0xFFFF1744,
-                          ).withValues(alpha: 0.72),
+                          color: const Color(0xFFFF1744)
+                              .withValues(alpha: 0.72),
                           blurRadius: 20,
                           spreadRadius: 3,
                         ),
@@ -1660,10 +1655,37 @@ class ChessCoin extends StatelessWidget {
         ),
         child: image,
       );
+    } else if (appearance.style == ChessPieceVisualStyle.premium3d) {
+      final Color? finishColor = _premiumPieceFinishColor(
+        appearance.finish,
+        piece.white,
+      );
+      if (finishColor != null) {
+        image = ColorFiltered(
+          colorFilter: ColorFilter.mode(finishColor, BlendMode.modulate),
+          child: image,
+        );
+      }
     }
     return Semantics(label: label, child: image);
   }
 }
+
+Color? _premiumPieceFinishColor(String finish, bool white) => switch (finish) {
+  'crimson-crown-3d' =>
+    white ? const Color(0xFFFFD37A) : const Color(0xFFFF304F),
+  'inferno-gold' ||
+  'golden-crown' => white ? const Color(0xFFFFE09A) : const Color(0xFFD99016),
+  'ruby-emperor' => white ? const Color(0xFFFFC36A) : const Color(0xFFC9153E),
+  'obsidian-regal' ||
+  'ivory-obsidian' => white ? const Color(0xFFE9EEF5) : const Color(0xFF48505C),
+  'sapphire-elite' => white ? const Color(0xFFBFE7FF) : const Color(0xFF245DFF),
+  'emerald-sovereign' =>
+    white ? const Color(0xFFFFD77A) : const Color(0xFF10A86B),
+  'platinum-staunton' =>
+    white ? const Color(0xFFFFFFFF) : const Color(0xFF98A9BC),
+  _ => null,
+};
 
 String pieceAsset(ChessPiece piece) {
   return 'assets/pieces/staunton_${piece.white ? 'white' : 'black'}_${pieceName(piece.code)}.png';

@@ -643,7 +643,31 @@ class _SplashGateState extends State<SplashGate> {
   Future<void> _openRewardsCenter(BuildContext context) async {
     final StoredAuthSession? session = await const AuthSessionStore().read();
     if (!context.mounted || session == null) return;
-    await _push(context, CosmeticShopScreen(token: session.token));
+    await _push(
+      context,
+      CosmeticShopScreen(
+        token: session.token,
+        onDestinationSelected: (int index) =>
+            _closeSettingsAndSelect(context, index),
+        onMyGames: () {
+          Navigator.of(context).pop();
+          if (!mounted) return;
+          unawaited(
+            _push(
+              context,
+              MatchHistoryScreen(
+                onDestinationSelected: (index) =>
+                    _closeSettingsAndSelect(context, index),
+                onResume: (draft) =>
+                    _openGame(context, GameMode.computer, resumeDraft: draft),
+                onPlayAgain: () =>
+                    _chooseSideAndOpen(context, GameMode.computer),
+              ),
+            ),
+          );
+        },
+      ),
+    );
     await _refreshCoinBalance(session.token);
   }
 
@@ -974,11 +998,7 @@ class _SplashGateState extends State<SplashGate> {
           await _refreshCoinBalance(session.token);
         },
         onShop: () async {
-          final StoredAuthSession? session = await const AuthSessionStore()
-              .read();
-          if (!context.mounted || session == null) return;
-          await _push(context, CosmeticShopScreen(token: session.token));
-          await _refreshCoinBalance(session.token);
+          await _openRewardsCenter(context);
         },
       ),
       SocialHubScreen(
@@ -1208,16 +1228,15 @@ class _SplashGateState extends State<SplashGate> {
                     title: 'Online with Friend',
                     subtitle: 'Create a private room or join with a room code.',
                     accent: const Color(0xFF4FD9C5),
-                    onTap: () => Navigator.of(
-                      sheetContext,
-                    ).pop(_FriendPlayChoice.online),
+                    onTap: () =>
+                        Navigator.of(sheetContext)
+                            .pop(_FriendPlayChoice.online),
                   ),
                   const SizedBox(height: 12),
                   _FriendPlayChoiceCard(
                     icon: Icons.people_alt_rounded,
                     title: 'Two Players — Same Device',
-                    subtitle:
-                        'Player 1 • White   /   Player 2 • Black. Board stays fixed.',
+                    subtitle: 'Player 1 • White   /   Player 2 • Black. Board stays fixed.',
                     accent: const Color(0xFFE2AE49),
                     onTap: () =>
                         Navigator.of(sheetContext).pop(_FriendPlayChoice.local),
@@ -1507,15 +1526,14 @@ class _SplashGateState extends State<SplashGate> {
                                             );
                                           } on Object {
                                             if (context.mounted) {
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'Could not delete preset. Check your connection.',
-                                                  ),
-                                                ),
-                                              );
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Could not delete preset. Check your connection.',
+                                                      ),
+                                                    ),
+                                                  );
                                             }
                                           }
                                         },
@@ -1615,9 +1633,8 @@ class _SplashGateState extends State<SplashGate> {
                               onPressed: () => Navigator.of(context).pop(
                                 _GameLaunchChoice(
                                   selected,
-                                  ratingToEngineLevel(
-                                    selectedRating.round(),
-                                  ).toDouble(),
+                                  ratingToEngineLevel(selectedRating.round())
+                                      .toDouble(),
                                   selectedStyle,
                                 ),
                               ),
@@ -1939,9 +1956,8 @@ class _SplashGateState extends State<SplashGate> {
     LocalGameArchive.onCloudRelevantChange = null;
     if (!mounted) return;
     if (currentRouteContext.mounted) {
-      Navigator.of(
-        currentRouteContext,
-      ).popUntil((Route<dynamic> route) => route.isFirst);
+      Navigator.of(currentRouteContext)
+          .popUntil((Route<dynamic> route) => route.isFirst);
     }
     setState(() {
       _playerName = 'ChessVerseAI Player';
@@ -2046,9 +2062,8 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   Future<void> _push(BuildContext context, Widget screen) {
-    return Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => screen));
+    return Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
   void _enableCloudSync(String token) {

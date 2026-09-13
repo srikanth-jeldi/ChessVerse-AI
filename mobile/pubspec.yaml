@@ -70,7 +70,9 @@ flutter:
   uses-material-design: true
   assets:
     - assets/audio/
+    - assets/badges/
     - assets/backgrounds/
+    - assets/boards/collection/
     - assets/branding/app_icon.png
     - assets/branding/chessverse_king_dual_splash.jpg
     - assets/branding/splash_screen_mobile_v2.jpg

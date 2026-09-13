@@ -12,6 +12,17 @@ void main() {
       );
     });
 
+    test('keeps the equipped premium finish in the game appearance', () {
+      const ChessPieceAppearance appearance = ChessPieceAppearance(
+        finish: 'sapphire-elite',
+      );
+      expect(appearance.finish, 'sapphire-elite');
+      expect(
+        appearance.copyWith(size: ChessPieceVisualSize.large).finish,
+        'sapphire-elite',
+      );
+    });
+
     test('maps current and legacy style labels', () {
       expect(
         ChessPieceAppearanceController.styleFromLabel('Premium 3D'),
@@ -55,6 +66,25 @@ void main() {
     expect(tournamentBoardSkin('Dubai Gold Open'), BoardSkin.royalWalnut);
     expect(tournamentBoardSkin('London Classic'), BoardSkin.tournament);
     expect(tournamentBoardSkin('New York Grand Final'), BoardSkin.marble);
+  });
+
+  test('all twelve Royal Collection boards have playable palettes', () {
+    const Set<BoardSkin> collection = <BoardSkin>{
+      BoardSkin.royalWalnut,
+      BoardSkin.oceanTeal,
+      BoardSkin.midnightSapphire,
+      BoardSkin.emeraldArena,
+      BoardSkin.amethystClash,
+      BoardSkin.desertGold,
+      BoardSkin.frostMarble,
+      BoardSkin.jadeDynasty,
+      BoardSkin.azureTemple,
+      BoardSkin.volcanicObsidian,
+      BoardSkin.roseQuartz,
+      BoardSkin.celestialSilver,
+    };
+    expect(collection, hasLength(12));
+    expect(boardPalettes.keys, containsAll(collection));
   });
 
   testWidgets('Classic 2D uses distinct white and black Unicode pieces', (

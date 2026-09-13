@@ -123,8 +123,7 @@ class _PlayDestination extends StatelessWidget {
                         title: 'Tournaments',
                         subtitle: 'Enter the World Chess Circuit',
                         color: const Color(0xFFD5A63B),
-                        asset:
-                            'assets/backgrounds/tournament-new-york-grand-final-v1.webp',
+                        asset: 'assets/backgrounds/tournament-new-york-grand-final-v1.webp',
                         onTap: onTournaments,
                       ),
                       _PlayModeCard(
@@ -1000,12 +999,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _preferences.readString('boardTheme', fallback: 'Royal Walnut'),
       _preferences.readString('pieceStyle', fallback: 'Premium 3D'),
       _preferences.readString('pieceSize', fallback: 'Extra Large'),
+      _preferences.readString('pieceFinish', fallback: 'classic-staunton'),
     ]);
     if (!mounted) return;
     final String boardTheme = values[4] as String;
     ChessPieceAppearanceController.current.value = ChessPieceAppearance(
       style: ChessPieceAppearanceController.styleFromLabel(values[5] as String),
       size: ChessPieceAppearanceController.sizeFromLabel(values[6] as String),
+      finish: values[7] as String,
     );
     setState(() {
       _soundEnabled = values[0] as bool;
@@ -1015,14 +1016,21 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _skin = _onlineMatch?.isTournamentMatch == true
           ? tournamentBoardSkin(_onlineMatch?.tournamentName)
           : switch (boardTheme) {
-              'Jade Glass' ||
-              'Ocean Teal' ||
-              'Royal Emerald' => BoardSkin.jadeGlass,
+              'Ocean Teal' => BoardSkin.oceanTeal,
+              'Midnight Sapphire' => BoardSkin.midnightSapphire,
+              'Royal Emerald' || 'Emerald Arena' => BoardSkin.emeraldArena,
+              'Amethyst Clash' => BoardSkin.amethystClash,
+              'Desert Gold' => BoardSkin.desertGold,
+              'Frost Marble' => BoardSkin.frostMarble,
+              'Jade Dynasty' => BoardSkin.jadeDynasty,
+              'Azure Temple' => BoardSkin.azureTemple,
+              'Volcanic Obsidian' => BoardSkin.volcanicObsidian,
+              'Rose Quartz' => BoardSkin.roseQuartz,
+              'Celestial Silver' => BoardSkin.celestialSilver,
+              'Jade Glass' => BoardSkin.jadeGlass,
               'Tournament' => BoardSkin.tournament,
               'Marble' => BoardSkin.marble,
-              'Sapphire' ||
-              'Midnight Sapphire' ||
-              'Neon Arena' => BoardSkin.sapphire,
+              'Sapphire' || 'Neon Arena' => BoardSkin.sapphire,
               _ => BoardSkin.royalWalnut,
             };
     });
@@ -1852,9 +1860,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             child: Center(
                               child: DecoratedBox(
                                 decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFF16171C,
-                                  ).withValues(alpha: 0.92),
+                                  color: const Color(0xFF16171C)
+                                      .withValues(alpha: 0.92),
                                   borderRadius: BorderRadius.circular(999),
                                   border: Border.all(
                                     color:
@@ -1954,8 +1961,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _authLoading = false;
       _authHasError = false;
       _awaitingCode = false;
-      _coachNote =
-          'Guest Player mode is ready. Create an account later to save progress.';
+      _coachNote = 'Guest Player mode is ready. Create an account later to save progress.';
     });
   }
 
@@ -2223,8 +2229,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             _authPassword.length < 8)) {
       setState(() {
         _authHasError = true;
-        _authMessage =
-            'Enter a user id, display name, valid email and an 8+ character password.';
+        _authMessage = 'Enter a user id, display name, valid email and an 8+ character password.';
       });
       return;
     }
@@ -2255,13 +2260,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
     try {
       if (_registerMode && !_awaitingCode) {
-        final Map<String, dynamic> response = await _authApi
-            .post('register', <String, String>{
-              'username': _authUsername,
-              'displayName': _authDisplayName,
-              'email': _authIdentity,
-              'password': _authPassword,
-            });
+        final Map<String, dynamic> response = await _authApi.post(
+          'register',
+          <String, String>{
+            'username': _authUsername,
+            'displayName': _authDisplayName,
+            'email': _authIdentity,
+            'password': _authPassword,
+          },
+        );
         if (!mounted) return;
         setState(() {
           _awaitingCode = true;
@@ -2838,8 +2845,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         setState(() {
-          _coachNote =
-              'Invalid board detected and safely reset. Kings cannot be captured.';
+          _coachNote = 'Invalid board detected and safely reset. Kings cannot be captured.';
         });
       });
       return;
@@ -3074,11 +3080,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             // End this attempt instead of allowing a long branch that can
             // eventually surface normal-game draw/stalemate results.
             _gameResultTitle = 'Challenge missed';
-            _gameResultDetail =
-                'That move leaves the puzzle solution. Find the forcing line and try again.';
+            _gameResultDetail = 'That move leaves the puzzle solution. Find the forcing line and try again.';
             _resultVisible = true;
-            _coachNote =
-                'That is a legal chess move, but not the tactic. Tap Try again and look for checks, captures, and threats.';
+            _coachNote = 'That is a legal chess move, but not the tactic. Tap Try again and look for checks, captures, and threats.';
             _lastPlayerCoachNote = _coachNote;
             unawaited(ChessSoundService.instance.error());
           } else if (_isTacticsMode && !_puzzleExplorationMode) {
@@ -3603,8 +3607,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _history.clear();
         _capturedWhite.clear();
         _capturedBlack.clear();
-        _coachNote =
-            'An invalid board was detected and safely reset. No king can be captured.';
+        _coachNote = 'An invalid board was detected and safely reset. No king can be captured.';
       });
       return;
     }
@@ -5741,8 +5744,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (stalemate) {
       if (_isTacticsMode) {
         _gameResultTitle = 'Challenge missed';
-        _gameResultDetail =
-            'Stalemate is not the checkmate objective. Try the forcing line again.';
+        _gameResultDetail = 'Stalemate is not the checkmate objective. Try the forcing line again.';
         _resultVisible = true;
         unawaited(ChessSoundService.instance.error());
         return 'Stalemate avoids checkmate. Try again.';
@@ -5810,15 +5812,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         controlsCenter
             ? 'The pawn claims central space and opens lines for your pieces.'
             : 'The pawn changes the structure; check the squares it now protects.',
-      'N' =>
-        'The knight attacks in an L-shape; inspect its new forks and protected squares.',
+      'N' => 'The knight attacks in an L-shape; inspect its new forks and protected squares.',
       'B' => 'The bishop opens a diagonal; trace it until the first blocker.',
-      'R' =>
-        'The rook works on ranks and files; look for an open file or king pressure.',
-      'Q' =>
-        'The queen creates threats in several directions; verify it cannot be chased.',
-      'K' =>
-        'The king move changes king safety; recheck every enemy check on the new square.',
+      'R' => 'The rook works on ranks and files; look for an open file or king pressure.',
+      'Q' => 'The queen creates threats in several directions; verify it cannot be chased.',
+      'K' => 'The king move changes king safety; recheck every enemy check on the new square.',
       _ => 'Compare the checks, captures, and threats created by the move.',
     };
     if (givesCheck && captured != null) {

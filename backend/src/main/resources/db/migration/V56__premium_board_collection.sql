@@ -1,0 +1,8 @@
+-- Give the first six account-owned board loadouts a premium Royal Collection
+-- identity while preserving stable ids, purchases and equipped selections.
+update cosmetic_item set name='Royal Walnut', description='Timeless elegance, crafted for champions.', price_currency='FREE', price_amount=0, primary_color='#E7D6B0', secondary_color='#6E4128', sort_order=10 where id='41000000-0000-0000-0000-000000000001';
+update cosmetic_item set name='Ocean Teal', description='Depth, calm, and endless possibilities.', price_currency='COINS', price_amount=600, primary_color='#B8E3DF', secondary_color='#176B70', sort_order=20 where id='41000000-0000-0000-0000-000000000002';
+update cosmetic_item set name='Midnight Sapphire', description='A board for those who play beyond limits.', price_currency='COINS', price_amount=900, primary_color='#AFC8E8', secondary_color='#183B66', sort_order=30 where id='41000000-0000-0000-0000-000000000003';
+update cosmetic_item set slug='emerald-arena', name='Emerald Arena', description='Power meets precision.', price_currency='COINS', price_amount=1200, primary_color='#E9E2C5', secondary_color='#226B4B', sort_order=40 where id='41000000-0000-0000-0000-000000000004';
+update cosmetic_item set slug='amethyst-clash', name='Amethyst Clash', description='Bold moves for brighter victories.', price_currency='COINS', price_amount=1500, primary_color='#65F4E5', secondary_color='#5B32B4', sort_order=50 where id='41000000-0000-0000-0000-000000000005';
+update cosmetic_item set slug='desert-gold', name='Desert Gold', description='Strength forged in timeless sands.', price_currency='COINS', price_amount=800, primary_color='#F3D59A', secondary_color='#8A5B2B', sort_order=60 where id='41000000-0000-0000-0000-000000000006';
