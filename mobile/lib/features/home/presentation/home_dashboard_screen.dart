@@ -234,7 +234,7 @@ class _MobileHomeState extends State<_MobileHome> {
                         _HomeHeroData(
                           title: 'Play vs AI',
                           subtitle: 'Start instantly at your perfect level',
-                          icon: Icons.smart_toy_rounded,
+                          icon: Icons.psychology_rounded,
                           buttonLabel: 'Play Now',
                           asset:
                               'assets/backgrounds/home-computer-hero-v1.webp',
@@ -255,8 +255,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           subtitle: 'Build your streak with today’s challenge',
                           icon: Icons.extension_rounded,
                           buttonLabel: 'Solve Today',
-                          asset:
-                              'assets/backgrounds/daily-challenge-card-v2.webp',
+                          asset: 'assets/backgrounds/home-puzzles-hero-v1.webp',
                           onTap: widget.onDailyChallenge,
                         ),
                         _HomeHeroData(
@@ -264,7 +263,8 @@ class _MobileHomeState extends State<_MobileHome> {
                           subtitle: 'Improve step by step with guided lessons',
                           icon: Icons.school_rounded,
                           buttonLabel: 'Continue Learning',
-                          asset: 'assets/backgrounds/home-learn-hero-v1.webp',
+                          asset:
+                              'assets/backgrounds/onboarding-ai-coach-wide-v2.png',
                           onTap: widget.onLearnChess,
                         ),
                         _tournamentHero(
@@ -541,7 +541,7 @@ class _WideHomeState extends State<_WideHome> {
                             _HomeHeroData(
                               title: 'Play vs AI',
                               subtitle: 'Start instantly at your perfect level',
-                              icon: Icons.smart_toy_rounded,
+                              icon: Icons.psychology_rounded,
                               buttonLabel: 'Play Now',
                               asset:
                                   'assets/backgrounds/home-computer-hero-v1.webp',
@@ -567,7 +567,7 @@ class _WideHomeState extends State<_WideHome> {
                               icon: Icons.extension_rounded,
                               buttonLabel: 'Solve Today',
                               asset:
-                                  'assets/backgrounds/daily-challenge-card-v2.webp',
+                                  'assets/backgrounds/home-puzzles-hero-v1.webp',
                               onTap: widget.onDailyChallenge,
                             ),
                             _HomeHeroData(
@@ -577,7 +577,7 @@ class _WideHomeState extends State<_WideHome> {
                               icon: Icons.school_rounded,
                               buttonLabel: 'Continue Learning',
                               asset:
-                                  'assets/backgrounds/home-learn-hero-v1.webp',
+                                  'assets/backgrounds/onboarding-ai-coach-wide-v2.png',
                               onTap: widget.onLearnChess,
                             ),
                             _tournamentHero(
