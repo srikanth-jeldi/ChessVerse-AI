@@ -1978,12 +1978,10 @@ class _LessonLanguageAction extends StatelessWidget {
           key: const ValueKey<String>('lesson-language-picker'),
           onPressed: onPressed,
           icon: const Icon(Icons.translate_rounded, size: 18),
-          label: Flexible(
-            child: Text(
-              language.nativeName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+          label: Text(
+            language.nativeName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.accentGold,
