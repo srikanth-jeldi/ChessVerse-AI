@@ -31,6 +31,17 @@ class ChessVerseAuthResult {
   final String? photoUrl;
 }
 
+class _AuthWelcomeFlex extends StatelessWidget {
+  const _AuthWelcomeFlex({required this.expanded, required this.child});
+
+  final bool expanded;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      expanded ? Expanded(child: child) : child;
+}
+
 class AuthScreen extends StatefulWidget {
   const AuthScreen({
     required this.onAuthenticated,
@@ -56,6 +67,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _googleSigningIn = false;
   bool _rememberMe = true;
   bool _googleInitialized = false;
+  bool _showAccountForm = false;
   String? _message;
   String? _error;
   DateTime? _verificationExpiresAt;
@@ -69,7 +81,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final TextEditingController _verificationCodeController =
       TextEditingController();
   StreamSubscription<GoogleSignInAuthenticationEvent>?
-      _googleAuthenticationSubscription;
+  _googleAuthenticationSubscription;
 
   @override
   void initState() {
@@ -125,30 +137,151 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
               child: SafeArea(
-                child: compactLandscape
+                child: !_showAccountForm && widget.guestUpgradeToken == null
+                    ? _firstOpenWelcome(context)
+                    : compactLandscape
                     ? _premiumCompactLandscapeBody(context)
                     : LayoutBuilder(
                         builder:
                             (BuildContext context, BoxConstraints constraints) {
-                          return SingleChildScrollView(
-                            keyboardDismissBehavior:
-                                ScrollViewKeyboardDismissBehavior.onDrag,
-                            padding: const EdgeInsets.all(12),
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight: (constraints.maxHeight - 24)
-                                    .clamp(0.0, double.infinity),
-                              ),
-                              child: Align(
-                                alignment: Alignment.center,
-                                child: _premiumResponsiveBody(context),
-                              ),
-                            ),
-                          );
-                        },
+                              return SingleChildScrollView(
+                                keyboardDismissBehavior:
+                                    ScrollViewKeyboardDismissBehavior.onDrag,
+                                padding: const EdgeInsets.all(12),
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minHeight: (constraints.maxHeight - 24)
+                                        .clamp(0.0, double.infinity),
+                                  ),
+                                  child: Align(
+                                    alignment: Alignment.center,
+                                    child: _premiumResponsiveBody(context),
+                                  ),
+                                ),
+                              );
+                            },
                       ),
               ),
             ),
+    );
+  }
+
+  Widget _firstOpenWelcome(BuildContext context) {
+    final Size viewport = MediaQuery.sizeOf(context);
+    final bool landscape = viewport.width > viewport.height;
+    final double panelWidth = landscape ? 860 : 500;
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: panelWidth),
+          child: Container(
+            padding: EdgeInsets.all(landscape ? 34 : 26),
+            decoration: BoxDecoration(
+              color: const Color(0xF2071729),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: const Color(0xFF2A4964)),
+              boxShadow: const <BoxShadow>[
+                BoxShadow(color: Color(0x6600A6C8), blurRadius: 40),
+              ],
+            ),
+            child: Flex(
+              direction: landscape ? Axis.horizontal : Axis.vertical,
+              children: <Widget>[
+                _AuthWelcomeFlex(
+                  expanded: landscape,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Image.asset(
+                        'assets/branding/app_icon.png',
+                        width: landscape ? 150 : 118,
+                        height: landscape ? 150 : 118,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Welcome to\nChessVerseAI',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 32,
+                          height: 1.05,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: landscape ? 38 : 0, height: landscape ? 0 : 24),
+                _AuthWelcomeFlex(
+                  expanded: landscape,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      const Text(
+                        'Start playing in seconds.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Save your games, rating and learning progress later by signing in.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        height: 54,
+                        child: FilledButton.icon(
+                          key: const ValueKey<String>('play-as-guest-primary'),
+                          onPressed: _loading ? null : _continueAsGuest,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.accentGold,
+                            foregroundColor: const Color(0xFF071421),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          icon: const Icon(Icons.bolt_rounded),
+                          label: const Text(
+                            'Play as Guest',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton(
+                        key: const ValueKey<String>('open-account-access'),
+                        onPressed: () =>
+                            setState(() => _showAccountForm = true),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(50),
+                          side: const BorderSide(color: Color(0xFF4ECFBE)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        child: const Text('Sign In / Create Account'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -214,10 +347,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(42, 22, 42, 22),
-                          child: _premiumFormContent(
-                            context,
-                            showBrand: false,
-                          ),
+                          child: _premiumFormContent(context, showBrand: false),
                         ),
                       ),
                     ],
@@ -304,10 +434,7 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _premiumFormContent(
-    BuildContext context, {
-    bool showBrand = true,
-  }) {
+  Widget _premiumFormContent(BuildContext context, {bool showBrand = true}) {
     // Typical phones are ~720-850 logical px tall. Treating every one of
     // them as dense made the complete form look cramped in the middle of the
     // screen. Only genuinely short windows use the compressed rhythm.
@@ -322,16 +449,16 @@ class _AuthScreenState extends State<AuthScreen> {
           widget.guestUpgradeToken != null
               ? 'Secure your progress'
               : _verificationMode
-                  ? 'Verify your email'
-                  : _loginMode
-                      ? 'Welcome'
-                      : 'Create your account',
+              ? 'Verify your email'
+              : _loginMode
+              ? 'Welcome'
+              : 'Create your account',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: AppColors.textPrimary,
-                fontSize: dense ? 26 : 31,
-                fontWeight: FontWeight.w900,
-                height: 1.05,
-              ),
+            color: AppColors.textPrimary,
+            fontSize: dense ? 26 : 31,
+            fontWeight: FontWeight.w900,
+            height: 1.05,
+          ),
         ),
         SizedBox(height: dense ? 6 : 10),
         Text(
@@ -453,10 +580,10 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: AppColors.textPrimary,
-                fontSize: dense ? 21 : 26,
-                fontWeight: FontWeight.w900,
-              ),
+            color: AppColors.textPrimary,
+            fontSize: dense ? 21 : 26,
+            fontWeight: FontWeight.w900,
+          ),
         ),
         SizedBox(height: dense ? 7 : 14),
         Row(
@@ -669,8 +796,9 @@ class _AuthScreenState extends State<AuthScreen> {
           backgroundColor: Colors.transparent,
           foregroundColor: const Color(0xFF101010),
           shadowColor: Colors.transparent,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(13),
+          ),
         ),
         onPressed: _loading ? null : _submit,
         icon: _loading
@@ -684,8 +812,8 @@ class _AuthScreenState extends State<AuthScreen> {
           _verificationMode
               ? 'Verify & Continue'
               : _loginMode
-                  ? 'Login'
-                  : 'Send Code',
+              ? 'Login'
+              : 'Send Code',
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
         ),
       ),
@@ -728,7 +856,8 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _premiumSocialButtons() {
-    final bool filePreview = kIsWeb &&
+    final bool filePreview =
+        kIsWeb &&
         (Uri.base.scheme == 'file' ||
             Uri.base.host == '127.0.0.1' ||
             Uri.base.host == 'localhost');
@@ -744,10 +873,7 @@ class _AuthScreenState extends State<AuthScreen> {
           _SocialButton(
             label: 'Facebook',
             onPressed: _loading ? null : _signInWithFacebook,
-            child: const Icon(
-              Icons.facebook_rounded,
-              color: Color(0xFF4285F4),
-            ),
+            child: const Icon(Icons.facebook_rounded, color: Color(0xFF4285F4)),
           ),
         ],
       );
@@ -756,8 +882,8 @@ class _AuthScreenState extends State<AuthScreen> {
       builder: (BuildContext context, BoxConstraints constraints) {
         // Guest accounts can be secured with either provider. Hiding Facebook
         // here left upgrade users with only Google in both orientations.
-        final double buttonWidth =
-            ((constraints.maxWidth - 10) / 2).floorToDouble();
+        final double buttonWidth = ((constraints.maxWidth - 10) / 2)
+            .floorToDouble();
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
@@ -847,9 +973,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             Expanded(
                               child: Text(
                                 'CHESSVERSEAI',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleLarge
+                                style: Theme.of(context).textTheme.titleLarge
                                     ?.copyWith(
                                       fontWeight: FontWeight.w900,
                                       letterSpacing: 0.4,
@@ -863,13 +987,11 @@ class _AuthScreenState extends State<AuthScreen> {
                           widget.guestUpgradeToken != null
                               ? 'Secure your progress'
                               : _verificationMode
-                                  ? 'Verify your email'
-                                  : _loginMode
-                                      ? 'Welcome'
-                                      : 'Create ChessVerseAI ID',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
+                              ? 'Verify your email'
+                              : _loginMode
+                              ? 'Welcome'
+                              : 'Create ChessVerseAI ID',
+                          style: Theme.of(context).textTheme.headlineMedium
                               ?.copyWith(
                                 fontSize: 34,
                                 fontWeight: FontWeight.w900,
@@ -907,7 +1029,9 @@ class _AuthScreenState extends State<AuthScreen> {
                           const Text(
                             'Link Google or Facebook to keep this guest profile, rating and match history across devices. Your existing progress will not be deleted.',
                             style: TextStyle(
-                                color: AppColors.textSecondary, height: 1.45),
+                              color: AppColors.textSecondary,
+                              height: 1.45,
+                            ),
                           ),
                         ] else if (_verificationMode) ...<Widget>[
                           Text(
@@ -981,8 +1105,8 @@ class _AuthScreenState extends State<AuthScreen> {
                                 onChanged: _loading
                                     ? null
                                     : (bool? value) => unawaited(
-                                          _setRememberMe(value ?? true),
-                                        ),
+                                        _setRememberMe(value ?? true),
+                                      ),
                               ),
                               const Expanded(child: Text('Remember me')),
                               TextButton(
@@ -1008,15 +1132,16 @@ class _AuthScreenState extends State<AuthScreen> {
                                     width: 18,
                                     height: 18,
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2),
+                                      strokeWidth: 2,
+                                    ),
                                   )
                                 : const Icon(Icons.login_rounded),
                             label: Text(
                               _verificationMode
                                   ? 'Verify & Continue'
                                   : _loginMode
-                                      ? 'Login'
-                                      : 'Send Code',
+                                  ? 'Login'
+                                  : 'Send Code',
                             ),
                           ),
                         if (widget.guestUpgradeToken == null)
@@ -1032,19 +1157,19 @@ class _AuthScreenState extends State<AuthScreen> {
                           children: <Widget>[
                             Expanded(
                               child: kIsWeb
-                                  ? Center(
-                                      child: buildWebGoogleSignInButton(),
-                                    )
+                                  ? Center(child: buildWebGoogleSignInButton())
                                   : OutlinedButton.icon(
-                                      onPressed:
-                                          _loading ? null : _signInWithGoogle,
+                                      onPressed: _loading
+                                          ? null
+                                          : _signInWithGoogle,
                                       icon: const Icon(
                                         Icons.g_mobiledata_rounded,
                                       ),
                                       label: Text(
-                                          widget.guestUpgradeToken == null
-                                              ? 'Google'
-                                              : 'SECURE WITH GOOGLE'),
+                                        widget.guestUpgradeToken == null
+                                            ? 'Google'
+                                            : 'SECURE WITH GOOGLE',
+                                      ),
                                     ),
                             ),
                           ],
@@ -1061,10 +1186,8 @@ class _AuthScreenState extends State<AuthScreen> {
                         Text(
                           'Guest players receive a secure numbered identity for online games, ratings and history. Add Google or email later for account recovery.',
                           textAlign: TextAlign.center,
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppColors.textSecondary,
-                                  ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppColors.textSecondary),
                         ),
                       ],
                     ),
@@ -1099,14 +1222,10 @@ class _AuthScreenState extends State<AuthScreen> {
       final String accessToken = result.accessToken!.tokenString;
       final String? upgradeToken = widget.guestUpgradeToken;
       final Map<String, dynamic> data = upgradeToken == null
-          ? await _authApi.post(
-              'facebook',
-              <String, String>{'accessToken': accessToken},
-            )
-          : await _authApi.upgradeGuestWithFacebook(
-              upgradeToken,
-              accessToken,
-            );
+          ? await _authApi.post('facebook', <String, String>{
+              'accessToken': accessToken,
+            })
+          : await _authApi.upgradeGuestWithFacebook(upgradeToken, accessToken);
       await _completeAuthentication(data);
     } on AuthApiException catch (error) {
       AppDiagnostics.log('facebook_sign_in_failed', <String, Object?>{
@@ -1115,11 +1234,13 @@ class _AuthScreenState extends State<AuthScreen> {
       });
       if (mounted) setState(() => _error = error.message);
     } on Object catch (error, stack) {
-      unawaited(AppDiagnostics.recordError(
-        error,
-        stack,
-        reason: 'Facebook sign-in failed',
-      ));
+      unawaited(
+        AppDiagnostics.recordError(
+          error,
+          stack,
+          reason: 'Facebook sign-in failed',
+        ),
+      );
       if (mounted) {
         setState(() => _error = 'Facebook sign-in failed. Please try again.');
       }
@@ -1138,8 +1259,7 @@ class _AuthScreenState extends State<AuthScreen> {
       final GoogleSignIn googleSignIn = GoogleSignIn.instance;
       await googleSignIn.initialize(clientId: AppConfig.googleWebClientId);
       _googleInitialized = true;
-      _googleAuthenticationSubscription =
-          googleSignIn.authenticationEvents.listen(
+      _googleAuthenticationSubscription = googleSignIn.authenticationEvents.listen(
         (GoogleSignInAuthenticationEvent event) {
           if (event is GoogleSignInAuthenticationEventSignIn) {
             unawaited(_authenticateGoogleAccount(event.user));
@@ -1202,11 +1322,13 @@ class _AuthScreenState extends State<AuthScreen> {
       });
       if (mounted) setState(() => _error = error.message);
     } on Object catch (error, stack) {
-      unawaited(AppDiagnostics.recordError(
-        error,
-        stack,
-        reason: 'Google sign-in failed',
-      ));
+      unawaited(
+        AppDiagnostics.recordError(
+          error,
+          stack,
+          reason: 'Google sign-in failed',
+        ),
+      );
       if (mounted) {
         setState(() => _error = 'Google sign-in failed. Please try again.');
       }
@@ -1266,8 +1388,9 @@ class _AuthScreenState extends State<AuthScreen> {
     bool? guestOverride,
   }) async {
     final String token = data['token'] as String? ?? '';
-    final DateTime? expiresAt =
-        DateTime.tryParse(data['expiresAt'] as String? ?? '');
+    final DateTime? expiresAt = DateTime.tryParse(
+      data['expiresAt'] as String? ?? '',
+    );
     if (token.isEmpty || expiresAt == null) {
       throw const AuthApiException('The server returned an invalid session.');
     }
@@ -1276,8 +1399,9 @@ class _AuthScreenState extends State<AuthScreen> {
     try {
       // Treat /me as the source of truth. Native Google Sign-In responses can
       // arrive before all player fields have been materialised in the client.
-      final Map<String, dynamic> currentPlayer =
-          await _authApi.currentPlayer(token);
+      final Map<String, dynamic> currentPlayer = await _authApi.currentPlayer(
+        token,
+      );
       if (currentPlayer.isNotEmpty) {
         player = currentPlayer;
       }
@@ -1291,7 +1415,8 @@ class _AuthScreenState extends State<AuthScreen> {
     final String? resolvedPhotoUrl =
         _nonBlankString(player['photoUrl']) ?? _nonBlankString(photoUrl);
     final bool isGuest = guestOverride ?? player['guest'] == true;
-    final String name = _nonBlankString(player['displayName']) ??
+    final String name =
+        _nonBlankString(player['displayName']) ??
         username ??
         email?.split('@').first ??
         'ChessVerseAI Player';
@@ -1306,8 +1431,9 @@ class _AuthScreenState extends State<AuthScreen> {
           photoUrl: resolvedPhotoUrl,
           isGuest: isGuest,
           refreshToken: _nonBlankString(data['refreshToken']),
-          refreshExpiresAt:
-              DateTime.tryParse(data['refreshExpiresAt'] as String? ?? ''),
+          refreshExpiresAt: DateTime.tryParse(
+            data['refreshExpiresAt'] as String? ?? '',
+          ),
           sessionId: _nonBlankString(data['sessionId']),
         ),
       );
@@ -1345,7 +1471,8 @@ class _AuthScreenState extends State<AuthScreen> {
     } catch (_) {
       if (mounted) {
         setState(
-            () => _error = 'Guest identity could not be created. Try again.');
+          () => _error = 'Guest identity could not be created. Try again.',
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -1375,35 +1502,30 @@ class _AuthScreenState extends State<AuthScreen> {
     });
     try {
       if (_verificationMode) {
-        final Map<String, dynamic> data = await _authApi.post(
-          'verify-email',
-          <String, String>{
-            'email': _emailController.text.trim(),
-            'code': _verificationCodeController.text.trim(),
-          },
-        );
+        final Map<String, dynamic> data = await _authApi
+            .post('verify-email', <String, String>{
+              'email': _emailController.text.trim(),
+              'code': _verificationCodeController.text.trim(),
+            });
         await _completeAuthentication(data);
       } else if (_loginMode) {
-        final Map<String, dynamic> data = await _authApi.post(
-          'login',
-          <String, String>{
-            'identity': _emailController.text.trim(),
-            'password': _passwordController.text,
-          },
-        );
+        final Map<String, dynamic> data = await _authApi
+            .post('login', <String, String>{
+              'identity': _emailController.text.trim(),
+              'password': _passwordController.text,
+            });
         await _completeAuthentication(data);
       } else {
-        final Map<String, dynamic> data = await _authApi.post(
-          'register',
-          <String, String>{
-            'username': _userIdController.text.trim(),
-            'displayName': _displayNameController.text.trim(),
-            'email': _emailController.text.trim(),
-            'password': _passwordController.text,
-          },
-        );
+        final Map<String, dynamic> data = await _authApi
+            .post('register', <String, String>{
+              'username': _userIdController.text.trim(),
+              'displayName': _displayNameController.text.trim(),
+              'email': _emailController.text.trim(),
+              'password': _passwordController.text,
+            });
         setState(() {
-          _message = data['message'] as String? ??
+          _message =
+              data['message'] as String? ??
               'Verification code sent. Check your email.';
           _verificationMode = true;
           _applyVerificationTiming(data);
@@ -1422,8 +1544,9 @@ class _AuthScreenState extends State<AuthScreen> {
 
   bool _validateCurrentForm() {
     if (_verificationMode) {
-      if (!RegExp(r'^\d{6}$')
-          .hasMatch(_verificationCodeController.text.trim())) {
+      if (!RegExp(
+        r'^\d{6}$',
+      ).hasMatch(_verificationCodeController.text.trim())) {
         setState(() => _error = 'Enter the complete 6-digit code.');
         return false;
       }
@@ -1443,13 +1566,16 @@ class _AuthScreenState extends State<AuthScreen> {
     final String email = _emailController.text.trim();
     final String password = _passwordController.text;
     if (!RegExp(r'^[A-Za-z0-9_.-]{3,40}$').hasMatch(username)) {
-      setState(() => _error =
-          'User ID must be 3–40 characters using letters, numbers, dot, dash or underscore.');
+      setState(
+        () => _error =
+            'User ID must be 3–40 characters using letters, numbers, dot, dash or underscore.',
+      );
       return false;
     }
     if (displayName.length < 2) {
       setState(
-          () => _error = 'Player name must contain at least 2 characters.');
+        () => _error = 'Player name must contain at least 2 characters.',
+      );
       return false;
     }
     if (!email.contains('@') || !email.contains('.')) {
@@ -1464,8 +1590,9 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _applyVerificationTiming(Map<String, dynamic> data) {
-    _verificationExpiresAt =
-        DateTime.tryParse(data['expiresAt'] as String? ?? '')?.toLocal();
+    _verificationExpiresAt = DateTime.tryParse(
+      data['expiresAt'] as String? ?? '',
+    )?.toLocal();
     _resendAvailableAt = DateTime.now().add(const Duration(seconds: 60));
     _verificationTimer?.cancel();
     _verificationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -1532,10 +1659,7 @@ class _AuthScreenState extends State<AuthScreen> {
       _message = null;
     });
     try {
-      await _authApi.post(
-        'password/forgot',
-        <String, String>{'email': email},
-      );
+      await _authApi.post('password/forgot', <String, String>{'email': email});
       if (!mounted) return;
       setState(
         () => _message = 'If that account exists, a reset code has been sent.',
@@ -1560,11 +1684,12 @@ class _AuthScreenState extends State<AuthScreen> {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) => StatefulBuilder(
-        builder: (BuildContext context, StateSetter setDialogState) =>
-            AlertDialog(
+        builder: (BuildContext context, StateSetter setDialogState) => AlertDialog(
           scrollable: true,
-          insetPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 24,
+          ),
           actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
           title: const Text('Reset password'),
           content: SizedBox(
@@ -1658,14 +1783,11 @@ class _AuthScreenState extends State<AuthScreen> {
                         dialogError = null;
                       });
                       try {
-                        await _authApi.post(
-                          'password/reset',
-                          <String, String>{
-                            'email': email,
-                            'code': code,
-                            'newPassword': newPassword,
-                          },
-                        );
+                        await _authApi.post('password/reset', <String, String>{
+                          'email': email,
+                          'code': code,
+                          'newPassword': newPassword,
+                        });
                         if (dialogContext.mounted) {
                           Navigator.of(dialogContext).pop(true);
                         }
@@ -1746,8 +1868,10 @@ class _ModeButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Icon(icon,
-                color: selected ? const Color(0xFF5EEAD4) : Colors.white),
+            Icon(
+              icon,
+              color: selected ? const Color(0xFF5EEAD4) : Colors.white,
+            ),
             const SizedBox(width: 8),
             Flexible(
               child: Text(
@@ -1953,8 +2077,10 @@ class _AuthFieldState extends State<_AuthField> {
             : null,
         filled: true,
         fillColor: const Color(0xA8071528),
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 14,
+          horizontal: 16,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(13),
           borderSide: const BorderSide(color: Color(0xFF34445C)),
@@ -2017,9 +2143,9 @@ class _SocialSignInOverlay extends StatelessWidget {
                 Text(
                   'Signing you in…',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Padding(
@@ -2060,10 +2186,11 @@ class _Notice extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Icon(
-                isError
-                    ? Icons.error_outline_rounded
-                    : Icons.check_circle_outline_rounded,
-                color: color),
+              isError
+                  ? Icons.error_outline_rounded
+                  : Icons.check_circle_outline_rounded,
+              color: color,
+            ),
             const SizedBox(width: 10),
             Expanded(child: Text(message)),
           ],

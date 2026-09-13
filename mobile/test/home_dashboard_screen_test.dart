@@ -97,11 +97,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      app(
-        onOnline: () {},
-        onComputer: () {},
-        onSavedGames: () => opens++,
-      ),
+      app(onOnline: () {}, onComputer: () {}, onSavedGames: () => opens++),
     );
     await tester.pumpAndSettle();
 
@@ -132,8 +128,8 @@ void main() {
     expect(find.text('Play'), findsOneWidget);
     expect(find.text('Puzzles'), findsNWidgets(2));
     expect(find.text('Rankings'), findsOneWidget);
-    expect(find.text('Play Online'), findsOneWidget);
-    expect(find.byKey(const ValueKey<String>('play-computer')), findsOneWidget);
+    expect(find.text('Play vs AI'), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('play-computer')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -150,8 +146,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey<String>('global-coin-balance')),
-        findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('global-coin-balance')),
+      findsOneWidget,
+    );
     expect(find.text('Your Coins: '), findsOneWidget);
     expect(find.text('1,250'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -175,14 +173,18 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final Finder coins =
-        find.byKey(const ValueKey<String>('global-coin-balance'));
-    final Finder settings =
-        find.byKey(const ValueKey<String>('home-settings-top'));
+    final Finder coins = find.byKey(
+      const ValueKey<String>('global-coin-balance'),
+    );
+    final Finder settings = find.byKey(
+      const ValueKey<String>('home-settings-top'),
+    );
     expect(coins, findsOneWidget);
     expect(settings, findsOneWidget);
-    expect(tester.getTopLeft(coins).dy,
-        greaterThan(tester.getTopLeft(settings).dy));
+    expect(
+      tester.getTopLeft(coins).dy,
+      greaterThan(tester.getTopLeft(settings).dy),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -195,18 +197,11 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      app(
-        onOnline: () {},
-        onComputer: () {},
-        onlinePlayerCount: 0,
-      ),
+      app(onOnline: () {}, onComputer: () {}, onlinePlayerCount: 0),
     );
     await tester.pumpAndSettle();
 
-    expect(
-      find.textContaining('No other players online'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('No other players online'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -250,7 +245,9 @@ void main() {
 
     expect(find.text('World Chess Tournaments'), findsOneWidget);
     expect(
-        find.textContaining('Next event: Hyderabad Royal Cup'), findsOneWidget);
+      find.textContaining('Next event: Hyderabad Royal Cup'),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const ValueKey<String>('home-tournament-countdown')),
       findsOneWidget,

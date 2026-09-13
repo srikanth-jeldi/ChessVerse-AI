@@ -74,6 +74,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('ChessVerseAI', findRichText: true), findsOneWidget);
+      expect(find.text('Play as Guest'), findsOneWidget);
+      await tester.tap(find.text('Sign In / Create Account'));
+      await tester.pumpAndSettle();
       expect(find.text('Register'), findsOneWidget);
       expect(find.text('Login'), findsAtLeastNWidgets(1));
       expect(find.byType(TextField), findsAtLeastNWidgets(2));
@@ -122,7 +125,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Play Online'), findsOneWidget);
+      expect(find.text('Play vs AI'), findsOneWidget);
       expect(find.text('Play Computer'), findsOneWidget);
       expect(find.text('Play with Friends'), findsOneWidget);
       expect(

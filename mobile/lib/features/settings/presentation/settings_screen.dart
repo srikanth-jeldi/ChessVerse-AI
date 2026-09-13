@@ -238,8 +238,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: _SettingRow(
                           icon: Icons.language_rounded,
                           title: 'App & coach language',
-                          value: AppLanguageController.byCode(_language)
-                              .displayName,
+                          value: AppLanguageController.byCode(
+                            _language,
+                          ).displayName,
                           onTap: _chooseLanguage,
                         ),
                       ),
@@ -294,9 +295,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ),
                                       title: const Text('ChessVerseAI'),
                                       subtitle: Text(
-                                    info == null
-                                        ? 'Reading app version…'
-                                        : 'Version ${info.version}',
+                                        info == null
+                                            ? 'Reading app version…'
+                                            : 'Version ${info.version}',
                                       ),
                                     );
                                   },
@@ -886,8 +887,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _openLegal(BuildContext context, LegalPageType type) {
-    Navigator.of(context)
-        .push(MaterialPageRoute<void>(builder: (_) => LegalScreen(type: type)));
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => LegalScreen(type: type)));
   }
 }
 
@@ -1278,35 +1280,42 @@ class _SettingRow extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: _GoldIcon(icon),
-      title: Text(title, style: Theme.of(context).textTheme.titleMedium),
-      trailing: SizedBox(
-        // ListTile lays out trailing content before its title. An unbounded
-        // Flexible row can consume the whole tile when a value is long.
-        width: MediaQuery.sizeOf(context).width < 600 ? 120 : 180,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Flexible(
-              child: Text(
-                value,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.end,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(16),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      child: Row(
+        children: <Widget>[
+          _GoldIcon(icon),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
             ),
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded),
-          ],
-        ),
+          ),
+          const SizedBox(width: 6),
+          const Icon(Icons.chevron_right_rounded),
+        ],
       ),
-      onTap: onTap,
-    );
-  }
+    ),
+  );
 }
 
 class _ActionRow extends StatelessWidget {

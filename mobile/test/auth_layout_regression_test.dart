@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('portrait login is scroll-safe and anchors the king',
-      (WidgetTester tester) async {
+  testWidgets('portrait login is scroll-safe and anchors the king', (
+    WidgetTester tester,
+  ) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.resetPhysicalSize);
@@ -13,6 +14,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: AuthScreen(onAuthenticated: (_) {})),
     );
+    await tester.tap(find.text('Sign In / Create Account'));
     await tester.pump();
 
     expect(find.byType(SingleChildScrollView), findsOneWidget);
@@ -27,8 +29,9 @@ void main() {
     expect(king.height, greaterThan(220));
   });
 
-  testWidgets('opening the keyboard keeps the login field focused',
-      (WidgetTester tester) async {
+  testWidgets('opening the keyboard keeps the login field focused', (
+    WidgetTester tester,
+  ) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.resetPhysicalSize);
@@ -38,6 +41,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: AuthScreen(onAuthenticated: (_) {})),
     );
+    await tester.tap(find.text('Sign In / Create Account'));
+    await tester.pumpAndSettle();
 
     final Finder identityField = find.byType(TextField).first;
     await tester.tap(identityField);
@@ -46,10 +51,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final EditableText editable = tester.widget<EditableText>(
-      find.descendant(
-        of: identityField,
-        matching: find.byType(EditableText),
-      ),
+      find.descendant(of: identityField, matching: find.byType(EditableText)),
     );
     expect(editable.focusNode.hasFocus, isTrue);
     expect(tester.testTextInput.isVisible, isTrue);
@@ -58,8 +60,9 @@ void main() {
     expect(find.text('player@example.com'), findsOneWidget);
   });
 
-  testWidgets('player name stays visible after switching from login',
-      (WidgetTester tester) async {
+  testWidgets('player name stays visible after switching from login', (
+    WidgetTester tester,
+  ) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.resetPhysicalSize);
@@ -68,6 +71,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: AuthScreen(onAuthenticated: (_) {})),
     );
+    await tester.tap(find.text('Sign In / Create Account'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Register'));
     await tester.pumpAndSettle();
 
@@ -79,17 +84,15 @@ void main() {
     await tester.enterText(playerNameField, 'Srikanth');
 
     final EditableText editable = tester.widget<EditableText>(
-      find.descendant(
-        of: playerNameField,
-        matching: find.byType(EditableText),
-      ),
+      find.descendant(of: playerNameField, matching: find.byType(EditableText)),
     );
     expect(editable.obscureText, isFalse);
     expect(find.text('Srikanth'), findsOneWidget);
   });
 
-  testWidgets('landscape phone uses the dedicated mobile split',
-      (WidgetTester tester) async {
+  testWidgets('landscape phone uses the dedicated mobile split', (
+    WidgetTester tester,
+  ) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(844, 390);
     addTearDown(tester.view.resetPhysicalSize);
@@ -98,6 +101,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: AuthScreen(onAuthenticated: (_) {})),
     );
+    await tester.tap(find.text('Sign In / Create Account'));
     await tester.pump();
 
     expect(

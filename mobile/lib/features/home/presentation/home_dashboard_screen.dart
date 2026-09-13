@@ -232,6 +232,15 @@ class _MobileHomeState extends State<_MobileHome> {
                           setState(() => _heroIndex = value),
                       slides: <_HomeHeroData>[
                         _HomeHeroData(
+                          title: 'Play vs AI',
+                          subtitle: 'Start instantly at your perfect level',
+                          icon: Icons.smart_toy_rounded,
+                          buttonLabel: 'Play Now',
+                          asset:
+                              'assets/backgrounds/home-computer-hero-v1.webp',
+                          onTap: widget.onPlayVsAi,
+                        ),
+                        _HomeHeroData(
                           title: 'Play Online',
                           subtitle:
                               'Find a live opponent from around the world',
@@ -242,12 +251,21 @@ class _MobileHomeState extends State<_MobileHome> {
                           onTap: widget.onOnlineGame,
                         ),
                         _HomeHeroData(
-                          title: 'Play Computer',
-                          subtitle: 'Challenge ChessVerseAI at any level',
-                          icon: Icons.computer_rounded,
-                          buttonLabel: 'Choose Side',
-                          asset: 'assets/backgrounds/home-computer-hero-v1.webp',
-                          onTap: widget.onPlayVsAi,
+                          title: 'Daily Puzzle',
+                          subtitle: 'Build your streak with today’s challenge',
+                          icon: Icons.extension_rounded,
+                          buttonLabel: 'Solve Today',
+                          asset:
+                              'assets/backgrounds/daily-challenge-card-v2.webp',
+                          onTap: widget.onDailyChallenge,
+                        ),
+                        _HomeHeroData(
+                          title: 'Learn with AI Coach',
+                          subtitle: 'Improve step by step with guided lessons',
+                          icon: Icons.school_rounded,
+                          buttonLabel: 'Continue Learning',
+                          asset: 'assets/backgrounds/home-learn-hero-v1.webp',
+                          onTap: widget.onLearnChess,
                         ),
                         _tournamentHero(
                           widget.nextTournament,
@@ -274,7 +292,8 @@ class _MobileHomeState extends State<_MobileHome> {
                           subtitle: 'Track your ELO and global position',
                           icon: Icons.leaderboard_rounded,
                           buttonLabel: 'View Rankings',
-                          asset: 'assets/backgrounds/home-rankings-hero-v1.webp',
+                          asset:
+                              'assets/backgrounds/home-rankings-hero-v1.webp',
                           onTap: widget.onRankings,
                         ),
                         _HomeHeroData(
@@ -283,7 +302,8 @@ class _MobileHomeState extends State<_MobileHome> {
                               'Personalize your board and game experience',
                           icon: Icons.tune_rounded,
                           buttonLabel: 'Open Settings',
-                          asset: 'assets/backgrounds/home-settings-hero-v1.webp',
+                          asset:
+                              'assets/backgrounds/home-settings-hero-v1.webp',
                           onTap: widget.onSettings,
                         ),
                       ],
@@ -340,7 +360,8 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.leaderboard_rounded,
                           label: 'Rankings',
                           color: const Color(0xFFF3B84F),
-                          asset: 'assets/backgrounds/home-rankings-hero-v1.webp',
+                          asset:
+                              'assets/backgrounds/home-rankings-hero-v1.webp',
                           onTap: widget.onRankings,
                         ),
                         _MiniCard(
@@ -356,7 +377,8 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.trending_up_rounded,
                           label: 'Analysis',
                           color: const Color(0xFF3DA2FF),
-                          asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
+                          asset:
+                              'assets/backgrounds/home-analysis-hero-v1.webp',
                           onTap: widget.onAnalysis,
                         ),
                         _MiniCard(
@@ -372,7 +394,8 @@ class _MobileHomeState extends State<_MobileHome> {
                           icon: Icons.history_rounded,
                           label: 'My Games',
                           color: const Color(0xFF55E1CF),
-                          asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
+                          asset:
+                              'assets/backgrounds/home-analysis-hero-v1.webp',
                           onTap: widget.onSavedGames,
                         ),
                       ],
@@ -516,6 +539,15 @@ class _WideHomeState extends State<_WideHome> {
                           wide: true,
                           slides: <_HomeHeroData>[
                             _HomeHeroData(
+                              title: 'Play vs AI',
+                              subtitle: 'Start instantly at your perfect level',
+                              icon: Icons.smart_toy_rounded,
+                              buttonLabel: 'Play Now',
+                              asset:
+                                  'assets/backgrounds/home-computer-hero-v1.webp',
+                              onTap: widget.onPlayVsAi,
+                            ),
+                            _HomeHeroData(
                               title: 'Play Online',
                               subtitle:
                                   'Find a live opponent from around the world',
@@ -523,18 +555,30 @@ class _WideHomeState extends State<_WideHome> {
                               buttonLabel: 'Play Now',
                               asset:
                                   'assets/backgrounds/home-online-hero-v1.webp',
-                              statusLabel:
-                                  _onlineStatus(widget.onlinePlayerCount),
+                              statusLabel: _onlineStatus(
+                                widget.onlinePlayerCount,
+                              ),
                               onTap: widget.onOnlineGame,
                             ),
                             _HomeHeroData(
-                              title: 'Play Computer',
-                              subtitle: 'Challenge ChessVerseAI at any level',
-                              icon: Icons.computer_rounded,
-                              buttonLabel: 'Choose Side',
+                              title: 'Daily Puzzle',
+                              subtitle:
+                                  'Build your streak with today’s challenge',
+                              icon: Icons.extension_rounded,
+                              buttonLabel: 'Solve Today',
                               asset:
-                                  'assets/backgrounds/home-computer-hero-v1.webp',
-                              onTap: widget.onPlayVsAi,
+                                  'assets/backgrounds/daily-challenge-card-v2.webp',
+                              onTap: widget.onDailyChallenge,
+                            ),
+                            _HomeHeroData(
+                              title: 'Learn with AI Coach',
+                              subtitle:
+                                  'Improve step by step with guided lessons',
+                              icon: Icons.school_rounded,
+                              buttonLabel: 'Continue Learning',
+                              asset:
+                                  'assets/backgrounds/home-learn-hero-v1.webp',
+                              onTap: widget.onLearnChess,
                             ),
                             _tournamentHero(
                               widget.nextTournament,
@@ -585,98 +629,82 @@ class _WideHomeState extends State<_WideHome> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: <Widget>[
                             Expanded(
-                              flex: 2,
-                              child: _ActionCard(
-                                keyName: 'play-computer',
-                                icon: Icons.computer_rounded,
-                                title: 'Play Computer',
-                                subtitle: 'Challenge the AI at any level',
-                                color: const Color(0xFF123B58),
+                              child: _MiniCard(
+                                keyName: 'chess-puzzles',
+                                icon: Icons.extension_rounded,
+                                label: 'Puzzles',
+                                subtitle: 'Sharpen your skills',
+                                color: AppColors.accentGold,
                                 asset:
-                                    'assets/backgrounds/home-computer-hero-v1.webp',
-                                onTap: widget.onPlayVsAi,
+                                    'assets/backgrounds/home-puzzles-hero-v1.webp',
+                                onTap: widget.onPuzzles,
                               ),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
-                              flex: 2,
-                              child: _ActionCard(
-                                keyName: 'play-friends',
-                                icon: Icons.groups_rounded,
-                                title: 'Play with Friends',
-                                subtitle: 'Create or join a room',
-                                color: const Color(0xFF14513F),
+                              child: _MiniCard(
+                                keyName: 'rankings',
+                                icon: Icons.leaderboard_rounded,
+                                label: 'Rankings',
+                                subtitle: 'See stats & progress',
+                                color: const Color(0xFFF1B74D),
+                                asset:
+                                    'assets/backgrounds/home-rankings-hero-v1.webp',
+                                onTap: widget.onRankings,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: _MiniCard(
+                                keyName: 'community',
+                                icon: Icons.groups_2_rounded,
+                                label: 'Community',
+                                subtitle: 'Friends, clubs & events',
+                                color: const Color(0xFF55E1CF),
                                 asset:
                                     'assets/backgrounds/home-friends-hero-v1.webp',
-                                onTap: widget.onFriendsGame,
+                                onTap: widget.onCommunity,
                               ),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
-                                child: _MiniCard(
-                                    keyName: 'chess-puzzles',
-                                    icon: Icons.extension_rounded,
-                                    label: 'Puzzles',
-                                    subtitle: 'Sharpen your skills',
-                                    color: AppColors.accentGold,
-                                    asset:
-                                        'assets/backgrounds/home-puzzles-hero-v1.webp',
-                                    onTap: widget.onPuzzles)),
+                              child: _MiniCard(
+                                keyName: 'analysis',
+                                icon: Icons.trending_up_rounded,
+                                label: 'Analysis',
+                                subtitle: 'Review your games',
+                                color: const Color(0xFF3DA2FF),
+                                asset:
+                                    'assets/backgrounds/home-analysis-hero-v1.webp',
+                                onTap: widget.onAnalysis,
+                              ),
+                            ),
                             const SizedBox(width: 14),
                             Expanded(
-                                child: _MiniCard(
-                                    keyName: 'rankings',
-                                    icon: Icons.leaderboard_rounded,
-                                    label: 'Rankings',
-                                    subtitle: 'See stats & progress',
-                                    color: const Color(0xFFF1B74D),
-                                    asset:
-                                        'assets/backgrounds/home-rankings-hero-v1.webp',
-                                    onTap: widget.onRankings)),
+                              child: _MiniCard(
+                                keyName: 'learn',
+                                icon: Icons.school_rounded,
+                                label: 'Learn',
+                                subtitle: 'Improve & grow',
+                                color: const Color(0xFFA879F5),
+                                asset:
+                                    'assets/backgrounds/home-learn-hero-v1.webp',
+                                onTap: widget.onLearnChess,
+                              ),
+                            ),
                             const SizedBox(width: 14),
                             Expanded(
-                                child: _MiniCard(
-                                    keyName: 'community',
-                                    icon: Icons.groups_2_rounded,
-                                    label: 'Community',
-                                    subtitle: 'Friends, clubs & events',
-                                    color: const Color(0xFF55E1CF),
-                                    asset:
-                                        'assets/backgrounds/home-friends-hero-v1.webp',
-                                    onTap: widget.onCommunity)),
-                            const SizedBox(width: 14),
-                            Expanded(
-                                child: _MiniCard(
-                                    keyName: 'analysis',
-                                    icon: Icons.trending_up_rounded,
-                                    label: 'Analysis',
-                                    subtitle: 'Review your games',
-                                    color: const Color(0xFF3DA2FF),
-                                    asset:
-                                        'assets/backgrounds/home-analysis-hero-v1.webp',
-                                    onTap: widget.onAnalysis)),
-                            const SizedBox(width: 14),
-                            Expanded(
-                                child: _MiniCard(
-                                    keyName: 'learn',
-                                    icon: Icons.school_rounded,
-                                    label: 'Learn',
-                                    subtitle: 'Improve & grow',
-                                    color: const Color(0xFFA879F5),
-                                    asset:
-                                        'assets/backgrounds/home-learn-hero-v1.webp',
-                                    onTap: widget.onLearnChess)),
-                            const SizedBox(width: 14),
-                            Expanded(
-                                child: _MiniCard(
-                                    keyName: 'my-games',
-                                    icon: Icons.history_rounded,
-                                    label: 'My Games',
-                                    subtitle: 'Continue or replay',
-                                    color: const Color(0xFF55E1CF),
-                                    asset:
-                                        'assets/backgrounds/home-analysis-hero-v1.webp',
-                                    onTap: widget.onSavedGames)),
+                              child: _MiniCard(
+                                keyName: 'my-games',
+                                icon: Icons.history_rounded,
+                                label: 'My Games',
+                                subtitle: 'Continue or replay',
+                                color: const Color(0xFF55E1CF),
+                                asset:
+                                    'assets/backgrounds/home-analysis-hero-v1.webp',
+                                onTap: widget.onSavedGames,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 18),
@@ -716,8 +744,9 @@ class _ProgressPulse extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final RewardSnapshot rewards =
-        games == null ? LocalGameArchive.rewards() : _rewardsForGames(games!);
+    final RewardSnapshot rewards = games == null
+        ? LocalGameArchive.rewards()
+        : _rewardsForGames(games!);
     return Semantics(
       label:
           'Level ${rewards.level}, ${rewards.xp} XP, ${rewards.streak} day streak',
@@ -728,40 +757,60 @@ class _ProgressPulse extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0x664BDAC7)),
         ),
-        child: Row(children: <Widget>[
-          const Icon(Icons.workspace_premium_rounded, color: Color(0xFFE7B54D)),
-          const SizedBox(width: 10),
-          Text('LEVEL ${rewards.level}',
-              style: const TextStyle(fontWeight: FontWeight.w900)),
-          const SizedBox(width: 12),
-          Expanded(
-              child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                      value: rewards.levelProgress,
-                      minHeight: 7,
-                      backgroundColor: const Color(0xFF263C4D),
-                      color: const Color(0xFF54DECA)))),
-          const SizedBox(width: 12),
-          Text('${rewards.xp} XP',
-              style: const TextStyle(
-                  color: Color(0xFF54DECA), fontWeight: FontWeight.w800)),
-          if (wide || rewards.streak > 0) ...<Widget>[
+        child: Row(
+          children: <Widget>[
+            const Icon(
+              Icons.workspace_premium_rounded,
+              color: Color(0xFFE7B54D),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'LEVEL ${rewards.level}',
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
             const SizedBox(width: 12),
-            const Icon(Icons.local_fire_department_rounded,
-                color: Color(0xFFFF9B45), size: 19),
-            Text('${rewards.streak}',
-                style: const TextStyle(fontWeight: FontWeight.w900)),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: rewards.levelProgress,
+                  minHeight: 7,
+                  backgroundColor: const Color(0xFF263C4D),
+                  color: const Color(0xFF54DECA),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              '${rewards.xp} XP',
+              style: const TextStyle(
+                color: Color(0xFF54DECA),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            if (wide || rewards.streak > 0) ...<Widget>[
+              const SizedBox(width: 12),
+              const Icon(
+                Icons.local_fire_department_rounded,
+                color: Color(0xFFFF9B45),
+                size: 19,
+              ),
+              Text(
+                '${rewards.streak}',
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ],
           ],
-        ]),
+        ),
       ),
     );
   }
 
   RewardSnapshot _rewardsForGames(List<SavedGameRecord> games) {
     final int wins = games.where((game) => game.playerOutcome == 'win').length;
-    final int draws =
-        games.where((game) => game.playerOutcome == 'draw').length;
+    final int draws = games
+        .where((game) => game.playerOutcome == 'draw')
+        .length;
     final int xp = games.length * 25 + wins * 45 + draws * 15;
     final int level = xp ~/ 120 + 1;
     return RewardSnapshot(
@@ -791,8 +840,9 @@ class _PersonalTrainingCard extends StatelessWidget {
     final bool activated = sourceGames.any(
       (SavedGameRecord game) => game.moveReviews.isNotEmpty,
     );
-    final String focus =
-        PlayerLearningProfile.labelFor(profile.primaryWeakness);
+    final String focus = PlayerLearningProfile.labelFor(
+      profile.primaryWeakness,
+    );
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -815,8 +865,10 @@ class _PersonalTrainingCard extends StatelessWidget {
               color: const Color(0x2259E4C8),
               border: Border.all(color: const Color(0xFF59E4C8)),
             ),
-            child: const Icon(Icons.psychology_alt_rounded,
-                color: Color(0xFF59E4C8)),
+            child: const Icon(
+              Icons.psychology_alt_rounded,
+              color: Color(0xFF59E4C8),
+            ),
           ),
           const SizedBox(width: 13),
           Expanded(
@@ -947,110 +999,125 @@ class _WideDashboardRowState extends State<_WideDashboardRow> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (BuildContext context, BoxConstraints size) {
-      final bool stack = size.maxWidth < 980;
-      if (stack) {
-        return Column(children: <Widget>[
-          _DashboardPanel(
-            title: 'Daily Puzzle',
-            trailing: 'View all',
-            onTap: widget.onPuzzles,
-            child: _CompactDailyPuzzle(onTap: widget.onDailyChallenge),
-          ),
-          const SizedBox(height: 16),
-          _DashboardPanel(
-            title: 'Activity Feed',
-            trailing: 'Live',
-            child: _ActivityFeed(games: _recentGames),
-          ),
-          const SizedBox(height: 16),
-          _DashboardPanel(
-            title: 'Top Players',
-            trailing: 'Global',
-            onTap: widget.onRankings,
-            child: _TopPlayersPreview(
-              board: _leaderboard,
-              loading: _loadingLeaderboard,
-              playerName: widget.playerName,
-              profilePhotoUrl: widget.profilePhotoUrl,
-            ),
-          ),
-        ]);
-      }
-      final List<Widget> panels = <Widget>[
-        Expanded(
-          child: _DashboardPanel(
-            title: 'Daily Puzzle',
-            trailing: 'View all',
-            onTap: widget.onPuzzles,
-            child: Row(children: <Widget>[
-              Container(
-                width: 116,
-                height: 116,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  image: const DecorationImage(
-                    image: AssetImage(
-                        'assets/backgrounds/home-puzzles-hero-v1.webp'),
-                    fit: BoxFit.cover,
-                  ),
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints size) {
+        final bool stack = size.maxWidth < 980;
+        if (stack) {
+          return Column(
+            children: <Widget>[
+              _DashboardPanel(
+                title: 'Daily Puzzle',
+                trailing: 'View all',
+                onTap: widget.onPuzzles,
+                child: _CompactDailyPuzzle(onTap: widget.onDailyChallenge),
+              ),
+              const SizedBox(height: 16),
+              _DashboardPanel(
+                title: 'Activity Feed',
+                trailing: 'Live',
+                child: _ActivityFeed(games: _recentGames),
+              ),
+              const SizedBox(height: 16),
+              _DashboardPanel(
+                title: 'Top Players',
+                trailing: 'Global',
+                onTap: widget.onRankings,
+                child: _TopPlayersPreview(
+                  board: _leaderboard,
+                  loading: _loadingLeaderboard,
+                  playerName: widget.playerName,
+                  profilePhotoUrl: widget.profilePhotoUrl,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const Text('Find the best move',
-                        style: TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 5),
-                    const Text('Today’s tactical challenge',
-                        style:
-                            TextStyle(color: Color(0xFF9EB5C7), fontSize: 12)),
-                    const SizedBox(height: 14),
-                    FilledButton(
-                      onPressed: widget.onDailyChallenge,
-                      child: const Text('Solve Puzzle'),
+            ],
+          );
+        }
+        final List<Widget> panels = <Widget>[
+          Expanded(
+            child: _DashboardPanel(
+              title: 'Daily Puzzle',
+              trailing: 'View all',
+              onTap: widget.onPuzzles,
+              child: Row(
+                children: <Widget>[
+                  Container(
+                    width: 116,
+                    height: 116,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      image: const DecorationImage(
+                        image: AssetImage(
+                          'assets/backgrounds/home-puzzles-hero-v1.webp',
+                        ),
+                        fit: BoxFit.cover,
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        const Text(
+                          'Find the best move',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        const Text(
+                          'Today’s tactical challenge',
+                          style: TextStyle(
+                            color: Color(0xFF9EB5C7),
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        FilledButton(
+                          onPressed: widget.onDailyChallenge,
+                          child: const Text('Solve Puzzle'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ]),
-          ),
-        ),
-        const SizedBox(width: 16, height: 16),
-        Expanded(
-          child: _DashboardPanel(
-            title: 'Activity Feed',
-            trailing: 'Live',
-            child: _ActivityFeed(games: _recentGames),
-          ),
-        ),
-        const SizedBox(width: 16, height: 16),
-        Expanded(
-          child: _DashboardPanel(
-            title: 'Top Players',
-            trailing: 'Global',
-            onTap: widget.onRankings,
-            child: _TopPlayersPreview(
-              board: _leaderboard,
-              loading: _loadingLeaderboard,
-              playerName: widget.playerName,
-              profilePhotoUrl: widget.profilePhotoUrl,
             ),
           ),
-        ),
-      ];
-      return SizedBox(
-        height: 280,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: panels,
-        ),
-      );
-    });
+          const SizedBox(width: 16, height: 16),
+          Expanded(
+            child: _DashboardPanel(
+              title: 'Activity Feed',
+              trailing: 'Live',
+              child: _ActivityFeed(games: _recentGames),
+            ),
+          ),
+          const SizedBox(width: 16, height: 16),
+          Expanded(
+            child: _DashboardPanel(
+              title: 'Top Players',
+              trailing: 'Global',
+              onTap: widget.onRankings,
+              child: _TopPlayersPreview(
+                board: _leaderboard,
+                loading: _loadingLeaderboard,
+                playerName: widget.playerName,
+                profilePhotoUrl: widget.profilePhotoUrl,
+              ),
+            ),
+          ),
+        ];
+        return SizedBox(
+          height: 280,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: panels,
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -1058,27 +1125,37 @@ class _CompactDailyPuzzle extends StatelessWidget {
   const _CompactDailyPuzzle({required this.onTap});
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => Row(children: <Widget>[
-        ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Image.asset('assets/backgrounds/home-puzzles-hero-v1.webp',
-              width: 116, height: 116, fit: BoxFit.cover),
+  Widget build(BuildContext context) => Row(
+    children: <Widget>[
+      ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Image.asset(
+          'assets/backgrounds/home-puzzles-hero-v1.webp',
+          width: 116,
+          height: 116,
+          fit: BoxFit.cover,
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              const Text('Find the best move',
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 12),
-              FilledButton(onPressed: onTap, child: const Text('Solve Puzzle')),
-            ],
-          ),
+      ),
+      const SizedBox(width: 16),
+      Expanded(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              'Find the best move',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(onPressed: onTap, child: const Text('Solve Puzzle')),
+          ],
         ),
-      ]);
+      ),
+    ],
+  );
 }
 
 class _DashboardPanel extends StatelessWidget {
@@ -1095,56 +1172,76 @@ class _DashboardPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        height: 210,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: const Color(0xE60A1D2E),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF1D3D55)),
-        ),
-        child: Column(children: <Widget>[
-          Row(children: <Widget>[
+    height: 210,
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: const Color(0xE60A1D2E),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: const Color(0xFF1D3D55)),
+    ),
+    child: Column(
+      children: <Widget>[
+        Row(
+          children: <Widget>[
             Expanded(
-              child: Text(title,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800)),
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
             InkWell(
               onTap: onTap,
-              child: Text(trailing,
-                  style:
-                      const TextStyle(color: Color(0xFF42A7FF), fontSize: 12)),
+              child: Text(
+                trailing,
+                style: const TextStyle(color: Color(0xFF42A7FF), fontSize: 12),
+              ),
             ),
-          ]),
-          const SizedBox(height: 12),
-          Expanded(child: child),
-        ]),
-      );
+          ],
+        ),
+        const SizedBox(height: 12),
+        Expanded(child: child),
+      ],
+    ),
+  );
 }
 
 class _EmptyDashboardState extends StatelessWidget {
-  const _EmptyDashboardState(
-      {required this.icon, required this.title, required this.subtitle});
+  const _EmptyDashboardState({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
   final IconData icon;
   final String title;
   final String subtitle;
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-          Icon(icon, color: const Color(0xFF45D7C2), size: 32),
-          const SizedBox(height: 8),
-          Text(title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 5),
-          Text(subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF8FA9BB), fontSize: 11)),
-        ]),
-      );
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Icon(icon, color: const Color(0xFF45D7C2), size: 32),
+        const SizedBox(height: 8),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Color(0xFF8FA9BB), fontSize: 11),
+        ),
+      ],
+    ),
+  );
 }
 
 class _ActivityFeed extends StatelessWidget {
@@ -1163,18 +1260,18 @@ class _ActivityFeed extends StatelessWidget {
           icon: win
               ? Icons.emoji_events_rounded
               : draw
-                  ? Icons.handshake_rounded
-                  : Icons.sports_esports_rounded,
+              ? Icons.handshake_rounded
+              : Icons.sports_esports_rounded,
           color: win
               ? const Color(0xFFF0B84B)
               : draw
-                  ? const Color(0xFF58DFC9)
-                  : const Color(0xFF8FA9BB),
+              ? const Color(0xFF58DFC9)
+              : const Color(0xFF8FA9BB),
           title: win
               ? 'Won ${game.mode} game'
               : draw
-                  ? 'Drew ${game.mode} game'
-                  : 'Completed ${game.mode} game',
+              ? 'Drew ${game.mode} game'
+              : 'Completed ${game.mode} game',
           detail: _relativeActivityTime(game.playedAt),
         );
       }),
@@ -1203,9 +1300,11 @@ class _ActivityFeed extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: items
-          .map((_ActivityItem item) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(children: <Widget>[
+          .map(
+            (_ActivityItem item) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                children: <Widget>[
                   Container(
                     width: 32,
                     height: 32,
@@ -1220,21 +1319,30 @@ class _ActivityFeed extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text(item.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700)),
-                        Text(item.detail,
-                            style: const TextStyle(
-                                color: Color(0xFF8FA9BB), fontSize: 10)),
+                        Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          item.detail,
+                          style: const TextStyle(
+                            color: Color(0xFF8FA9BB),
+                            fontSize: 10,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                ]),
-              ))
+                ],
+              ),
+            ),
+          )
           .toList(growable: false),
     );
   }
@@ -1343,61 +1451,72 @@ class _CompactRankingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        height: 28,
-        margin: const EdgeInsets.symmetric(vertical: 1),
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: highlight ? const Color(0xFF12364E) : const Color(0x8A0E2940),
-          borderRadius: BorderRadius.circular(9),
-          border: Border.all(
-            color:
-                highlight ? const Color(0xFF45D7C2) : const Color(0xFF27465A),
+    height: 28,
+    margin: const EdgeInsets.symmetric(vertical: 1),
+    padding: const EdgeInsets.symmetric(horizontal: 8),
+    decoration: BoxDecoration(
+      color: highlight ? const Color(0xFF12364E) : const Color(0x8A0E2940),
+      borderRadius: BorderRadius.circular(9),
+      border: Border.all(
+        color: highlight ? const Color(0xFF45D7C2) : const Color(0xFF27465A),
+      ),
+    ),
+    child: Row(
+      children: <Widget>[
+        SizedBox(
+          width: 28,
+          child: Text(
+            rank > 0 ? '#$rank' : '—',
+            style: TextStyle(
+              color: highlight
+                  ? const Color(0xFF58DFC9)
+                  : const Color(0xFFF0B84B),
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
-        child: Row(children: <Widget>[
-          SizedBox(
-            width: 28,
-            child: Text(rank > 0 ? '#$rank' : '—',
-                style: TextStyle(
-                    color: highlight
-                        ? const Color(0xFF58DFC9)
-                        : const Color(0xFFF0B84B),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900)),
+        if (highlight) ...<Widget>[
+          _Avatar(photoUrl: photoUrl, size: 22),
+          const SizedBox(width: 6),
+        ],
+        Expanded(
+          child: Text(
+            highlight ? 'YOU • $name' : name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          if (highlight) ...<Widget>[
-            _Avatar(photoUrl: photoUrl, size: 22),
-            const SizedBox(width: 6),
-          ],
-          Expanded(
-            child: Text(highlight ? 'YOU • $name' : name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700)),
+        ),
+        if (rating != null)
+          Text(
+            '$rating',
+            style: const TextStyle(
+              color: Color(0xFFC9D6DF),
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          if (rating != null)
-            Text('$rating',
-                style: const TextStyle(
-                    color: Color(0xFFC9D6DF),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700)),
-        ]),
-      );
+      ],
+    ),
+  );
 }
 
 class _PlayerHeader extends StatelessWidget {
-  const _PlayerHeader(
-      {required this.playerName,
-      this.profilePhotoUrl,
-      this.coinBalance,
-      required this.onProfile,
-      required this.onSettings,
-      required this.onNotifications,
-      required this.onCoins,
-      this.wide = false});
+  const _PlayerHeader({
+    required this.playerName,
+    this.profilePhotoUrl,
+    this.coinBalance,
+    required this.onProfile,
+    required this.onSettings,
+    required this.onNotifications,
+    required this.onCoins,
+    this.wide = false,
+  });
   final String playerName;
   final String? profilePhotoUrl;
   final int? coinBalance;
@@ -1423,16 +1542,23 @@ class _PlayerHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Welcome back,',
-              style: TextStyle(
-                  color: const Color(0xFF9FB6C8), fontSize: wide ? 15 : 12)),
-          Text(playerName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: wide ? 22 : 17,
-                  fontWeight: FontWeight.w800)),
+          Text(
+            'Welcome back,',
+            style: TextStyle(
+              color: const Color(0xFF9FB6C8),
+              fontSize: wide ? 15 : 12,
+            ),
+          ),
+          Text(
+            playerName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: wide ? 22 : 17,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ],
       ),
     );
@@ -1446,8 +1572,9 @@ class _PlayerHeader extends StatelessWidget {
       onPressed: onSettings,
       tooltip: 'Settings',
       style: IconButton.styleFrom(
-          backgroundColor: const Color(0xFF102A40),
-          foregroundColor: Colors.white),
+        backgroundColor: const Color(0xFF102A40),
+        foregroundColor: Colors.white,
+      ),
       icon: const Icon(Icons.settings_rounded),
     );
     final Widget freeCoins = TextButton.icon(
@@ -1459,8 +1586,10 @@ class _PlayerHeader extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: wide ? 12 : 9, vertical: 9),
       ),
       icon: const Icon(Icons.card_giftcard_rounded, size: 19),
-      label: const Text('Free Coins',
-          style: TextStyle(fontWeight: FontWeight.w800)),
+      label: const Text(
+        'Free Coins',
+        style: TextStyle(fontWeight: FontWeight.w800),
+      ),
     );
 
     if (!wide) {
@@ -1526,17 +1655,23 @@ class _BrandHero extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: <Widget>[
-        Image.asset('assets/branding/app_icon.png',
-            width: compact ? 76 : 72, height: compact ? 76 : 72),
+        Image.asset(
+          'assets/branding/app_icon.png',
+          width: compact ? 76 : 72,
+          height: compact ? 76 : 72,
+        ),
         const SizedBox(height: 4),
         _BrandWordmark(fontSize: compact ? 28 : 29),
         const SizedBox(height: 4),
-        const Text('CHOOSE YOUR NEXT MOVE',
-            style: TextStyle(
-                color: Color(0xFFA9C1D2),
-                fontSize: 10,
-                letterSpacing: 2.2,
-                fontWeight: FontWeight.w700)),
+        const Text(
+          'CHOOSE YOUR NEXT MOVE',
+          style: TextStyle(
+            color: Color(0xFFA9C1D2),
+            fontSize: 10,
+            letterSpacing: 2.2,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ],
     );
   }
@@ -1548,20 +1683,27 @@ class _BrandWordmark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text.rich(
-      TextSpan(children: <InlineSpan>[
-        const TextSpan(
-            text: 'CHESSVERSE', style: TextStyle(color: Color(0xFFE6F4FF))),
-        const TextSpan(text: ' '),
-        const TextSpan(
-            text: 'AI', style: TextStyle(color: AppColors.accentGold)),
-      ]),
+      TextSpan(
+        children: <InlineSpan>[
+          const TextSpan(
+            text: 'CHESSVERSE',
+            style: TextStyle(color: Color(0xFFE6F4FF)),
+          ),
+          const TextSpan(text: ' '),
+          const TextSpan(
+            text: 'AI',
+            style: TextStyle(color: AppColors.accentGold),
+          ),
+        ],
+      ),
       semanticsLabel: 'ChessVerseAI',
       textAlign: TextAlign.center,
       style: TextStyle(
-          fontSize: fontSize,
-          height: 1,
-          letterSpacing: 1.4,
-          fontWeight: FontWeight.w900),
+        fontSize: fontSize,
+        height: 1,
+        letterSpacing: 1.4,
+        fontWeight: FontWeight.w900,
+      ),
     );
   }
 }
@@ -1587,10 +1729,7 @@ class _HomeHeroData {
   final DateTime? countdownTarget;
 }
 
-_HomeHeroData _tournamentHero(
-  TournamentDto? tournament,
-  VoidCallback onTap,
-) {
+_HomeHeroData _tournamentHero(TournamentDto? tournament, VoidCallback onTap) {
   final String nextEvent = tournament == null
       ? 'Explore city cups, brackets and championship rewards'
       : 'Next event: ${tournament.name} • ${tournament.entryCoins} coins entry';
@@ -1600,8 +1739,9 @@ _HomeHeroData _tournamentHero(
     icon: Icons.emoji_events_rounded,
     buttonLabel: 'View Tournaments',
     asset: 'assets/backgrounds/tournament-new-york-grand-final-v1.webp',
-    statusLabel:
-        tournament == null ? 'Open tournaments and upcoming events' : null,
+    statusLabel: tournament == null
+        ? 'Open tournaments and upcoming events'
+        : null,
     countdownTarget: tournament?.startsAt,
     onTap: onTap,
   );
@@ -1631,209 +1771,222 @@ class _HomeHeroCarousel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        children: <Widget>[
-          SizedBox(
-            height: height,
-            child: PageView.builder(
-              key: const ValueKey<String>('home-hero-carousel'),
-              controller: controller,
-              onPageChanged: onPageChanged,
-              itemCount: slides.length,
-              itemBuilder: (BuildContext context, int index) {
-                final _HomeHeroData slide = slides[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 1),
-                  child: _CarouselHero(
-                    data: slide,
-                    wide: wide,
-                    onNext: () => controller.animateToPage(
-                      (index + 1) % slides.length,
-                      duration: const Duration(milliseconds: 320),
-                      curve: Curves.easeOutCubic,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          if (slides.length > 1) const SizedBox(height: 8),
-          if (slides.length > 1)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List<Widget>.generate(
-                slides.length,
-                (int index) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  width: selectedIndex == index ? 18 : 6,
-                  height: 6,
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  decoration: BoxDecoration(
-                    color: selectedIndex == index
-                        ? const Color(0xFF45D7C2)
-                        : const Color(0xFF3B5668),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
+    children: <Widget>[
+      SizedBox(
+        height: height,
+        child: PageView.builder(
+          key: const ValueKey<String>('home-hero-carousel'),
+          controller: controller,
+          onPageChanged: onPageChanged,
+          itemCount: slides.length,
+          itemBuilder: (BuildContext context, int index) {
+            final _HomeHeroData slide = slides[index];
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 1),
+              child: _CarouselHero(
+                data: slide,
+                wide: wide,
+                onNext: () => controller.animateToPage(
+                  (index + 1) % slides.length,
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.easeOutCubic,
                 ),
               ),
+            );
+          },
+        ),
+      ),
+      if (slides.length > 1) const SizedBox(height: 8),
+      if (slides.length > 1)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List<Widget>.generate(
+            slides.length,
+            (int index) => AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              width: selectedIndex == index ? 18 : 6,
+              height: 6,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                color: selectedIndex == index
+                    ? const Color(0xFF45D7C2)
+                    : const Color(0xFF3B5668),
+                borderRadius: BorderRadius.circular(99),
+              ),
             ),
-        ],
-      );
+          ),
+        ),
+    ],
+  );
 }
 
 class _CarouselHero extends StatelessWidget {
-  const _CarouselHero(
-      {required this.data, required this.onNext, this.wide = false});
+  const _CarouselHero({
+    required this.data,
+    required this.onNext,
+    this.wide = false,
+  });
   final _HomeHeroData data;
   final VoidCallback onNext;
   final bool wide;
 
   @override
   Widget build(BuildContext context) => Material(
-        color: Colors.transparent,
+    color: Colors.transparent,
+    borderRadius: BorderRadius.circular(24),
+    clipBehavior: Clip.antiAlias,
+    child: Ink(
+      decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        clipBehavior: Clip.antiAlias,
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFF2A91F2), width: 1.3),
-            gradient: LinearGradient(
-              colors: <Color>[
-                const Color(0xFF0B3159),
-                data.icon == Icons.groups_rounded
-                    ? const Color(0xFF104C40)
-                    : const Color(0xFF071727),
-              ],
+        border: Border.all(color: const Color(0xFF2A91F2), width: 1.3),
+        gradient: LinearGradient(
+          colors: <Color>[
+            const Color(0xFF0B3159),
+            data.icon == Icons.groups_rounded
+                ? const Color(0xFF104C40)
+                : const Color(0xFF071727),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: <Widget>[
+          if (data.asset != null)
+            Positioned.fill(
+              left: wide ? 390 : 92,
+              child: Image.asset(
+                data.asset!,
+                fit: BoxFit.cover,
+                alignment: Alignment.centerRight,
+                opacity: const AlwaysStoppedAnimation<double>(.78),
+              ),
             ),
-          ),
-          child: Stack(children: <Widget>[
-            if (data.asset != null)
-              Positioned.fill(
-                left: wide ? 390 : 92,
-                child: Image.asset(
-                  data.asset!,
-                  fit: BoxFit.cover,
-                  alignment: Alignment.centerRight,
-                  opacity: const AlwaysStoppedAnimation<double>(.78),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: const LinearGradient(
+                  colors: <Color>[
+                    Color(0xFF081F37),
+                    Color(0xE608213C),
+                    Color(0x30081727),
+                  ],
+                  stops: <double>[0, .48, 1],
                 ),
               ),
-            Positioned.fill(
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.all(wide ? 30 : 22),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                width: wide ? 430 : 205,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: <Widget>[
+                        Icon(
+                          data.icon,
+                          color: const Color(0xFF48E3CB),
+                          size: wide ? 35 : 30,
+                        ),
+                        SizedBox(width: wide ? 12 : 9),
+                        Expanded(
+                          child: Text(
+                            data.title,
+                            maxLines: data.title == 'World Chess Tournaments'
+                                ? 3
+                                : 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: wide
+                                  ? 40
+                                  : data.title == 'World Chess Tournaments'
+                                  ? 23
+                                  : 28,
+                              height: 1,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      data.subtitle,
+                      maxLines: 2,
+                      style: const TextStyle(
+                        color: Color(0xFFC5D5E0),
+                        fontSize: 13,
+                      ),
+                    ),
+                    const Spacer(),
+                    FilledButton.icon(
+                      key: data.title == 'Play Online'
+                          ? const ValueKey<String>('play-online')
+                          : null,
+                      onPressed: data.onTap,
+                      icon: const Icon(Icons.arrow_forward_rounded, size: 17),
+                      label: Text(data.buttonLabel),
+                    ),
+                    if (data.statusLabel != null ||
+                        data.countdownTarget != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 5),
+                        child: data.countdownTarget == null
+                            ? Text(
+                                '●  ${data.statusLabel}',
+                                style: const TextStyle(
+                                  color: Color(0xFF65D8C2),
+                                  fontSize: 10,
+                                ),
+                              )
+                            : _LiveTournamentCountdown(
+                                startsAt: data.countdownTarget!,
+                              ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: wide ? 22 : 14,
+            top: wide ? 22 : 14,
+            child: IconButton.filledTonal(
+              key: const ValueKey<String>('home-hero-next'),
+              tooltip: 'Next feature',
+              onPressed: onNext,
+              style: IconButton.styleFrom(
+                backgroundColor: const Color(0xB20A2842),
+                foregroundColor: Colors.white,
+              ),
+              icon: const Icon(Icons.chevron_right_rounded),
+            ),
+          ),
+          // Paint the frame last. Background artwork previously covered the
+          // right and bottom edges on some carousel slides.
+          Positioned.fill(
+            child: IgnorePointer(
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(24),
-                  gradient: const LinearGradient(
-                    colors: <Color>[
-                      Color(0xFF081F37),
-                      Color(0xE608213C),
-                      Color(0x30081727),
-                    ],
-                    stops: <double>[0, .48, 1],
+                  border: Border.all(
+                    color: const Color(0xFF2A91F2),
+                    width: 1.6,
                   ),
                 ),
               ),
             ),
-            Padding(
-              padding: EdgeInsets.all(wide ? 30 : 22),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: SizedBox(
-                  width: wide ? 430 : 205,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: <Widget>[
-                          Icon(
-                            data.icon,
-                            color: const Color(0xFF48E3CB),
-                            size: wide ? 35 : 30,
-                          ),
-                          SizedBox(width: wide ? 12 : 9),
-                          Expanded(
-                            child: Text(
-                              data.title,
-                              maxLines: data.title == 'World Chess Tournaments'
-                                  ? 3
-                                  : 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: wide
-                                    ? 40
-                                    : data.title == 'World Chess Tournaments'
-                                        ? 23
-                                        : 28,
-                                height: 1,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(data.subtitle,
-                          maxLines: 2,
-                          style: const TextStyle(
-                              color: Color(0xFFC5D5E0), fontSize: 13)),
-                      const Spacer(),
-                      FilledButton.icon(
-                        key: data.title == 'Play Online'
-                            ? const ValueKey<String>('play-online')
-                            : null,
-                        onPressed: data.onTap,
-                        icon: const Icon(Icons.arrow_forward_rounded, size: 17),
-                        label: Text(data.buttonLabel),
-                      ),
-                      if (data.statusLabel != null ||
-                          data.countdownTarget != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 5),
-                          child: data.countdownTarget == null
-                              ? Text('●  ${data.statusLabel}',
-                                  style: const TextStyle(
-                                      color: Color(0xFF65D8C2), fontSize: 10))
-                              : _LiveTournamentCountdown(
-                                  startsAt: data.countdownTarget!,
-                                ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              right: wide ? 22 : 14,
-              top: wide ? 22 : 14,
-              child: IconButton.filledTonal(
-                key: const ValueKey<String>('home-hero-next'),
-                tooltip: 'Next feature',
-                onPressed: onNext,
-                style: IconButton.styleFrom(
-                  backgroundColor: const Color(0xB20A2842),
-                  foregroundColor: Colors.white,
-                ),
-                icon: const Icon(Icons.chevron_right_rounded),
-              ),
-            ),
-            // Paint the frame last. Background artwork previously covered the
-            // right and bottom edges on some carousel slides.
-            Positioned.fill(
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: const Color(0xFF2A91F2),
-                      width: 1.6,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ]),
-        ),
-      );
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _LiveTournamentCountdown extends StatefulWidget {
@@ -1868,8 +2021,8 @@ class _LiveTournamentCountdownState extends State<_LiveTournamentCountdown> {
     final String label = remaining.isNegative
         ? 'STARTING SOON'
         : remaining.inDays > 0
-            ? 'STARTS IN ${remaining.inDays}D ${remaining.inHours % 24}H'
-            : 'STARTS IN ${remaining.inHours}H ${remaining.inMinutes % 60}M';
+        ? 'STARTS IN ${remaining.inDays}D ${remaining.inHours % 24}H'
+        : 'STARTS IN ${remaining.inHours}H ${remaining.inMinutes % 60}M';
     return Text(
       '●  $label',
       key: const ValueKey<String>('home-tournament-countdown'),
@@ -1903,12 +2056,14 @@ class _OnlineHero extends StatelessWidget {
               opacity: .9,
             ),
             gradient: const LinearGradient(
-                colors: <Color>[Color(0xFF0B3159), Color(0xFF071727)]),
+              colors: <Color>[Color(0xFF0B3159), Color(0xFF071727)],
+            ),
             boxShadow: const <BoxShadow>[
               BoxShadow(
-                  color: Color(0x442A8EF0),
-                  blurRadius: 24,
-                  offset: Offset(0, 9))
+                color: Color(0x442A8EF0),
+                blurRadius: 24,
+                offset: Offset(0, 9),
+              ),
             ],
           ),
           child: Stack(
@@ -1940,39 +2095,58 @@ class _OnlineHero extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        const Icon(Icons.public_rounded,
-                            color: Color(0xFF48E3CB), size: 38),
+                        const Icon(
+                          Icons.public_rounded,
+                          color: Color(0xFF48E3CB),
+                          size: 38,
+                        ),
                         const SizedBox(height: 12),
-                        Text('Play Online',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 40,
-                                height: 1,
-                                fontWeight: FontWeight.w900)),
+                        Text(
+                          'Play Online',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 40,
+                            height: 1,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                         const SizedBox(height: 10),
-                        const Text('Find a live opponent from around the world',
-                            style: TextStyle(
-                                color: Color(0xFFC5D5E0), fontSize: 14)),
+                        const Text(
+                          'Find a live opponent from around the world',
+                          style: TextStyle(
+                            color: Color(0xFFC5D5E0),
+                            fontSize: 14,
+                          ),
+                        ),
                         const SizedBox(height: 18),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 11),
+                            horizontal: 20,
+                            vertical: 11,
+                          ),
                           decoration: BoxDecoration(
-                              color: const Color(0xFF145AA0),
-                              borderRadius: BorderRadius.circular(999),
-                              border:
-                                  Border.all(color: const Color(0xFF55A9F4))),
+                            color: const Color(0xFF145AA0),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: const Color(0xFF55A9F4)),
+                          ),
                           child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                Text('Play Now',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w800)),
-                                SizedBox(width: 18),
-                                Icon(Icons.arrow_forward_rounded,
-                                    color: Colors.white, size: 18)
-                              ]),
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Text(
+                                'Play Now',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              SizedBox(width: 18),
+                              Icon(
+                                Icons.arrow_forward_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -1990,8 +2164,11 @@ class _OnlineHero extends StatelessWidget {
                     color: const Color(0xC70A2948),
                     border: Border.all(color: const Color(0x553C9DF0)),
                   ),
-                  child: const Icon(Icons.chevron_right_rounded,
-                      color: Colors.white, size: 27),
+                  child: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.white,
+                    size: 27,
+                  ),
                 ),
               ),
             ],
@@ -2003,14 +2180,15 @@ class _OnlineHero extends StatelessWidget {
 }
 
 class _ActionCard extends StatelessWidget {
-  const _ActionCard(
-      {required this.keyName,
-      required this.icon,
-      required this.title,
-      required this.subtitle,
-      required this.color,
-      required this.asset,
-      required this.onTap});
+  const _ActionCard({
+    required this.keyName,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.asset,
+    required this.onTap,
+  });
   final String keyName;
   final IconData icon;
   final String title;
@@ -2020,80 +2198,110 @@ class _ActionCard extends StatelessWidget {
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (BuildContext context, BoxConstraints size) {
-      final bool narrow = size.maxWidth < 230;
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          key: ValueKey<String>(keyName),
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: Ink(
-            height: 164,
-            padding: EdgeInsets.all(narrow ? 15 : 18),
-            decoration: BoxDecoration(
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints size) {
+        final bool narrow = size.maxWidth < 230;
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            key: ValueKey<String>(keyName),
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(20),
+            child: Ink(
+              height: 164,
+              padding: EdgeInsets.all(narrow ? 15 : 18),
+              decoration: BoxDecoration(
                 color: color.withValues(alpha: .76),
                 image: DecorationImage(
-                    image: AssetImage(asset),
-                    fit: BoxFit.cover,
-                    alignment: Alignment.centerRight,
-                    opacity: .68),
+                  image: AssetImage(asset),
+                  fit: BoxFit.cover,
+                  alignment: Alignment.centerRight,
+                  opacity: .68,
+                ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: color.withValues(alpha: .9))),
-            child: narrow
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Row(children: <Widget>[
-                        _ActionIcon(icon: icon),
+                border: Border.all(color: color.withValues(alpha: .9)),
+              ),
+              child: narrow
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Row(
+                          children: <Widget>[
+                            _ActionIcon(icon: icon),
+                            const Spacer(),
+                            const Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Color(0xFFC9D9E4),
+                              size: 19,
+                            ),
+                          ],
+                        ),
                         const Spacer(),
-                        const Icon(Icons.arrow_forward_rounded,
-                            color: Color(0xFFC9D9E4), size: 19),
-                      ]),
-                      const Spacer(),
-                      Text(title,
+                        Text(
+                          title,
                           maxLines: 2,
                           style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 17,
-                              height: 1.05,
-                              fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 5),
-                      Text(subtitle,
+                            color: Colors.white,
+                            fontSize: 17,
+                            height: 1.05,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          subtitle,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                              color: Color(0xFFB9CBD7), fontSize: 11)),
-                    ],
-                  )
-                : Row(children: <Widget>[
-                    _ActionIcon(icon: icon),
-                    const SizedBox(width: 14),
-                    Expanded(
-                        child: Column(
+                            color: Color(0xFFB9CBD7),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: <Widget>[
+                        _ActionIcon(icon: icon),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                          Text(title,
-                              maxLines: 2,
-                              style: const TextStyle(
+                              Text(
+                                title,
+                                maxLines: 2,
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 17,
-                                  fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 5),
-                          Text(subtitle,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  color: Color(0xFFB9CBD7), fontSize: 11))
-                        ])),
-                    const Icon(Icons.arrow_forward_rounded,
-                        color: Color(0xFFC9D9E4), size: 18),
-                  ]),
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                subtitle,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFFB9CBD7),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Color(0xFFC9D9E4),
+                          size: 18,
+                        ),
+                      ],
+                    ),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 }
 
@@ -2103,23 +2311,26 @@ class _ActionIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .12),
-            borderRadius: BorderRadius.circular(15)),
-        child: Icon(icon, color: Colors.white, size: 30));
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Icon(icon, color: Colors.white, size: 30),
+    );
   }
 }
 
 class _MiniCard extends StatelessWidget {
-  const _MiniCard(
-      {required this.keyName,
-      required this.icon,
-      required this.label,
-      this.subtitle,
-      required this.color,
-      required this.asset,
-      required this.onTap});
+  const _MiniCard({
+    required this.keyName,
+    required this.icon,
+    required this.label,
+    this.subtitle,
+    required this.color,
+    required this.asset,
+    required this.onTap,
+  });
   final String keyName;
   final IconData icon;
   final String label;
@@ -2139,49 +2350,52 @@ class _MiniCard extends StatelessWidget {
           height: 164,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
-              color: const Color(0xDD0C2030),
-              image: DecorationImage(
-                  image: AssetImage(asset),
-                  fit: BoxFit.cover,
-                  alignment: Alignment.center,
-                  opacity: .58),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: color.withValues(alpha: .35))),
+            color: const Color(0xDD0C2030),
+            image: DecorationImage(
+              image: AssetImage(asset),
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+              opacity: .58,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: color.withValues(alpha: .35)),
+          ),
           child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Icon(icon, color: color, size: 28),
-                const SizedBox(height: 6),
-                SizedBox(
-                  width: double.infinity,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Icon(icon, color: color, size: 28),
+              const SizedBox(height: 6),
+              SizedBox(
+                width: double.infinity,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
-                if (subtitle != null) ...<Widget>[
-                  const SizedBox(height: 6),
-                  Text(
-                    subtitle!,
-                    maxLines: 2,
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFFB9CBD7),
-                      fontSize: 11,
-                      height: 1.35,
-                    ),
+              ),
+              if (subtitle != null) ...<Widget>[
+                const SizedBox(height: 6),
+                Text(
+                  subtitle!,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFFB9CBD7),
+                    fontSize: 11,
+                    height: 1.35,
                   ),
-                ],
-              ]),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -2189,11 +2403,12 @@ class _MiniCard extends StatelessWidget {
 }
 
 class _MobileNav extends StatelessWidget {
-  const _MobileNav(
-      {required this.onPlay,
-      required this.onPuzzles,
-      required this.onLearn,
-      required this.onProfile});
+  const _MobileNav({
+    required this.onPlay,
+    required this.onPuzzles,
+    required this.onLearn,
+    required this.onProfile,
+  });
   final VoidCallback onPlay;
   final VoidCallback onPuzzles;
   final VoidCallback onLearn;
@@ -2202,62 +2417,91 @@ class _MobileNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-          color: Color(0xF20A1B2A),
-          border: Border(top: BorderSide(color: Color(0xFF24465D)))),
+        color: Color(0xF20A1B2A),
+        border: Border(top: BorderSide(color: Color(0xFF24465D))),
+      ),
       padding: const EdgeInsets.fromLTRB(8, 5, 8, 7),
-      child: Row(children: <Widget>[
-        const Expanded(
+      child: Row(
+        children: <Widget>[
+          const Expanded(
             child: _NavItem(
-                icon: Icons.home_rounded, label: 'Home', selected: true)),
-        Expanded(
+              icon: Icons.home_rounded,
+              label: 'Home',
+              selected: true,
+            ),
+          ),
+          Expanded(
             child: _NavItem(
-                icon: Icons.sports_esports_rounded,
-                label: 'Play',
-                onTap: onPlay)),
-        Expanded(
+              icon: Icons.sports_esports_rounded,
+              label: 'Play',
+              onTap: onPlay,
+            ),
+          ),
+          Expanded(
             child: _NavItem(
-                icon: Icons.extension_rounded,
-                label: 'Puzzles',
-                onTap: onPuzzles)),
-        Expanded(
+              icon: Icons.extension_rounded,
+              label: 'Puzzles',
+              onTap: onPuzzles,
+            ),
+          ),
+          Expanded(
             child: _NavItem(
-                icon: Icons.school_rounded, label: 'Learn', onTap: onLearn)),
-        Expanded(
+              icon: Icons.school_rounded,
+              label: 'Learn',
+              onTap: onLearn,
+            ),
+          ),
+          Expanded(
             child: _NavItem(
-                icon: Icons.person_rounded,
-                label: 'Profile',
-                onTap: onProfile)),
-      ]),
+              icon: Icons.person_rounded,
+              label: 'Profile',
+              onTap: onProfile,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _NavItem extends StatelessWidget {
-  const _NavItem(
-      {required this.icon,
-      required this.label,
-      this.onTap,
-      this.selected = false});
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    this.onTap,
+    this.selected = false,
+  });
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
   final bool selected;
   @override
   Widget build(BuildContext context) {
-    final Color color =
-        selected ? const Color(0xFF42A7FF) : const Color(0xFF70899C);
+    final Color color = selected
+        ? const Color(0xFF42A7FF)
+        : const Color(0xFF70899C);
     return InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-              Icon(icon, color: color, size: 21),
-              const SizedBox(height: 2),
-              Text(label,
-                  style: TextStyle(
-                      color: color, fontSize: 9, fontWeight: FontWeight.w700))
-            ])));
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(icon, color: color, size: 21),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -2298,24 +2542,28 @@ class _Avatar extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: useSavedPlayerAvatar
-                ? playerColors[avatarIndex]
-                : const Color(0xFF124468),
-            border: Border.all(color: const Color(0xFF49A8F5), width: 1.5),
-            boxShadow: const <BoxShadow>[
-              BoxShadow(color: Color(0x553C9FF0), blurRadius: 12)
-            ]),
+          shape: BoxShape.circle,
+          color: useSavedPlayerAvatar
+              ? playerColors[avatarIndex]
+              : const Color(0xFF124468),
+          border: Border.all(color: const Color(0xFF49A8F5), width: 1.5),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(color: Color(0x553C9FF0), blurRadius: 12),
+          ],
+        ),
         child: ClipOval(
-            child: photoUrl?.trim().isNotEmpty == true
-                ? Image.network(photoUrl!,
-                    fit: BoxFit.cover,
-                    webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
-                    errorBuilder: (_, _, _) =>
-                        const Icon(Icons.person_rounded, color: Colors.white))
-                : useSavedPlayerAvatar
-                    ? Icon(playerIcons[avatarIndex], color: Colors.white)
-                    : const Icon(Icons.person_rounded, color: Colors.white)),
+          child: photoUrl?.trim().isNotEmpty == true
+              ? Image.network(
+                  photoUrl!,
+                  fit: BoxFit.cover,
+                  webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+                  errorBuilder: (_, _, _) =>
+                      const Icon(Icons.person_rounded, color: Colors.white),
+                )
+              : useSavedPlayerAvatar
+              ? Icon(playerIcons[avatarIndex], color: Colors.white)
+              : const Icon(Icons.person_rounded, color: Colors.white),
+        ),
       ),
     );
   }
