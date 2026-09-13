@@ -205,53 +205,88 @@ class _OnboardingStoryCard extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(radius - 1),
+          child: wide ? _wideStory() : _portraitStory(),
+        ),
+      ),
+    );
+  }
+
+  Widget _wideStory() => Row(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: <Widget>[
+      Expanded(
+        flex: 4,
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: <Color>[Color(0xFF0A2033), Color(0xFF041321)],
+            ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 30 : 46,
+              vertical: compact ? 26 : 42,
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _OnboardingCopy(data: data, wide: true, compact: compact),
+            ),
+          ),
+        ),
+      ),
+      Expanded(
+        flex: 6,
+        child: ColoredBox(
+          color: const Color(0xFF020B17),
           child: Stack(
             fit: StackFit.expand,
             children: <Widget>[
-              Image.asset(
-                data.asset,
-                fit: BoxFit.cover,
-                alignment: wide ? Alignment.centerRight : Alignment.center,
-              ),
-              DecoratedBox(
+              Image.asset(data.asset, fit: BoxFit.contain),
+              const DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    begin: wide ? Alignment.centerLeft : Alignment.topCenter,
-                    end: wide ? Alignment.centerRight : Alignment.bottomCenter,
-                    stops: wide
-                        ? const <double>[0, .56, 1]
-                        : const <double>[0, .42, .72, 1],
-                    colors: wide
-                        ? const <Color>[
-                            Color(0xF2051422),
-                            Color(0xC4051422),
-                            Color(0x18051422),
-                          ]
-                        : const <Color>[
-                            Color(0x16051422),
-                            Color(0x26051422),
-                            Color(0xCC051422),
-                            Color(0xFF051422),
-                          ],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: <Color>[Color(0x7A041321), Colors.transparent],
                   ),
-                ),
-              ),
-              Positioned(
-                left: wide ? 48 : 24,
-                right: wide ? 470 : 24,
-                bottom: wide ? 44 : (compact ? 22 : 34),
-                child: _OnboardingCopy(
-                  data: data,
-                  wide: wide,
-                  compact: compact,
                 ),
               ),
             ],
           ),
         ),
       ),
-    );
-  }
+    ],
+  );
+
+  Widget _portraitStory() => Stack(
+    fit: StackFit.expand,
+    children: <Widget>[
+      Image.asset(data.asset, fit: BoxFit.cover, alignment: Alignment.center),
+      const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: <double>[0, .42, .72, 1],
+            colors: <Color>[
+              Color(0x16051422),
+              Color(0x26051422),
+              Color(0xCC051422),
+              Color(0xFF051422),
+            ],
+          ),
+        ),
+      ),
+      Positioned(
+        left: 24,
+        right: 24,
+        bottom: compact ? 22 : 34,
+        child: _OnboardingCopy(data: data, wide: false, compact: compact),
+      ),
+    ],
+  );
 }
 
 class _OnboardingCopy extends StatelessWidget {

@@ -31,17 +31,6 @@ class ChessVerseAuthResult {
   final String? photoUrl;
 }
 
-class _AuthWelcomeFlex extends StatelessWidget {
-  const _AuthWelcomeFlex({required this.expanded, required this.child});
-
-  final bool expanded;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) =>
-      expanded ? Expanded(child: child) : child;
-}
-
 class AuthScreen extends StatefulWidget {
   const AuthScreen({
     required this.onAuthenticated,
@@ -167,123 +156,255 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _firstOpenWelcome(BuildContext context) {
-    final Size viewport = MediaQuery.sizeOf(context);
-    final bool landscape = viewport.width > viewport.height;
-    final double panelWidth = landscape ? 860 : 500;
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: panelWidth),
-          child: Container(
-            padding: EdgeInsets.all(landscape ? 34 : 26),
-            decoration: BoxDecoration(
-              color: const Color(0xF2071729),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: const Color(0xFF2A4964)),
-              boxShadow: const <BoxShadow>[
-                BoxShadow(color: Color(0x6600A6C8), blurRadius: 40),
-              ],
-            ),
-            child: Flex(
-              direction: landscape ? Axis.horizontal : Axis.vertical,
-              children: <Widget>[
-                _AuthWelcomeFlex(
-                  expanded: landscape,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Image.asset(
-                        'assets/branding/app_icon.png',
-                        width: landscape ? 150 : 118,
-                        height: landscape ? 150 : 118,
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool wide = constraints.maxWidth >= 820;
+        final bool compact = constraints.maxHeight < 690;
+        final double radius = wide ? 38 : 30;
+        return Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(wide ? 28 : 14),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 1240,
+                minHeight: wide
+                    ? (constraints.maxHeight - 56).clamp(560.0, 820.0)
+                    : 0,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(radius),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF061528),
+                    borderRadius: BorderRadius.circular(radius),
+                    border: Border.all(color: const Color(0xFF31516C)),
+                    boxShadow: const <BoxShadow>[
+                      BoxShadow(
+                        color: Color(0x70000000),
+                        blurRadius: 60,
+                        offset: Offset(0, 24),
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Welcome to\nChessVerseAI',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 32,
-                          height: 1.05,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
+                      BoxShadow(color: Color(0x44238BFF), blurRadius: 44),
                     ],
                   ),
-                ),
-                SizedBox(width: landscape ? 38 : 0, height: landscape ? 0 : 24),
-                _AuthWelcomeFlex(
-                  expanded: landscape,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Flex(
+                    direction: wide ? Axis.horizontal : Axis.vertical,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
-                      const Text(
-                        'Start playing in seconds.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
+                      if (wide)
+                        Expanded(
+                          flex: 6,
+                          child: _welcomeArtwork(compact: compact),
+                        )
+                      else
+                        SizedBox(
+                          height: compact ? 260 : 340,
+                          child: _welcomeArtwork(compact: compact),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Save your games, rating and learning progress later by signing in.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          height: 1.4,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        height: 54,
-                        child: FilledButton.icon(
-                          key: const ValueKey<String>('play-as-guest-primary'),
-                          onPressed: _loading ? null : _continueAsGuest,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.accentGold,
-                            foregroundColor: const Color(0xFF071421),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                          ),
-                          icon: const Icon(Icons.bolt_rounded),
-                          label: const Text(
-                            'Play as Guest',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      OutlinedButton(
-                        key: const ValueKey<String>('open-account-access'),
-                        onPressed: () =>
-                            setState(() => _showAccountForm = true),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(50),
-                          side: const BorderSide(color: Color(0xFF4ECFBE)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                        ),
-                        child: const Text('Sign In / Create Account'),
-                      ),
+                      if (wide)
+                        Expanded(
+                          flex: 4,
+                          child: _welcomeActions(wide: wide, compact: compact),
+                        )
+                      else
+                        _welcomeActions(wide: wide, compact: compact),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _welcomeArtwork({required bool compact}) => Stack(
+    fit: StackFit.expand,
+    children: <Widget>[
+      Image.asset(
+        'assets/backgrounds/onboarding-worldwide-v1.png',
+        fit: BoxFit.cover,
+        alignment: const Alignment(.42, .5),
+      ),
+      const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: <Color>[
+              Color(0x12020B17),
+              Color(0x48020B17),
+              Color(0xF5051425),
+            ],
           ),
         ),
       ),
-    );
-  }
+      Padding(
+        padding: EdgeInsets.all(compact ? 26 : 40),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: <Widget>[
+            const Text(
+              'YOUR NEXT GREAT MOVE STARTS HERE',
+              style: TextStyle(
+                color: Color(0xFF58E3D0),
+                fontSize: 11,
+                letterSpacing: 1.7,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text.rich(
+              TextSpan(
+                children: <InlineSpan>[
+                  const TextSpan(text: 'Welcome to\nChessVerse'),
+                  TextSpan(
+                    text: 'AI',
+                    style: TextStyle(color: AppColors.accentGold),
+                  ),
+                ],
+              ),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: compact ? 34 : 48,
+                height: .98,
+                letterSpacing: -1.1,
+                fontWeight: FontWeight.w900,
+                shadows: const <Shadow>[
+                  Shadow(color: Color(0xCC000000), blurRadius: 18),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Play smarter. Learn faster. Challenge the world.',
+              style: TextStyle(
+                color: Color(0xFFD6E0EA),
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+
+  Widget _welcomeActions({
+    required bool wide,
+    required bool compact,
+  }) => Container(
+    padding: EdgeInsets.symmetric(
+      horizontal: wide ? (compact ? 34 : 52) : 24,
+      vertical: compact ? 28 : 42,
+    ),
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: <Color>[Color(0xFF0B2237), Color(0xFF061426)],
+      ),
+    ),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Image.asset(
+                'assets/branding/app_icon.png',
+                width: 54,
+                height: 54,
+              ),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Text(
+                'ChessVerseAI',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: compact ? 24 : 38),
+        const Text(
+          'Ready when you are.',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 28,
+            height: 1.05,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Start instantly as a guest, or sign in to keep your rating, games and learning progress on every device.',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 15,
+            height: 1.5,
+          ),
+        ),
+        SizedBox(height: compact ? 24 : 34),
+        SizedBox(
+          height: 56,
+          child: FilledButton.icon(
+            key: const ValueKey<String>('play-as-guest-primary'),
+            onPressed: _loading ? null : _continueAsGuest,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.accentGold,
+              foregroundColor: const Color(0xFF071421),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            icon: const Icon(Icons.bolt_rounded),
+            label: const Text(
+              'Play as Guest',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          key: const ValueKey<String>('open-account-access'),
+          onPressed: () => setState(() => _showAccountForm = true),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(54),
+            foregroundColor: AppColors.textPrimary,
+            side: const BorderSide(color: Color(0xFF55DECC)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          icon: const Icon(Icons.person_outline_rounded, size: 20),
+          label: const Text(
+            'Sign In or Create Account',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+        SizedBox(height: compact ? 20 : 30),
+        const Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 16,
+          runSpacing: 8,
+          children: <Widget>[
+            _WelcomeTrustItem(Icons.bolt_rounded, 'Instant play'),
+            _WelcomeTrustItem(Icons.sync_rounded, 'Cloud progress'),
+            _WelcomeTrustItem(Icons.shield_outlined, 'Fair play'),
+          ],
+        ),
+      ],
+    ),
+  );
 
   Widget _premiumCompactLandscapeBody(BuildContext context) {
     return LayoutBuilder(
@@ -2013,6 +2134,30 @@ class _CheckerPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _WelcomeTrustItem extends StatelessWidget {
+  const _WelcomeTrustItem(this.icon, this.label);
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      Icon(icon, size: 16, color: const Color(0xFF58E3D0)),
+      const SizedBox(width: 6),
+      Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xFFAAB9C8),
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    ],
+  );
 }
 
 class _AuthField extends StatefulWidget {

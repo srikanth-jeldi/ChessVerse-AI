@@ -381,7 +381,7 @@ class _SplashGateState extends State<SplashGate> {
         // Continue to authentication even if browser storage cannot be cleared.
       }
       if (mounted) {
-        setState(() => _stage = _RootStage.auth);
+        setState(() => _stage = _RootStage.onboarding);
       }
       return;
     }
@@ -398,7 +398,7 @@ class _SplashGateState extends State<SplashGate> {
       } on Object {
         // A failed cleanup is harmless; AuthScreen can still start.
       }
-      if (mounted) setState(() => _stage = _RootStage.auth);
+      if (mounted) setState(() => _stage = _RootStage.onboarding);
       return;
     }
     if (session == null) {
@@ -438,7 +438,7 @@ class _SplashGateState extends State<SplashGate> {
       } on AuthApiException catch (error) {
         if (error.statusCode == 401 || error.statusCode == 403) {
           await _sessionStore.clear();
-          if (mounted) setState(() => _stage = _RootStage.auth);
+          if (mounted) setState(() => _stage = _RootStage.onboarding);
           return;
         }
       }
@@ -463,7 +463,7 @@ class _SplashGateState extends State<SplashGate> {
     } on AuthApiException catch (error) {
       if (error.statusCode == 401 || error.statusCode == 403) {
         await _sessionStore.clear();
-        if (mounted) setState(() => _stage = _RootStage.auth);
+        if (mounted) setState(() => _stage = _RootStage.onboarding);
         return;
       }
       // A valid unexpired local session keeps the user signed in while the
