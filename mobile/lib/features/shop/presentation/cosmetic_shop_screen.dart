@@ -525,6 +525,9 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
               padding: const EdgeInsets.all(16),
               child: item.category == 'FRAME'
                   ? _badgePreview(item, a)
+                  : item.category == 'PIECES' &&
+                        _pieceSetAsset(item.slug) != null
+                  ? _pieceSetPreview(item)
                   : item.category == 'BOARD' && _boardAsset(item.slug) != null
                   ? _boardPreview(item)
                   : _preview(a, b, item),
@@ -693,6 +696,61 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       ),
     ),
   );
+
+  Widget _pieceSetPreview(CosmeticItemDto item) => ClipRRect(
+    borderRadius: BorderRadius.circular(16),
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(
+          _pieceSetAsset(item.slug)!,
+          fit: BoxFit.cover,
+          filterQuality: FilterQuality.high,
+        ),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.transparent, Color(0xB804101C)],
+              stops: [0.58, 1],
+            ),
+          ),
+        ),
+        Positioned(
+          left: 12,
+          bottom: 10,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xC7071625),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: const Color(0x99F4C75B)),
+            ),
+            child: const Text(
+              'ROYAL 3D SET',
+              style: TextStyle(
+                color: Color(0xFFFFD77A),
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  String? _pieceSetAsset(String slug) => switch (slug) {
+    'crimson-crown-3d' => 'assets/pieces/collection/crimson-crown-v1.webp',
+    'inferno-gold' => 'assets/pieces/collection/inferno-gold-v1.webp',
+    'ruby-emperor' => 'assets/pieces/collection/ruby-emperor-v1.webp',
+    'obsidian-regal' => 'assets/pieces/collection/obsidian-regal-v1.webp',
+    'sapphire-elite' => 'assets/pieces/collection/sapphire-elite-v1.webp',
+    'emerald-sovereign' => 'assets/pieces/collection/emerald-sovereign-v1.webp',
+    _ => null,
+  };
 
   String? _boardAsset(String slug) => switch (slug) {
     'royal-walnut' => 'assets/boards/collection/royal-walnut-v1.webp',

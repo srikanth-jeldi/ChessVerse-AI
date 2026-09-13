@@ -83,6 +83,7 @@ flutter:
     - assets/branding/trophy-tokyo-neon-v1.webp
     - assets/matchmaking/
     - assets/pieces/
+    - assets/pieces/collection/
 
 flutter_launcher_icons:
   android: true
