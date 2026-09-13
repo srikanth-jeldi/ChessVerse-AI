@@ -19,17 +19,21 @@ import '../domain/ai_review_report.dart';
 import '../domain/personal_ai_coach.dart';
 
 class _ReactiveReviewLanguage extends StatelessWidget {
-  const _ReactiveReviewLanguage(
-      {required this.languageCode, required this.child});
+  const _ReactiveReviewLanguage({
+    required this.languageCode,
+    required this.child,
+  });
   final String languageCode;
   final Widget child;
 
   @override
   Widget build(BuildContext context) => ValueListenableBuilder<String?>(
-        valueListenable: AppLanguageController.effectiveLanguageChanges,
-        builder: (context, selected, _) => _ReviewLanguageScope(
-            languageCode: selected ?? languageCode, child: child),
-      );
+    valueListenable: AppLanguageController.effectiveLanguageChanges,
+    builder: (context, selected, _) => _ReviewLanguageScope(
+      languageCode: selected ?? languageCode,
+      child: child,
+    ),
+  );
 }
 
 class _ReviewLanguageScope extends InheritedWidget {
@@ -80,8 +84,9 @@ String _localizedReviewExplanation(String value, String code) =>
 String _localizedReviewNarrative(String value, String code) {
   if (supportsReviewTraining(value)) return localizeReviewTraining(value, code);
   final translated = localizeLiveCoach(
-      localizeReviewNarrative(CoachLocalizations(code).source(value), code),
-      code);
+    localizeReviewNarrative(CoachLocalizations(code).source(value), code),
+    code,
+  );
   if (translated != value) return translated;
   // Saved game feedback can retain a notation prefix before a local coach paragraph.
   final prefixed = RegExp(r'^(\S+) — (.+)$', dotAll: true).firstMatch(value);
@@ -180,65 +185,88 @@ class _AiReviewWorkspace extends StatelessWidget {
       onRetryPosition: onRetryPosition,
     );
     final int puzzleCount = report.insights
-        .where((AiMoveInsight item) =>
-            item.hasEngineEvidence &&
-            const <String>{'Inaccuracy', 'Mistake', 'Blunder'}
-                .contains(item.label))
+        .where(
+          (AiMoveInsight item) =>
+              item.hasEngineEvidence &&
+              const <String>{
+                'Inaccuracy',
+                'Mistake',
+                'Blunder',
+              }.contains(item.label),
+        )
         .length;
     final Widget puzzleAction = FilledButton.icon(
       onPressed: puzzleCount == 0 ? null : onGeneratePuzzles,
       icon: const Icon(Icons.extension_rounded),
-      label: Text(puzzleCount == 0
-          ? _reviewText('noMistakes', languageCode)
-          : '${_reviewText('resumeMistakes', languageCode)} ($puzzleCount)'),
+      label: Text(
+        puzzleCount == 0
+            ? _reviewText('noMistakes', languageCode)
+            : '${_reviewText('resumeMistakes', languageCode)} ($puzzleCount)',
+      ),
     );
     return Padding(
       padding: EdgeInsets.all(desktop ? 24 : 16),
-      child: Column(children: <Widget>[
-        Row(children: <Widget>[
-          const Icon(Icons.auto_awesome_rounded, color: Color(0xFF59E4C8)),
-          const SizedBox(width: 9),
+      child: Column(
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              const Icon(Icons.auto_awesome_rounded, color: Color(0xFF59E4C8)),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  _reviewText('title', languageCode),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
+          ),
+          const Divider(),
+          const SizedBox(height: 8),
           Expanded(
-            child: Text(_reviewText('title', languageCode),
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.1,
-                )),
+            child: desktop
+                ? Row(
+                    children: <Widget>[
+                      SizedBox(
+                        width: 390,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: <Widget>[
+                              overview,
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: puzzleAction,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 22),
+                      Expanded(child: timeline),
+                    ],
+                  )
+                : ListView(
+                    children: <Widget>[
+                      overview,
+                      if (puzzleCount > 0) ...<Widget>[
+                        const SizedBox(height: 12),
+                        puzzleAction,
+                      ],
+                      const SizedBox(height: 18),
+                      SizedBox(height: 430, child: timeline),
+                    ],
+                  ),
           ),
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.close_rounded),
-          ),
-        ]),
-        const Divider(),
-        const SizedBox(height: 8),
-        Expanded(
-          child: desktop
-              ? Row(children: <Widget>[
-                  SizedBox(
-                      width: 390,
-                      child: SingleChildScrollView(
-                        child: Column(children: <Widget>[
-                          overview,
-                          const SizedBox(height: 12),
-                          SizedBox(width: double.infinity, child: puzzleAction),
-                        ]),
-                      )),
-                  const SizedBox(width: 22),
-                  Expanded(child: timeline),
-                ])
-              : ListView(children: <Widget>[
-                  overview,
-                  if (puzzleCount > 0) ...<Widget>[
-                    const SizedBox(height: 12),
-                    puzzleAction,
-                  ],
-                  const SizedBox(height: 18),
-                  SizedBox(height: 430, child: timeline),
-                ]),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }
@@ -260,37 +288,52 @@ class _ReviewOverview extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         ChessVerseCard(
-          child: Row(children: <Widget>[
-            SizedBox(
-              width: 82,
-              height: 82,
-              child: Stack(alignment: Alignment.center, children: <Widget>[
-                CircularProgressIndicator(
-                  value: report.accuracy / 100,
-                  strokeWidth: 8,
-                  backgroundColor: const Color(0xFF263A46),
-                  color: const Color(0xFF59E4C8),
+          child: Row(
+            children: <Widget>[
+              SizedBox(
+                width: 82,
+                height: 82,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: <Widget>[
+                    CircularProgressIndicator(
+                      value: report.accuracy / 100,
+                      strokeWidth: 8,
+                      backgroundColor: const Color(0xFF263A46),
+                      color: const Color(0xFF59E4C8),
+                    ),
+                    Text(
+                      '${report.accuracy}%',
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                  ],
                 ),
-                Text('${report.accuracy}%',
-                    style: const TextStyle(fontWeight: FontWeight.w900)),
-              ]),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(_localizedReviewHeadline(report.headline, languageCode),
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 5),
-                  Text(_localizedReviewSummary(report.summary, languageCode),
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, height: 1.35)),
-                ],
               ),
-            ),
-          ]),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      _localizedReviewHeadline(report.headline, languageCode),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      _localizedReviewSummary(report.summary, languageCode),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         _InsightCard(
@@ -304,23 +347,22 @@ class _ReviewOverview extends StatelessWidget {
                 .length >=
             2) ...<Widget>[
           const SizedBox(height: 12),
-          _EvaluationGraph(
-            report: report,
-            onRetryPosition: onRetryPosition,
-          ),
+          _EvaluationGraph(report: report, onRetryPosition: onRetryPosition),
         ],
         const SizedBox(height: 12),
         ChessVerseCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(_reviewText('moveQuality', languageCode),
-                  style: const TextStyle(
-                    color: AppColors.accentGold,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: .9,
-                  )),
+              Text(
+                _reviewText('moveQuality', languageCode),
+                style: const TextStyle(
+                  color: AppColors.accentGold,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .9,
+                ),
+              ),
               const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
@@ -366,8 +408,10 @@ class _ReviewOverview extends StatelessWidget {
             body: report.importantMistakes
                 .asMap()
                 .entries
-                .map((MapEntry<int, String> item) =>
-                    '${item.key + 1}. ${_localizedReviewNarrative(item.value, languageCode)}')
+                .map(
+                  (MapEntry<int, String> item) =>
+                      '${item.key + 1}. ${_localizedReviewNarrative(item.value, languageCode)}',
+                )
                 .join('\n\n'),
             color: AppColors.accentGold,
           ),
@@ -385,17 +429,21 @@ class _ReviewOverview extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(_reviewText('trainingPlan', languageCode),
-                  style: const TextStyle(
-                    color: Color(0xFF59E4C8),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: .9,
-                  )),
+              Text(
+                _reviewText('trainingPlan', languageCode),
+                style: const TextStyle(
+                  color: Color(0xFF59E4C8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .9,
+                ),
+              ),
               const SizedBox(height: 9),
-              for (int index = 0;
-                  index < report.trainingRecommendations.length;
-                  index++)
+              for (
+                int index = 0;
+                index < report.trainingRecommendations.length;
+                index++
+              )
                 Padding(
                   padding: const EdgeInsets.only(bottom: 7),
                   child: Text(
@@ -415,14 +463,14 @@ class _ReviewOverview extends StatelessWidget {
 /// same public quality scale. Without this normalization a fully populated
 /// timeline made every summary counter display zero.
 String reviewQualityBucket(String label) => switch (label.trim()) {
-      'Best' => 'Best',
-      'Great' || 'Excellent' || 'Power move' => 'Great',
-      'Good' || 'Principled' || 'Tactical' || 'Playable' => 'Good',
-      'Inaccuracy' => 'Inaccuracy',
-      'Mistake' => 'Mistake',
-      'Blunder' => 'Blunder',
-      _ => 'Good',
-    };
+  'Best' => 'Best',
+  'Great' || 'Excellent' || 'Power move' => 'Great',
+  'Good' || 'Principled' || 'Tactical' || 'Playable' => 'Good',
+  'Inaccuracy' => 'Inaccuracy',
+  'Mistake' => 'Mistake',
+  'Blunder' => 'Blunder',
+  _ => 'Good',
+};
 
 class _EvaluationGraph extends StatefulWidget {
   const _EvaluationGraph({required this.report, this.onRetryPosition});
@@ -446,31 +494,41 @@ class _EvaluationGraphState extends State<_EvaluationGraph> {
     final List<int> values = points
         .map((AiMoveInsight item) => item.evaluationAfterCp!.clamp(-1200, 1200))
         .toList(growable: false);
-    final int selected =
-        (_selectedIndex ?? values.length - 1).clamp(0, values.length - 1);
+    final int selected = (_selectedIndex ?? values.length - 1).clamp(
+      0,
+      values.length - 1,
+    );
     final AiMoveInsight insight = points[selected];
     final int evaluation = values[selected];
     return ChessVerseCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Row(children: <Widget>[
-            const Icon(Icons.show_chart_rounded,
-                color: Color(0xFF59E4C8), size: 18),
-            const SizedBox(width: 8),
-            Text(_reviewText('evaluationGraph', languageCode),
+          Row(
+            children: <Widget>[
+              const Icon(
+                Icons.show_chart_rounded,
+                color: Color(0xFF59E4C8),
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _reviewText('evaluationGraph', languageCode),
                 style: const TextStyle(
                   color: Color(0xFF59E4C8),
                   fontSize: 11,
                   fontWeight: FontWeight.w900,
                   letterSpacing: .9,
-                )),
-          ]),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
           Semantics(
             label: localizeReviewNarrative(
-                'Interactive Stockfish evaluation graph. Swipe or tap to inspect a move.',
-                languageCode),
+              'Interactive Stockfish evaluation graph. Swipe or tap to inspect a move.',
+              languageCode,
+            ),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTapDown: (TapDownDetails details) {
@@ -508,43 +566,51 @@ class _EvaluationGraphState extends State<_EvaluationGraph> {
             ),
           ),
           const SizedBox(height: 8),
-          Row(children: <Widget>[
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    localizeReviewNarrative(
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      localizeReviewNarrative(
                         'Ply ${insight.number} • ${insight.side} ${insight.notation}',
-                        languageCode),
-                    style: const TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                  Text(
-                    localizeReviewNarrative(
+                        languageCode,
+                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    Text(
+                      localizeReviewNarrative(
                         insight.mateAfter != null
                             ? 'Mate ${insight.mateAfter! > 0 ? '+' : ''}${insight.mateAfter}'
                             : '${evaluation >= 0 ? 'White' : 'Black'} advantage • ${(evaluation.abs() / 100).toStringAsFixed(2)}',
-                        languageCode),
-                    style: TextStyle(
-                      color: evaluation >= 0
-                          ? const Color(0xFFE9EDF0)
-                          : AppColors.accentGold,
-                      fontSize: 12,
+                        languageCode,
+                      ),
+                      style: TextStyle(
+                        color: evaluation >= 0
+                            ? const Color(0xFFE9EDF0)
+                            : AppColors.accentGold,
+                        fontSize: 12,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              if (insight.hasEngineEvidence && widget.onRetryPosition != null)
+                TextButton.icon(
+                  onPressed: () => widget.onRetryPosition!(insight),
+                  icon: const Icon(Icons.replay_rounded, size: 17),
+                  label: Text(_reviewText('retry', languageCode)),
+                ),
+            ],
+          ),
+          Text(
+            _reviewText('graphHelp', languageCode),
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 11,
             ),
-            if (insight.hasEngineEvidence && widget.onRetryPosition != null)
-              TextButton.icon(
-                onPressed: () => widget.onRetryPosition!(insight),
-                icon: const Icon(Icons.replay_rounded, size: 17),
-                label: Text(_reviewText('retry', languageCode)),
-              ),
-          ]),
-          Text(_reviewText('graphHelp', languageCode),
-              style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 11)),
+          ),
         ],
       ),
     );
@@ -601,16 +667,20 @@ class _EvaluationGraphPainter extends CustomPainter {
     for (int index = 1; index < values.length; index++) {
       if ((values[index] - values[index - 1]).abs() >= 120) {
         canvas.drawCircle(
-            offsets[index], 4, Paint()..color = const Color(0xFFF0B94A));
+          offsets[index],
+          4,
+          Paint()..color = const Color(0xFFF0B94A),
+        );
       }
     }
     final Offset selected = offsets[selectedIndex.clamp(0, offsets.length - 1)];
     canvas.drawLine(
-        Offset(selected.dx, plot.top),
-        Offset(selected.dx, plot.bottom),
-        Paint()
-          ..color = const Color(0x9959E4C8)
-          ..strokeWidth = 1);
+      Offset(selected.dx, plot.top),
+      Offset(selected.dx, plot.bottom),
+      Paint()
+        ..color = const Color(0x9959E4C8)
+        ..strokeWidth = 1,
+    );
     canvas.drawCircle(selected, 7, Paint()..color = const Color(0xFF061722));
     canvas.drawCircle(selected, 5, Paint()..color = const Color(0xFF59E4C8));
   }
@@ -634,27 +704,28 @@ class _QualityCount extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: color.withValues(alpha: .5)),
-        ),
-        child: Text('$count $label',
-            style: TextStyle(
-                color: color, fontSize: 12, fontWeight: FontWeight.w900)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: .12),
+      borderRadius: BorderRadius.circular(99),
+      border: Border.all(color: color.withValues(alpha: .5)),
+    ),
+    child: Text(
+      '$count $label',
+      style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w900),
+    ),
+  );
 }
 
 Color _qualityColor(String label) => switch (label) {
-      'Best' || 'Power move' || 'Principled' => const Color(0xFF59E4C8),
-      'Great' || 'Excellent' => const Color(0xFF50B8FF),
-      'Good' || 'Playable' || 'Tactical' => const Color(0xFF7FD6A6),
-      'Inaccuracy' => const Color(0xFFFFC857),
-      'Mistake' => const Color(0xFFFF8A4C),
-      'Blunder' => const Color(0xFFFF5263),
-      _ => const Color(0xFF8EA4B7),
-    };
+  'Best' || 'Power move' || 'Principled' => const Color(0xFF59E4C8),
+  'Great' || 'Excellent' => const Color(0xFF50B8FF),
+  'Good' || 'Playable' || 'Tactical' => const Color(0xFF7FD6A6),
+  'Inaccuracy' => const Color(0xFFFFC857),
+  'Mistake' => const Color(0xFFFF8A4C),
+  'Blunder' => const Color(0xFFFF5263),
+  _ => const Color(0xFF8EA4B7),
+};
 
 class _InsightCard extends StatelessWidget {
   const _InsightCard({
@@ -670,28 +741,32 @@ class _InsightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ChessVerseCard(
-        child: Row(
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(icon, color: color),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Icon(icon, color: color),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(label,
-                          style: TextStyle(
-                            color: color,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: .9,
-                          )),
-                      const SizedBox(height: 6),
-                      Text(body, style: const TextStyle(height: 1.4)),
-                    ]),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .9,
+                ),
               ),
-            ]),
-      );
+              const SizedBox(height: 6),
+              Text(body, style: const TextStyle(height: 1.4)),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _MoveTimeline extends StatelessWidget {
@@ -713,125 +788,144 @@ class _MoveTimeline extends StatelessWidget {
       return Center(child: Text(_reviewText('completeGame', languageCode)));
     }
     return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(_reviewText('moveByMove', languageCode),
-              style: const TextStyle(
-                color: AppColors.accentGold,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1,
-              )),
-          const SizedBox(height: 10),
-          Expanded(
-            child: ListView.separated(
-              itemCount: report.insights.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (BuildContext context, int index) {
-                final AiMoveInsight insight = report.insights[index];
-                final Color color = _qualityColor(insight.label);
-                return ChessVerseCard(
-                  padding: const EdgeInsets.all(13),
-                  child: Row(children: <Widget>[
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          _reviewText('moveByMove', languageCode),
+          style: const TextStyle(
+            color: AppColors.accentGold,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: ListView.separated(
+            itemCount: report.insights.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (BuildContext context, int index) {
+              final AiMoveInsight insight = report.insights[index];
+              final Color color = _qualityColor(insight.label);
+              return ChessVerseCard(
+                padding: const EdgeInsets.all(13),
+                child: Row(
+                  children: <Widget>[
                     CircleAvatar(
                       backgroundColor: color.withValues(alpha: .16),
                       foregroundColor: color,
-                      child: Text('${insight.number}',
-                          style: const TextStyle(fontWeight: FontWeight.w900)),
+                      child: Text(
+                        '${insight.number}',
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Row(children: <Widget>[
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Row(
+                            children: <Widget>[
                               Expanded(
                                 child: Text(
-                                    '${CoachLocalizations(languageCode).source(insight.side)} • ${insight.notation}',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w900)),
+                                  '${CoachLocalizations(languageCode).source(insight.side)} • ${insight.notation}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
                               ),
                               Text(
-                                  _localizedReviewQuality(
-                                      insight.label, languageCode),
-                                  style: TextStyle(
-                                      color: color,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 11)),
-                            ]),
-                            const SizedBox(height: 4),
-                            Text(
-                                '${_localizedReviewPhase(insight.phase, languageCode)}: ${_localizedReviewExplanation(insight.explanation, languageCode)}',
-                                style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    height: 1.35)),
-                            if (insight.centipawnLoss != null) ...<Widget>[
-                              const SizedBox(height: 7),
-                              Text(
-                                insight.centipawnLoss == 0
-                                    ? _reviewText('noEngineLoss', languageCode)
-                                    : '${_reviewText('engineLoss', languageCode)}: ${insight.centipawnLoss} cp'
-                                        '${insight.bestMove?.isNotEmpty == true ? ' • ${_reviewText('best', languageCode)}: ${insight.bestMove}' : ''}',
+                                _localizedReviewQuality(
+                                  insight.label,
+                                  languageCode,
+                                ),
                                 style: TextStyle(
                                   color: color,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 11,
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: <Widget>[
-                                _ReviewAction(
-                                  icon: Icons.psychology_alt_rounded,
-                                  label: _reviewText('explain', languageCode),
-                                  onTap: () => _showInteractiveCoach(
-                                    context,
-                                    insight,
-                                    openingEco: openingEco,
-                                    timeControl: timeControl,
-                                  ),
-                                ),
-                                _ReviewAction(
-                                  icon: Icons.warning_amber_rounded,
-                                  label:
-                                      _reviewText('showThreat', languageCode),
-                                  onTap: () => _showReviewDetail(
-                                    context,
-                                    _reviewText('threatTitle', languageCode),
-                                    insight.opponentThreat?.isNotEmpty == true
-                                        ? '${_reviewText('immediateReply', languageCode)}: ${insight.opponentThreat}.\n\n${_reviewText('alternative', languageCode)}: ${insight.bestMove ?? '—'}.\n\n${_variationText(insight, languageCode)}'
-                                        : _reviewText('noThreat', languageCode),
-                                    languageCode: languageCode,
-                                  ),
-                                ),
-                                _ReviewAction(
-                                  icon: Icons.replay_circle_filled_rounded,
-                                  label: _reviewText(
-                                      'retryPosition', languageCode),
-                                  onTap: insight.hasEngineEvidence &&
-                                          insight.bestMove?.isNotEmpty ==
-                                              true &&
-                                          onRetryPosition != null
-                                      ? () => onRetryPosition!(insight)
-                                      : null,
-                                ),
-                              ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${_localizedReviewPhase(insight.phase, languageCode)}: ${_localizedReviewExplanation(insight.explanation, languageCode)}',
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              height: 1.35,
                             ),
-                          ]),
+                          ),
+                          if (insight.centipawnLoss != null) ...<Widget>[
+                            const SizedBox(height: 7),
+                            Text(
+                              insight.centipawnLoss == 0
+                                  ? _reviewText('noEngineLoss', languageCode)
+                                  : '${_reviewText('engineLoss', languageCode)}: ${insight.centipawnLoss} cp'
+                                        '${insight.bestMove?.isNotEmpty == true ? ' • ${_reviewText('best', languageCode)}: ${insight.bestMove}' : ''}',
+                              style: TextStyle(
+                                color: color,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: <Widget>[
+                              _ReviewAction(
+                                icon: Icons.psychology_alt_rounded,
+                                label: _reviewText('explain', languageCode),
+                                onTap: () => _showInteractiveCoach(
+                                  context,
+                                  insight,
+                                  openingEco: openingEco,
+                                  timeControl: timeControl,
+                                ),
+                              ),
+                              _ReviewAction(
+                                icon: Icons.warning_amber_rounded,
+                                label: _reviewText('showThreat', languageCode),
+                                onTap: () => _showReviewDetail(
+                                  context,
+                                  _reviewText('threatTitle', languageCode),
+                                  insight.opponentThreat?.isNotEmpty == true
+                                      ? '${_reviewText('immediateReply', languageCode)}: ${insight.opponentThreat}.\n\n${_reviewText('alternative', languageCode)}: ${insight.bestMove ?? '—'}.\n\n${_variationText(insight, languageCode)}'
+                                      : _reviewText('noThreat', languageCode),
+                                  languageCode: languageCode,
+                                ),
+                              ),
+                              _ReviewAction(
+                                icon: Icons.replay_circle_filled_rounded,
+                                label: _reviewText(
+                                  'retryPosition',
+                                  languageCode,
+                                ),
+                                onTap:
+                                    insight.hasEngineEvidence &&
+                                        insight.bestMove?.isNotEmpty == true &&
+                                        onRetryPosition != null
+                                    ? () => onRetryPosition!(insight)
+                                    : null,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ]),
-                );
-              },
-            ),
+                  ],
+                ),
+              );
+            },
           ),
-        ]);
+        ),
+      ],
+    );
   }
 }
 
-String _variationText(AiMoveInsight insight, String languageCode) => insight
-        .principalVariation.isEmpty
+String _variationText(AiMoveInsight insight, String languageCode) =>
+    insight.principalVariation.isEmpty
     ? _reviewText('noVariation', languageCode)
     : '${_reviewText('continuation', languageCode)}: ${insight.principalVariation.take(6).join(' → ')}';
 
@@ -877,8 +971,10 @@ String _localizedCoachQuestion(CoachQuestion question, String code) =>
     questionLabel(question, code);
 
 String _localizedPersonalCoachAnswer(
-        AiMoveInsight insight, CoachQuestion question, String code) =>
-    personalCoachAnswer(insight, question, code);
+  AiMoveInsight insight,
+  CoachQuestion question,
+  String code,
+) => personalCoachAnswer(insight, question, code);
 
 class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
   CoachQuestion _question = CoachQuestion.whyBad;
@@ -934,8 +1030,10 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
       final List<String> candidates = _candidatesController.text
           .split(RegExp(r'[,\s]+'))
           .map((String value) => value.trim().toLowerCase())
-          .where((String value) =>
-              RegExp(r'^[a-h][1-8][a-h][1-8][qrbn]?$').hasMatch(value))
+          .where(
+            (String value) =>
+                RegExp(r'^[a-h][1-8][a-h][1-8][qrbn]?$').hasMatch(value),
+          )
           .take(3)
           .toList(growable: false);
       final AiCoachAnswer result = await const AiCoachApi().ask(
@@ -955,9 +1053,22 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
         _cloudAnswer = result;
         _sessionId = result.sessionId;
       });
-    } on AiCoachApiException {
+    } on AiCoachApiException catch (error) {
       if (mounted && generation == _requestGeneration) {
-        setState(() => _answer = personalCoachText('apiError', _languageCode));
+        setState(() {
+          // Preset questions already have a deterministic, Stockfish-grounded
+          // answer. Keep that useful answer when the optional cloud-language
+          // request times out or is unavailable instead of replacing it with
+          // a dead-end error message.
+          _answer = presetQuestion != null
+              ? _localizedPersonalCoachAnswer(
+                  widget.insight,
+                  _question,
+                  _languageCode,
+                )
+              : '${personalCoachText('apiError', _languageCode)}\n${error.message}';
+          _cloudAnswer = null;
+        });
       }
     } finally {
       if (mounted && generation == _requestGeneration) {
@@ -1004,16 +1115,20 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(helpful
+            content: Text(
+              helpful
                   ? personalCoachText('feedbackHelpfulSaved', _languageCode)
-                  : personalCoachText('feedbackSaved', _languageCode))),
+                  : personalCoachText('feedbackSaved', _languageCode),
+            ),
+          ),
         );
       }
     } on Object {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(personalCoachText('feedbackError', _languageCode))),
+            content: Text(personalCoachText('feedbackError', _languageCode)),
+          ),
         );
       }
     }
@@ -1028,166 +1143,184 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: Row(children: <Widget>[
-          const Icon(Icons.auto_awesome_rounded, color: Color(0xFF59E4C8)),
-          const SizedBox(width: 9),
-          Expanded(child: Text(_coachDialogText('title', _languageCode))),
-          TextButton.icon(
-            key: const ValueKey<String>('coach-language'),
-            onPressed: () async {
-              final String? selected = await selectAndSaveAiLanguage(context);
-              if (selected != null && mounted) {
-                final String effective =
-                    await AppLanguageController.effectiveCode();
-                if (!mounted) return;
-                setState(() {
-                  _requestGeneration++;
-                  _languageCode = effective;
-                  _loading = false;
-                  _cloudAnswer = null;
-                  _sessionId = null;
-                });
-                if (_lastWasFreeText && _lastSubmittedQuestion != null) {
-                  setState(() =>
-                      _answer = personalCoachText('loading', _languageCode));
-                  await _ask(retryQuestion: _lastSubmittedQuestion);
-                } else {
-                  await _askPreset(_question);
-                }
+    title: Row(
+      children: <Widget>[
+        const Icon(Icons.auto_awesome_rounded, color: Color(0xFF59E4C8)),
+        const SizedBox(width: 9),
+        Expanded(child: Text(_coachDialogText('title', _languageCode))),
+        TextButton.icon(
+          key: const ValueKey<String>('coach-language'),
+          onPressed: () async {
+            final String? selected = await selectAndSaveAiLanguage(context);
+            if (selected != null && mounted) {
+              final String effective =
+                  await AppLanguageController.effectiveCode();
+              if (!mounted) return;
+              setState(() {
+                _requestGeneration++;
+                _languageCode = effective;
+                _loading = false;
+                _cloudAnswer = null;
+                _sessionId = null;
+              });
+              if (_lastWasFreeText && _lastSubmittedQuestion != null) {
+                setState(
+                  () => _answer = personalCoachText('loading', _languageCode),
+                );
+                await _ask(retryQuestion: _lastSubmittedQuestion);
+              } else {
+                await _askPreset(_question);
               }
-            },
-            icon: const Icon(Icons.translate_rounded, size: 18),
-            label: Text(_languageCode == AppLanguageController.systemCode
+            }
+          },
+          icon: const Icon(Icons.translate_rounded, size: 18),
+          label: Text(
+            _languageCode == AppLanguageController.systemCode
                 ? personalCoachText('autoLanguage', _languageCode)
-                : AppLanguageController.byCode(_languageCode).nativeName),
+                : AppLanguageController.byCode(_languageCode).nativeName,
           ),
-        ]),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text(
-                  _answer ?? _coachDialogText('loading', _languageCode),
-                  style: const TextStyle(height: 1.45),
-                ),
-                const SizedBox(height: 18),
-                TextField(
-                  controller: _controller,
-                  minLines: 1,
-                  maxLines: 3,
-                  maxLength: 500,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _ask(),
-                  decoration: InputDecoration(
-                    labelText: _coachDialogText('askPosition', _languageCode),
-                    hintText: _coachDialogText('example', _languageCode),
-                    suffixIcon: _loading
-                        ? const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : IconButton(
-                            onPressed: _ask,
-                            icon: const Icon(Icons.send_rounded),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _candidatesController,
-                  decoration: InputDecoration(
-                    labelText: _coachDialogText('compare', _languageCode),
-                    hintText: 'e2e4, d2d4, g1f3',
-                    prefixIcon: const Icon(Icons.compare_arrows_rounded),
-                  ),
-                ),
-                if (_cloudAnswer != null) ...<Widget>[
-                  const SizedBox(height: 12),
-                  _CoachPositionBoard(
-                    fen: widget.insight.fenBefore!,
-                    annotations: _cloudAnswer!.annotations,
-                    languageCode: _languageCode,
-                  ),
-                  if (_cloudAnswer!.comparisons.isNotEmpty) ...<Widget>[
-                    const SizedBox(height: 9),
-                    Wrap(
-                      spacing: 7,
-                      runSpacing: 7,
-                      children: <Widget>[
-                        for (final AiCandidateComparison item
-                            in _cloudAnswer!.comparisons)
-                          Chip(
-                            avatar:
-                                const Icon(Icons.analytics_rounded, size: 16),
-                            label: Text(
-                                '${item.move} • ${_localizedReviewQuality(item.classification, _languageCode)} • ${item.centipawnLoss}cp'),
-                          ),
-                      ],
-                    ),
-                  ],
-                  Text(
-                      personalCoachText('remaining', _languageCode).replaceAll(
-                          '{count}', '${_cloudAnswer!.remainingToday}'),
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, fontSize: 11)),
-                  Row(children: <Widget>[
-                    Text(personalCoachText('useful', _languageCode),
-                        style: const TextStyle(fontSize: 12)),
-                    IconButton(
-                      tooltip: personalCoachText('helpful', _languageCode),
-                      onPressed: () => _sendFeedback(true),
-                      icon: const Icon(Icons.thumb_up_alt_outlined, size: 18),
-                    ),
-                    IconButton(
-                      tooltip: personalCoachText('notHelpful', _languageCode),
-                      onPressed: () => _sendFeedback(false),
-                      icon: const Icon(Icons.thumb_down_alt_outlined, size: 18),
-                    ),
-                  ]),
-                ],
-                const SizedBox(height: 8),
-                Text(_coachDialogText('followUp', _languageCode),
-                    style: const TextStyle(
-                      color: AppColors.accentGold,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: .8,
-                    )),
-                const SizedBox(height: 8),
+        ),
+      ],
+    ),
+    content: SizedBox(
+      width: 520,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(
+              _answer ?? _coachDialogText('loading', _languageCode),
+              style: const TextStyle(height: 1.45),
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: _controller,
+              minLines: 1,
+              maxLines: 3,
+              maxLength: 500,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _ask(),
+              decoration: InputDecoration(
+                labelText: _coachDialogText('askPosition', _languageCode),
+                hintText: _coachDialogText('example', _languageCode),
+                suffixIcon: _loading
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : IconButton(
+                        onPressed: _ask,
+                        icon: const Icon(Icons.send_rounded),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _candidatesController,
+              decoration: InputDecoration(
+                labelText: _coachDialogText('compare', _languageCode),
+                hintText: 'e2e4, d2d4, g1f3',
+                prefixIcon: const Icon(Icons.compare_arrows_rounded),
+              ),
+            ),
+            if (_cloudAnswer != null) ...<Widget>[
+              const SizedBox(height: 12),
+              _CoachPositionBoard(
+                fen: widget.insight.fenBefore!,
+                annotations: _cloudAnswer!.annotations,
+                languageCode: _languageCode,
+              ),
+              if (_cloudAnswer!.comparisons.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 9),
                 Wrap(
                   spacing: 7,
                   runSpacing: 7,
                   children: <Widget>[
-                    for (final CoachQuestion question in CoachQuestion.values)
-                      ChoiceChip(
+                    for (final AiCandidateComparison item
+                        in _cloudAnswer!.comparisons)
+                      Chip(
+                        avatar: const Icon(Icons.analytics_rounded, size: 16),
                         label: Text(
-                            _localizedCoachQuestion(question, _languageCode)),
-                        selected: _question == question,
-                        onSelected: (_) => _askPreset(question),
+                          '${item.move} • ${_localizedReviewQuality(item.classification, _languageCode)} • ${item.centipawnLoss}cp',
+                        ),
                       ),
                   ],
                 ),
               ],
+              Text(
+                personalCoachText(
+                  'remaining',
+                  _languageCode,
+                ).replaceAll('{count}', '${_cloudAnswer!.remainingToday}'),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 11,
+                ),
+              ),
+              Row(
+                children: <Widget>[
+                  Text(
+                    personalCoachText('useful', _languageCode),
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  IconButton(
+                    tooltip: personalCoachText('helpful', _languageCode),
+                    onPressed: () => _sendFeedback(true),
+                    icon: const Icon(Icons.thumb_up_alt_outlined, size: 18),
+                  ),
+                  IconButton(
+                    tooltip: personalCoachText('notHelpful', _languageCode),
+                    onPressed: () => _sendFeedback(false),
+                    icon: const Icon(Icons.thumb_down_alt_outlined, size: 18),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 8),
+            Text(
+              _coachDialogText('followUp', _languageCode),
+              style: const TextStyle(
+                color: AppColors.accentGold,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                letterSpacing: .8,
+              ),
             ),
-          ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              children: <Widget>[
+                for (final CoachQuestion question in CoachQuestion.values)
+                  ChoiceChip(
+                    label: Text(
+                      _localizedCoachQuestion(question, _languageCode),
+                    ),
+                    selected: _question == question,
+                    onSelected: (_) => _askPreset(question),
+                  ),
+              ],
+            ),
+          ],
         ),
-        actions: <Widget>[
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(_coachDialogText('back', _languageCode)),
-          ),
-        ],
-      );
+      ),
+    ),
+    actions: <Widget>[
+      FilledButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: Text(_coachDialogText('back', _languageCode)),
+      ),
+    ],
+  );
 }
 
 class _CoachPositionBoard extends StatelessWidget {
-  const _CoachPositionBoard(
-      {required this.fen,
-      required this.annotations,
-      required this.languageCode});
+  const _CoachPositionBoard({
+    required this.fen,
+    required this.annotations,
+    required this.languageCode,
+  });
   final String fen;
   final List<AiBoardAnnotation> annotations;
   final String languageCode;
@@ -1199,34 +1332,41 @@ class _CoachPositionBoard extends StatelessWidget {
       label: personalCoachText('boardSemantics', languageCode),
       child: AspectRatio(
         aspectRatio: 1,
-        child:
-            LayoutBuilder(builder: (BuildContext context, BoxConstraints box) {
-          return Stack(children: <Widget>[
-            GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 8),
-              itemCount: 64,
-              itemBuilder: (BuildContext context, int index) {
-                final int rank = 7 - index ~/ 8;
-                final int file = index % 8;
-                final String square =
-                    '${String.fromCharCode(97 + file)}${rank + 1}';
-                return ColoredBox(
-                  color: (rank + file).isEven
-                      ? const Color(0xFFBDD0D8)
-                      : const Color(0xFF416A7C),
-                  child: Center(
-                    child: Text(pieces[square] ?? '',
-                        style: TextStyle(fontSize: box.maxWidth / 12.5)),
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints box) {
+            return Stack(
+              children: <Widget>[
+                GridView.builder(
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 8,
                   ),
-                );
-              },
-            ),
-            Positioned.fill(
-                child: CustomPaint(painter: _CoachArrowPainter(annotations))),
-          ]);
-        }),
+                  itemCount: 64,
+                  itemBuilder: (BuildContext context, int index) {
+                    final int rank = 7 - index ~/ 8;
+                    final int file = index % 8;
+                    final String square =
+                        '${String.fromCharCode(97 + file)}${rank + 1}';
+                    return ColoredBox(
+                      color: (rank + file).isEven
+                          ? const Color(0xFFBDD0D8)
+                          : const Color(0xFF416A7C),
+                      child: Center(
+                        child: Text(
+                          pieces[square] ?? '',
+                          style: TextStyle(fontSize: box.maxWidth / 12.5),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                Positioned.fill(
+                  child: CustomPaint(painter: _CoachArrowPainter(annotations)),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -1289,10 +1429,14 @@ class _CoachArrowPainter extends CustomPainter {
       final double angle = (to - from).direction;
       final Path head = Path()
         ..moveTo(to.dx, to.dy)
-        ..lineTo(to.dx - cell * .35 * math.cos(angle - .55),
-            to.dy - cell * .35 * math.sin(angle - .55))
-        ..lineTo(to.dx - cell * .35 * math.cos(angle + .55),
-            to.dy - cell * .35 * math.sin(angle + .55))
+        ..lineTo(
+          to.dx - cell * .35 * math.cos(angle - .55),
+          to.dy - cell * .35 * math.sin(angle - .55),
+        )
+        ..lineTo(
+          to.dx - cell * .35 * math.cos(angle + .55),
+          to.dy - cell * .35 * math.sin(angle + .55),
+        )
         ..close();
       canvas.drawPath(head, paint);
     }
@@ -1322,10 +1466,10 @@ class _ReviewAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => OutlinedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 16),
-        label: Text(label),
-      );
+    onPressed: onTap,
+    icon: Icon(icon, size: 16),
+    label: Text(label),
+  );
 }
 
 Future<void> _showReviewDetail(
