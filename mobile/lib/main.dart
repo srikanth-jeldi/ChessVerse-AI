@@ -1457,11 +1457,19 @@ class _SplashGateState extends State<SplashGate> {
                                     (AiBotStyle style) =>
                                         ButtonSegment<AiBotStyle>(
                                           value: style,
-                                          label: Text(style.label),
+                                          label: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(
+                                              style.label,
+                                              maxLines: 1,
+                                              softWrap: false,
+                                            ),
+                                          ),
                                         ),
                                   )
                                   .toList(),
                               selected: <AiBotStyle>{selectedStyle},
+                              showSelectedIcon: false,
                               onSelectionChanged: (Set<AiBotStyle> value) =>
                                   setSheetState(
                                     () => selectedStyle = value.first,

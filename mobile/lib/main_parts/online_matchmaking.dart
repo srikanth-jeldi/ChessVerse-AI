@@ -1725,6 +1725,9 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                   child: FadeTransition(
                                     opacity: _entrance,
                                     child: SizedBox(
+                                      key: const ValueKey<String>(
+                                        'wide-player-card',
+                                      ),
                                       width: 236,
                                       child: _WideSearchPlayerCard(
                                         accent: teal,
@@ -1760,6 +1763,9 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                   child: FadeTransition(
                                     opacity: _entrance,
                                     child: SizedBox(
+                                      key: const ValueKey<String>(
+                                        'wide-rival-card',
+                                      ),
                                       width: 236,
                                       child: _SearchingRivalCard(
                                         animation: _rivalShuffle,
@@ -2686,6 +2692,7 @@ class _WideSearchPlayerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       height: 318,
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
       decoration: BoxDecoration(

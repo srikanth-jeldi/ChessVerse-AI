@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 
 import '../../../core/academy_story_localizations.dart';
+import '../../../core/audio/cloud_narration_service.dart';
 import '../../../core/app_language.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
@@ -11,45 +11,6 @@ import '../data/academy_progress_store.dart';
 import '../domain/master_game_lesson.dart';
 
 enum _MasterNarrationState { stopped, playing, paused }
-
-String _masterTtsLocale(String code) =>
-    const <String, String>{
-      'en': 'en-US',
-      'te': 'te-IN',
-      'hi': 'hi-IN',
-      'ta': 'ta-IN',
-      'kn': 'kn-IN',
-      'ml': 'ml-IN',
-      'mr': 'mr-IN',
-      'bn': 'bn-IN',
-      'gu': 'gu-IN',
-      'pa': 'pa-IN',
-      'ur': 'ur-PK',
-      'ar': 'ar-SA',
-      'es': 'es-ES',
-      'fr': 'fr-FR',
-      'de': 'de-DE',
-      'it': 'it-IT',
-      'pt': 'pt-BR',
-      'ru': 'ru-RU',
-      'uk': 'uk-UA',
-      'tr': 'tr-TR',
-      'fa': 'fa-IR',
-      'zh': 'zh-CN',
-      'ja': 'ja-JP',
-      'ko': 'ko-KR',
-      'id': 'id-ID',
-      'ms': 'ms-MY',
-      'th': 'th-TH',
-      'vi': 'vi-VN',
-      'pl': 'pl-PL',
-      'nl': 'nl-NL',
-      'sv': 'sv-SE',
-      'el': 'el-GR',
-      'he': 'he-IL',
-      'sw': 'sw-KE',
-    }[code] ??
-    'en-US';
 
 class MasterGamesScreen extends StatefulWidget {
   const MasterGamesScreen({super.key});
@@ -434,44 +395,24 @@ class _MasterGameStudyScreen extends StatefulWidget {
 
 class _MasterGameStudyScreenState extends State<_MasterGameStudyScreen> {
   static const AcademyProgressStore _progressStore = AcademyProgressStore();
-  late final FlutterTts _narrator;
+  late final CloudNarrationService _narrator;
   _MasterNarrationState _narrationState = _MasterNarrationState.stopped;
   String? _choice;
 
   @override
   void initState() {
     super.initState();
-    _narrator = FlutterTts()
-      ..setStartHandler(() => _setNarrationState(_MasterNarrationState.playing))
-      ..setCompletionHandler(
-        () => _setNarrationState(_MasterNarrationState.stopped),
-      )
-      ..setCancelHandler(
-        () => _setNarrationState(_MasterNarrationState.stopped),
-      )
-      ..setErrorHandler(
-        (_) => _setNarrationState(_MasterNarrationState.stopped),
-      )
-      ..setPauseHandler(() => _setNarrationState(_MasterNarrationState.paused))
-      ..setContinueHandler(
-        () => _setNarrationState(_MasterNarrationState.playing),
-      );
-    unawaited(_prepareNarrator());
+    _narrator = CloudNarrationService()
+      ..onStateChanged = (CloudNarrationState state) =>
+          _setNarrationState(switch (state) {
+            CloudNarrationState.playing => _MasterNarrationState.playing,
+            CloudNarrationState.paused => _MasterNarrationState.paused,
+            CloudNarrationState.stopped => _MasterNarrationState.stopped,
+          });
   }
 
   void _setNarrationState(_MasterNarrationState state) {
     if (mounted) setState(() => _narrationState = state);
-  }
-
-  Future<void> _prepareNarrator() async {
-    try {
-      await _narrator.setLanguage(_masterTtsLocale(widget.copy.code));
-      await _narrator.setSpeechRate(.43);
-      await _narrator.setPitch(1.02);
-      await _narrator.setVolume(1);
-    } on Object {
-      // On-screen localized coaching remains available without a TTS voice.
-    }
   }
 
   Future<void> _toggleNarration() async {
@@ -480,12 +421,20 @@ class _MasterGameStudyScreenState extends State<_MasterGameStudyScreen> {
         await _narrator.pause();
         return;
       }
+      if (_narrationState == _MasterNarrationState.paused) {
+        await _narrator.resume();
+        return;
+      }
       final MasterGameLesson lesson = widget.lesson;
       final String narration = <String>[
         widget.copy.text('master.${lesson.id}.question'),
         if (_choice != null) widget.copy.text('master.${lesson.id}.idea'),
       ].join(' ');
-      await _narrator.speak(narration);
+      final bool started = await _narrator.speak(
+        text: narration,
+        language: widget.copy.code,
+      );
+      if (!started) _setNarrationState(_MasterNarrationState.stopped);
     } on Object {
       _setNarrationState(_MasterNarrationState.stopped);
     }
@@ -493,7 +442,7 @@ class _MasterGameStudyScreenState extends State<_MasterGameStudyScreen> {
 
   @override
   void dispose() {
-    unawaited(_narrator.stop());
+    unawaited(_narrator.dispose());
     super.dispose();
   }
 

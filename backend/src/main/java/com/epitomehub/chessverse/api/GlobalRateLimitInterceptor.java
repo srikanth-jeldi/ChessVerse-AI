@@ -109,6 +109,7 @@ class GlobalRateLimitInterceptor implements HandlerInterceptor {
             return Policy.AUTH_OTHER;
         }
         if (normalized.equals("/api/contact")) return Policy.CONTACT;
+        if (normalized.startsWith("/api/v1/speech/")) return Policy.SPEECH;
         if (normalized.contains("/messages/attachments")) return Policy.UPLOAD;
         if (normalized.contains("/messages")) return Policy.CHAT;
         if (normalized.contains("/tournaments")) return Policy.TOURNAMENT;
@@ -161,7 +162,7 @@ class GlobalRateLimitInterceptor implements HandlerInterceptor {
 
     enum Policy {
         CONTACT(5, 5), AUTH_SENSITIVE(5, 5), AUTH_LOGIN(10, 10), AUTH_OTHER(20, 20),
-        UPLOAD(12, 8), CHAT(90, 45), TOURNAMENT(60, 30), MATCHMAKING(45, 30),
+        SPEECH(30, 20), UPLOAD(12, 8), CHAT(90, 45), TOURNAMENT(60, 30), MATCHMAKING(45, 30),
         GAME_MOVE(240, 180), MUTATION(180, 120), READ(600, 360);
 
         final int ipLimit;

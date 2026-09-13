@@ -54,6 +54,8 @@ class GlobalRateLimitInterceptorTest {
     void assignsSpecificHighRiskPolicies() {
         assertEquals(GlobalRateLimitInterceptor.Policy.CONTACT,
                 GlobalRateLimitInterceptor.policyFor("POST", "/api/contact"));
+        assertEquals(GlobalRateLimitInterceptor.Policy.SPEECH,
+                GlobalRateLimitInterceptor.policyFor("POST", "/api/v1/speech/synthesize"));
         assertEquals(GlobalRateLimitInterceptor.Policy.AUTH_LOGIN,
                 GlobalRateLimitInterceptor.policyFor("POST", "/api/auth/login"));
         assertEquals(GlobalRateLimitInterceptor.Policy.UPLOAD,

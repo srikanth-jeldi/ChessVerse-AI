@@ -865,6 +865,10 @@ void main() {
     expect(find.text('Estimated wait'), findsOneWidget);
     expect(find.text('Open'), findsOneWidget);
     expect(find.text('SEARCH SETTINGS'), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const ValueKey<String>('wide-player-card'))),
+      tester.getSize(find.byKey(const ValueKey<String>('wide-rival-card'))),
+    );
     expect(tester.takeException(), isNull);
   });
 

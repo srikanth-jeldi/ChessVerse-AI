@@ -3,11 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({
-    required this.onComplete,
-    super.key,
-  });
-
+  const OnboardingScreen({required this.onComplete, super.key});
   final VoidCallback onComplete;
 
   @override
@@ -20,23 +16,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   static const List<_OnboardingPageData> _pages = <_OnboardingPageData>[
     _OnboardingPageData(
-      title: 'Welcome to ChessVerseAI',
-      subtitle: 'Your intelligent chess companion.',
-      body:
-          'Play, learn and improve with AI coaching, puzzles and rich game analysis.',
+      eyebrow: 'PLAY · LEARN · IMPROVE',
+      title: 'More Than\nJust a Game',
+      body: 'Play, learn, and improve with an AI-powered chess universe.',
+      asset: 'assets/backgrounds/home-learn-hero-v1.webp',
       icon: Icons.auto_awesome_rounded,
     ),
     _OnboardingPageData(
-      title: 'Daily checkmate',
-      subtitle: 'One fresh tactical mission every day.',
-      body: 'Solve 3, 4 or 5-move forcing lines and build a daily streak.',
-      icon: Icons.emoji_events_rounded,
+      eyebrow: 'YOUR PERSONAL CHESS MENTOR',
+      title: 'AI Coach\nAlways With You',
+      body:
+          'Get personalised feedback, clear explanations, and improve faster.',
+      asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
+      icon: Icons.psychology_alt_rounded,
     ),
     _OnboardingPageData(
-      title: 'Built for every screen',
-      subtitle: 'Portrait, landscape, tablet and web.',
-      body: 'The board and controls adapt so the game always feels native.',
-      icon: Icons.devices_rounded,
+      eyebrow: 'THE WORLD IS YOUR BOARD',
+      title: 'Challenge Players\nWorldwide',
+      body: 'Climb the ranks, meet worthy rivals, and join live tournaments.',
+      asset: 'assets/backgrounds/home-online-hero-v1.webp',
+      icon: Icons.public_rounded,
     ),
   ];
 
@@ -46,252 +45,294 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: DecoratedBox(
-        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              final bool landscape =
-                  constraints.maxWidth > constraints.maxHeight;
-              final bool tight = constraints.maxHeight < 430;
-              final EdgeInsets padding = EdgeInsets.symmetric(
-                horizontal: landscape ? 28 : 20,
-                vertical: tight ? 8 : 20,
-              );
+  void _next() {
+    if (_page == _pages.length - 1) {
+      widget.onComplete();
+      return;
+    }
+    _controller.nextPage(
+      duration: const Duration(milliseconds: 360),
+      curve: Curves.easeOutCubic,
+    );
+  }
 
-              return Padding(
-                padding: padding,
-                child: Column(
-                  children: <Widget>[
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: DecoratedBox(
+      decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+      child: SafeArea(
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final bool landscape = constraints.maxWidth > constraints.maxHeight;
+            final bool tight = constraints.maxHeight < 430;
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                landscape ? 28 : 18,
+                tight ? 6 : 12,
+                landscape ? 28 : 18,
+                tight ? 8 : 18,
+              ),
+              child: Column(
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 180),
+                        opacity: _page == 0 ? 0 : 1,
+                        child: IconButton(
+                          tooltip: 'Previous',
+                          onPressed: _page == 0
+                              ? null
+                              : () => _controller.previousPage(
+                                  duration: const Duration(milliseconds: 320),
+                                  curve: Curves.easeOutCubic,
+                                ),
+                          icon: const Icon(Icons.arrow_back_rounded),
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
                         onPressed: widget.onComplete,
                         child: const Text('Skip'),
                       ),
-                    ),
-                    Expanded(
-                      child: PageView.builder(
-                        controller: _controller,
-                        itemCount: _pages.length,
-                        onPageChanged: (int value) =>
-                            setState(() => _page = value),
-                        itemBuilder: (BuildContext context, int index) {
-                          return _OnboardingPage(data: _pages[index]);
-                        },
+                    ],
+                  ),
+                  Expanded(
+                    child: PageView.builder(
+                      controller: _controller,
+                      itemCount: _pages.length,
+                      onPageChanged: (int value) =>
+                          setState(() => _page = value),
+                      itemBuilder: (_, int index) => _OnboardingPage(
+                        data: _pages[index],
+                        landscape: landscape,
+                        tight: tight,
                       ),
                     ),
-                    SizedBox(height: tight ? 4 : 10),
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Row(
-                            children: List<Widget>.generate(
-                              _pages.length,
-                              (int index) => AnimatedContainer(
-                                duration: const Duration(milliseconds: 220),
-                                margin: const EdgeInsets.only(right: 8),
-                                width: index == _page ? 28 : 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: index == _page
-                                      ? AppColors.primary
-                                      : AppColors.border,
-                                  borderRadius: BorderRadius.circular(99),
-                                ),
-                              ),
-                            ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List<Widget>.generate(
+                      _pages.length,
+                      (int index) => AnimatedContainer(
+                        duration: const Duration(milliseconds: 240),
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        width: index == _page ? 26 : 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: index == _page
+                              ? AppColors.primary
+                              : AppColors.border,
+                          borderRadius: BorderRadius.circular(99),
+                          boxShadow: index == _page
+                              ? <BoxShadow>[
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(
+                                      alpha: .45,
+                                    ),
+                                    blurRadius: 10,
+                                  ),
+                                ]
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: tight ? 8 : 16),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 520),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: FilledButton(
+                        key: const ValueKey<String>(
+                          'onboarding-primary-action',
+                        ),
+                        onPressed: _next,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _page == _pages.length - 1
+                              ? AppColors.accentGold
+                              : AppColors.primary,
+                          foregroundColor: const Color(0xFF04111C),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        FilledButton(
-                          onPressed: () {
-                            if (_page == _pages.length - 1) {
-                              widget.onComplete();
-                            } else {
-                              _controller.nextPage(
-                                duration: const Duration(milliseconds: 260),
-                                curve: Curves.easeOutCubic,
-                              );
-                            }
-                          },
-                          child: Text(
-                              _page == _pages.length - 1 ? 'Start' : 'Next'),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Text(
+                              _page == _pages.length - 1
+                                  ? 'Get Started'
+                                  : 'Next',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.arrow_forward_rounded, size: 20),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _OnboardingPage extends StatelessWidget {
-  const _OnboardingPage({required this.data});
-
-  final _OnboardingPageData data;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final bool compact = constraints.maxHeight < 620;
-        final bool landscape = constraints.maxWidth > constraints.maxHeight;
-        final bool tightLandscape = landscape && constraints.maxHeight < 360;
-        final double artSize = landscape
-            ? (constraints.maxHeight * (tightLandscape ? 0.34 : 0.42))
-                .clamp(78.0, 136.0)
-            : compact
-                ? 150
-                : 210;
-        final Widget art = Container(
-          width: artSize,
-          height: artSize,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: <Color>[
-                AppColors.primary.withValues(alpha: 0.42),
-                AppColors.primaryDark.withValues(alpha: 0.18),
-                Colors.transparent,
-              ],
-            ),
-          ),
-          child: Center(
-            child: Container(
-              width: artSize * 0.72,
-              height: artSize * 0.72,
-              padding: EdgeInsets.all(landscape ? 14 : 22),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(landscape ? 24 : 34),
-                border: Border.all(color: AppColors.border),
-                boxShadow: <BoxShadow>[
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.26),
-                    blurRadius: 46,
                   ),
                 ],
               ),
-              child: Icon(
-                data.icon,
-                color: AppColors.accentGold,
-                size: landscape
-                    ? 42
-                    : compact
-                        ? 56
-                        : 78,
+            );
+          },
+        ),
+      ),
+    ),
+  );
+}
+
+class _OnboardingPage extends StatelessWidget {
+  const _OnboardingPage({
+    required this.data,
+    required this.landscape,
+    required this.tight,
+  });
+
+  final _OnboardingPageData data;
+  final bool landscape;
+  final bool tight;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget artwork = Container(
+      constraints: BoxConstraints(
+        maxWidth: landscape ? 430 : 520,
+        maxHeight: landscape ? 300 : 420,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.primary.withValues(alpha: .7)),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: .22),
+            blurRadius: 34,
+            spreadRadius: -8,
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(27),
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            Image.asset(data.asset, fit: BoxFit.cover),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[Color(0x14000000), Color(0xD9041320)],
+                ),
               ),
             ),
-          ),
-        );
-
-        final Widget copy = Flexible(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 470),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    data.title,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontSize: landscape
-                              ? (tightLandscape ? 22 : 28)
-                              : compact
-                                  ? 30
-                                  : 34,
-                          fontWeight: FontWeight.w900,
-                        ),
-                  ),
-                ),
-                SizedBox(
-                    height: tightLandscape
-                        ? 3
-                        : landscape
-                            ? 6
-                            : 10),
-                Text(
-                  data.subtitle,
-                  textAlign: TextAlign.center,
-                  maxLines: landscape ? 1 : null,
-                  overflow: TextOverflow.fade,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppColors.accentGold,
-                      ),
-                ),
-                SizedBox(height: tightLandscape ? 6 : (landscape ? 10 : 18)),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface.withValues(alpha: 0.82),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(
-                        tightLandscape ? 9 : (landscape ? 14 : 18)),
-                    child: Text(
-                      data.body,
-                      textAlign: TextAlign.center,
-                      maxLines: tightLandscape ? 2 : (landscape ? 3 : null),
-                      overflow: TextOverflow.fade,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
-                            fontSize: tightLandscape ? 11 : null,
-                          ),
+            Center(
+              child: Container(
+                width: landscape ? 76 : 92,
+                height: landscape ? 76 : 92,
+                decoration: BoxDecoration(
+                  color: const Color(0xD9071929),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.primary, width: 1.5),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: .35),
+                      blurRadius: 28,
                     ),
-                  ),
+                  ],
                 ),
-              ],
+                child: Icon(data.icon, color: AppColors.accentGold, size: 42),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final Widget copy = ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 500),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Text(
+            data.eyebrow,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.accentGold,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.7,
             ),
           ),
-        );
+          SizedBox(height: tight ? 5 : 10),
+          Text(
+            data.title,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              height: 1.04,
+              fontSize: landscape ? 34 : (tight ? 26 : 38),
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          SizedBox(height: tight ? 6 : 14),
+          Text(
+            data.body,
+            textAlign: TextAlign.center,
+            maxLines: landscape ? 2 : 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              height: 1.45,
+              fontSize: tight ? 13 : 16,
+            ),
+          ),
+        ],
+      ),
+    );
 
-        if (landscape) {
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              art,
-              const SizedBox(width: 28),
-              copy,
-            ],
-          );
-        }
-
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            art,
-            SizedBox(height: compact ? 20 : 34),
-            copy,
-          ],
-        );
-      },
+    if (landscape) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Expanded(child: artwork),
+          const SizedBox(width: 34),
+          Expanded(child: copy),
+        ],
+      );
+    }
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        Expanded(child: artwork),
+        SizedBox(height: tight ? 10 : 24),
+        copy,
+      ],
     );
   }
 }
 
 class _OnboardingPageData {
   const _OnboardingPageData({
+    required this.eyebrow,
     required this.title,
-    required this.subtitle,
     required this.body,
+    required this.asset,
     required this.icon,
   });
 
+  final String eyebrow;
   final String title;
-  final String subtitle;
   final String body;
+  final String asset;
   final IconData icon;
 }

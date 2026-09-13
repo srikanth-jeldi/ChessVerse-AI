@@ -165,7 +165,6 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
   Set<String> _completed = <String>{};
   Map<String, int> _mastery = <String, int>{};
   String? _placement;
-  bool _assessmentOffered = false;
   List<String> _reviewDue = <String>[];
   int _learningStreak = 0;
   Set<String> _certificates = <String>{};
@@ -222,18 +221,14 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
           _learningStreak = learningStreak;
           _certificates = certificates;
         });
-        if (placement == null && !_assessmentOffered) {
-          _assessmentOffered = true;
-          WidgetsBinding.instance.addPostFrameCallback(
-            (_) => _showPlacementAssessment(),
-          );
-        }
       }
     } on Object {
       // The academy remains usable when browser secure storage is restricted.
     }
   }
 
+  // Kept as an optional future entry point; it is never forced on page open.
+  // ignore: unused_element
   Future<void> _showPlacementAssessment() async {
     if (!mounted) return;
     final List<({String question, List<String> options, int correct})>
@@ -2132,7 +2127,10 @@ class _CourseScreenState extends State<_CourseScreen> {
                           .text(
                             'path.next',
                             values: <String, String>{
-                              'lesson': _localizedCourseTitle(_copy, nextCourse!),
+                              'lesson': _localizedCourseTitle(
+                                _copy,
+                                nextCourse!,
+                              ),
                             },
                           )
                           .toUpperCase(),

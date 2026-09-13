@@ -213,7 +213,7 @@ void main() {
     expect(find.text('LEARN CHESS'), findsNothing);
   });
 
-  testWidgets('first visit offers a three-question placement assessment', (
+  testWidgets('first visit opens the academy without a forced assessment', (
     WidgetTester tester,
   ) async {
     FlutterSecureStorage.setMockInitialValues(<String, String>{
@@ -226,7 +226,8 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: LearnChessScreen()));
     await tester.pumpAndSettle();
 
-    expect(find.text('FIND YOUR STARTING LEVEL'), findsOneWidget);
-    expect(find.text('Question 1 of 3'), findsOneWidget);
+    expect(find.text('FIND YOUR STARTING LEVEL'), findsNothing);
+    expect(find.text('Question 1 of 3'), findsNothing);
+    expect(find.text('LEARN CHESS'), findsOneWidget);
   });
 }

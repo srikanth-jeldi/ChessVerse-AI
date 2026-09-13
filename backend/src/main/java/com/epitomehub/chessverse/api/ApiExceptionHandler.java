@@ -4,6 +4,7 @@ import com.epitomehub.chessverse.auth.AuthException;
 import com.epitomehub.chessverse.engine.EngineException;
 import com.epitomehub.chessverse.game.GameNotFoundException;
 import com.epitomehub.chessverse.online.OnlineMatchException;
+import com.epitomehub.chessverse.speech.SpeechException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.Map;
@@ -25,6 +26,11 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(EngineException.class)
     public ResponseEntity<Map<String, Object>> engine(EngineException ex, HttpServletRequest request) {
+        return error(ex.status(), ex.getMessage(), request.getRequestURI());
+    }
+
+    @ExceptionHandler(SpeechException.class)
+    public ResponseEntity<Map<String, Object>> speech(SpeechException ex, HttpServletRequest request) {
         return error(ex.status(), ex.getMessage(), request.getRequestURI());
     }
 

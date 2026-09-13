@@ -80,6 +80,11 @@ chessverse:
       model: ${AI_COACH_LLM_MODEL:gpt-4.1-mini}
       timeout-seconds: ${AI_COACH_LLM_TIMEOUT_SECONDS:8}
       max-output-tokens: ${AI_COACH_LLM_MAX_OUTPUT_TOKENS:220}
+  speech:
+    azure:
+      key: ${AZURE_SPEECH_KEY:}
+      region: ${AZURE_SPEECH_REGION:}
+      timeout-seconds: ${AZURE_SPEECH_TIMEOUT_SECONDS:15}
   auth:
     otp-expiry-minutes: ${OTP_EXPIRY_MINUTES:10}
     session-expiry-days: ${SESSION_EXPIRY_DAYS:30}

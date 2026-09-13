@@ -34,7 +34,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Welcome to ChessVerseAI'), findsOneWidget);
+      expect(find.text('More Than\nJust a Game'), findsOneWidget);
       expect(find.text('Skip'), findsOneWidget);
       expect(find.text('Next'), findsOneWidget);
       expect(tester.getRect(find.text('Skip')).bottom, lessThan(size.height));
@@ -43,14 +43,17 @@ void main() {
 
       await tester.drag(find.byType(PageView), Offset(-size.width * 0.75, 0));
       await tester.pumpAndSettle();
-      expect(find.text('Daily checkmate'), findsOneWidget);
+      expect(find.text('AI Coach\nAlways With You'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await tester.drag(find.byType(PageView), Offset(-size.width * 0.75, 0));
       await tester.pumpAndSettle();
-      expect(find.text('Built for every screen'), findsOneWidget);
-      expect(find.text('Start'), findsOneWidget);
-      expect(tester.getRect(find.text('Start')).bottom, lessThan(size.height));
+      expect(find.text('Challenge Players\nWorldwide'), findsOneWidget);
+      expect(find.text('Get Started'), findsOneWidget);
+      expect(
+        tester.getRect(find.text('Get Started')).bottom,
+        lessThan(size.height),
+      );
       expect(tester.takeException(), isNull);
     });
 
@@ -123,7 +126,9 @@ void main() {
       expect(find.text('Play Computer'), findsOneWidget);
       expect(find.text('Play with Friends'), findsOneWidget);
       expect(
-          find.byKey(const ValueKey<String>('chess-puzzles')), findsOneWidget);
+        find.byKey(const ValueKey<String>('chess-puzzles')),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey<String>('rankings')), findsOneWidget);
       expect(find.byKey(const ValueKey<String>('analysis')), findsOneWidget);
       expect(find.byKey(const ValueKey<String>('learn')), findsOneWidget);
@@ -205,14 +210,13 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       if (tester.getRect(find.text('ACCOUNT')).bottom >= size.height) {
-        await tester.drag(
-          find.byType(Scrollable).first,
-          const Offset(0, -80),
-        );
+        await tester.drag(find.byType(Scrollable).first, const Offset(0, -80));
         await tester.pumpAndSettle();
       }
       expect(
-          tester.getRect(find.text('ACCOUNT')).bottom, lessThan(size.height));
+        tester.getRect(find.text('ACCOUNT')).bottom,
+        lessThan(size.height),
+      );
       expect(tester.takeException(), isNull);
     });
 
@@ -248,10 +252,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.darkTheme,
-          home: const SavedGamesScreen(),
-        ),
+        MaterialApp(theme: AppTheme.darkTheme, home: const SavedGamesScreen()),
       );
       await tester.pumpAndSettle();
 

@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 
+import '../../../core/audio/cloud_narration_service.dart';
 import '../../../core/academy_story_localizations.dart';
 import '../../../core/app_language.dart';
 import '../../../core/chess_piece_appearance.dart';
@@ -19,45 +17,6 @@ import '../domain/academy_lesson.dart';
 enum _LessonPhase { demonstration, practice, success }
 
 enum _NarrationState { stopped, playing, paused }
-
-String _ttsLocale(String code) =>
-    const <String, String>{
-      'en': 'en-US',
-      'te': 'te-IN',
-      'hi': 'hi-IN',
-      'ta': 'ta-IN',
-      'kn': 'kn-IN',
-      'ml': 'ml-IN',
-      'mr': 'mr-IN',
-      'bn': 'bn-IN',
-      'gu': 'gu-IN',
-      'pa': 'pa-IN',
-      'ur': 'ur-PK',
-      'ar': 'ar-SA',
-      'es': 'es-ES',
-      'fr': 'fr-FR',
-      'de': 'de-DE',
-      'it': 'it-IT',
-      'pt': 'pt-BR',
-      'ru': 'ru-RU',
-      'uk': 'uk-UA',
-      'tr': 'tr-TR',
-      'fa': 'fa-IR',
-      'zh': 'zh-CN',
-      'ja': 'ja-JP',
-      'ko': 'ko-KR',
-      'id': 'id-ID',
-      'ms': 'ms-MY',
-      'th': 'th-TH',
-      'vi': 'vi-VN',
-      'pl': 'pl-PL',
-      'nl': 'nl-NL',
-      'sv': 'sv-SE',
-      'el': 'el-GR',
-      'he': 'he-IL',
-      'sw': 'sw-KE',
-    }[code] ??
-    'en-US';
 
 class InteractiveAcademyLessonScreen extends StatefulWidget {
   const InteractiveAcademyLessonScreen({required this.lesson, super.key});
@@ -73,19 +32,15 @@ class _InteractiveAcademyLessonScreenState
     extends State<InteractiveAcademyLessonScreen>
     with SingleTickerProviderStateMixin {
   static const AcademyProgressStore _progressStore = AcademyProgressStore();
-  static const MethodChannel _voiceSettingsChannel = MethodChannel(
-    'com.epitomehub.chessverse/tts_settings',
-  );
   late final AnimationController _controller;
   late final Animation<double> _movement;
-  late final FlutterTts _narrator;
+  late final CloudNarrationService _narrator;
   _LessonPhase _phase = _LessonPhase.demonstration;
   _NarrationState _narrationState = _NarrationState.stopped;
   Timer? _practiceTimer;
   String? _selected;
   String? _feedback;
   bool _loadingProgress = true;
-  bool _narratorVoiceReady = false;
   Set<String> _completed = <String>{};
   Map<String, int> _mastery = <String, int>{};
   int _attempts = 0;
@@ -119,18 +74,17 @@ class _InteractiveAcademyLessonScreenState
       parent: _controller,
       curve: Curves.easeInOutCubicEmphasized,
     );
-    _narrator = FlutterTts()
-      ..setStartHandler(() => _setNarrationState(_NarrationState.playing))
-      ..setCompletionHandler(() => _setNarrationState(_NarrationState.stopped))
-      ..setCancelHandler(() => _setNarrationState(_NarrationState.stopped))
-      ..setErrorHandler((_) => _setNarrationState(_NarrationState.stopped))
-      ..setPauseHandler(() => _setNarrationState(_NarrationState.paused))
-      ..setContinueHandler(() => _setNarrationState(_NarrationState.playing));
+    _narrator = CloudNarrationService()
+      ..onStateChanged = (CloudNarrationState state) =>
+          _setNarrationState(switch (state) {
+            CloudNarrationState.playing => _NarrationState.playing,
+            CloudNarrationState.paused => _NarrationState.paused,
+            CloudNarrationState.stopped => _NarrationState.stopped,
+          });
     AppLanguageController.effectiveLanguageChanges.addListener(
       _handleLanguageChange,
     );
     unawaited(_loadLanguage());
-    unawaited(_prepareNarrator());
     _controller.addStatusListener(_handleAnimationStatus);
     unawaited(_loadProgress());
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -146,40 +100,21 @@ class _InteractiveAcademyLessonScreenState
     final String code = await AppLanguageController.effectiveCode();
     if (!mounted) return;
     setState(() => _languageCode = code);
-    try {
-      await _narrator.stop();
-    } on Object {
-      // Language copy must still update when TTS is unavailable.
-    }
-    await _prepareNarrator();
+    await _narrator.stop();
   }
 
   void _handleLanguageChange() {
     final String? code = AppLanguageController.effectiveLanguageChanges.value;
     if (code == null || !mounted) return;
     setState(() => _languageCode = code);
-    unawaited(_resetNarratorLanguage());
+    unawaited(_narrator.stop());
   }
 
   Future<void> _chooseLanguage() async {
     final String? code = await selectAndSaveAiLanguage(context);
     if (code == null || !mounted) return;
     setState(() => _languageCode = code);
-    try {
-      await _narrator.stop();
-    } on Object {
-      // Language copy must still update when TTS is unavailable.
-    }
-    await _prepareNarrator();
-  }
-
-  Future<void> _resetNarratorLanguage() async {
-    try {
-      await _narrator.stop();
-    } on Object {
-      // The selected captions remain usable without a speech engine.
-    }
-    await _prepareNarrator();
+    await _narrator.stop();
   }
 
   void _continueLearning() {
@@ -292,224 +227,22 @@ class _InteractiveAcademyLessonScreenState
     if (mounted) setState(() => _narrationState = state);
   }
 
-  Future<bool> _prepareNarrator() async {
-    try {
-      final String requestedLocale = _ttsLocale(_languageCode);
-      final String? locale = await _resolveNarratorLocale(requestedLocale);
-      if (locale == null) {
-        _narratorVoiceReady = false;
-        return false;
-      }
-      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-        final dynamic installed = await _narrator.isLanguageInstalled(locale);
-        if (installed != true) {
-          _narratorVoiceReady = false;
-          return false;
-        }
-      }
-      final dynamic selected =
-          kIsWeb ? true : await _narrator.setLanguage(locale);
-      if (selected == false || selected == 0) {
-        _narratorVoiceReady = false;
-        return false;
-      }
-      if (!kIsWeb) await _selectBestNarratorVoice(locale);
-      await _narrator.setSpeechRate(.47);
-      await _narrator.setPitch(1.0);
-      await _narrator.setVolume(1);
-      _narratorVoiceReady = true;
-      return true;
-    } on Object {
-      // Captions keep every lesson usable when a device has no TTS voice.
-      _narratorVoiceReady = false;
-      return false;
-    }
-  }
-
-  Future<String?> _resolveNarratorLocale(String requestedLocale) async {
-    if (kIsWeb) {
-      final String? browserLocale = await _resolveWebNarratorLocale(
-        requestedLocale,
-      );
-      if (browserLocale != null) return browserLocale;
-    }
-    final dynamic directlyAvailable = await _narrator.isLanguageAvailable(
-      requestedLocale,
-    );
-    if (directlyAvailable == true) return requestedLocale;
-
-    final dynamic rawLanguages = await _narrator.getLanguages;
-    if (rawLanguages is! Iterable<dynamic>) return null;
-    final String requestedLanguage = requestedLocale
-        .replaceAll('_', '-')
-        .toLowerCase()
-        .split('-')
-        .first;
-    for (final dynamic rawLanguage in rawLanguages) {
-      final String candidate = rawLanguage.toString().replaceAll('_', '-');
-      if (candidate.toLowerCase().split('-').first == requestedLanguage) {
-        return candidate;
-      }
-    }
-    return null;
-  }
-
-  Future<String?> _resolveWebNarratorLocale(String requestedLocale) async {
-    final String normalizedRequest = requestedLocale
-        .replaceAll('_', '-')
-        .toLowerCase();
-    final String requestedLanguage = normalizedRequest.split('-').first;
-    for (int attempt = 0; attempt < 6; attempt++) {
-      final dynamic rawVoices = await _narrator.getVoices;
-      if (rawVoices is Iterable<dynamic>) {
-        final List<Map<String, String>> exact = <Map<String, String>>[];
-        final List<Map<String, String>> compatible = <Map<String, String>>[];
-        for (final dynamic rawVoice in rawVoices) {
-          if (rawVoice is! Map<dynamic, dynamic>) continue;
-          final String locale = (rawVoice['locale'] ?? '')
-              .toString()
-              .replaceAll('_', '-');
-          final Map<String, String> voice = <String, String>{
-            'name': (rawVoice['name'] ?? '').toString(),
-            'locale': locale,
-          };
-          final String normalizedLocale = locale.toLowerCase();
-          if (normalizedLocale == normalizedRequest) exact.add(voice);
-          if (normalizedLocale.split('-').first == requestedLanguage) {
-            compatible.add(voice);
-          }
-        }
-        final List<Map<String, String>> candidates = exact.isNotEmpty
-            ? exact
-            : compatible;
-        if (candidates.isNotEmpty) {
-          candidates.sort(
-            (Map<String, String> a, Map<String, String> b) =>
-                _narratorVoiceQuality(b['name']!).compareTo(
-                  _narratorVoiceQuality(a['name']!),
-                ),
-          );
-          await _narrator.setVoice(candidates.first);
-          return candidates.first['locale'];
-        }
-      }
-      if (attempt < 5) {
-        await Future<void>.delayed(const Duration(milliseconds: 300));
-      }
-    }
-    return null;
-  }
-
-  Future<void> _selectBestNarratorVoice(String requestedLocale) async {
-    final dynamic rawVoices = await _narrator.getVoices;
-    if (rawVoices is! Iterable<dynamic>) return;
-    final String normalizedRequest = requestedLocale
-        .replaceAll('_', '-')
-        .toLowerCase();
-    final String requestedLanguage = normalizedRequest.split('-').first;
-    final List<Map<String, String>> exact = <Map<String, String>>[];
-    final List<Map<String, String>> compatible = <Map<String, String>>[];
-    for (final dynamic rawVoice in rawVoices) {
-      if (rawVoice is! Map<dynamic, dynamic>) continue;
-      final String locale = (rawVoice['locale'] ?? '')
-          .toString()
-          .replaceAll('_', '-');
-      final Map<String, String> voice = <String, String>{
-        'name': (rawVoice['name'] ?? '').toString(),
-        'locale': locale,
-      };
-      final String normalizedLocale = locale.toLowerCase();
-      if (normalizedLocale == normalizedRequest) exact.add(voice);
-      if (normalizedLocale.split('-').first == requestedLanguage) {
-        compatible.add(voice);
-      }
-    }
-    final List<Map<String, String>> candidates = exact.isNotEmpty
-        ? exact
-        : compatible;
-    if (candidates.isEmpty) return;
-    candidates.sort(
-      (Map<String, String> a, Map<String, String> b) =>
-          _narratorVoiceQuality(b['name']!).compareTo(
-            _narratorVoiceQuality(a['name']!),
-          ),
-    );
-    await _narrator.setVoice(candidates.first);
-  }
-
-  int _narratorVoiceQuality(String name) {
-    final String normalized = name.toLowerCase();
-    int score = 0;
-    if (normalized.contains('natural')) score += 50;
-    if (normalized.contains('neural')) score += 45;
-    if (normalized.contains('premium')) score += 40;
-    if (normalized.contains('enhanced')) score += 35;
-    if (normalized.contains('google')) score += 25;
-    if (normalized.contains('microsoft')) score += 20;
-    return score;
-  }
-
-  Future<bool> _ensureNarratorVoice() async {
-    if (_narratorVoiceReady || await _prepareNarrator()) return true;
-    if (!mounted) return false;
-    final AppLanguage language = AppLanguageController.byCode(_languageCode);
-    if (kIsWeb) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              '${language.nativeName} speech voice is not available in this '
-              'browser. The complete translated lesson is still shown on screen.',
-            ),
-          ),
-        );
-      return false;
-    }
-    final bool install =
-        await showDialog<bool>(
-          context: context,
-          builder: (BuildContext dialogContext) => AlertDialog(
-            backgroundColor: const Color(0xFF091C2C),
-            title: Text('${language.nativeName} voice required'),
-            content: Text(
-              'The lesson is translated, but this phone does not have the '
-              '${language.englishName} speech voice installed. Install it to '
-              'hear the complete story. On-screen lessons remain available offline.',
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('NOT NOW'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('INSTALL VOICE'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-    if (install && !kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      try {
-        await _voiceSettingsChannel.invokeMethod<void>('installVoiceData');
-      } on PlatformException {
-        // The captions remain the reliable fallback on restricted devices.
-      }
-    }
-    return false;
-  }
-
   Future<void> _speakStory() async {
-    if (!await _ensureNarratorVoice()) return;
-    await _narrator.stop();
-    await _narrator.speak(_copy.storyNarration(widget.lesson), focus: true);
+    final bool started = await _narrator.speak(
+      text: _copy.storyNarration(widget.lesson),
+      language: _languageCode,
+    );
+    if (!started) _setNarrationState(_NarrationState.stopped);
   }
 
   Future<void> _toggleNarration() async {
     try {
       if (_narrationState == _NarrationState.playing) {
         await _narrator.pause();
+        return;
+      }
+      if (_narrationState == _NarrationState.paused) {
+        await _narrator.resume();
         return;
       }
       await _speakStory();
@@ -660,7 +393,7 @@ class _InteractiveAcademyLessonScreenState
     AppLanguageController.effectiveLanguageChanges.removeListener(
       _handleLanguageChange,
     );
-    unawaited(_narrator.stop());
+    unawaited(_narrator.dispose());
     _controller
       ..removeStatusListener(_handleAnimationStatus)
       ..dispose();

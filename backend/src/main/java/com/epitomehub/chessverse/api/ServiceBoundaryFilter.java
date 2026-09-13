@@ -65,6 +65,7 @@ final class ServiceBoundaryFilter extends OncePerRequestFilter {
         LEARNING(List.of(
                 "/api/v1/engine",
                 "/api/v1/coach",
+                "/api/v1/speech",
                 "/api/v1/analysis",
                 "/api/v1/puzzle-sprints")),
         ECONOMY(List.of(

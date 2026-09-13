@@ -24,6 +24,7 @@ class ServiceBoundaryFilterTest {
         ServiceBoundaryFilter filter = new ServiceBoundaryFilter("learning");
 
         assertThat(run(filter, "/actuator/health/readiness").getStatus()).isEqualTo(200);
+        assertThat(run(filter, "/api/v1/speech/synthesize").getStatus()).isEqualTo(200);
     }
 
     @Test
