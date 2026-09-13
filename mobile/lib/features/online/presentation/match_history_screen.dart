@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../main.dart'
@@ -10,6 +14,7 @@ import '../../../core/widgets/skeleton_loader.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../data/online_match_api.dart';
+import '../data/pgn_archive_service.dart';
 import '../../analysis/domain/ai_review_report.dart';
 import '../../analysis/presentation/adaptive_ai_review.dart';
 
@@ -30,6 +35,7 @@ class MatchHistoryScreen extends StatefulWidget {
 
 class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   final OnlineMatchApi _api = const OnlineMatchApi();
+  static const PgnArchiveService _pgn = PgnArchiveService();
   late Future<List<OnlineMatchDto>> _online = _load();
   List<SavedGameRecord> _cloudGames = [];
   bool _historySyncFailed = false;
@@ -52,9 +58,8 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
               mode: 'Play vs AI',
               result: d.state['result'] as String,
               detail: d.state['detail'] as String? ?? '',
-              moves: List<String>.from(
-                d.state['moves'] as List,
-              ).reversed.toList(),
+              moves: List<String>.from(d.state['moves'] as List).reversed
+                  .toList(),
               playedAt: d.updatedAt,
               whitePlayer: d.whiteName,
               blackPlayer: d.blackName,
@@ -93,6 +98,84 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     await widget.onPlayAgain?.call();
     if (mounted) await _refresh();
   }
+
+  Future<void> _importPgn() async {
+    try {
+      final picked = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const <String>['pgn'],
+      );
+      if (picked.isEmpty) return;
+      final Uint8List? bytes = await picked.single.readAsBytes();
+      if (bytes == null)
+        throw const FormatException('The selected PGN could not be read.');
+      final List<SavedGameRecord> imported = _pgn.importGames(
+        utf8.decode(bytes, allowMalformed: true),
+      );
+      final Set<String> existing = LocalGameArchive.games
+          .map(_gameFingerprint)
+          .toSet();
+      int added = 0;
+      for (final SavedGameRecord game in imported.reversed) {
+        if (existing.add(_gameFingerprint(game))) {
+          LocalGameArchive.addGame(game);
+          added++;
+        }
+      }
+      if (!mounted) return;
+      await _refresh();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            added == 0
+                ? 'These PGN games are already in My Games.'
+                : 'Imported $added game${added == 1 ? '' : 's'}. Open one for AI Review.',
+          ),
+        ),
+      );
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is FormatException ? '${error.message}' : 'PGN import failed. Please choose a valid Chess.com or standard PGN file.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _exportPgn() async {
+    final List<SavedGameRecord> games = LocalGameArchive.games;
+    if (games.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Play or import a game before exporting PGN.'),
+        ),
+      );
+      return;
+    }
+    final String pgn = _pgn.exportGames(games);
+    await FilePicker.saveFile(
+      dialogTitle: 'Export ChessVerseAI games',
+      fileName: 'chessverseai-games.pgn',
+      type: FileType.custom,
+      allowedExtensions: const <String>['pgn'],
+      bytes: Uint8List.fromList(utf8.encode(pgn)),
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Exported ${games.length} game${games.length == 1 ? '' : 's'} as PGN.',
+        ),
+      ),
+    );
+  }
+
+  String _gameFingerprint(SavedGameRecord game) =>
+      '${game.whitePlayer.trim().toLowerCase()}|${game.blackPlayer.trim().toLowerCase()}|${game.result}|${game.moves.join(' ')}';
 
   void _openCompleted(SavedGameRecord game) async {
     await Navigator.of(context).push<void>(
@@ -176,6 +259,21 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
         automaticallyImplyLeading: showBackButton,
         title: const Text('MY GAMES'),
         backgroundColor: const Color(0xD9071827),
+        actions: <Widget>[
+          IconButton(
+            key: const ValueKey<String>('import-pgn'),
+            tooltip: 'Import Chess.com or PGN game',
+            onPressed: _importPgn,
+            icon: const Icon(Icons.upload_file_rounded),
+          ),
+          IconButton(
+            key: const ValueKey<String>('export-pgn'),
+            tooltip: 'Export all games as PGN',
+            onPressed: _exportPgn,
+            icon: const Icon(Icons.download_rounded),
+          ),
+          const SizedBox(width: 6),
+        ],
       ),
       body: Column(
         children: [
@@ -221,6 +319,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
               );
             },
           ),
+          _PgnCoachBanner(onImport: _importPgn, onExport: _exportPgn),
           Expanded(
             child: RefreshIndicator(
               onRefresh: _refresh,
@@ -233,8 +332,20 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                     ) {
                       final List<OnlineMatchDto> online =
                           snapshot.data ?? const <OnlineMatchDto>[];
-                      final List<SavedGameRecord> local = [..._cloudGames]
-                        ..sort((a, b) => b.playedAt.compareTo(a.playedAt));
+                      final Map<String, SavedGameRecord> uniqueLocal =
+                          <String, SavedGameRecord>{};
+                      for (final SavedGameRecord game in <SavedGameRecord>[
+                        ...LocalGameArchive.games,
+                        ..._cloudGames,
+                      ]) {
+                        uniqueLocal.putIfAbsent(
+                          _gameFingerprint(game),
+                          () => game,
+                        );
+                      }
+                      final List<SavedGameRecord> local =
+                          uniqueLocal.values.toList()
+                            ..sort((a, b) => b.playedAt.compareTo(a.playedAt));
                       if (snapshot.connectionState == ConnectionState.waiting &&
                           online.isEmpty &&
                           local.isEmpty) {
@@ -245,8 +356,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                           local.isEmpty) {
                         return _HistoryMessage(
                           icon: Icons.cloud_off_rounded,
-                          message:
-                              'Match history could not be loaded. Pull to retry.',
+                          message: 'Match history could not be loaded. Pull to retry.',
                           detail: '${snapshot.error}',
                         );
                       }
@@ -311,16 +421,23 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                           ),
                           Wrap(
                             spacing: 6,
-                            children: ['All', 'Computer', 'Local', 'Online']
-                                .map(
-                                  (f) => ChoiceChip(
-                                    label: Text(f),
-                                    selected: _filter == f,
-                                    onSelected: (_) =>
-                                        setState(() => _filter = f),
-                                  ),
-                                )
-                                .toList(),
+                            children:
+                                [
+                                      'All',
+                                      'Computer',
+                                      'Local',
+                                      'Imported',
+                                      'Online',
+                                    ]
+                                    .map(
+                                      (f) => ChoiceChip(
+                                        label: Text(f),
+                                        selected: _filter == f,
+                                        onSelected: (_) =>
+                                            setState(() => _filter = f),
+                                      ),
+                                    )
+                                    .toList(),
                           ),
                           const SizedBox(height: 12),
                           if (online.isNotEmpty &&
@@ -359,6 +476,8 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                                       _filter == 'All' ||
                                       (_filter == 'Computer'
                                           ? g.mode == 'Play vs AI'
+                                          : _filter == 'Imported'
+                                          ? g.mode == 'Imported PGN'
                                           : g.mode == '2 Players'),
                                 )
                                 .map(
@@ -378,6 +497,66 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       ),
     );
   }
+}
+
+class _PgnCoachBanner extends StatelessWidget {
+  const _PgnCoachBanner({required this.onImport, required this.onExport});
+  final VoidCallback onImport;
+  final VoidCallback onExport;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: const Color(0x8059E4C8)),
+      gradient: const LinearGradient(
+        colors: <Color>[Color(0xFF10374A), Color(0xFF091D31)],
+      ),
+    ),
+    child: Row(
+      children: <Widget>[
+        const Icon(
+          Icons.auto_awesome_rounded,
+          color: Color(0xFF59E4C8),
+          size: 30,
+        ),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'PLAY ANYWHERE. IMPROVE HERE.',
+                style: TextStyle(
+                  color: Color(0xFFF1C45A),
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .8,
+                ),
+              ),
+              SizedBox(height: 3),
+              Text(
+                'Import a Chess.com or standard PGN and get ChessVerseAI Coach suggestions.',
+                style: TextStyle(color: Color(0xFFB8CAD5), fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton.filledTonal(
+          tooltip: 'Import PGN',
+          onPressed: onImport,
+          icon: const Icon(Icons.upload_file_rounded),
+        ),
+        IconButton(
+          tooltip: 'Export PGN backup',
+          onPressed: onExport,
+          icon: const Icon(Icons.download_rounded),
+        ),
+      ],
+    ),
+  );
 }
 
 class _HistoryMessage extends StatelessWidget {

@@ -208,6 +208,7 @@ class _ReviewedPositionRetryDialogState
   String? _message;
   bool _answered = false;
   bool _correct = false;
+  int _hintStage = 0;
 
   CoachLocalizations get _copy => CoachLocalizations(widget.languageCode);
 
@@ -368,6 +369,9 @@ class _ReviewedPositionRetryDialogState
     if (!_legalTargets.contains(square)) return;
     final String attempted = '$from$square'.toLowerCase();
     final bool correct = widget.bestMove.toLowerCase().startsWith(attempted);
+    final int nextHintStage = correct
+        ? _hintStage
+        : (_hintStage + 1).clamp(1, 3);
     setState(() {
       // A wrong attempt and the correct solution belong to two different
       // positions. Restore the reviewed snapshot before drawing the solution
@@ -381,10 +385,44 @@ class _ReviewedPositionRetryDialogState
       _selected = null;
       _answered = true;
       _correct = correct;
-      _message =
-          '${_copy.text(correct ? 'bestFound' : 'goodTry')} '
-          '${_copy.text('preferred', {'move': widget.bestMove})} '
-          '${localizeLiveCoach(localizeReviewNarrative(widget.explanation, widget.languageCode), widget.languageCode)}';
+      _hintStage = nextHintStage;
+      _message = correct
+          ? '${_copy.text('bestFound')} ${localizeLiveCoach(localizeReviewNarrative(widget.explanation, widget.languageCode), widget.languageCode)}'
+          : '${_copy.text('goodTry')} ${_retryHintText(nextHintStage)}';
+    });
+  }
+
+  String _retryHintText(int stage) {
+    final String from = widget.bestMove.substring(0, 2);
+    final String to = widget.bestMove.substring(2, 4);
+    final ChessPiece? piece = widget.initialPieces[from];
+    final String name = switch (piece?.code) {
+      'K' => 'king',
+      'Q' => 'queen',
+      'R' => 'rook',
+      'B' => 'bishop',
+      'N' => 'knight',
+      _ => 'pawn',
+    };
+    return switch (stage) {
+      1 => 'Hint 1/3: Look for the strongest move with your $name.',
+      2 => 'Hint 2/3: Start calculating from $from.',
+      _ =>
+        'Hint 3/3: Try $from → $to. ${localizeLiveCoach(localizeReviewNarrative(widget.explanation, widget.languageCode), widget.languageCode)}',
+    };
+  }
+
+  void _showRetryHint() {
+    final int next = (_hintStage + 1).clamp(1, 3);
+    setState(() {
+      _hintStage = next;
+      _answered = false;
+      _correct = false;
+      _pieces = Map<String, ChessPiece>.from(widget.initialPieces);
+      _selected = next >= 2 ? widget.bestMove.substring(0, 2) : null;
+      _lastFrom = null;
+      _lastTo = null;
+      _message = _retryHintText(next);
     });
   }
 
@@ -486,10 +524,10 @@ class _ReviewedPositionRetryDialogState
                   moveSequence: _answered ? 1 : 0,
                   checkedKingSquare: checkedKing,
                   decisiveSquare: null,
-                  coachArrowFrom: _answered && !_correct
+                  coachArrowFrom: _hintStage >= 3 && !_correct
                       ? widget.bestMove.substring(0, 2)
                       : null,
-                  coachArrowTo: _answered && !_correct
+                  coachArrowTo: _hintStage >= 3 && !_correct
                       ? widget.bestMove.substring(2, 4)
                       : null,
                   idleHintFrom: null,
@@ -522,6 +560,12 @@ class _ReviewedPositionRetryDialogState
                     onPressed: _reset,
                     icon: const Icon(Icons.refresh_rounded),
                     label: Text(_copy.text('retry')),
+                  ),
+                  OutlinedButton.icon(
+                    key: const ValueKey<String>('position-retry-hint'),
+                    onPressed: _hintStage < 3 ? _showRetryHint : null,
+                    icon: const Icon(Icons.lightbulb_rounded),
+                    label: Text('Hint ${(_hintStage + 1).clamp(1, 3)}/3'),
                   ),
                   FilledButton(
                     onPressed:

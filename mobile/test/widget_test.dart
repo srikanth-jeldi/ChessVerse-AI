@@ -138,7 +138,7 @@ void main() {
   });
 
   testWidgets(
-    'wrong retry restores the snapshot before showing solution arrow',
+    'wrong retry restores snapshot and progressively reveals solution',
     (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
@@ -174,8 +174,24 @@ void main() {
       expect(board.pieces, isNot(contains('e3')));
       expect(board.lastFromSquare, isNull);
       expect(board.lastToSquare, isNull);
-      expect(board.coachArrowFrom, 'e2');
-      expect(board.coachArrowTo, 'e4');
+      expect(board.coachArrowFrom, isNull);
+      expect(board.coachArrowTo, isNull);
+      expect(find.textContaining('Hint 1/3'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const ValueKey<String>('position-retry-hint')),
+      );
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const ValueKey<String>('position-retry-hint')),
+      );
+      await tester.pump();
+
+      final ChessBoard revealed = tester.widget<ChessBoard>(
+        find.byType(ChessBoard),
+      );
+      expect(revealed.coachArrowFrom, 'e2');
+      expect(revealed.coachArrowTo, 'e4');
     },
   );
 
