@@ -35,7 +35,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: AuthScreen(onAuthenticated: (_) {})),
     );
-    await tester.tap(find.text('Sign In / Create Account'));
+    await tester.tap(find.byKey(const ValueKey<String>('open-account-access')));
     await tester.pump();
 
     expect(find.byType(SingleChildScrollView), findsOneWidget);
@@ -62,7 +62,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: AuthScreen(onAuthenticated: (_) {})),
     );
-    await tester.tap(find.text('Sign In / Create Account'));
+    await tester.tap(find.byKey(const ValueKey<String>('open-account-access')));
     await tester.pumpAndSettle();
 
     final Finder identityField = find.byType(TextField).first;
@@ -92,7 +92,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: AuthScreen(onAuthenticated: (_) {})),
     );
-    await tester.tap(find.text('Sign In / Create Account'));
+    await tester.tap(find.byKey(const ValueKey<String>('open-account-access')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Register'));
     await tester.pumpAndSettle();
@@ -122,13 +122,13 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: AuthScreen(onAuthenticated: (_) {})),
     );
-    await tester.tap(find.text('Sign In / Create Account'));
+    await tester.tap(find.byKey(const ValueKey<String>('open-account-access')));
     await tester.pump();
 
     expect(
       find.byKey(const ValueKey<String>('auth-landscape-split')),
       findsOneWidget,
     );
-    expect(find.byType(SingleChildScrollView), findsNothing);
+    expect(find.byType(SingleChildScrollView), findsOneWidget);
   });
 }

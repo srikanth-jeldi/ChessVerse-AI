@@ -161,13 +161,11 @@ class _AuthScreenState extends State<AuthScreen> {
         final bool wide = constraints.maxWidth >= 820;
         final bool compact = constraints.maxHeight < 690;
         final double radius = wide ? 38 : 30;
-        final double panelHeight = (constraints.maxHeight - 56).clamp(
-          560.0,
-          820.0,
-        );
+        final double panelHeight = (constraints.maxHeight - (compact ? 16 : 56))
+            .clamp(compact && wide ? 340.0 : 560.0, 820.0);
         return Center(
           child: SingleChildScrollView(
-            padding: EdgeInsets.all(wide ? 28 : 14),
+            padding: EdgeInsets.all(wide ? (compact ? 8 : 28) : 14),
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 maxWidth: 1240,
@@ -202,7 +200,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       else
                         SizedBox(
                           height: compact ? 260 : 340,
-                          child: _welcomeArtwork(compact: compact),
+                          child: _welcomeArtwork(compact: true),
                         ),
                       if (wide)
                         Expanded(
@@ -210,7 +208,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           child: _welcomeActions(wide: wide, compact: compact),
                         )
                       else
-                        _welcomeActions(wide: wide, compact: compact),
+                        _welcomeActions(wide: wide, compact: true),
                     ],
                   ),
                 ),
@@ -295,119 +293,138 @@ class _AuthScreenState extends State<AuthScreen> {
     ],
   );
 
-  Widget _welcomeActions({
-    required bool wide,
-    required bool compact,
-  }) => Container(
-    padding: EdgeInsets.symmetric(
-      horizontal: wide ? (compact ? 34 : 52) : 24,
-      vertical: compact ? 28 : 42,
-    ),
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: <Color>[Color(0xFF0B2237), Color(0xFF061426)],
+  Widget _welcomeActions({required bool wide, required bool compact}) {
+    final bool compactLandscape = wide && compact;
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: wide ? (compact ? 34 : 52) : 24,
+        vertical: compactLandscape
+            ? 12
+            : compact
+            ? 28
+            : 42,
       ),
-    ),
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Row(
-          children: <Widget>[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.asset(
-                'assets/branding/app_icon.png',
-                width: 54,
-                height: 54,
-              ),
-            ),
-            const SizedBox(width: 14),
-            const Expanded(
-              child: Text(
-                'ChessVerseAI',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[Color(0xFF0B2237), Color(0xFF061426)],
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(compactLandscape ? 9 : 14),
+                child: Image.asset(
+                  'assets/branding/app_icon.png',
+                  width: compactLandscape ? 32 : 54,
+                  height: compactLandscape ? 32 : 54,
                 ),
               ),
+              SizedBox(width: compactLandscape ? 8 : 14),
+              Expanded(
+                child: Text(
+                  'ChessVerseAI',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: compactLandscape ? 18 : 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(
+            height: compactLandscape
+                ? 8
+                : compact
+                ? 24
+                : 38,
+          ),
+          const Text(
+            'Ready when you are.',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 28,
+              height: 1.05,
+              fontWeight: FontWeight.w900,
             ),
-          ],
-        ),
-        SizedBox(height: compact ? 24 : 38),
-        const Text(
-          'Ready when you are.',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 28,
-            height: 1.05,
-            fontWeight: FontWeight.w900,
           ),
-        ),
-        const SizedBox(height: 10),
-        const Text(
-          'Start instantly as a guest, or sign in to keep your rating, games and learning progress on every device.',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 15,
-            height: 1.5,
+          const SizedBox(height: 10),
+          const Text(
+            'Start instantly as a guest, or sign in to keep your rating, games and learning progress on every device.',
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 15,
+              height: 1.5,
+            ),
           ),
-        ),
-        SizedBox(height: compact ? 24 : 34),
-        SizedBox(
-          height: 56,
-          child: FilledButton.icon(
-            key: const ValueKey<String>('play-as-guest-primary'),
-            onPressed: _loading ? null : _continueAsGuest,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.accentGold,
-              foregroundColor: const Color(0xFF071421),
+          SizedBox(
+            height: compactLandscape
+                ? 12
+                : compact
+                ? 24
+                : 34,
+          ),
+          SizedBox(
+            height: 56,
+            child: FilledButton.icon(
+              key: const ValueKey<String>('play-as-guest-primary'),
+              onPressed: _loading ? null : _continueAsGuest,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.accentGold,
+                foregroundColor: const Color(0xFF071421),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: const Icon(Icons.bolt_rounded),
+              label: const Text(
+                'Play as Guest',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            key: const ValueKey<String>('open-account-access'),
+            onPressed: () => setState(() => _showAccountForm = true),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(54),
+              foregroundColor: AppColors.textPrimary,
+              side: const BorderSide(color: Color(0xFF55DECC)),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
-            icon: const Icon(Icons.bolt_rounded),
+            icon: const Icon(Icons.person_outline_rounded, size: 20),
             label: const Text(
-              'Play as Guest',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+              'Sign In or Create Account',
+              style: TextStyle(fontWeight: FontWeight.w800),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          key: const ValueKey<String>('open-account-access'),
-          onPressed: () => setState(() => _showAccountForm = true),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(54),
-            foregroundColor: AppColors.textPrimary,
-            side: const BorderSide(color: Color(0xFF55DECC)),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+          if (!compactLandscape) SizedBox(height: compact ? 20 : 30),
+          if (!compactLandscape)
+            const Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 16,
+              runSpacing: 8,
+              children: <Widget>[
+                _WelcomeTrustItem(Icons.bolt_rounded, 'Instant play'),
+                _WelcomeTrustItem(Icons.sync_rounded, 'Cloud progress'),
+                _WelcomeTrustItem(Icons.shield_outlined, 'Fair play'),
+              ],
             ),
-          ),
-          icon: const Icon(Icons.person_outline_rounded, size: 20),
-          label: const Text(
-            'Sign In or Create Account',
-            style: TextStyle(fontWeight: FontWeight.w800),
-          ),
-        ),
-        SizedBox(height: compact ? 20 : 30),
-        const Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 16,
-          runSpacing: 8,
-          children: <Widget>[
-            _WelcomeTrustItem(Icons.bolt_rounded, 'Instant play'),
-            _WelcomeTrustItem(Icons.sync_rounded, 'Cloud progress'),
-            _WelcomeTrustItem(Icons.shield_outlined, 'Fair play'),
-          ],
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 
   Widget _premiumCompactLandscapeBody(BuildContext context) {
     return LayoutBuilder(
@@ -471,7 +488,12 @@ class _AuthScreenState extends State<AuthScreen> {
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(42, 22, 42, 22),
-                          child: _premiumFormContent(context, showBrand: false),
+                          child: SingleChildScrollView(
+                            child: _premiumFormContent(
+                              context,
+                              showBrand: false,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -586,9 +608,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         SizedBox(height: dense ? 6 : 10),
         Text(
-          _loginMode
-              ? 'Login to continue your games,\nratings and progress'
-              : 'Create your ChessVerseAI identity\nand keep your progress secure',
+          _loginMode ? 'Login to continue your games,\nratings and progress' : 'Create your ChessVerseAI identity\nand keep your progress secure',
           style: TextStyle(
             color: Color(0xFF9EACC2),
             fontSize: dense ? 13 : 16,
@@ -1383,24 +1403,25 @@ class _AuthScreenState extends State<AuthScreen> {
       final GoogleSignIn googleSignIn = GoogleSignIn.instance;
       await googleSignIn.initialize(clientId: AppConfig.googleWebClientId);
       _googleInitialized = true;
-      _googleAuthenticationSubscription = googleSignIn.authenticationEvents.listen(
-        (GoogleSignInAuthenticationEvent event) {
-          if (event is GoogleSignInAuthenticationEventSignIn) {
-            unawaited(_authenticateGoogleAccount(event.user));
-          }
-        },
-        onError: (Object _) {
-          if (mounted) {
-            setState(() {
-              _loading = false;
-              // Google initializes in the background on web. A blocked popup,
-              // privacy extension or signed-out One Tap session must not show
-              // an error before the user asks to sign in with Google.
-              _googleInitialized = false;
-            });
-          }
-        },
-      );
+      _googleAuthenticationSubscription = googleSignIn.authenticationEvents
+          .listen(
+            (GoogleSignInAuthenticationEvent event) {
+              if (event is GoogleSignInAuthenticationEventSignIn) {
+                unawaited(_authenticateGoogleAccount(event.user));
+              }
+            },
+            onError: (Object _) {
+              if (mounted) {
+                setState(() {
+                  _loading = false;
+                  // Google initializes in the background on web. A blocked popup,
+                  // privacy extension or signed-out One Tap session must not show
+                  // an error before the user asks to sign in with Google.
+                  _googleInitialized = false;
+                });
+              }
+            },
+          );
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -1626,27 +1647,33 @@ class _AuthScreenState extends State<AuthScreen> {
     });
     try {
       if (_verificationMode) {
-        final Map<String, dynamic> data = await _authApi
-            .post('verify-email', <String, String>{
-              'email': _emailController.text.trim(),
-              'code': _verificationCodeController.text.trim(),
-            });
+        final Map<String, dynamic> data = await _authApi.post(
+          'verify-email',
+          <String, String>{
+            'email': _emailController.text.trim(),
+            'code': _verificationCodeController.text.trim(),
+          },
+        );
         await _completeAuthentication(data);
       } else if (_loginMode) {
-        final Map<String, dynamic> data = await _authApi
-            .post('login', <String, String>{
-              'identity': _emailController.text.trim(),
-              'password': _passwordController.text,
-            });
+        final Map<String, dynamic> data = await _authApi.post(
+          'login',
+          <String, String>{
+            'identity': _emailController.text.trim(),
+            'password': _passwordController.text,
+          },
+        );
         await _completeAuthentication(data);
       } else {
-        final Map<String, dynamic> data = await _authApi
-            .post('register', <String, String>{
-              'username': _userIdController.text.trim(),
-              'displayName': _displayNameController.text.trim(),
-              'email': _emailController.text.trim(),
-              'password': _passwordController.text,
-            });
+        final Map<String, dynamic> data = await _authApi.post(
+          'register',
+          <String, String>{
+            'username': _userIdController.text.trim(),
+            'displayName': _displayNameController.text.trim(),
+            'email': _emailController.text.trim(),
+            'password': _passwordController.text,
+          },
+        );
         setState(() {
           _message =
               data['message'] as String? ??
@@ -1668,9 +1695,8 @@ class _AuthScreenState extends State<AuthScreen> {
 
   bool _validateCurrentForm() {
     if (_verificationMode) {
-      if (!RegExp(
-        r'^\d{6}$',
-      ).hasMatch(_verificationCodeController.text.trim())) {
+      if (!RegExp(r'^\d{6}$')
+          .hasMatch(_verificationCodeController.text.trim())) {
         setState(() => _error = 'Enter the complete 6-digit code.');
         return false;
       }
@@ -1691,8 +1717,7 @@ class _AuthScreenState extends State<AuthScreen> {
     final String password = _passwordController.text;
     if (!RegExp(r'^[A-Za-z0-9_.-]{3,40}$').hasMatch(username)) {
       setState(
-        () => _error =
-            'User ID must be 3–40 characters using letters, numbers, dot, dash or underscore.',
+        () => _error = 'User ID must be 3–40 characters using letters, numbers, dot, dash or underscore.',
       );
       return false;
     }
@@ -1808,132 +1833,136 @@ class _AuthScreenState extends State<AuthScreen> {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) => StatefulBuilder(
-        builder: (BuildContext context, StateSetter setDialogState) => AlertDialog(
-          scrollable: true,
-          insetPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 24,
-          ),
-          actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
-          title: const Text('Reset password'),
-          content: SizedBox(
-            width: 420,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Text('Enter the 6-digit reset code sent to $email.'),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: codeController,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  decoration: const InputDecoration(
-                    labelText: 'Reset code',
-                    prefixIcon: Icon(Icons.pin_outlined),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: newPasswordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'New password',
-                    helperText: 'Use at least 8 characters.',
-                    prefixIcon: Icon(Icons.lock_reset_rounded),
-                  ),
-                ),
-                if (dialogError != null) ...<Widget>[
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.errorContainer.withValues(alpha: .5),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.error,
+        builder: (BuildContext context, StateSetter setDialogState) =>
+            AlertDialog(
+              scrollable: true,
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 24,
+              ),
+              actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
+              title: const Text('Reset password'),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Text('Enter the 6-digit reset code sent to $email.'),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: codeController,
+                      keyboardType: TextInputType.number,
+                      maxLength: 6,
+                      decoration: const InputDecoration(
+                        labelText: 'Reset code',
+                        prefixIcon: Icon(Icons.pin_outlined),
                       ),
                     ),
-                    child: Text(
-                      dialogError!,
-                      softWrap: true,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onErrorContainer,
-                        fontWeight: FontWeight.w700,
-                        height: 1.3,
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: newPasswordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'New password',
+                        helperText: 'Use at least 8 characters.',
+                        prefixIcon: Icon(Icons.lock_reset_rounded),
                       ),
                     ),
-                  ),
-                ],
+                    if (dialogError != null) ...<Widget>[
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.errorContainer
+                              .withValues(alpha: .5),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                        child: Text(
+                          dialogError!,
+                          softWrap: true,
+                          style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onErrorContainer,
+                            fontWeight: FontWeight.w700,
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: submitting
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: submitting
+                      ? null
+                      : () async {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          final String code = codeController.text.trim();
+                          final String newPassword = newPasswordController.text;
+                          if (!RegExp(r'^\d{6}$').hasMatch(code)) {
+                            setDialogState(
+                              () => dialogError =
+                                  'Enter the complete 6-digit code.',
+                            );
+                            return;
+                          }
+                          if (newPassword.length < 8) {
+                            setDialogState(
+                              () => dialogError = 'New password must contain at least 8 characters.',
+                            );
+                            return;
+                          }
+                          setDialogState(() {
+                            submitting = true;
+                            dialogError = null;
+                          });
+                          try {
+                            await _authApi.post(
+                              'password/reset',
+                              <String, String>{
+                                'email': email,
+                                'code': code,
+                                'newPassword': newPassword,
+                              },
+                            );
+                            if (dialogContext.mounted) {
+                              Navigator.of(dialogContext).pop(true);
+                            }
+                          } on AuthApiException catch (error) {
+                            if (dialogContext.mounted) {
+                              setDialogState(() {
+                                submitting = false;
+                                dialogError = error.message;
+                              });
+                            }
+                          }
+                        },
+                  child: submitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Update password'),
+                ),
               ],
             ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: submitting
-                  ? null
-                  : () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: submitting
-                  ? null
-                  : () async {
-                      FocusManager.instance.primaryFocus?.unfocus();
-                      final String code = codeController.text.trim();
-                      final String newPassword = newPasswordController.text;
-                      if (!RegExp(r'^\d{6}$').hasMatch(code)) {
-                        setDialogState(
-                          () =>
-                              dialogError = 'Enter the complete 6-digit code.',
-                        );
-                        return;
-                      }
-                      if (newPassword.length < 8) {
-                        setDialogState(
-                          () => dialogError =
-                              'New password must contain at least 8 characters.',
-                        );
-                        return;
-                      }
-                      setDialogState(() {
-                        submitting = true;
-                        dialogError = null;
-                      });
-                      try {
-                        await _authApi.post('password/reset', <String, String>{
-                          'email': email,
-                          'code': code,
-                          'newPassword': newPassword,
-                        });
-                        if (dialogContext.mounted) {
-                          Navigator.of(dialogContext).pop(true);
-                        }
-                      } on AuthApiException catch (error) {
-                        if (dialogContext.mounted) {
-                          setDialogState(() {
-                            submitting = false;
-                            dialogError = error.message;
-                          });
-                        }
-                      }
-                    },
-              child: submitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Update password'),
-            ),
-          ],
-        ),
       ),
     );
 

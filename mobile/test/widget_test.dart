@@ -230,7 +230,7 @@ void main() {
     );
 
     expect(find.text('Play as Guest'), findsOneWidget);
-    await tester.tap(find.text('Sign In / Create Account'));
+    await tester.tap(find.byKey(const ValueKey<String>('open-account-access')));
     await tester.pumpAndSettle();
     expect(find.text('Email or Username'), findsOneWidget);
     expect(find.text('Continue as Guest'), findsOneWidget);
@@ -247,7 +247,7 @@ void main() {
       MaterialApp(home: AuthScreen(onAuthenticated: (_) {})),
     );
 
-    await tester.tap(find.text('Sign In / Create Account'));
+    await tester.tap(find.byKey(const ValueKey<String>('open-account-access')));
     await tester.pumpAndSettle();
     expect(find.text('Email or Username'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
@@ -269,7 +269,7 @@ void main() {
       MaterialApp(home: AuthScreen(onAuthenticated: (_) {})),
     );
 
-    await tester.tap(find.text('Sign In / Create Account'));
+    await tester.tap(find.byKey(const ValueKey<String>('open-account-access')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Forgot password?'));
     await tester.pump(const Duration(milliseconds: 500));

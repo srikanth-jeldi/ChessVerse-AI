@@ -75,7 +75,9 @@ void main() {
 
       expect(find.text('ChessVerseAI', findRichText: true), findsOneWidget);
       expect(find.text('Play as Guest'), findsOneWidget);
-      await tester.tap(find.text('Sign In / Create Account'));
+      await tester.tap(
+        find.byKey(const ValueKey<String>('open-account-access')),
+      );
       await tester.pumpAndSettle();
       expect(find.text('Register'), findsOneWidget);
       expect(find.text('Login'), findsAtLeastNWidgets(1));

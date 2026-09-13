@@ -7,6 +7,19 @@ import '../../../core/ads/rewarded_coin_service.dart';
 import '../data/shop_api.dart';
 import '../data/economy_rewards_api.dart';
 
+const Duration freeCoinCooldown = Duration(hours: 8);
+
+String formatFreeCoinCountdown(Duration remaining) {
+  final Duration visibleRemaining = remaining > freeCoinCooldown
+      ? freeCoinCooldown
+      : remaining;
+  final int hours = visibleRemaining.inHours;
+  final int minutes = visibleRemaining.inMinutes.remainder(60);
+  final int seconds = visibleRemaining.inSeconds.remainder(60);
+  String twoDigits(int value) => value.toString().padLeft(2, '0');
+  return '${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}';
+}
+
 class CosmeticShopScreen extends StatefulWidget {
   const CosmeticShopScreen({required this.token, super.key});
   final String token;
@@ -306,11 +319,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       }
       return 'READY';
     }
-    final int hours = remaining.inHours;
-    final int minutes = remaining.inMinutes.remainder(60);
-    final int seconds = remaining.inSeconds.remainder(60);
-    String twoDigits(int value) => value.toString().padLeft(2, '0');
-    return '${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}';
+    return formatFreeCoinCountdown(remaining);
   }
 
   Future<void> _claimDaily() async {

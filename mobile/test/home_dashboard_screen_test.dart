@@ -58,12 +58,12 @@ void main() {
     expect(onlineLaunches, 0);
     expect(computerLaunches, 0);
     expect(find.text('CHOOSE YOUR NEXT MOVE'), findsOneWidget);
-    expect(find.byKey(const ValueKey<String>('play-online')), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('play-vs-ai')), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey<String>('play-online')));
+    await tester.tap(find.byKey(const ValueKey<String>('play-vs-ai')));
     await tester.pump();
-    expect(onlineLaunches, 1);
-    expect(computerLaunches, 0);
+    expect(onlineLaunches, 0);
+    expect(computerLaunches, 1);
     expect(tester.takeException(), isNull);
   });
 
@@ -78,7 +78,7 @@ void main() {
     await tester.pumpWidget(app(onOnline: () {}, onComputer: () {}));
     await tester.pumpAndSettle();
 
-    expect(find.text('Play Online'), findsOneWidget);
+    expect(find.text('Play vs AI'), findsOneWidget);
     expect(find.text('Play with Friends'), findsOneWidget);
     expect(find.text('Learn'), findsNWidgets(2));
     expect(tester.takeException(), isNull);
@@ -201,11 +201,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(const ValueKey<String>('home-hero-next')));
+    await tester.pumpAndSettle();
+
     expect(find.textContaining('No other players online'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('tournament is the third carousel slide with a countdown', (
+  testWidgets('tournament follows the four primary carousel actions', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -236,12 +239,11 @@ void main() {
     final PageView carousel = tester.widget<PageView>(
       find.byKey(const ValueKey<String>('home-hero-carousel')),
     );
-    expect(carousel.childrenDelegate.estimatedChildCount, 7);
-    await tester.drag(
-      find.byKey(const ValueKey<String>('home-hero-carousel')),
-      const Offset(-780, 0),
-    );
-    await tester.pumpAndSettle();
+    expect(carousel.childrenDelegate.estimatedChildCount, 9);
+    for (var index = 0; index < 4; index++) {
+      await tester.tap(find.byKey(const ValueKey<String>('home-hero-next')));
+      await tester.pumpAndSettle();
+    }
 
     expect(find.text('World Chess Tournaments'), findsOneWidget);
     expect(

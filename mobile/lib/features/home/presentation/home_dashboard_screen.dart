@@ -263,8 +263,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           subtitle: 'Improve step by step with guided lessons',
                           icon: Icons.school_rounded,
                           buttonLabel: 'Continue Learning',
-                          asset:
-                              'assets/backgrounds/onboarding-ai-coach-wide-v2.png',
+                          asset: 'assets/backgrounds/onboarding-ai-coach-wide-v2.png',
                           onTap: widget.onLearnChess,
                         ),
                         _tournamentHero(
@@ -543,8 +542,7 @@ class _WideHomeState extends State<_WideHome> {
                               subtitle: 'Start instantly at your perfect level',
                               icon: Icons.psychology_rounded,
                               buttonLabel: 'Play Now',
-                              asset:
-                                  'assets/backgrounds/home-computer-hero-v1.webp',
+                              asset: 'assets/backgrounds/home-computer-hero-v1.webp',
                               onTap: widget.onPlayVsAi,
                             ),
                             _HomeHeroData(
@@ -566,8 +564,7 @@ class _WideHomeState extends State<_WideHome> {
                                   'Build your streak with today’s challenge',
                               icon: Icons.extension_rounded,
                               buttonLabel: 'Solve Today',
-                              asset:
-                                  'assets/backgrounds/home-puzzles-hero-v1.webp',
+                              asset: 'assets/backgrounds/home-puzzles-hero-v1.webp',
                               onTap: widget.onDailyChallenge,
                             ),
                             _HomeHeroData(
@@ -576,8 +573,7 @@ class _WideHomeState extends State<_WideHome> {
                                   'Improve step by step with guided lessons',
                               icon: Icons.school_rounded,
                               buttonLabel: 'Continue Learning',
-                              asset:
-                                  'assets/backgrounds/onboarding-ai-coach-wide-v2.png',
+                              asset: 'assets/backgrounds/onboarding-ai-coach-wide-v2.png',
                               onTap: widget.onLearnChess,
                             ),
                             _tournamentHero(
@@ -590,8 +586,7 @@ class _WideHomeState extends State<_WideHome> {
                                   'Create a private room or join with a code',
                               icon: Icons.groups_rounded,
                               buttonLabel: 'Open Rooms',
-                              asset:
-                                  'assets/backgrounds/home-friends-hero-v1.webp',
+                              asset: 'assets/backgrounds/home-friends-hero-v1.webp',
                               onTap: widget.onFriendsGame,
                             ),
                             _HomeHeroData(
@@ -599,8 +594,7 @@ class _WideHomeState extends State<_WideHome> {
                               subtitle: 'Train with 150 tactical challenges',
                               icon: Icons.extension_rounded,
                               buttonLabel: 'Solve Now',
-                              asset:
-                                  'assets/backgrounds/home-puzzles-hero-v1.webp',
+                              asset: 'assets/backgrounds/home-puzzles-hero-v1.webp',
                               onTap: widget.onPuzzles,
                             ),
                             _HomeHeroData(
@@ -608,8 +602,7 @@ class _WideHomeState extends State<_WideHome> {
                               subtitle: 'Track your ELO and global position',
                               icon: Icons.leaderboard_rounded,
                               buttonLabel: 'View Rankings',
-                              asset:
-                                  'assets/backgrounds/home-rankings-hero-v1.webp',
+                              asset: 'assets/backgrounds/home-rankings-hero-v1.webp',
                               onTap: widget.onRankings,
                             ),
                             _HomeHeroData(
@@ -618,8 +611,7 @@ class _WideHomeState extends State<_WideHome> {
                                   'Personalize your board and game experience',
                               icon: Icons.tune_rounded,
                               buttonLabel: 'Open Settings',
-                              asset:
-                                  'assets/backgrounds/home-settings-hero-v1.webp',
+                              asset: 'assets/backgrounds/home-settings-hero-v1.webp',
                               onTap: widget.onSettings,
                             ),
                           ],
@@ -635,8 +627,7 @@ class _WideHomeState extends State<_WideHome> {
                                 label: 'Puzzles',
                                 subtitle: 'Sharpen your skills',
                                 color: AppColors.accentGold,
-                                asset:
-                                    'assets/backgrounds/home-puzzles-hero-v1.webp',
+                                asset: 'assets/backgrounds/home-puzzles-hero-v1.webp',
                                 onTap: widget.onPuzzles,
                               ),
                             ),
@@ -648,8 +639,7 @@ class _WideHomeState extends State<_WideHome> {
                                 label: 'Rankings',
                                 subtitle: 'See stats & progress',
                                 color: const Color(0xFFF1B74D),
-                                asset:
-                                    'assets/backgrounds/home-rankings-hero-v1.webp',
+                                asset: 'assets/backgrounds/home-rankings-hero-v1.webp',
                                 onTap: widget.onRankings,
                               ),
                             ),
@@ -661,8 +651,7 @@ class _WideHomeState extends State<_WideHome> {
                                 label: 'Community',
                                 subtitle: 'Friends, clubs & events',
                                 color: const Color(0xFF55E1CF),
-                                asset:
-                                    'assets/backgrounds/home-friends-hero-v1.webp',
+                                asset: 'assets/backgrounds/home-friends-hero-v1.webp',
                                 onTap: widget.onCommunity,
                               ),
                             ),
@@ -674,8 +663,7 @@ class _WideHomeState extends State<_WideHome> {
                                 label: 'Analysis',
                                 subtitle: 'Review your games',
                                 color: const Color(0xFF3DA2FF),
-                                asset:
-                                    'assets/backgrounds/home-analysis-hero-v1.webp',
+                                asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
                                 onTap: widget.onAnalysis,
                               ),
                             ),
@@ -687,8 +675,7 @@ class _WideHomeState extends State<_WideHome> {
                                 label: 'Learn',
                                 subtitle: 'Improve & grow',
                                 color: const Color(0xFFA879F5),
-                                asset:
-                                    'assets/backgrounds/home-learn-hero-v1.webp',
+                                asset: 'assets/backgrounds/home-learn-hero-v1.webp',
                                 onTap: widget.onLearnChess,
                               ),
                             ),
@@ -700,8 +687,7 @@ class _WideHomeState extends State<_WideHome> {
                                 label: 'My Games',
                                 subtitle: 'Continue or replay',
                                 color: const Color(0xFF55E1CF),
-                                asset:
-                                    'assets/backgrounds/home-analysis-hero-v1.webp',
+                                asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
                                 onTap: widget.onSavedGames,
                               ),
                             ),
@@ -897,9 +883,7 @@ class _PersonalTrainingCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  activated
-                      ? profile.recommendationReason
-                      : 'Complete an AI-reviewed game and tomorrow’s set will adapt to your recurring mistakes.',
+                  activated ? profile.recommendationReason : 'Complete an AI-reviewed game and tomorrow’s set will adapt to your recurring mistakes.',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -1928,6 +1912,8 @@ class _CarouselHero extends StatelessWidget {
                     FilledButton.icon(
                       key: data.title == 'Play Online'
                           ? const ValueKey<String>('play-online')
+                          : data.title == 'Play vs AI'
+                          ? const ValueKey<String>('play-vs-ai')
                           : null,
                       onPressed: data.onTap,
                       icon: const Icon(Icons.arrow_forward_rounded, size: 17),
