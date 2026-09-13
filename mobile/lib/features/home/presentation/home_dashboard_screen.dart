@@ -1394,6 +1394,12 @@ class _TopPlayersPreview extends StatelessWidget {
             .take(3)
             .toList(growable: false);
     final PlayerRatingDto? current = board?.you;
+    final bool currentAlreadyListed =
+        current != null &&
+        leaders.any(
+          (LeaderboardEntryDto entry) =>
+              entry.you || entry.playerId == current.playerId,
+        );
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
@@ -1406,14 +1412,16 @@ class _TopPlayersPreview extends StatelessWidget {
             rating: index < leaders.length ? leaders[index].rating : null,
             highlight: false,
           ),
-        const SizedBox(height: 3),
-        _CompactRankingRow(
-          rank: current?.globalRank ?? 0,
-          name: current?.displayName ?? playerName,
-          rating: current?.rating,
-          highlight: true,
-          photoUrl: profilePhotoUrl,
-        ),
+        if (!currentAlreadyListed) ...<Widget>[
+          const SizedBox(height: 3),
+          _CompactRankingRow(
+            rank: current?.globalRank ?? 0,
+            name: current?.displayName ?? playerName,
+            rating: current?.rating,
+            highlight: true,
+            photoUrl: profilePhotoUrl,
+          ),
+        ],
       ],
     );
   }

@@ -50,8 +50,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       if (country.isNotEmpty && country != 'Unknown') {
         await _api.syncCountry(session.token, country);
       }
-      return await _api.load(session.token,
-          scope: _scope, country: _scope == 'country' ? country : null);
+      return await _api.load(
+        session.token,
+        scope: _scope,
+        country: _scope == 'country' ? country : null,
+      );
     } on LeaderboardException {
       rethrow;
     } catch (_) {
@@ -64,15 +67,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   LeaderboardDto _previewLeaderboard() {
     const List<(String, String, int, int, int, int)> sample =
         <(String, String, int, int, int, int)>[
-      ('MagnusCarlsen', 'Norway', 2405, 13, 10, 2),
-      ('Hikaru', 'USA', 2341, 12, 9, 2),
-      ('FabianoCaruana', 'USA', 2267, 11, 8, 2),
-      ('hello buddy', 'India', 1197, 13, 8, 5),
-      ('Guest 475580', 'India', 1148, 10, 7, 2),
-      ('Guest 951958', 'Unknown', 1123, 9, 6, 3),
-      ('Guest 974045', 'India', 1098, 8, 5, 2),
-      ('Guest 653724', 'India', 1072, 7, 5, 2),
-    ];
+          ('MagnusCarlsen', 'Norway', 2405, 13, 10, 2),
+          ('Hikaru', 'USA', 2341, 12, 9, 2),
+          ('FabianoCaruana', 'USA', 2267, 11, 8, 2),
+          ('hello buddy', 'India', 1197, 13, 8, 5),
+          ('Guest 475580', 'India', 1148, 10, 7, 2),
+          ('Guest 951958', 'Unknown', 1123, 9, 6, 3),
+          ('Guest 974045', 'India', 1098, 8, 5, 2),
+          ('Guest 653724', 'India', 1072, 7, 5, 2),
+        ];
     final List<LeaderboardEntryDto> entries = <LeaderboardEntryDto>[
       for (int index = 0; index < sample.length; index++)
         LeaderboardEntryDto(
@@ -130,21 +133,30 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     final Widget page = Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('RANKINGS',
-            style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+        title: const Text(
+          'RANKINGS',
+          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2),
+        ),
         actions: <Widget>[
           TextButton.icon(
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-              builder: (_) =>
-                  SocialHubScreen(onOpenMatch: (OnlineMatchDto match) {
-                Navigator.of(context).pop();
-                widget.onOpenMatch?.call(match);
-              }),
-            )),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => SocialHubScreen(
+                  onOpenMatch: (OnlineMatchDto match) {
+                    Navigator.of(context).pop();
+                    widget.onOpenMatch?.call(match);
+                  },
+                ),
+              ),
+            ),
             icon: const Icon(Icons.groups_rounded, color: Color(0xFF56DEC8)),
-            label: const Text('Friends',
-                style: TextStyle(
-                    color: Color(0xFF56DEC8), fontWeight: FontWeight.w900)),
+            label: const Text(
+              'Friends',
+              style: TextStyle(
+                color: Color(0xFF56DEC8),
+                fontWeight: FontWeight.w900,
+              ),
+            ),
           ),
           const SizedBox(width: 8),
         ],
@@ -166,13 +178,16 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             );
           }
           final LeaderboardDto board = snap.data!;
-          final LeaderboardEntryDto currentEntry =
-              LeaderboardEntryDto.current(board.you, scope: _scope);
+          final LeaderboardEntryDto currentEntry = LeaderboardEntryDto.current(
+            board.you,
+            scope: _scope,
+          );
           final int currentIndex = board.entries.indexWhere(
             (LeaderboardEntryDto entry) =>
                 entry.you || entry.playerId == board.you.playerId,
           );
-          final bool pinCurrentUser = currentEntry.rank > 10 &&
+          final bool pinCurrentUser =
+              currentEntry.rank > 10 &&
               currentEntry.rank > 0 &&
               !_naturalUserRowVisible;
           return Stack(
@@ -226,51 +241,63 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                                 onChanged: _switchScope,
                               ),
                               const SizedBox(height: 17),
-                              Row(children: <Widget>[
-                                const Text('TOP PLAYERS',
+                              Row(
+                                children: <Widget>[
+                                  const Text(
+                                    'TOP PLAYERS',
                                     style: TextStyle(
-                                        color: Color(0xFF8396A2),
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: 1.2)),
-                                const Spacer(),
-                                Text(
+                                      color: Color(0xFF8396A2),
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
                                     'TOP ${board.entries.length} OF ${board.totalPlayers}',
                                     style: const TextStyle(
-                                        color: Color(0xFF8396A2),
-                                        fontSize: 11)),
-                              ]),
+                                      color: Color(0xFF8396A2),
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
                               const SizedBox(height: 9),
                               if (board.entries.isEmpty)
                                 const _EmptyBoard()
                               else
-                                LayoutBuilder(builder: (context, size) {
-                                  final Size viewport =
-                                      MediaQuery.sizeOf(context);
-                                  final int columns = size.maxWidth >= 800 &&
-                                          viewport.height >= 600
-                                      ? 2
-                                      : 1;
-                                  return GridView.builder(
-                                    shrinkWrap: true,
-                                    physics:
-                                        const NeverScrollableScrollPhysics(),
-                                    gridDelegate:
-                                        SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: columns,
-                                      crossAxisSpacing: 10,
-                                      mainAxisSpacing: 9,
-                                      mainAxisExtent: 91,
-                                    ),
-                                    itemCount: board.entries.length,
-                                    itemBuilder: (_, int index) =>
-                                        _LeaderboardTile(
-                                      board.entries[index],
-                                      profilePhotoUrl: board.entries[index].you
-                                          ? widget.profilePhotoUrl
-                                          : null,
-                                    ),
-                                  );
-                                }),
+                                LayoutBuilder(
+                                  builder: (context, size) {
+                                    final Size viewport = MediaQuery.sizeOf(
+                                      context,
+                                    );
+                                    final int columns =
+                                        size.maxWidth >= 800 &&
+                                            viewport.height >= 600
+                                        ? 2
+                                        : 1;
+                                    return GridView.builder(
+                                      shrinkWrap: true,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      gridDelegate:
+                                          SliverGridDelegateWithFixedCrossAxisCount(
+                                            crossAxisCount: columns,
+                                            crossAxisSpacing: 10,
+                                            mainAxisSpacing: 9,
+                                            mainAxisExtent: 91,
+                                          ),
+                                      itemCount: board.entries.length,
+                                      itemBuilder: (_, int index) =>
+                                          _LeaderboardTile(
+                                            board.entries[index],
+                                            profilePhotoUrl:
+                                                board.entries[index].you
+                                                ? widget.profilePhotoUrl
+                                                : null,
+                                          ),
+                                    );
+                                  },
+                                ),
                             ],
                           ),
                         ),
@@ -356,104 +383,140 @@ class _RatingHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        constraints: const BoxConstraints(minHeight: 300),
-        padding: const EdgeInsets.fromLTRB(24, 25, 24, 19),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          border:
-              Border.all(color: AppColors.accentGold.withValues(alpha: .88)),
-          image: const DecorationImage(
-              image: AssetImage('assets/backgrounds/home-rankings-hero-v1.webp'),
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-              opacity: .38),
-          gradient: const LinearGradient(colors: <Color>[
-            Color(0xF20A2742),
-            Color(0xEB071625),
-          ]),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-                color: AppColors.accentGold.withValues(alpha: .22),
-                blurRadius: 28),
-            BoxShadow(
-                color: const Color(0xFF42D5C3).withValues(alpha: .12),
-                blurRadius: 32,
-                offset: const Offset(12, 8)),
-          ],
+    constraints: const BoxConstraints(minHeight: 300),
+    padding: const EdgeInsets.fromLTRB(24, 25, 24, 19),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(28),
+      border: Border.all(color: AppColors.accentGold.withValues(alpha: .88)),
+      image: const DecorationImage(
+        image: AssetImage('assets/backgrounds/home-rankings-hero-v1.webp'),
+        fit: BoxFit.cover,
+        alignment: Alignment.center,
+        opacity: .38,
+      ),
+      gradient: const LinearGradient(
+        colors: <Color>[Color(0xF20A2742), Color(0xEB071625)],
+      ),
+      boxShadow: <BoxShadow>[
+        BoxShadow(
+          color: AppColors.accentGold.withValues(alpha: .22),
+          blurRadius: 28,
         ),
-        child: Column(children: <Widget>[
-          const Icon(Icons.workspace_premium_rounded,
-              size: 66, color: Color(0xFFFFD45D)),
+        BoxShadow(
+          color: const Color(0xFF42D5C3).withValues(alpha: .12),
+          blurRadius: 32,
+          offset: const Offset(12, 8),
+        ),
+      ],
+    ),
+    child: Column(
+      children: <Widget>[
+        const Icon(
+          Icons.workspace_premium_rounded,
+          size: 66,
+          color: Color(0xFFFFD45D),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'CHESSVERSEAI ELO',
+          style: TextStyle(
+            color: AppColors.accentGold,
+            letterSpacing: 1.8,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        Text(
+          '${player.rating}',
+          style: const TextStyle(
+            fontSize: 64,
+            height: 1.05,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        if (player.gamesPlayed == 0) ...<Widget>[
           const SizedBox(height: 10),
-          const Text('CHESSVERSEAI ELO',
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: const Color(0xD90A1D2B),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF5FE3C6)),
+            ),
+            child: const Text(
+              'PROVISIONAL • Play 1 rated online game to earn your rank',
+              textAlign: TextAlign.center,
               style: TextStyle(
-                  color: AppColors.accentGold,
-                  letterSpacing: 1.8,
-                  fontWeight: FontWeight.w900)),
-          Text('${player.rating}',
-              style: const TextStyle(
-                  fontSize: 64, height: 1.05, fontWeight: FontWeight.w900)),
-          if (player.gamesPlayed == 0) ...<Widget>[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-              decoration: BoxDecoration(
-                color: const Color(0xD90A1D2B),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF5FE3C6)),
+                color: Color(0xFF70E8D4),
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                letterSpacing: .35,
               ),
-              child: const Text(
-                'PROVISIONAL • Play 1 rated online game to earn your rank',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF70E8D4),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: .35,
-                ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 14),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: _Metric(
+                'GLOBAL',
+                player.globalRank == 0 ? 'UNRANKED' : '#${player.globalRank}',
+                const Color(0xFF5FE3C6),
+              ),
+            ),
+            const _MetricDivider(),
+            Expanded(
+              child: _Metric(
+                player.country.toUpperCase(),
+                player.countryRank == 0 ? 'UNRANKED' : '#${player.countryRank}',
+                AppColors.accentGold,
+              ),
+            ),
+            const _MetricDivider(),
+            Expanded(
+              child: _Metric(
+                'PEAK',
+                '${player.peakRating}',
+                const Color(0xFF9F7AE8),
               ),
             ),
           ],
-          const SizedBox(height: 14),
-          Row(children: <Widget>[
-            Expanded(
-                child: _Metric(
-                    'GLOBAL',
-                    player.globalRank == 0
-                        ? 'UNRANKED'
-                        : '#${player.globalRank}',
-                    const Color(0xFF5FE3C6))),
-            const _MetricDivider(),
-            Expanded(
-                child: _Metric(
-                    player.country.toUpperCase(),
-                    player.countryRank == 0
-                        ? 'UNRANKED'
-                        : '#${player.countryRank}',
-                    AppColors.accentGold)),
-            const _MetricDivider(),
-            Expanded(
-                child: _Metric(
-                    'PEAK', '${player.peakRating}', const Color(0xFF9F7AE8))),
-          ]),
-          const Divider(height: 30, color: Color(0xFF778896)),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 22,
-            runSpacing: 8,
-            children: <Widget>[
-              _ResultStat(Icons.sports_esports_rounded, '${player.gamesPlayed}',
-                  'GAMES', const Color(0xFFB7C4CC)),
-              _ResultStat(Icons.check_circle, '${player.wins}', 'W',
-                  const Color(0xFF41C6A7)),
-              _ResultStat(Icons.remove_circle, '${player.draws}', 'D',
-                  const Color(0xFF8796A2)),
-              _ResultStat(Icons.cancel, '${player.losses}', 'L',
-                  const Color(0xFFD75C56)),
-            ],
-          ),
-        ]),
-      );
+        ),
+        const Divider(height: 30, color: Color(0xFF778896)),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 22,
+          runSpacing: 8,
+          children: <Widget>[
+            _ResultStat(
+              Icons.sports_esports_rounded,
+              '${player.gamesPlayed}',
+              'GAMES',
+              const Color(0xFFB7C4CC),
+            ),
+            _ResultStat(
+              Icons.check_circle,
+              '${player.wins}',
+              'W',
+              const Color(0xFF41C6A7),
+            ),
+            _ResultStat(
+              Icons.remove_circle,
+              '${player.draws}',
+              'D',
+              const Color(0xFF8796A2),
+            ),
+            _ResultStat(
+              Icons.cancel,
+              '${player.losses}',
+              'L',
+              const Color(0xFFD75C56),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
 }
 
 class _Metric extends StatelessWidget {
@@ -462,23 +525,35 @@ class _Metric extends StatelessWidget {
   final String value;
   final Color color;
   @override
-  Widget build(BuildContext context) => Column(children: <Widget>[
-        Text(value,
-            style: TextStyle(
-                color: color,
-                fontSize: value == 'UNRANKED' ? 13 : 25,
-                fontWeight: FontWeight.w900)),
-        Text(label,
-            style: const TextStyle(
-                color: Color(0xFF91A3AE), fontSize: 10, letterSpacing: 1.1)),
-      ]);
+  Widget build(BuildContext context) => Column(
+    children: <Widget>[
+      Text(
+        value,
+        style: TextStyle(
+          color: color,
+          fontSize: value == 'UNRANKED' ? 13 : 25,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xFF91A3AE),
+          fontSize: 10,
+          letterSpacing: 1.1,
+        ),
+      ),
+    ],
+  );
 }
 
 class _MetricDivider extends StatelessWidget {
   const _MetricDivider();
   @override
   Widget build(BuildContext context) => const SizedBox(
-      height: 43, child: VerticalDivider(color: Color(0xFF405260)));
+    height: 43,
+    child: VerticalDivider(color: Color(0xFF405260)),
+  );
 }
 
 class _ResultStat extends StatelessWidget {
@@ -488,102 +563,119 @@ class _ResultStat extends StatelessWidget {
   final String label;
   final Color color;
   @override
-  Widget build(BuildContext context) =>
-      Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
-        Icon(icon, color: color, size: 18),
-        const SizedBox(width: 6),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
-        const SizedBox(width: 5),
-        Text(label,
-            style: const TextStyle(color: Color(0xFF8FA1AC), fontSize: 11)),
-      ]);
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      Icon(icon, color: color, size: 18),
+      const SizedBox(width: 6),
+      Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
+      const SizedBox(width: 5),
+      Text(
+        label,
+        style: const TextStyle(color: Color(0xFF8FA1AC), fontSize: 11),
+      ),
+    ],
+  );
 }
 
 class _ScopeSwitch extends StatelessWidget {
-  const _ScopeSwitch(
-      {required this.scope, required this.country, required this.onChanged});
+  const _ScopeSwitch({
+    required this.scope,
+    required this.country,
+    required this.onChanged,
+  });
   final String scope;
   final String country;
   final ValueChanged<String> onChanged;
   @override
   Widget build(BuildContext context) => Container(
-        height: 58,
-        decoration: BoxDecoration(
-            color: const Color(0xC8071725),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: const Color(0xFF6E8490))),
-        child: Row(children: <Widget>[
-          _ScopeOption(
-              selected: scope == 'global',
-              icon: Icons.public_rounded,
-              text: 'Global',
-              onTap: () => onChanged('global')),
-          _ScopeOption(
-              selected: scope == 'country',
-              icon: Icons.flag_rounded,
-              text: country,
-              onTap: () => onChanged('country')),
-        ]),
-      );
+    height: 58,
+    decoration: BoxDecoration(
+      color: const Color(0xC8071725),
+      borderRadius: BorderRadius.circular(30),
+      border: Border.all(color: const Color(0xFF6E8490)),
+    ),
+    child: Row(
+      children: <Widget>[
+        _ScopeOption(
+          selected: scope == 'global',
+          icon: Icons.public_rounded,
+          text: 'Global',
+          onTap: () => onChanged('global'),
+        ),
+        _ScopeOption(
+          selected: scope == 'country',
+          icon: Icons.flag_rounded,
+          text: country,
+          onTap: () => onChanged('country'),
+        ),
+      ],
+    ),
+  );
 }
 
 class _ScopeOption extends StatelessWidget {
-  const _ScopeOption(
-      {required this.selected,
-      required this.icon,
-      required this.text,
-      required this.onTap});
+  const _ScopeOption({
+    required this.selected,
+    required this.icon,
+    required this.text,
+    required this.onTap,
+  });
   final bool selected;
   final IconData icon;
   final String text;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => Expanded(
-        child: InkWell(
-          onTap: onTap,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(28),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: double.infinity,
+        height: double.infinity,
+        margin: const EdgeInsets.all(3),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: double.infinity,
-            height: double.infinity,
-            margin: const EdgeInsets.all(3),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
-                color: selected
-                    ? const Color(0xFF0A393E).withValues(alpha: 0.82)
-                    : Colors.transparent,
-                border: selected
-                    ? Border.all(color: const Color(0xFF5EEAD4))
-                    : null,
-                boxShadow: selected
-                    ? <BoxShadow>[
-                        BoxShadow(
-                          color: const Color(0xFF5EEAD4).withValues(alpha: 0.2),
-                          blurRadius: 14,
-                        ),
-                      ]
-                    : null),
-            child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Icon(icon,
-                      color: selected
-                          ? const Color(0xFF5EEAD4)
-                          : const Color(0xFFC9D2D8)),
-                  const SizedBox(width: 8),
-                  Flexible(
-                      child: Text(text,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              color: selected
-                                  ? const Color(0xFF5EEAD4)
-                                  : Colors.white,
-                              fontWeight: FontWeight.w800))),
-                ]),
-          ),
+          color: selected
+              ? const Color(0xFF0A393E).withValues(alpha: 0.82)
+              : Colors.transparent,
+          border: selected ? Border.all(color: const Color(0xFF5EEAD4)) : null,
+          boxShadow: selected
+              ? <BoxShadow>[
+                  BoxShadow(
+                    color: const Color(0xFF5EEAD4).withValues(alpha: 0.2),
+                    blurRadius: 14,
+                  ),
+                ]
+              : null,
         ),
-      );
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Icon(
+              icon,
+              color: selected
+                  ? const Color(0xFF5EEAD4)
+                  : const Color(0xFFC9D2D8),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                text,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected ? const Color(0xFF5EEAD4) : Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _LeaderboardTile extends StatelessWidget {
@@ -600,9 +692,11 @@ class _LeaderboardTile extends StatelessWidget {
       _ => const Color(0xFF385269),
     };
     final String trimmedName = entry.displayName.trim();
-    final String initial =
-        trimmedName.isEmpty ? 'C' : trimmedName.substring(0, 1).toUpperCase();
-    final String? usablePhotoUrl = entry.you &&
+    final String initial = trimmedName.isEmpty
+        ? 'C'
+        : trimmedName.substring(0, 1).toUpperCase();
+    final String? usablePhotoUrl =
+        entry.you &&
             profilePhotoUrl != null &&
             profilePhotoUrl!.trim().isNotEmpty
         ? profilePhotoUrl!.trim()
@@ -610,99 +704,183 @@ class _LeaderboardTile extends StatelessWidget {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-          color: entry.you ? const Color(0xE20B3B43) : const Color(0xEE0B1B2A),
-          borderRadius: BorderRadius.circular(17),
-          border: Border.all(color: accent.withValues(alpha: .75))),
-      child: Row(children: <Widget>[
-        Container(
-          width: 54,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-              gradient: LinearGradient(colors: <Color>[
-            accent.withValues(alpha: .34),
-            accent.withValues(alpha: .05)
-          ])),
-          child: Text('${entry.rank}',
+        color: entry.you ? const Color(0xE20B3B43) : const Color(0xEE0B1B2A),
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: accent.withValues(alpha: .75)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 54,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: <Color>[
+                  accent.withValues(alpha: .34),
+                  accent.withValues(alpha: .05),
+                ],
+              ),
+            ),
+            child: Text(
+              '${entry.rank}',
               style: TextStyle(
-                  color: accent, fontSize: 20, fontWeight: FontWeight.w900)),
-        ),
-        const SizedBox(width: 10),
-        if (entry.rank <= 3)
-          Padding(
+                color: accent,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          if (entry.rank <= 3)
+            Padding(
               padding: const EdgeInsets.only(right: 7),
-              child: Icon(Icons.emoji_events_rounded, color: accent, size: 21)),
-        CircleAvatar(
-          radius: 24,
-          backgroundColor: accent.withValues(alpha: .18),
-          backgroundImage:
-              usablePhotoUrl == null ? null : NetworkImage(usablePhotoUrl),
-          onBackgroundImageError: usablePhotoUrl == null
-              ? null
-              : (Object error, StackTrace? stackTrace) {},
-          child: usablePhotoUrl == null
-              ? Text(initial,
-                  style: TextStyle(color: accent, fontWeight: FontWeight.w900))
-              : null,
-        ),
-        const SizedBox(width: 11),
-        Expanded(
-          child: Column(
+              child: Icon(Icons.emoji_events_rounded, color: accent, size: 21),
+            ),
+          _RankingAvatar(
+            photoUrl: usablePhotoUrl,
+            initial: initial,
+            accent: accent,
+            useSavedAvatar: entry.you,
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Row(children: <Widget>[
-                  if (entry.you)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 5),
-                      child: Text('YOU',
+                Row(
+                  children: <Widget>[
+                    if (entry.you)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 5),
+                        child: Text(
+                          'YOU',
                           style: TextStyle(
-                              color: Color(0xFF54DDC2),
-                              fontWeight: FontWeight.w900)),
-                    ),
-                  Expanded(
-                    child: Text(entry.displayName,
+                            color: Color(0xFF54DDC2),
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    Expanded(
+                      child: Text(
+                        entry.displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w900)),
-                  ),
-                ]),
-                Text('${entry.country}  ·  ${entry.gamesPlayed} games',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        color: Color(0xFF9BAEB9), fontSize: 11)),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 Text(
-                    '${entry.wins}W ${entry.draws}D ${entry.losses}L  ·  🪙 ${entry.careerCoinsWon} won',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        color: Color(0xFF7F96A5), fontSize: 10)),
-              ]),
-        ),
-        const SizedBox(width: 8),
-        Text('${entry.rating}',
+                  '${entry.country}  ·  ${entry.gamesPlayed} games',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF9BAEB9),
+                    fontSize: 11,
+                  ),
+                ),
+                Text(
+                  '${entry.wins}W ${entry.draws}D ${entry.losses}L  ·  🪙 ${entry.careerCoinsWon} won',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF7F96A5),
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${entry.rating}',
             style: TextStyle(
-                color: entry.rank <= 3 || entry.you ? accent : Colors.white,
-                fontSize: 21,
-                fontWeight: FontWeight.w900)),
-        const SizedBox(width: 14),
-      ]),
+              color: entry.rank <= 3 || entry.you ? accent : Colors.white,
+              fontSize: 21,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(width: 14),
+        ],
+      ),
     );
   }
+}
+
+class _RankingAvatar extends StatelessWidget {
+  const _RankingAvatar({
+    required this.photoUrl,
+    required this.initial,
+    required this.accent,
+    required this.useSavedAvatar,
+  });
+
+  final String? photoUrl;
+  final String initial;
+  final Color accent;
+  final bool useSavedAvatar;
+
+  Widget _fallback() {
+    const List<IconData> icons = <IconData>[
+      Icons.person_rounded,
+      Icons.psychology_rounded,
+      Icons.sports_esports_rounded,
+      Icons.auto_awesome_rounded,
+      Icons.workspace_premium_rounded,
+      Icons.emoji_events_rounded,
+    ];
+    if (useSavedAvatar) {
+      final int index = LocalGameArchive.profileAvatar.clamp(
+        0,
+        icons.length - 1,
+      );
+      return Icon(icons[index], color: Colors.white, size: 27);
+    }
+    return Text(
+      initial,
+      style: TextStyle(color: accent, fontWeight: FontWeight.w900),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => CircleAvatar(
+    radius: 24,
+    backgroundColor: accent.withValues(alpha: .24),
+    child: photoUrl == null
+        ? _fallback()
+        : ClipOval(
+            child: Image.network(
+              photoUrl!,
+              width: 48,
+              height: 48,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => SizedBox(
+                width: 48,
+                height: 48,
+                child: Center(child: _fallback()),
+              ),
+            ),
+          ),
+  );
 }
 
 class _EmptyBoard extends StatelessWidget {
   const _EmptyBoard();
   @override
   Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.only(top: 70),
-        child: Column(children: <Widget>[
-          Icon(Icons.leaderboard_rounded, size: 52, color: Color(0xFF527081)),
-          SizedBox(height: 12),
-          Text('Complete an online match to enter the rankings.'),
-        ]),
-      );
+    padding: EdgeInsets.only(top: 70),
+    child: Column(
+      children: <Widget>[
+        Icon(Icons.leaderboard_rounded, size: 52, color: Color(0xFF527081)),
+        SizedBox(height: 12),
+        Text('Complete an online match to enter the rankings.'),
+      ],
+    ),
+  );
 }
 
 class _ErrorState extends StatelessWidget {
@@ -711,15 +889,18 @@ class _ErrorState extends StatelessWidget {
   final VoidCallback onRetry;
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-            const Icon(Icons.cloud_off_rounded, size: 46),
-            const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 14),
-            FilledButton(onPressed: onRetry, child: const Text('Try again')),
-          ]),
-        ),
-      );
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const Icon(Icons.cloud_off_rounded, size: 46),
+          const SizedBox(height: 12),
+          Text(message, textAlign: TextAlign.center),
+          const SizedBox(height: 14),
+          FilledButton(onPressed: onRetry, child: const Text('Try again')),
+        ],
+      ),
+    ),
+  );
 }
