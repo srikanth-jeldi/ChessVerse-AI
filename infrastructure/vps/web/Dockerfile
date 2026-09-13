@@ -28,6 +28,10 @@ RUN test -n "${API_BASE_URL}" \
 FROM caddy:2-alpine
 COPY infrastructure/vps/web/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /workspace/build/web /srv/play
+# Replace Flutter's legacy generated worker with a one-time cleanup worker.
+# Existing browsers fetch it during their normal worker update, clear the stale
+# application cache, unregister the worker, and reload into the uncached build.
+COPY infrastructure/vps/web/landing/flutter_service_worker.js /srv/play/flutter_service_worker.js
 COPY infrastructure/vps/web/landing/index.html /srv/index.html
 COPY infrastructure/vps/web/landing/flutter_service_worker.js /srv/flutter_service_worker.js
 COPY infrastructure/vps/web/landing/robots.txt /srv/robots.txt
