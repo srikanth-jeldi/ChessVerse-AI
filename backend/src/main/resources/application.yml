@@ -26,6 +26,10 @@ spring:
             required: true
 
 chessverse:
+  service:
+    # all keeps the existing monolith deployment compatible. The strangler
+    # deployment sets identity, play, learning, economy, or platform.
+    role: ${CHESSVERSE_SERVICE_ROLE:all}
   contact:
     recipient: ${CONTACT_EMAIL:contactus@epitomehub.com}
   chat:

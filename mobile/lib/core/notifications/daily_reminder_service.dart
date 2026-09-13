@@ -22,8 +22,10 @@ class DailyReminderService {
   static const String _activityKey = 'playReminderLastActivity';
   bool _pendingPlayOpen = false;
   bool _pendingTournamentOpen = false;
+  bool _pendingWeeklyReportOpen = false;
   final ValueNotifier<int> playOpenRequests = ValueNotifier<int>(0);
   final ValueNotifier<int> tournamentOpenRequests = ValueNotifier<int>(0);
+  final ValueNotifier<int> weeklyReportOpenRequests = ValueNotifier<int>(0);
 
   Future<void> initialize() async {
     if (_initialized || kIsWeb) return;
@@ -57,6 +59,9 @@ class DailyReminderService {
     } else if (response.payload == 'open_tournaments') {
       _pendingTournamentOpen = true;
       tournamentOpenRequests.value += 1;
+    } else if (response.payload == 'open_weekly_report') {
+      _pendingWeeklyReportOpen = true;
+      weeklyReportOpenRequests.value += 1;
     }
   }
 
@@ -73,6 +78,14 @@ class DailyReminderService {
   bool takePendingTournamentOpen() {
     if (!_pendingTournamentOpen) return false;
     _pendingTournamentOpen = false;
+    return true;
+  }
+
+  bool get hasPendingWeeklyReportOpen => _pendingWeeklyReportOpen;
+
+  bool takePendingWeeklyReportOpen() {
+    if (!_pendingWeeklyReportOpen) return false;
+    _pendingWeeklyReportOpen = false;
     return true;
   }
 
@@ -139,6 +152,7 @@ class DailyReminderService {
         ),
         iOS: DarwinNotificationDetails(),
       ),
+      payload: 'open_weekly_report',
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
     );

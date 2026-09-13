@@ -30,6 +30,36 @@ void main() {
     );
   });
 
+  test('offline AI never chooses a move that allows mate in one', () {
+    const Map<String, ChessPiece> board = <String, ChessPiece>{
+      'f6': ChessPiece('K', true),
+      'g6': ChessPiece('Q', true),
+      'h8': ChessPiece('K', false),
+      'a7': ChessPiece('P', false),
+      'g7': ChessPiece('P', false),
+      'h7': ChessPiece('P', false),
+    };
+    const AiCandidate mateBlunder = AiCandidate('a7', 'a6', 0);
+    final double blunderScore = scoreOfflineAiCandidate(
+      mateBlunder,
+      board,
+      aiPlaysWhite: false,
+    );
+
+    expect(blunderScore, lessThan(-500000));
+    const AiCandidate safeMove = AiCandidate('g7', 'g6', 50);
+    final List<AiCandidate> candidates = <AiCandidate>[
+      safeMove,
+      AiCandidate('a7', 'a6', blunderScore),
+    ];
+    for (int seed = 0; seed < 40; seed++) {
+      expect(
+        chooseAiCandidateForLevel(candidates, 1, math.Random(seed)),
+        same(safeMove),
+      );
+    }
+  });
+
   test('board integrity requires exactly one king for each side', () {
     expect(
       ChessRules.hasOneKingPerSide(const <String, ChessPiece>{

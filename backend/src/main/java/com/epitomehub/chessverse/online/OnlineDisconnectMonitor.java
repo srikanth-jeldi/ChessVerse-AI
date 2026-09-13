@@ -1,10 +1,12 @@
 package com.epitomehub.chessverse.online;
 
 import java.util.UUID;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnExpression("'${chessverse.service.role:all}' == 'all' || '${chessverse.service.role:all}' == 'play'")
 class OnlineDisconnectMonitor {
     private final OnlineMatchService matches;
     private final OnlineMatchSocketHandler socket;

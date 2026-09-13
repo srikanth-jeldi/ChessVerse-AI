@@ -1970,17 +1970,26 @@ class _LessonLanguageAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLanguage language = AppLanguageController.byCode(languageCode);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: OutlinedButton.icon(
-        key: const ValueKey<String>('lesson-language-picker'),
-        onPressed: onPressed,
-        icon: const Icon(Icons.translate_rounded, size: 18),
-        label: Text(language.nativeName),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.accentGold,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          visualDensity: VisualDensity.compact,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 104),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: OutlinedButton.icon(
+          key: const ValueKey<String>('lesson-language-picker'),
+          onPressed: onPressed,
+          icon: const Icon(Icons.translate_rounded, size: 18),
+          label: Flexible(
+            child: Text(
+              language.nativeName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.accentGold,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            visualDensity: VisualDensity.compact,
+          ),
         ),
       ),
     );
@@ -2083,13 +2092,16 @@ class _CourseScreenState extends State<_CourseScreen> {
           Icon(course.icon, color: course.accent),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              _localizedCourseTitle(_copy, course),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
+            child: ClipRect(
+              child: Text(
+                _localizedCourseTitle(_copy, course),
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ),

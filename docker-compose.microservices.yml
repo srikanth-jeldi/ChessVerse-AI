@@ -1,0 +1,106 @@
+x-backend-environment: &backend-environment
+  DB_URL: jdbc:postgresql://postgres:5432/chessverse
+  DB_USERNAME: chessverse
+  DB_PASSWORD: chessverse
+  SPRING_PROFILES_ACTIVE: docker
+  REDIS_HOST: redis
+  MAIL_USERNAME: ${MAIL_USERNAME:-}
+  MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+  MAIL_FROM: ${MAIL_FROM:-}
+
+x-backend-service: &backend-service
+  image: chessverse/backend:${CHESSVERSE_IMAGE_TAG:-local}
+  build:
+    context: ./backend
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  healthcheck:
+    test: ["CMD", "curl", "--fail", "http://localhost:8080/actuator/health/readiness"]
+    interval: 15s
+    timeout: 5s
+    retries: 8
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: chessverse
+      POSTGRES_USER: chessverse
+      POSTGRES_PASSWORD: chessverse
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chessverse -d chessverse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  identity-service:
+    <<: *backend-service
+    environment:
+      <<: *backend-environment
+      CHESSVERSE_SERVICE_ROLE: identity
+
+  play-service:
+    <<: *backend-service
+    environment:
+      <<: *backend-environment
+      CHESSVERSE_SERVICE_ROLE: play
+
+  learning-service:
+    <<: *backend-service
+    environment:
+      <<: *backend-environment
+      CHESSVERSE_SERVICE_ROLE: learning
+
+  economy-service:
+    <<: *backend-service
+    environment:
+      <<: *backend-environment
+      CHESSVERSE_SERVICE_ROLE: economy
+
+  platform-service:
+    <<: *backend-service
+    environment:
+      <<: *backend-environment
+      CHESSVERSE_SERVICE_ROLE: platform
+
+  gateway:
+    image: nginx:1.29-alpine
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infrastructure/gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/gateway/proxy_params:/etc/nginx/proxy_params:ro
+    depends_on:
+      identity-service:
+        condition: service_healthy
+      play-service:
+        condition: service_healthy
+      learning-service:
+        condition: service_healthy
+      economy-service:
+        condition: service_healthy
+      platform-service:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  redis-data:
