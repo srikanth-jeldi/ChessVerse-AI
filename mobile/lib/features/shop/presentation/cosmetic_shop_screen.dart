@@ -107,15 +107,9 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       final ShopDto value = item.owned
           ? await _api.equip(widget.token, item.category, item.id)
           : await _api.purchase(widget.token, item.id);
-      if (item.category == 'BOARD') {
-        await const AppPreferences().writeString('boardTheme', item.name);
-      }
-      if (item.category == 'PIECES') {
-        await const AppPreferences().writeString('pieceFinish', item.slug);
-      }
-      if (item.category == 'FRAME') {
-        await const AppPreferences().writeString('profileBadge', item.slug);
-      }
+      // Persist what the server actually equipped. This keeps web/mobile and
+      // the account loadout in sync after both purchases and equip actions.
+      await _syncEquippedCosmetics(value);
       if (mounted) {
         setState(() {
           _shop = value;
@@ -123,9 +117,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              item.owned ? '${item.name} equipped' : '${item.name} unlocked',
-            ),
+            content: Text('${item.name} equipped • Ready for your next game'),
             behavior: SnackBarBehavior.floating,
           ),
         );

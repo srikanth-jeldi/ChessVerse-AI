@@ -30,7 +30,9 @@ class ShopService {
                 "cosmetic:"+itemId,"Purchased "+item.name);
         jdbc.update("insert into player_cosmetic_inventory(player_id,item_id,acquired_at) values(?,?,?)",
                 player.id(),itemId,Timestamp.from(Instant.now()));
-        return load(player);
+        // A purchase is an explicit choice of appearance. Equip it immediately
+        // so the next game uses the board/pieces/badge the player just bought.
+        return equip(player,item.category,item.id);
     }
 
     @Transactional

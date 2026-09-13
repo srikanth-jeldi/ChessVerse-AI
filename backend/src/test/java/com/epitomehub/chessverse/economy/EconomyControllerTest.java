@@ -81,7 +81,8 @@ class EconomyControllerTest {
         String item = "41000000-0000-0000-0000-000000000099";
         mockMvc.perform(post("/api/v1/shop/items/" + item + "/purchase").header("Authorization", authorization))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.wallet.coins").value(400))
-                .andExpect(jsonPath("$.items[1].owned").value(true));
+                .andExpect(jsonPath("$.items[1].owned").value(true))
+                .andExpect(jsonPath("$.items[1].equipped").value(true));
         mockMvc.perform(post("/api/v1/shop/items/" + item + "/purchase").header("Authorization", authorization))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.wallet.coins").value(400));
         mockMvc.perform(put("/api/v1/shop/loadout/BOARD").header("Authorization", authorization)
