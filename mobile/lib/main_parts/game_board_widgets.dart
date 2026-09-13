@@ -207,6 +207,7 @@ class _ReviewedPositionRetryDialogState
   String? _lastTo;
   String? _message;
   bool _answered = false;
+  bool _correct = false;
 
   CoachLocalizations get _copy => CoachLocalizations(widget.languageCode);
 
@@ -368,11 +369,18 @@ class _ReviewedPositionRetryDialogState
     final String attempted = '$from$square'.toLowerCase();
     final bool correct = widget.bestMove.toLowerCase().startsWith(attempted);
     setState(() {
-      _pieces = _applyReviewedMove(from, square);
-      _lastFrom = from;
-      _lastTo = square;
+      // A wrong attempt and the correct solution belong to two different
+      // positions. Restore the reviewed snapshot before drawing the solution
+      // arrow; otherwise the arrow is painted over a board that already
+      // contains the user's incorrect move and appears displaced.
+      _pieces = correct
+          ? _applyReviewedMove(from, square)
+          : Map<String, ChessPiece>.from(widget.initialPieces);
+      _lastFrom = correct ? from : null;
+      _lastTo = correct ? square : null;
       _selected = null;
       _answered = true;
+      _correct = correct;
       _message =
           '${_copy.text(correct ? 'bestFound' : 'goodTry')} '
           '${_copy.text('preferred', {'move': widget.bestMove})} '
@@ -388,6 +396,7 @@ class _ReviewedPositionRetryDialogState
       _lastTo = null;
       _message = null;
       _answered = false;
+      _correct = false;
     });
   }
 
@@ -477,10 +486,10 @@ class _ReviewedPositionRetryDialogState
                   moveSequence: _answered ? 1 : 0,
                   checkedKingSquare: checkedKing,
                   decisiveSquare: null,
-                  coachArrowFrom: _answered
+                  coachArrowFrom: _answered && !_correct
                       ? widget.bestMove.substring(0, 2)
                       : null,
-                  coachArrowTo: _answered
+                  coachArrowTo: _answered && !_correct
                       ? widget.bestMove.substring(2, 4)
                       : null,
                   idleHintFrom: null,

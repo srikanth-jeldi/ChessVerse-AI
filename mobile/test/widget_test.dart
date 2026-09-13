@@ -137,6 +137,48 @@ void main() {
     expect(find.textContaining('opens development'), findsOneWidget);
   });
 
+  testWidgets(
+    'wrong retry restores the snapshot before showing solution arrow',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: ReviewedPositionRetryDialog(
+              fen: '8/8/8/8/8/8/4P3/4K2k w - - 0 1',
+              initialPieces: <String, ChessPiece>{
+                'e1': ChessPiece('K', true),
+                'e2': ChessPiece('P', true),
+                'h1': ChessPiece('K', false),
+              },
+              whiteToMove: true,
+              bestMove: 'e2e4',
+              explanation: 'Take the centre.',
+            ),
+          ),
+        ),
+      );
+
+      final Finder wrongE2 = find.byKey(const ValueKey<String>('square-e2'));
+      final Finder wrongE3 = find.byKey(const ValueKey<String>('square-e3'));
+      await tester.ensureVisible(wrongE2);
+      await tester.tap(wrongE2);
+      await tester.pump();
+      await tester.ensureVisible(wrongE3);
+      await tester.tap(wrongE3);
+      await tester.pump();
+
+      final ChessBoard board = tester.widget<ChessBoard>(
+        find.byType(ChessBoard),
+      );
+      expect(board.pieces, contains('e2'));
+      expect(board.pieces, isNot(contains('e3')));
+      expect(board.lastFromSquare, isNull);
+      expect(board.lastToSquare, isNull);
+      expect(board.coachArrowFrom, 'e2');
+      expect(board.coachArrowTo, 'e4');
+    },
+  );
+
   setUp(() {
     FlutterSecureStorage.setMockInitialValues(<String, String>{});
   });
