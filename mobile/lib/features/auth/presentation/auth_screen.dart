@@ -161,15 +161,18 @@ class _AuthScreenState extends State<AuthScreen> {
         final bool wide = constraints.maxWidth >= 820;
         final bool compact = constraints.maxHeight < 690;
         final double radius = wide ? 38 : 30;
+        final double panelHeight = (constraints.maxHeight - 56).clamp(
+          560.0,
+          820.0,
+        );
         return Center(
           child: SingleChildScrollView(
             padding: EdgeInsets.all(wide ? 28 : 14),
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 maxWidth: 1240,
-                minHeight: wide
-                    ? (constraints.maxHeight - 56).clamp(560.0, 820.0)
-                    : 0,
+                minHeight: wide ? panelHeight : 0,
+                maxHeight: wide ? panelHeight : double.infinity,
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(radius),

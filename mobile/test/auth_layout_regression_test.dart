@@ -3,6 +3,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('wide welcome has bounded cinematic panels', (
+    WidgetTester tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1440, 900);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(home: AuthScreen(onAuthenticated: (_) {})),
+    );
+    await tester.pump();
+
+    expect(find.text('Ready when you are.'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('play-as-guest-primary')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('portrait login is scroll-safe and anchors the king', (
     WidgetTester tester,
   ) async {
