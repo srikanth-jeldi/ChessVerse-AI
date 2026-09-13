@@ -106,17 +106,50 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
         allowedExtensions: const <String>['pgn'],
       );
       if (picked.isEmpty) return;
-      final Uint8List? bytes = await picked.single.readAsBytes();
-      if (bytes == null)
-        throw const FormatException('The selected PGN could not be read.');
+      final Uint8List bytes = await picked.single.readAsBytes();
       final List<SavedGameRecord> imported = _pgn.importGames(
         utf8.decode(bytes, allowMalformed: true),
       );
+      if (!mounted) return;
+      final _PgnReviewChoice? choice = await _choosePgnReview(imported.first);
+      if (choice == null) return;
+      final String selectedName = choice.playerSide == 'white'
+          ? imported.first.whitePlayer
+          : imported.first.blackPlayer;
+      final List<SavedGameRecord> configured = imported
+          .map((game) {
+            final bool selectedIsWhite =
+                game.whitePlayer.trim().toLowerCase() ==
+                selectedName.trim().toLowerCase();
+            final bool selectedIsBlack =
+                game.blackPlayer.trim().toLowerCase() ==
+                selectedName.trim().toLowerCase();
+            final String side = selectedIsWhite
+                ? 'white'
+                : selectedIsBlack
+                ? 'black'
+                : choice.playerSide;
+            return SavedGameRecord(
+              mode: game.mode,
+              result: game.result,
+              detail: game.detail,
+              moves: game.moves,
+              playedAt: game.playedAt,
+              whitePlayer: game.whitePlayer,
+              blackPlayer: game.blackPlayer,
+              playerOutcome: game.playerOutcome,
+              playerSide: side,
+              reviewScope: choice.reviewScope,
+              openingEco: game.openingEco,
+              openingName: game.openingName,
+            );
+          })
+          .toList(growable: false);
       final Set<String> existing = LocalGameArchive.games
           .map(_gameFingerprint)
           .toSet();
       int added = 0;
-      for (final SavedGameRecord game in imported.reversed) {
+      for (final SavedGameRecord game in configured.reversed) {
         if (existing.add(_gameFingerprint(game))) {
           LocalGameArchive.addGame(game);
           added++;
@@ -139,11 +172,172 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            error is FormatException ? '${error.message}' : 'PGN import failed. Please choose a valid Chess.com or standard PGN file.',
+            error is FormatException ? error.message : 'PGN import failed. Please choose a valid Chess.com or standard PGN file.',
           ),
         ),
       );
     }
+  }
+
+  Future<_PgnReviewChoice?> _choosePgnReview(SavedGameRecord game) async {
+    String side =
+        LocalGameArchive.profileUsername?.trim().toLowerCase() ==
+            game.blackPlayer.trim().toLowerCase()
+        ? 'black'
+        : 'white';
+    String scope = 'player';
+    return showDialog<_PgnReviewChoice>(
+      context: context,
+      builder: (BuildContext context) => StatefulBuilder(
+        builder: (BuildContext context, StateSetter setDialogState) => Dialog(
+          backgroundColor: AppColors.backgroundDeep,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: const BorderSide(color: AppColors.accentGold, width: 1.2),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 620),
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  const Row(
+                    children: <Widget>[
+                      Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Color(0xFF5EEAD4),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Personalise your AI review',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tell ChessVerseAI who you played as and what the coach should analyse.',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 22),
+                  const Text(
+                    'WHICH PLAYER ARE YOU?',
+                    style: TextStyle(
+                      color: AppColors.accentGold,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: _PgnChoiceTile(
+                          selected: side == 'white',
+                          icon: Icons.light_mode_rounded,
+                          title: game.whitePlayer,
+                          subtitle: 'White pieces',
+                          onTap: () => setDialogState(() => side = 'white'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _PgnChoiceTile(
+                          selected: side == 'black',
+                          icon: Icons.dark_mode_rounded,
+                          title: game.blackPlayer,
+                          subtitle: 'Black pieces',
+                          onTap: () => setDialogState(() => side = 'black'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  const Text(
+                    'REVIEW MODE',
+                    style: TextStyle(
+                      color: AppColors.accentGold,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  ...<
+                        ({
+                          String value,
+                          IconData icon,
+                          String title,
+                          String subtitle,
+                        })
+                      >[
+                        (
+                          value: 'player',
+                          icon: Icons.person_search_rounded,
+                          title: 'Review My Moves',
+                          subtitle:
+                              'My accuracy, mistakes and better alternatives',
+                        ),
+                        (
+                          value: 'opponent',
+                          icon: Icons.visibility_rounded,
+                          title: 'Review Opponent Moves',
+                          subtitle: 'Their best ideas, threats and strategies',
+                        ),
+                        (
+                          value: 'both',
+                          icon: Icons.compare_arrows_rounded,
+                          title: 'Review Both Players',
+                          subtitle: 'A complete move-by-move game analysis',
+                        ),
+                      ]
+                      .map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 9),
+                          child: _PgnChoiceTile(
+                            selected: scope == item.value,
+                            icon: item.icon,
+                            title: item.title,
+                            subtitle: item.subtitle,
+                            recommended: item.value == 'player',
+                            onTap: () =>
+                                setDialogState(() => scope = item.value),
+                          ),
+                        ),
+                      ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.accentGold,
+                        foregroundColor: AppColors.backgroundDeep,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      onPressed: () => Navigator.pop(
+                        context,
+                        _PgnReviewChoice(playerSide: side, reviewScope: scope),
+                      ),
+                      icon: const Icon(Icons.psychology_alt_rounded),
+                      label: const Text(
+                        'IMPORT & START LEARNING',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _exportPgn() async {
@@ -177,6 +371,87 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   String _gameFingerprint(SavedGameRecord game) =>
       '${game.whitePlayer.trim().toLowerCase()}|${game.blackPlayer.trim().toLowerCase()}|${game.result}|${game.moves.join(' ')}';
 
+  Future<bool> _confirmDelete({
+    required String title,
+    required String body,
+  }) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) => AlertDialog(
+          backgroundColor: AppColors.backgroundDeep,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: const BorderSide(color: AppColors.accentGold),
+          ),
+          icon: const Icon(
+            Icons.delete_outline_rounded,
+            color: AppColors.accentGold,
+            size: 34,
+          ),
+          title: Text(title, textAlign: TextAlign.center),
+          content: Text(
+            body,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: <Widget>[
+            OutlinedButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('KEEP IT'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('DELETE'),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+
+  Future<void> _deleteGame(SavedGameRecord game) async {
+    final bool confirmed = await _confirmDelete(
+      title: game.mode == 'Imported PGN'
+          ? 'Delete imported PGN?'
+          : 'Delete saved game?',
+      body:
+          '${game.summary} will be removed from this device. This cannot be undone.',
+    );
+    if (!confirmed || !mounted) return;
+    LocalGameArchive.removeGame(game);
+    setState(() {});
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Game deleted.')));
+  }
+
+  Future<void> _deleteAllImported() async {
+    final int count = LocalGameArchive.games
+        .where((game) => game.mode == 'Imported PGN')
+        .length;
+    if (count == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No imported PGN games to delete.')),
+      );
+      return;
+    }
+    final bool confirmed = await _confirmDelete(
+      title: 'Delete all imported PGNs?',
+      body:
+          'All $count imported game${count == 1 ? '' : 's'} will be removed. Your ChessVerseAI games stay safe.',
+    );
+    if (!confirmed || !mounted) return;
+    final int removed = LocalGameArchive.removeImportedGames();
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Deleted $removed imported PGN game${removed == 1 ? '' : 's'}.',
+        ),
+      ),
+    );
+  }
+
   void _openCompleted(SavedGameRecord game) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
@@ -188,6 +463,20 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
               Text(game.summary, style: Theme.of(context).textTheme.titleLarge),
               Text('${game.result} · ${_formatDate(game.playedAt)}'),
               Text(game.detail),
+              if (game.playerSide != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Chip(
+                    avatar: const Icon(Icons.auto_awesome_rounded, size: 18),
+                    label: Text(
+                      'You played ${game.playerSide == 'white' ? game.whitePlayer : game.blackPlayer} • ${game.reviewScope == 'player'
+                          ? 'Reviewing your moves'
+                          : game.reviewScope == 'opponent'
+                          ? 'Reviewing opponent moves'
+                          : 'Reviewing both players'}',
+                    ),
+                  ),
+                ),
               Wrap(
                 spacing: 8,
                 children: [
@@ -199,6 +488,8 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                         newestFirst: false,
                         result: game.result,
                         knownReviews: game.moveReviews,
+                        playerSide: game.playerSide,
+                        reviewScope: game.reviewScope,
                       ),
                     ),
                     child: const Text('AI Review'),
@@ -271,6 +562,25 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
             tooltip: 'Export all games as PGN',
             onPressed: _exportPgn,
             icon: const Icon(Icons.download_rounded),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Manage saved games',
+            onSelected: (String value) {
+              if (value == 'delete-imported') _deleteAllImported();
+            },
+            itemBuilder: (_) => const <PopupMenuEntry<String>>[
+              PopupMenuItem<String>(
+                value: 'delete-imported',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    Icons.delete_sweep_rounded,
+                    color: AppColors.danger,
+                  ),
+                  title: Text('Delete imported PGNs'),
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 6),
         ],
@@ -481,9 +791,10 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                                           : g.mode == '2 Players'),
                                 )
                                 .map(
-                                  (g) => GestureDetector(
+                                  (g) => _LocalHistoryCard(
+                                    g,
                                     onTap: () => _openCompleted(g),
-                                    child: _LocalHistoryCard(g),
+                                    onDelete: () => _deleteGame(g),
                                   ),
                                 ),
                           ],
@@ -497,6 +808,96 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       ),
     );
   }
+}
+
+class _PgnReviewChoice {
+  const _PgnReviewChoice({required this.playerSide, required this.reviewScope});
+  final String playerSide;
+  final String reviewScope;
+}
+
+class _PgnChoiceTile extends StatelessWidget {
+  const _PgnChoiceTile({
+    required this.selected,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.recommended = false,
+  });
+  final bool selected;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool recommended;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: selected ? const Color(0xFF123C3E) : AppColors.surface,
+    borderRadius: BorderRadius.circular(14),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? const Color(0xFF5EEAD4) : AppColors.border,
+            width: selected ? 1.7 : 1,
+          ),
+        ),
+        child: Row(
+          children: <Widget>[
+            Icon(
+              icon,
+              color: selected
+                  ? const Color(0xFF5EEAD4)
+                  : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      if (recommended)
+                        const Text(
+                          'BEST',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppColors.accentGold,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (selected)
+              const Icon(Icons.check_circle_rounded, color: Color(0xFF5EEAD4)),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _PgnCoachBanner extends StatelessWidget {
@@ -695,11 +1096,18 @@ class _OnlineHistoryCard extends StatelessWidget {
 }
 
 class _LocalHistoryCard extends StatelessWidget {
-  const _LocalHistoryCard(this.game);
+  const _LocalHistoryCard(
+    this.game, {
+    required this.onTap,
+    required this.onDelete,
+  });
   final SavedGameRecord game;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
   @override
   Widget build(BuildContext context) => _HistoryShell(
     accent: const Color(0xFF668CA2),
+    onTap: onTap,
     child: Row(
       children: <Widget>[
         const Icon(Icons.devices_rounded, color: Color(0xFF63D2B8)),
@@ -720,6 +1128,18 @@ class _LocalHistoryCard extends StatelessWidget {
           ),
         ),
         Text(game.result, style: const TextStyle(fontWeight: FontWeight.w800)),
+        const SizedBox(width: 8),
+        IconButton(
+          key: ValueKey<String>(
+            'delete-game-${game.playedAt.toIso8601String()}',
+          ),
+          tooltip: 'Delete game',
+          onPressed: onDelete,
+          icon: const Icon(
+            Icons.delete_outline_rounded,
+            color: AppColors.textSecondary,
+          ),
+        ),
       ],
     ),
   );

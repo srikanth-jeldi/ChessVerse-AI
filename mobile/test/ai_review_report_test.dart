@@ -5,37 +5,42 @@ import 'package:chessverse_ai/core/local_game_archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('engine-backed reviews override heuristic labels and retain evidence',
-      () {
-    const SavedMoveReview reviewed = SavedMoveReview(
-      ply: 1,
-      fenBefore: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-      playedMove: 'e2e4',
-      bestMove: 'd2d4',
-      classification: 'Inaccuracy',
-      centipawnLoss: 48,
-      evaluationBeforeCp: 22,
-      evaluationAfterCp: -26,
-      opponentThreat: 'e7e5',
-      explanation: 'The move is playable, but d2d4 was more accurate.',
-      principalVariation: <String>['d2d4', 'd7d5'],
-    );
+  test(
+    'engine-backed reviews override heuristic labels and retain evidence',
+    () {
+      const SavedMoveReview reviewed = SavedMoveReview(
+        ply: 1,
+        fenBefore: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+        playedMove: 'e2e4',
+        bestMove: 'd2d4',
+        classification: 'Inaccuracy',
+        centipawnLoss: 48,
+        evaluationBeforeCp: 22,
+        evaluationAfterCp: -26,
+        opponentThreat: 'e7e5',
+        explanation: 'The move is playable, but d2d4 was more accurate.',
+        principalVariation: <String>['d2d4', 'd7d5'],
+      );
 
-    final AiReviewReport report = AiReviewReport.fromMoves(
-      const <String>['e2e4'],
-      newestFirst: false,
-      knownReviews: const <SavedMoveReview>[reviewed],
-    );
+      final AiReviewReport report = AiReviewReport.fromMoves(
+        const <String>['e2e4'],
+        newestFirst: false,
+        knownReviews: const <SavedMoveReview>[reviewed],
+      );
 
-    expect(report.insights.single.label, 'Inaccuracy');
-    expect(report.insights.single.hasEngineEvidence, isTrue);
-    expect(report.insights.single.bestMove, 'd2d4');
-    expect(report.insights.single.opponentThreat, 'e7e5');
-    expect(report.insights.single.principalVariation, <String>['d2d4', 'd7d5']);
-    expect(report.insights.single.evaluationAfterCp, -26);
-    expect(report.openingName, "King's Pawn Opening");
-    expect(report.trainingRecommendations, hasLength(3));
-  });
+      expect(report.insights.single.label, 'Inaccuracy');
+      expect(report.insights.single.hasEngineEvidence, isTrue);
+      expect(report.insights.single.bestMove, 'd2d4');
+      expect(report.insights.single.opponentThreat, 'e7e5');
+      expect(report.insights.single.principalVariation, <String>[
+        'd2d4',
+        'd7d5',
+      ]);
+      expect(report.insights.single.evaluationAfterCp, -26);
+      expect(report.openingName, "King's Pawn Opening");
+      expect(report.trainingRecommendations, hasLength(3));
+    },
+  );
 
   test('saved move-review JSON round-trips production evidence', () {
     const SavedMoveReview source = SavedMoveReview(
@@ -65,30 +70,38 @@ void main() {
   });
 
   test('AI review builds chronological move insights and training plan', () {
-    final AiReviewReport report = AiReviewReport.fromMoves(
-      <String>['Qh5+', 'Nf3', 'e5', 'e4'],
-      result: 'You won',
-    );
+    final AiReviewReport report = AiReviewReport.fromMoves(<String>[
+      'Qh5+',
+      'Nf3',
+      'e5',
+      'e4',
+    ], result: 'You won');
 
-    expect(report.insights.map((AiMoveInsight item) => item.notation),
-        <String>['e4', 'e5', 'Nf3', 'Qh5+']);
+    expect(report.insights.map((AiMoveInsight item) => item.notation), <String>[
+      'e4',
+      'e5',
+      'Nf3',
+      'Qh5+',
+    ]);
     expect(report.insights.last.label, 'Power move');
     expect(report.accuracy, inInclusiveRange(0, 100));
     expect(report.turningPoint, contains('Qh5+'));
     expect(report.recommendedLesson, isNotEmpty);
   });
 
-  test('AI review uses authoritative accuracy and turning point when supplied',
-      () {
-    final AiReviewReport report = AiReviewReport.fromMoves(
-      <String>['e4'],
-      knownAccuracy: 91,
-      knownTurningPoint: 'Move 18 — missed fork',
-    );
+  test(
+    'AI review uses authoritative accuracy and turning point when supplied',
+    () {
+      final AiReviewReport report = AiReviewReport.fromMoves(
+        <String>['e4'],
+        knownAccuracy: 91,
+        knownTurningPoint: 'Move 18 — missed fork',
+      );
 
-    expect(report.accuracy, 91);
-    expect(report.turningPoint, 'Move 18 — missed fork');
-  });
+      expect(report.accuracy, 91);
+      expect(report.turningPoint, 'Move 18 — missed fork');
+    },
+  );
 
   test('AI review keeps only the three most important supplied mistakes', () {
     final AiReviewReport report = AiReviewReport.fromMoves(
@@ -97,6 +110,28 @@ void main() {
     );
 
     expect(report.importantMistakes, <String>['one', 'two', 'three']);
+  });
+
+  test('AI review filters insights to the selected player perspective', () {
+    final AiReviewReport mine = AiReviewReport.fromMoves(
+      const <String>['e4', 'e5', 'Nf3', 'Nc6'],
+      newestFirst: false,
+      playerSide: 'white',
+      reviewScope: 'player',
+    );
+    final AiReviewReport opponent = AiReviewReport.fromMoves(
+      const <String>['e4', 'e5', 'Nf3', 'Nc6'],
+      newestFirst: false,
+      playerSide: 'white',
+      reviewScope: 'opponent',
+    );
+
+    expect(mine.insights.map((item) => item.notation), <String>['e4', 'Nf3']);
+    expect(opponent.insights.map((item) => item.notation), <String>[
+      'e5',
+      'Nc6',
+    ]);
+    expect(opponent.insights.map((item) => item.number), <int>[2, 4]);
   });
 
   test('engine-reviewed mistakes drive the personal weakness profile', () {
@@ -130,23 +165,29 @@ void main() {
     expect(profile.scoreFor(ChessWeakness.kingSafety), 4);
   });
 
-  test('adaptive plan uses a sixty-percent focus without duplicate puzzles',
-      () {
-    final List<ChessPuzzle> plan =
-        PuzzleCatalog.adaptivePlan('kingSafety', <String>{});
-    expect(plan, hasLength(10));
-    expect(plan.map((ChessPuzzle item) => item.id).toSet(), hasLength(10));
-    final Set<String> focusTags = <String>{
-      'mate',
-      'backRankMate',
-      'kingsideAttack',
-      'defensiveMove',
-    };
-    final int targeted = plan
-        .take(6)
-        .where((ChessPuzzle item) =>
-            item.themes.any((String theme) => focusTags.contains(theme)))
-        .length;
-    expect(targeted, 6);
-  });
+  test(
+    'adaptive plan uses a sixty-percent focus without duplicate puzzles',
+    () {
+      final List<ChessPuzzle> plan = PuzzleCatalog.adaptivePlan(
+        'kingSafety',
+        <String>{},
+      );
+      expect(plan, hasLength(10));
+      expect(plan.map((ChessPuzzle item) => item.id).toSet(), hasLength(10));
+      final Set<String> focusTags = <String>{
+        'mate',
+        'backRankMate',
+        'kingsideAttack',
+        'defensiveMove',
+      };
+      final int targeted = plan
+          .take(6)
+          .where(
+            (ChessPuzzle item) =>
+                item.themes.any((String theme) => focusTags.contains(theme)),
+          )
+          .length;
+      expect(targeted, 6);
+    },
+  );
 }

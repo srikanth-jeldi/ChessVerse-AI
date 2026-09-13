@@ -82,6 +82,8 @@ class AiReviewReport {
     List<String>? knownMistakes,
     List<SavedMoveReview> knownReviews = const <SavedMoveReview>[],
     String? knownOpeningName,
+    String? playerSide,
+    String reviewScope = 'both',
   }) {
     final List<String> chronological = newestFirst
         ? moves.reversed.toList(growable: false)
@@ -92,19 +94,30 @@ class AiReviewReport {
     int developmentMoves = 0;
     int quietMoves = 0;
     for (int index = 0; index < chronological.length; index++) {
+      final bool isPlayerMove =
+          playerSide == null ||
+          (playerSide == 'white' ? index.isEven : index.isOdd);
+      final bool includeMove =
+          playerSide == null ||
+          reviewScope == 'both' ||
+          (reviewScope == 'player' ? isPlayerMove : !isPlayerMove);
+      if (!includeMove) continue;
       final String move = chronological[index].trim();
-      final SavedMoveReview? reviewed =
-          knownReviews.cast<SavedMoveReview?>().firstWhere(
-                (SavedMoveReview? item) => item!.ply == index + 1,
-                orElse: () => null,
-              );
+      final SavedMoveReview? reviewed = knownReviews
+          .cast<SavedMoveReview?>()
+          .firstWhere(
+            (SavedMoveReview? item) => item!.ply == index + 1,
+            orElse: () => null,
+          );
       final String lower = move.toLowerCase();
       final bool check = move.contains('+') || lower.contains('check');
       final bool capture = move.contains('x');
       final bool castle = lower.contains('o-o');
       final bool central = RegExp(r'(d4|d5|e4|e5)$').hasMatch(lower);
-      final bool develops = RegExp(r'^[nb].*[3-6]$', caseSensitive: false)
-          .hasMatch(move.replaceAll(RegExp(r'[^a-zA-Z0-9]'), ''));
+      final bool develops = RegExp(
+        r'^[nb].*[3-6]$',
+        caseSensitive: false,
+      ).hasMatch(move.replaceAll(RegExp(r'[^a-zA-Z0-9]'), ''));
       final String label;
       final String explanation;
       if (reviewed != null) {
@@ -113,8 +126,7 @@ class AiReviewReport {
       } else if (check) {
         forcingMoves++;
         label = 'Power move';
-        explanation =
-            'A forcing check gains tempo. Verify every legal king reply before committing.';
+        explanation = 'A forcing check gains tempo. Verify every legal king reply before committing.';
       } else if (castle) {
         developmentMoves++;
         label = 'Excellent';
@@ -123,80 +135,98 @@ class AiReviewReport {
       } else if (capture) {
         captures++;
         label = 'Tactical';
-        explanation =
-            'A capture changes the material balance. Recheck recaptures and zwischenzugs.';
+        explanation = 'A capture changes the material balance. Recheck recaptures and zwischenzugs.';
       } else if (central || develops) {
         developmentMoves++;
         label = 'Principled';
-        explanation =
-            'This move improves central influence or development. Keep king safety in view.';
+        explanation = 'This move improves central influence or development. Keep king safety in view.';
       } else {
         quietMoves++;
         label = 'Playable';
-        explanation =
-            'A quiet move. Compare it with forcing checks, captures, and direct threats.';
+        explanation = 'A quiet move. Compare it with forcing checks, captures, and direct threats.';
       }
-      insights.add(AiMoveInsight(
-        number: index + 1,
-        notation: move,
-        side: index.isEven ? 'White' : 'Black',
-        phase: index < 12
-            ? 'Opening'
-            : index < 32
-                ? 'Middlegame'
-                : 'Endgame',
-        label: label,
-        explanation: explanation,
-        bestMove: reviewed?.bestMove,
-        playedMove: reviewed?.playedMove,
-        opponentThreat: reviewed?.opponentThreat,
-        fenBefore: reviewed?.fenBefore,
-        centipawnLoss: reviewed?.centipawnLoss,
-        evaluationBeforeCp: reviewed?.evaluationBeforeCp,
-        evaluationAfterCp: reviewed?.evaluationAfterCp,
-        mateBefore: reviewed?.mateBefore,
-        mateAfter: reviewed?.mateAfter,
-        coachingTheme: reviewed?.coachingTheme,
-        principalVariation: reviewed?.principalVariation ?? const <String>[],
-      ));
+      insights.add(
+        AiMoveInsight(
+          number: index + 1,
+          notation: move,
+          side: index.isEven ? 'White' : 'Black',
+          phase: index < 12
+              ? 'Opening'
+              : index < 32
+              ? 'Middlegame'
+              : 'Endgame',
+          label: label,
+          explanation: explanation,
+          bestMove: reviewed?.bestMove,
+          playedMove: reviewed?.playedMove,
+          opponentThreat: reviewed?.opponentThreat,
+          fenBefore: reviewed?.fenBefore,
+          centipawnLoss: reviewed?.centipawnLoss,
+          evaluationBeforeCp: reviewed?.evaluationBeforeCp,
+          evaluationAfterCp: reviewed?.evaluationAfterCp,
+          mateBefore: reviewed?.mateBefore,
+          mateAfter: reviewed?.mateAfter,
+          coachingTheme: reviewed?.coachingTheme,
+          principalVariation: reviewed?.principalVariation ?? const <String>[],
+        ),
+      );
     }
 
     final String lowerResult = (result ?? '').toLowerCase();
-    final int calculated = knownReviews.isNotEmpty
-        ? (knownReviews
-                    .map((SavedMoveReview review) =>
-                        (100 - (review.centipawnLoss / 3).round())
-                            .clamp(0, 100))
-                    .reduce((int left, int right) => left + right) /
-                knownReviews.length)
-            .round()
+    final List<SavedMoveReview> scopedReviews = knownReviews
+        .where((SavedMoveReview review) {
+          if (playerSide == null || reviewScope == 'both') return true;
+          final bool isPlayerMove = playerSide == 'white'
+              ? review.ply.isOdd
+              : review.ply.isEven;
+          return reviewScope == 'player' ? isPlayerMove : !isPlayerMove;
+        })
+        .toList(growable: false);
+    final int calculated = scopedReviews.isNotEmpty
+        ? (scopedReviews
+                      .map(
+                        (SavedMoveReview review) =>
+                            (100 - (review.centipawnLoss / 3).round()).clamp(
+                              0,
+                              100,
+                            ),
+                      )
+                      .reduce((int left, int right) => left + right) /
+                  scopedReviews.length)
+              .round()
         : (62 +
-                forcingMoves * 3 +
-                developmentMoves * 2 +
-                captures -
-                quietMoves ~/ 3 -
-                (lowerResult.contains('loss') ? 7 : 0))
-            .clamp(38, 96);
+                  forcingMoves * 3 +
+                  developmentMoves * 2 +
+                  captures -
+                  quietMoves ~/ 3 -
+                  (lowerResult.contains('loss') ? 7 : 0))
+              .clamp(38, 96);
     final int accuracy = (knownAccuracy ?? calculated).clamp(0, 100);
-    final List<AiMoveInsight> reviewedByLoss = insights
-        .where((AiMoveInsight item) => item.centipawnLoss != null)
-        .toList()
-      ..sort((AiMoveInsight a, AiMoveInsight b) =>
-          b.centipawnLoss!.compareTo(a.centipawnLoss!));
+    final List<AiMoveInsight> reviewedByLoss =
+        insights
+            .where((AiMoveInsight item) => item.centipawnLoss != null)
+            .toList()
+          ..sort(
+            (AiMoveInsight a, AiMoveInsight b) =>
+                b.centipawnLoss!.compareTo(a.centipawnLoss!),
+          );
     final AiMoveInsight? pivotal = reviewedByLoss.isNotEmpty
         ? reviewedByLoss.first
         : insights.cast<AiMoveInsight?>().firstWhere(
-              (AiMoveInsight? item) =>
-                  item!.label == 'Power move' || item.label == 'Tactical',
-              orElse: () =>
-                  insights.isEmpty ? null : insights[insights.length ~/ 2],
-            );
+            (AiMoveInsight? item) =>
+                item!.label == 'Power move' || item.label == 'Tactical',
+            orElse: () =>
+                insights.isEmpty ? null : insights[insights.length ~/ 2],
+          );
     final String focus;
     final String lesson;
     final Map<String, int> themeCounts = <String, int>{};
     for (final AiMoveInsight item in reviewedByLoss.where(
-      (AiMoveInsight item) => const <String>{'Inaccuracy', 'Mistake', 'Blunder'}
-          .contains(item.label),
+      (AiMoveInsight item) => const <String>{
+        'Inaccuracy',
+        'Mistake',
+        'Blunder',
+      }.contains(item.label),
     )) {
       final String theme = item.coachingTheme ?? 'calculation';
       themeCounts[theme] = (themeCounts[theme] ?? 0) + 1;
@@ -204,78 +234,78 @@ class AiReviewReport {
     final String? dominantTheme = themeCounts.isEmpty
         ? null
         : themeCounts.entries
-            .reduce((MapEntry<String, int> a, MapEntry<String, int> b) =>
-                b.value > a.value ? b : a)
-            .key;
+              .reduce(
+                (MapEntry<String, int> a, MapEntry<String, int> b) =>
+                    b.value > a.value ? b : a,
+              )
+              .key;
     if (dominantTheme == 'kingSafety') {
-      focus =
-          'King safety: your engine-reviewed mistakes repeatedly exposed checks or mating threats. Secure the king before attacking.';
+      focus = 'King safety: your engine-reviewed mistakes repeatedly exposed checks or mating threats. Secure the king before attacking.';
       lesson = 'King Safety • Castling safely';
     } else if (dominantTheme == 'hangingPieces') {
-      focus =
-          'Piece safety: run a final opponent-captures scan before every move so loose pieces stop deciding your games.';
+      focus = 'Piece safety: run a final opponent-captures scan before every move so loose pieces stop deciding your games.';
       lesson = 'Tactics • Hanging pieces';
     } else if (dominantTheme == 'endgame') {
-      focus =
-          'Endgame conversion: activate the king, improve the worst piece, and calculate pawn races before exchanging.';
+      focus = 'Endgame conversion: activate the king, improve the worst piece, and calculate pawn races before exchanging.';
       lesson = 'Endgames • Promoting a pawn';
     } else if (dominantTheme == 'tactics') {
-      focus =
-          'Tactical vision: pause on every move and scan checks, captures, forks, and direct threats in order.';
+      focus = 'Tactical vision: pause on every move and scan checks, captures, forks, and direct threats in order.';
       lesson = 'Tactics • Knight forks';
     } else if (dominantTheme == 'opening' ||
         (lowerResult.contains('loss') && chronological.length < 24)) {
-      focus =
-          'Opening survival: develop pieces once, fight for the centre, and castle before starting an attack.';
+      focus = 'Opening survival: develop pieces once, fight for the centre, and castle before starting an attack.';
       lesson = 'King Safety • Castling safely';
     } else if (forcingMoves == 0 && captures < 2) {
-      focus =
-          'Tactical vision: pause on every move and scan checks, captures, and threats in that order.';
+      focus = 'Tactical vision: pause on every move and scan checks, captures, and threats in that order.';
       lesson = 'Tactics • Knight forks';
     } else if (chronological.length >= 36) {
-      focus =
-          'Endgame conversion: activate the king, create a passed pawn, and simplify only into a winning ending.';
+      focus = 'Endgame conversion: activate the king, create a passed pawn, and simplify only into a winning ending.';
       lesson = 'Endgames • Promoting a pawn';
     } else {
-      focus =
-          'Calculation discipline: compare at least two candidate moves before choosing the most forcing line.';
+      focus = 'Calculation discipline: compare at least two candidate moves before choosing the most forcing line.';
       lesson = 'Tactics • Back-rank mates';
     }
-    final List<String> importantMistakes = knownMistakes == null ||
-            knownMistakes.isEmpty
+    final List<String> importantMistakes =
+        knownMistakes == null || knownMistakes.isEmpty
         ? insights
-            .where((AiMoveInsight insight) => const <String>{
+              .where(
+                (AiMoveInsight insight) => const <String>{
                   'Inaccuracy',
                   'Mistake',
-                  'Blunder'
-                }.contains(insight.label))
-            .take(3)
-            .map((AiMoveInsight insight) =>
-                'Move ${insight.number}: ${insight.notation} • ${insight.explanation}')
-            .toList(growable: false)
+                  'Blunder',
+                }.contains(insight.label),
+              )
+              .take(3)
+              .map(
+                (AiMoveInsight insight) =>
+                    'Move ${insight.number}: ${insight.notation} • ${insight.explanation}',
+              )
+              .toList(growable: false)
         : knownMistakes.take(3).toList(growable: false);
     return AiReviewReport(
       accuracy: accuracy,
       headline: accuracy >= 85
           ? 'Confident, accurate chess'
           : accuracy >= 70
-              ? 'Good ideas with room to sharpen'
-              : 'A useful game to learn from',
+          ? 'Good ideas with room to sharpen'
+          : 'A useful game to learn from',
       summary: chronological.isEmpty
           ? 'No recorded moves are available yet.'
-          : '${chronological.length} half-moves reviewed across opening, middlegame, and endgame decisions.',
-      strength: knownReviews.isNotEmpty
-          ? '${knownReviews.where((SavedMoveReview review) => const <String>{
-                'Best',
-                'Great'
-              }.contains(review.classification)).length} of ${knownReviews.length} reviewed moves were Best or Great.'
+          : '${insights.length} ${reviewScope == 'player'
+                ? 'of your'
+                : reviewScope == 'opponent'
+                ? 'opponent'
+                : ''} moves reviewed across opening, middlegame, and endgame decisions.',
+      strength: scopedReviews.isNotEmpty
+          ? '${scopedReviews.where((SavedMoveReview review) => const <String>{'Best', 'Great'}.contains(review.classification)).length} of ${scopedReviews.length} reviewed moves were Best or Great.'
           : forcingMoves > 0
-              ? 'You recognised $forcingMoves forcing move${forcingMoves == 1 ? '' : 's'} and created concrete problems.'
-              : developmentMoves > 0
-                  ? 'Your strongest habit was central control and piece development.'
-                  : 'You kept the position playable and created a base for deeper calculation.',
+          ? 'You recognised $forcingMoves forcing move${forcingMoves == 1 ? '' : 's'} and created concrete problems.'
+          : developmentMoves > 0
+          ? 'Your strongest habit was central control and piece development.'
+          : 'You kept the position playable and created a base for deeper calculation.',
       trainingFocus: focus,
-      turningPoint: knownTurningPoint ??
+      turningPoint:
+          knownTurningPoint ??
           (pivotal == null
               ? 'Play a complete game to unlock a move-level turning point.'
               : 'Move ${pivotal.number}: ${pivotal.notation} — ${pivotal.explanation}'),
@@ -291,29 +321,29 @@ class AiReviewReport {
 List<String> _recommendations(String? theme, int accuracy) {
   final List<String> focus = switch (theme) {
     'opening' => <String>[
-        'Replay the first 10 moves and identify every repeated piece move.',
-        'Complete one centre-control lesson before the next rated game.',
-      ],
+      'Replay the first 10 moves and identify every repeated piece move.',
+      'Complete one centre-control lesson before the next rated game.',
+    ],
     'kingSafety' => <String>[
-        'Train 5 positions where castling or meeting a check is urgent.',
-        'Use a king-safety scan before starting any attack.',
-      ],
+      'Train 5 positions where castling or meeting a check is urgent.',
+      'Use a king-safety scan before starting any attack.',
+    ],
     'hangingPieces' => <String>[
-        'Solve 5 loose-piece and overloaded-defender puzzles.',
-        'After every candidate move, verify that each piece is defended.',
-      ],
+      'Solve 5 loose-piece and overloaded-defender puzzles.',
+      'After every candidate move, verify that each piece is defended.',
+    ],
     'endgame' => <String>[
-        'Practice king activation and one pawn race today.',
-        'Replay the game from the first endgame mistake.',
-      ],
+      'Practice king activation and one pawn race today.',
+      'Replay the game from the first endgame mistake.',
+    ],
     'tactics' => <String>[
-        'Solve 5 puzzles using checks, captures, and threats in order.',
-        'Retry the largest evaluation swing without a hint.',
-      ],
+      'Solve 5 puzzles using checks, captures, and threats in order.',
+      'Retry the largest evaluation swing without a hint.',
+    ],
     _ => <String>[
-        'Compare two candidate moves before every decision.',
-        'Retry each reviewed mistake until solved twice.',
-      ],
+      'Compare two candidate moves before every decision.',
+      'Retry each reviewed mistake until solved twice.',
+    ],
   };
   return <String>[
     ...focus,
@@ -326,8 +356,10 @@ List<String> _recommendations(String? theme, int accuracy) {
 String recognizeOpening(List<String> moves) {
   final String line = moves
       .take(8)
-      .map((String move) =>
-          move.toLowerCase().replaceAll(RegExp(r'[^a-h1-8o-]'), ''))
+      .map(
+        (String move) =>
+            move.toLowerCase().replaceAll(RegExp(r'[^a-h1-8o-]'), ''),
+      )
       .join(' ');
   if (line.startsWith('e2e4 c7c5')) return 'Sicilian Defence';
   if (line.startsWith('e2e4 e7e5 g1f3 b8c6 f1b5')) return 'Ruy Lopez';

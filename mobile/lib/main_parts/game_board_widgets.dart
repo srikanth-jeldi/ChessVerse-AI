@@ -1714,17 +1714,14 @@ class ChessCoin extends StatelessWidget {
         piece.white,
       );
       if (finishColors != null) {
-        // Replace the source RGB while preserving its alpha and sculpted
-        // silhouette. Modulate left the near-black Staunton pixels unchanged,
-        // making every purchased finish look like the default set.
-        image = ShaderMask(
-          blendMode: BlendMode.srcIn,
-          shaderCallback: (Rect bounds) => LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: finishColors,
-            stops: const <double>[0, .22, .52, .78, 1],
-          ).createShader(bounds),
+        // Re-map the source luminance instead of replacing its RGB with a
+        // flat alpha mask. This retains every carved edge, reflection and
+        // bevel in the rendered Staunton asset while applying the purchased
+        // royal material.
+        image = ColorFiltered(
+          colorFilter: ColorFilter.matrix(
+            premiumPieceColorMatrix(finishColors),
+          ),
           child: image,
         );
       }
@@ -1849,6 +1846,44 @@ List<Color>? premiumPieceFinishColors(String finish, bool white) =>
               ],
       _ => null,
     };
+
+List<double> premiumPieceColorMatrix(List<Color> colors) {
+  final Color highlight = colors.first;
+  final Color shadow = colors.last;
+  double channel(int bright, int dark) => (bright - dark) / 255;
+  int component(double value) => (value * 255).round();
+  final double redRange = channel(component(highlight.r), component(shadow.r));
+  final double greenRange = channel(
+    component(highlight.g),
+    component(shadow.g),
+  );
+  final double blueRange = channel(component(highlight.b), component(shadow.b));
+  const double redLuma = .2126;
+  const double greenLuma = .7152;
+  const double blueLuma = .0722;
+  return <double>[
+    redLuma * redRange,
+    greenLuma * redRange,
+    blueLuma * redRange,
+    0,
+    component(shadow.r).toDouble(),
+    redLuma * greenRange,
+    greenLuma * greenRange,
+    blueLuma * greenRange,
+    0,
+    component(shadow.g).toDouble(),
+    redLuma * blueRange,
+    greenLuma * blueRange,
+    blueLuma * blueRange,
+    0,
+    component(shadow.b).toDouble(),
+    0,
+    0,
+    0,
+    1,
+    0,
+  ];
+}
 
 String pieceAsset(ChessPiece piece) {
   return 'assets/pieces/staunton_${piece.white ? 'white' : 'black'}_${pieceName(piece.code)}.png';

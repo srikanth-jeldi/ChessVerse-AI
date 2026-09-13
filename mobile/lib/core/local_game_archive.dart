@@ -60,21 +60,21 @@ class SavedMoveReview {
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'ply': ply,
-        'fenBefore': fenBefore,
-        'playedMove': playedMove,
-        'bestMove': bestMove,
-        'classification': classification,
-        'coachingTheme': coachingTheme,
-        'centipawnLoss': centipawnLoss,
-        'evaluationBeforeCp': evaluationBeforeCp,
-        'evaluationAfterCp': evaluationAfterCp,
-        'mateBefore': mateBefore,
-        'mateAfter': mateAfter,
-        'opponentThreat': opponentThreat,
-        'explanation': explanation,
-        'principalVariation': principalVariation,
-      };
+    'ply': ply,
+    'fenBefore': fenBefore,
+    'playedMove': playedMove,
+    'bestMove': bestMove,
+    'classification': classification,
+    'coachingTheme': coachingTheme,
+    'centipawnLoss': centipawnLoss,
+    'evaluationBeforeCp': evaluationBeforeCp,
+    'evaluationAfterCp': evaluationAfterCp,
+    'mateBefore': mateBefore,
+    'mateAfter': mateAfter,
+    'opponentThreat': opponentThreat,
+    'explanation': explanation,
+    'principalVariation': principalVariation,
+  };
 }
 
 class SavedGameRecord {
@@ -87,6 +87,8 @@ class SavedGameRecord {
     required this.whitePlayer,
     required this.blackPlayer,
     this.playerOutcome,
+    this.playerSide,
+    this.reviewScope = 'player',
     this.moveReviews = const <SavedMoveReview>[],
     this.cloudAnalysisJobId,
     this.cloudAnalysisStatus,
@@ -104,6 +106,12 @@ class SavedGameRecord {
   final String whitePlayer;
   final String blackPlayer;
   final String? playerOutcome;
+
+  /// The imported account's colour: `white` or `black`.
+  final String? playerSide;
+
+  /// Review target: `player`, `opponent`, or `both`.
+  final String reviewScope;
   final List<SavedMoveReview> moveReviews;
   final String? cloudAnalysisJobId;
   final String? cloudAnalysisStatus;
@@ -301,10 +309,12 @@ class LocalGameArchive {
                     .toList(growable: false),
                 playedAt:
                     DateTime.tryParse(game['playedAt'] as String? ?? '') ??
-                        DateTime.now(),
+                    DateTime.now(),
                 whitePlayer: game['whitePlayer'] as String? ?? 'White',
                 blackPlayer: game['blackPlayer'] as String? ?? 'Black',
                 playerOutcome: game['playerOutcome'] as String?,
+                playerSide: game['playerSide'] as String?,
+                reviewScope: game['reviewScope'] as String? ?? 'player',
                 cloudAnalysisJobId: game['cloudAnalysisJobId'] as String?,
                 cloudAnalysisStatus: game['cloudAnalysisStatus'] as String?,
                 openingEco: game['openingEco'] as String?,
@@ -334,15 +344,14 @@ class LocalGameArchive {
       );
       _dailySolved = _completedDailyChallengeIds.length;
     }
-    final String? completionRaw =
-        await _storage.read(key: _lastDailyCompletionKey);
+    final String? completionRaw = await _storage.read(
+      key: _lastDailyCompletionKey,
+    );
     _lastDailyCompletedAt = completionRaw == null
         ? null
         : DateTime.tryParse(completionRaw)?.toUtc();
-    _dailyStreak = int.tryParse(
-          await _storage.read(key: _dailyStreakKey) ?? '',
-        ) ??
-        0;
+    _dailyStreak =
+        int.tryParse(await _storage.read(key: _dailyStreakKey) ?? '') ?? 0;
     final String? puzzlesRaw = await _storage.read(key: _completedPuzzlesKey);
     if (puzzlesRaw != null && puzzlesRaw.trim().isNotEmpty) {
       _completedPuzzleIds.addAll(
@@ -419,6 +428,24 @@ class LocalGameArchive {
     _notifyCloudChange();
   }
 
+  static void removeGame(SavedGameRecord record) {
+    if (!_games.remove(record)) return;
+    unawaited(_persistGames());
+    activityRevision.value++;
+    _notifyCloudChange();
+  }
+
+  static int removeImportedGames() {
+    final int before = _games.length;
+    _games.removeWhere((SavedGameRecord game) => game.mode == 'Imported PGN');
+    final int removed = before - _games.length;
+    if (removed == 0) return 0;
+    unawaited(_persistGames());
+    activityRevision.value++;
+    _notifyCloudChange();
+    return removed;
+  }
+
   /// Keeps late Stockfish responses durable when a game ends before the
   /// network analysis request completes.
   static void updateLatestGameReviews(List<SavedMoveReview> reviews) {
@@ -434,6 +461,8 @@ class LocalGameArchive {
       whitePlayer: current.whitePlayer,
       blackPlayer: current.blackPlayer,
       playerOutcome: current.playerOutcome,
+      playerSide: current.playerSide,
+      reviewScope: current.reviewScope,
       cloudAnalysisJobId: current.cloudAnalysisJobId,
       cloudAnalysisStatus: current.cloudAnalysisStatus,
       openingEco: current.openingEco,
@@ -457,9 +486,11 @@ class LocalGameArchive {
     int? bookPlies,
     int? firstDeviationPly,
   }) {
-    final int index = _games.indexWhere((SavedGameRecord game) =>
-        game.playedAt.toUtc() == playedAt.toUtc() ||
-        game.cloudAnalysisJobId == jobId);
+    final int index = _games.indexWhere(
+      (SavedGameRecord game) =>
+          game.playedAt.toUtc() == playedAt.toUtc() ||
+          game.cloudAnalysisJobId == jobId,
+    );
     if (index < 0) return;
     final SavedGameRecord current = _games[index];
     _games[index] = SavedGameRecord(
@@ -471,6 +502,8 @@ class LocalGameArchive {
       whitePlayer: current.whitePlayer,
       blackPlayer: current.blackPlayer,
       playerOutcome: current.playerOutcome,
+      playerSide: current.playerSide,
+      reviewScope: current.reviewScope,
       cloudAnalysisJobId: jobId,
       cloudAnalysisStatus: status,
       openingEco: openingEco ?? current.openingEco,
@@ -496,6 +529,8 @@ class LocalGameArchive {
               'whitePlayer': game.whitePlayer,
               'blackPlayer': game.blackPlayer,
               'playerOutcome': game.playerOutcome,
+              'playerSide': game.playerSide,
+              'reviewScope': game.reviewScope,
               'cloudAnalysisJobId': game.cloudAnalysisJobId,
               'cloudAnalysisStatus': game.cloudAnalysisStatus,
               'openingEco': game.openingEco,
@@ -539,8 +574,9 @@ class LocalGameArchive {
     if (completedAt == null) {
       return Duration.zero;
     }
-    final Duration remaining =
-        completedAt.add(dailyChallengeLockDuration).difference(now.toUtc());
+    final Duration remaining = completedAt
+        .add(dailyChallengeLockDuration)
+        .difference(now.toUtc());
     return remaining.isNegative ? Duration.zero : remaining;
   }
 
@@ -559,9 +595,7 @@ class LocalGameArchive {
           value: _completedDailyChallengeIds.join(','),
         ),
       );
-      unawaited(
-        _storage.write(key: _dailyStreakKey, value: '$_dailyStreak'),
-      );
+      unawaited(_storage.write(key: _dailyStreakKey, value: '$_dailyStreak'));
     }
     _lastDailyCompletedAt = DateTime.now().toUtc();
     unawaited(
@@ -710,13 +744,15 @@ class LocalGameArchive {
       'endgame': 0,
     };
     for (final SavedGameRecord game in _games.take(20)) {
-      final bool loss = game.result.toLowerCase().contains('wins') &&
+      final bool loss =
+          game.result.toLowerCase().contains('wins') &&
           !game.result.toLowerCase().startsWith('you');
       final bool castled = game.moves.any(
         (String move) => move.contains('O-O') || move.contains('0-0'),
       );
-      final int captures =
-          game.moves.where((String move) => move.contains('x')).length;
+      final int captures = game.moves
+          .where((String move) => move.contains('x'))
+          .length;
       if (loss && game.moves.length < 24) {
         scores['opening'] = scores['opening']! + 3;
       }
@@ -749,13 +785,13 @@ class LocalGameArchive {
     try {
       final Iterable<dynamic> puzzles =
           cloud['completedPuzzleIds'] as Iterable<dynamic>? ??
-              const <dynamic>[];
+          const <dynamic>[];
       final Iterable<dynamic> daily =
           cloud['completedDailyChallengeIds'] as Iterable<dynamic>? ??
-              const <dynamic>[];
+          const <dynamic>[];
       final Iterable<dynamic> academy =
           cloud['completedAcademyLessonIds'] as Iterable<dynamic>? ??
-              const <dynamic>[];
+          const <dynamic>[];
       _completedPuzzleIds.addAll(puzzles.whereType<String>());
       _completedDailyChallengeIds.addAll(daily.whereType<String>());
       _completedAcademyLessonIds.addAll(academy.whereType<String>());
@@ -802,10 +838,12 @@ class LocalGameArchive {
           _profileCountry = remoteCountry.trim();
         }
         _profileLevel =
-            ((cloud['chessLevel'] as num?)?.toInt() ?? _profileLevel)
-                .clamp(0, 4);
-        _profileAvatar =
-            ((cloud['avatar'] as num?)?.toInt() ?? _profileAvatar).clamp(0, 5);
+            ((cloud['chessLevel'] as num?)?.toInt() ?? _profileLevel).clamp(
+              0,
+              4,
+            );
+        _profileAvatar = ((cloud['avatar'] as num?)?.toInt() ?? _profileAvatar)
+            .clamp(0, 5);
         _profileUpdatedAt = remoteProfileUpdatedAt;
       }
       await Future.wait(<Future<void>>[
@@ -853,7 +891,8 @@ class LocalGameArchive {
     int draws = 0;
     int losses = 0;
     for (final SavedGameRecord game in _games) {
-      final String outcome = game.playerOutcome ??
+      final String outcome =
+          game.playerOutcome ??
           playerOutcomeForResult(
             game.result,
             humanPlaysWhite: true,
@@ -880,7 +919,8 @@ class LocalGameArchive {
 
   static RewardSnapshot rewards() {
     final LocalGameStats localStats = stats();
-    final int xp = (localStats.gamesPlayed * 25) +
+    final int xp =
+        (localStats.gamesPlayed * 25) +
         (localStats.wins * 45) +
         (localStats.draws * 15) +
         (localStats.dailySolved * 80) +
@@ -889,7 +929,8 @@ class LocalGameArchive {
     final int level = (xp ~/ 120) + 1;
     final int levelBase = (level - 1) * 120;
     final double progress = ((xp - levelBase) / 120).clamp(0, 1).toDouble();
-    final int coins = (localStats.gamesPlayed * 8) +
+    final int coins =
+        (localStats.gamesPlayed * 8) +
         (localStats.wins * 18) +
         (localStats.dailySolved * 35) +
         (localStats.puzzlesSolved * 12) +
