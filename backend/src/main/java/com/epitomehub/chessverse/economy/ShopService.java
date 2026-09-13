@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,7 +18,14 @@ import org.springframework.web.server.ResponseStatusException;
 class ShopService {
     private final JdbcTemplate jdbc;
     private final EconomyService economy;
-    ShopService(JdbcTemplate jdbc, EconomyService economy){this.jdbc=jdbc;this.economy=economy;}
+    private final boolean postgres;
+    ShopService(JdbcTemplate jdbc, EconomyService economy){
+        this.jdbc=jdbc;
+        this.economy=economy;
+        String database=jdbc.execute((ConnectionCallback<String>) connection ->
+                connection.getMetaData().getDatabaseProductName());
+        this.postgres="PostgreSQL".equalsIgnoreCase(database);
+    }
 
     @Transactional
     ShopDtos.ShopDto catalog(AuthenticatedPlayer player){return load(player);}
@@ -61,11 +69,26 @@ class ShopService {
                 """,this::map,player.id(),player.id());
         return new ShopDtos.ShopDto(player.id(),wallet,items);
     }
-    private void ensureLoadout(UUID playerId){jdbc.update("""
-            insert into player_cosmetic_loadout(player_id,board_item_id,pieces_item_id,updated_at)
-            select ?, '41000000-0000-0000-0000-000000000001','42000000-0000-0000-0000-000000000001',?
-            where not exists(select 1 from player_cosmetic_loadout where player_id=?)
-            """,playerId,Timestamp.from(Instant.now()),playerId);}
+    private void ensureLoadout(UUID playerId){
+        Timestamp now=Timestamp.from(Instant.now());
+        if(postgres){
+            jdbc.update("""
+                insert into player_cosmetic_loadout(player_id,board_item_id,pieces_item_id,updated_at)
+                values (?, '41000000-0000-0000-0000-000000000001','42000000-0000-0000-0000-000000000001',?)
+                on conflict (player_id) do nothing
+                """,playerId,now);
+            return;
+        }
+        jdbc.update("""
+                merge into player_cosmetic_loadout target
+                using (values (?, '41000000-0000-0000-0000-000000000001',
+                                  '42000000-0000-0000-0000-000000000001',?))
+                      source(player_id,board_item_id,pieces_item_id,updated_at)
+                on target.player_id=source.player_id
+                when not matched then insert(player_id,board_item_id,pieces_item_id,updated_at)
+                    values(source.player_id,source.board_item_id,source.pieces_item_id,source.updated_at)
+                """,playerId,now);
+    }
     private boolean owned(UUID playerId,UUID itemId){Boolean v=jdbc.queryForObject("select exists(select 1 from player_cosmetic_inventory where player_id=? and item_id=?)",Boolean.class,playerId,itemId);return Boolean.TRUE.equals(v);}
     private Item item(UUID id,boolean lock){return jdbc.query("select id,category,name,price_currency,price_amount from cosmetic_item where id=? and active=true"+(lock?" for update":""),rs->{if(!rs.next())throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Cosmetic item not found.");return new Item(rs.getObject(1,UUID.class),rs.getString(2),rs.getString(3),rs.getString(4),rs.getLong(5));},id);}
     private ShopDtos.ItemDto map(ResultSet rs,int row)throws SQLException{return new ShopDtos.ItemDto(rs.getObject("id",UUID.class),rs.getString("slug"),rs.getString("category"),rs.getString("name"),rs.getString("description"),rs.getString("price_currency"),rs.getLong("price_amount"),rs.getString("primary_color"),rs.getString("secondary_color"),rs.getString("asset_key"),rs.getBoolean("owned")||"FREE".equals(rs.getString("price_currency")),rs.getBoolean("equipped"));}
