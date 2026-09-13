@@ -157,6 +157,26 @@ public class StockfishService implements GamePositionAnalyzer {
             throw new EngineException(HttpStatus.UNPROCESSABLE_ENTITY, "That move is not legal in this position.");
         }
 
+        // A move that ends the game by checkmate is authoritative. Stockfish
+        // reports `bestmove (none)` for the resulting terminal position, so
+        // sending it through the ordinary before/after subtraction used to
+        // either reject the review or expose the internal 100000 mate sentinel
+        // as a centipawn loss.
+        if (isCheckmatingMove(fen, playedMove)) {
+            return new MoveReviewResponse(
+                    playedMove,
+                    playedMove,
+                    "Best",
+                    0,
+                    100000,
+                    100000,
+                    "kingSafety",
+                    "",
+                    "Checkmate. You found the winning move and ended the game.",
+                    List.of(playedMove),
+                    ANALYSIS_DEPTHS.get(request.level() - 1));
+        }
+
         int depth = ANALYSIS_DEPTHS.get(request.level() - 1);
         AnalysisLine before = analyzeLine(fen, depth, List.of());
         AnalysisLine after = analyzeLine(fen, depth, List.of(playedMove));
@@ -165,13 +185,23 @@ public class StockfishService implements GamePositionAnalyzer {
         }
 
         int moverEvaluationAfter = -after.evaluationCp();
-        int centipawnLoss = Math.max(0, before.evaluationCp() - moverEvaluationAfter);
+        int rawCentipawnLoss = Math.max(0, before.evaluationCp() - moverEvaluationAfter);
+        // Mate scores are categorical, not literal centipawns. Keep the
+        // severity while preventing impossible values such as 100000 cp from
+        // reaching player-facing reports and accuracy calculations.
+        int centipawnLoss = Math.min(1000, rawCentipawnLoss);
         boolean bestMove = before.bestMove().equalsIgnoreCase(playedMove);
         String classification = classifyMove(bestMove, centipawnLoss);
         String threat = after.principalVariation().isEmpty()
                 ? after.bestMove()
                 : after.principalVariation().getFirst();
-        String explanation = explainMove(classification, before.bestMove(), threat, centipawnLoss);
+        boolean missedForcedMate = before.mateIn() != null
+                && before.mateIn() > 0
+                && (after.mateIn() == null || after.mateIn() >= 0);
+        String explanation = missedForcedMate
+                ? "This move missed a forced checkmate. " + before.bestMove()
+                        + " kept the mating sequence."
+                : explainMove(classification, before.bestMove(), threat, centipawnLoss);
         String coachingTheme = coachingTheme(fen, after, centipawnLoss);
         return new MoveReviewResponse(
                 playedMove,
@@ -290,6 +320,21 @@ public class StockfishService implements GamePositionAnalyzer {
                     ? new Move(from, to, promotion(uci.charAt(4), board.getSideToMove()))
                     : new Move(from, to);
             return board.legalMoves().contains(move);
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
+
+    static boolean isCheckmatingMove(String fen, String uci) {
+        try {
+            Board board = new Board();
+            board.loadFromFen(fen);
+            Square from = Square.valueOf(uci.substring(0, 2).toUpperCase(Locale.ROOT));
+            Square to = Square.valueOf(uci.substring(2, 4).toUpperCase(Locale.ROOT));
+            Move move = uci.length() == 5
+                    ? new Move(from, to, promotion(uci.charAt(4), board.getSideToMove()))
+                    : new Move(from, to);
+            return board.doMove(move) && board.isMated();
         } catch (RuntimeException exception) {
             return false;
         }

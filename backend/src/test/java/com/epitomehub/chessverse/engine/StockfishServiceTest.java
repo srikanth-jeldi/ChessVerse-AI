@@ -48,4 +48,12 @@ class StockfishServiceTest {
         assertEquals(false, StockfishService.isLegalMove(start, "e2e5"));
         assertEquals(false, StockfishService.isLegalMove(start, "e7e5"));
     }
+
+    @Test
+    void recognizesAWinningCheckmateMoveBeforeRequestingAnotherEngineMove() {
+        String mateInOne = "7k/5Q2/6K1/8/8/8/8/8 w - - 0 1";
+
+        assertEquals(true, StockfishService.isCheckmatingMove(mateInOne, "f7g7"));
+        assertEquals(false, StockfishService.isCheckmatingMove(mateInOne, "f7f6"));
+    }
 }
