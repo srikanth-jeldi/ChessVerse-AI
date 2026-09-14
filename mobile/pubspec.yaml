@@ -82,7 +82,18 @@ flutter:
     - assets/branding/trophy-new-york-grand-final-v1.webp
     - assets/branding/trophy-tokyo-neon-v1.webp
     - assets/matchmaking/
-    - assets/pieces/
+    - assets/pieces/staunton_black_bishop.png
+    - assets/pieces/staunton_black_king.png
+    - assets/pieces/staunton_black_knight.png
+    - assets/pieces/staunton_black_pawn.png
+    - assets/pieces/staunton_black_queen.png
+    - assets/pieces/staunton_black_rook.png
+    - assets/pieces/staunton_white_bishop.png
+    - assets/pieces/staunton_white_king.png
+    - assets/pieces/staunton_white_knight.png
+    - assets/pieces/staunton_white_pawn.png
+    - assets/pieces/staunton_white_queen.png
+    - assets/pieces/staunton_white_rook.png
     - assets/pieces/collection/
     - assets/pieces/premium_individual/crimson-crown-3d/white/
     - assets/pieces/premium_individual/crimson-crown-3d/black/
