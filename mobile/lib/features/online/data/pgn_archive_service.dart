@@ -59,6 +59,8 @@ class PgnArchiveService {
           blackPlayer: headers['Black'] ?? 'Black',
           openingEco: headers['ECO'],
           openingName: headers['Opening'],
+          initialFen: headers['FEN'] ??
+              'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
         ),
       );
     }
@@ -86,6 +88,13 @@ class PgnArchiveService {
       out.writeln('[ECO "${_escape(game.openingEco!)}"]');
     if (game.openingName?.isNotEmpty == true)
       out.writeln('[Opening "${_escape(game.openingName!)}"]');
+    if (game.initialFen?.isNotEmpty == true &&
+        game.initialFen !=
+            'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1') {
+      out
+        ..writeln('[SetUp "1"]')
+        ..writeln('[FEN "${_escape(game.initialFen!)}"]');
+    }
     out.writeln();
     for (int index = 0; index < game.moves.length; index++) {
       if (index.isEven) out.write('${index ~/ 2 + 1}. ');

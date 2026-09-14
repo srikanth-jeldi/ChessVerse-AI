@@ -177,7 +177,8 @@ class GameAnalysisApi {
   Future<CloudAnalysisJob> create(
     String token, {
     required String initialFen,
-    required List<String> moves,
+    List<String> moves = const <String>[],
+    List<String> sanMoves = const <String>[],
     required String clientRequestId,
     int depth = 16,
     String? playerColor,
@@ -198,6 +199,7 @@ class GameAnalysisApi {
           'initialFen': initialFen,
           'clientRequestId': clientRequestId,
           'moves': moves,
+          'sanMoves': sanMoves,
           'depth': depth,
           'playerColor': ?playerColor,
           'timeControl': ?timeControl,

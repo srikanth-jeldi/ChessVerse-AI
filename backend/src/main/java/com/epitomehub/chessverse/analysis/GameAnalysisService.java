@@ -9,6 +9,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.UUID;
+import com.github.bhlangonijr.chesslib.move.MoveList;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -35,21 +36,22 @@ class GameAnalysisService {
         GameAnalysisJob existing = jobs.findByPlayerIdAndClientRequestId(
                 playerId, request.clientRequestId()).orElse(null);
         if (existing != null) return response(existing);
+        List<String> moves = normalizedMoves(request);
         GameAnalysisJob job;
         try {
             job = jobs.saveAndFlush(new GameAnalysisJob(
                     playerId,
                     request.clientRequestId(),
                     request.initialFen().trim(),
-                    String.join(",", request.moves()).toLowerCase(),
+                    String.join(",", moves).toLowerCase(),
                     request.depth(),
-                    request.moves().size(),
+                    moves.size(),
                     request.playerColor() == null ? null : request.playerColor().toUpperCase(),
                     request.timeControl(),
                     request.sourceFormat() == null ? "CHESSVERSE" : request.sourceFormat().toUpperCase(),
                     request.sourceSite(), request.originalPgn(), request.pgnHeadersJson(),
                     request.whitePlayer(), request.blackPlayer(), request.gameResult(),
-                    gameHash(request)));
+                    gameHash(request.initialFen(), moves)));
         } catch (DataIntegrityViolationException duplicate) {
             job = jobs.findByPlayerIdAndClientRequestId(playerId, request.clientRequestId())
                     .orElseThrow(() -> duplicate);
@@ -153,9 +155,26 @@ class GameAnalysisService {
                 ply.mateBefore, ply.mateAfter, ply.variation(), ply.depth);
     }
 
-    private static String gameHash(CreateRequest request) {
-        String canonical = request.initialFen().trim() + "|" +
-                String.join(",", request.moves()).toLowerCase(java.util.Locale.ROOT);
+    private static List<String> normalizedMoves(CreateRequest request) {
+        if (request.moves() != null && !request.moves().isEmpty()) {
+            return request.moves().stream().map(value -> value.toLowerCase(java.util.Locale.ROOT)).toList();
+        }
+        if (request.sanMoves() == null || request.sanMoves().isEmpty()) {
+            throw new AnalysisJobException(HttpStatus.BAD_REQUEST, "At least one UCI or SAN move is required.");
+        }
+        try {
+            MoveList parsed = new MoveList(request.initialFen().trim());
+            parsed.loadFromSan(String.join(" ", request.sanMoves()));
+            return parsed.stream().map(Object::toString)
+                    .map(value -> value.toLowerCase(java.util.Locale.ROOT)).toList();
+        } catch (Exception invalid) {
+            throw new AnalysisJobException(HttpStatus.BAD_REQUEST, "The imported PGN contains an invalid move.");
+        }
+    }
+
+    private static String gameHash(String initialFen, List<String> moves) {
+        String canonical = initialFen.trim() + "|" +
+                String.join(",", moves).toLowerCase(java.util.Locale.ROOT);
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
                     .digest(canonical.getBytes(StandardCharsets.UTF_8));

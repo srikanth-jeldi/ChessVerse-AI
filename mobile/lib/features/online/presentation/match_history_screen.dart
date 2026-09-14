@@ -18,6 +18,7 @@ import '../data/pgn_archive_service.dart';
 import '../data/fen_archive_service.dart';
 import '../data/saved_position_api.dart';
 import '../../analysis/domain/ai_review_report.dart';
+import '../../analysis/data/game_analysis_api.dart';
 import '../../analysis/presentation/adaptive_ai_review.dart';
 
 class MatchHistoryScreen extends StatefulWidget {
@@ -40,6 +41,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   static const PgnArchiveService _pgn = PgnArchiveService();
   static const FenArchiveService _fen = FenArchiveService();
   static const SavedPositionApi _positionsApi = SavedPositionApi();
+  static const GameAnalysisApi _analysisApi = GameAnalysisApi();
   late Future<List<OnlineMatchDto>> _online = _load();
   List<SavedGameRecord> _cloudGames = [];
   bool _historySyncFailed = false;
@@ -111,9 +113,8 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       );
       if (picked.isEmpty) return;
       final Uint8List bytes = await picked.single.readAsBytes();
-      final List<SavedGameRecord> imported = _pgn.importGames(
-        utf8.decode(bytes, allowMalformed: true),
-      );
+      final String rawPgn = utf8.decode(bytes, allowMalformed: true);
+      final List<SavedGameRecord> imported = _pgn.importGames(rawPgn);
       if (!mounted) return;
       final _PgnReviewChoice? choice = await _choosePgnReview(imported.first);
       if (choice == null) return;
@@ -146,6 +147,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
               reviewScope: choice.reviewScope,
               openingEco: game.openingEco,
               openingName: game.openingName,
+              initialFen: game.initialFen,
             );
           })
           .toList(growable: false);
@@ -153,10 +155,37 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
           .map(_gameFingerprint)
           .toSet();
       int added = 0;
+      final StoredAuthSession? session = await const AuthSessionStore().read();
       for (final SavedGameRecord game in configured.reversed) {
         if (existing.add(_gameFingerprint(game))) {
           LocalGameArchive.addGame(game);
           added++;
+          if (session != null) {
+            try {
+              final CloudAnalysisJob job = await _analysisApi.create(
+                session.token,
+                clientRequestId:
+                    'pgn-${game.playedAt.microsecondsSinceEpoch}-$added',
+                initialFen: game.initialFen!,
+                sanMoves: game.moves,
+                depth: 16,
+                playerColor: game.playerSide?.toUpperCase(),
+                sourceFormat: 'PGN',
+                sourceSite: game.detail,
+                originalPgn: rawPgn,
+                whitePlayer: game.whitePlayer,
+                blackPlayer: game.blackPlayer,
+                gameResult: game.result,
+              );
+              LocalGameArchive.updateCloudAnalysisForGame(
+                playedAt: game.playedAt,
+                jobId: job.id,
+                status: job.status,
+              );
+            } on Object {
+              // The local import remains safe if cloud analysis is unavailable.
+            }
+          }
         }
       }
       if (!mounted) return;
