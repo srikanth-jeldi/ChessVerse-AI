@@ -245,6 +245,10 @@ class AiCoachService {
             return memory + "Play " + best + ". It preserves more of your position and meets the immediate reply "
                     + pretty(evidence.opponentThreat()) + ". " + line;
         }
+        if (question.contains("improve") || question.contains("practice")) {
+            return memory + "Play " + best + ". It preserves more of your position and meets the immediate reply "
+                    + pretty(evidence.opponentThreat()) + ". " + line;
+        }
         return memory + played + " was graded " + evidence.classification().toLowerCase(Locale.ROOT) + ". "
                 + evidence.explanation() + " " + line;
     }

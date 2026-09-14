@@ -120,4 +120,28 @@ class AiCoachServiceTest {
 
         verify(stockfish, times(1)).reviewMove(any());
     }
+
+    @Test
+    void everyPresetQuestionReturnsPositionSpecificEngineEvidence() {
+        AiCoachService service = new AiCoachService(stockfish, cache, interactions, outcomes, jdbc,
+                List.of(), metrics, 30, 168);
+        String fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+        var why = service.ask(playerId, new AiCoachController.CoachRequest(
+                fen, "f2f3", "Why was this move bad?", null, null, "en", List.of()));
+        var threat = service.ask(playerId, new AiCoachController.CoachRequest(
+                fen, "f2f3", "What was the threat?", null, null, "en", List.of()));
+        var best = service.ask(playerId, new AiCoachController.CoachRequest(
+                fen, "f2f3", "What should I play?", null, null, "en", List.of()));
+        var pattern = service.ask(playerId, new AiCoachController.CoachRequest(
+                fen, "f2f3", "What pattern did I miss?", null, null, "en", List.of()));
+        var practice = service.ask(playerId, new AiCoachController.CoachRequest(
+                fen, "f2f3", "How do I improve?", null, null, "en", List.of()));
+
+        assertThat(why.answer()).contains("blunder", "The move exposes the king", "g1 → f3");
+        assertThat(threat.answer()).contains("d8 → h4", "g1 → f3");
+        assertThat(best.answer()).contains("g1 → f3", "d8 → h4");
+        assertThat(pattern.answer()).contains("The move exposes the king", "g1 → f3");
+        assertThat(practice.answer()).contains("g1 → f3", "d8 → h4");
+    }
 }

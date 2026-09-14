@@ -162,7 +162,7 @@ String personalCoachAnswer(
   } else {
     parts.add(t('calculate'));
   }
-  return parts.where((p) => p.isNotEmpty).join('\n\n');
+  return parts.where((p) => p.isNotEmpty).toSet().join('\n\n');
 }
 
 /// Translates only the deterministic server's known sentence grammar.

@@ -1011,12 +1011,24 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
     }
   }
 
+  Future<String?> _ensureToken() async {
+    final String? existing = _token;
+    if (existing != null && existing.isNotEmpty) return existing;
+    final session = await const AuthSessionStore().read();
+    final String? loaded = session?.token;
+    if (mounted && loaded != null && loaded.isNotEmpty) {
+      setState(() => _token = loaded);
+    }
+    return loaded;
+  }
+
   Future<void> _ask({String? presetQuestion, String? retryQuestion}) async {
     final String question =
         (retryQuestion ?? presetQuestion ?? _controller.text).trim();
     final String? fen = widget.insight.fenBefore;
     if (question.isEmpty || fen == null || fen.isEmpty || _loading) return;
-    final String? token = _token;
+    final String? token = await _ensureToken();
+    if (!mounted) return;
     if (token == null || token.isEmpty) {
       setState(() => _answer = personalCoachText('signin', _languageCode));
       return;
@@ -1090,9 +1102,10 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
       );
       _cloudAnswer = null;
     });
-    if (_token?.isNotEmpty == true) {
-      await _ask(presetQuestion: PersonalAiCoach.label(question));
-    }
+    // Always ask the Stockfish-backed endpoint. Session restoration is
+    // asynchronous on web; checking the cached token here used to leave a
+    // generic local answer when a preset was tapped immediately.
+    await _ask(presetQuestion: PersonalAiCoach.label(question));
   }
 
   Future<void> _sendFeedback(bool helpful) async {
