@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:http/http.dart' as http;
 
 import '../../features/auth/data/auth_session_store.dart';
@@ -31,6 +33,23 @@ class CloudNarrationService {
     _completeSubscription = _player.onPlayerComplete.listen(
       (_) => onStateChanged?.call(CloudNarrationState.stopped),
     );
+    if (kIsWeb) {
+      _browserTts.setStartHandler(
+        () => onStateChanged?.call(CloudNarrationState.playing),
+      );
+      _browserTts.setCompletionHandler(() {
+        _usingBrowserTts = false;
+        onStateChanged?.call(CloudNarrationState.stopped);
+      });
+      _browserTts.setCancelHandler(() {
+        _usingBrowserTts = false;
+        onStateChanged?.call(CloudNarrationState.stopped);
+      });
+      _browserTts.setErrorHandler((_) {
+        _usingBrowserTts = false;
+        onStateChanged?.call(CloudNarrationState.stopped);
+      });
+    }
   }
 
   static const int _maxAudioBytes = 8 * 1024 * 1024;
@@ -42,6 +61,9 @@ class CloudNarrationService {
   final AudioPlayer _player;
   final AuthSessionStore _sessionStore;
   final Future<String?> Function()? _tokenProvider;
+  final FlutterTts _browserTts = FlutterTts();
+  bool _usingBrowserTts = false;
+  String _browserText = '';
   late final StreamSubscription<PlayerState> _stateSubscription;
   late final StreamSubscription<void> _completeSubscription;
 
@@ -58,7 +80,9 @@ class CloudNarrationService {
         final StoredAuthSession? session = await _sessionStore.read();
         token = session == null || session.isExpired ? null : session.token;
       }
-      if (token == null || token.isEmpty) return false;
+      if (token == null || token.isEmpty) {
+        return await _speakBrowserFallback(cleanText, language);
+      }
       final String cacheKey = '$language\u0000$cleanText';
       Uint8List? audio = _memoryCache.remove(cacheKey);
       if (audio != null) {
@@ -86,7 +110,7 @@ class CloudNarrationService {
               'audio/mpeg',
             )) {
           await response.stream.drain<void>();
-          return false;
+          return await _speakBrowserFallback(cleanText, language);
         }
         final BytesBuilder bytes = BytesBuilder(copy: false);
         await for (final List<int> chunk in response.stream) {
@@ -94,7 +118,9 @@ class CloudNarrationService {
           if (bytes.length > _maxAudioBytes) return false;
         }
         audio = bytes.takeBytes();
-        if (audio.isEmpty) return false;
+        if (audio.isEmpty) {
+          return await _speakBrowserFallback(cleanText, language);
+        }
         _memoryCache[cacheKey] = audio;
         while (_memoryCache.length > _maxCacheEntries) {
           _memoryCache.remove(_memoryCache.keys.first);
@@ -105,18 +131,67 @@ class CloudNarrationService {
       return true;
     } on Object {
       onStateChanged?.call(CloudNarrationState.stopped);
+      return _speakBrowserFallback(cleanText, language);
+    }
+  }
+
+  Future<bool> _speakBrowserFallback(String text, String language) async {
+    if (!kIsWeb) return false;
+    try {
+      final String locale = switch (language.toLowerCase()) {
+        'te' => 'te-IN',
+        'hi' => 'hi-IN',
+        'ta' => 'ta-IN',
+        'kn' => 'kn-IN',
+        'ml' => 'ml-IN',
+        _ => 'en-IN',
+      };
+      await _player.stop();
+      await _browserTts.stop();
+      await _browserTts.setLanguage(locale);
+      await _browserTts.setSpeechRate(.45);
+      await _browserTts.setPitch(1.0);
+      await _browserTts.setVolume(1.0);
+      _browserText = text;
+      _usingBrowserTts = true;
+      onStateChanged?.call(CloudNarrationState.playing);
+      await _browserTts.speak(text);
+      return true;
+    } on Object {
+      _usingBrowserTts = false;
+      onStateChanged?.call(CloudNarrationState.stopped);
       return false;
     }
   }
 
-  Future<void> pause() => _player.pause();
-  Future<void> resume() => _player.resume();
-  Future<void> stop() => _player.stop();
+  Future<void> pause() async {
+    if (_usingBrowserTts) {
+      await _browserTts.pause();
+    } else {
+      await _player.pause();
+    }
+  }
+
+  Future<void> resume() async {
+    if (_usingBrowserTts) {
+      // Web Speech resumes when speak is invoked while paused.
+      await _browserTts.speak(_browserText);
+    } else {
+      await _player.resume();
+    }
+  }
+
+  Future<void> stop() async {
+    await _player.stop();
+    if (kIsWeb) await _browserTts.stop();
+    _usingBrowserTts = false;
+  }
 
   Future<void> dispose() async {
     await _stateSubscription.cancel();
     await _completeSubscription.cancel();
     _client.close();
+    if (kIsWeb) await _browserTts.stop();
     await _player.dispose();
   }
 }
