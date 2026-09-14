@@ -4,6 +4,9 @@ import static com.epitomehub.chessverse.analysis.GameAnalysisDtos.*;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -42,7 +45,11 @@ class GameAnalysisService {
                     request.depth(),
                     request.moves().size(),
                     request.playerColor() == null ? null : request.playerColor().toUpperCase(),
-                    request.timeControl()));
+                    request.timeControl(),
+                    request.sourceFormat() == null ? "CHESSVERSE" : request.sourceFormat().toUpperCase(),
+                    request.sourceSite(), request.originalPgn(), request.pgnHeadersJson(),
+                    request.whitePlayer(), request.blackPlayer(), request.gameResult(),
+                    gameHash(request)));
         } catch (DataIntegrityViolationException duplicate) {
             job = jobs.findByPlayerIdAndClientRequestId(playerId, request.clientRequestId())
                     .orElseThrow(() -> duplicate);
@@ -133,14 +140,28 @@ class GameAnalysisService {
         return new JobResponse(job.id, job.status, job.requestedDepth, job.totalPlies,
                 job.analyzedPlies, job.attemptCount, job.errorCode, job.errorMessage,
                 job.openingEco, job.openingName, job.bookPlies, job.firstDeviationPly,
+                job.sourceFormat, job.sourceSite, job.whitePlayer, job.blackPlayer,
+                job.gameResult, job.gameHash,
                 job.createdAt, job.startedAt, job.completedAt, job.updatedAt);
     }
 
     private static PlyResponse plyResponse(GameAnalysisPly ply) {
-        return new PlyResponse(ply.ply, ply.fenBefore, ply.playedMove,
+        return new PlyResponse(ply.ply, ply.fenBefore, ply.fenAfter, ply.playedMove,
                 ply.bestMove, ply.classification, ply.centipawnLoss,
                 ply.coachingTheme,
                 ply.evaluationBeforeCp, ply.evaluationAfterCp,
                 ply.mateBefore, ply.mateAfter, ply.variation(), ply.depth);
+    }
+
+    private static String gameHash(CreateRequest request) {
+        String canonical = request.initialFen().trim() + "|" +
+                String.join(",", request.moves()).toLowerCase(java.util.Locale.ROOT);
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(canonical.getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+        }
     }
 }

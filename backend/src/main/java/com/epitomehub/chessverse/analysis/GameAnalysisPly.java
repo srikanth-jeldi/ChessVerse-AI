@@ -14,6 +14,7 @@ class GameAnalysisPly {
     UUID jobId;
     int ply;
     String fenBefore;
+    String fenAfter;
     String playedMove;
     String bestMove;
     String classification;
@@ -46,6 +47,10 @@ class GameAnalysisPly {
         this.principalVariation = String.join(",", result.principalVariation());
         this.depth = result.depth();
         this.createdAt = Instant.now();
+    }
+
+    void recordFenAfter(String fenAfter) {
+        this.fenAfter = fenAfter;
     }
 
     List<String> variation() {

@@ -54,6 +54,8 @@ class GameAnalysisWorkerTest {
         verify(plies, times(3)).save(evidence.capture());
         assertEquals(START, evidence.getAllValues().get(0).fenBefore);
         assertEquals("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+                evidence.getAllValues().get(0).fenAfter);
+        assertEquals("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
                 evidence.getAllValues().get(1).fenBefore);
         assertEquals("e2e4", evidence.getAllValues().get(0).playedMove);
         assertEquals(1, evidence.getAllValues().get(0).ply);

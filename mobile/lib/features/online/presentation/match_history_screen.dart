@@ -16,6 +16,7 @@ import '../../auth/data/auth_session_store.dart';
 import '../data/online_match_api.dart';
 import '../data/pgn_archive_service.dart';
 import '../data/fen_archive_service.dart';
+import '../data/saved_position_api.dart';
 import '../../analysis/domain/ai_review_report.dart';
 import '../../analysis/presentation/adaptive_ai_review.dart';
 
@@ -38,6 +39,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   final OnlineMatchApi _api = const OnlineMatchApi();
   static const PgnArchiveService _pgn = PgnArchiveService();
   static const FenArchiveService _fen = FenArchiveService();
+  static const SavedPositionApi _positionsApi = SavedPositionApi();
   late Future<List<OnlineMatchDto>> _online = _load();
   List<SavedGameRecord> _cloudGames = [];
   bool _historySyncFailed = false;
@@ -197,6 +199,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
           .whereType<String>()
           .toSet();
       int added = 0;
+      final session = await const AuthSessionStore().read();
       for (final position in positions.reversed) {
         if (!existing.add(position)) continue;
         LocalGameArchive.addGame(
@@ -212,6 +215,18 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
             reviewScope: 'both',
           ),
         );
+        if (session != null) {
+          try {
+            await _positionsApi.save(
+              session.token,
+              fen: position,
+              label: 'Imported FEN position',
+              tags: const <String>['imported'],
+            );
+          } on Object {
+            // The durable device copy remains available and can sync later.
+          }
+        }
         added++;
       }
       if (!mounted) return;

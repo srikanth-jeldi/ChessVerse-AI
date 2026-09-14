@@ -182,6 +182,13 @@ class GameAnalysisApi {
     int depth = 16,
     String? playerColor,
     String? timeControl,
+    String sourceFormat = 'CHESSVERSE',
+    String? sourceSite,
+    String? originalPgn,
+    String? pgnHeadersJson,
+    String? whitePlayer,
+    String? blackPlayer,
+    String? gameResult,
   }) =>
       _request(
         'POST',
@@ -194,6 +201,13 @@ class GameAnalysisApi {
           'depth': depth,
           'playerColor': ?playerColor,
           'timeControl': ?timeControl,
+          'sourceFormat': sourceFormat,
+          'sourceSite': ?sourceSite,
+          'originalPgn': ?originalPgn,
+          'pgnHeadersJson': ?pgnHeadersJson,
+          'whitePlayer': ?whitePlayer,
+          'blackPlayer': ?blackPlayer,
+          'gameResult': ?gameResult,
         },
       );
 

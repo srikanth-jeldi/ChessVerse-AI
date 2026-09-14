@@ -4341,6 +4341,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         depth: 16,
         playerColor: _humanPlaysWhite ? 'WHITE' : 'BLACK',
         timeControl: '10+0',
+        sourceFormat: 'CHESSVERSE',
+        sourceSite: 'ChessVerseAI',
+        whitePlayer: _whitePlayerName,
+        blackPlayer: _blackPlayerName,
+        gameResult: _gameResultTitle,
       );
       LocalGameArchive.updateCloudAnalysisForGame(
         playedAt: archivedAt,

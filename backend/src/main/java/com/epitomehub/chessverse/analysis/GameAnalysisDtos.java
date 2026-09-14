@@ -20,7 +20,19 @@ final class GameAnalysisDtos {
             @NotEmpty @Size(max = 400) List<@Pattern(regexp = "[a-h][1-8][a-h][1-8][qrbn]?", flags = Pattern.Flag.CASE_INSENSITIVE) String> moves,
             @Min(8) @Max(22) int depth,
             @Pattern(regexp = "WHITE|BLACK", flags = Pattern.Flag.CASE_INSENSITIVE) String playerColor,
-            @Size(max = 20) String timeControl) {
+            @Size(max = 20) String timeControl,
+            @Pattern(regexp = "CHESSVERSE|PGN|FEN", flags = Pattern.Flag.CASE_INSENSITIVE) String sourceFormat,
+            @Size(max = 120) String sourceSite,
+            @Size(max = 200000) String originalPgn,
+            @Size(max = 20000) String pgnHeadersJson,
+            @Size(max = 120) String whitePlayer,
+            @Size(max = 120) String blackPlayer,
+            @Size(max = 16) String gameResult) {
+        CreateRequest(String clientRequestId, String initialFen, List<String> moves,
+                int depth, String playerColor, String timeControl) {
+            this(clientRequestId, initialFen, moves, depth, playerColor, timeControl,
+                    null, null, null, null, null, null, null);
+        }
     }
 
     record JobResponse(
@@ -36,13 +48,19 @@ final class GameAnalysisDtos {
             String openingName,
             int bookPlies,
             Integer firstDeviationPly,
+            String sourceFormat,
+            String sourceSite,
+            String whitePlayer,
+            String blackPlayer,
+            String gameResult,
+            String gameHash,
             Instant createdAt,
             Instant startedAt,
             Instant completedAt,
             Instant updatedAt) {
     }
 
-    record PlyResponse(int ply, String fenBefore, String playedMove,
+    record PlyResponse(int ply, String fenBefore, String fenAfter, String playedMove,
             String bestMove, String classification, int centipawnLoss,
             String coachingTheme,
             int evaluationBeforeCp, int evaluationAfterCp,

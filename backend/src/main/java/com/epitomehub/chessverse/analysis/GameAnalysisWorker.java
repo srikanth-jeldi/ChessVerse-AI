@@ -54,11 +54,16 @@ class GameAnalysisWorker {
                 int plyNumber = index + 1;
                 String fenBefore = board.getFen();
                 PositionAnalysis newResult = null;
+                GameAnalysisPly analyzedPly = null;
                 if (plies.findByJobIdAndPly(job.id, plyNumber).isEmpty()) {
                     newResult = analyzer.analyze(fenBefore, uci, job.requestedDepth);
-                    plies.save(new GameAnalysisPly(job.id, plyNumber, fenBefore, uci, newResult));
+                    analyzedPly = new GameAnalysisPly(job.id, plyNumber, fenBefore, uci, newResult);
                 }
                 board.doMove(move);
+                if (analyzedPly != null) {
+                    analyzedPly.recordFenAfter(board.getFen());
+                    plies.save(analyzedPly);
+                }
                 openings.find(board.getFen()).ifPresent(job::recognizeOpening);
                 boolean playerPly = job.playerColor == null ||
                         (plyNumber % 2 == 1 && job.playerColor.equals("WHITE")) ||

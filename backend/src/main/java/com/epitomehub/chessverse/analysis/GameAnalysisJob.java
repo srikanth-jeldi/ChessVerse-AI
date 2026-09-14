@@ -35,12 +35,28 @@ class GameAnalysisJob {
     Integer firstDeviationPly;
     String playerColor;
     String timeControl;
+    String sourceFormat;
+    String sourceSite;
+    String originalPgn;
+    String pgnHeadersJson;
+    String whitePlayer;
+    String blackPlayer;
+    String gameResult;
+    String gameHash;
 
     protected GameAnalysisJob() {
     }
 
     GameAnalysisJob(UUID playerId, String clientRequestId, String initialFen, String movesJson, int requestedDepth,
             int totalPlies, String playerColor, String timeControl) {
+        this(playerId, clientRequestId, initialFen, movesJson, requestedDepth, totalPlies,
+                playerColor, timeControl, "CHESSVERSE", null, null, null, null, null, null, null);
+    }
+
+    GameAnalysisJob(UUID playerId, String clientRequestId, String initialFen, String movesJson, int requestedDepth,
+            int totalPlies, String playerColor, String timeControl, String sourceFormat, String sourceSite,
+            String originalPgn, String pgnHeadersJson, String whitePlayer, String blackPlayer,
+            String gameResult, String gameHash) {
         this.id = UUID.randomUUID();
         this.playerId = playerId;
         this.clientRequestId = clientRequestId;
@@ -51,6 +67,14 @@ class GameAnalysisJob {
         this.totalPlies = totalPlies;
         this.playerColor = playerColor;
         this.timeControl = timeControl;
+        this.sourceFormat = sourceFormat == null || sourceFormat.isBlank() ? "CHESSVERSE" : sourceFormat;
+        this.sourceSite = sourceSite;
+        this.originalPgn = originalPgn;
+        this.pgnHeadersJson = pgnHeadersJson;
+        this.whitePlayer = whitePlayer;
+        this.blackPlayer = blackPlayer;
+        this.gameResult = gameResult;
+        this.gameHash = gameHash;
         this.analyzedPlies = 0;
         this.attemptCount = 0;
         this.createdAt = Instant.now();
