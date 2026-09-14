@@ -17,6 +17,7 @@ class ChessVerseAuthResult {
   const ChessVerseAuthResult({
     required this.playerName,
     required this.isGuest,
+    required this.session,
     this.token,
     this.username,
     this.email,
@@ -25,6 +26,7 @@ class ChessVerseAuthResult {
 
   final String playerName;
   final bool isGuest;
+  final StoredAuthSession session;
   final String? token;
   final String? username;
   final String? email;
@@ -1565,32 +1567,44 @@ class _AuthScreenState extends State<AuthScreen> {
         username ??
         email?.split('@').first ??
         'ChessVerseAI Player';
-    if (_rememberMe || isGuest) {
-      await _sessionStore.write(
-        StoredAuthSession(
-          token: token,
-          expiresAt: expiresAt,
-          displayName: name,
-          username: username,
-          email: email,
-          photoUrl: resolvedPhotoUrl,
-          isGuest: isGuest,
-          refreshToken: _nonBlankString(data['refreshToken']),
-          refreshExpiresAt: DateTime.tryParse(
-            data['refreshExpiresAt'] as String? ?? '',
-          ),
-          sessionId: _nonBlankString(data['sessionId']),
+    final StoredAuthSession session = StoredAuthSession(
+      token: token,
+      expiresAt: expiresAt,
+      displayName: name,
+      username: username,
+      email: email,
+      photoUrl: resolvedPhotoUrl,
+      isGuest: isGuest,
+      refreshToken: _nonBlankString(data['refreshToken']),
+      refreshExpiresAt: DateTime.tryParse(
+        data['refreshExpiresAt'] as String? ?? '',
+      ),
+      sessionId: _nonBlankString(data['sessionId']),
+    );
+    try {
+      if (_rememberMe || isGuest) {
+        await _sessionStore.write(session);
+      } else {
+        await _sessionStore.setRememberMe(false);
+        await _sessionStore.clearSession();
+      }
+    } catch (error, stack) {
+      // A browser privacy setting or unavailable secure-storage backend must
+      // not discard an otherwise valid server-authenticated session.
+      unawaited(
+        AppDiagnostics.recordError(
+          error,
+          stack,
+          reason: 'Authenticated session could not be persisted',
         ),
       );
-    } else {
-      await _sessionStore.setRememberMe(false);
-      await _sessionStore.clearSession();
     }
     if (!mounted) return;
     widget.onAuthenticated(
       ChessVerseAuthResult(
         playerName: name,
         isGuest: isGuest,
+        session: session,
         token: token,
         username: username,
         email: email,

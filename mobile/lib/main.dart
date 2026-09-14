@@ -843,8 +843,8 @@ class _SplashGateState extends State<SplashGate> {
         _RootStage.auth => AuthScreen(
           key: const ValueKey<String>('auth'),
           onAuthenticated: (ChessVerseAuthResult result) async {
-            final StoredAuthSession? session = await _sessionStore.read();
-            if (session == null || !mounted) return;
+            final StoredAuthSession session = result.session;
+            if (!mounted) return;
             await LocalGameArchive.activateIdentity(
               await _sessionStore.progressIdentity(session),
             );
