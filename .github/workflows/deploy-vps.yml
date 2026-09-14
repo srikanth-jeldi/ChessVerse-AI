@@ -90,6 +90,12 @@ jobs:
           git merge --ff-only "$deploy_sha"
 
           cd "$deploy_dir"
+          deploy_diagnostics() {
+            echo "VPS deployment failed; collecting container state and backend logs."
+            docker compose --env-file vps.env -f docker-compose.prod.yml ps || true
+            docker compose --env-file vps.env -f docker-compose.prod.yml logs --tail=250 backend || true
+          }
+          trap deploy_diagnostics ERR
           docker compose --env-file vps.env -f docker-compose.prod.yml up -d --build
           docker compose --env-file vps.env -f docker-compose.prod.yml ps
 
