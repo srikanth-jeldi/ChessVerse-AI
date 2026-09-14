@@ -96,6 +96,7 @@ class SavedGameRecord {
     this.openingName,
     this.bookPlies = 0,
     this.firstDeviationPly,
+    this.initialFen,
   });
 
   final String mode;
@@ -119,6 +120,7 @@ class SavedGameRecord {
   final String? openingName;
   final int bookPlies;
   final int? firstDeviationPly;
+  final String? initialFen;
 
   String get summary => '$whitePlayer vs $blackPlayer';
 }
@@ -321,6 +323,7 @@ class LocalGameArchive {
                 openingName: game['openingName'] as String?,
                 bookPlies: (game['bookPlies'] as num?)?.toInt() ?? 0,
                 firstDeviationPly: (game['firstDeviationPly'] as num?)?.toInt(),
+                initialFen: game['initialFen'] as String?,
                 moveReviews:
                     (game['moveReviews'] as List<dynamic>? ?? <dynamic>[])
                         .whereType<Map<String, dynamic>>()
@@ -437,7 +440,9 @@ class LocalGameArchive {
 
   static int removeImportedGames() {
     final int before = _games.length;
-    _games.removeWhere((SavedGameRecord game) => game.mode == 'Imported PGN');
+    _games.removeWhere(
+      (SavedGameRecord game) => game.mode.startsWith('Imported '),
+    );
     final int removed = before - _games.length;
     if (removed == 0) return 0;
     unawaited(_persistGames());
@@ -469,6 +474,7 @@ class LocalGameArchive {
       openingName: current.openingName,
       bookPlies: current.bookPlies,
       firstDeviationPly: current.firstDeviationPly,
+      initialFen: current.initialFen,
       moveReviews: List<SavedMoveReview>.from(reviews)
         ..sort((SavedMoveReview a, SavedMoveReview b) => a.ply - b.ply),
     );
@@ -510,6 +516,7 @@ class LocalGameArchive {
       openingName: openingName ?? current.openingName,
       bookPlies: bookPlies ?? current.bookPlies,
       firstDeviationPly: firstDeviationPly ?? current.firstDeviationPly,
+      initialFen: current.initialFen,
       moveReviews: reviews ?? current.moveReviews,
     );
     unawaited(_persistGames());
@@ -537,6 +544,7 @@ class LocalGameArchive {
               'openingName': game.openingName,
               'bookPlies': game.bookPlies,
               'firstDeviationPly': game.firstDeviationPly,
+              'initialFen': game.initialFen,
               'moveReviews': game.moveReviews
                   .map((SavedMoveReview review) => review.toJson())
                   .toList(growable: false),

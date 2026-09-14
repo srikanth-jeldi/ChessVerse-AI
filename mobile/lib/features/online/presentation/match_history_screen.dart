@@ -15,6 +15,7 @@ import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../data/online_match_api.dart';
 import '../data/pgn_archive_service.dart';
+import '../data/fen_archive_service.dart';
 import '../../analysis/domain/ai_review_report.dart';
 import '../../analysis/presentation/adaptive_ai_review.dart';
 
@@ -36,6 +37,7 @@ class MatchHistoryScreen extends StatefulWidget {
 class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   final OnlineMatchApi _api = const OnlineMatchApi();
   static const PgnArchiveService _pgn = PgnArchiveService();
+  static const FenArchiveService _fen = FenArchiveService();
   late Future<List<OnlineMatchDto>> _online = _load();
   List<SavedGameRecord> _cloudGames = [];
   bool _historySyncFailed = false;
@@ -173,6 +175,64 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
         SnackBar(
           content: Text(
             error is FormatException ? error.message : 'PGN import failed. Please choose a valid Chess.com or standard PGN file.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _importFen() async {
+    try {
+      final picked = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const <String>['fen', 'txt'],
+      );
+      if (picked.isEmpty) return;
+      final bytes = await picked.single.readAsBytes();
+      final positions = _fen.importPositions(
+        utf8.decode(bytes, allowMalformed: true),
+      );
+      final existing = LocalGameArchive.games
+          .map((game) => game.initialFen)
+          .whereType<String>()
+          .toSet();
+      int added = 0;
+      for (final position in positions.reversed) {
+        if (!existing.add(position)) continue;
+        LocalGameArchive.addGame(
+          SavedGameRecord(
+            mode: 'Imported FEN',
+            result: '*',
+            detail: 'Imported chess position • ${position.split(' ')[1] == 'w' ? 'White' : 'Black'} to move',
+            moves: const <String>[],
+            playedAt: DateTime.now().toUtc(),
+            whitePlayer: 'FEN position',
+            blackPlayer: 'Analysis board',
+            initialFen: position,
+            reviewScope: 'both',
+          ),
+        );
+        added++;
+      }
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            added == 0
+                ? 'These FEN positions are already in My Games.'
+                : 'Imported $added FEN position${added == 1 ? '' : 's'}.',
+          ),
+        ),
+      );
+    } on Object catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is FormatException
+                ? error.message
+                : 'FEN import failed. Please choose a valid .fen or .txt file.',
           ),
         ),
       );
@@ -368,8 +428,100 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     );
   }
 
+  Future<void> _exportFen() async {
+    try {
+      final fen = _fen.exportPositions(LocalGameArchive.games);
+      final count = fen.split('\n').length;
+      await FilePicker.saveFile(
+        dialogTitle: 'Export ChessVerseAI positions',
+        fileName: 'chessverseai-positions.fen',
+        type: FileType.custom,
+        allowedExtensions: const <String>['fen'],
+        bytes: Uint8List.fromList(utf8.encode('$fen\n')),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Exported $count FEN position${count == 1 ? '' : 's'}.')),
+      );
+    } on FormatException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    }
+  }
+
+  Future<void> _chooseImportFormat() async {
+    final format = await _chooseArchiveFormat(importing: true);
+    if (format == 'pgn') await _importPgn();
+    if (format == 'fen') await _importFen();
+  }
+
+  Future<void> _chooseExportFormat() async {
+    final format = await _chooseArchiveFormat(importing: false);
+    if (format == 'pgn') await _exportPgn();
+    if (format == 'fen') await _exportFen();
+  }
+
+  Future<String?> _chooseArchiveFormat({required bool importing}) =>
+      showDialog<String>(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: AppColors.backgroundDeep,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: const BorderSide(color: AppColors.accentGold),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Padding(
+              padding: const EdgeInsets.all(26),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    '${importing ? 'IMPORT' : 'EXPORT'} CHESS DATA',
+                    style: const TextStyle(
+                      color: AppColors.accentGold,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    importing
+                        ? 'Choose whether you are bringing in a complete game or one exact position.'
+                        : 'Choose the format you want to keep or share.',
+                    style: const TextStyle(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 20),
+                  _ArchiveFormatTile(
+                    icon: Icons.history_rounded,
+                    title: 'PGN • COMPLETE GAMES',
+                    subtitle: importing
+                        ? 'Import move history from Chess.com or another chess app'
+                        : 'Export all saved games with players, result and moves',
+                    onTap: () => Navigator.pop(context, 'pgn'),
+                  ),
+                  const SizedBox(height: 12),
+                  _ArchiveFormatTile(
+                    icon: Icons.grid_on_rounded,
+                    title: 'FEN • BOARD POSITIONS',
+                    subtitle: importing
+                        ? 'Import an exact board setup, side to move and castling rights'
+                        : 'Export imported and engine-reviewed positions',
+                    onTap: () => Navigator.pop(context, 'fen'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
   String _gameFingerprint(SavedGameRecord game) =>
-      '${game.whitePlayer.trim().toLowerCase()}|${game.blackPlayer.trim().toLowerCase()}|${game.result}|${game.moves.join(' ')}';
+      '${game.whitePlayer.trim().toLowerCase()}|${game.blackPlayer.trim().toLowerCase()}|${game.result}|${game.moves.join(' ')}|${game.initialFen ?? ''}';
 
   Future<bool> _confirmDelete({
     required String title,
@@ -412,8 +564,8 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
 
   Future<void> _deleteGame(SavedGameRecord game) async {
     final bool confirmed = await _confirmDelete(
-      title: game.mode == 'Imported PGN'
-          ? 'Delete imported PGN?'
+      title: game.mode.startsWith('Imported ')
+          ? 'Delete imported ${game.mode.substring(9)}?'
           : 'Delete saved game?',
       body:
           '${game.summary} will be removed from this device. This cannot be undone.',
@@ -427,7 +579,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
 
   Future<void> _deleteAllImported() async {
     final int count = LocalGameArchive.games
-        .where((game) => game.mode == 'Imported PGN')
+        .where((game) => game.mode.startsWith('Imported '))
         .length;
     if (count == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -436,7 +588,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       return;
     }
     final bool confirmed = await _confirmDelete(
-      title: 'Delete all imported PGNs?',
+      title: 'Delete all imported chess data?',
       body:
           'All $count imported game${count == 1 ? '' : 's'} will be removed. Your ChessVerseAI games stay safe.',
     );
@@ -477,7 +629,25 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                     ),
                   ),
                 ),
-              Wrap(
+              if (game.initialFen != null) ...<Widget>[
+                const SizedBox(height: 12),
+                const Text(
+                  'FEN POSITION',
+                  style: TextStyle(
+                    color: AppColors.accentGold,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                SelectableText(
+                  game.initialFen!,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ],
+              if (game.moves.isNotEmpty) Wrap(
                 spacing: 8,
                 children: [
                   FilledButton(
@@ -503,11 +673,15 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                     ),
                 ],
               ),
-              const Text('Moves'),
-              ...game.moves.indexed.map(
-                (m) =>
-                    ListTile(leading: Text('${m.$1 + 1}'), title: Text(m.$2)),
-              ),
+              if (game.moves.isNotEmpty) ...<Widget>[
+                const Text('Moves'),
+                ...game.moves.indexed.map(
+                  (m) => ListTile(
+                    leading: Text('${m.$1 + 1}'),
+                    title: Text(m.$2),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -553,14 +727,14 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
         actions: <Widget>[
           IconButton(
             key: const ValueKey<String>('import-pgn'),
-            tooltip: 'Import Chess.com or PGN game',
-            onPressed: _importPgn,
+            tooltip: 'Import PGN game or FEN position',
+            onPressed: _chooseImportFormat,
             icon: const Icon(Icons.upload_file_rounded),
           ),
           IconButton(
             key: const ValueKey<String>('export-pgn'),
-            tooltip: 'Export all games as PGN',
-            onPressed: _exportPgn,
+            tooltip: 'Export as PGN or FEN',
+            onPressed: _chooseExportFormat,
             icon: const Icon(Icons.download_rounded),
           ),
           PopupMenuButton<String>(
@@ -629,7 +803,10 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
               );
             },
           ),
-          _PgnCoachBanner(onImport: _importPgn, onExport: _exportPgn),
+          _PgnCoachBanner(
+            onImport: _chooseImportFormat,
+            onExport: _chooseExportFormat,
+          ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: _refresh,
@@ -787,7 +964,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                                       (_filter == 'Computer'
                                           ? g.mode == 'Play vs AI'
                                           : _filter == 'Imported'
-                                          ? g.mode == 'Imported PGN'
+                                          ? g.mode.startsWith('Imported ')
                                           : g.mode == '2 Players'),
                                 )
                                 .map(
@@ -814,6 +991,67 @@ class _PgnReviewChoice {
   const _PgnReviewChoice({required this.playerSide, required this.reviewScope});
   final String playerSide;
   final String reviewScope;
+}
+
+class _ArchiveFormatTile extends StatelessWidget {
+  const _ArchiveFormatTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: AppColors.surface,
+    borderRadius: BorderRadius.circular(16),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0x8059E4C8)),
+        ),
+        child: Row(
+          children: <Widget>[
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: const Color(0x2414B8A6),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Icon(icon, color: const Color(0xFF5EEAD4)),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.accentGold),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _PgnChoiceTile extends StatelessWidget {
@@ -938,7 +1176,7 @@ class _PgnCoachBanner extends StatelessWidget {
               ),
               SizedBox(height: 3),
               Text(
-                'Import a Chess.com or standard PGN and get ChessVerseAI Coach suggestions.',
+                'Import or export complete PGN games and exact FEN positions.',
                 style: TextStyle(color: Color(0xFFB8CAD5), fontSize: 12),
               ),
             ],
@@ -946,12 +1184,12 @@ class _PgnCoachBanner extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         IconButton.filledTonal(
-          tooltip: 'Import PGN',
+          tooltip: 'Import PGN or FEN',
           onPressed: onImport,
           icon: const Icon(Icons.upload_file_rounded),
         ),
         IconButton(
-          tooltip: 'Export PGN backup',
+          tooltip: 'Export PGN or FEN',
           onPressed: onExport,
           icon: const Icon(Icons.download_rounded),
         ),
