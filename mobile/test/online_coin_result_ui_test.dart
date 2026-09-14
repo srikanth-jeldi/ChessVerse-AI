@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 Widget _result({
   required String title,
   required int coinsEarned,
+  bool showScore = true,
 }) {
   return MaterialApp(
     home: Scaffold(
@@ -12,6 +13,7 @@ Widget _result({
         title: title,
         detail: 'Online match complete',
         scoreLabel: '1-0',
+        showScore: showScore,
         accuracy: null,
         turningPoint: null,
         entryCoins: 100,
@@ -61,6 +63,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Challenge complete'), findsOneWidget);
+    expect(find.text('1-0'), findsNothing);
+  });
+
+  testWidgets('puzzle completion never shows a match score', (tester) async {
+    await tester.pumpWidget(
+      _result(title: 'Puzzle complete', coinsEarned: 0, showScore: false),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Puzzle complete'), findsOneWidget);
     expect(find.text('1-0'), findsNothing);
   });
 }

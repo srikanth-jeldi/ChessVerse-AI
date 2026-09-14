@@ -29,6 +29,11 @@ void main() {
 
     expect(find.text('PUZZLE TRAINING'), findsOneWidget);
     expect(find.textContaining('Next challenge unlocks'), findsNothing);
+    await tester.tap(find.widgetWithText(FilledButton, 'Try again'));
+    await tester.pump();
+    expect(find.text('Challenge missed'), findsNothing);
+    expect(find.byKey(const ValueKey<String>('square-e1')), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('square-e2')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

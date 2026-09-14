@@ -1482,7 +1482,8 @@ class _ChatScreenState extends State<_ChatScreen> {
           keyboardType: TextInputType.visiblePassword,
           decoration: const InputDecoration(
             labelText: 'Recovery key',
-            helperText: 'Paste the key you saved when encrypted chat was enabled.',
+            helperText:
+                'Paste the key you saved when encrypted chat was enabled.',
           ),
         ),
         actions: <Widget>[
@@ -1491,10 +1492,8 @@ class _ChatScreenState extends State<_ChatScreen> {
             child: const Text('CANCEL'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(
-              dialogContext,
-              controller.text.trim(),
-            ),
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
             child: const Text('RESTORE'),
           ),
         ],
@@ -1515,15 +1514,59 @@ class _ChatScreenState extends State<_ChatScreen> {
         _friendEncryptionReady = result.friendReady;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Encrypted chats restored on this device.')),
+        const SnackBar(
+          content: Text('Encrypted chats restored on this device.'),
+        ),
       );
       await _load();
     } on SocialException catch (error) {
       if (!mounted) return;
       setState(() => _encryptionLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
+  Future<void> _setUpNewEncryptionKey() async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        icon: const Icon(Icons.key_rounded, color: Color(0xFFE2AE49)),
+        title: const Text('Set up a new chat key?'),
+        content: const Text(
+          'Use this only if the old recovery key is unavailable. You can send photos and new encrypted messages again, but messages protected by the old key may no longer open on this device.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('CREATE NEW KEY'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _encryptionLoading = true);
+    try {
+      final E2eeSetupResult result = await _e2ee.resetIdentity(
+        widget.token,
+        widget.friend.playerId,
       );
+      if (!mounted) return;
+      setState(() {
+        _encryptionLoading = false;
+        _friendEncryptionReady = result.friendReady;
+      });
+      await _showNewRecoveryKey(result.recoveryKey!);
+      await _load();
+    } on SocialException catch (error) {
+      if (!mounted) return;
+      setState(() => _encryptionLoading = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -2313,6 +2356,12 @@ class _ChatScreenState extends State<_ChatScreen> {
                       key: const ValueKey<String>('restore-chat-recovery-key'),
                       onPressed: _restoreEncryptionKey,
                       child: const Text('RESTORE KEY'),
+                    ),
+                  if (!_e2ee.ready)
+                    TextButton(
+                      key: const ValueKey<String>('create-new-chat-key'),
+                      onPressed: _setUpNewEncryptionKey,
+                      child: const Text('NEW KEY'),
                     ),
                   TextButton(
                     onPressed: _initializeEncryption,

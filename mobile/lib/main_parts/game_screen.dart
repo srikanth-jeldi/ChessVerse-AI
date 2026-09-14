@@ -1758,6 +1758,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             title: _resultDisplayTitle(),
                             detail: _gameResultDetail ?? 'Game complete',
                             scoreLabel: _resultScoreLabel(),
+                            showScore:
+                                _gameMode != GameMode.puzzle &&
+                                _gameMode != GameMode.daily,
                             accuracy: _playerAccuracy,
                             turningPoint: _turningPoint,
                             entryCoins: _gameMode == GameMode.online
@@ -1772,7 +1775,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             onNewGame: _gameMode == GameMode.online
                                 ? _startFreshOnlineGame
                                 : _gameMode == GameMode.puzzle
-                                ? _startNextPuzzle
+                                ? _puzzleAttemptWasMissed
+                                      ? _reset
+                                      : _startNextPuzzle
                                 : _reset,
                             newGameLabel: _gameMode == GameMode.puzzle
                                 ? 'Next puzzle'
@@ -1793,7 +1798,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             onShare: () async {
                               final String result = <String>[
                                 'ChessVerseAI • ${_resultDisplayTitle()}',
-                                _resultScoreLabel(),
+                                if (_gameMode != GameMode.puzzle &&
+                                    _gameMode != GameMode.daily)
+                                  _resultScoreLabel(),
                                 _gameResultDetail ?? 'Game complete',
                                 if (_playerAccuracy != null)
                                   'AI accuracy: $_playerAccuracy%',
@@ -2598,6 +2605,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
     final bool userWon = _humanPlaysWhite ? whiteWon : blackWon;
     return userWon ? '1 - 0' : '0 - 1';
+  }
+
+  bool get _puzzleAttemptWasMissed {
+    final String title = (_gameResultTitle ?? '').toLowerCase();
+    return title.contains('missed') ||
+        title.contains('not solved') ||
+        title.contains('try again');
   }
 
   String _resultDisplayTitle() {

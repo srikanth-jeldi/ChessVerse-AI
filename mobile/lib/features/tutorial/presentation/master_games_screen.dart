@@ -71,7 +71,16 @@ class _MasterGamesScreenState extends State<MasterGamesScreen> {
       backgroundColor: const Color(0xFF06131F),
       appBar: AppBar(
         backgroundColor: const Color(0xFF071827),
-        title: Text(copy.text('master.title')),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(copy.text('master.title')),
+            const Text(
+              'Learn from legendary turning points.',
+              style: TextStyle(color: Color(0xFF9DB4CA), fontSize: 11),
+            ),
+          ],
+        ),
       ),
       body: Center(
         child: ConstrainedBox(
@@ -130,30 +139,10 @@ class _MasterCatalogHero extends StatelessWidget {
         ),
       ],
     ),
-    child: Stack(
-      children: <Widget>[
-        Positioned.fill(
-          left: null,
-          child: Opacity(
-            opacity: .34,
-            child: Image.asset(
-              'assets/pieces/premium_individual/sapphire-elite/black/king.webp',
-              width: 210,
-              fit: BoxFit.contain,
-              alignment: Alignment.centerRight,
-            ),
-          ),
-        ),
-        const Positioned(
-          right: 12,
-          bottom: -18,
-          child: Icon(
-            Icons.workspace_premium_rounded,
-            size: 150,
-            color: Color(0x24EABF61),
-          ),
-        ),
-        Column(
+    child: LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool compact = constraints.maxWidth < 560;
+        final Widget copyBlock = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Row(
@@ -173,13 +162,6 @@ class _MasterCatalogHero extends StatelessWidget {
                     ),
                   ),
                 ),
-                Text(
-                  '${completed.length}/$total',
-                  style: const TextStyle(
-                    color: Color(0xFF63D2B8),
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
               ],
             ),
             const SizedBox(height: 14),
@@ -192,15 +174,12 @@ class _MasterCatalogHero extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 620),
-              child: Text(
-                copy.text('master.intro'),
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 15,
-                  height: 1.45,
-                ),
+            Text(
+              copy.text('master.intro'),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 15,
+                height: 1.45,
               ),
             ),
             const SizedBox(height: 18),
@@ -216,60 +195,49 @@ class _MasterCatalogHero extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Wrap(
-              spacing: 9,
-              runSpacing: 9,
-              children: <Widget>[
-                for (int index = 0; index < total; index++)
-                  _MasteryBadge(
-                    icon: switch (MasterGameCatalog.lessons[index].style) {
-                      MasterThinkingStyle.attack =>
-                        Icons.local_fire_department_rounded,
-                      MasterThinkingStyle.calculation =>
-                        Icons.psychology_alt_rounded,
-                      MasterThinkingStyle.endurance =>
-                        Icons.hourglass_bottom_rounded,
-                    },
-                    unlocked: completed.contains(
-                      MasterGameCatalog.lessons[index].id,
-                    ),
-                  ),
-              ],
+            Text(
+              '${completed.length}/$total MASTER MOMENTS COMPLETED',
+              style: const TextStyle(
+                color: Color(0xFF63D2B8),
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                letterSpacing: .8,
+              ),
             ),
           ],
-        ),
-      ],
-    ),
-  );
-}
-
-class _MasteryBadge extends StatelessWidget {
-  const _MasteryBadge({required this.icon, required this.unlocked});
-
-  final IconData icon;
-  final bool unlocked;
-
-  @override
-  Widget build(BuildContext context) => AnimatedContainer(
-    duration: const Duration(milliseconds: 350),
-    width: 42,
-    height: 42,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: unlocked ? const Color(0xFF63D2B8) : const Color(0xFF17283A),
-      border: Border.all(
-        color: unlocked ? AppColors.accentGold : AppColors.border,
-      ),
-      boxShadow: unlocked
-          ? const <BoxShadow>[
-              BoxShadow(color: Color(0x554CDCC1), blurRadius: 16),
-            ]
-          : null,
-    ),
-    child: Icon(
-      unlocked ? icon : Icons.lock_outline_rounded,
-      size: 20,
-      color: unlocked ? const Color(0xFF071827) : AppColors.textMuted,
+        );
+        final Widget artwork = SizedBox(
+          width: compact ? 112 : 210,
+          height: compact ? 180 : 230,
+          child: Stack(
+            alignment: Alignment.bottomCenter,
+            children: <Widget>[
+              Container(
+                width: compact ? 100 : 170,
+                height: compact ? 100 : 170,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(color: Color(0x6640BFFF), blurRadius: 46),
+                  ],
+                ),
+              ),
+              Image.asset(
+                'assets/pieces/premium_individual/sapphire-elite/black/king.webp',
+                fit: BoxFit.contain,
+              ),
+            ],
+          ),
+        );
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            Expanded(child: copyBlock),
+            const SizedBox(width: 12),
+            artwork,
+          ],
+        );
+      },
     ),
   );
 }
@@ -301,6 +269,19 @@ class _MasterGameCard extends StatelessWidget {
     },
   };
 
+  String get _category => switch (lesson.id) {
+    'kasparov-topalov-1999' => 'TACTICS',
+    'aronian-anand-2013' => 'STRATEGY',
+    'byrne-fischer-1956' => 'BRILLIANCE',
+    'kasparov-anand-1995-game10' => 'DEFENSE',
+    'capablanca-marshall-1918' => 'ENDGAME',
+    _ => switch (lesson.style) {
+      MasterThinkingStyle.attack => 'ATTACK',
+      MasterThinkingStyle.calculation => 'CALCULATION',
+      MasterThinkingStyle.endurance => 'ENDURANCE',
+    },
+  };
+
   @override
   Widget build(BuildContext context) => ChessVerseCard(
     key: ValueKey<String>('master-game-${lesson.id}'),
@@ -328,8 +309,8 @@ class _MasterGameCard extends StatelessWidget {
       child: Row(
         children: <Widget>[
           Container(
-            width: 104,
-            constraints: const BoxConstraints(minHeight: 142),
+            width: 94,
+            constraints: const BoxConstraints(minHeight: 152),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: <Color>[Color(0xFF184956), Color(0xFF0B2635)],
@@ -338,30 +319,30 @@ class _MasterGameCard extends StatelessWidget {
               ),
               borderRadius: BorderRadius.horizontal(left: Radius.circular(20)),
             ),
-            child: Stack(
-              alignment: Alignment.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Opacity(
-                  opacity: .28,
-                  child: Image.asset(
-                    'assets/pieces/premium_individual/obsidian-regal/white/king.webp',
-                    width: 92,
-                    fit: BoxFit.contain,
+                Icon(_icon, color: const Color(0xFF63D2B8), size: 30),
+                const SizedBox(height: 8),
+                FittedBox(
+                  child: Text(
+                    _category,
+                    style: const TextStyle(
+                      color: Color(0xFFEBD59E),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: .8,
+                    ),
                   ),
                 ),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Icon(_icon, color: const Color(0xFF63D2B8), size: 32),
-                    const SizedBox(height: 9),
-                    Text(
-                      '${lesson.moveNumber}',
-                      style: const TextStyle(
-                        color: AppColors.accentGold,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 7),
+                Text(
+                  '${lesson.moveNumber}',
+                  style: const TextStyle(
+                    color: AppColors.accentGold,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ],
             ),
@@ -397,29 +378,53 @@ class _MasterGameCard extends StatelessWidget {
                     style: const TextStyle(color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    copy.text(
-                      'master.pauseMeta',
-                      values: <String, String>{
-                        'move': '${lesson.moveNumber}',
-                        'side': copy.text(
-                          'master.side.${lesson.sideToMove.toLowerCase()}',
-                        ),
-                      },
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: const Color(0x221AB6FF),
+                      borderRadius: BorderRadius.circular(9),
+                      border: Border.all(color: const Color(0x66D6A84F)),
                     ),
-                    style: const TextStyle(
-                      color: AppColors.accentGold,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 5,
+                      ),
+                      child: Text(
+                        copy.text(
+                          'master.pauseMeta',
+                          values: <String, String>{
+                            'move': '${lesson.moveNumber}',
+                            'side': copy.text(
+                              'master.side.${lesson.sideToMove.toLowerCase()}',
+                            ),
+                          },
+                        ),
+                        style: const TextStyle(
+                          color: AppColors.accentGold,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.only(right: 14),
-            child: Icon(Icons.arrow_forward_rounded),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.accentGold),
+                boxShadow: const <BoxShadow>[
+                  BoxShadow(color: Color(0x44D6A84F), blurRadius: 12),
+                ],
+              ),
+              child: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
+            ),
           ),
         ],
       ),

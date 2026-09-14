@@ -457,9 +457,8 @@ class AuthOverlay extends StatelessWidget {
                         Center(
                           child: DecoratedBox(
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFFD6A84F,
-                              ).withValues(alpha: 0.12),
+                              color: const Color(0xFFD6A84F)
+                                  .withValues(alpha: 0.12),
                               shape: BoxShape.circle,
                             ),
                             child: const Padding(
@@ -494,13 +493,11 @@ class AuthOverlay extends StatelessWidget {
                         const SizedBox(height: 14),
                         DecoratedBox(
                           decoration: BoxDecoration(
-                            color: const Color(
-                              0xFFEF5350,
-                            ).withValues(alpha: 0.12),
+                            color: const Color(0xFFEF5350)
+                                .withValues(alpha: 0.12),
                             border: Border.all(
-                              color: const Color(
-                                0xFFEF5350,
-                              ).withValues(alpha: 0.65),
+                              color: const Color(0xFFEF5350)
+                                  .withValues(alpha: 0.65),
                             ),
                             borderRadius: BorderRadius.circular(6),
                           ),
@@ -936,6 +933,7 @@ class GameResultOverlay extends StatelessWidget {
     required this.title,
     required this.detail,
     required this.scoreLabel,
+    this.showScore = true,
     required this.accuracy,
     required this.turningPoint,
     this.entryCoins,
@@ -953,6 +951,7 @@ class GameResultOverlay extends StatelessWidget {
   final String title;
   final String detail;
   final String scoreLabel;
+  final bool showScore;
   final int? accuracy;
   final String? turningPoint;
   final int? entryCoins;
@@ -1025,7 +1024,7 @@ class GameResultOverlay extends StatelessWidget {
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
                         SizedBox(height: shortLandscape ? 3 : 8),
-                        if (!dailyComplete) ...<Widget>[
+                        if (showScore && !dailyComplete) ...<Widget>[
                           Text(
                             scoreLabel,
                             textAlign: TextAlign.center,
@@ -1046,13 +1045,11 @@ class GameResultOverlay extends StatelessWidget {
                             tween: Tween<double>(begin: .75, end: 1),
                             duration: const Duration(milliseconds: 850),
                             curve: Curves.elasticOut,
-                            builder:
-                                (
-                                  BuildContext context,
-                                  double value,
-                                  Widget? child,
-                                ) =>
-                                    Transform.scale(scale: value, child: child),
+                            builder: (
+                              BuildContext context,
+                              double value,
+                              Widget? child,
+                            ) => Transform.scale(scale: value, child: child),
                             child: Container(
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(

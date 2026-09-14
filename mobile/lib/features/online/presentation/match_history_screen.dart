@@ -44,6 +44,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   static const GameAnalysisApi _analysisApi = GameAnalysisApi();
   late Future<List<OnlineMatchDto>> _online = _load();
   List<SavedGameRecord> _cloudGames = [];
+  List<OnlineMatchDto> _onlineGames = <OnlineMatchDto>[];
   bool _historySyncFailed = false;
   String _filter = 'All';
   final Set<String> _selectedGameIds = <String>{};
@@ -85,7 +86,9 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     } catch (_) {
       _historySyncFailed = true;
     }
-    return _api.history(session.token);
+    final List<OnlineMatchDto> history = await _api.history(session.token);
+    _onlineGames = history;
+    return history;
   }
 
   Future<void> _refresh() async {
@@ -447,7 +450,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   }
 
   Future<void> _exportPgn() async {
-    final List<SavedGameRecord> games = LocalGameArchive.games;
+    final List<SavedGameRecord> games = _allSavedGames();
     if (games.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -476,7 +479,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
 
   Future<void> _exportFen() async {
     try {
-      final fen = _fen.exportPositions(LocalGameArchive.games);
+      final fen = _fen.exportPositions(_allSavedGames());
       final count = fen.split('\n').length;
       await FilePicker.saveFile(
         dialogTitle: 'Export ChessVerseAI positions',
@@ -499,6 +502,34 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
           .showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
+
+  List<SavedGameRecord> _allSavedGames() {
+    final Map<String, SavedGameRecord> unique = <String, SavedGameRecord>{};
+    for (final SavedGameRecord game in <SavedGameRecord>[
+      ...LocalGameArchive.games,
+      ..._cloudGames,
+      ..._onlineGames.map(_onlineAsSavedGame),
+    ]) {
+      unique.putIfAbsent(_gameFingerprint(game), () => game);
+    }
+    return unique.values.toList(growable: false);
+  }
+
+  SavedGameRecord _onlineAsSavedGame(OnlineMatchDto match) => SavedGameRecord(
+    mode: 'Online',
+    result: match.result ?? '*',
+    detail: match.resultReason ?? 'Online arena match',
+    moves: match.moves.map((OnlineMoveDto move) => move.uci).toList(),
+    playedAt:
+        match.finishedAt ??
+        match.updatedAt ??
+        match.startedAt ??
+        DateTime.now(),
+    whitePlayer: match.whitePlayerName ?? 'White',
+    blackPlayer: match.blackPlayerName ?? 'Black',
+    playerSide: match.yourColor.toLowerCase(),
+    initialFen: match.fen.trim().isEmpty ? null : match.fen,
+  );
 
   Future<void> _exportSingleGame(SavedGameRecord game, String format) async {
     final String safeName = '${game.whitePlayer}-vs-${game.blackPlayer}'
@@ -535,7 +566,10 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     }
   }
 
-  Future<void> _showGameActions(SavedGameRecord game) async {
+  Future<void> _showGameActions(
+    SavedGameRecord game, {
+    bool allowDelete = true,
+  }) async {
     final String? action = await showDialog<String>(
       context: context,
       barrierColor: const Color(0xD9000812),
@@ -610,14 +644,16 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                   subtitle: 'Choose several games and export separate files',
                   onTap: () => Navigator.pop(context, 'select'),
                 ),
-                const SizedBox(height: 10),
-                _PremiumGameAction(
-                  icon: Icons.delete_outline_rounded,
-                  title: 'DELETE GAME',
-                  subtitle: 'Remove this game from My Games',
-                  danger: true,
-                  onTap: () => Navigator.pop(context, 'delete'),
-                ),
+                if (allowDelete) ...<Widget>[
+                  const SizedBox(height: 10),
+                  _PremiumGameAction(
+                    icon: Icons.delete_outline_rounded,
+                    title: 'DELETE GAME',
+                    subtitle: 'Remove this game from My Games',
+                    danger: true,
+                    onTap: () => Navigator.pop(context, 'delete'),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1056,6 +1092,11 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                             uniqueLocal.values.toList()..sort(
                               (a, b) => b.playedAt.compareTo(a.playedAt),
                             );
+                        final List<SavedGameRecord> exportableGames =
+                            <SavedGameRecord>[
+                              ...local,
+                              ...online.map(_onlineAsSavedGame),
+                            ];
                         if (snapshot.connectionState ==
                                 ConnectionState.waiting &&
                             online.isEmpty &&
@@ -1156,10 +1197,14 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                                 count: _selectedGameIds.length,
                                 onCancel: () =>
                                     setState(_selectedGameIds.clear),
-                                onExportPgn: () =>
-                                    _exportSelectedGames(local, 'pgn'),
-                                onExportFen: () =>
-                                    _exportSelectedGames(local, 'fen'),
+                                onExportPgn: () => _exportSelectedGames(
+                                  exportableGames,
+                                  'pgn',
+                                ),
+                                onExportFen: () => _exportSelectedGames(
+                                  exportableGames,
+                                  'fen',
+                                ),
                               ),
                             ],
                             const SizedBox(height: 12),
@@ -1176,17 +1221,32 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                                 ),
                               ),
                               const SizedBox(height: 10),
-                              ...online.map(
-                                (OnlineMatchDto match) => _OnlineHistoryCard(
+                              ...online.map((OnlineMatchDto match) {
+                                final SavedGameRecord game = _onlineAsSavedGame(
                                   match,
-                                  onTap: () => Navigator.of(context).push<void>(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) =>
-                                          OnlineMatchReplayScreen(match: match),
-                                    ),
+                                );
+                                return _OnlineHistoryCard(
+                                  match,
+                                  selected: _selectedGameIds.contains(
+                                    _gameFingerprint(game),
                                   ),
-                                ),
-                              ),
+                                  selectionMode: _selectedGameIds.isNotEmpty,
+                                  onTap: () => _selectedGameIds.isNotEmpty
+                                      ? _toggleGameSelection(game)
+                                      : Navigator.of(context).push<void>(
+                                          MaterialPageRoute<void>(
+                                            builder: (_) =>
+                                                OnlineMatchReplayScreen(
+                                                  match: match,
+                                                ),
+                                          ),
+                                        ),
+                                  onExport: () => _showGameActions(
+                                    game,
+                                    allowDelete: false,
+                                  ),
+                                );
+                              }),
                               const SizedBox(height: 20),
                             ],
                             if (local.isNotEmpty &&
@@ -1215,7 +1275,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                                           ? _toggleGameSelection(g)
                                           : _openCompleted(g),
                                       onLongPress: () => _showGameActions(g),
-                                      onDelete: () => _deleteGame(g),
+                                      onActions: () => _showGameActions(g),
                                     ),
                                   ),
                             ],
@@ -1649,18 +1709,39 @@ class _Heading extends StatelessWidget {
 }
 
 class _OnlineHistoryCard extends StatelessWidget {
-  const _OnlineHistoryCard(this.match, {required this.onTap});
+  const _OnlineHistoryCard(
+    this.match, {
+    required this.onTap,
+    required this.onExport,
+    required this.selected,
+    required this.selectionMode,
+  });
   final OnlineMatchDto match;
   final VoidCallback onTap;
+  final VoidCallback onExport;
+  final bool selected;
+  final bool selectionMode;
 
   @override
   Widget build(BuildContext context) {
     final _MatchPresentation presentation = _MatchPresentation(match);
     return _HistoryShell(
-      accent: presentation.accent,
+      accent: selected ? const Color(0xFFFFD15C) : presentation.accent,
       onTap: onTap,
       child: Row(
         children: <Widget>[
+          if (selectionMode)
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: Icon(
+                selected
+                    ? Icons.check_circle_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                color: selected
+                    ? const Color(0xFFFFD15C)
+                    : const Color(0xFF6D879E),
+              ),
+            ),
           _PlayerAvatar(
             name: presentation.opponent,
             photoUrl: presentation.opponentPhotoUrl,
@@ -1719,7 +1800,12 @@ class _OnlineHistoryCard extends StatelessWidget {
                   '${presentation.ratingDelta! >= 0 ? '+' : ''}${presentation.ratingDelta}',
                   style: const TextStyle(fontSize: 11),
                 ),
-              const Icon(Icons.chevron_right_rounded, color: Color(0xFF8FA5B1)),
+              if (!selectionMode)
+                IconButton(
+                  tooltip: 'Export PGN or FEN',
+                  onPressed: onExport,
+                  icon: const Icon(Icons.more_horiz_rounded),
+                ),
             ],
           ),
         ],
@@ -1733,14 +1819,14 @@ class _LocalHistoryCard extends StatelessWidget {
     this.game, {
     required this.onTap,
     required this.onLongPress,
-    required this.onDelete,
+    required this.onActions,
     required this.selected,
     required this.selectionMode,
   });
   final SavedGameRecord game;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
-  final VoidCallback onDelete;
+  final VoidCallback onActions;
   final bool selected;
   final bool selectionMode;
   @override
@@ -1787,14 +1873,11 @@ class _LocalHistoryCard extends StatelessWidget {
         if (!selectionMode)
           IconButton(
             key: ValueKey<String>(
-              'delete-game-${game.playedAt.toIso8601String()}',
+              'game-actions-${game.playedAt.toIso8601String()}',
             ),
-            tooltip: 'Delete game',
-            onPressed: onDelete,
-            icon: const Icon(
-              Icons.delete_outline_rounded,
-              color: AppColors.textSecondary,
-            ),
+            tooltip: 'Export or manage game',
+            onPressed: onActions,
+            icon: const Icon(Icons.more_horiz_rounded),
           ),
       ],
     ),

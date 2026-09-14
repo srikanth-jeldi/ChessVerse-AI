@@ -33,8 +33,8 @@ class E2eeChatService {
     required this.api,
     FlutterSecureStorage? storage,
     Random? random,
-  })  : storage = storage ?? const FlutterSecureStorage(),
-        _random = random ?? Random.secure();
+  }) : storage = storage ?? const FlutterSecureStorage(),
+       _random = random ?? Random.secure();
 
   final CommunityApi api;
   final FlutterSecureStorage storage;
@@ -55,8 +55,9 @@ class E2eeChatService {
   /// Decrypts an incoming data-only push without contacting the backend.
   /// The private identity remains inside platform secure storage.
   Future<String?> decryptNotification(String envelope) async {
-    final String? playerId =
-        await storage.read(key: 'chat-e2ee-current-player');
+    final String? playerId = await storage.read(
+      key: 'chat-e2ee-current-player',
+    );
     if (playerId == null || playerId.isEmpty) return null;
     _identity = await _readPair(playerId, null);
     if (_identity == null) return null;
@@ -80,9 +81,14 @@ class E2eeChatService {
     if (cloud == null) {
       final SimpleKeyPairData pair = await _newIdentity();
       recoveryKey = _encode(_randomBytes(32));
-      final Map<String, Object?> upload = await _wrapIdentity(pair, recoveryKey);
-      final Map<String, dynamic> saved =
-          await api.saveE2eeIdentity(token, upload);
+      final Map<String, Object?> upload = await _wrapIdentity(
+        pair,
+        recoveryKey,
+      );
+      final Map<String, dynamic> saved = await api.saveE2eeIdentity(
+        token,
+        upload,
+      );
       _playerId = saved['playerId'] as String?;
       if (_playerId == null || _playerId!.isEmpty) {
         throw const SocialException('Encrypted chat identity setup failed.');
@@ -94,8 +100,10 @@ class E2eeChatService {
     }
 
     try {
-      final Map<String, dynamic> friend =
-          await api.e2eePublicKey(token, friendId);
+      final Map<String, dynamic> friend = await api.e2eePublicKey(
+        token,
+        friendId,
+      );
       _friendKey = SimplePublicKey(
         _decode(friend['publicKey'] as String),
         type: KeyPairType.x25519,
@@ -127,8 +135,10 @@ class E2eeChatService {
         nonceLength: nonce.length,
         macLength: 16,
       );
-      final List<int> privateBytes =
-          await _aes.decrypt(box, secretKey: wrappingKey);
+      final List<int> privateBytes = await _aes.decrypt(
+        box,
+        secretKey: wrappingKey,
+      );
       final SimplePublicKey publicKey = SimplePublicKey(
         _decode(cloud['publicKey'] as String),
         type: KeyPairType.x25519,
@@ -156,13 +166,16 @@ class E2eeChatService {
     }
     if (recipient == null) {
       throw const SocialException(
-          'Your friend must open chat once to enable encrypted messages.');
+        'Your friend must open chat once to enable encrypted messages.',
+      );
     }
     final SimpleKeyPairData ephemeral = await _newIdentity();
     final SimplePublicKey ephemeralPublic = await ephemeral.extractPublicKey();
     final SecretKey recipientSecret = await _shared(ephemeral, recipient);
-    final SecretKey senderSecret =
-        await _shared(ephemeral, await identity.extractPublicKey());
+    final SecretKey senderSecret = await _shared(
+      ephemeral,
+      await identity.extractPublicKey(),
+    );
     final Map<String, Object> envelope = <String, Object>{
       'v': 1,
       'e': _encode(ephemeralPublic.bytes),
@@ -170,6 +183,43 @@ class E2eeChatService {
       's': await _seal(plaintext, senderSecret),
     };
     return '$_prefix${_encode(utf8.encode(jsonEncode(envelope)))}';
+  }
+
+  /// Replaces an unrecoverable identity so this device can send new encrypted
+  /// messages again. Messages encrypted with the previous key stay protected.
+  Future<E2eeSetupResult> resetIdentity(String token, String friendId) async {
+    final SimpleKeyPairData pair = await _newIdentity();
+    final String recoveryKey = _encode(_randomBytes(32));
+    final Map<String, Object?> upload = await _wrapIdentity(pair, recoveryKey);
+    final Map<String, dynamic> saved = await api.saveE2eeIdentity(
+      token,
+      upload,
+    );
+    final String? playerId = saved['playerId'] as String?;
+    if (playerId == null || playerId.isEmpty) {
+      throw const SocialException('Encrypted chat identity setup failed.');
+    }
+    await _storePair(playerId, pair);
+    _playerId = playerId;
+    _identity = pair;
+    try {
+      final Map<String, dynamic> friend = await api.e2eePublicKey(
+        token,
+        friendId,
+      );
+      _friendKey = SimplePublicKey(
+        _decode(friend['publicKey'] as String),
+        type: KeyPairType.x25519,
+      );
+    } on SocialException catch (error) {
+      if (!error.message.toLowerCase().contains('not enabled')) rethrow;
+      _friendKey = null;
+    }
+    return E2eeSetupResult(
+      ready: true,
+      friendReady: friendReady,
+      recoveryKey: recoveryKey,
+    );
   }
 
   Future<EncryptedChatAttachment> encryptAttachment({
@@ -199,7 +249,9 @@ class E2eeChatService {
   }
 
   Future<List<int>> decryptAttachment(
-      List<int> ciphertext, String encodedKey) async {
+    List<int> ciphertext,
+    String encodedKey,
+  ) async {
     final SecretBox box = SecretBox.fromConcatenation(
       ciphertext,
       nonceLength: 12,
@@ -211,7 +263,9 @@ class E2eeChatService {
   Future<String> decrypt(String envelope, {required bool mine}) async {
     if (!envelope.startsWith(_prefix)) return envelope;
     final SimpleKeyPairData? identity = _identity;
-    if (identity == null) return '🔒 Restore your recovery key to read this message';
+    if (identity == null) {
+      return '🔒 Restore your recovery key to read this message';
+    }
     try {
       final Map<String, dynamic> decoded = jsonDecode(
         utf8.decode(_decode(envelope.substring(_prefix.length))),
@@ -234,7 +288,9 @@ class E2eeChatService {
   }
 
   Future<SecretKey> _shared(
-      SimpleKeyPairData pair, SimplePublicKey remote) async {
+    SimpleKeyPairData pair,
+    SimplePublicKey remote,
+  ) async {
     final SecretKey raw = await _x25519.sharedSecretKey(
       keyPair: pair,
       remotePublicKey: remote,
@@ -264,7 +320,9 @@ class E2eeChatService {
   }
 
   Future<Map<String, Object?>> _wrapIdentity(
-      SimpleKeyPairData pair, String recoveryKey) async {
+    SimpleKeyPairData pair,
+    String recoveryKey,
+  ) async {
     final List<int> salt = _randomBytes(16);
     final List<int> nonce = _randomBytes(12);
     final SecretKey key = await _recoveryKey(recoveryKey, salt, _iterations);
@@ -284,24 +342,41 @@ class E2eeChatService {
   }
 
   Future<SecretKey> _recoveryKey(
-          String value, List<int> salt, int iterations) =>
-      Pbkdf2(macAlgorithm: Hmac.sha256(), iterations: iterations, bits: 256)
-          .deriveKeyFromPassword(password: value.trim(), nonce: salt);
+    String value,
+    List<int> salt,
+    int iterations,
+  ) => Pbkdf2(
+    macAlgorithm: Hmac.sha256(),
+    iterations: iterations,
+    bits: 256,
+  ).deriveKeyFromPassword(password: value.trim(), nonce: salt);
 
   Future<void> _storePair(String playerId, SimpleKeyPairData pair) async {
-    await storage.write(key: 'chat-e2ee-$playerId-private', value: _encode(pair.bytes));
+    await storage.write(
+      key: 'chat-e2ee-$playerId-private',
+      value: _encode(pair.bytes),
+    );
     final SimplePublicKey publicKey = await pair.extractPublicKey();
-    await storage.write(key: 'chat-e2ee-$playerId-public', value: _encode(publicKey.bytes));
+    await storage.write(
+      key: 'chat-e2ee-$playerId-public',
+      value: _encode(publicKey.bytes),
+    );
     await storage.write(key: 'chat-e2ee-current-player', value: playerId);
   }
 
   Future<SimpleKeyPairData?> _readPair(
-      String playerId, String? cloudPublic) async {
-    final String? privateValue =
-        await storage.read(key: 'chat-e2ee-$playerId-private');
-    final String? publicValue =
-        await storage.read(key: 'chat-e2ee-$playerId-public');
-    if (privateValue == null || (publicValue ?? cloudPublic) == null) return null;
+    String playerId,
+    String? cloudPublic,
+  ) async {
+    final String? privateValue = await storage.read(
+      key: 'chat-e2ee-$playerId-private',
+    );
+    final String? publicValue = await storage.read(
+      key: 'chat-e2ee-$playerId-public',
+    );
+    if (privateValue == null || (publicValue ?? cloudPublic) == null) {
+      return null;
+    }
     return SimpleKeyPairData(
       _decode(privateValue),
       publicKey: SimplePublicKey(
@@ -314,7 +389,8 @@ class E2eeChatService {
 
   List<int> _randomBytes(int length) =>
       List<int>.generate(length, (_) => _random.nextInt(256), growable: false);
-  String _encode(List<int> bytes) => base64Url.encode(bytes).replaceAll('=', '');
+  String _encode(List<int> bytes) =>
+      base64Url.encode(bytes).replaceAll('=', '');
   Uint8List _decode(String value) {
     final String padded = value.padRight((value.length + 3) ~/ 4 * 4, '=');
     return base64Url.decode(padded);
