@@ -291,11 +291,7 @@ class AiReviewReport {
           : 'A useful game to learn from',
       summary: chronological.isEmpty
           ? 'No recorded moves are available yet.'
-          : '${insights.length} ${reviewScope == 'player'
-                ? 'of your'
-                : reviewScope == 'opponent'
-                ? 'opponent'
-                : ''} moves reviewed across opening, middlegame, and endgame decisions.',
+          : '${insights.length} half-moves reviewed across opening, middlegame, and endgame decisions.',
       strength: scopedReviews.isNotEmpty
           ? '${scopedReviews.where((SavedMoveReview review) => const <String>{'Best', 'Great'}.contains(review.classification)).length} of ${scopedReviews.length} reviewed moves were Best or Great.'
           : forcingMoves > 0
