@@ -931,7 +931,10 @@ class _PremiumAnalysisDashboardState extends State<_PremiumAnalysisDashboard> {
         borderRadius: BorderRadius.circular(25),
         child: Column(
           children: <Widget>[
-            _PremiumHero(gameCount: widget.games.length),
+            _PremiumHero(
+              gameCount: widget.games.length,
+              title: _d(context, 'gameAnalysis'),
+            ),
             Padding(
               padding: const EdgeInsets.all(18),
               child: LayoutBuilder(
@@ -1016,8 +1019,9 @@ class _PremiumAnalysisDashboardState extends State<_PremiumAnalysisDashboard> {
 }
 
 class _PremiumHero extends StatelessWidget {
-  const _PremiumHero({required this.gameCount});
+  const _PremiumHero({required this.gameCount, required this.title});
   final int gameCount;
+  final String title;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1058,23 +1062,30 @@ class _PremiumHero extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 14),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'AI GAME REVIEW',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFFFFD87C),
-                    letterSpacing: 1.1,
+            SizedBox(
+              width: 240,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFFFFD87C),
+                      letterSpacing: 1.1,
+                    ),
                   ),
-                ),
-                Text(
-                  'Deeper insights. Faster learning. Better chess.',
-                  style: TextStyle(color: Color(0xFFD5E8FF)),
-                ),
-              ],
+                  const Text(
+                    'Deeper insights. Faster learning. Better chess.',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Color(0xFFD5E8FF)),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
