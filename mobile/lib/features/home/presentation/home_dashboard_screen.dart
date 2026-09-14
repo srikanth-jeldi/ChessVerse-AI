@@ -1156,7 +1156,7 @@ class _DashboardPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 210,
+    height: 256,
     padding: const EdgeInsets.all(18),
     decoration: BoxDecoration(
       color: const Color(0xE60A1D2E),
