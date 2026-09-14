@@ -1527,9 +1527,13 @@ class ChessCoin extends StatelessWidget {
                 premiumPieceAtlas(appearance.finish) != null;
             final double pieceScale = royalAtlas
                 ? switch (appearance.size) {
-                    ChessPieceVisualSize.large => .98,
-                    ChessPieceVisualSize.extraLarge => 1.04,
-                    ChessPieceVisualSize.doubleExtraLarge => 1.09,
+                    // Royal pieces must occupy the same board space as the
+                    // standard set. The atlas artwork has generous internal
+                    // padding, so using smaller outer dimensions makes it
+                    // look miniature even when the whole sprite is visible.
+                    ChessPieceVisualSize.large => 1.43,
+                    ChessPieceVisualSize.extraLarge => 1.58,
+                    ChessPieceVisualSize.doubleExtraLarge => 1.72,
                   }
                 : switch (appearance.size) {
                     ChessPieceVisualSize.large => classic2d ? 1.31 : 1.43,
@@ -1540,11 +1544,14 @@ class ChessCoin extends StatelessWidget {
             final double pieceSize = size * pieceScale;
             final double silhouetteScale = royalAtlas
                 ? switch (piece.code) {
-                    'P' => 1.34,
-                    'R' => 1.10,
-                    'B' => 1.04,
-                    'N' => 1.03,
-                    _ => 1.0,
+                    // Pawns and rooks are shorter inside their atlas cells.
+                    // Compensate per silhouette without stretching the board
+                    // or exposing a neighbouring atlas cell.
+                    'P' => 1.20,
+                    'R' => 1.02,
+                    'B' => .98,
+                    'N' => .98,
+                    _ => .96,
                   }
                 : switch (piece.code) {
                     'K' => 1.00,
