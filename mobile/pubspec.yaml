@@ -84,7 +84,18 @@ flutter:
     - assets/matchmaking/
     - assets/pieces/
     - assets/pieces/collection/
-    - assets/pieces/premium_individual/
+    - assets/pieces/premium_individual/crimson-crown-3d/white/
+    - assets/pieces/premium_individual/crimson-crown-3d/black/
+    - assets/pieces/premium_individual/inferno-gold/white/
+    - assets/pieces/premium_individual/inferno-gold/black/
+    - assets/pieces/premium_individual/ruby-emperor/white/
+    - assets/pieces/premium_individual/ruby-emperor/black/
+    - assets/pieces/premium_individual/obsidian-regal/white/
+    - assets/pieces/premium_individual/obsidian-regal/black/
+    - assets/pieces/premium_individual/sapphire-elite/white/
+    - assets/pieces/premium_individual/sapphire-elite/black/
+    - assets/pieces/premium_individual/emerald-sovereign/white/
+    - assets/pieces/premium_individual/emerald-sovereign/black/
 
 flutter_launcher_icons:
   android: true
