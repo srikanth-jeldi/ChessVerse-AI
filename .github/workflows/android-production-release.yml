@@ -99,6 +99,26 @@ jobs:
           --dart-define=TERMS_URL=https://chessverseai.com/terms
           --dart-define=DATA_DELETION_URL=https://chessverseai.com/data-deletion
 
+      - name: Remove upload-only native metadata and re-sign
+        shell: bash
+        env:
+          STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+        run: |
+          set -Eeuo pipefail
+          aab=build/app/outputs/bundle/release/app-release.aab
+          # Flutter/AGP embeds symbol-table copies of libflutter and libapp in
+          # BUNDLE-METADATA. They are not installed on devices and our separate
+          # split-debug-info artifact already preserves crash symbols.
+          zip -d "$aab" 'BUNDLE-METADATA/com.android.tools.build.debugsymbols/*'
+          zip -d "$aab" 'META-INF/*.RSA' 'META-INF/*.SF' 'META-INF/*.MF' || true
+          jarsigner \
+            -keystore android/keystore/chessverse-upload.jks \
+            -storepass "$STORE_PASSWORD" \
+            -keypass "$KEY_PASSWORD" \
+            "$aab" "$KEY_ALIAS"
+
       - name: Verify signed artifact
         shell: bash
         run: |
