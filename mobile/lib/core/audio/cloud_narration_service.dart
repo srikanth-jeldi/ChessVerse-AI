@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:http/http.dart' as http;
 
@@ -33,20 +34,20 @@ class CloudNarrationService {
     _completeSubscription = _player.onPlayerComplete.listen(
       (_) => onStateChanged?.call(CloudNarrationState.stopped),
     );
-    if (kIsWeb) {
-      _browserTts.setStartHandler(
+    {
+      _localTts.setStartHandler(
         () => onStateChanged?.call(CloudNarrationState.playing),
       );
-      _browserTts.setCompletionHandler(() {
-        _usingBrowserTts = false;
+      _localTts.setCompletionHandler(() {
+        _usingLocalTts = false;
         onStateChanged?.call(CloudNarrationState.stopped);
       });
-      _browserTts.setCancelHandler(() {
-        _usingBrowserTts = false;
+      _localTts.setCancelHandler(() {
+        _usingLocalTts = false;
         onStateChanged?.call(CloudNarrationState.stopped);
       });
-      _browserTts.setErrorHandler((_) {
-        _usingBrowserTts = false;
+      _localTts.setErrorHandler((_) {
+        _usingLocalTts = false;
         onStateChanged?.call(CloudNarrationState.stopped);
       });
     }
@@ -61,9 +62,9 @@ class CloudNarrationService {
   final AudioPlayer _player;
   final AuthSessionStore _sessionStore;
   final Future<String?> Function()? _tokenProvider;
-  final FlutterTts _browserTts = FlutterTts();
-  bool _usingBrowserTts = false;
-  String _browserText = '';
+  final FlutterTts _localTts = FlutterTts();
+  bool _usingLocalTts = false;
+  String _localText = '';
   late final StreamSubscription<PlayerState> _stateSubscription;
   late final StreamSubscription<void> _completeSubscription;
 
@@ -81,7 +82,7 @@ class CloudNarrationService {
         token = session == null || session.isExpired ? null : session.token;
       }
       if (token == null || token.isEmpty) {
-        return await _speakBrowserFallback(cleanText, language);
+        return await _speakLocalFallback(cleanText, language);
       }
       final String cacheKey = '$language\u0000$cleanText';
       Uint8List? audio = _memoryCache.remove(cacheKey);
@@ -110,7 +111,7 @@ class CloudNarrationService {
               'audio/mpeg',
             )) {
           await response.stream.drain<void>();
-          return await _speakBrowserFallback(cleanText, language);
+          return await _speakLocalFallback(cleanText, language);
         }
         final BytesBuilder bytes = BytesBuilder(copy: false);
         await for (final List<int> chunk in response.stream) {
@@ -119,7 +120,7 @@ class CloudNarrationService {
         }
         audio = bytes.takeBytes();
         if (audio.isEmpty) {
-          return await _speakBrowserFallback(cleanText, language);
+          return await _speakLocalFallback(cleanText, language);
         }
         _memoryCache[cacheKey] = audio;
         while (_memoryCache.length > _maxCacheEntries) {
@@ -131,12 +132,11 @@ class CloudNarrationService {
       return true;
     } on Object {
       onStateChanged?.call(CloudNarrationState.stopped);
-      return _speakBrowserFallback(cleanText, language);
+      return _speakLocalFallback(cleanText, language);
     }
   }
 
-  Future<bool> _speakBrowserFallback(String text, String language) async {
-    if (!kIsWeb) return false;
+  Future<bool> _speakLocalFallback(String text, String language) async {
     try {
       final String locale = switch (language.toLowerCase()) {
         'te' => 'te-IN',
@@ -147,37 +147,41 @@ class CloudNarrationService {
         _ => 'en-IN',
       };
       await _player.stop();
-      await _browserTts.stop();
-      await _browserTts.setLanguage(locale);
+      await _localTts.stop();
+      final bool languageAvailable =
+          (await _localTts.isLanguageAvailable(locale)) == true;
+      await _localTts.setLanguage(languageAvailable ? locale : 'en-US');
       // Web Speech uses 1.0 as its natural rate. The previous .45 setting
       // made Telugu narration sound unnaturally slow and exhausted.
-      await _browserTts.setSpeechRate(.90);
-      await _browserTts.setPitch(1.0);
-      await _browserTts.setVolume(1.0);
-      _browserText = text;
-      _usingBrowserTts = true;
+      await _localTts.setSpeechRate(kIsWeb ? .90 : .48);
+      await _localTts.setPitch(1.0);
+      await _localTts.setVolume(1.0);
+      if (!kIsWeb) await _localTts.awaitSpeakCompletion(true);
+      _localText = text;
+      _usingLocalTts = true;
       onStateChanged?.call(CloudNarrationState.playing);
-      await _browserTts.speak(text);
+      final dynamic result = await _localTts.speak(text);
+      if (result == 0 || result == false) throw StateError('TTS rejected');
       return true;
     } on Object {
-      _usingBrowserTts = false;
+      _usingLocalTts = false;
       onStateChanged?.call(CloudNarrationState.stopped);
       return false;
     }
   }
 
   Future<void> pause() async {
-    if (_usingBrowserTts) {
-      await _browserTts.pause();
+    if (_usingLocalTts) {
+      await _localTts.pause();
     } else {
       await _player.pause();
     }
   }
 
   Future<void> resume() async {
-    if (_usingBrowserTts) {
+    if (_usingLocalTts) {
       // Web Speech resumes when speak is invoked while paused.
-      await _browserTts.speak(_browserText);
+      await _localTts.speak(_localText);
     } else {
       await _player.resume();
     }
@@ -185,15 +189,23 @@ class CloudNarrationService {
 
   Future<void> stop() async {
     await _player.stop();
-    if (kIsWeb) await _browserTts.stop();
-    _usingBrowserTts = false;
+    try {
+      await _localTts.stop();
+    } on MissingPluginException {
+      // Unit tests and unsupported desktop shells do not register native TTS.
+    }
+    _usingLocalTts = false;
   }
 
   Future<void> dispose() async {
     await _stateSubscription.cancel();
     await _completeSubscription.cancel();
     _client.close();
-    if (kIsWeb) await _browserTts.stop();
+    try {
+      await _localTts.stop();
+    } on MissingPluginException {
+      // Unit tests and unsupported desktop shells do not register native TTS.
+    }
     await _player.dispose();
   }
 }

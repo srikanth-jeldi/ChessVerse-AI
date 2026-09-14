@@ -132,6 +132,18 @@ class _MasterCatalogHero extends StatelessWidget {
     ),
     child: Stack(
       children: <Widget>[
+        Positioned.fill(
+          left: null,
+          child: Opacity(
+            opacity: .34,
+            child: Image.asset(
+              'assets/pieces/premium_individual/sapphire-elite/black/king.webp',
+              width: 210,
+              fit: BoxFit.contain,
+              alignment: Alignment.centerRight,
+            ),
+          ),
+        ),
         const Positioned(
           right: 12,
           bottom: -18,
@@ -316,7 +328,7 @@ class _MasterGameCard extends StatelessWidget {
       child: Row(
         children: <Widget>[
           Container(
-            width: 88,
+            width: 104,
             constraints: const BoxConstraints(minHeight: 142),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -326,17 +338,30 @@ class _MasterGameCard extends StatelessWidget {
               ),
               borderRadius: BorderRadius.horizontal(left: Radius.circular(20)),
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Stack(
+              alignment: Alignment.center,
               children: <Widget>[
-                Icon(_icon, color: const Color(0xFF63D2B8), size: 32),
-                const SizedBox(height: 9),
-                Text(
-                  '${lesson.moveNumber}',
-                  style: const TextStyle(
-                    color: AppColors.accentGold,
-                    fontWeight: FontWeight.w900,
+                Opacity(
+                  opacity: .28,
+                  child: Image.asset(
+                    'assets/pieces/premium_individual/obsidian-regal/white/king.webp',
+                    width: 92,
+                    fit: BoxFit.contain,
                   ),
+                ),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Icon(_icon, color: const Color(0xFF63D2B8), size: 32),
+                    const SizedBox(height: 9),
+                    Text(
+                      '${lesson.moveNumber}',
+                      style: const TextStyle(
+                        color: AppColors.accentGold,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

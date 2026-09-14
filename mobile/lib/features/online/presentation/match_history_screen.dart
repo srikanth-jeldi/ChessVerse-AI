@@ -536,82 +536,90 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   }
 
   Future<void> _showGameActions(SavedGameRecord game) async {
-    final String? action = await showModalBottomSheet<String>(
+    final String? action = await showDialog<String>(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        margin: const EdgeInsets.all(12),
-        padding: const EdgeInsets.fromLTRB(18, 14, 18, 22),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: AppColors.accentGold),
-          gradient: const LinearGradient(
-            colors: <Color>[Color(0xFF09223B), Color(0xFF040D19)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: const <BoxShadow>[
-            BoxShadow(color: Color(0x6645B8FF), blurRadius: 30),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF53708C),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                game.summary,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Color(0xFFFFD978),
-                  fontSize: 19,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Choose how you want to keep or share this game.',
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 18),
-              _PremiumGameAction(
-                icon: Icons.description_outlined,
-                title: 'EXPORT PGN',
-                subtitle: 'Complete game, players, result and move history',
-                onTap: () => Navigator.pop(context, 'pgn'),
-              ),
-              const SizedBox(height: 10),
-              _PremiumGameAction(
-                icon: Icons.grid_on_rounded,
-                title: 'EXPORT FEN',
-                subtitle: 'Exact saved and engine-reviewed positions',
-                onTap: () => Navigator.pop(context, 'fen'),
-              ),
-              const SizedBox(height: 10),
-              _PremiumGameAction(
-                icon: Icons.library_add_check_rounded,
-                title: 'SELECT MULTIPLE GAMES',
-                subtitle: 'Choose several games and export separate files',
-                onTap: () => Navigator.pop(context, 'select'),
-              ),
-              const SizedBox(height: 10),
-              _PremiumGameAction(
-                icon: Icons.delete_outline_rounded,
-                title: 'DELETE GAME',
-                subtitle: 'Remove this game from My Games',
-                danger: true,
-                onTap: () => Navigator.pop(context, 'delete'),
-              ),
+      barrierColor: const Color(0xD9000812),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 540),
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 22),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: AppColors.accentGold),
+            gradient: const LinearGradient(
+              colors: <Color>[Color(0xFF09223B), Color(0xFF040D19)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: const <BoxShadow>[
+              BoxShadow(color: Color(0x6645B8FF), blurRadius: 30),
             ],
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ),
+                const Icon(
+                  Icons.workspace_premium_rounded,
+                  color: Color(0xFFFFD978),
+                  size: 44,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  game.summary,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFFFFD978),
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Choose how you want to keep or share this game.',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 18),
+                _PremiumGameAction(
+                  icon: Icons.description_outlined,
+                  title: 'EXPORT PGN',
+                  subtitle: 'Complete game, players, result and move history',
+                  onTap: () => Navigator.pop(context, 'pgn'),
+                ),
+                const SizedBox(height: 10),
+                _PremiumGameAction(
+                  icon: Icons.grid_on_rounded,
+                  title: 'EXPORT FEN',
+                  subtitle: 'Exact saved and engine-reviewed positions',
+                  onTap: () => Navigator.pop(context, 'fen'),
+                ),
+                const SizedBox(height: 10),
+                _PremiumGameAction(
+                  icon: Icons.library_add_check_rounded,
+                  title: 'SELECT MULTIPLE GAMES',
+                  subtitle: 'Choose several games and export separate files',
+                  onTap: () => Navigator.pop(context, 'select'),
+                ),
+                const SizedBox(height: 10),
+                _PremiumGameAction(
+                  icon: Icons.delete_outline_rounded,
+                  title: 'DELETE GAME',
+                  subtitle: 'Remove this game from My Games',
+                  danger: true,
+                  onTap: () => Navigator.pop(context, 'delete'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -919,7 +927,16 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         automaticallyImplyLeading: showBackButton,
-        title: const Text('MY GAMES'),
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text('MY GAMES', style: TextStyle(fontWeight: FontWeight.w900)),
+            Text(
+              'Review. Learn. Get Better.',
+              style: TextStyle(color: Color(0xFFAFC2D1), fontSize: 11),
+            ),
+          ],
+        ),
         backgroundColor: const Color(0xD9071827),
         actions: <Widget>[
           IconButton(
@@ -956,247 +973,260 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
           const SizedBox(width: 6),
         ],
       ),
-      body: Column(
-        children: [
-          FutureBuilder<List<ComputerGameDraft>>(
-            future: _drafts,
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.topCenter,
+            radius: 1.35,
+            colors: <Color>[Color(0xFF0B3151), Color(0xFF04111E)],
+          ),
+        ),
+        child: Column(
+          children: [
+            FutureBuilder<List<ComputerGameDraft>>(
+              future: _drafts,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return ListTile(
+                    title: const Text('Saved game could not sync'),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: _refresh,
+                    ),
+                  );
+                }
+                if (!snapshot.hasData) return const LinearProgressIndicator();
+                if (snapshot.data!.isEmpty) {
+                  return ListTile(
+                    title: const Text('No paused computer game'),
+                    trailing: TextButton(
+                      onPressed: widget.onPlayAgain == null
+                          ? null
+                          : _startNewGame,
+                      child: const Text('New Game'),
+                    ),
+                  );
+                }
+                final draft = snapshot.data!.first;
                 return ListTile(
-                  title: const Text('Saved game could not sync'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.refresh),
-                    onPressed: _refresh,
+                  title: const Text('Continue computer game'),
+                  subtitle: Text(
+                    '${draft.whiteName} vs ${draft.blackName} · ${draft.plyCount} half-moves · Level ${draft.level.toInt()}',
                   ),
-                );
-              }
-              if (!snapshot.hasData) return const LinearProgressIndicator();
-              if (snapshot.data!.isEmpty) {
-                return ListTile(
-                  title: const Text('No paused computer game'),
-                  trailing: TextButton(
-                    onPressed: widget.onPlayAgain == null
+                  trailing: FilledButton(
+                    onPressed: widget.onResume == null
                         ? null
-                        : _startNewGame,
-                    child: const Text('New Game'),
+                        : () async {
+                            await widget.onResume!(draft);
+                            if (mounted) await _refresh();
+                          },
+                    child: const Text('Continue'),
                   ),
                 );
-              }
-              final draft = snapshot.data!.first;
-              return ListTile(
-                title: const Text('Continue computer game'),
-                subtitle: Text(
-                  '${draft.whiteName} vs ${draft.blackName} · ${draft.plyCount} half-moves · Level ${draft.level.toInt()}',
-                ),
-                trailing: FilledButton(
-                  onPressed: widget.onResume == null
-                      ? null
-                      : () async {
-                          await widget.onResume!(draft);
-                          if (mounted) await _refresh();
-                        },
-                  child: const Text('Continue'),
-                ),
-              );
-            },
-          ),
-          _PgnCoachBanner(
-            onImport: _chooseImportFormat,
-            onExport: _chooseExportFormat,
-          ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _refresh,
-              child: FutureBuilder<List<OnlineMatchDto>>(
-                future: _online,
-                builder:
-                    (
-                      BuildContext context,
-                      AsyncSnapshot<List<OnlineMatchDto>> snapshot,
-                    ) {
-                      final List<OnlineMatchDto> online =
-                          snapshot.data ?? const <OnlineMatchDto>[];
-                      final Map<String, SavedGameRecord> uniqueLocal =
-                          <String, SavedGameRecord>{};
-                      for (final SavedGameRecord game in <SavedGameRecord>[
-                        ...LocalGameArchive.games,
-                        ..._cloudGames,
-                      ]) {
-                        uniqueLocal.putIfAbsent(
-                          _gameFingerprint(game),
-                          () => game,
-                        );
-                      }
-                      final List<SavedGameRecord> local =
-                          uniqueLocal.values.toList()
-                            ..sort((a, b) => b.playedAt.compareTo(a.playedAt));
-                      if (snapshot.connectionState == ConnectionState.waiting &&
-                          online.isEmpty &&
-                          local.isEmpty) {
-                        return const SkeletonPage(rows: 5);
-                      }
-                      if (snapshot.hasError &&
-                          online.isEmpty &&
-                          local.isEmpty) {
-                        return _HistoryMessage(
-                          icon: Icons.cloud_off_rounded,
-                          message: 'Match history could not be loaded. Pull to retry.',
-                          detail: '${snapshot.error}',
-                        );
-                      }
-                      if (online.isEmpty && local.isEmpty) {
-                        return const _HistoryMessage(
-                          icon: Icons.history_rounded,
-                          message: 'Your completed matches will appear here.',
-                        );
-                      }
-                      return ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                        children: <Widget>[
-                          if (_historySyncFailed || snapshot.hasError)
-                            const Text(
-                              'Some account history could not sync. Pull to retry.',
-                            ),
-                          Builder(
-                            builder: (_) {
-                              final outcomes = [
-                                ...local
-                                    .where(
-                                      (g) =>
-                                          g.mode == 'Play vs AI' ||
-                                          g.mode == '2 Players',
-                                    )
-                                    .map((g) => g.playerOutcome),
-                                ...online
-                                    .where(
-                                      (g) => [
-                                        '1-0',
-                                        '0-1',
-                                        '1/2-1/2',
-                                      ].contains(g.result),
-                                    )
-                                    .map(
-                                      (g) => _MatchPresentation(g).draw
-                                          ? 'draw'
-                                          : _MatchPresentation(g).won
-                                          ? 'win'
-                                          : 'loss',
-                                    ),
-                              ];
-                              final wins = outcomes
-                                  .where((o) => o == 'win')
-                                  .length;
-                              final losses = outcomes
-                                  .where((o) => o == 'loss')
-                                  .length;
-                              final draws = outcomes
-                                  .where((o) => o == 'draw')
-                                  .length;
-                              final total = wins + losses + draws;
-                              final gamesPlayed = outcomes.length;
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Text(
-                                  'Recorded matches: $gamesPlayed games · $wins wins · $losses losses · $draws draws · ${total == 0 ? 0 : (wins * 100 / total).round()}% wins',
-                                ),
-                              );
-                            },
-                          ),
-                          Wrap(
-                            spacing: 6,
-                            children:
-                                [
-                                      'All',
-                                      'Computer',
-                                      'Local',
-                                      'Imported',
-                                      'Online',
-                                    ]
-                                    .map(
-                                      (f) => ChoiceChip(
-                                        label: Text(f),
-                                        selected: _filter == f,
-                                        onSelected: (_) =>
-                                            setState(() => _filter = f),
+              },
+            ),
+            _PgnCoachBanner(
+              onImport: _chooseImportFormat,
+              onExport: _chooseExportFormat,
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _refresh,
+                child: FutureBuilder<List<OnlineMatchDto>>(
+                  future: _online,
+                  builder:
+                      (
+                        BuildContext context,
+                        AsyncSnapshot<List<OnlineMatchDto>> snapshot,
+                      ) {
+                        final List<OnlineMatchDto> online =
+                            snapshot.data ?? const <OnlineMatchDto>[];
+                        final Map<String, SavedGameRecord> uniqueLocal =
+                            <String, SavedGameRecord>{};
+                        for (final SavedGameRecord game in <SavedGameRecord>[
+                          ...LocalGameArchive.games,
+                          ..._cloudGames,
+                        ]) {
+                          uniqueLocal.putIfAbsent(
+                            _gameFingerprint(game),
+                            () => game,
+                          );
+                        }
+                        final List<SavedGameRecord> local =
+                            uniqueLocal.values.toList()..sort(
+                              (a, b) => b.playedAt.compareTo(a.playedAt),
+                            );
+                        if (snapshot.connectionState ==
+                                ConnectionState.waiting &&
+                            online.isEmpty &&
+                            local.isEmpty) {
+                          return const SkeletonPage(rows: 5);
+                        }
+                        if (snapshot.hasError &&
+                            online.isEmpty &&
+                            local.isEmpty) {
+                          return _HistoryMessage(
+                            icon: Icons.cloud_off_rounded,
+                            message: 'Match history could not be loaded. Pull to retry.',
+                            detail: '${snapshot.error}',
+                          );
+                        }
+                        if (online.isEmpty && local.isEmpty) {
+                          return const _HistoryMessage(
+                            icon: Icons.history_rounded,
+                            message: 'Your completed matches will appear here.',
+                          );
+                        }
+                        return ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                          children: <Widget>[
+                            if (_historySyncFailed || snapshot.hasError)
+                              const Text(
+                                'Some account history could not sync. Pull to retry.',
+                              ),
+                            Builder(
+                              builder: (_) {
+                                final outcomes = [
+                                  ...local
+                                      .where(
+                                        (g) =>
+                                            g.mode == 'Play vs AI' ||
+                                            g.mode == '2 Players',
+                                      )
+                                      .map((g) => g.playerOutcome),
+                                  ...online
+                                      .where(
+                                        (g) => [
+                                          '1-0',
+                                          '0-1',
+                                          '1/2-1/2',
+                                        ].contains(g.result),
+                                      )
+                                      .map(
+                                        (g) => _MatchPresentation(g).draw
+                                            ? 'draw'
+                                            : _MatchPresentation(g).won
+                                            ? 'win'
+                                            : 'loss',
                                       ),
-                                    )
-                                    .toList(),
-                          ),
-                          if (_selectedGameIds.isNotEmpty) ...<Widget>[
+                                ];
+                                final wins = outcomes
+                                    .where((o) => o == 'win')
+                                    .length;
+                                final losses = outcomes
+                                    .where((o) => o == 'loss')
+                                    .length;
+                                final draws = outcomes
+                                    .where((o) => o == 'draw')
+                                    .length;
+                                final total = wins + losses + draws;
+                                final gamesPlayed = outcomes.length;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Text(
+                                    'Recorded matches: $gamesPlayed games · $wins wins · $losses losses · $draws draws · ${total == 0 ? 0 : (wins * 100 / total).round()}% wins',
+                                  ),
+                                );
+                              },
+                            ),
+                            Wrap(
+                              spacing: 6,
+                              children:
+                                  [
+                                        'All',
+                                        'Computer',
+                                        'Local',
+                                        'Imported',
+                                        'Online',
+                                      ]
+                                      .map(
+                                        (f) => ChoiceChip(
+                                          label: Text(f),
+                                          selected: _filter == f,
+                                          onSelected: (_) =>
+                                              setState(() => _filter = f),
+                                        ),
+                                      )
+                                      .toList(),
+                            ),
+                            if (_selectedGameIds.isNotEmpty) ...<Widget>[
+                              const SizedBox(height: 12),
+                              _MultiSelectToolbar(
+                                count: _selectedGameIds.length,
+                                onCancel: () =>
+                                    setState(_selectedGameIds.clear),
+                                onExportPgn: () =>
+                                    _exportSelectedGames(local, 'pgn'),
+                                onExportFen: () =>
+                                    _exportSelectedGames(local, 'fen'),
+                              ),
+                            ],
                             const SizedBox(height: 12),
-                            _MultiSelectToolbar(
-                              count: _selectedGameIds.length,
-                              onCancel: () => setState(_selectedGameIds.clear),
-                              onExportPgn: () =>
-                                  _exportSelectedGames(local, 'pgn'),
-                              onExportFen: () =>
-                                  _exportSelectedGames(local, 'fen'),
-                            ),
-                          ],
-                          const SizedBox(height: 12),
-                          if (online.isNotEmpty &&
-                              (_filter == 'All' ||
-                                  _filter == 'Online')) ...<Widget>[
-                            const _Heading('ONLINE ARENA'),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Tap a completed game to replay every move.',
-                              style: TextStyle(
-                                color: Color(0xFF8FA5B1),
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            ...online.map(
-                              (OnlineMatchDto match) => _OnlineHistoryCard(
-                                match,
-                                onTap: () => Navigator.of(context).push<void>(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) =>
-                                        OnlineMatchReplayScreen(match: match),
-                                  ),
+                            if (online.isNotEmpty &&
+                                (_filter == 'All' ||
+                                    _filter == 'Online')) ...<Widget>[
+                              const _Heading('ONLINE ARENA'),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Tap a completed game to replay every move.',
+                                style: TextStyle(
+                                  color: Color(0xFF8FA5B1),
+                                  fontSize: 12,
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 20),
-                          ],
-                          if (local.isNotEmpty &&
-                              _filter != 'Online') ...<Widget>[
-                            const _Heading('SAVED GAMES'),
-                            const SizedBox(height: 10),
-                            ...local
-                                .where(
-                                  (g) =>
-                                      _filter == 'All' ||
-                                      (_filter == 'Computer'
-                                          ? g.mode == 'Play vs AI'
-                                          : _filter == 'Imported'
-                                          ? g.mode.startsWith('Imported ')
-                                          : g.mode == '2 Players'),
-                                )
-                                .map(
-                                  (g) => _LocalHistoryCard(
-                                    g,
-                                    selected: _selectedGameIds.contains(
-                                      _gameFingerprint(g),
+                              const SizedBox(height: 10),
+                              ...online.map(
+                                (OnlineMatchDto match) => _OnlineHistoryCard(
+                                  match,
+                                  onTap: () => Navigator.of(context).push<void>(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) =>
+                                          OnlineMatchReplayScreen(match: match),
                                     ),
-                                    selectionMode: _selectedGameIds.isNotEmpty,
-                                    onTap: () => _selectedGameIds.isNotEmpty
-                                        ? _toggleGameSelection(g)
-                                        : _openCompleted(g),
-                                    onLongPress: () => _showGameActions(g),
-                                    onDelete: () => _deleteGame(g),
                                   ),
                                 ),
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+                            if (local.isNotEmpty &&
+                                _filter != 'Online') ...<Widget>[
+                              const _Heading('SAVED GAMES'),
+                              const SizedBox(height: 10),
+                              ...local
+                                  .where(
+                                    (g) =>
+                                        _filter == 'All' ||
+                                        (_filter == 'Computer'
+                                            ? g.mode == 'Play vs AI'
+                                            : _filter == 'Imported'
+                                            ? g.mode.startsWith('Imported ')
+                                            : g.mode == '2 Players'),
+                                  )
+                                  .map(
+                                    (g) => _LocalHistoryCard(
+                                      g,
+                                      selected: _selectedGameIds.contains(
+                                        _gameFingerprint(g),
+                                      ),
+                                      selectionMode:
+                                          _selectedGameIds.isNotEmpty,
+                                      onTap: () => _selectedGameIds.isNotEmpty
+                                          ? _toggleGameSelection(g)
+                                          : _openCompleted(g),
+                                      onLongPress: () => _showGameActions(g),
+                                      onDelete: () => _deleteGame(g),
+                                    ),
+                                  ),
+                            ],
                           ],
-                        ],
-                      );
-                    },
+                        );
+                      },
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1375,44 +1405,61 @@ class _PgnCoachBanner extends StatelessWidget {
         colors: <Color>[Color(0xFF10374A), Color(0xFF091D31)],
       ),
     ),
-    child: Row(
+    child: Stack(
       children: <Widget>[
-        const Icon(
-          Icons.auto_awesome_rounded,
-          color: Color(0xFF59E4C8),
-          size: 30,
-        ),
-        const SizedBox(width: 12),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                'PLAY ANYWHERE. IMPROVE HERE.',
-                style: TextStyle(
-                  color: Color(0xFFF1C45A),
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: .8,
-                ),
-              ),
-              SizedBox(height: 3),
-              Text(
-                'Import or export complete PGN games and exact FEN positions.',
-                style: TextStyle(color: Color(0xFFB8CAD5), fontSize: 12),
-              ),
-            ],
+        Positioned(
+          right: 72,
+          top: -24,
+          bottom: -24,
+          child: Opacity(
+            opacity: .35,
+            child: Image.asset(
+              'assets/pieces/premium_individual/sapphire-elite/black/king.webp',
+              width: 110,
+              fit: BoxFit.contain,
+            ),
           ),
         ),
-        const SizedBox(width: 8),
-        IconButton.filledTonal(
-          tooltip: 'Import PGN or FEN',
-          onPressed: onImport,
-          icon: const Icon(Icons.upload_file_rounded),
-        ),
-        IconButton(
-          tooltip: 'Export PGN or FEN',
-          onPressed: onExport,
-          icon: const Icon(Icons.download_rounded),
+        Row(
+          children: <Widget>[
+            const Icon(
+              Icons.auto_awesome_rounded,
+              color: Color(0xFF59E4C8),
+              size: 30,
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'PLAY ANYWHERE. IMPROVE HERE.',
+                    style: TextStyle(
+                      color: Color(0xFFF1C45A),
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: .8,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'Import or export complete PGN games and exact FEN positions.',
+                    style: TextStyle(color: Color(0xFFB8CAD5), fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filledTonal(
+              tooltip: 'Import PGN or FEN',
+              onPressed: onImport,
+              icon: const Icon(Icons.upload_file_rounded),
+            ),
+            IconButton(
+              tooltip: 'Export PGN or FEN',
+              onPressed: onExport,
+              icon: const Icon(Icons.download_rounded),
+            ),
+          ],
         ),
       ],
     ),
@@ -1769,9 +1816,20 @@ class _HistoryShell extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(bottom: 10),
     decoration: BoxDecoration(
-      color: const Color(0xE60C1D2B),
+      gradient: const LinearGradient(
+        colors: <Color>[Color(0xF20B263B), Color(0xF2071728)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
       borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: accent.withValues(alpha: 0.5)),
+      border: Border.all(color: accent.withValues(alpha: 0.78), width: 1.25),
+      boxShadow: <BoxShadow>[
+        BoxShadow(
+          color: accent.withValues(alpha: .18),
+          blurRadius: 20,
+          offset: const Offset(0, 8),
+        ),
+      ],
     ),
     child: Material(
       color: Colors.transparent,
