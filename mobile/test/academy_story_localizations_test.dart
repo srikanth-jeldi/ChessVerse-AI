@@ -32,12 +32,24 @@ void main() {
     for (final AppLanguage language in AppLanguageController.supported.skip(
       2,
     )) {
-      final String story = AcademyStoryLocalizations(
-        language.code,
-      ).storyNarration(capture);
+      final String story = AcademyStoryLocalizations(language.code)
+          .storyNarration(capture);
       expect(story, isNotEmpty, reason: language.code);
       expect(story, isNot(contains('{')), reason: language.code);
       expect(story, contains(capture.to), reason: language.code);
     }
+  });
+
+  test('Telugu speech copy expands raw chess coordinates', () {
+    final AcademyLesson board = AcademyCatalog.forChapter(
+      'Meet the chessboard',
+    );
+    final String speech = AcademyStoryLocalizations('te')
+        .storyNarrationForSpeech(board);
+
+    expect(speech, isNot(contains('a1')));
+    expect(speech, isNot(contains('a8')));
+    expect(speech, contains('ఏ ఒకటి'));
+    expect(speech, contains('ఏ ఎనిమిది'));
   });
 }

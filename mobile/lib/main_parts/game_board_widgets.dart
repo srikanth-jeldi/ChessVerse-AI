@@ -1547,7 +1547,10 @@ class ChessCoin extends StatelessWidget {
                     // Pawns and rooks are shorter inside their atlas cells.
                     // Compensate per silhouette without stretching the board
                     // or exposing a neighbouring atlas cell.
-                    'P' => 1.20,
+                    // Atlas pawns deliberately use a compact jewel design.
+                    // Enlarge that silhouette so it has the same readable
+                    // board presence as a standard pawn.
+                    'P' => 2.40,
                     'R' => 1.02,
                     'B' => .98,
                     'N' => .98,

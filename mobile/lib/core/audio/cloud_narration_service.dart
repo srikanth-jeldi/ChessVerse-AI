@@ -149,7 +149,9 @@ class CloudNarrationService {
       await _player.stop();
       await _browserTts.stop();
       await _browserTts.setLanguage(locale);
-      await _browserTts.setSpeechRate(.45);
+      // Web Speech uses 1.0 as its natural rate. The previous .45 setting
+      // made Telugu narration sound unnaturally slow and exhausted.
+      await _browserTts.setSpeechRate(.90);
       await _browserTts.setPitch(1.0);
       await _browserTts.setVolume(1.0);
       _browserText = text;

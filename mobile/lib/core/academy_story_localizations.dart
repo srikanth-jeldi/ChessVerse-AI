@@ -34,6 +34,43 @@ class AcademyStoryLocalizations {
         : '$localized ${lesson.from} → ${lesson.to}.';
   }
 
+  /// Narration-friendly copy for speech engines. On-screen chess notation
+  /// stays compact, while Telugu voice reads coordinates as natural letter
+  /// and number names instead of the raw `a1`/`a8` tokens.
+  String storyNarrationForSpeech(AcademyLesson lesson) {
+    final String narration = storyNarration(lesson);
+    if (code != 'te') return narration;
+    const Map<String, String> files = <String, String>{
+      'a': 'ఏ',
+      'b': 'బీ',
+      'c': 'సీ',
+      'd': 'డీ',
+      'e': 'ఈ',
+      'f': 'ఎఫ్',
+      'g': 'జీ',
+      'h': 'హెచ్',
+    };
+    const Map<String, String> ranks = <String, String>{
+      '1': 'ఒకటి',
+      '2': 'రెండు',
+      '3': 'మూడు',
+      '4': 'నాలుగు',
+      '5': 'ఐదు',
+      '6': 'ఆరు',
+      '7': 'ఏడు',
+      '8': 'ఎనిమిది',
+    };
+    return narration
+        .replaceAllMapped(RegExp(r'\b([a-h])([1-8])\b', caseSensitive: false), (
+          Match match,
+        ) {
+          final String file = match.group(1)!.toLowerCase();
+          final String rank = match.group(2)!;
+          return '${files[file]} ${ranks[rank]}';
+        })
+        .replaceAll('→', 'నుంచి');
+  }
+
   static bool hasOfflineCatalog(String code) {
     final Map<String, String>? copy = _translations[code];
     return copy != null && _requiredKeys.every(copy.containsKey);

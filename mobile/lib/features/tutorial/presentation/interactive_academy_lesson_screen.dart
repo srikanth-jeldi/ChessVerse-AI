@@ -229,7 +229,7 @@ class _InteractiveAcademyLessonScreenState
 
   Future<void> _speakStory() async {
     final bool started = await _narrator.speak(
-      text: _copy.storyNarration(widget.lesson),
+      text: _copy.storyNarrationForSpeech(widget.lesson),
       language: _languageCode,
     );
     if (!started) _setNarrationState(_NarrationState.stopped);
