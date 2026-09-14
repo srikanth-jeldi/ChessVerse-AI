@@ -7,13 +7,13 @@ import org.junit.jupiter.api.Test;
 
 class OnlinePresenceServiceTest {
     @Test
-    void countsOtherAuthenticatedPlayersWithoutCountingSelfTwice() {
+    void countsAllAuthenticatedPlayersWithoutCountingSelfTwice() {
         OnlinePresenceService presence = new OnlinePresenceService();
         UUID android = UUID.randomUUID();
         UUID web = UUID.randomUUID();
 
-        assertEquals(0, presence.heartbeat(android));
-        assertEquals(1, presence.heartbeat(web));
         assertEquals(1, presence.heartbeat(android));
+        assertEquals(2, presence.heartbeat(web));
+        assertEquals(2, presence.heartbeat(android));
     }
 }

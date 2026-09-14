@@ -233,6 +233,16 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
               sliver: SliverToBoxAdapter(child: _hero(s)),
             ),
             SliverToBoxAdapter(child: _tabs()),
+            if (_category == 'FRAME')
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  wide ? 40 : 16,
+                  0,
+                  wide ? 40 : 16,
+                  4,
+                ),
+                sliver: const SliverToBoxAdapter(child: _BadgePurposeCard()),
+              ),
             SliverPadding(
               padding: EdgeInsets.fromLTRB(
                 wide ? 40 : 16,
@@ -855,6 +865,46 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       int.tryParse(hex.replaceFirst('#', '0xFF')) ?? fallback.toARGB32(),
     );
   }
+}
+
+class _BadgePurposeCard extends StatelessWidget {
+  const _BadgePurposeCard();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: const Color(0xD90A2033),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: const Color(0x805DE9D3)),
+    ),
+    child: const Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(Icons.workspace_premium_rounded, color: Color(0xFFE7B54D)),
+        SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'MAKE YOUR PROFILE RECOGNIZABLE',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Collect and equip one badge at a time. Your selected badge is saved to your Royal Collection loadout and represents your chess identity.',
+                style: TextStyle(color: Color(0xFF9FB6C8), height: 1.35),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _ShopPreviewPiece {

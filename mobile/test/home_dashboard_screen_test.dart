@@ -188,7 +188,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('home makes it clear that presence excludes the current player', (
+  testWidgets('home includes the current player in live presence', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(1280, 800);
@@ -197,14 +197,14 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      app(onOnline: () {}, onComputer: () {}, onlinePlayerCount: 0),
+      app(onOnline: () {}, onComputer: () {}, onlinePlayerCount: 1),
     );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey<String>('home-hero-next')));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('No other players online'), findsOneWidget);
+    expect(find.textContaining('1 player online now (you)'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

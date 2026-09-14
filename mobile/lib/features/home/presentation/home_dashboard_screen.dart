@@ -1742,8 +1742,8 @@ _HomeHeroData _tournamentHero(TournamentDto? tournament, VoidCallback onTap) {
 
 String _onlineStatus(int? count) {
   if (count == null) return 'Checking live players…';
-  if (count == 0) return 'No other players online right now';
-  return '$count other ${count == 1 ? 'player' : 'players'} online';
+  if (count <= 1) return '1 player online now (you)';
+  return '$count players online now';
 }
 
 class _HomeHeroCarousel extends StatelessWidget {

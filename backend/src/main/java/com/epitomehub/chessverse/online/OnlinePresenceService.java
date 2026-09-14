@@ -18,7 +18,6 @@ class OnlinePresenceService {
         Instant cutoff = now.minus(PRESENCE_LEASE);
         lastSeen.entrySet().removeIf(entry -> entry.getValue().isBefore(cutoff));
         return lastSeen.entrySet().stream()
-                .filter(entry -> !entry.getKey().equals(playerId))
                 .filter(entry -> !entry.getValue().isBefore(cutoff))
                 .count();
     }
