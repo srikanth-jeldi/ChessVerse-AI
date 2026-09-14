@@ -1522,18 +1522,14 @@ class ChessCoin extends StatelessWidget {
             );
             final bool classic2d =
                 appearance.style == ChessPieceVisualStyle.classic2d;
-            final bool royalAtlas =
+            final bool royalAsset =
                 appearance.style == ChessPieceVisualStyle.premium3d &&
-                premiumPieceAtlas(appearance.finish) != null;
-            final double pieceScale = royalAtlas
+                premiumPieceAsset(appearance.finish, piece) != null;
+            final double pieceScale = royalAsset
                 ? switch (appearance.size) {
-                    // Royal pieces must occupy the same board space as the
-                    // standard set. The atlas artwork has generous internal
-                    // padding, so using smaller outer dimensions makes it
-                    // look miniature even when the whole sprite is visible.
-                    ChessPieceVisualSize.large => 1.43,
-                    ChessPieceVisualSize.extraLarge => 1.58,
-                    ChessPieceVisualSize.doubleExtraLarge => 1.72,
+                    ChessPieceVisualSize.large => 1.00,
+                    ChessPieceVisualSize.extraLarge => 1.08,
+                    ChessPieceVisualSize.doubleExtraLarge => 1.16,
                   }
                 : switch (appearance.size) {
                     ChessPieceVisualSize.large => classic2d ? 1.31 : 1.43,
@@ -1542,20 +1538,8 @@ class ChessCoin extends StatelessWidget {
                       classic2d ? 1.56 : 1.72,
                   };
             final double pieceSize = size * pieceScale;
-            final double silhouetteScale = royalAtlas
-                ? switch (piece.code) {
-                    // Pawns and rooks are shorter inside their atlas cells.
-                    // Compensate per silhouette without stretching the board
-                    // or exposing a neighbouring atlas cell.
-                    // Atlas pawns deliberately use a compact jewel design.
-                    // Enlarge that silhouette so it has the same readable
-                    // board presence as a standard pawn.
-                    'P' => 2.40,
-                    'R' => 1.02,
-                    'B' => .98,
-                    'N' => .98,
-                    _ => .96,
-                  }
+            final double silhouetteScale = royalAsset
+                ? 1.0
                 : switch (piece.code) {
                     'K' => 1.00,
                     'Q' => .98,
@@ -1742,14 +1726,14 @@ class ChessCoin extends StatelessWidget {
         child: image,
       );
     } else if (appearance.style == ChessPieceVisualStyle.premium3d) {
-      final String? atlas = premiumPieceAtlas(appearance.finish);
-      if (atlas != null) {
+      final String? premiumAsset = premiumPieceAsset(appearance.finish, piece);
+      if (premiumAsset != null) {
         return Semantics(
           label: label,
-          child: _PremiumAtlasPiece(
-            asset: atlas,
-            piece: piece,
-            size: pieceSize,
+          child: Image.asset(
+            premiumAsset,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
           ),
         );
       }
@@ -1774,70 +1758,28 @@ class ChessCoin extends StatelessWidget {
   }
 }
 
-class _PremiumAtlasPiece extends StatelessWidget {
-  const _PremiumAtlasPiece({
-    required this.asset,
-    required this.piece,
-    required this.size,
-  });
-
-  final String asset;
-  final ChessPiece piece;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final int column = switch (piece.code) {
-      'K' => 0,
-      'Q' => 1,
-      'R' => 2,
-      'B' => 3,
-      'N' => 4,
-      _ => 5,
-    };
-    final int row = piece.white ? 0 : 1;
-    // Generated atlas cells are portrait (1:2). Widen them slightly for
-    // board readability while keeping the full crown-to-base height inside
-    // the square; the surrounding ChessCoin no longer overscales atlases.
-    final double cellWidth = size * .66;
-    return Center(
-      child: ClipRect(
-        child: SizedBox(
-          width: cellWidth,
-          height: size,
-          child: Stack(
-            clipBehavior: Clip.hardEdge,
-            children: <Widget>[
-              Positioned(
-                left: -column * cellWidth,
-                top: -row * size,
-                width: cellWidth * 6,
-                height: size * 2,
-                child: Image.asset(
-                  asset,
-                  fit: BoxFit.fill,
-                  filterQuality: FilterQuality.high,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+String? premiumPieceAsset(String finish, ChessPiece piece) {
+  final String? folder = switch (finish) {
+    'crimson-crown-3d' => 'crimson-crown-3d',
+    'inferno-gold' || 'golden-crown' => 'inferno-gold',
+    'ruby-emperor' => 'ruby-emperor',
+    'obsidian-regal' || 'ivory-obsidian' => 'obsidian-regal',
+    'sapphire-elite' => 'sapphire-elite',
+    'emerald-sovereign' => 'emerald-sovereign',
+    _ => null,
+  };
+  if (folder == null) return null;
+  final String name = switch (piece.code) {
+    'K' => 'king',
+    'Q' => 'queen',
+    'R' => 'rook',
+    'B' => 'bishop',
+    'N' => 'knight',
+    _ => 'pawn',
+  };
+  final String side = piece.white ? 'white' : 'black';
+  return 'assets/pieces/premium_individual/$folder/$side/$name.png';
 }
-
-String? premiumPieceAtlas(String finish) => switch (finish) {
-  'crimson-crown-3d' => 'assets/pieces/premium_atlas/crimson-crown-3d-v1.png',
-  'inferno-gold' ||
-  'golden-crown' => 'assets/pieces/premium_atlas/inferno-gold-v1.png',
-  'ruby-emperor' => 'assets/pieces/premium_atlas/ruby-emperor-v1.png',
-  'obsidian-regal' ||
-  'ivory-obsidian' => 'assets/pieces/premium_atlas/obsidian-regal-v1.png',
-  'sapphire-elite' => 'assets/pieces/premium_atlas/sapphire-elite-v1.png',
-  'emerald-sovereign' => 'assets/pieces/premium_atlas/emerald-sovereign-v1.png',
-  _ => null,
-};
 
 String? premiumBoardAsset(String label) => switch (label) {
   'Walnut' => 'assets/boards/collection/royal-walnut-v1.webp',

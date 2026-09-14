@@ -84,7 +84,7 @@ flutter:
     - assets/matchmaking/
     - assets/pieces/
     - assets/pieces/collection/
-    - assets/pieces/premium_atlas/
+    - assets/pieces/premium_individual/
 
 flutter_launcher_icons:
   android: true

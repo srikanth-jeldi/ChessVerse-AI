@@ -41,7 +41,8 @@ void main() {
       }
     });
 
-    test('each Royal Collection finish uses a real gameplay atlas', () {
+    test('each Royal Collection finish uses individual gameplay pieces', () {
+      final Set<String> assets = <String>{};
       for (final String finish in <String>[
         'crimson-crown-3d',
         'inferno-gold',
@@ -50,8 +51,19 @@ void main() {
         'sapphire-elite',
         'emerald-sovereign',
       ]) {
-        expect(premiumPieceAtlas(finish), endsWith('-v1.png'));
+        for (final bool white in <bool>[true, false]) {
+          for (final String code in <String>['K', 'Q', 'R', 'B', 'N', 'P']) {
+            final String? asset = premiumPieceAsset(
+              finish,
+              ChessPiece(code, white),
+            );
+            expect(asset, contains('/premium_individual/'));
+            expect(asset, endsWith('.png'));
+            assets.add(asset!);
+          }
+        }
       }
+      expect(assets, hasLength(72));
     });
 
     test('all twelve Royal Collection boards use premium gameplay images', () {
