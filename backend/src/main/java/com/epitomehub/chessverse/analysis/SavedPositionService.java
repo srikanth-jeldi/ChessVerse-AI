@@ -2,9 +2,6 @@ package com.epitomehub.chessverse.analysis;
 
 import static com.epitomehub.chessverse.analysis.SavedPositionDtos.*;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.bhlangonijr.chesslib.Board;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -17,6 +14,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 class SavedPositionService {
@@ -46,7 +44,7 @@ class SavedPositionService {
                     blankToNull(request.label()), request.sourceFormat() == null ? "FEN" :
                             request.sourceFormat().toUpperCase(Locale.ROOT),
                     request.sourceJobId(), request.sourcePly(), tags)));
-        } catch (JsonProcessingException impossible) {
+        } catch (Exception impossible) {
             throw new IllegalStateException(impossible);
         }
     }
@@ -73,10 +71,11 @@ class SavedPositionService {
 
     private SavedPositionResponse response(SavedChessPosition position) {
         try {
-            List<String> tags = json.readValue(position.tagsJson, new TypeReference<List<String>>() {});
+            List<?> decoded = json.readValue(position.tagsJson, List.class);
+            List<String> tags = decoded.stream().map(String::valueOf).toList();
             return new SavedPositionResponse(position.id, position.fen, position.label, position.sourceFormat,
                     position.sourceJobId, position.sourcePly, tags, position.createdAt, position.updatedAt);
-        } catch (JsonProcessingException corrupt) {
+        } catch (Exception corrupt) {
             throw new IllegalStateException("Saved position tags are invalid.", corrupt);
         }
     }
