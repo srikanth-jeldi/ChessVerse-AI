@@ -51,6 +51,11 @@ android {
 
     buildTypes {
         release {
+            // Play receives Dart symbols separately; keep native debug metadata
+            // out of the customer bundle to avoid ~30 MB of upload-only weight.
+            ndk {
+                debugSymbolLevel = "none"
+            }
             // AGP 9 enables R8 for release builds by default. Its current full
             // mode incorrectly rewrites Room's reflective WorkDatabase lookup
             // (the crash literally asks for `WorkDatabase.canonicalName`).

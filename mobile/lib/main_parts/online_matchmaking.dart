@@ -2402,7 +2402,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                 child: Padding(
                                   padding: const EdgeInsets.all(12),
                                   child: Image.asset(
-                                    'assets/matchmaking/neon_rival_knights.png',
+                                    'assets/matchmaking/neon_rival_knights.webp',
                                     fit: BoxFit.contain,
                                     filterQuality: FilterQuality.high,
                                   ),
@@ -2866,7 +2866,7 @@ class _WideSearchCore extends StatelessWidget {
                           ],
                         ),
                         child: Image.asset(
-                          'assets/matchmaking/neon_rival_knights.png',
+                          'assets/matchmaking/neon_rival_knights.webp',
                           fit: BoxFit.contain,
                           filterQuality: FilterQuality.high,
                         ),

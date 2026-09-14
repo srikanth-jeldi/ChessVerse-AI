@@ -224,7 +224,7 @@ class _AuthScreenState extends State<AuthScreen> {
     fit: StackFit.expand,
     children: <Widget>[
       Image.asset(
-        'assets/backgrounds/onboarding-worldwide-v1.png',
+        'assets/backgrounds/onboarding-worldwide-v1.webp',
         fit: BoxFit.cover,
         alignment: const Alignment(.42, .5),
       ),

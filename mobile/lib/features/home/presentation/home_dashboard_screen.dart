@@ -263,7 +263,7 @@ class _MobileHomeState extends State<_MobileHome> {
                           subtitle: 'Improve step by step with guided lessons',
                           icon: Icons.school_rounded,
                           buttonLabel: 'Continue Learning',
-                          asset: 'assets/backgrounds/onboarding-ai-coach-wide-v2.png',
+                          asset: 'assets/backgrounds/onboarding-ai-coach-wide-v2.webp',
                           onTap: widget.onLearnChess,
                         ),
                         _tournamentHero(
@@ -573,7 +573,7 @@ class _WideHomeState extends State<_WideHome> {
                                   'Improve step by step with guided lessons',
                               icon: Icons.school_rounded,
                               buttonLabel: 'Continue Learning',
-                              asset: 'assets/backgrounds/onboarding-ai-coach-wide-v2.png',
+                              asset: 'assets/backgrounds/onboarding-ai-coach-wide-v2.webp',
                               onTap: widget.onLearnChess,
                             ),
                             _tournamentHero(
