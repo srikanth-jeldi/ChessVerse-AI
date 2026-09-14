@@ -1290,15 +1290,15 @@ class _ActivityFeed extends StatelessWidget {
               child: Row(
                 children: <Widget>[
                   Container(
-                    width: 32,
-                    height: 32,
+                    width: 38,
+                    height: 38,
                     decoration: BoxDecoration(
                       color: item.color.withValues(alpha: .13),
                       borderRadius: BorderRadius.circular(9),
                     ),
-                    child: Icon(item.icon, color: item.color, size: 18),
+                    child: Icon(item.icon, color: item.color, size: 21),
                   ),
-                  const SizedBox(width: 9),
+                  const SizedBox(width: 11),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1309,7 +1309,7 @@ class _ActivityFeed extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 12,
+                            fontSize: 15,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -1317,7 +1317,7 @@ class _ActivityFeed extends StatelessWidget {
                           item.detail,
                           style: const TextStyle(
                             color: Color(0xFF8FA9BB),
-                            fontSize: 10,
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -1410,7 +1410,10 @@ class _TopPlayersPreview extends StatelessWidget {
                 ? leaders[index].displayName
                 : 'Rank awaiting player',
             rating: index < leaders.length ? leaders[index].rating : null,
-            highlight: false,
+            highlight: index < leaders.length && leaders[index].you,
+            photoUrl: index < leaders.length && leaders[index].you
+                ? profilePhotoUrl
+                : null,
           ),
         if (!currentAlreadyListed) ...<Widget>[
           const SizedBox(height: 3),
@@ -1443,9 +1446,9 @@ class _CompactRankingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 28,
-    margin: const EdgeInsets.symmetric(vertical: 1),
-    padding: const EdgeInsets.symmetric(horizontal: 8),
+    height: 40,
+    margin: const EdgeInsets.symmetric(vertical: 2),
+    padding: const EdgeInsets.symmetric(horizontal: 10),
     decoration: BoxDecoration(
       color: highlight ? const Color(0xFF12364E) : const Color(0x8A0E2940),
       borderRadius: BorderRadius.circular(9),
@@ -1456,22 +1459,20 @@ class _CompactRankingRow extends StatelessWidget {
     child: Row(
       children: <Widget>[
         SizedBox(
-          width: 28,
+          width: 36,
           child: Text(
             rank > 0 ? '#$rank' : '—',
             style: TextStyle(
               color: highlight
                   ? const Color(0xFF58DFC9)
                   : const Color(0xFFF0B84B),
-              fontSize: 11,
+              fontSize: 14,
               fontWeight: FontWeight.w900,
             ),
           ),
         ),
-        if (highlight) ...<Widget>[
-          _Avatar(photoUrl: photoUrl, size: 22),
-          const SizedBox(width: 6),
-        ],
+        _Avatar(photoUrl: photoUrl, size: 28),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(
             highlight ? 'YOU • $name' : name,
@@ -1479,7 +1480,7 @@ class _CompactRankingRow extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 11,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1489,7 +1490,7 @@ class _CompactRankingRow extends StatelessWidget {
             '$rating',
             style: const TextStyle(
               color: Color(0xFFC9D6DF),
-              fontSize: 10,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
           ),

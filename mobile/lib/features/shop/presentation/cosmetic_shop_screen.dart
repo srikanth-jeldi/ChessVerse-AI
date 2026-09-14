@@ -144,7 +144,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         title: const Text(
           'ROYAL COLLECTION',
           style: TextStyle(
-            color: Color(0xFFFFD77A),
+            color: Colors.white,
             fontFamily: 'serif',
             fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
@@ -212,7 +212,12 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
 
   Widget _content() {
     final s = _shop!;
-    final items = s.items.where((e) => e.category == _category).toList();
+    final items = s.items.where((e) => e.category == _category).toList()
+      ..sort((CosmeticItemDto a, CosmeticItemDto b) {
+        final int price = a.priceAmount.compareTo(b.priceAmount);
+        if (price != 0) return price;
+        return a.name.compareTo(b.name);
+      });
     return LayoutBuilder(
       builder: (context, c) {
         final wide = c.maxWidth >= 850;
