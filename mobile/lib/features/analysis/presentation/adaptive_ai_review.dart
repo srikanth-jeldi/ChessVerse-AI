@@ -1234,14 +1234,41 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
     final String question =
         (retryQuestion ?? presetQuestion ?? _controller.text).trim();
     final String? fen = widget.insight.fenBefore;
-    if (question.isEmpty || fen == null || fen.isEmpty || _loading) return;
+    if (question.isEmpty || _loading) return;
+    if (fen == null || fen.isEmpty) {
+      setState(() {
+        _lastSubmittedQuestion = question;
+        _lastWasFreeText = presetQuestion == null;
+        _answer = <String>{
+          _localizedPersonalCoachAnswer(
+            widget.insight,
+            CoachQuestion.whyBad,
+            _languageCode,
+          ),
+          _localizedPersonalCoachAnswer(
+            widget.insight,
+            CoachQuestion.opponentThreat,
+            _languageCode,
+          ),
+          _localizedPersonalCoachAnswer(
+            widget.insight,
+            CoachQuestion.bestPlan,
+            _languageCode,
+          ),
+        }.join('\n\n');
+      });
+      return;
+    }
     final String? token = await _ensureToken();
     if (!mounted) return;
     if (token == null || token.isEmpty) {
       setState(() => _answer = personalCoachText('signin', _languageCode));
       return;
     }
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _answer = personalCoachText('loading', _languageCode);
+    });
     final int generation = ++_requestGeneration;
     final String requestLanguage = _languageCode;
     _lastSubmittedQuestion = question;
@@ -1273,7 +1300,7 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
         _cloudAnswer = result;
         _sessionId = result.sessionId;
       });
-    } on AiCoachApiException {
+    } on AiCoachApiException catch (error) {
       if (mounted && generation == _requestGeneration) {
         setState(() {
           // Every reviewed move already carries deterministic engine evidence.
@@ -1290,6 +1317,8 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
                   : '');
           _cloudAnswer = null;
         });
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
       }
     } finally {
       if (mounted && generation == _requestGeneration) {
