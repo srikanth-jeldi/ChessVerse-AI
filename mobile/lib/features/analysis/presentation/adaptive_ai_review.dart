@@ -1065,20 +1065,17 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
         _cloudAnswer = result;
         _sessionId = result.sessionId;
       });
-    } on AiCoachApiException catch (error) {
+    } on AiCoachApiException {
       if (mounted && generation == _requestGeneration) {
         setState(() {
-          // Preset questions already have a deterministic, Stockfish-grounded
-          // answer. Keep that useful answer when the optional cloud-language
-          // request times out or is unavailable instead of replacing it with
-          // a dead-end error message.
-          _answer = presetQuestion != null
-              ? _localizedPersonalCoachAnswer(
-                  widget.insight,
-                  _question,
-                  _languageCode,
-                )
-              : '${personalCoachText('apiError', _languageCode)}\n${error.message}';
+          // Every reviewed move already carries deterministic engine evidence.
+          // Keep answering custom questions with that evidence when the coach
+          // endpoint is temporarily unavailable instead of showing a dead end.
+          _answer = _localizedPersonalCoachAnswer(
+            widget.insight,
+            presetQuestion == null ? CoachQuestion.whyBad : _question,
+            _languageCode,
+          );
           _cloudAnswer = null;
         });
       }

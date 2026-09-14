@@ -137,11 +137,14 @@ class AiCoachServiceTest {
                 fen, "f2f3", "What pattern did I miss?", null, null, "en", List.of()));
         var practice = service.ask(playerId, new AiCoachController.CoachRequest(
                 fen, "f2f3", "How do I improve?", null, null, "en", List.of()));
+        var custom = service.ask(playerId, new AiCoachController.CoachRequest(
+                fen, "f2f3", "ఈ position లో అసలు ఏమి జరిగింది?", null, null, "te", List.of()));
 
         assertThat(why.answer()).contains("blunder", "The move exposes the king", "g1 → f3");
         assertThat(threat.answer()).contains("d8 → h4", "g1 → f3");
         assertThat(best.answer()).contains("g1 → f3", "d8 → h4");
         assertThat(pattern.answer()).contains("The move exposes the king", "g1 → f3");
         assertThat(practice.answer()).contains("g1 → f3", "d8 → h4");
+        assertThat(custom.answer()).contains("blunder", "The move exposes the king", "g1 → f3");
     }
 }
