@@ -8,8 +8,9 @@ class PgnArchiveService {
 
   List<SavedGameRecord> importGames(String source) {
     final String normalized = source.replaceAll('\r\n', '\n').trim();
-    if (normalized.isEmpty)
+    if (normalized.isEmpty) {
       throw const FormatException('The PGN file is empty.');
+    }
     final List<String> chunks = normalized
         .split(RegExp(r'\n\s*\n(?=\s*\[Event\s)', multiLine: true))
         .where((String value) => value.trim().isNotEmpty)
@@ -84,10 +85,12 @@ class PgnArchiveService {
       ..writeln('[White "${_escape(game.whitePlayer)}"]')
       ..writeln('[Black "${_escape(game.blackPlayer)}"]')
       ..writeln('[Result "$result"]');
-    if (game.openingEco?.isNotEmpty == true)
+    if (game.openingEco?.isNotEmpty == true) {
       out.writeln('[ECO "${_escape(game.openingEco!)}"]');
-    if (game.openingName?.isNotEmpty == true)
+    }
+    if (game.openingName?.isNotEmpty == true) {
       out.writeln('[Opening "${_escape(game.openingName!)}"]');
+    }
     if (game.initialFen?.isNotEmpty == true &&
         game.initialFen !=
             'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1') {
@@ -108,12 +111,14 @@ class PgnArchiveService {
       value.replaceAll('\\', r'\\').replaceAll('"', r'\"');
 
   String _pgnResult(String value) {
-    if (const <String>{'1-0', '0-1', '1/2-1/2', '*'}.contains(value))
+    if (const <String>{'1-0', '0-1', '1/2-1/2', '*'}.contains(value)) {
       return value;
+    }
     final String lower = value.toLowerCase();
     if (lower.contains('white') || lower.contains('you win')) return '1-0';
-    if (lower.contains('black') || lower.contains('opponent wins'))
+    if (lower.contains('black') || lower.contains('opponent wins')) {
       return '0-1';
+    }
     if (lower.contains('draw') || lower.contains('stalemate')) return '1/2-1/2';
     return '*';
   }
@@ -124,8 +129,9 @@ class PgnArchiveService {
   DateTime _date(String? value) {
     final RegExpMatch? match = RegExp(r'^(\d{4})[.-](\d{2})[.-](\d{2})')
         .firstMatch(value ?? '');
-    if (match == null || match.group(1)!.contains('?'))
+    if (match == null || match.group(1)!.contains('?')) {
       return DateTime.now().toUtc();
+    }
     return DateTime.utc(
       int.parse(match.group(1)!),
       int.parse(match.group(2)!),
