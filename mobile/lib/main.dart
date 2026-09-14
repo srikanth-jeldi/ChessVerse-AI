@@ -1275,16 +1275,8 @@ class _SplashGateState extends State<SplashGate> {
           replacePausedComputerGame = true;
         }
       } catch (_) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Could not check your paused game. Check your connection and retry.',
-              ),
-            ),
-          );
-        }
-        return;
+        // Cloud resume is optional. Never cover navigation or block an offline
+        // computer game because the account-save service is unavailable.
       }
     }
     List<AiBotPreset> botPresets = <AiBotPreset>[];
@@ -1796,16 +1788,7 @@ class _SplashGateState extends State<SplashGate> {
         );
         if (!context.mounted) return;
       } catch (_) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Could not open saved game. Check your connection and refresh My Games.',
-              ),
-            ),
-          );
-        }
-        return;
+        // The board is local-first; cloud draft sync must not block launch.
       }
     }
     unawaited(DailyReminderService.instance.recordPlayOpened());

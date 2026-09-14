@@ -51,4 +51,16 @@ void main() {
     expect(find.text('100 + 100 = 200 coin pool'), findsNothing);
     expect(find.byIcon(Icons.monetization_on_rounded), findsNothing);
   });
+
+  testWidgets('daily challenge completion does not show a match score', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _result(title: 'Challenge complete', coinsEarned: 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Challenge complete'), findsOneWidget);
+    expect(find.text('1-0'), findsNothing);
+  });
 }

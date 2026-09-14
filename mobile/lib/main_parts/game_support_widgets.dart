@@ -1025,18 +1025,20 @@ class GameResultOverlay extends StatelessWidget {
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
                         SizedBox(height: shortLandscape ? 3 : 8),
-                        Text(
-                          scoreLabel,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.headlineLarge
-                              ?.copyWith(
-                                color: missed
-                                    ? const Color(0xFF68D2BE)
-                                    : const Color(0xFFD6A84F),
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                        SizedBox(height: shortLandscape ? 3 : 8),
+                        if (!dailyComplete) ...<Widget>[
+                          Text(
+                            scoreLabel,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.headlineLarge
+                                ?.copyWith(
+                                  color: missed
+                                      ? const Color(0xFF68D2BE)
+                                      : const Color(0xFFD6A84F),
+                                  fontWeight: FontWeight.w900,
+                                ),
+                          ),
+                          SizedBox(height: shortLandscape ? 3 : 8),
+                        ],
                         Text(detail, textAlign: TextAlign.center),
                         if (showCoinOutcome) ...<Widget>[
                           SizedBox(height: shortLandscape ? 7 : 14),

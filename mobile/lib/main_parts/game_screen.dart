@@ -1132,17 +1132,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     await _persistComputerDraft(force: true);
     if (!mounted) return;
     if (!_lastSaveOkay && !_draftConflict) {
-      _leavingComputerGame = false;
-      _computerPaused = false;
-      _recoverComputerTurnIfNeeded();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Could not pause safely. Reconnect, then go back to save your game.',
+            'Game was not synced, but you can keep playing or start again.',
           ),
         ),
       );
-      return;
     }
     setState(() => _allowComputerExit = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -2359,7 +2355,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Future<void> _logout() async {
     final Future<void> Function()? onLogout = widget.onLogout;
     await _persistComputerDraft(force: true);
-    if (!mounted || !_lastSaveOkay) return;
+    if (!mounted) return;
     if (onLogout != null) {
       await onLogout();
       return;
@@ -2393,7 +2389,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
     await _persistComputerDraft(force: true);
-    if (!mounted || !_lastSaveOkay || _draftConflict) return;
+    if (!mounted || _draftConflict) return;
     if (mode == GameMode.computer && _gameMode != GameMode.computer) {
       try {
         final owner = await ComputerGameStore.activeOwner();
@@ -2432,11 +2428,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Could not sync My Games. Please retry.'),
+              content: Text(
+                'Cloud saves are offline. Starting the computer game locally.',
+              ),
             ),
           );
         }
-        return;
       }
     }
     if (mode == GameMode.online) {
@@ -2589,7 +2586,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return '1/2 - 1/2';
     }
     if (lowerTitle.contains('challenge complete')) {
-      return '1 - 0';
+      return 'Solved';
     }
     if (lowerTitle.contains('challenge missed')) {
       return 'Not solved';
@@ -4069,7 +4066,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (replace != true || !mounted) return;
     }
     if (!confirmed) await _persistComputerDraft(force: true);
-    if (!mounted || _draftConflict || !_lastSaveOkay) return;
+    if (!mounted || _draftConflict) return;
     _draftId = DateTime.now().microsecondsSinceEpoch.toString();
     _lastDraftFingerprint = null;
     if (_gameMode == GameMode.online && _onlineMatch != null) {
