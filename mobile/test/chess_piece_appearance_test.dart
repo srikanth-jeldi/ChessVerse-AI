@@ -61,7 +61,7 @@ void main() {
                 ChessPiece(code, white),
               );
               expect(asset, contains('/premium_individual/'));
-              expect(asset, endsWith('.png'));
+              expect(asset, endsWith('.webp'));
               assets.add(asset!);
               final ByteData bytes = await rootBundle.load(asset);
               expect(bytes.lengthInBytes, greaterThan(1000), reason: asset);
