@@ -73,22 +73,27 @@ class _MasterGamesScreenState extends State<MasterGamesScreen> {
         backgroundColor: const Color(0xFF071827),
         title: Text(copy.text('master.title')),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(18),
-        children: <Widget>[
-          _MasterCatalogHero(copy: copy, completed: _completed),
-          const SizedBox(height: 18),
-          for (final MasterGameLesson lesson in MasterGameCatalog.lessons)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: _MasterGameCard(
-                lesson: lesson,
-                copy: copy,
-                completed: _completed.contains(lesson.id),
-                onReturned: _loadProgress,
-              ),
-            ),
-        ],
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1080),
+          child: ListView(
+            padding: const EdgeInsets.all(18),
+            children: <Widget>[
+              _MasterCatalogHero(copy: copy, completed: _completed),
+              const SizedBox(height: 18),
+              for (final MasterGameLesson lesson in MasterGameCatalog.lessons)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: _MasterGameCard(
+                    lesson: lesson,
+                    copy: copy,
+                    completed: _completed.contains(lesson.id),
+                    onReturned: _loadProgress,
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -128,12 +133,12 @@ class _MasterCatalogHero extends StatelessWidget {
     child: Stack(
       children: <Widget>[
         const Positioned(
-          right: -10,
-          bottom: -24,
+          right: 12,
+          bottom: -18,
           child: Icon(
-            Icons.emoji_events_rounded,
-            size: 130,
-            color: Color(0x18EABF61),
+            Icons.workspace_premium_rounded,
+            size: 150,
+            color: Color(0x24EABF61),
           ),
         ),
         Column(
@@ -296,90 +301,103 @@ class _MasterGameCard extends StatelessWidget {
       );
       onReturned();
     },
-    child: Row(
-      children: <Widget>[
-        Container(
-          width: 88,
-          constraints: const BoxConstraints(minHeight: 142),
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: <Color>[Color(0xFF184956), Color(0xFF0B2635)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-            borderRadius: BorderRadius.horizontal(left: Radius.circular(20)),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Icon(_icon, color: const Color(0xFF63D2B8), size: 32),
-              const SizedBox(height: 9),
-              Text(
-                '${lesson.moveNumber}',
-                style: const TextStyle(
-                  color: AppColors.accentGold,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          colors: <Color>[Color(0xFF102A43), Color(0xFF071426)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
         ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(color: Color(0x3329B6F6), blurRadius: 20),
+        ],
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 88,
+            constraints: const BoxConstraints(minHeight: 142),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: <Color>[Color(0xFF184956), Color(0xFF0B2635)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: BorderRadius.horizontal(left: Radius.circular(20)),
+            ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        '${lesson.white} vs ${lesson.black}',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                    if (completed)
-                      const Icon(
-                        Icons.verified_rounded,
-                        color: Color(0xFF63D2B8),
-                        size: 21,
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 5),
+                Icon(_icon, color: const Color(0xFF63D2B8), size: 32),
+                const SizedBox(height: 9),
                 Text(
-                  '${lesson.event} · ${lesson.year} · ${lesson.result}',
-                  style: const TextStyle(color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  copy.text(
-                    'master.pauseMeta',
-                    values: <String, String>{
-                      'move': '${lesson.moveNumber}',
-                      'side': copy.text(
-                        'master.side.${lesson.sideToMove.toLowerCase()}',
-                      ),
-                    },
-                  ),
+                  '${lesson.moveNumber}',
                   style: const TextStyle(
                     color: AppColors.accentGold,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
             ),
           ),
-        ),
-        const Padding(
-          padding: EdgeInsets.only(right: 14),
-          child: Icon(Icons.arrow_forward_rounded),
-        ),
-      ],
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          '${lesson.white} vs ${lesson.black}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      if (completed)
+                        const Icon(
+                          Icons.verified_rounded,
+                          color: Color(0xFF63D2B8),
+                          size: 21,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    '${lesson.event} · ${lesson.year} · ${lesson.result}',
+                    style: const TextStyle(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    copy.text(
+                      'master.pauseMeta',
+                      values: <String, String>{
+                        'move': '${lesson.moveNumber}',
+                        'side': copy.text(
+                          'master.side.${lesson.sideToMove.toLowerCase()}',
+                        ),
+                      },
+                    ),
+                    style: const TextStyle(
+                      color: AppColors.accentGold,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(right: 14),
+            child: Icon(Icons.arrow_forward_rounded),
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -398,6 +416,12 @@ class _MasterGameStudyScreenState extends State<_MasterGameStudyScreen> {
   late final CloudNarrationService _narrator;
   _MasterNarrationState _narrationState = _MasterNarrationState.stopped;
   String? _choice;
+
+  String _lessonCopy(String field, String fallback) {
+    final String key = 'master.${widget.lesson.id}.$field';
+    final String localized = widget.copy.text(key);
+    return localized == key ? fallback : localized;
+  }
 
   @override
   void initState() {
@@ -427,8 +451,8 @@ class _MasterGameStudyScreenState extends State<_MasterGameStudyScreen> {
       }
       final MasterGameLesson lesson = widget.lesson;
       final String narration = <String>[
-        widget.copy.text('master.${lesson.id}.question'),
-        if (_choice != null) widget.copy.text('master.${lesson.id}.idea'),
+        _lessonCopy('question', lesson.question),
+        if (_choice != null) _lessonCopy('idea', lesson.idea),
       ].join(' ');
       final bool started = await _narrator.speak(
         text: narration,
@@ -616,9 +640,8 @@ class _MasterGameStudyScreenState extends State<_MasterGameStudyScreen> {
                             ],
                           ),
                           border: Border.all(
-                            color: const Color(
-                              0xFF63D2B8,
-                            ).withValues(alpha: .55),
+                            color: const Color(0xFF63D2B8)
+                                .withValues(alpha: .55),
                           ),
                           boxShadow: const <BoxShadow>[
                             BoxShadow(color: Color(0x334CDCC1), blurRadius: 28),
@@ -635,7 +658,7 @@ class _MasterGameStudyScreenState extends State<_MasterGameStudyScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
                             Text(
-                              widget.copy.text('master.${lesson.id}.question'),
+                              _lessonCopy('question', lesson.question),
                               style: const TextStyle(
                                 fontSize: 21,
                                 fontWeight: FontWeight.w900,
@@ -740,9 +763,7 @@ class _MasterGameStudyScreenState extends State<_MasterGameStudyScreen> {
                                           ),
                                           const SizedBox(height: 8),
                                           Text(
-                                            widget.copy.text(
-                                              'master.${lesson.id}.idea',
-                                            ),
+                                            _lessonCopy('idea', lesson.idea),
                                             style: const TextStyle(
                                               height: 1.45,
                                             ),
@@ -752,6 +773,11 @@ class _MasterGameStudyScreenState extends State<_MasterGameStudyScreen> {
                                     ),
                                   ],
                                 ),
+                              ),
+                              const SizedBox(height: 14),
+                              _MasterMoveBreakdown(
+                                lesson: lesson,
+                                idea: _lessonCopy('idea', lesson.idea),
                               ),
                               const SizedBox(height: 14),
                               Wrap(
@@ -783,6 +809,130 @@ class _MasterGameStudyScreenState extends State<_MasterGameStudyScreen> {
       ),
     );
   }
+}
+
+class _MasterMoveBreakdown extends StatelessWidget {
+  const _MasterMoveBreakdown({required this.lesson, required this.idea});
+  final MasterGameLesson lesson;
+  final String idea;
+
+  @override
+  Widget build(BuildContext context) {
+    final String opponent = lesson.sideToMove == 'White'
+        ? lesson.black
+        : lesson.white;
+    final List<String> line = lesson.continuation;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF2B6A9E)),
+        gradient: const LinearGradient(
+          colors: <Color>[Color(0xFF0C2943), Color(0xFF061526)],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text(
+            'CRYSTAL-CLEAR MOVE BREAKDOWN',
+            style: TextStyle(
+              color: Color(0xFFFFD56A),
+              fontWeight: FontWeight.w900,
+              letterSpacing: .8,
+            ),
+          ),
+          const SizedBox(height: 13),
+          _MasterDetailRow(
+            icon: Icons.flag_outlined,
+            title: 'The master’s plan',
+            body: idea,
+            color: const Color(0xFF62E3C2),
+          ),
+          const SizedBox(height: 11),
+          _MasterDetailRow(
+            icon: Icons.psychology_alt_outlined,
+            title: 'Why ${lesson.answer}?',
+            body:
+                '${lesson.answer} fits the position because it begins the plan immediately and limits $opponent’s useful replies.',
+            color: const Color(0xFFFFD56A),
+          ),
+          if (line.length > 1) ...<Widget>[
+            const SizedBox(height: 11),
+            _MasterDetailRow(
+              icon: Icons.shield_outlined,
+              title: '$opponent’s reply',
+              body:
+                  '${line[1]} is the recorded reply. Before choosing the master move, calculate this response first.',
+              color: const Color(0xFFFF8A72),
+            ),
+          ],
+          if (line.length > 2) ...<Widget>[
+            const SizedBox(height: 11),
+            _MasterDetailRow(
+              icon: Icons.route_rounded,
+              title: 'How the plan continues',
+              body:
+                  '${line.skip(2).join(' → ')}. Each following move keeps the original idea alive instead of starting an unrelated plan.',
+              color: const Color(0xFF6FC5FF),
+            ),
+          ],
+          const SizedBox(height: 11),
+          _MasterDetailRow(
+            icon: Icons.school_outlined,
+            title: 'What you should remember',
+            body: switch (lesson.style) {
+              MasterThinkingStyle.attack => 'When the king is exposed, calculate checks, captures and threats before counting material.',
+              MasterThinkingStyle.calculation => 'Compare candidate moves and calculate the opponent’s strongest reply—not the reply you hope for.',
+              MasterThinkingStyle.endurance => 'Improve the position without allowing counterplay; patient pressure is also a concrete plan.',
+            },
+            color: const Color(0xFFB896FF),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MasterDetailRow extends StatelessWidget {
+  const _MasterDetailRow({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.color,
+  });
+  final IconData icon;
+  final String title;
+  final String body;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      Icon(icon, color: color, size: 20),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              title,
+              style: TextStyle(color: color, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              body,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
 }
 
 class _MasterPositionBoard extends StatelessWidget {

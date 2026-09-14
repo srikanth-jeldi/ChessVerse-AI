@@ -869,6 +869,12 @@ class _MoveTimeline extends StatelessWidget {
                             ),
                           ],
                           const SizedBox(height: 10),
+                          _StructuredMoveExplanation(
+                            insight: insight,
+                            languageCode: languageCode,
+                            color: color,
+                          ),
+                          const SizedBox(height: 10),
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
@@ -894,6 +900,20 @@ class _MoveTimeline extends StatelessWidget {
                                       : _reviewText('noThreat', languageCode),
                                   languageCode: languageCode,
                                 ),
+                              ),
+                              _ReviewAction(
+                                icon: Icons.grid_view_rounded,
+                                label: CoachLocalizations(languageCode).text(
+                                  'positionBefore',
+                                  <String, String>{'move': insight.notation},
+                                ),
+                                onTap: insight.hasEngineEvidence
+                                    ? () => _showPositionEvidence(
+                                        context,
+                                        insight,
+                                        languageCode,
+                                      )
+                                    : null,
                               ),
                               _ReviewAction(
                                 icon: Icons.replay_circle_filled_rounded,
@@ -922,6 +942,194 @@ class _MoveTimeline extends StatelessWidget {
       ],
     );
   }
+}
+
+class _StructuredMoveExplanation extends StatelessWidget {
+  const _StructuredMoveExplanation({
+    required this.insight,
+    required this.languageCode,
+    required this.color,
+  });
+
+  final AiMoveInsight insight;
+  final String languageCode;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final String played = insight.playedMove ?? insight.notation;
+    final String best = insight.bestMove?.isNotEmpty == true
+        ? insight.bestMove!
+        : '—';
+    final String threat = insight.opponentThreat?.isNotEmpty == true
+        ? insight.opponentThreat!
+        : _reviewText('noThreat', languageCode);
+    final String lesson = _localizedPersonalCoachAnswer(
+      insight,
+      CoachQuestion.practice,
+      languageCode,
+    );
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0x99061120),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: .45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          _EvidenceRow(
+            icon: Icons.play_circle_outline_rounded,
+            label: _reviewText('explain', languageCode),
+            value:
+                '$played — ${_localizedReviewExplanation(insight.explanation, languageCode)}',
+            color: color,
+          ),
+          const SizedBox(height: 8),
+          _EvidenceRow(
+            icon: Icons.auto_awesome_rounded,
+            label: _reviewText('alternative', languageCode),
+            value: best,
+            color: const Color(0xFF59E4C8),
+          ),
+          const SizedBox(height: 8),
+          _EvidenceRow(
+            icon: Icons.shield_outlined,
+            label: _reviewText('threatTitle', languageCode),
+            value: threat,
+            color: const Color(0xFFFFA65C),
+          ),
+          const SizedBox(height: 8),
+          _EvidenceRow(
+            icon: Icons.route_rounded,
+            label: _reviewText('continuation', languageCode),
+            value: insight.principalVariation.isEmpty
+                ? _reviewText('noVariation', languageCode)
+                : insight.principalVariation.take(4).join(' → '),
+            color: const Color(0xFF73BFFF),
+          ),
+          const SizedBox(height: 8),
+          _EvidenceRow(
+            icon: Icons.school_outlined,
+            label: _localizedCoachQuestion(
+              CoachQuestion.practice,
+              languageCode,
+            ),
+            value: lesson,
+            color: AppColors.accentGold,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EvidenceRow extends StatelessWidget {
+  const _EvidenceRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      Icon(icon, size: 18, color: color),
+      const SizedBox(width: 8),
+      Expanded(
+        child: RichText(
+          text: TextSpan(
+            style: DefaultTextStyle.of(context).style.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.35,
+              fontSize: 12,
+            ),
+            children: <InlineSpan>[
+              TextSpan(
+                text: '$label: ',
+                style: TextStyle(color: color, fontWeight: FontWeight.w900),
+              ),
+              TextSpan(text: value),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+Future<void> _showPositionEvidence(
+  BuildContext context,
+  AiMoveInsight insight,
+  String languageCode,
+) {
+  final List<AiBoardAnnotation> annotations = <AiBoardAnnotation>[
+    if ((insight.playedMove ?? '').length >= 4)
+      AiBoardAnnotation(
+        insight.playedMove!.substring(0, 2),
+        insight.playedMove!.substring(2, 4),
+        'played',
+        insight.label,
+      ),
+    if ((insight.bestMove ?? '').length >= 4)
+      AiBoardAnnotation(
+        insight.bestMove!.substring(0, 2),
+        insight.bestMove!.substring(2, 4),
+        'best',
+        _reviewText('best', languageCode),
+      ),
+    if ((insight.opponentThreat ?? '').length >= 4)
+      AiBoardAnnotation(
+        insight.opponentThreat!.substring(0, 2),
+        insight.opponentThreat!.substring(2, 4),
+        'threat',
+        _reviewText('threatTitle', languageCode),
+      ),
+  ];
+  return showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(
+        CoachLocalizations(languageCode)
+            .text('positionBefore', <String, String>{'move': insight.notation}),
+      ),
+      content: SizedBox(
+        width: 520,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              _CoachPositionBoard(
+                fen: insight.fenBefore!,
+                annotations: annotations,
+                languageCode: languageCode,
+              ),
+              const SizedBox(height: 12),
+              _StructuredMoveExplanation(
+                insight: insight,
+                languageCode: languageCode,
+                color: _qualityColor(insight.label),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: <Widget>[
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(CoachLocalizations(languageCode).text('gotIt')),
+        ),
+      ],
+    ),
+  );
 }
 
 String _variationText(AiMoveInsight insight, String languageCode) =>
@@ -1071,11 +1279,15 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
           // Every reviewed move already carries deterministic engine evidence.
           // Keep answering custom questions with that evidence when the coach
           // endpoint is temporarily unavailable instead of showing a dead end.
-          _answer = _localizedPersonalCoachAnswer(
-            widget.insight,
-            presetQuestion == null ? CoachQuestion.whyBad : _question,
-            _languageCode,
-          );
+          _answer =
+              _localizedPersonalCoachAnswer(
+                widget.insight,
+                presetQuestion == null ? CoachQuestion.whyBad : _question,
+                _languageCode,
+              ) +
+              (presetQuestion == null
+                  ? '\n\n${_localizedPersonalCoachAnswer(widget.insight, CoachQuestion.opponentThreat, _languageCode)}\n\n${_localizedPersonalCoachAnswer(widget.insight, CoachQuestion.bestPlan, _languageCode)}'
+                  : '');
           _cloudAnswer = null;
         });
       }

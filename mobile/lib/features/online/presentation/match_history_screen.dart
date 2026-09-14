@@ -46,6 +46,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   List<SavedGameRecord> _cloudGames = [];
   bool _historySyncFailed = false;
   String _filter = 'All';
+  final Set<String> _selectedGameIds = <String>{};
   late Future<List<ComputerGameDraft>> _drafts = _loadDrafts();
   Future<List<ComputerGameDraft>> _loadDrafts() async {
     final owner = await ComputerGameStore.activeOwner();
@@ -235,7 +236,8 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
           SavedGameRecord(
             mode: 'Imported FEN',
             result: '*',
-            detail: 'Imported chess position • ${position.split(' ')[1] == 'w' ? 'White' : 'Black'} to move',
+            detail:
+                'Imported chess position • ${position.split(' ')[1] == 'w' ? 'White' : 'Black'} to move',
             moves: const <String>[],
             playedAt: DateTime.now().toUtc(),
             whitePlayer: 'FEN position',
@@ -485,14 +487,165 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Exported $count FEN position${count == 1 ? '' : 's'}.')),
+        SnackBar(
+          content: Text(
+            'Exported $count FEN position${count == 1 ? '' : 's'}.',
+          ),
+        ),
       );
     } on FormatException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     }
+  }
+
+  Future<void> _exportSingleGame(SavedGameRecord game, String format) async {
+    final String safeName = '${game.whitePlayer}-vs-${game.blackPlayer}'
+        .replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '-')
+        .toLowerCase();
+    try {
+      if (format == 'pgn') {
+        final String content = _pgn.exportGames(<SavedGameRecord>[game]);
+        await FilePicker.saveFile(
+          dialogTitle: 'Export this game as PGN',
+          fileName: '$safeName.pgn',
+          type: FileType.custom,
+          allowedExtensions: const <String>['pgn'],
+          bytes: Uint8List.fromList(utf8.encode(content)),
+        );
+      } else {
+        final String content = _fen.exportPositions(<SavedGameRecord>[game]);
+        await FilePicker.saveFile(
+          dialogTitle: 'Export this game as FEN',
+          fileName: '$safeName.fen',
+          type: FileType.custom,
+          allowedExtensions: const <String>['fen'],
+          bytes: Uint8List.fromList(utf8.encode('$content\n')),
+        );
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Game exported as ${format.toUpperCase()}.')),
+      );
+    } on FormatException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
+  Future<void> _showGameActions(SavedGameRecord game) async {
+    final String? action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 22),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: AppColors.accentGold),
+          gradient: const LinearGradient(
+            colors: <Color>[Color(0xFF09223B), Color(0xFF040D19)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(color: Color(0x6645B8FF), blurRadius: 30),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF53708C),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                game.summary,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFFFFD978),
+                  fontSize: 19,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Choose how you want to keep or share this game.',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 18),
+              _PremiumGameAction(
+                icon: Icons.description_outlined,
+                title: 'EXPORT PGN',
+                subtitle: 'Complete game, players, result and move history',
+                onTap: () => Navigator.pop(context, 'pgn'),
+              ),
+              const SizedBox(height: 10),
+              _PremiumGameAction(
+                icon: Icons.grid_on_rounded,
+                title: 'EXPORT FEN',
+                subtitle: 'Exact saved and engine-reviewed positions',
+                onTap: () => Navigator.pop(context, 'fen'),
+              ),
+              const SizedBox(height: 10),
+              _PremiumGameAction(
+                icon: Icons.library_add_check_rounded,
+                title: 'SELECT MULTIPLE GAMES',
+                subtitle: 'Choose several games and export separate files',
+                onTap: () => Navigator.pop(context, 'select'),
+              ),
+              const SizedBox(height: 10),
+              _PremiumGameAction(
+                icon: Icons.delete_outline_rounded,
+                title: 'DELETE GAME',
+                subtitle: 'Remove this game from My Games',
+                danger: true,
+                onTap: () => Navigator.pop(context, 'delete'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || action == null) return;
+    if (action == 'select') {
+      _toggleGameSelection(game);
+    } else if (action == 'delete') {
+      await _deleteGame(game);
+    } else {
+      await _exportSingleGame(game, action);
+    }
+  }
+
+  void _toggleGameSelection(SavedGameRecord game) {
+    final String id = _gameFingerprint(game);
+    setState(() {
+      if (!_selectedGameIds.add(id)) _selectedGameIds.remove(id);
+    });
+  }
+
+  Future<void> _exportSelectedGames(
+    List<SavedGameRecord> games,
+    String format,
+  ) async {
+    final List<SavedGameRecord> selected = games
+        .where((game) => _selectedGameIds.contains(_gameFingerprint(game)))
+        .toList(growable: false);
+    for (final SavedGameRecord game in selected) {
+      if (!mounted) return;
+      await _exportSingleGame(game, format);
+    }
+    if (!mounted) return;
+    setState(_selectedGameIds.clear);
   }
 
   Future<void> _chooseImportFormat() async {
@@ -507,62 +660,63 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     if (format == 'fen') await _exportFen();
   }
 
-  Future<String?> _chooseArchiveFormat({required bool importing}) =>
-      showDialog<String>(
-        context: context,
-        builder: (context) => Dialog(
-          backgroundColor: AppColors.backgroundDeep,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-            side: const BorderSide(color: AppColors.accentGold),
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: Padding(
-              padding: const EdgeInsets.all(26),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    '${importing ? 'IMPORT' : 'EXPORT'} CHESS DATA',
-                    style: const TextStyle(
-                      color: AppColors.accentGold,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    importing
-                        ? 'Choose whether you are bringing in a complete game or one exact position.'
-                        : 'Choose the format you want to keep or share.',
-                    style: const TextStyle(color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: 20),
-                  _ArchiveFormatTile(
-                    icon: Icons.history_rounded,
-                    title: 'PGN • COMPLETE GAMES',
-                    subtitle: importing
-                        ? 'Import move history from Chess.com or another chess app'
-                        : 'Export all saved games with players, result and moves',
-                    onTap: () => Navigator.pop(context, 'pgn'),
-                  ),
-                  const SizedBox(height: 12),
-                  _ArchiveFormatTile(
-                    icon: Icons.grid_on_rounded,
-                    title: 'FEN • BOARD POSITIONS',
-                    subtitle: importing
-                        ? 'Import an exact board setup, side to move and castling rights'
-                        : 'Export imported and engine-reviewed positions',
-                    onTap: () => Navigator.pop(context, 'fen'),
-                  ),
-                ],
+  Future<String?> _chooseArchiveFormat({
+    required bool importing,
+  }) => showDialog<String>(
+    context: context,
+    builder: (context) => Dialog(
+      backgroundColor: AppColors.backgroundDeep,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: const BorderSide(color: AppColors.accentGold),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: Padding(
+          padding: const EdgeInsets.all(26),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                '${importing ? 'IMPORT' : 'EXPORT'} CHESS DATA',
+                style: const TextStyle(
+                  color: AppColors.accentGold,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-            ),
+              const SizedBox(height: 7),
+              Text(
+                importing
+                    ? 'Choose whether you are bringing in a complete game or one exact position.'
+                    : 'Choose the format you want to keep or share.',
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 20),
+              _ArchiveFormatTile(
+                icon: Icons.history_rounded,
+                title: 'PGN • COMPLETE GAMES',
+                subtitle: importing
+                    ? 'Import move history from Chess.com or another chess app'
+                    : 'Export all saved games with players, result and moves',
+                onTap: () => Navigator.pop(context, 'pgn'),
+              ),
+              const SizedBox(height: 12),
+              _ArchiveFormatTile(
+                icon: Icons.grid_on_rounded,
+                title: 'FEN • BOARD POSITIONS',
+                subtitle: importing
+                    ? 'Import an exact board setup, side to move and castling rights'
+                    : 'Export imported and engine-reviewed positions',
+                onTap: () => Navigator.pop(context, 'fen'),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    ),
+  );
 
   String _gameFingerprint(SavedGameRecord game) =>
       '${game.whitePlayer.trim().toLowerCase()}|${game.blackPlayer.trim().toLowerCase()}|${game.result}|${game.moves.join(' ')}|${game.initialFen ?? ''}';
@@ -691,39 +845,38 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                   ),
                 ),
               ],
-              if (game.moves.isNotEmpty) Wrap(
-                spacing: 8,
-                children: [
-                  FilledButton(
-                    onPressed: () => showAdaptiveAiReview(
-                      context,
-                      report: AiReviewReport.fromMoves(
-                        game.moves,
-                        newestFirst: false,
-                        result: game.result,
-                        knownReviews: game.moveReviews,
-                        playerSide: game.playerSide,
-                        reviewScope: game.reviewScope,
+              if (game.moves.isNotEmpty)
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    FilledButton(
+                      onPressed: () => showAdaptiveAiReview(
+                        context,
+                        report: AiReviewReport.fromMoves(
+                          game.moves,
+                          newestFirst: false,
+                          result: game.result,
+                          knownReviews: game.moveReviews,
+                          playerSide: game.playerSide,
+                          reviewScope: game.reviewScope,
+                        ),
                       ),
+                      child: const Text('AI Review'),
                     ),
-                    child: const Text('AI Review'),
-                  ),
-                  if (game.mode == 'Play vs AI')
-                    TextButton(
-                      onPressed: widget.onPlayAgain == null
-                          ? null
-                          : _startNewGame,
-                      child: const Text('Play Again'),
-                    ),
-                ],
-              ),
+                    if (game.mode == 'Play vs AI')
+                      TextButton(
+                        onPressed: widget.onPlayAgain == null
+                            ? null
+                            : _startNewGame,
+                        child: const Text('Play Again'),
+                      ),
+                  ],
+                ),
               if (game.moves.isNotEmpty) ...<Widget>[
                 const Text('Moves'),
                 ...game.moves.indexed.map(
-                  (m) => ListTile(
-                    leading: Text('${m.$1 + 1}'),
-                    title: Text(m.$2),
-                  ),
+                  (m) =>
+                      ListTile(leading: Text('${m.$1 + 1}'), title: Text(m.$2)),
                 ),
               ],
             ],
@@ -970,6 +1123,17 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                                     )
                                     .toList(),
                           ),
+                          if (_selectedGameIds.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 12),
+                            _MultiSelectToolbar(
+                              count: _selectedGameIds.length,
+                              onCancel: () => setState(_selectedGameIds.clear),
+                              onExportPgn: () =>
+                                  _exportSelectedGames(local, 'pgn'),
+                              onExportFen: () =>
+                                  _exportSelectedGames(local, 'fen'),
+                            ),
+                          ],
                           const SizedBox(height: 12),
                           if (online.isNotEmpty &&
                               (_filter == 'All' ||
@@ -1014,7 +1178,14 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                                 .map(
                                   (g) => _LocalHistoryCard(
                                     g,
-                                    onTap: () => _openCompleted(g),
+                                    selected: _selectedGameIds.contains(
+                                      _gameFingerprint(g),
+                                    ),
+                                    selectionMode: _selectedGameIds.isNotEmpty,
+                                    onTap: () => _selectedGameIds.isNotEmpty
+                                        ? _toggleGameSelection(g)
+                                        : _openCompleted(g),
+                                    onLongPress: () => _showGameActions(g),
                                     onDelete: () => _deleteGame(g),
                                   ),
                                 ),
@@ -1078,7 +1249,10 @@ class _ArchiveFormatTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
@@ -1090,7 +1264,10 @@ class _ArchiveFormatTile extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.accentGold),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.accentGold,
+            ),
           ],
         ),
       ),
@@ -1242,6 +1419,133 @@ class _PgnCoachBanner extends StatelessWidget {
   );
 }
 
+class _PremiumGameAction extends StatelessWidget {
+  const _PremiumGameAction({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.danger = false,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: const Color(0xB70A2038),
+    borderRadius: BorderRadius.circular(16),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: danger ? const Color(0x99FF5263) : const Color(0xAA35BFFF),
+          ),
+        ),
+        child: Row(
+          children: <Widget>[
+            Icon(
+              icon,
+              color: danger ? const Color(0xFFFF7180) : const Color(0xFF63E3C4),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: danger
+                          ? const Color(0xFFFF7180)
+                          : const Color(0xFFFFD978),
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFFFFD978)),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _MultiSelectToolbar extends StatelessWidget {
+  const _MultiSelectToolbar({
+    required this.count,
+    required this.onCancel,
+    required this.onExportPgn,
+    required this.onExportFen,
+  });
+  final int count;
+  final VoidCallback onCancel;
+  final VoidCallback onExportPgn;
+  final VoidCallback onExportFen;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: const Color(0xFFFFD15C)),
+      gradient: const LinearGradient(
+        colors: <Color>[Color(0xFF14304A), Color(0xFF07192C)],
+      ),
+      boxShadow: const <BoxShadow>[
+        BoxShadow(color: Color(0x44EABF61), blurRadius: 18),
+      ],
+    ),
+    child: Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: Text(
+            '$count SELECTED',
+            style: const TextStyle(
+              color: Color(0xFFFFD978),
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        OutlinedButton.icon(
+          onPressed: onExportPgn,
+          icon: const Icon(Icons.description_outlined),
+          label: const Text('PGN FILES'),
+        ),
+        OutlinedButton.icon(
+          onPressed: onExportFen,
+          icon: const Icon(Icons.grid_on_rounded),
+          label: const Text('FEN FILES'),
+        ),
+        IconButton(
+          tooltip: 'Cancel selection',
+          onPressed: onCancel,
+          icon: const Icon(Icons.close_rounded),
+        ),
+      ],
+    ),
+  );
+}
+
 class _HistoryMessage extends StatelessWidget {
   const _HistoryMessage({
     required this.icon,
@@ -1381,19 +1685,41 @@ class _LocalHistoryCard extends StatelessWidget {
   const _LocalHistoryCard(
     this.game, {
     required this.onTap,
+    required this.onLongPress,
     required this.onDelete,
+    required this.selected,
+    required this.selectionMode,
   });
   final SavedGameRecord game;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
   final VoidCallback onDelete;
+  final bool selected;
+  final bool selectionMode;
   @override
   Widget build(BuildContext context) => _HistoryShell(
-    accent: const Color(0xFF668CA2),
+    accent: selected ? const Color(0xFFFFD15C) : const Color(0xFF49DDBB),
     onTap: onTap,
+    onLongPress: onLongPress,
     child: Row(
       children: <Widget>[
-        const Icon(Icons.devices_rounded, color: Color(0xFF63D2B8)),
-        const SizedBox(width: 12),
+        if (selectionMode)
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Icon(
+              selected
+                  ? Icons.check_circle_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              color: selected
+                  ? const Color(0xFFFFD15C)
+                  : const Color(0xFF6D879E),
+            ),
+          )
+        else
+          const Padding(
+            padding: EdgeInsets.only(right: 12),
+            child: Icon(Icons.emoji_events_rounded, color: Color(0xFF63D2B8)),
+          ),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1411,27 +1737,34 @@ class _LocalHistoryCard extends StatelessWidget {
         ),
         Text(game.result, style: const TextStyle(fontWeight: FontWeight.w800)),
         const SizedBox(width: 8),
-        IconButton(
-          key: ValueKey<String>(
-            'delete-game-${game.playedAt.toIso8601String()}',
+        if (!selectionMode)
+          IconButton(
+            key: ValueKey<String>(
+              'delete-game-${game.playedAt.toIso8601String()}',
+            ),
+            tooltip: 'Delete game',
+            onPressed: onDelete,
+            icon: const Icon(
+              Icons.delete_outline_rounded,
+              color: AppColors.textSecondary,
+            ),
           ),
-          tooltip: 'Delete game',
-          onPressed: onDelete,
-          icon: const Icon(
-            Icons.delete_outline_rounded,
-            color: AppColors.textSecondary,
-          ),
-        ),
       ],
     ),
   );
 }
 
 class _HistoryShell extends StatelessWidget {
-  const _HistoryShell({required this.accent, required this.child, this.onTap});
+  const _HistoryShell({
+    required this.accent,
+    required this.child,
+    this.onTap,
+    this.onLongPress,
+  });
   final Color accent;
   final Widget child;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   @override
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(bottom: 10),
@@ -1445,6 +1778,7 @@ class _HistoryShell extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
+        onLongPress: onLongPress,
         child: Padding(padding: const EdgeInsets.all(14), child: child),
       ),
     ),
