@@ -21,10 +21,11 @@ class AcademyStoryLocalizations {
   Map<String, String>? get _copy => _translations[code];
 
   String storyChapter(AcademyLesson lesson) =>
-      _copy?['${lesson.id}.chapter'] ?? lesson.storyChapter;
+      _copy?['${lesson.copyId}.chapter'] ?? lesson.storyChapter;
 
   String storyNarration(AcademyLesson lesson) {
-    final String value = _copy?['${lesson.id}.story'] ?? lesson.storyNarration;
+    final String value =
+        _copy?['${lesson.copyId}.story'] ?? lesson.storyNarration;
     final String localized = value
         .replaceAll('{from}', lesson.from)
         .replaceAll('{to}', lesson.to)

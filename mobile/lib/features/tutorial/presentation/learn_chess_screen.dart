@@ -31,8 +31,11 @@ class LearnChessScreen extends StatefulWidget {
       accent: Color(0xFF59E4C8),
       chapters: <String>[
         'Meet the chessboard',
-        'How pawns move',
-        'Rooks and files',
+        'Pawn: one or two squares',
+        'Pawn: capture diagonally',
+        'Pawn: promote on the last rank',
+        'Rook: horizontal movement',
+        'Rook: vertical movement',
         'Bishops and diagonals',
         'The knight jump',
         'Queen movement',
@@ -649,14 +652,12 @@ class _MasterGamesCard extends StatelessWidget {
                             width: 34,
                             height: 34,
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF071827,
-                              ).withValues(alpha: .72),
+                              color: const Color(0xFF071827)
+                                  .withValues(alpha: .72),
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: const Color(
-                                  0xFF63D2B8,
-                                ).withValues(alpha: .4),
+                                color: const Color(0xFF63D2B8)
+                                    .withValues(alpha: .4),
                               ),
                             ),
                             child: Icon(

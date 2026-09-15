@@ -379,6 +379,10 @@ class _InteractiveAcademyLessonScreenState
       return;
     }
     if (square == widget.lesson.to) {
+      if (widget.lesson.copyId == 'promotion') {
+        unawaited(_completePromotion());
+        return;
+      }
       setState(() {
         _phase = _LessonPhase.success;
         _selected = null;
@@ -394,6 +398,37 @@ class _InteractiveAcademyLessonScreenState
       _selected = null;
       _feedback = _smartCorrection(square);
     });
+  }
+
+  Future<void> _completePromotion() async {
+    final String? piece = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        backgroundColor: const Color(0xFF091C2C),
+        title: Text(_copy.storyChapter(widget.lesson)),
+        content: Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: const <String>['Q', 'R', 'B', 'N']
+              .map(
+                (String symbol) => FilledButton(
+                  onPressed: () => Navigator.of(context).pop(symbol),
+                  child: Text(symbol),
+                ),
+              )
+              .toList(growable: false),
+        ),
+      ),
+    );
+    if (piece == null || !mounted) return;
+    setState(() {
+      _phase = _LessonPhase.success;
+      _selected = null;
+      _feedback = _languageCode == 'en'
+          ? '${widget.lesson.successMessage} ($piece)'
+          : '${_coachCopy.text('bestFound')} · $piece';
+    });
+    unawaited(_completeLesson());
   }
 
   String _smartCorrection(String square) {
@@ -713,7 +748,11 @@ class _AnimatedAcademyBoard extends StatelessWidget {
                 if (moved) {
                   final AcademyPiece? piece = pieces.remove(activeStep.from);
                   pieces.remove(activeStep.to);
-                  if (piece != null) pieces[activeStep.to] = piece;
+                  if (piece != null) {
+                    pieces[activeStep.to] = lesson.copyId == 'promotion'
+                        ? AcademyPiece('Q', white: piece.white)
+                        : piece;
+                  }
                 }
                 return Stack(
                   children: <Widget>[

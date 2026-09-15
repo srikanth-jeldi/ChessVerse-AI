@@ -34,6 +34,7 @@ class AcademyLesson {
     this.path = const <String>[],
     this.highlighted = const <String>[],
     this.demoLine = const <AcademyDemoMove>[],
+    this.localizationId,
   });
 
   final String id;
@@ -49,6 +50,8 @@ class AcademyLesson {
   final List<String> path;
   final List<String> highlighted;
   final List<AcademyDemoMove> demoLine;
+  final String? localizationId;
+  String get copyId => localizationId ?? id;
 
   List<AcademyDemoMove> get demonstrationLine => demoLine.isEmpty
       ? <AcademyDemoMove>[AcademyDemoMove(from, to)]
@@ -57,11 +60,11 @@ class AcademyLesson {
   /// ChessVerseAI's story layer. It turns a rule into a memorable scene while
   /// keeping the actual chess instruction precise and short enough for TTS.
   String get storyNarration =>
-      _foundationStories[id] ??
+      _foundationStories[copyId] ??
       'Every position tells a story. Today, your mission is $title. '
           '$explanation Watch the idea, predict the move, and then prove it on the board.';
 
-  String get storyChapter => _foundationChapterNames[id] ?? 'THE NEXT MOVE';
+  String get storyChapter => _foundationChapterNames[copyId] ?? 'THE NEXT MOVE';
 
   bool get usesDecisionCheckpoint => stage != AcademyStage.foundation;
 
@@ -252,7 +255,7 @@ abstract final class AcademyCatalog {
     ),
     AcademyLesson(
       id: 'pawn',
-      title: 'How pawns move',
+      title: 'Pawn: one or two squares',
       stage: AcademyStage.foundation,
       eyebrow: 'PAWN POWER',
       explanation: 'A pawn moves straight ahead, normally one square. From its starting rank it may move two squares.',
@@ -266,8 +269,57 @@ abstract final class AcademyCatalog {
       highlighted: <String>['e3', 'e4'],
     ),
     AcademyLesson(
+      id: 'pawn-capture',
+      localizationId: 'capture',
+      title: 'Pawn: capture diagonally',
+      stage: AcademyStage.foundation,
+      eyebrow: 'PAWN CAPTURE',
+      explanation: 'Pawns move straight ahead but capture one square diagonally forward.',
+      coachPrompt: 'Capture the black knight by moving from e4 to d5.',
+      successMessage: 'Correct. The pawn captured one square diagonally.',
+      pieces: <String, AcademyPiece>{
+        'e4': whitePawn,
+        'd5': blackKnight,
+        'e8': blackKing,
+      },
+      from: 'e4',
+      to: 'd5',
+      highlighted: <String>['e5', 'd5', 'f5'],
+    ),
+    AcademyLesson(
+      id: 'pawn-promotion-basics',
+      localizationId: 'promotion',
+      title: 'Pawn: promote on the last rank',
+      stage: AcademyStage.foundation,
+      eyebrow: 'PROMOTION',
+      explanation: 'A pawn reaching the last rank becomes a queen, rook, bishop, or knight.',
+      coachPrompt: 'Move the pawn from a7 to a8 and promote it.',
+      successMessage:
+          'Promotion complete. Choose the piece that best fits the position.',
+      pieces: <String, AcademyPiece>{'a7': whitePawn, 'h8': blackKing},
+      from: 'a7',
+      to: 'a8',
+      highlighted: <String>['a7', 'a8'],
+    ),
+    AcademyLesson(
+      id: 'rook-horizontal',
+      localizationId: 'rook',
+      title: 'Rook: horizontal movement',
+      stage: AcademyStage.foundation,
+      eyebrow: 'MOVE ACROSS A RANK',
+      explanation:
+          'A rook travels left or right across any number of clear squares.',
+      coachPrompt: 'Move the rook horizontally from a4 to f4.',
+      successMessage: 'Excellent. The rook travelled across rank 4.',
+      pieces: <String, AcademyPiece>{'a4': whiteRook, 'h8': blackKing},
+      from: 'a4',
+      to: 'f4',
+      path: <String>['b4', 'c4', 'd4', 'e4'],
+      highlighted: <String>['a4', 'f4'],
+    ),
+    AcademyLesson(
       id: 'rook',
-      title: 'Rooks and files',
+      title: 'Rook: vertical movement',
       stage: AcademyStage.foundation,
       eyebrow: 'STRAIGHT-LINE FORCE',
       explanation: 'A rook moves any number of clear squares horizontally or vertically. It cannot jump over another piece.',

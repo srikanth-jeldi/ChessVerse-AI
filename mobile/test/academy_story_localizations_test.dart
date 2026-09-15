@@ -52,4 +52,32 @@ void main() {
     expect(speech, contains('ఏ ఒకటి'));
     expect(speech, contains('ఏ ఎనిమిది'));
   });
+
+  test('piece micro-lessons reuse the complete 34-language catalog', () {
+    const List<String> chapters = <String>[
+      'Pawn: one or two squares',
+      'Pawn: capture diagonally',
+      'Pawn: promote on the last rank',
+      'Rook: horizontal movement',
+      'Rook: vertical movement',
+      'Bishops and diagonals',
+      'The knight jump',
+      'Queen movement',
+      'The king and legal moves',
+      'Check and checkmate',
+    ];
+    for (final String chapter in chapters) {
+      final AcademyLesson lesson = AcademyCatalog.forChapter(chapter);
+      expect(lesson.title, chapter);
+      for (final AppLanguage language in AppLanguageController.supported.skip(
+        1,
+      )) {
+        expect(
+          AcademyStoryLocalizations(language.code).storyNarration(lesson),
+          isNotEmpty,
+          reason: '$chapter ${language.code}',
+        );
+      }
+    }
+  });
 }
