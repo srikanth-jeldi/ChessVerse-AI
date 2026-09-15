@@ -82,25 +82,34 @@ class _MasterGamesScreenState extends State<MasterGamesScreen> {
           ],
         ),
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1080),
-          child: ListView(
-            padding: const EdgeInsets.all(18),
-            children: <Widget>[
-              _MasterCatalogHero(copy: copy, completed: _completed),
-              const SizedBox(height: 18),
-              for (final MasterGameLesson lesson in MasterGameCatalog.lessons)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: _MasterGameCard(
-                    lesson: lesson,
-                    copy: copy,
-                    completed: _completed.contains(lesson.id),
-                    onReturned: _loadProgress,
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/backgrounds/master-games-hall-v1.png'),
+            fit: BoxFit.cover,
+            opacity: .12,
+          ),
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1080),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              children: <Widget>[
+                _MasterCatalogHero(copy: copy, completed: _completed),
+                const SizedBox(height: 16),
+                for (final MasterGameLesson lesson in MasterGameCatalog.lessons)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _MasterGameCard(
+                      lesson: lesson,
+                      copy: copy,
+                      completed: _completed.contains(lesson.id),
+                      onReturned: _loadProgress,
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -117,128 +126,148 @@ class _MasterCatalogHero extends StatelessWidget {
   int get total => MasterGameCatalog.lessons.length;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(22),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(28),
-      gradient: const LinearGradient(
-        colors: <Color>[
-          Color(0xFF153F4B),
-          Color(0xFF0A2030),
-          Color(0xFF071421),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      border: Border.all(color: AppColors.accentGold.withValues(alpha: .55)),
-      boxShadow: const <BoxShadow>[
-        BoxShadow(
-          color: Color(0x334CDCC1),
-          blurRadius: 30,
-          offset: Offset(0, 14),
-        ),
-      ],
-    ),
-    child: LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final bool compact = constraints.maxWidth < 560;
-        final Widget copyBlock = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                const Icon(
-                  Icons.auto_awesome_rounded,
-                  color: AppColors.accentGold,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (BuildContext context, BoxConstraints constraints) {
+      final bool compact = constraints.maxWidth < 560;
+      final Widget copyBlock = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              const Icon(
+                Icons.auto_awesome_rounded,
+                color: AppColors.accentGold,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
                   child: Text(
                     copy.text('master.eyebrow'),
-                    style: const TextStyle(
-                      color: AppColors.accentGold,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.1,
-                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.accentGold,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.1,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              copy.text('master.title'),
-              style: const TextStyle(
-                fontSize: 30,
-                height: 1,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              copy.text('master.intro'),
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 15,
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 18),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(99),
-              child: LinearProgressIndicator(
-                minHeight: 7,
-                value: total == 0 ? 0 : completed.length / total,
-                backgroundColor: const Color(0xFF24344C),
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFF63D2B8),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '${completed.length}/$total MASTER MOMENTS COMPLETED',
-              style: const TextStyle(
-                color: Color(0xFF63D2B8),
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                letterSpacing: .8,
-              ),
-            ),
-          ],
-        );
-        final Widget artwork = SizedBox(
-          width: compact ? 112 : 210,
-          height: compact ? 180 : 230,
-          child: Stack(
-            alignment: Alignment.bottomCenter,
-            children: <Widget>[
-              Container(
-                width: compact ? 100 : 170,
-                height: compact ? 100 : 170,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: <BoxShadow>[
-                    BoxShadow(color: Color(0x6640BFFF), blurRadius: 46),
-                  ],
-                ),
-              ),
-              Image.asset(
-                'assets/pieces/premium_individual/sapphire-elite/black/king.webp',
-                fit: BoxFit.contain,
               ),
             ],
           ),
-        );
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            Expanded(child: copyBlock),
-            const SizedBox(width: 12),
-            artwork,
+          const SizedBox(height: 14),
+          Text(
+            copy.text('master.title'),
+            style: TextStyle(
+              color: const Color(0xFFF5EBD5),
+              fontFamily: 'serif',
+              fontSize: compact ? 30 : 38,
+              height: 1.04,
+              fontWeight: FontWeight.w700,
+              letterSpacing: .5,
+            ),
+          ),
+          const SizedBox(height: 10),
+            Text(
+              copy.text('master.intro'),
+              maxLines: compact ? 4 : 5,
+              overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 15,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: <Widget>[
+              for (int index = 0; index < total; index++) ...<Widget>[
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 320),
+                  width: compact ? 18 : 24,
+                  height: compact ? 18 : 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: index < completed.length
+                        ? AppColors.accentGold
+                        : const Color(0xFF0A1C31),
+                    border: Border.all(
+                      color: index < completed.length
+                          ? const Color(0xFFFFE18A)
+                          : const Color(0xFF5CAEFF),
+                    ),
+                    boxShadow: index < completed.length
+                        ? const <BoxShadow>[
+                            BoxShadow(color: Color(0x88E5B651), blurRadius: 10),
+                          ]
+                        : null,
+                  ),
+                ),
+                if (index + 1 < total)
+                  Expanded(
+                    child: Container(height: 1, color: const Color(0x665CAEFF)),
+                  ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '${completed.length}/$total  MASTER MOMENTS',
+            style: const TextStyle(
+              color: Color(0xFF86D8FF),
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1,
+            ),
+          ),
+        ],
+      );
+        return Container(
+          height: compact ? 340 : 300,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: const Color(0xFF63C8FF), width: 1.2),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(color: Color(0x5540BFFF), blurRadius: 28),
+            BoxShadow(color: Color(0x33E5B651), blurRadius: 18),
           ],
-        );
-      },
-    ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(27),
+          child: Stack(
+            fit: StackFit.expand,
+            children: <Widget>[
+              const Image(
+                image: AssetImage(
+                  'assets/backgrounds/master-games-hall-v1.png',
+                ),
+                fit: BoxFit.cover,
+                alignment: Alignment.centerRight,
+              ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: <Color>[
+                      Color(0xF2081C30),
+                      Color(0xD9081C30),
+                      Color(0x33030B13),
+                    ],
+                    stops: <double>[0, .58, 1],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  compact ? 20 : 28,
+                  24,
+                    compact ? 34 : 260,
+                  22,
+                ),
+                child: copyBlock,
+              ),
+            ],
+          ),
+        ),
+      );
+    },
   );
 }
 
@@ -294,23 +323,30 @@ class _MasterGameCard extends StatelessWidget {
       );
       onReturned();
     },
-    child: DecoratedBox(
+    child: Container(
+      constraints: const BoxConstraints(minHeight: 156),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
+        image: const DecorationImage(
+          image: AssetImage('assets/backgrounds/master-games-hall-v1.png'),
+          fit: BoxFit.cover,
+          alignment: Alignment.centerRight,
+          opacity: .32,
+        ),
         gradient: const LinearGradient(
           colors: <Color>[Color(0xFF102A43), Color(0xFF071426)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
         ),
+        border: Border.all(color: const Color(0xCC59BFFF)),
         boxShadow: const <BoxShadow>[
-          BoxShadow(color: Color(0x3329B6F6), blurRadius: 20),
+          BoxShadow(color: Color(0x4429B6F6), blurRadius: 22),
+          BoxShadow(color: Color(0x22E5B651), blurRadius: 14),
         ],
       ),
       child: Row(
         children: <Widget>[
           Container(
-            width: 94,
-            constraints: const BoxConstraints(minHeight: 152),
+            width: 88,
+            constraints: const BoxConstraints(minHeight: 156),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: <Color>[Color(0xFF184956), Color(0xFF0B2635)],
@@ -359,8 +395,11 @@ class _MasterGameCard extends StatelessWidget {
                         child: Text(
                           '${lesson.white} vs ${lesson.black}',
                           style: const TextStyle(
+                            color: Color(0xFFF5EBD5),
+                            fontFamily: 'serif',
                             fontSize: 18,
-                            fontWeight: FontWeight.w900,
+                            height: 1.08,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
@@ -374,8 +413,15 @@ class _MasterGameCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    '${lesson.event} · ${lesson.year} · ${lesson.result}',
-                    style: const TextStyle(color: AppColors.textSecondary),
+                    lesson.event,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Color(0xFFBBD4ED)),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${lesson.year} · ${lesson.result}',
+                    style: const TextStyle(color: Color(0xFF91B1CF)),
                   ),
                   const SizedBox(height: 12),
                   DecoratedBox(
