@@ -892,6 +892,7 @@ void main() {
     );
     expect(hero, findsOneWidget);
     expect(selector, findsOneWidget);
+    expect(tester.getSize(hero).aspectRatio, closeTo(1984 / 793, .03));
     expect(
       tester.getBottomLeft(hero).dy,
       lessThanOrEqualTo(tester.getTopLeft(selector).dy),

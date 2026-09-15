@@ -22,7 +22,7 @@ class OtpMailService implements OtpDelivery {
     OtpMailService(
             JavaMailSender mailSender,
             @Value("${chessverse.auth.mail-from:}") String from,
-            @Value("${chessverse.auth.mail-logo-url:https://chessverseai.com/assets/assets/branding/app_icon.png}") String logoUrl) {
+            @Value("${chessverse.auth.mail-logo-url:https://chessverseai.com/landing-assets/app-icon.png}") String logoUrl) {
         this.mailSender = mailSender;
         this.from = from;
         this.logoUrl = logoUrl;

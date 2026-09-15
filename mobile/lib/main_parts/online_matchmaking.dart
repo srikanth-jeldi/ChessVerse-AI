@@ -551,12 +551,12 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                               : 'Play with Friends',
                           style:
                               (wideLayout
-                                      ? Theme.of(
-                                          context,
-                                        ).textTheme.headlineMedium
-                                      : Theme.of(
-                                          context,
-                                        ).textTheme.headlineSmall)
+                                      ? Theme.of(context)
+                                            .textTheme
+                                            .headlineMedium
+                                      : Theme.of(context)
+                                            .textTheme
+                                            .headlineSmall)
                                   ?.copyWith(fontWeight: FontWeight.w900),
                         ),
                       ),
@@ -627,12 +627,12 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                     maxLines: 1,
                                     style:
                                         (wideLayout
-                                                ? Theme.of(
-                                                    context,
-                                                  ).textTheme.headlineMedium
-                                                : Theme.of(
-                                                    context,
-                                                  ).textTheme.titleLarge)
+                                                ? Theme.of(context)
+                                                      .textTheme
+                                                      .headlineMedium
+                                                : Theme.of(context)
+                                                      .textTheme
+                                                      .titleLarge)
                                             ?.copyWith(
                                               fontSize: wideLayout ? null : 20,
                                               fontWeight: FontWeight.w900,
@@ -673,10 +673,10 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                 ),
                                 clipBehavior: Clip.antiAlias,
                                 child: AspectRatio(
-                                  // Keep the pawn and world map visible like
-                                  // the desktop hero instead of cropping them
-                                  // into a shallow banner on phones.
-                                  aspectRatio: 1.62,
+                                  // Match the artwork's native 1984×793 ratio
+                                  // so the pawn and map stay proportional
+                                  // without letterbox bars on phones.
+                                  aspectRatio: 1984 / 793,
                                   child: Image.asset(
                                     'assets/backgrounds/online-matchmaking-hero-v1.webp',
                                     fit: BoxFit.contain,
@@ -1499,9 +1499,8 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: const Color(
-                              0xFF63D2B8,
-                            ).withValues(alpha: 0.12 + value * 0.28),
+                            color: const Color(0xFF63D2B8)
+                                .withValues(alpha: 0.12 + value * 0.28),
                             width: 2,
                           ),
                         ),
