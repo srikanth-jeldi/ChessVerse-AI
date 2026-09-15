@@ -80,4 +80,17 @@ void main() {
       }
     }
   });
+
+  test('lesson action prompt never leaks English into Telugu UI', () {
+    final AcademyLesson lesson = AcademyCatalog.forChapter(
+      'Meet the chessboard',
+    );
+    final String prompt = AcademyStoryLocalizations(
+      'te',
+    ).lessonInstruction(lesson);
+
+    expect(prompt, contains('a1 → a8'));
+    expect(prompt, isNot(contains('Move the highlighted rook')));
+    expect(prompt, startsWith('అధ్యాయం 1'));
+  });
 }

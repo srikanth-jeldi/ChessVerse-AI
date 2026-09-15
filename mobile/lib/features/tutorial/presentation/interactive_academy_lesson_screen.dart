@@ -131,7 +131,13 @@ class _InteractiveAcademyLessonScreenState
   void _handleLanguageChange() {
     final String? code = AppLanguageController.effectiveLanguageChanges.value;
     if (code == null || !mounted) return;
-    setState(() => _languageCode = code);
+    final AcademyStoryLocalizations localized = AcademyStoryLocalizations(code);
+    setState(() {
+      _languageCode = code;
+      if (_phase == _LessonPhase.practice) {
+        _feedback = localized.lessonInstruction(widget.lesson);
+      }
+    });
     unawaited(_narrator.stop());
     unawaited(_prepareNarration());
   }
@@ -139,7 +145,13 @@ class _InteractiveAcademyLessonScreenState
   Future<void> _chooseLanguage() async {
     final String? code = await selectAndSaveAiLanguage(context);
     if (code == null || !mounted) return;
-    setState(() => _languageCode = code);
+    final AcademyStoryLocalizations localized = AcademyStoryLocalizations(code);
+    setState(() {
+      _languageCode = code;
+      if (_phase == _LessonPhase.practice) {
+        _feedback = localized.lessonInstruction(widget.lesson);
+      }
+    });
     await _narrator.stop();
     unawaited(_prepareNarration());
   }
@@ -321,10 +333,7 @@ class _InteractiveAcademyLessonScreenState
       setState(() {
         _phase = _LessonPhase.practice;
         _selected = null;
-        _feedback = _languageCode == 'en'
-            ? widget.lesson.coachPrompt
-            : '${_copy.storyChapter(widget.lesson)} · '
-                  '${widget.lesson.from} → ${widget.lesson.to}';
+        _feedback = _copy.lessonInstruction(widget.lesson);
       });
     });
   }
@@ -683,10 +692,7 @@ class _InteractiveAcademyLessonScreenState
       _phase = _LessonPhase.practice;
       _selected = null;
       _attempts = 0;
-      _feedback = _languageCode == 'en'
-          ? widget.lesson.coachPrompt
-          : '${_copy.storyChapter(widget.lesson)} · '
-                '${widget.lesson.from} → ${widget.lesson.to}';
+      _feedback = _copy.lessonInstruction(widget.lesson);
     });
   }
 }
@@ -1352,8 +1358,10 @@ class _CoachPanel extends StatelessWidget {
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 280),
               child: Text(
-                feedback ?? lesson.coachPrompt,
-                key: ValueKey<String>(feedback ?? lesson.coachPrompt),
+                feedback ?? copy.lessonInstruction(lesson),
+                key: ValueKey<String>(
+                  feedback ?? copy.lessonInstruction(lesson),
+                ),
                 style: TextStyle(
                   color: accent,
                   fontWeight: FontWeight.w800,

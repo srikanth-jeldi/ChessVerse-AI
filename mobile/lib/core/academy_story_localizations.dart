@@ -72,6 +72,14 @@ class AcademyStoryLocalizations {
         .replaceAll('→', 'నుంచి');
   }
 
+  /// The compact instruction shown below the coach card. Lesson domain copy
+  /// is authored in English, so non-English sessions use the already
+  /// localized chapter plus language-neutral chess notation instead of
+  /// leaking the English prompt into the UI.
+  String lessonInstruction(AcademyLesson lesson) => code == 'en'
+      ? lesson.coachPrompt
+      : '${storyChapter(lesson)} · ${lesson.from} → ${lesson.to}';
+
   static bool hasOfflineCatalog(String code) {
     final Map<String, String>? copy = _translations[code];
     return copy != null && _requiredKeys.every(copy.containsKey);
