@@ -64,6 +64,7 @@ class CloudNarrationService {
   final Future<String?> Function()? _tokenProvider;
   final FlutterTts _localTts = FlutterTts();
   bool _usingLocalTts = false;
+  bool _disposed = false;
   String _localText = '';
   late final StreamSubscription<PlayerState> _stateSubscription;
   late final StreamSubscription<void> _completeSubscription;
@@ -71,6 +72,7 @@ class CloudNarrationService {
   void Function(CloudNarrationState state)? onStateChanged;
 
   Future<bool> speak({required String text, required String language}) async {
+    if (_disposed) return false;
     final String cleanText = text.trim();
     if (cleanText.isEmpty || cleanText.length > 2400) return false;
     final String cacheKey = '$language\u0000$cleanText';
@@ -93,6 +95,7 @@ class CloudNarrationService {
   /// Fetches narration while the lesson is opening. On web this means the
   /// later button press can start cached audio inside the browser gesture.
   Future<void> prepare({required String text, required String language}) async {
+    if (_disposed) return;
     final String cleanText = text.trim();
     if (cleanText.isEmpty || cleanText.length > 2400) return;
     final String cacheKey = '$language\u0000$cleanText';
@@ -243,6 +246,8 @@ class CloudNarrationService {
   }
 
   Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
     await _stateSubscription.cancel();
     await _completeSubscription.cancel();
     _client.close();

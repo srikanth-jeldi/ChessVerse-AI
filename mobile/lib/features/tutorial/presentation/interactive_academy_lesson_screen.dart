@@ -48,6 +48,8 @@ class _InteractiveAcademyLessonScreenState
   String? _candidateFeedback;
   int _demoStepIndex = 0;
   bool _lessonFlowStarted = false;
+  bool _narratorDisposed = false;
+  bool _openingNextLesson = false;
   String _languageCode = AppLanguageController.resolveCode(
     AppLanguageController.systemCode,
   );
@@ -156,9 +158,17 @@ class _InteractiveAcademyLessonScreenState
     unawaited(_prepareNarration());
   }
 
-  void _continueLearning() {
-    unawaited(_narrator.stop());
+  Future<void> _continueLearning() async {
+    if (_openingNextLesson) return;
+    _openingNextLesson = true;
     final AcademyLesson? next = _nextLesson;
+    // Finish tearing down the current audio session before constructing the
+    // replacement route. Both audioplayers and Web Speech share platform
+    // resources, so an unawaited dispose from the old lesson could otherwise
+    // stop the new lesson's first Listen tap.
+    await _narrator.dispose();
+    _narratorDisposed = true;
+    if (!mounted) return;
     if (next == null) {
       Navigator.of(context).pop();
       return;
@@ -469,7 +479,7 @@ class _InteractiveAcademyLessonScreenState
     AppLanguageController.effectiveLanguageChanges.removeListener(
       _handleLanguageChange,
     );
-    unawaited(_narrator.dispose());
+    if (!_narratorDisposed) unawaited(_narrator.dispose());
     _controller
       ..removeStatusListener(_handleAnimationStatus)
       ..dispose();
@@ -578,7 +588,7 @@ class _InteractiveAcademyLessonScreenState
               loading: _loadingProgress,
               onReplay: _playDemonstration,
               onPracticeAgain: _resetPractice,
-              onContinueLearning: _continueLearning,
+              onContinueLearning: () => unawaited(_continueLearning()),
               nextLesson: _nextLesson,
               narrationState: _narrationState,
               onToggleNarration: () => unawaited(_toggleNarration()),
@@ -629,7 +639,7 @@ class _InteractiveAcademyLessonScreenState
               loading: _loadingProgress,
               onReplay: _playDemonstration,
               onPracticeAgain: _resetPractice,
-              onContinueLearning: _continueLearning,
+              onContinueLearning: () => unawaited(_continueLearning()),
               nextLesson: _nextLesson,
               narrationState: _narrationState,
               onToggleNarration: () => unawaited(_toggleNarration()),
@@ -671,7 +681,7 @@ class _InteractiveAcademyLessonScreenState
               loading: _loadingProgress,
               onReplay: _playDemonstration,
               onPracticeAgain: _resetPractice,
-              onContinueLearning: _continueLearning,
+              onContinueLearning: () => unawaited(_continueLearning()),
               nextLesson: _nextLesson,
               narrationState: _narrationState,
               onToggleNarration: () => unawaited(_toggleNarration()),
