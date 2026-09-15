@@ -233,6 +233,18 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
               sliver: SliverToBoxAdapter(child: _hero(s)),
             ),
             SliverToBoxAdapter(child: _tabs()),
+            if (_category == 'PIECES')
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  wide ? 40 : 16,
+                  0,
+                  wide ? 40 : 16,
+                  4,
+                ),
+                sliver: const SliverToBoxAdapter(
+                  child: _PieceCollectionGuide(),
+                ),
+              ),
             if (_category == 'FRAME')
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(
@@ -257,7 +269,11 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                       : wide
                       ? 3
                       : (c.maxWidth > 560 ? 2 : 1),
-                  mainAxisExtent: _category == 'FRAME' ? 390 : 330,
+                  mainAxisExtent: _category == 'FRAME'
+                      ? 390
+                      : _category == 'PIECES'
+                      ? 380
+                      : 330,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
                 ),
@@ -572,6 +588,18 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                       ),
                   ],
                 ),
+                if (item.category == 'PIECES') ...<Widget>[
+                  const SizedBox(height: 7),
+                  Wrap(
+                    spacing: 7,
+                    runSpacing: 6,
+                    children: <Widget>[
+                      _pieceTag(_pieceTier(item)),
+                      _pieceTag('12 PIECES • BOTH SIDES'),
+                      _pieceTag(item.owned ? 'OWNED' : 'ONE-TIME UNLOCK'),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 4),
                 Text(
                   item.description,
@@ -617,6 +645,31 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         ],
       ),
     );
+  }
+
+  Widget _pieceTag(String label) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: const Color(0xFF102B40),
+      borderRadius: BorderRadius.circular(999),
+      border: Border.all(color: const Color(0x5545DCCB)),
+    ),
+    child: Text(
+      label,
+      style: const TextStyle(
+        color: Color(0xFFB9D7E8),
+        fontSize: 9,
+        fontWeight: FontWeight.w800,
+        letterSpacing: .35,
+      ),
+    ),
+  );
+
+  String _pieceTier(CosmeticItemDto item) {
+    if (item.priceAmount == 0) return 'STARTER • FREE';
+    if (item.priceAmount <= 1200) return 'PREMIUM';
+    if (item.priceAmount <= 1800) return 'ELITE';
+    return 'LEGENDARY';
   }
 
   Widget _badgePreview(CosmeticItemDto item, Color accent) => Container(
@@ -898,6 +951,46 @@ class _BadgePurposeCard extends StatelessWidget {
               Text(
                 'Collect and equip one badge at a time. Your selected badge is saved to your Royal Collection loadout and represents your chess identity.',
                 style: TextStyle(color: Color(0xFF9FB6C8), height: 1.35),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _PieceCollectionGuide extends StatelessWidget {
+  const _PieceCollectionGuide();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: const Color(0xD90A2033),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: const Color(0x805DE9D3)),
+    ),
+    child: const Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(Icons.auto_awesome_rounded, color: Color(0xFFF4C75B)),
+        SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'ROYAL 3D PIECES • PERMANENT ACCOUNT UNLOCK',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Every purchase includes the complete white and black set: King, Queen, Rook, Bishop, Knight and Pawn. Buy once with play coins, then equip it anytime on web or mobile.',
+                style: TextStyle(color: Color(0xFFB7CAD8), height: 1.35),
               ),
             ],
           ),

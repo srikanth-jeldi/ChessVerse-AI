@@ -1361,6 +1361,7 @@ class _ChatScreenState extends State<_ChatScreen> {
   late final E2eeChatService _e2ee;
   bool _encryptionLoading = true;
   bool _friendEncryptionReady = false;
+  bool get _secureChatReady => _e2ee.ready && _friendEncryptionReady;
   late bool _friendOnline;
   @override
   void initState() {
@@ -1710,12 +1711,15 @@ class _ChatScreenState extends State<_ChatScreen> {
     }
     _scrollToLatest();
     try {
-      final String envelope = await _e2ee.encrypt(outgoingBody);
+      final bool encryptedMode = _secureChatReady;
+      final String payload = encryptedMode
+          ? await _e2ee.encrypt(outgoingBody)
+          : outgoingBody;
       final MessageDto encrypted = await widget.api.send(
         widget.token,
         widget.friend.playerId,
-        envelope,
-        encrypted: true,
+        payload,
+        encrypted: encryptedMode,
       );
       final MessageDto m = await _decryptMessage(encrypted);
       if (mounted) {
@@ -1860,20 +1864,25 @@ class _ChatScreenState extends State<_ChatScreen> {
     _text.clear();
     try {
       final String type = _mimeFor(file.name);
-      final EncryptedChatAttachment attachment = await _e2ee.encryptAttachment(
-        bytes: bytes,
-        name: file.name,
-        type: type,
-        caption: caption,
-      );
+      final bool encryptedMode = _secureChatReady;
+      final EncryptedChatAttachment? attachment = encryptedMode
+          ? await _e2ee.encryptAttachment(
+              bytes: bytes,
+              name: file.name,
+              type: type,
+              caption: caption,
+            )
+          : null;
       final MessageDto encrypted = await widget.api.sendAttachment(
         widget.token,
         widget.friend.playerId,
-        '${DateTime.now().microsecondsSinceEpoch}.cve',
-        attachment.bytes,
-        'application/octet-stream',
-        attachment.envelope,
-        encrypted: true,
+        encryptedMode
+            ? '${DateTime.now().microsecondsSinceEpoch}.cve'
+            : file.name,
+        attachment?.bytes ?? bytes,
+        encryptedMode ? 'application/octet-stream' : type,
+        attachment?.envelope ?? caption,
+        encrypted: encryptedMode,
       );
       final MessageDto message = await _decryptMessage(encrypted);
       if (mounted) {
@@ -2158,10 +2167,7 @@ class _ChatScreenState extends State<_ChatScreen> {
                         maxLength: 500,
                         style: const TextStyle(fontSize: 14),
                         textInputAction: TextInputAction.send,
-                        enabled:
-                            !_encryptionLoading &&
-                            _e2ee.ready &&
-                            _friendEncryptionReady,
+                        enabled: !_encryptionLoading,
                         onSubmitted: (_) => _send(),
                         decoration: InputDecoration(
                           counterText: '',
@@ -2192,10 +2198,7 @@ class _ChatScreenState extends State<_ChatScreen> {
                 minimumSize: const Size(48, 48),
                 shape: const CircleBorder(),
               ),
-              onPressed:
-                  !_encryptionLoading && _e2ee.ready && _friendEncryptionReady
-                  ? _send
-                  : null,
+              onPressed: !_encryptionLoading ? _send : null,
               icon: const Icon(Icons.send_rounded),
             ),
           ],
@@ -2341,15 +2344,14 @@ class _ChatScreenState extends State<_ChatScreen> {
         ),
         Column(
           children: <Widget>[
-            if (!_encryptionLoading &&
-                (!_e2ee.ready || !_friendEncryptionReady))
+            if (!_encryptionLoading && !_secureChatReady)
               MaterialBanner(
                 content: Text(
                   _e2ee.ready
-                      ? 'Your friend must open this chat once before new messages can be sent.'
-                      : 'Chat setup could not be completed on this device.',
+                      ? 'Standard chat is active. End-to-end encryption starts automatically after your friend opens chat.'
+                      : 'Standard chat is active on this device. Restore or create a key anytime for end-to-end encryption.',
                 ),
-                leading: const Icon(Icons.info_outline_rounded),
+                leading: const Icon(Icons.chat_bubble_outline_rounded),
                 actions: <Widget>[
                   if (!_e2ee.ready)
                     TextButton(
