@@ -61,7 +61,7 @@ const puzzlePool=[
 {p:'b8♚ b7♟ c7♟ a4♕ e2♗ g2♙ g1♔',f:'a4',t:'a8',m:'Qa8#',h:'The queen can use the edge of the board.',x:'Qa8# is protected and covers every exit.'},
 {p:'g8♚ f7♟ g7♟ h7♟ h1♖ d3♗ g2♙ g1♔',f:'h1',t:'h7',m:'Rxh7#',h:'The rook can capture the pawn guarding the king.',x:'Rxh7# breaks through on the h-file.'},
 {p:'g8♚ f8♜ f7♟ g7♟ h7♟ h5♕ c2♗ g2♙ g1♔',f:'h5',t:'h7',m:'Qxh7#',h:'Your bishop controls the destination square.',x:'Qxh7# combines queen and bishop perfectly.'},
-{p:'g8♚ f7♟ g7♟ h7♟ c1♖ c4♗ g2♙ g1♔',f:'c1',t:'c8',m:'Rc8#',h:'The c-file is completely open.',x:'Rc8# takes command of the back rank.'},
+{p:'g8♚ f7♟ g7♟ h7♟ c1♖ b3♗ g2♙ g1♔',f:'c1',t:'c8',m:'Rc8#',h:'The c-file is completely open.',x:'Rc8# takes command of the back rank.'},
 {p:'e8♚ d7♟ e7♟ f7♟ d5♕ g2♗ e2♙ e1♔',f:'d5',t:'d8',m:'Qd8#',h:'The queen belongs directly behind the king.',x:'Qd8# covers the king and both neighbouring files.'},
 {p:'e8♚ d7♟ f7♟ e6♕ b3♗ e2♙ e1♔',f:'e6',t:'e7',m:'Qe7#',h:'Advance the queen one square with support.',x:'Qe7# leaves the king no legal response.'},
 {p:'h8♚ h7♟ f7♟ h6♗ d3♕ g2♙ g1♔',f:'h6',t:'g7',m:'Bg7#',h:'The bishop can move beside the cornered king.',x:'Bg7# completes the diagonal mating net.'},
@@ -70,6 +70,44 @@ const puzzlePool=[
 {p:'e8♚ d7♟ e7♟ f7♟ d1♖ b3♗ g2♙ g1♔',f:'d1',t:'d8',m:'Rd8#',h:'The rook has a clear path to the eighth rank.',x:'Rd8# finishes with a classic back-rank pattern.'}
 ];
 const puzzleControls=document.querySelector('.move-choices');document.querySelectorAll('.move-choice').forEach(button=>button.remove());puzzleControls.className='puzzle-controls';document.getElementById('hint-button').textContent='Hint';puzzleControls.insertAdjacentHTML('beforeend','<button type="button" class="reset-puzzle">Reset</button><button type="button" class="next-puzzle">Next puzzle →</button>');const counter=document.createElement('small');counter.className='puzzle-counter';puzzleControls.after(counter);let activePuzzle,selectedSquare=null,solved=false;const pieceIsBlack=piece=>'♚♛♜♝♞♟'.includes(piece);function choosePuzzle(){const previous=Number(sessionStorage.getItem('chessverse-puzzle-index'));let index;do{index=Math.floor(Math.random()*puzzlePool.length)}while(puzzlePool.length>1&&index===previous);sessionStorage.setItem('chessverse-puzzle-index',String(index));activePuzzle=puzzlePool[index];counter.textContent='Puzzle '+(index+1)+' of '+puzzlePool.length+' • refresh or tap Next for another';renderPuzzle()}function renderPuzzle(){selectedSquare=null;solved=false;status.textContent='Tap a white piece, then tap its destination square.';status.className='puzzle-status';board.innerHTML='';const pieces=Object.fromEntries(activePuzzle.p.split(' ').map(token=>[token.slice(0,2),token.slice(2)]));for(let rank=8;rank>=1;rank--){for(let file=0;file<8;file++){const name='abcdefgh'[file]+rank,piece=pieces[name]||'',square=document.createElement('div');square.className='sq '+((file+rank)%2?'light':'dark')+(piece?' '+(pieceIsBlack(piece)?'black-piece':'white-piece'):'');square.dataset.square=name;square.textContent=piece;if(piece&&!pieceIsBlack(piece)){square.draggable=true;square.addEventListener('dragstart',event=>{selectedSquare=name;square.classList.add('dragging');event.dataTransfer.setData('text/plain',name);showTarget()});square.addEventListener('dragend',()=>square.classList.remove('dragging'))}square.addEventListener('dragover',event=>event.preventDefault());square.addEventListener('drop',event=>{event.preventDefault();attemptMove(event.dataTransfer.getData('text/plain'),name)});square.addEventListener('click',()=>handleSquare(name,piece));board.appendChild(square)}}}function showTarget(){board.querySelectorAll('.sq').forEach(square=>square.classList.remove('selected','target','capture-target'));board.querySelector('[data-square="'+selectedSquare+'"]')?.classList.add('selected');const target=board.querySelector('[data-square="'+activePuzzle.t+'"]');target?.classList.add('target');if(target?.textContent)target.classList.add('capture-target')}function handleSquare(name,piece){if(solved)return;if(selectedSquare){if(name===selectedSquare){selectedSquare=null;board.querySelectorAll('.sq').forEach(square=>square.classList.remove('selected','target','capture-target'));return}attemptMove(selectedSquare,name);return}if(piece&&!pieceIsBlack(piece)){selectedSquare=name;showTarget()}}function attemptMove(from,to){if(solved||!from)return;if(from===activePuzzle.f&&to===activePuzzle.t){const source=board.querySelector('[data-square="'+from+'"]'),target=board.querySelector('[data-square="'+to+'"]');target.textContent=source.textContent;target.className=target.className.replace('black-piece','white-piece');target.classList.remove('target','capture-target');target.classList.add('moved');source.textContent='';source.classList.remove('selected','white-piece');solved=true;selectedSquare=null;status.textContent='Brilliant! '+activePuzzle.m+' — '+activePuzzle.x;status.className='puzzle-status win'}else{const source=board.querySelector('[data-square="'+from+'"]');source?.classList.add('wrong');setTimeout(()=>source?.classList.remove('wrong'),380);status.textContent='Not quite. Reset your idea or use the hint.';status.className='puzzle-status miss';selectedSquare=null;board.querySelectorAll('.sq').forEach(square=>square.classList.remove('selected','target','capture-target'))}}puzzleControls.addEventListener('click',event=>{event.stopImmediatePropagation();if(event.target.closest('#hint-button')){status.textContent='Hint: '+activePuzzle.h;status.className='puzzle-status';selectedSquare=activePuzzle.f;showTarget()}else if(event.target.closest('.reset-puzzle'))renderPuzzle();else if(event.target.closest('.next-puzzle'))choosePuzzle()},true);choosePuzzle();
+function currentPuzzlePieces(){return Object.fromEntries(activePuzzle.p.split(' ').map(token=>[token.slice(0,2),token.slice(2)]))}
+function isLegalPuzzleMove(from,to){
+  const pieces=currentPuzzlePieces(),piece=pieces[from],occupant=pieces[to];
+  if(!piece||pieceIsBlack(piece)||(occupant&&!pieceIsBlack(occupant))||from===to)return false;
+  const fx=from.charCodeAt(0)-97,fy=Number(from[1]),tx=to.charCodeAt(0)-97,ty=Number(to[1]);
+  const dx=tx-fx,dy=ty-fy,adx=Math.abs(dx),ady=Math.abs(dy);
+  if(piece==='♘')return(adx===1&&ady===2)||(adx===2&&ady===1);
+  if(piece==='♔')return adx<=1&&ady<=1;
+  const straight=dx===0||dy===0,diagonal=adx===ady;
+  if((piece==='♖'&&!straight)||(piece==='♗'&&!diagonal)||(piece==='♕'&&!straight&&!diagonal))return false;
+  if(!'♖♗♕'.includes(piece))return false;
+  const fileStep=Math.sign(dx),rankStep=Math.sign(dy);let file=fx+fileStep,rank=fy+rankStep;
+  while(file!==tx||rank!==ty){if(pieces[String.fromCharCode(97+file)+rank])return false;file+=fileStep;rank+=rankStep}
+  return true;
+}
+function showTarget(){
+  board.querySelectorAll('.sq').forEach(square=>square.classList.remove('selected','target','capture-target'));
+  board.querySelector('[data-square="'+selectedSquare+'"]')?.classList.add('selected');
+  if(selectedSquare!==activePuzzle.f||!isLegalPuzzleMove(activePuzzle.f,activePuzzle.t))return;
+  const target=board.querySelector('[data-square="'+activePuzzle.t+'"]');target?.classList.add('target');if(target?.textContent)target.classList.add('capture-target');
+}
+function attemptMove(from,to){
+  if(solved||!from)return;
+  if(!isLegalPuzzleMove(from,to)){
+    const source=board.querySelector('[data-square="'+from+'"]');source?.classList.add('wrong');setTimeout(()=>source?.classList.remove('wrong'),380);
+    status.textContent='That move is blocked or illegal. Chess pieces cannot jump over another piece.';status.className='puzzle-status miss';selectedSquare=null;
+    board.querySelectorAll('.sq').forEach(square=>square.classList.remove('selected','target','capture-target'));return;
+  }
+  if(from===activePuzzle.f&&to===activePuzzle.t){
+    const source=board.querySelector('[data-square="'+from+'"]'),target=board.querySelector('[data-square="'+to+'"]');target.textContent=source.textContent;
+    target.className=target.className.replace('black-piece','white-piece');target.classList.remove('target','capture-target');target.classList.add('moved');source.textContent='';source.classList.remove('selected','white-piece');
+    solved=true;selectedSquare=null;status.textContent='Brilliant! '+activePuzzle.m+' — '+activePuzzle.x;status.className='puzzle-status win';
+  }else{
+    const source=board.querySelector('[data-square="'+from+'"]');source?.classList.add('wrong');setTimeout(()=>source?.classList.remove('wrong'),380);
+    status.textContent='Not quite. Reset your idea or use the hint.';status.className='puzzle-status miss';selectedSquare=null;
+    board.querySelectorAll('.sq').forEach(square=>square.classList.remove('selected','target','capture-target'));
+  }
+}
 const labelPuzzleSquares=()=>board.querySelectorAll('.sq').forEach(square=>{square.setAttribute('role','button');square.tabIndex=0;square.setAttribute('aria-label',square.dataset.square+(square.textContent?' '+square.textContent:' empty'));if(!square.dataset.keyboardReady){square.dataset.keyboardReady='true';square.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();square.click()}})}});new MutationObserver(labelPuzzleSquares).observe(board,{childList:true,subtree:true,characterData:true});labelPuzzleSquares();
 board.setAttribute('role','group');board.setAttribute('aria-label','Interactive chess puzzle board. White to move.');labelPuzzleSquares();
 </script></body></html>
