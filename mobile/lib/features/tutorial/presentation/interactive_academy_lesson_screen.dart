@@ -47,6 +47,7 @@ class _InteractiveAcademyLessonScreenState
   int _attempts = 0;
   String? _candidateFeedback;
   int _demoStepIndex = 0;
+  bool _lessonFlowStarted = false;
   String _languageCode = AppLanguageController.resolveCode(
     AppLanguageController.systemCode,
   );
@@ -88,13 +89,6 @@ class _InteractiveAcademyLessonScreenState
     unawaited(_loadLanguage());
     _controller.addStatusListener(_handleAnimationStatus);
     unawaited(_loadProgress());
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.lesson.usesDecisionCheckpoint) {
-        _showDecisionCheckpoint();
-      } else {
-        _playDemonstration();
-      }
-    });
   }
 
   Future<void> _loadLanguage() async {
@@ -112,8 +106,26 @@ class _InteractiveAcademyLessonScreenState
       _languageCode = code;
       _languageReady = true;
     });
+    _startLessonFlow();
+    unawaited(_stopAndPrepareNarration());
+  }
+
+  Future<void> _stopAndPrepareNarration() async {
     await _narrator.stop();
-    unawaited(_prepareNarration());
+    await _prepareNarration();
+  }
+
+  void _startLessonFlow() {
+    if (_lessonFlowStarted || !mounted) return;
+    _lessonFlowStarted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (widget.lesson.usesDecisionCheckpoint) {
+        unawaited(_showDecisionCheckpoint());
+      } else {
+        _playDemonstration();
+      }
+    });
   }
 
   void _handleLanguageChange() {

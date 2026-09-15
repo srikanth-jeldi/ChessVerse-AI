@@ -164,7 +164,7 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('THINK BEFORE THE DEMO'), findsOneWidget);
     expect(find.textContaining('three candidates'), findsOneWidget);
@@ -190,6 +190,28 @@ void main() {
 
     expect(find.text('అధ్యాయం 2 · ధైర్యవంతుడైన సైనికుడు'), findsWidgets);
     expect(find.text(lesson.storyNarration), findsNothing);
+  });
+
+  testWidgets('academy never flashes an English step before Telugu copy', (
+    WidgetTester tester,
+  ) async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{
+      'settings.language': 'te',
+    });
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final AcademyLesson lesson = AcademyCatalog.forChapter('Rooks and files');
+
+    await tester.pumpWidget(
+      MaterialApp(home: InteractiveAcademyLessonScreen(lesson: lesson)),
+    );
+    expect(find.text('Watch the AI coach demonstrate the move.'), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Watch the AI coach demonstrate the move.'), findsNothing);
+    expect(find.text('అధ్యాయం 3 · కోట కాపరి'), findsWidgets);
   });
 
   testWidgets('academy journey chrome follows the selected offline language', (
