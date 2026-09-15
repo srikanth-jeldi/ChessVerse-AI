@@ -60,11 +60,15 @@ class AcademyLesson {
   /// ChessVerseAI's story layer. It turns a rule into a memorable scene while
   /// keeping the actual chess instruction precise and short enough for TTS.
   String get storyNarration =>
+      _foundationStories[id] ??
       _foundationStories[copyId] ??
       'Every position tells a story. Today, your mission is $title. '
           '$explanation Watch the idea, predict the move, and then prove it on the board.';
 
-  String get storyChapter => _foundationChapterNames[copyId] ?? 'THE NEXT MOVE';
+  String get storyChapter =>
+      _foundationChapterNames[id] ??
+      _foundationChapterNames[copyId] ??
+      'THE NEXT MOVE';
 
   bool get usesDecisionCheckpoint => stage != AcademyStage.foundation;
 
@@ -106,7 +110,10 @@ class AcademyLesson {
 const Map<String, String> _foundationChapterNames = <String, String>{
   'board': 'THE KINGDOM OF 64 SQUARES',
   'pawn': 'THE BRAVE FIRST STEP',
+  'pawn-capture': 'THE PAWN CAPTURES DIAGONALLY',
+  'pawn-promotion-basics': 'THE PAWN CHOOSES A NEW POWER',
   'rook': 'THE CASTLE GUARDIAN',
+  'rook-horizontal': 'THE ROOK CROSSES THE RANK',
   'bishop': 'THE DIAGONAL SCOUT',
   'knight': 'THE ROYAL JUMPER',
   'queen': 'THE KINGDOM\'S POWER',
@@ -166,7 +173,10 @@ const Map<String, String> _foundationChapterNames = <String, String>{
 const Map<String, String> _foundationStories = <String, String>{
   'board': 'Welcome to the Kingdom of 64 Squares. Every square has a secret address: a letter for its file and a number for its rank. Your rook is waiting at a1. Guide it through the a-file to a8 and begin your journey.',
   'pawn': 'At the front of the kingdom stands a brave pawn. It normally marches one square, but on its very first move it may charge two. Send the pawn from e2 to e4 to claim the centre.',
+  'pawn-capture': 'A pawn marches straight ahead but captures one square diagonally. The black knight has stepped onto d5, so move the white pawn from e4 to d5, remove the opponent piece, and remember that a pawn never captures straight ahead.',
+  'pawn-promotion-basics': 'The pawn has survived the full journey and reached the final rank. Move it from a7 to a8, then choose its new power: queen, rook, bishop, or knight. A queen is common, but the best promotion always fits the position.',
   'rook': 'The rook is the castle guardian. It patrols open ranks and files in perfectly straight lines, but no piece may block its road. Clear the route and guide it from a1 to a6.',
+  'rook-horizontal': 'The rook travels sideways across a rank in one straight line. Check that every square is clear, then slide the rook horizontally from a4 to f4. It cannot jump over another piece or turn a corner during the move.',
   'bishop': 'The bishop is a diagonal scout. It glides across one colour for its entire journey and never changes paths. Follow the light-square road from c1 to g5.',
   'knight': 'The knight is the kingdom\'s fearless jumper. While every other piece needs a clear road, the knight leaps over crowds in an L shape. Jump from g1 to f3 and aim toward the centre.',
   'queen': 'The queen carries the power of both rook and bishop. She can race straight or sweep diagonally, but even the strongest piece needs a clear path. Travel from d1 to h5.',
