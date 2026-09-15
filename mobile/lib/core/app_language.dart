@@ -17,8 +17,9 @@ class AppLanguageController {
 
   static const String systemCode = 'system';
   static const AppPreferences _preferences = AppPreferences();
-  static final ValueNotifier<String?> effectiveLanguageChanges =
-      ValueNotifier(null);
+  static final ValueNotifier<String?> effectiveLanguageChanges = ValueNotifier(
+    null,
+  );
 
   /// Languages offered by the language centre. AI coaching accepts any locale
   /// from this catalogue and the app safely falls back to English for static
@@ -74,24 +75,40 @@ class AppLanguageController {
     return resolveCode(selected);
   }
 
+  /// Keeps the automatic device option first and presents every explicit
+  /// language alphabetically by its English display name.
+  static List<AppLanguage> get pickerLanguages {
+    final List<AppLanguage> languages =
+        supported
+            .where((AppLanguage item) => item.code != systemCode)
+            .toList(growable: false)
+          ..sort(
+            (AppLanguage a, AppLanguage b) =>
+                a.englishName.compareTo(b.englishName),
+          );
+    return <AppLanguage>[byCode(systemCode), ...languages];
+  }
+
   /// Resolve every consumer against the same catalogue, including BCP-47
   /// regional variants and the automatic device setting.
   static String resolveCode(String selected, {String? deviceCode}) {
-    final String code = (selected == systemCode
-            ? deviceCode ?? PlatformDispatcher.instance.locale.languageCode
-            : selected)
-        .replaceAll('_', '-')
-        .toLowerCase()
-        .split('-')
-        .first;
+    final String code =
+        (selected == systemCode
+                ? deviceCode ?? PlatformDispatcher.instance.locale.languageCode
+                : selected)
+            .replaceAll('_', '-')
+            .toLowerCase()
+            .split('-')
+            .first;
     return supported.any(
-            (AppLanguage item) => item.code == code && item.code != systemCode)
+          (AppLanguage item) => item.code == code && item.code != systemCode,
+        )
         ? code
         : 'en';
   }
 
   static AppLanguage byCode(String code) => supported.firstWhere(
-        (AppLanguage item) => item.code == code,
-        orElse: () => supported[1],
-      );
+    (AppLanguage item) => item.code == code,
+    orElse: () => supported[1],
+  );
 }

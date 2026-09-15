@@ -238,9 +238,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: _SettingRow(
                           icon: Icons.language_rounded,
                           title: 'App & coach language',
-                          value: AppLanguageController.byCode(
-                            _language,
-                          ).displayName,
+                          value: AppLanguageController.byCode(_language)
+                              .displayName,
                           onTap: _chooseLanguage,
                         ),
                       ),
@@ -887,9 +886,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _openLegal(BuildContext context, LegalPageType type) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => LegalScreen(type: type)));
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => LegalScreen(type: type)));
   }
 }
 
@@ -1180,7 +1178,7 @@ class _LanguagePickerState extends State<_LanguagePicker> {
   @override
   Widget build(BuildContext context) {
     final String query = _query.trim().toLowerCase();
-    final List<AppLanguage> languages = AppLanguageController.supported
+    final List<AppLanguage> languages = AppLanguageController.pickerLanguages
         .where(
           (AppLanguage item) =>
               query.isEmpty ||

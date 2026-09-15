@@ -140,10 +140,10 @@ class _MasterCatalogHero extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
-                  child: Text(
-                    copy.text('master.eyebrow'),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                child: Text(
+                  copy.text('master.eyebrow'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.accentGold,
                     fontWeight: FontWeight.w900,
@@ -166,10 +166,10 @@ class _MasterCatalogHero extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-            Text(
-              copy.text('master.intro'),
-              maxLines: compact ? 4 : 5,
-              overflow: TextOverflow.ellipsis,
+          Text(
+            copy.text('master.intro'),
+            maxLines: compact ? 4 : 5,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 15,
@@ -220,8 +220,8 @@ class _MasterCatalogHero extends StatelessWidget {
           ),
         ],
       );
-        return Container(
-          height: compact ? 340 : 300,
+      return Container(
+        height: compact ? 340 : 300,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
           border: Border.all(color: const Color(0xFF63C8FF), width: 1.2),
@@ -258,7 +258,7 @@ class _MasterCatalogHero extends StatelessWidget {
                 padding: EdgeInsets.fromLTRB(
                   compact ? 20 : 28,
                   24,
-                    compact ? 34 : 260,
+                  compact ? 34 : 260,
                   22,
                 ),
                 child: copyBlock,
@@ -282,6 +282,69 @@ class _MasterGameCard extends StatelessWidget {
   final AcademyStoryLocalizations copy;
   final bool completed;
   final VoidCallback onReturned;
+
+  _MasterGameVisual get _visual => switch (lesson.id) {
+    'kasparov-topalov-1999' => const _MasterGameVisual(
+      'assets/boards/collection/volcanic-obsidian-v1.webp',
+      Color(0xFFFFB44A),
+      Color(0xFF50251D),
+    ),
+    'aronian-anand-2013' => const _MasterGameVisual(
+      'assets/boards/collection/emerald-arena-v1.webp',
+      Color(0xFF63E6C2),
+      Color(0xFF123F3D),
+    ),
+    'carlsen-nepomniachtchi-2021' => const _MasterGameVisual(
+      'assets/boards/collection/frost-marble-v1.webp',
+      Color(0xFFA9DCFF),
+      Color(0xFF243B55),
+    ),
+    'morphy-opera-1858' => const _MasterGameVisual(
+      'assets/boards/collection/royal-walnut-v1.webp',
+      Color(0xFFFFCC73),
+      Color(0xFF4A2B20),
+    ),
+    'byrne-fischer-1956' => const _MasterGameVisual(
+      'assets/boards/collection/midnight-sapphire-v1.webp',
+      Color(0xFF72B7FF),
+      Color(0xFF172E5A),
+    ),
+    'kasparov-anand-1995-game10' => const _MasterGameVisual(
+      'assets/boards/collection/ocean-teal-v1.webp',
+      Color(0xFF5BE7EA),
+      Color(0xFF123F55),
+    ),
+    'capablanca-marshall-1918' => const _MasterGameVisual(
+      'assets/boards/collection/desert-gold-v1.webp',
+      Color(0xFFFFD36B),
+      Color(0xFF50351C),
+    ),
+    'anand-gelfand-2012-game8' => const _MasterGameVisual(
+      'assets/boards/collection/amethyst-clash-v1.webp',
+      Color(0xFFC9A0FF),
+      Color(0xFF38245A),
+    ),
+    'kramnik-anand-2008-game3' => const _MasterGameVisual(
+      'assets/boards/collection/celestial-silver-v1.webp',
+      Color(0xFFE4ECF7),
+      Color(0xFF344153),
+    ),
+    'carlsen-anand-2008' => const _MasterGameVisual(
+      'assets/boards/collection/jade-dynasty-v1.webp',
+      Color(0xFF80E6B1),
+      Color(0xFF183E34),
+    ),
+    'fischer-spassky-1972-game6' => const _MasterGameVisual(
+      'assets/boards/collection/azure-temple-v1.webp',
+      Color(0xFF70C7FF),
+      Color(0xFF173C62),
+    ),
+    _ => const _MasterGameVisual(
+      'assets/boards/collection/rose-quartz-v1.webp',
+      Color(0xFFFF9DC8),
+      Color(0xFF512A45),
+    ),
+  };
 
   IconData get _icon => switch (lesson.id) {
     'kasparov-topalov-1999' => Icons.bolt_rounded,
@@ -312,170 +375,192 @@ class _MasterGameCard extends StatelessWidget {
   };
 
   @override
-  Widget build(BuildContext context) => ChessVerseCard(
-    key: ValueKey<String>('master-game-${lesson.id}'),
-    padding: EdgeInsets.zero,
-    onTap: () async {
-      await Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(
-          builder: (_) => _MasterGameStudyScreen(lesson: lesson, copy: copy),
-        ),
-      );
-      onReturned();
-    },
-    child: Container(
-      constraints: const BoxConstraints(minHeight: 156),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        image: const DecorationImage(
-          image: AssetImage('assets/backgrounds/master-games-hall-v1.png'),
-          fit: BoxFit.cover,
-          alignment: Alignment.centerRight,
-          opacity: .32,
-        ),
-        gradient: const LinearGradient(
-          colors: <Color>[Color(0xFF102A43), Color(0xFF071426)],
-        ),
-        border: Border.all(color: const Color(0xCC59BFFF)),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(color: Color(0x4429B6F6), blurRadius: 22),
-          BoxShadow(color: Color(0x22E5B651), blurRadius: 14),
-        ],
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 88,
-            constraints: const BoxConstraints(minHeight: 156),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: <Color>[Color(0xFF184956), Color(0xFF0B2635)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: BorderRadius.horizontal(left: Radius.circular(20)),
+  Widget build(BuildContext context) {
+    final _MasterGameVisual visual = _visual;
+    return ChessVerseCard(
+      key: ValueKey<String>('master-game-${lesson.id}'),
+      padding: EdgeInsets.zero,
+      onTap: () async {
+        await Navigator.of(context).push<void>(
+          MaterialPageRoute<void>(
+            builder: (_) => _MasterGameStudyScreen(lesson: lesson, copy: copy),
+          ),
+        );
+        onReturned();
+      },
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 156),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          image: DecorationImage(
+            image: AssetImage(visual.asset),
+            fit: BoxFit.cover,
+            alignment: Alignment.centerRight,
+            opacity: .46,
+          ),
+          gradient: LinearGradient(
+            colors: <Color>[visual.panel, const Color(0xFF071426)],
+          ),
+          border: Border.all(color: visual.accent.withValues(alpha: .82)),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: visual.accent.withValues(alpha: .22),
+              blurRadius: 22,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Icon(_icon, color: const Color(0xFF63D2B8), size: 30),
-                const SizedBox(height: 8),
-                FittedBox(
-                  child: Text(
-                    _category,
-                    style: const TextStyle(
-                      color: Color(0xFFEBD59E),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: .8,
+            const BoxShadow(color: Color(0x22000000), blurRadius: 14),
+          ],
+        ),
+        child: Row(
+          children: <Widget>[
+            Container(
+              width: 88,
+              constraints: const BoxConstraints(minHeight: 156),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: <Color>[
+                    visual.panel.withValues(alpha: .98),
+                    const Color(0xFF081B2A),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                borderRadius: BorderRadius.horizontal(
+                  left: Radius.circular(20),
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Icon(_icon, color: visual.accent, size: 30),
+                  const SizedBox(height: 8),
+                  FittedBox(
+                    child: Text(
+                      _category,
+                      style: const TextStyle(
+                        color: Color(0xFFEBD59E),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .8,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  '${lesson.moveNumber}',
-                  style: const TextStyle(
-                    color: AppColors.accentGold,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
+                  const SizedBox(height: 7),
+                  Text(
+                    '${lesson.moveNumber}',
+                    style: const TextStyle(
+                      color: AppColors.accentGold,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Expanded(
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            '${lesson.white} vs ${lesson.black}',
+                            style: const TextStyle(
+                              color: Color(0xFFF5EBD5),
+                              fontFamily: 'serif',
+                              fontSize: 18,
+                              height: 1.08,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        if (completed)
+                          const Icon(
+                            Icons.verified_rounded,
+                            color: Color(0xFF63D2B8),
+                            size: 21,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      lesson.event,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Color(0xFFBBD4ED)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${lesson.year} · ${lesson.result}',
+                      style: const TextStyle(color: Color(0xFF91B1CF)),
+                    ),
+                    const SizedBox(height: 12),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: const Color(0x221AB6FF),
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(color: const Color(0x66D6A84F)),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 5,
+                        ),
                         child: Text(
-                          '${lesson.white} vs ${lesson.black}',
+                          copy.text(
+                            'master.pauseMeta',
+                            values: <String, String>{
+                              'move': '${lesson.moveNumber}',
+                              'side': copy.text(
+                                'master.side.${lesson.sideToMove.toLowerCase()}',
+                              ),
+                            },
+                          ),
                           style: const TextStyle(
-                            color: Color(0xFFF5EBD5),
-                            fontFamily: 'serif',
-                            fontSize: 18,
-                            height: 1.08,
-                            fontWeight: FontWeight.w700,
+                            color: AppColors.accentGold,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
-                      if (completed)
-                        const Icon(
-                          Icons.verified_rounded,
-                          color: Color(0xFF63D2B8),
-                          size: 21,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    lesson.event,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Color(0xFFBBD4ED)),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${lesson.year} · ${lesson.result}',
-                    style: const TextStyle(color: Color(0xFF91B1CF)),
-                  ),
-                  const SizedBox(height: 12),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: const Color(0x221AB6FF),
-                      borderRadius: BorderRadius.circular(9),
-                      border: Border.all(color: const Color(0x66D6A84F)),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 5,
-                      ),
-                      child: Text(
-                        copy.text(
-                          'master.pauseMeta',
-                          values: <String, String>{
-                            'move': '${lesson.moveNumber}',
-                            'side': copy.text(
-                              'master.side.${lesson.sideToMove.toLowerCase()}',
-                            ),
-                          },
-                        ),
-                        style: const TextStyle(
-                          color: AppColors.accentGold,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.accentGold),
-                boxShadow: const <BoxShadow>[
-                  BoxShadow(color: Color(0x44D6A84F), blurRadius: 12),
-                ],
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: visual.accent),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: visual.accent.withValues(alpha: .35),
+                      blurRadius: 12,
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
               ),
-              child: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
+}
+
+class _MasterGameVisual {
+  const _MasterGameVisual(this.asset, this.accent, this.panel);
+
+  final String asset;
+  final Color accent;
+  final Color panel;
 }
 
 class _MasterGameStudyScreen extends StatefulWidget {
