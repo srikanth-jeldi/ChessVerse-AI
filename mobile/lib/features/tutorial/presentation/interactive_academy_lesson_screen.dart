@@ -430,9 +430,55 @@ class _InteractiveAcademyLessonScreenState
           runSpacing: 10,
           children: const <String>['Q', 'R', 'B', 'N']
               .map(
-                (String symbol) => FilledButton(
-                  onPressed: () => Navigator.of(context).pop(symbol),
-                  child: Text(symbol),
+                (String symbol) => SizedBox(
+                  width: 112,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(context).pop(symbol),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 14,
+                      ),
+                      backgroundColor: const Color(0xFF12324A),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: const BorderSide(color: Color(0xFF35D4C5)),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Image.asset(
+                          'assets/pieces/staunton_white_${switch (symbol) {
+                            'Q' => 'queen',
+                            'R' => 'rook',
+                            'B' => 'bishop',
+                            _ => 'knight',
+                          }}.png',
+                          width: 72,
+                          height: 72,
+                          fit: BoxFit.contain,
+                          semanticLabel: switch (symbol) {
+                            'Q' => 'Queen',
+                            'R' => 'Rook',
+                            'B' => 'Bishop',
+                            _ => 'Knight',
+                          },
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          switch (symbol) {
+                            'Q' => 'Queen',
+                            'R' => 'Rook',
+                            'B' => 'Bishop',
+                            _ => 'Knight',
+                          },
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               )
               .toList(growable: false),
