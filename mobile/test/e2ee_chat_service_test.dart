@@ -92,6 +92,25 @@ class _IdentityApi extends CommunityApi {
 }
 
 void main() {
+  test('legacy E2EE stays dormant without creating a device key', () async {
+    const String alice = '11111111-1111-1111-1111-111111111111';
+    final _IdentityApi api = _IdentityApi(<String, String>{'a': alice});
+    final E2eeChatService service = E2eeChatService(
+      api: api,
+      storage: _MemoryStorage(),
+    );
+
+    final E2eeSetupResult setup = await service.initialize(
+      'a',
+      'missing-friend',
+      createIfMissing: false,
+    );
+
+    expect(setup.ready, isFalse);
+    expect(setup.recoveryKey, isNull);
+    expect(api.identities, isEmpty);
+  });
+
   test(
     'encrypts for recipient and sender and restores with recovery key',
     () async {

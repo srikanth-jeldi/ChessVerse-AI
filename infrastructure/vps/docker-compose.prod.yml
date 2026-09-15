@@ -70,6 +70,7 @@ services:
       GIPHY_ANDROID_API_KEY: ${GIPHY_ANDROID_API_KEY:-}
       GIPHY_WEB_API_KEY: ${GIPHY_WEB_API_KEY:-}
       ATTACHMENT_ENCRYPTION_KEY: ${ATTACHMENT_ENCRYPTION_KEY:?Set a Base64-encoded 32-byte attachment encryption key}
+      MESSAGE_ENCRYPTION_KEY: ${MESSAGE_ENCRYPTION_KEY:-${ATTACHMENT_ENCRYPTION_KEY}}
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70 -XX:+UseG1GC
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase-service-account.json
     depends_on:

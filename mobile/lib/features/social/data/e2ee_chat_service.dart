@@ -66,7 +66,11 @@ class E2eeChatService {
     return plaintext;
   }
 
-  Future<E2eeSetupResult> initialize(String token, String friendId) async {
+  Future<E2eeSetupResult> initialize(
+    String token,
+    String friendId, {
+    bool createIfMissing = true,
+  }) async {
     String? recoveryKey;
     Map<String, dynamic>? cloud;
     try {
@@ -78,7 +82,7 @@ class E2eeChatService {
       }
     }
 
-    if (cloud == null) {
+    if (cloud == null && createIfMissing) {
       final SimpleKeyPairData pair = await _newIdentity();
       recoveryKey = _encode(_randomBytes(32));
       final Map<String, Object?> upload = await _wrapIdentity(
@@ -96,7 +100,7 @@ class E2eeChatService {
       await _storePair(_playerId!, pair);
       _identity = pair;
     } else if (_playerId != null) {
-      _identity = await _readPair(_playerId!, cloud['publicKey'] as String?);
+      _identity = await _readPair(_playerId!, cloud!['publicKey'] as String?);
     }
 
     try {

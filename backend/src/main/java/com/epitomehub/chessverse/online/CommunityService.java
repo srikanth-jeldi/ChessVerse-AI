@@ -32,14 +32,17 @@ class CommunityService {
     private final PlayerNotificationService notifications;
     private final Path attachmentRoot;
     private final AttachmentEncryptionService attachmentEncryption;
+    private final MessageEncryptionService messageEncryption;
     private final EconomyService economy;
 
     CommunityService(JdbcTemplate jdbc, FriendConnectionRepository friends, OnlinePresenceService presence,
                      PlayerNotificationService notifications, AttachmentEncryptionService attachmentEncryption,
+                     MessageEncryptionService messageEncryption,
                      EconomyService economy,
                      @Value("${chessverse.attachments.directory:./data/chat-attachments}") String attachmentDirectory) {
         this.jdbc = jdbc; this.friends = friends; this.presence = presence; this.notifications = notifications;
         this.attachmentEncryption = attachmentEncryption;
+        this.messageEncryption = messageEncryption;
         this.economy = economy;
         this.attachmentRoot = Path.of(attachmentDirectory).toAbsolutePath().normalize();
     }
@@ -71,6 +74,9 @@ class CommunityService {
                 rs.getInt("participation_bonus"),uuidOrNull(rs,"club_id")), player.id(),player.id());
         List<CommunityDtos.ConversationDto> conversations = jdbc.query("""
                 select p.id,p.display_name,p.photo_url,
+                (select d.id from direct_message d
+                  where (d.sender_id=? and d.recipient_id=p.id) or (d.sender_id=p.id and d.recipient_id=?)
+                  order by d.sent_at desc limit 1) message_id,
                 (select case when d.encrypted then '🔒 Encrypted message' else d.body end from direct_message d
                   where (d.sender_id=? and d.recipient_id=p.id) or (d.sender_id=p.id and d.recipient_id=?)
                   order by d.sent_at desc limit 1) body,
@@ -83,9 +89,11 @@ class CommunityService {
                   and ((f.requester_id=? and f.addressee_id=p.id) or (f.addressee_id=? and f.requester_id=p.id)))
                 order by sent_at desc nulls last, p.display_name limit 30
                 """, (rs,row) -> new CommunityDtos.ConversationDto(uuid(rs,"id"),rs.getString("display_name"),
-                rs.getString("photo_url"),presence.isOnline(uuid(rs,"id")),rs.getString("body"),
+                rs.getString("photo_url"),presence.isOnline(uuid(rs,"id")),
+                rs.getString("message_id") == null ? rs.getString("body") :
+                        messageEncryption.decrypt(rs.getString("body"), rs.getString("message_id")),
                 rs.getTimestamp("sent_at") == null ? null : rs.getTimestamp("sent_at").toInstant(),rs.getInt("unread")),
-                player.id(),player.id(),player.id(),player.id(),player.id(),
+                player.id(),player.id(),player.id(),player.id(),player.id(),player.id(),player.id(),
                 player.id(),player.id());
         Integer signals = jdbc.queryForObject("select count(*) from fair_play_signal where player_id=? and severity>=3", Integer.class, player.id());
         Integer circuitPoints = jdbc.queryForObject("""
@@ -216,7 +224,8 @@ class CommunityService {
         if (link == null || !"ACCEPTED".equals(link.status)) throw new OnlineMatchException(HttpStatus.FORBIDDEN,"Messages are available between accepted friends only.");
         UUID id=UUID.randomUUID(); Instant now=Instant.now(); String clean=body.trim();
         if (encrypted && !clean.startsWith("cv1:")) throw new OnlineMatchException(HttpStatus.BAD_REQUEST,"Invalid encrypted message envelope.");
-        jdbc.update("insert into direct_message(id,sender_id,recipient_id,body,sent_at,encrypted) values(?,?,?,?,?,?)",id,player.id(),recipientId,clean,Timestamp.from(now),encrypted);
+        String storedBody = messageEncryption.encrypt(clean, id.toString());
+        jdbc.update("insert into direct_message(id,sender_id,recipient_id,body,sent_at,encrypted) values(?,?,?,?,?,?)",id,player.id(),recipientId,storedBody,Timestamp.from(now),encrypted);
         if (encrypted) notifications.createEncryptedMessage(recipientId,"New message from "+player.displayName(),clean,player.id());
         else notifications.create(recipientId,"MESSAGE_RECEIVED","New message from "+player.displayName(),messageNotificationPreview(clean),"CHAT",player.id());
         return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,null,null,null,false,List.of(),encrypted);
@@ -314,8 +323,9 @@ class CommunityService {
         }
         String clean = body == null ? "" : body.trim();
         if (encrypted && !clean.startsWith("cv1:")) throw new OnlineMatchException(HttpStatus.BAD_REQUEST,"Invalid encrypted attachment envelope.");
+        String storedBody = messageEncryption.encrypt(clean, id.toString());
         jdbc.update("insert into direct_message(id,sender_id,recipient_id,body,sent_at,attachment_name,attachment_type,attachment_size,attachment_path,encrypted) values(?,?,?,?,?,?,?,?,?,?)",
-                id,player.id(),recipientId,clean,Timestamp.from(now),original,type,(long)accepted.bytes().length,stored,encrypted);
+                id,player.id(),recipientId,storedBody,Timestamp.from(now),original,type,(long)accepted.bytes().length,stored,encrypted);
         if (encrypted) notifications.createEncryptedMessage(recipientId,"New attachment from "+player.displayName(),clean,player.id());
         else notifications.create(recipientId,"MESSAGE_RECEIVED","New attachment from "+player.displayName(),original,"CHAT",player.id());
         return new CommunityDtos.MessageDto(id,player.id(),recipientId,clean,now,true,false,false,original,type,(long)accepted.bytes().length,false,List.of(),encrypted);
@@ -397,7 +407,8 @@ class CommunityService {
         boolean deleted=rs.getTimestamp("deleted_for_everyone_at")!=null;
         List<CommunityDtos.MessageReactionDto> reactions=jdbc.query("select player_id,emoji from direct_message_reaction where message_id=? order by reacted_at",
                 (reaction,row)->new CommunityDtos.MessageReactionDto(uuid(reaction,"player_id"),reaction.getString("emoji"),uuid(reaction,"player_id").equals(viewer)),id);
-        return new CommunityDtos.MessageDto(id,sender,uuid(rs,"recipient_id"),rs.getString("body"),
+        String body = messageEncryption.decrypt(rs.getString("body"), id.toString());
+        return new CommunityDtos.MessageDto(id,sender,uuid(rs,"recipient_id"),body,
                 rs.getTimestamp("sent_at").toInstant(),sender.equals(viewer),rs.getTimestamp("delivered_at")!=null,
                 rs.getTimestamp("read_at")!=null,rs.getString("attachment_name"),rs.getString("attachment_type"),
                 (Long)rs.getObject("attachment_size"),deleted,reactions,rs.getBoolean("encrypted"));

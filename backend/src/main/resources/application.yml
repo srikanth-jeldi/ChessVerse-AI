@@ -59,6 +59,8 @@ chessverse:
       verifier-keys-url: ${ADMOB_VERIFIER_KEYS_URL:https://www.gstatic.com/admob/reward/verifier-keys.json}
   attachments:
     encryption-key: ${ATTACHMENT_ENCRYPTION_KEY:}
+  messages:
+    encryption-key: ${MESSAGE_ENCRYPTION_KEY:${ATTACHMENT_ENCRYPTION_KEY:}}
   api:
     rate-limit:
       enabled: ${API_RATE_LIMIT_ENABLED:true}
