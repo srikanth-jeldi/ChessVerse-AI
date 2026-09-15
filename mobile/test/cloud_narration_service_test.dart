@@ -81,4 +81,24 @@ void main() {
       await service.dispose();
     },
   );
+
+  test('cloud narration preparation is cached without a second request', () async {
+    int requests = 0;
+    final CloudNarrationService service = CloudNarrationService(
+      tokenProvider: () async => 'session-token',
+      client: MockClient((http.Request request) async {
+        requests++;
+        return http.Response.bytes(
+          <int>[73, 68, 51, 4, 0, 0, 0, 0],
+          200,
+          headers: <String, String>{'content-type': 'audio/mpeg'},
+        );
+      }),
+    );
+
+    await service.prepare(text: 'Cached lesson', language: 'te');
+    await service.prepare(text: 'Cached lesson', language: 'te');
+    expect(requests, 1);
+    await service.dispose();
+  });
 }

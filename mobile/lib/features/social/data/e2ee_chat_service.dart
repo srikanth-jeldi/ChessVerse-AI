@@ -278,7 +278,7 @@ class E2eeChatService {
       final SecretKey secret = await _shared(identity, ephemeral);
       return await _open(decoded[mine ? 's' : 'r'] as String, secret);
     } catch (_) {
-      return '🔒 Encrypted message could not be opened';
+      return '🔒 Protected with a previous chat key';
     }
   }
 
@@ -375,6 +375,13 @@ class E2eeChatService {
       key: 'chat-e2ee-$playerId-public',
     );
     if (privateValue == null || (publicValue ?? cloudPublic) == null) {
+      return null;
+    }
+    if (cloudPublic != null &&
+        publicValue != null &&
+        publicValue != cloudPublic) {
+      // Another device replaced the account identity. Never combine an old
+      // private key with the new cloud public key or report the chat as ready.
       return null;
     }
     return SimpleKeyPairData(

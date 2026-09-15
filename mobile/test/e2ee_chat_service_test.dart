@@ -216,4 +216,34 @@ void main() {
       expect(photo.bytes, isNot(<int>[1, 2, 3]));
     },
   );
+
+  test(
+    'stale device key is rejected after cloud identity replacement',
+    () async {
+      const String alice = '11111111-1111-1111-1111-111111111111';
+      final _IdentityApi api = _IdentityApi(<String, String>{'a': alice});
+      final _MemoryStorage staleStorage = _MemoryStorage();
+      final E2eeChatService staleDevice = E2eeChatService(
+        api: api,
+        storage: staleStorage,
+      );
+      await staleDevice.initialize('a', 'missing-friend');
+
+      final E2eeChatService replacement = E2eeChatService(
+        api: api,
+        storage: _MemoryStorage(),
+      );
+      await replacement.resetIdentity('a', 'missing-friend');
+
+      final E2eeChatService reopened = E2eeChatService(
+        api: api,
+        storage: staleStorage,
+      );
+      final E2eeSetupResult result = await reopened.initialize(
+        'a',
+        'missing-friend',
+      );
+      expect(result.ready, isFalse);
+    },
+  );
 }

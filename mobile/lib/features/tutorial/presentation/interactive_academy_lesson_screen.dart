@@ -41,6 +41,7 @@ class _InteractiveAcademyLessonScreenState
   String? _selected;
   String? _feedback;
   bool _loadingProgress = true;
+  bool _languageReady = false;
   Set<String> _completed = <String>{};
   Map<String, int> _mastery = <String, int>{};
   int _attempts = 0;
@@ -97,10 +98,22 @@ class _InteractiveAcademyLessonScreenState
   }
 
   Future<void> _loadLanguage() async {
-    final String code = await AppLanguageController.effectiveCode();
+    String code = AppLanguageController.resolveCode(
+      AppLanguageController.systemCode,
+    );
+    try {
+      code = await AppLanguageController.effectiveCode();
+    } catch (_) {
+      // Keep the system-language fallback so a storage failure never leaves
+      // the lesson behind a permanent loading screen.
+    }
     if (!mounted) return;
-    setState(() => _languageCode = code);
+    setState(() {
+      _languageCode = code;
+      _languageReady = true;
+    });
     await _narrator.stop();
+    unawaited(_prepareNarration());
   }
 
   void _handleLanguageChange() {
@@ -108,6 +121,7 @@ class _InteractiveAcademyLessonScreenState
     if (code == null || !mounted) return;
     setState(() => _languageCode = code);
     unawaited(_narrator.stop());
+    unawaited(_prepareNarration());
   }
 
   Future<void> _chooseLanguage() async {
@@ -115,6 +129,7 @@ class _InteractiveAcademyLessonScreenState
     if (code == null || !mounted) return;
     setState(() => _languageCode = code);
     await _narrator.stop();
+    unawaited(_prepareNarration());
   }
 
   void _continueLearning() {
@@ -226,6 +241,11 @@ class _InteractiveAcademyLessonScreenState
   void _setNarrationState(_NarrationState state) {
     if (mounted) setState(() => _narrationState = state);
   }
+
+  Future<void> _prepareNarration() => _narrator.prepare(
+    text: _copy.storyNarrationForSpeech(widget.lesson),
+    language: _languageCode,
+  );
 
   Future<void> _speakStory() async {
     final bool started = await _narrator.speak(
@@ -402,6 +422,12 @@ class _InteractiveAcademyLessonScreenState
 
   @override
   Widget build(BuildContext context) {
+    if (!_languageReady) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF04111B),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     final Size viewport = MediaQuery.sizeOf(context);
     final bool desktop = viewport.width >= 900 && viewport.height >= 620;
     final bool phoneLandscape =

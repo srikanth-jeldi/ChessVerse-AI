@@ -73,59 +73,13 @@ class CloudNarrationService {
   Future<bool> speak({required String text, required String language}) async {
     final String cleanText = text.trim();
     if (cleanText.isEmpty || cleanText.length > 2400) return false;
+    final String cacheKey = '$language\u0000$cleanText';
+    Uint8List? audio = _memoryCache.remove(cacheKey);
+    if (audio != null) _memoryCache[cacheKey] = audio;
     try {
-      final String? token;
-      if (_tokenProvider != null) {
-        token = await _tokenProvider();
-      } else {
-        final StoredAuthSession? session = await _sessionStore.read();
-        token = session == null || session.isExpired ? null : session.token;
-      }
-      if (token == null || token.isEmpty) {
+      audio ??= await _downloadAudio(cleanText, language, cacheKey);
+      if (audio == null) {
         return await _speakLocalFallback(cleanText, language);
-      }
-      final String cacheKey = '$language\u0000$cleanText';
-      Uint8List? audio = _memoryCache.remove(cacheKey);
-      if (audio != null) {
-        _memoryCache[cacheKey] = audio;
-      } else {
-        final http.Request request =
-            http.Request(
-                'POST',
-                Uri.parse('${AppConfig.apiBaseUrl}/api/v1/speech/synthesize'),
-              )
-              ..headers.addAll(<String, String>{
-                'Authorization': 'Bearer $token',
-                'Content-Type': 'application/json',
-                'Accept': 'audio/mpeg',
-              })
-              ..body = jsonEncode(<String, String>{
-                'text': cleanText,
-                'language': language,
-              });
-        final http.StreamedResponse response = await _client
-            .send(request)
-            .timeout(const Duration(seconds: 20));
-        if (response.statusCode != 200 ||
-            !(response.headers['content-type'] ?? '').startsWith(
-              'audio/mpeg',
-            )) {
-          await response.stream.drain<void>();
-          return await _speakLocalFallback(cleanText, language);
-        }
-        final BytesBuilder bytes = BytesBuilder(copy: false);
-        await for (final List<int> chunk in response.stream) {
-          bytes.add(chunk);
-          if (bytes.length > _maxAudioBytes) return false;
-        }
-        audio = bytes.takeBytes();
-        if (audio.isEmpty) {
-          return await _speakLocalFallback(cleanText, language);
-        }
-        _memoryCache[cacheKey] = audio;
-        while (_memoryCache.length > _maxCacheEntries) {
-          _memoryCache.remove(_memoryCache.keys.first);
-        }
       }
       await _player.stop();
       await _player.play(BytesSource(audio));
@@ -136,6 +90,69 @@ class CloudNarrationService {
     }
   }
 
+  /// Fetches narration while the lesson is opening. On web this means the
+  /// later button press can start cached audio inside the browser gesture.
+  Future<void> prepare({required String text, required String language}) async {
+    final String cleanText = text.trim();
+    if (cleanText.isEmpty || cleanText.length > 2400) return;
+    final String cacheKey = '$language\u0000$cleanText';
+    if (_memoryCache.containsKey(cacheKey)) return;
+    try {
+      await _downloadAudio(cleanText, language, cacheKey);
+    } on Object {
+      // Local browser/device speech remains the safe fallback on button press.
+    }
+  }
+
+  Future<Uint8List?> _downloadAudio(
+    String text,
+    String language,
+    String cacheKey,
+  ) async {
+    final String? token;
+    if (_tokenProvider != null) {
+      token = await _tokenProvider();
+    } else {
+      final StoredAuthSession? session = await _sessionStore.read();
+      token = session == null || session.isExpired ? null : session.token;
+    }
+    if (token == null || token.isEmpty) return null;
+    final http.Request request =
+        http.Request(
+            'POST',
+            Uri.parse('${AppConfig.apiBaseUrl}/api/v1/speech/synthesize'),
+          )
+          ..headers.addAll(<String, String>{
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+            'Accept': 'audio/mpeg',
+          })
+          ..body = jsonEncode(<String, String>{
+            'text': text,
+            'language': language,
+          });
+    final http.StreamedResponse response = await _client
+        .send(request)
+        .timeout(const Duration(seconds: 20));
+    if (response.statusCode != 200 ||
+        !(response.headers['content-type'] ?? '').startsWith('audio/mpeg')) {
+      await response.stream.drain<void>();
+      return null;
+    }
+    final BytesBuilder bytes = BytesBuilder(copy: false);
+    await for (final List<int> chunk in response.stream) {
+      bytes.add(chunk);
+      if (bytes.length > _maxAudioBytes) return null;
+    }
+    final Uint8List audio = bytes.takeBytes();
+    if (audio.isEmpty) return null;
+    _memoryCache[cacheKey] = audio;
+    while (_memoryCache.length > _maxCacheEntries) {
+      _memoryCache.remove(_memoryCache.keys.first);
+    }
+    return audio;
+  }
+
   Future<bool> _speakLocalFallback(String text, String language) async {
     try {
       final String locale = switch (language.toLowerCase()) {
@@ -144,6 +161,34 @@ class CloudNarrationService {
         'ta' => 'ta-IN',
         'kn' => 'kn-IN',
         'ml' => 'ml-IN',
+        'mr' => 'mr-IN',
+        'bn' => 'bn-IN',
+        'gu' => 'gu-IN',
+        'pa' => 'pa-IN',
+        'ur' => 'ur-PK',
+        'ar' => 'ar-SA',
+        'es' => 'es-ES',
+        'fr' => 'fr-FR',
+        'de' => 'de-DE',
+        'it' => 'it-IT',
+        'pt' => 'pt-BR',
+        'ru' => 'ru-RU',
+        'uk' => 'uk-UA',
+        'tr' => 'tr-TR',
+        'fa' => 'fa-IR',
+        'zh' => 'zh-CN',
+        'ja' => 'ja-JP',
+        'ko' => 'ko-KR',
+        'id' => 'id-ID',
+        'ms' => 'ms-MY',
+        'th' => 'th-TH',
+        'vi' => 'vi-VN',
+        'pl' => 'pl-PL',
+        'nl' => 'nl-NL',
+        'sv' => 'sv-SE',
+        'el' => 'el-GR',
+        'he' => 'he-IL',
+        'sw' => 'sw-KE',
         _ => 'en-IN',
       };
       await _player.stop();

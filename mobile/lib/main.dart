@@ -164,10 +164,6 @@ _primaryNavigationDestinations = <NavigationDestination>[
   NavigationDestination(icon: Icon(Icons.school_rounded), label: 'Learn'),
   NavigationDestination(icon: Icon(Icons.person_rounded), label: 'Profile'),
   NavigationDestination(icon: Icon(Icons.groups_2_rounded), label: 'Community'),
-  NavigationDestination(
-    icon: Icon(Icons.workspace_premium_rounded),
-    label: 'Collection',
-  ),
 ];
 
 class _GlassBottomNavigation extends StatelessWidget {
@@ -1099,6 +1095,7 @@ class _SplashGateState extends State<SplashGate> {
                   onLearn: () => selectDestination(3),
                   onProfile: () => selectDestination(4),
                   onFriends: () => selectDestination(5),
+                  onCollection: () => _openRewardsCenter(context),
                 ),
                 Expanded(child: content),
               ],
@@ -1119,10 +1116,6 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   void _selectPrimaryDestination(int destination) {
-    if (destination == 6) {
-      unawaited(_openRewardsCenter(context));
-      return;
-    }
     if (destination == 1) {
       unawaited(DailyReminderService.instance.recordPlayOpened());
     }
