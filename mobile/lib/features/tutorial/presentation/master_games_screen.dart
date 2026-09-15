@@ -377,6 +377,7 @@ class _MasterGameCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final _MasterGameVisual visual = _visual;
+    final bool compact = MediaQuery.sizeOf(context).width < 600;
     return ChessVerseCard(
       key: ValueKey<String>('master-game-${lesson.id}'),
       padding: EdgeInsets.zero,
@@ -392,12 +393,6 @@ class _MasterGameCard extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 156),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          image: DecorationImage(
-            image: AssetImage(visual.asset),
-            fit: BoxFit.cover,
-            alignment: Alignment.centerRight,
-            opacity: .46,
-          ),
           gradient: LinearGradient(
             colors: <Color>[visual.panel, const Color(0xFF071426)],
           ),
@@ -527,6 +522,32 @@ class _MasterGameCard extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: SizedBox(
+                  width: compact ? 72 : 220,
+                  height: compact ? 112 : 136,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: <Widget>[
+                      Image.asset(visual.asset, fit: BoxFit.cover),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: <Color>[
+                              const Color(0xFF071426).withValues(alpha: .72),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
