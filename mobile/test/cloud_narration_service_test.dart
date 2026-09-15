@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:chessverse_ai/core/audio/cloud_narration_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -151,6 +152,25 @@ void main() {
     await service.prepare(text: 'తెలుగు పాఠం', language: 'te');
     expect(requests, 1);
     expect(jsonDecode(captured.body)['language'], 'te');
+    await service.dispose();
+  });
+
+  test('browser speech can stop and start the next English lesson', () async {
+    if (!kIsWeb) return;
+    final CloudNarrationService service = CloudNarrationService(
+      preferImmediateLocal: true,
+      tokenProvider: () async => null,
+    );
+
+    expect(
+      await service.speak(text: 'First chess lesson.', language: 'en'),
+      isTrue,
+    );
+    await service.stop();
+    expect(
+      await service.speak(text: 'Next chess lesson.', language: 'en'),
+      isTrue,
+    );
     await service.dispose();
   });
 }

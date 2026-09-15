@@ -2118,12 +2118,19 @@ class PromotionChoice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String label = switch (piece.code) {
+      'Q' => 'Queen',
+      'R' => 'Rook',
+      'B' => 'Bishop',
+      'N' => 'Knight',
+      _ => piece.code,
+    };
     return SizedBox(
-      width: 78,
+      width: 104,
       child: FilledButton(
         onPressed: onSelected,
         style: FilledButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
           backgroundColor: const Color(0xFF242128),
           foregroundColor: const Color(0xFFF6F1E8),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -2132,8 +2139,8 @@ class PromotionChoice extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             SizedBox(
-              width: 48,
-              height: 48,
+              width: 68,
+              height: 68,
               child: ChessCoin(
                 piece: piece,
                 selected: false,
@@ -2142,8 +2149,9 @@ class PromotionChoice extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              piece.code,
-              style: const TextStyle(fontWeight: FontWeight.w900),
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
             ),
           ],
         ),

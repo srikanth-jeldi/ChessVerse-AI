@@ -194,6 +194,14 @@ class FlutterTtsPlugin {
     if (ttsState != TtsState.stopped) {
       synth.cancel();
     }
+    // Chrome does not consistently emit an end event after cancel(). Keep the
+    // plugin state authoritative so the next lesson can start immediately.
+    ttsState = TtsState.stopped;
+    t?.cancel();
+    if (_speechCompleter != null && !_speechCompleter!.isCompleted) {
+      _speechCompleter?.complete();
+    }
+    _speechCompleter = null;
   }
 
   void _pause() {
@@ -212,6 +220,11 @@ class FlutterTtsPlugin {
     if (targetList.isNotEmpty) {
       utterance.voice = targetList.first;
       utterance.lang = targetList.first.lang;
+    } else {
+      // Voice discovery is asynchronous in Chromium. Setting lang still lets
+      // the browser select the matching voice once its catalogue is ready.
+      utterance.voice = null;
+      utterance.lang = language;
     }
   }
 

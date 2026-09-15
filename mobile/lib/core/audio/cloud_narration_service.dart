@@ -246,15 +246,19 @@ class CloudNarrationService {
         // A fresh speak call below can still initialize the speech engine.
       }
       bool languageAvailable = true;
-      try {
-        languageAvailable =
-            (await _localTts.isLanguageAvailable(locale)) == true;
-      } on Object {
-        // Some browsers do not expose the voice list until the first utterance.
+      if (!kIsWeb) {
+        try {
+          languageAvailable =
+              (await _localTts.isLanguageAvailable(locale)) == true;
+        } on Object {
+          // Let the platform try when it cannot report installed voices.
+        }
       }
       // Never silently read translated lesson text with an English voice.
       // Cloud narration remains the cross-language source; the local fallback
-      // is useful only when this exact locale exists on the device/browser.
+      // is useful only when this exact locale exists on the device. Browsers
+      // frequently return an empty voice list until the first user gesture,
+      // so web must be allowed to attempt the requested locale directly.
       if (!languageAvailable) return false;
       await _localTts.setLanguage(locale);
       // Web Speech uses 1.0 as its natural rate. The previous .45 setting
