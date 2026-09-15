@@ -20,8 +20,11 @@ class CloudNarrationService {
     AudioPlayer? player,
     this._sessionStore = const AuthSessionStore(),
     this._tokenProvider,
+    bool? preferImmediateLocal,
+    this._localSpeaker,
   }) : _client = client ?? http.Client(),
-       _player = player ?? AudioPlayer(playerId: 'chessverse-cloud-narration') {
+       _player = player ?? AudioPlayer(playerId: 'chessverse-cloud-narration'),
+       _preferImmediateLocal = preferImmediateLocal ?? kIsWeb {
     _stateSubscription = _player.onPlayerStateChanged.listen((
       PlayerState state,
     ) {
@@ -62,7 +65,11 @@ class CloudNarrationService {
   final AudioPlayer _player;
   final AuthSessionStore _sessionStore;
   final Future<String?> Function()? _tokenProvider;
+  final bool _preferImmediateLocal;
+  final Future<bool> Function(String text, String language)? _localSpeaker;
   final FlutterTts _localTts = FlutterTts();
+  final Map<String, Future<Uint8List?>> _pendingAudio =
+      <String, Future<Uint8List?>>{};
   bool _usingLocalTts = false;
   bool _disposed = false;
   String _localText = '';
@@ -78,8 +85,20 @@ class CloudNarrationService {
     final String cacheKey = '$language\u0000$cleanText';
     Uint8List? audio = _memoryCache.remove(cacheKey);
     if (audio != null) _memoryCache[cacheKey] = audio;
+    // Browser speech must begin directly inside the user's click gesture.
+    // Waiting on a slow cloud request first can make Chrome reject playback.
+    final String normalizedLanguage = language.toLowerCase();
+    final bool english =
+        normalizedLanguage == 'en' || normalizedLanguage.startsWith('en-');
+    if (audio == null && _preferImmediateLocal && english) {
+      return _speakLocalFallback(cleanText, language);
+    }
     try {
-      audio ??= await _downloadAudio(cleanText, language, cacheKey);
+      audio ??= await _fetchAudio(
+        cleanText,
+        language,
+        cacheKey,
+      ).timeout(const Duration(seconds: 8));
       if (audio == null) {
         return await _speakLocalFallback(cleanText, language);
       }
@@ -101,10 +120,28 @@ class CloudNarrationService {
     final String cacheKey = '$language\u0000$cleanText';
     if (_memoryCache.containsKey(cacheKey)) return;
     try {
-      await _downloadAudio(cleanText, language, cacheKey);
+      await _fetchAudio(cleanText, language, cacheKey);
     } on Object {
       // Local browser/device speech remains the safe fallback on button press.
     }
+  }
+
+  Future<Uint8List?> _fetchAudio(
+    String text,
+    String language,
+    String cacheKey,
+  ) {
+    final Uint8List? cached = _memoryCache[cacheKey];
+    if (cached != null) return Future<Uint8List?>.value(cached);
+    return _pendingAudio.putIfAbsent(cacheKey, () {
+      final Future<Uint8List?> download = _downloadAudio(
+        text,
+        language,
+        cacheKey,
+      );
+      download.whenComplete(() => _pendingAudio.remove(cacheKey));
+      return download;
+    });
   }
 
   Future<Uint8List?> _downloadAudio(
@@ -157,6 +194,8 @@ class CloudNarrationService {
   }
 
   Future<bool> _speakLocalFallback(String text, String language) async {
+    final Future<bool> Function(String, String)? localSpeaker = _localSpeaker;
+    if (localSpeaker != null) return localSpeaker(text, language);
     try {
       final String locale = switch (language.toLowerCase()) {
         'te' => 'te-IN',
@@ -194,11 +233,30 @@ class CloudNarrationService {
         'sw' => 'sw-KE',
         _ => 'en-IN',
       };
-      await _player.stop();
-      await _localTts.stop();
-      final bool languageAvailable =
-          (await _localTts.isLanguageAvailable(locale)) == true;
-      await _localTts.setLanguage(languageAvailable ? locale : 'en-US');
+      // Cloud-player cleanup must never prevent the independent browser/device
+      // speech engine from speaking when connectivity or audio plugins fail.
+      try {
+        await _player.stop();
+      } on Object {
+        // Continue with local TTS.
+      }
+      try {
+        await _localTts.stop();
+      } on Object {
+        // A fresh speak call below can still initialize the speech engine.
+      }
+      bool languageAvailable = true;
+      try {
+        languageAvailable =
+            (await _localTts.isLanguageAvailable(locale)) == true;
+      } on Object {
+        // Some browsers do not expose the voice list until the first utterance.
+      }
+      // Never silently read translated lesson text with an English voice.
+      // Cloud narration remains the cross-language source; the local fallback
+      // is useful only when this exact locale exists on the device/browser.
+      if (!languageAvailable) return false;
+      await _localTts.setLanguage(locale);
       // Web Speech uses 1.0 as its natural rate. The previous .45 setting
       // made Telugu narration sound unnaturally slow and exhausted.
       await _localTts.setSpeechRate(kIsWeb ? .90 : .48);

@@ -33,7 +33,7 @@ void main() {
   });
 
   test(
-    'speech request is authenticated and contains no Azure credential',
+    'speech preparation is authenticated and contains no Azure credential',
     () async {
       late http.Request captured;
       final CloudNarrationService service = CloudNarrationService(
@@ -44,12 +44,11 @@ void main() {
         }),
       );
 
-      final bool started = await service.speak(
+      await service.prepare(
         text: 'A safe king wins the story.',
         language: 'te',
       );
 
-      expect(started, isFalse);
       expect(captured.headers['Authorization'], 'Bearer session-token');
       expect(captured.url.path, '/api/v1/speech/synthesize');
       expect(jsonDecode(captured.body), <String, String>{
@@ -62,7 +61,7 @@ void main() {
   );
 
   test(
-    'missing session uses safe text-only fallback without a request',
+    'missing session uses immediate local fallback without a request',
     () async {
       int requests = 0;
       final CloudNarrationService service = CloudNarrationService(
@@ -71,34 +70,87 @@ void main() {
           requests++;
           return http.Response('', 500);
         }),
+        localSpeaker: (_, _) async => true,
       );
 
       expect(
         await service.speak(text: 'Visible caption', language: 'en'),
-        isFalse,
+        isTrue,
       );
       expect(requests, 0);
       await service.dispose();
     },
   );
 
-  test('cloud narration preparation is cached without a second request', () async {
+  test(
+    'cloud narration preparation is cached without a second request',
+    () async {
+      int requests = 0;
+      final CloudNarrationService service = CloudNarrationService(
+        tokenProvider: () async => 'session-token',
+        client: MockClient((http.Request request) async {
+          requests++;
+          return http.Response.bytes(
+            <int>[73, 68, 51, 4, 0, 0, 0, 0],
+            200,
+            headers: <String, String>{'content-type': 'audio/mpeg'},
+          );
+        }),
+      );
+
+      await service.prepare(text: 'Cached lesson', language: 'te');
+      await service.prepare(text: 'Cached lesson', language: 'te');
+      expect(requests, 1);
+      await service.dispose();
+    },
+  );
+
+  test('web-style narration does not wait for a slow cloud request', () async {
     int requests = 0;
     final CloudNarrationService service = CloudNarrationService(
+      preferImmediateLocal: true,
       tokenProvider: () async => 'session-token',
       client: MockClient((http.Request request) async {
         requests++;
+        await Future<void>.delayed(const Duration(seconds: 5));
+        return http.Response('', 503);
+      }),
+      localSpeaker: (text, language) async =>
+          text == 'Immediate lesson' && language == 'en',
+    );
+
+    final Stopwatch watch = Stopwatch()..start();
+    expect(
+      await service.speak(text: 'Immediate lesson', language: 'en'),
+      isTrue,
+    );
+    watch.stop();
+    expect(watch.elapsed, lessThan(const Duration(seconds: 1)));
+    expect(requests, 0);
+    await service.dispose();
+  });
+
+  test('translated preparation keeps the requested cloud voice', () async {
+    int requests = 0;
+    late http.Request captured;
+    final CloudNarrationService service = CloudNarrationService(
+      preferImmediateLocal: true,
+      tokenProvider: () async => 'session-token',
+      client: MockClient((http.Request request) async {
+        requests++;
+        captured = request;
         return http.Response.bytes(
           <int>[73, 68, 51, 4, 0, 0, 0, 0],
           200,
           headers: <String, String>{'content-type': 'audio/mpeg'},
         );
       }),
+      localSpeaker: (_, _) async => true,
     );
 
-    await service.prepare(text: 'Cached lesson', language: 'te');
-    await service.prepare(text: 'Cached lesson', language: 'te');
+    await service.prepare(text: 'తెలుగు పాఠం', language: 'te');
     expect(requests, 1);
+    expect(jsonDecode(captured.body)['language'], 'te');
     await service.dispose();
   });
 }
