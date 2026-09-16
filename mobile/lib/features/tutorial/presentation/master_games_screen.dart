@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/academy_story_localizations.dart';
 import '../../../core/audio/cloud_narration_service.dart';
@@ -129,7 +130,7 @@ class _MasterGamesScreenState extends State<MasterGamesScreen> {
         ),
       ),
     );
-    if (MediaQuery.sizeOf(context).width < 700) return page;
+    if (!kIsWeb || MediaQuery.sizeOf(context).width < 700) return page;
     return Scaffold(
       backgroundColor: const Color(0xFF06131F),
       body: Row(

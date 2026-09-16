@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('Puzzle Academy attempts are not added to saved games', () async {
-    await LocalGameArchive.clearDeviceUserData();
+    final int savedGamesBefore = LocalGameArchive.games.length;
 
     LocalGameArchive.addGame(
       SavedGameRecord(
@@ -17,6 +17,6 @@ void main() {
       ),
     );
 
-    expect(LocalGameArchive.games, isEmpty);
+    expect(LocalGameArchive.games.length, savedGamesBefore);
   });
 }

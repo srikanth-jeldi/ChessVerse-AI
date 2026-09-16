@@ -161,14 +161,19 @@ class _DesktopNavItem extends StatelessWidget {
                   color: selected ? activeColor : const Color(0xFF9DAFC2),
                 ),
                 const SizedBox(width: 18),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: selected ? activeColor : const Color(0xFFC4CFDC),
-                    fontSize: 17,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: selected ? activeColor : const Color(0xFFC4CFDC),
+                      fontSize: 17,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 10),
               ],
             ),
           ),

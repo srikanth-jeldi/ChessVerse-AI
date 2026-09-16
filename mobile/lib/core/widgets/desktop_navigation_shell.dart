@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../desktop_navigation_bridge.dart';
 import 'desktop_app_sidebar.dart';
@@ -19,7 +20,7 @@ class DesktopNavigationShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (MediaQuery.sizeOf(context).width < breakpoint) return child;
+    if (!kIsWeb || MediaQuery.sizeOf(context).width < breakpoint) return child;
     return Scaffold(
       body: Row(
         children: <Widget>[

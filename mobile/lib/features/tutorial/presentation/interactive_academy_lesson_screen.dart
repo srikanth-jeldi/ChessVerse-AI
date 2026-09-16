@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/audio/cloud_narration_service.dart';
 import '../../../core/academy_story_localizations.dart';
@@ -623,7 +624,7 @@ class _InteractiveAcademyLessonScreenState
             : _buildMobile(context),
       ),
     );
-    if (!desktop) return page;
+    if (!kIsWeb || !desktop) return page;
     return Scaffold(
       backgroundColor: const Color(0xFF04111B),
       body: Row(
