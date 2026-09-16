@@ -1084,7 +1084,9 @@ class _SplashGateState extends State<SplashGate> {
         final Widget content = Stack(
           children: <Widget>[
             Positioned.fill(child: destinationStack),
-            if (_primaryDestination != 0)
+            // Learning is intentionally distraction-free; the wallet remains
+            // available from the play, profile and rewards surfaces.
+            if (_primaryDestination != 0 && _primaryDestination != 3)
               Positioned(
                 top: coinTop,
                 right: coinRight,

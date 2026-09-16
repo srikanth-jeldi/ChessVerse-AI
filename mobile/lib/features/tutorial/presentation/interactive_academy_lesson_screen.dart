@@ -13,7 +13,6 @@ import '../../../core/desktop_navigation_bridge.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../../../core/widgets/ai_language_picker.dart';
-import '../../../core/widgets/coin_balance_badge.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../data/academy_progress_store.dart';
 import '../domain/academy_lesson.dart';
@@ -558,13 +557,17 @@ class _InteractiveAcademyLessonScreenState
       appBar: AppBar(
         backgroundColor: const Color(0xF2071827),
         titleSpacing: 4,
+        toolbarHeight: desktop ? null : 116,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
               _languageCode == 'en'
                   ? widget.lesson.title
                   : _copy.storyChapter(widget.lesson),
+              maxLines: 2,
+              overflow: TextOverflow.visible,
               style: const TextStyle(fontWeight: FontWeight.w900),
             ),
             Text(
@@ -578,42 +581,61 @@ class _InteractiveAcademyLessonScreenState
                 letterSpacing: 1.2,
               ),
             ),
+            if (!desktop) ...<Widget>[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: OutlinedButton.icon(
+                      key: const ValueKey<String>('lesson-language-picker'),
+                      onPressed: _chooseLanguage,
+                      icon: const Icon(Icons.translate_rounded, size: 18),
+                      label: Text(
+                        AppLanguageController.byCode(_languageCode).nativeName,
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.accentGold,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Replay demonstration',
+                    onPressed: _playDemonstration,
+                    icon: const Icon(Icons.replay_rounded),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
         actions: <Widget>[
-          if (desktop) ...<Widget>[
-            ValueListenableBuilder<int?>(
-              valueListenable: DesktopNavigationBridge.coinBalance,
-              builder: (BuildContext context, int? balance, _) =>
-                  CoinBalanceBadge(
-                    balance: balance,
-                    expandedLabel: true,
-                    onTap: () => DesktopNavigationBridge.open(context, 7),
-                  ),
-            ),
-            const SizedBox(width: 12),
-          ],
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: OutlinedButton.icon(
-              key: const ValueKey<String>('lesson-language-picker'),
-              onPressed: _chooseLanguage,
-              icon: const Icon(Icons.translate_rounded, size: 18),
-              label: Text(
-                AppLanguageController.byCode(_languageCode).nativeName,
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.accentGold,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                visualDensity: VisualDensity.compact,
+          if (desktop)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: OutlinedButton.icon(
+                key: const ValueKey<String>('lesson-language-picker'),
+                onPressed: _chooseLanguage,
+                icon: const Icon(Icons.translate_rounded, size: 18),
+                label: Text(
+                  AppLanguageController.byCode(_languageCode).nativeName,
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.accentGold,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  visualDensity: VisualDensity.compact,
+                ),
               ),
             ),
-          ),
-          IconButton(
-            tooltip: 'Replay demonstration',
-            onPressed: _playDemonstration,
-            icon: const Icon(Icons.replay_rounded),
-          ),
+          if (desktop)
+            IconButton(
+              tooltip: 'Replay demonstration',
+              onPressed: _playDemonstration,
+              icon: const Icon(Icons.replay_rounded),
+            ),
         ],
       ),
       body: SafeArea(
