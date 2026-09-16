@@ -510,6 +510,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       ..._cloudGames,
       ..._onlineGames.map(_onlineAsSavedGame),
     ]) {
+      if (LocalGameArchive.isPuzzleSession(game)) continue;
       unique.putIfAbsent(_gameFingerprint(game), () => game);
     }
     return unique.values.toList(growable: false);

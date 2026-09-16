@@ -4220,6 +4220,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
     _resultSaved = true;
+    // Puzzle Academy is disposable practice. Keep completion/progress rewards,
+    // but never add puzzle attempts to My Saved Games or cloud analysis.
+    if (_gameMode == GameMode.puzzle) return;
     final DateTime archivedAt = DateTime.now();
     LocalGameArchive.addGame(
       SavedGameRecord(

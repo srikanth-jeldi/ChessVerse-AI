@@ -287,6 +287,9 @@ class LocalGameArchive {
   static List<SavedGameRecord> get games =>
       List<SavedGameRecord>.unmodifiable(_games);
 
+  static bool isPuzzleSession(SavedGameRecord game) =>
+      game.mode.trim().toLowerCase() == 'puzzle academy';
+
   static Map<String, int> get cloudWeaknessScores =>
       Map<String, int>.unmodifiable(_cloudWeaknessScores);
 
@@ -331,7 +334,11 @@ class LocalGameArchive {
                         .toList(growable: false),
               );
             }),
-          );
+          )
+          // Puzzle attempts are practice activity, not reviewable saved games.
+          ..removeWhere(isPuzzleSession);
+        // Persist the migration so legacy puzzle rows do not return next boot.
+        unawaited(_persistGames());
       } on Object {
         // Ignore a legacy or partially written archive and start clean.
         _games.clear();
@@ -426,6 +433,7 @@ class LocalGameArchive {
   }
 
   static void addGame(SavedGameRecord record) {
+    if (isPuzzleSession(record)) return;
     _games.insert(0, record);
     unawaited(_persistGames());
     _notifyCloudChange();
