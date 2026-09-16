@@ -8,9 +8,12 @@ import '../../../core/academy_story_localizations.dart';
 import '../../../core/app_language.dart';
 import '../../../core/chess_piece_appearance.dart';
 import '../../../core/coach_localizations.dart';
+import '../../../core/desktop_navigation_bridge.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../../../core/widgets/ai_language_picker.dart';
+import '../../../core/widgets/coin_balance_badge.dart';
+import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../data/academy_progress_store.dart';
 import '../domain/academy_lesson.dart';
 
@@ -549,7 +552,7 @@ class _InteractiveAcademyLessonScreenState
     final bool desktop = viewport.width >= 900 && viewport.height >= 620;
     final bool phoneLandscape =
         viewport.width > viewport.height && viewport.shortestSide < 600;
-    return Scaffold(
+    final Widget page = Scaffold(
       backgroundColor: const Color(0xFF04111B),
       appBar: AppBar(
         backgroundColor: const Color(0xF2071827),
@@ -577,6 +580,18 @@ class _InteractiveAcademyLessonScreenState
           ],
         ),
         actions: <Widget>[
+          if (desktop) ...<Widget>[
+            ValueListenableBuilder<int?>(
+              valueListenable: DesktopNavigationBridge.coinBalance,
+              builder: (BuildContext context, int? balance, _) =>
+                  CoinBalanceBadge(
+                    balance: balance,
+                    expandedLabel: true,
+                    onTap: () => DesktopNavigationBridge.open(context, 7),
+                  ),
+            ),
+            const SizedBox(width: 12),
+          ],
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: OutlinedButton.icon(
@@ -606,6 +621,26 @@ class _InteractiveAcademyLessonScreenState
             : desktop
             ? _buildDesktop(context)
             : _buildMobile(context),
+      ),
+    );
+    if (!desktop) return page;
+    return Scaffold(
+      backgroundColor: const Color(0xFF04111B),
+      body: Row(
+        children: <Widget>[
+          DesktopAppSidebar(
+            selected: 'Learn',
+            onHome: () => DesktopNavigationBridge.open(context, 0),
+            onPlay: () => DesktopNavigationBridge.open(context, 1),
+            onMyGames: () => DesktopNavigationBridge.open(context, 6),
+            onPuzzles: () => DesktopNavigationBridge.open(context, 2),
+            onLearn: () => DesktopNavigationBridge.open(context, 3),
+            onProfile: () => DesktopNavigationBridge.open(context, 4),
+            onFriends: () => DesktopNavigationBridge.open(context, 5),
+            onCollection: () => DesktopNavigationBridge.open(context, 7),
+          ),
+          Expanded(child: page),
+        ],
       ),
     );
   }

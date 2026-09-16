@@ -6,6 +6,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/app_language.dart';
+import '../../../core/desktop_navigation_bridge.dart';
+import '../../../core/widgets/coin_balance_badge.dart';
+import '../../../core/widgets/desktop_navigation_shell.dart';
 import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../../online/data/online_match_api.dart';
@@ -2056,138 +2059,149 @@ class _ChatScreenState extends State<_ChatScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFF020D16),
-    appBar: AppBar(
-      toolbarHeight: 58,
-      titleSpacing: 0,
-      title: Row(
-        children: <Widget>[
-          Stack(
-            children: <Widget>[
-              CircleAvatar(
-                radius: 19,
-                backgroundColor: const Color(0xFF0A3341),
-                backgroundImage: widget.friend.photoUrl == null
-                    ? null
-                    : NetworkImage(widget.friend.photoUrl!),
-                child: widget.friend.photoUrl == null
-                    ? Text(
-                        widget.friend.displayName.substring(0, 1).toUpperCase(),
-                      )
-                    : null,
-              ),
-              Positioned(
-                right: 0,
-                bottom: 1,
-                child: Container(
-                  width: 13,
-                  height: 13,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _friendOnline
-                        ? const Color(0xFF28E898)
-                        : const Color(0xFF647783),
-                    border: Border.all(
-                      color: const Color(0xFF06202E),
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+  Widget build(BuildContext context) => DesktopNavigationShell(
+    selected: 'Community',
+    child: Scaffold(
+      backgroundColor: const Color(0xFF020D16),
+      appBar: AppBar(
+        toolbarHeight: 58,
+        titleSpacing: 0,
+        title: Row(
+          children: <Widget>[
+            Stack(
               children: <Widget>[
-                Text(
-                  widget.friend.displayName,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
+                CircleAvatar(
+                  radius: 19,
+                  backgroundColor: const Color(0xFF0A3341),
+                  backgroundImage: widget.friend.photoUrl == null
+                      ? null
+                      : NetworkImage(widget.friend.photoUrl!),
+                  child: widget.friend.photoUrl == null
+                      ? Text(
+                          widget.friend.displayName
+                              .substring(0, 1)
+                              .toUpperCase(),
+                        )
+                      : null,
                 ),
-                Text(
-                  _friendOnline ? 'Online' : 'Offline',
-                  style: TextStyle(
-                    color: _friendOnline
-                        ? const Color(0xFF48E0C9)
-                        : const Color(0xFF91A4B0),
-                    fontSize: 11,
+                Positioned(
+                  right: 0,
+                  bottom: 1,
+                  child: Container(
+                    width: 13,
+                    height: 13,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _friendOnline
+                          ? const Color(0xFF28E898)
+                          : const Color(0xFF647783),
+                      border: Border.all(
+                        color: const Color(0xFF06202E),
+                        width: 2,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-      actions: <Widget>[
-        IconButton.outlined(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(
-            Icons.info_outline_rounded,
-            color: Color(0xFF45DCCB),
-          ),
-        ),
-        const SizedBox(width: 8),
-      ],
-    ),
-    body: Stack(
-      children: <Widget>[
-        Positioned.fill(
-          child: Image.asset(
-            'assets/backgrounds/grandmaster-table-v1.webp',
-            fit: BoxFit.cover,
-            color: const Color(0x2200B8A5),
-            colorBlendMode: BlendMode.softLight,
-          ),
-        ),
-        Positioned.fill(child: ColoredBox(color: const Color(0xC9020D16))),
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: const BoxDecoration(
-              gradient: RadialGradient(
-                center: Alignment(.75, -.45),
-                radius: 1.25,
-                colors: <Color>[Color(0x3524D8C2), Color(0x00020D16)],
-              ),
-            ),
-          ),
-        ),
-        Column(
-          children: <Widget>[
+            const SizedBox(width: 12),
             Expanded(
-              child: _busy
-                  ? const Center(child: CircularProgressIndicator())
-                  : ListView(
-                      controller: _scroll,
-                      padding: EdgeInsets.fromLTRB(
-                        MediaQuery.sizeOf(context).width > 800 ? 80 : 14,
-                        14,
-                        MediaQuery.sizeOf(context).width > 800 ? 80 : 14,
-                        20,
-                      ),
-                      children: _messageWidgets(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    widget.friend.displayName,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
                     ),
-            ),
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  MediaQuery.sizeOf(context).width > 800 ? 80 : 10,
-                  6,
-                  MediaQuery.sizeOf(context).width > 800 ? 80 : 10,
-                  10,
-                ),
-                child: _buildComposer(),
+                  ),
+                  Text(
+                    _friendOnline ? 'Online' : 'Offline',
+                    style: TextStyle(
+                      color: _friendOnline
+                          ? const Color(0xFF48E0C9)
+                          : const Color(0xFF91A4B0),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-      ],
+        actions: <Widget>[
+          ValueListenableBuilder<int?>(
+            valueListenable: DesktopNavigationBridge.coinBalance,
+            builder: (BuildContext context, int? coins, Widget? child) =>
+                CoinBalanceBadge(balance: coins ?? 0, compact: true),
+          ),
+          const SizedBox(width: 8),
+          IconButton.outlined(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(
+              Icons.info_outline_rounded,
+              color: Color(0xFF45DCCB),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: Stack(
+        children: <Widget>[
+          Positioned.fill(
+            child: Image.asset(
+              'assets/backgrounds/grandmaster-table-v1.webp',
+              fit: BoxFit.cover,
+              color: const Color(0x2200B8A5),
+              colorBlendMode: BlendMode.softLight,
+            ),
+          ),
+          Positioned.fill(child: ColoredBox(color: const Color(0xC9020D16))),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment(.75, -.45),
+                  radius: 1.25,
+                  colors: <Color>[Color(0x3524D8C2), Color(0x00020D16)],
+                ),
+              ),
+            ),
+          ),
+          Column(
+            children: <Widget>[
+              Expanded(
+                child: _busy
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView(
+                        controller: _scroll,
+                        padding: EdgeInsets.fromLTRB(
+                          MediaQuery.sizeOf(context).width > 800 ? 80 : 14,
+                          14,
+                          MediaQuery.sizeOf(context).width > 800 ? 80 : 14,
+                          20,
+                        ),
+                        children: _messageWidgets(),
+                      ),
+              ),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    MediaQuery.sizeOf(context).width > 800 ? 80 : 10,
+                    6,
+                    MediaQuery.sizeOf(context).width > 800 ? 80 : 10,
+                    10,
+                  ),
+                  child: _buildComposer(),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     ),
   );
 }

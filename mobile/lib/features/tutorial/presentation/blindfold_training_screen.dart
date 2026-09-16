@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 
 import '../../../core/academy_story_localizations.dart';
 import '../../../core/app_language.dart';
+import '../../../core/desktop_navigation_bridge.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/coin_balance_badge.dart';
+import '../../../core/widgets/desktop_navigation_shell.dart';
 import '../data/academy_progress_store.dart';
 import '../domain/blindfold_exercise.dart';
 
@@ -113,46 +116,57 @@ class _BlindfoldTrainingScreenState extends State<BlindfoldTrainingScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFF06131F),
-    appBar: AppBar(
-      title: Text(_copy.text('blindfold.title')),
-      backgroundColor: const Color(0xFF071827),
-    ),
-    body: SafeArea(
-      child: LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints constraints) {
-          final bool wide = constraints.maxWidth >= 760;
-          final Widget board = _CoordinateBoard(
-            pieces: _exercise.pieces,
-            revealPieces: _piecesVisible,
-          );
-          final Widget coach = _coachPanel();
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(18),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1100),
-                child: wide
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Expanded(child: board),
-                          const SizedBox(width: 24),
-                          Expanded(child: coach),
-                        ],
-                      )
-                    : Column(
-                        children: <Widget>[
-                          board,
-                          const SizedBox(height: 18),
-                          coach,
-                        ],
-                      ),
+  Widget build(BuildContext context) => DesktopNavigationShell(
+    selected: 'Learn',
+    child: Scaffold(
+      backgroundColor: const Color(0xFF06131F),
+      appBar: AppBar(
+        title: Text(_copy.text('blindfold.title')),
+        backgroundColor: const Color(0xFF071827),
+        actions: <Widget>[
+          ValueListenableBuilder<int?>(
+            valueListenable: DesktopNavigationBridge.coinBalance,
+            builder: (BuildContext context, int? coins, Widget? child) =>
+                CoinBalanceBadge(balance: coins ?? 0, compact: true),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final bool wide = constraints.maxWidth >= 760;
+            final Widget board = _CoordinateBoard(
+              pieces: _exercise.pieces,
+              revealPieces: _piecesVisible,
+            );
+            final Widget coach = _coachPanel();
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(18),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1100),
+                  child: wide
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Expanded(child: board),
+                            const SizedBox(width: 24),
+                            Expanded(child: coach),
+                          ],
+                        )
+                      : Column(
+                          children: <Widget>[
+                            board,
+                            const SizedBox(height: 18),
+                            coach,
+                          ],
+                        ),
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     ),
   );

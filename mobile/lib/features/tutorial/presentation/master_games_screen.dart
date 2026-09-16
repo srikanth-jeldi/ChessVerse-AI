@@ -5,8 +5,11 @@ import 'package:flutter/material.dart';
 import '../../../core/academy_story_localizations.dart';
 import '../../../core/audio/cloud_narration_service.dart';
 import '../../../core/app_language.dart';
+import '../../../core/desktop_navigation_bridge.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
+import '../../../core/widgets/coin_balance_badge.dart';
+import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../data/academy_progress_store.dart';
 import '../domain/master_game_lesson.dart';
 
@@ -67,7 +70,7 @@ class _MasterGamesScreenState extends State<MasterGamesScreen> {
   @override
   Widget build(BuildContext context) {
     final AcademyStoryLocalizations copy = _copy;
-    return Scaffold(
+    final Widget page = Scaffold(
       backgroundColor: const Color(0xFF06131F),
       appBar: AppBar(
         backgroundColor: const Color(0xFF071827),
@@ -81,6 +84,18 @@ class _MasterGamesScreenState extends State<MasterGamesScreen> {
             ),
           ],
         ),
+        actions: <Widget>[
+          ValueListenableBuilder<int?>(
+            valueListenable: DesktopNavigationBridge.coinBalance,
+            builder: (BuildContext context, int? balance, _) =>
+                CoinBalanceBadge(
+                  balance: balance,
+                  expandedLabel: MediaQuery.sizeOf(context).width >= 700,
+                  onTap: () => DesktopNavigationBridge.open(context, 7),
+                ),
+          ),
+          const SizedBox(width: 16),
+        ],
       ),
       body: DecoratedBox(
         decoration: const BoxDecoration(
@@ -112,6 +127,26 @@ class _MasterGamesScreenState extends State<MasterGamesScreen> {
             ),
           ),
         ),
+      ),
+    );
+    if (MediaQuery.sizeOf(context).width < 700) return page;
+    return Scaffold(
+      backgroundColor: const Color(0xFF06131F),
+      body: Row(
+        children: <Widget>[
+          DesktopAppSidebar(
+            selected: 'Learn',
+            onHome: () => DesktopNavigationBridge.open(context, 0),
+            onPlay: () => DesktopNavigationBridge.open(context, 1),
+            onMyGames: () => DesktopNavigationBridge.open(context, 6),
+            onPuzzles: () => DesktopNavigationBridge.open(context, 2),
+            onLearn: () => DesktopNavigationBridge.open(context, 3),
+            onProfile: () => DesktopNavigationBridge.open(context, 4),
+            onFriends: () => DesktopNavigationBridge.open(context, 5),
+            onCollection: () => DesktopNavigationBridge.open(context, 7),
+          ),
+          Expanded(child: page),
+        ],
       ),
     );
   }
@@ -1143,6 +1178,49 @@ class _MasterPositionBoard extends StatelessWidget {
     (8 - int.parse(square[1])) * size,
   );
 
+  Widget _pieceSymbol(String code, double size) {
+    final bool white = code == code.toUpperCase();
+    final String glyph = _symbols[code]!;
+    final Color fill = white
+        ? const Color(0xFFFFF4D0)
+        : const Color(0xFF10243A);
+    final Color outline = white
+        ? const Color(0xFF8A5A12)
+        : const Color(0xFFF4D998);
+    return Semantics(
+      label: white ? 'White chess piece' : 'Black chess piece',
+      child: Stack(
+        alignment: Alignment.center,
+        children: <Widget>[
+          Text(
+            glyph,
+            style: TextStyle(
+              fontFamily: 'serif',
+              fontSize: size * .66,
+              height: 1,
+              foreground: Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 2
+                ..color = outline,
+            ),
+          ),
+          Text(
+            glyph,
+            style: TextStyle(
+              fontFamily: 'serif',
+              fontSize: size * .66,
+              height: 1,
+              color: fill,
+              shadows: const <Shadow>[
+                Shadow(color: Color(0x99000000), blurRadius: 4),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final Map<String, String> pieces = MasterGameCatalog.piecesFromFen(
@@ -1195,12 +1273,7 @@ class _MasterPositionBoard extends StatelessWidget {
                         top: _position(piece.key, size).dy,
                         width: size,
                         height: size,
-                        child: Center(
-                          child: Text(
-                            _symbols[piece.value]!,
-                            style: TextStyle(fontSize: size * .66, height: 1),
-                          ),
-                        ),
+                        child: Center(child: _pieceSymbol(piece.value, size)),
                       ),
                     TweenAnimationBuilder<Offset>(
                       key: ValueKey<String>('${lesson.id}-$revealMove'),
@@ -1225,12 +1298,7 @@ class _MasterPositionBoard extends StatelessWidget {
                             height: size,
                             child: child!,
                           ),
-                      child: Center(
-                        child: Text(
-                          _symbols[moving]!,
-                          style: TextStyle(fontSize: size * .66, height: 1),
-                        ),
-                      ),
+                      child: Center(child: _pieceSymbol(moving, size)),
                     ),
                   ],
                 );

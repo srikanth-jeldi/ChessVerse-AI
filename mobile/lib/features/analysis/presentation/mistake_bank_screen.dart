@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../../core/analysis_dashboard_localizations.dart';
 import '../../../core/app_language.dart';
+import '../../../core/desktop_navigation_bridge.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/review_narrative_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
+import '../../../core/widgets/coin_balance_badge.dart';
+import '../../../core/widgets/desktop_navigation_shell.dart';
 import '../../tutorial/data/academy_progress_store.dart';
 import '../domain/mistake_bank.dart';
 
@@ -88,24 +91,30 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   @override
   Widget build(BuildContext context) {
     if (_items.isEmpty) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(title: Text(t('mistakeReplay'))),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: ChessVerseCard(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  const Icon(
-                    Icons.verified_rounded,
-                    size: 64,
-                    color: Color(0xFF63D2B8),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(t('historyEmpty'), textAlign: TextAlign.center),
-                ],
+      return DesktopNavigationShell(
+        selected: 'Learn',
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            title: Text(t('mistakeReplay')),
+            actions: <Widget>[_coinBadge(), const SizedBox(width: 8)],
+          ),
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: ChessVerseCard(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    const Icon(
+                      Icons.verified_rounded,
+                      size: 64,
+                      color: Color(0xFF63D2B8),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(t('historyEmpty'), textAlign: TextAlign.center),
+                  ],
+                ),
               ),
             ),
           ),
@@ -115,110 +124,122 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
     final MistakeBankItem item = _items[_index];
     final bool answered = _choice != null;
     final bool correct = _choice == item.review.bestMove;
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF071827),
-        title: Text(t('mistakeReplay')),
-      ),
-      body: LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints constraints) =>
-            SingleChildScrollView(
-              padding: const EdgeInsets.all(18),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 760),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      _MistakeProgress(
-                        current: _index + 1,
-                        total: _items.length,
-                        solved: _solved.length,
-                      ),
-                      const SizedBox(height: 16),
-                      _MistakeBoard(fen: item.review.fenBefore),
-                      const SizedBox(height: 16),
-                      ChessVerseCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            Text(
-                              '${item.game.summary} · ${t('gameLabel', <String, String>{'count': '${_index + 1}'})}',
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              '${item.review.classification} · ${item.review.centipawnLoss} cp',
-                              style: const TextStyle(
-                                color: AppColors.accentGold,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            for (final String move in item.choices)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 9),
-                                child: OutlinedButton.icon(
-                                  key: ValueKey<String>('mistake-choice-$move'),
-                                  onPressed: answered
-                                      ? null
-                                      : () => _choose(move),
-                                  icon: Icon(
-                                    answered && move == item.review.bestMove
-                                        ? Icons.check_circle_rounded
-                                        : Icons.route_rounded,
-                                  ),
-                                  label: Text(move),
-                                ),
-                              ),
-                            if (answered) ...<Widget>[
-                              const SizedBox(height: 8),
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color:
-                                      (correct
-                                              ? const Color(0xFF63D2B8)
-                                              : const Color(0xFFFF8A72))
-                                          .withValues(alpha: .11),
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(
-                                    color: correct
-                                        ? const Color(0xFF63D2B8)
-                                        : const Color(0xFFFF8A72),
-                                  ),
-                                ),
-                                child: Text(
-                                  localizeReviewNarrative(
-                                    item.review.explanation,
-                                    _language,
-                                  ),
-                                  style: const TextStyle(height: 1.45),
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              FilledButton.icon(
-                                key: const ValueKey<String>('mistake-next'),
-                                onPressed: _next,
-                                icon: const Icon(Icons.arrow_forward_rounded),
-                                label: Text(t('recommended')),
-                              ),
-                            ],
-                          ],
+    return DesktopNavigationShell(
+      selected: 'Learn',
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF071827),
+          title: Text(t('mistakeReplay')),
+          actions: <Widget>[_coinBadge(), const SizedBox(width: 8)],
+        ),
+        body: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) =>
+              SingleChildScrollView(
+                padding: const EdgeInsets.all(18),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 760),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        _MistakeProgress(
+                          current: _index + 1,
+                          total: _items.length,
+                          solved: _solved.length,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 16),
+                        _MistakeBoard(fen: item.review.fenBefore),
+                        const SizedBox(height: 16),
+                        ChessVerseCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              Text(
+                                '${item.game.summary} · ${t('gameLabel', <String, String>{'count': '${_index + 1}'})}',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                '${item.review.classification} · ${item.review.centipawnLoss} cp',
+                                style: const TextStyle(
+                                  color: AppColors.accentGold,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              for (final String move in item.choices)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 9),
+                                  child: OutlinedButton.icon(
+                                    key: ValueKey<String>(
+                                      'mistake-choice-$move',
+                                    ),
+                                    onPressed: answered
+                                        ? null
+                                        : () => _choose(move),
+                                    icon: Icon(
+                                      answered && move == item.review.bestMove
+                                          ? Icons.check_circle_rounded
+                                          : Icons.route_rounded,
+                                    ),
+                                    label: Text(move),
+                                  ),
+                                ),
+                              if (answered) ...<Widget>[
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        (correct
+                                                ? const Color(0xFF63D2B8)
+                                                : const Color(0xFFFF8A72))
+                                            .withValues(alpha: .11),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: correct
+                                          ? const Color(0xFF63D2B8)
+                                          : const Color(0xFFFF8A72),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    localizeReviewNarrative(
+                                      item.review.explanation,
+                                      _language,
+                                    ),
+                                    style: const TextStyle(height: 1.45),
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                FilledButton.icon(
+                                  key: const ValueKey<String>('mistake-next'),
+                                  onPressed: _next,
+                                  icon: const Icon(Icons.arrow_forward_rounded),
+                                  label: Text(t('recommended')),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
+        ),
       ),
     );
   }
+
+  Widget _coinBadge() => ValueListenableBuilder<int?>(
+    valueListenable: DesktopNavigationBridge.coinBalance,
+    builder: (BuildContext context, int? coins, Widget? child) =>
+        CoinBalanceBadge(balance: coins ?? 0, compact: true),
+  );
 }
 
 class _MistakeProgress extends StatelessWidget {

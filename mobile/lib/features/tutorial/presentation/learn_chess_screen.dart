@@ -5,11 +5,14 @@ import '../../../core/analysis_dashboard_localizations.dart';
 import '../../../core/app_language.dart';
 import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/chess_piece_appearance.dart';
+import '../../../core/desktop_navigation_bridge.dart';
 import '../../../core/layout/responsive_page.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../../../core/widgets/ai_language_picker.dart';
+import '../../../core/widgets/coin_balance_badge.dart';
+import '../../../core/widgets/desktop_navigation_shell.dart';
 import '../../analysis/domain/player_learning_profile.dart';
 import '../data/academy_progress_store.dart';
 import '../domain/academy_lesson.dart';
@@ -1958,310 +1961,322 @@ class _CourseScreenState extends State<_CourseScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFF06131D),
-    appBar: AppBar(
-      backgroundColor: const Color(0xFF071827),
-      title: Row(
-        children: <Widget>[
-          Icon(course.icon, color: course.accent),
-          const SizedBox(width: 10),
-          Expanded(
-            child: ClipRect(
-              child: Text(
-                _localizedCourseTitle(_copy, course),
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      actions: <Widget>[
-        _LessonLanguageAction(
-          languageCode: _languageCode,
-          onPressed: _chooseLanguage,
-        ),
-        const SizedBox(width: 8),
-      ],
-    ),
-    bottomNavigationBar: progress < 1
-        ? null
-        : SafeArea(
-            minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-            child: FilledButton.icon(
-              key: const ValueKey<String>('completed-course-next-action'),
-              onPressed: _continueCourseJourney,
-              icon: Icon(
-                nextCourse == null
-                    ? Icons.school_rounded
-                    : Icons.arrow_forward_rounded,
-              ),
-              label: Text(
-                nextCourse == null
-                    ? _copy.text('academy.title').toUpperCase()
-                    : _copy
-                          .text(
-                            'path.next',
-                            values: <String, String>{
-                              'lesson': _localizedCourseTitle(
-                                _copy,
-                                nextCourse!,
-                              ),
-                            },
-                          )
-                          .toUpperCase(),
-                textAlign: TextAlign.center,
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.accentGold,
-                foregroundColor: const Color(0xFF071827),
-                minimumSize: const Size.fromHeight(52),
-                textStyle: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-            ),
-          ),
-    body: ResponsivePage(
-      maxWidth: 980,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: course.accent.withValues(alpha: .65)),
-              image: DecorationImage(
-                image: AssetImage(course.asset),
-                fit: BoxFit.cover,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xB8061725),
-                  BlendMode.srcOver,
-                ),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  _localizedCourseBody(_copy, course),
+  Widget build(BuildContext context) => DesktopNavigationShell(
+    selected: 'Learn',
+    child: Scaffold(
+      backgroundColor: const Color(0xFF06131D),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF071827),
+        title: Row(
+          children: <Widget>[
+            Icon(course.icon, color: course.accent),
+            const SizedBox(width: 10),
+            Expanded(
+              child: ClipRect(
+                child: Text(
+                  _localizedCourseTitle(_copy, course),
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Color(0xFFD2DDE5),
-                    fontSize: 17,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '$completedCount of ${course.chapters.length} lessons',
-                  style: TextStyle(
-                    color: course.accent,
+                    fontSize: 16,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 7,
-                  borderRadius: BorderRadius.circular(99),
-                  backgroundColor: const Color(0xFF263948),
-                  valueColor: AlwaysStoppedAnimation<Color>(course.accent),
+              ),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          ValueListenableBuilder<int?>(
+            valueListenable: DesktopNavigationBridge.coinBalance,
+            builder: (BuildContext context, int? coins, Widget? child) =>
+                CoinBalanceBadge(balance: coins ?? 0, compact: true),
+          ),
+          const SizedBox(width: 8),
+          _LessonLanguageAction(
+            languageCode: _languageCode,
+            onPressed: _chooseLanguage,
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      bottomNavigationBar: progress < 1
+          ? null
+          : SafeArea(
+              minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: FilledButton.icon(
+                key: const ValueKey<String>('completed-course-next-action'),
+                onPressed: _continueCourseJourney,
+                icon: Icon(
+                  nextCourse == null
+                      ? Icons.school_rounded
+                      : Icons.arrow_forward_rounded,
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 22),
-          const Text(
-            'COURSE LESSONS',
-            style: TextStyle(
-              color: AppColors.accentGold,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.1,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ...List<Widget>.generate(course.chapters.length, (int index) {
-            final AcademyLesson academyLesson = AcademyCatalog.forChapter(
-              course.chapters[index],
-            );
-            final bool done = _completed.contains(academyLesson.id);
-            final bool active = !done && index == completedCount;
-            final bool locked = !done && index > completedCount;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: ChessVerseCard(
-                padding: EdgeInsets.zero,
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 7,
-                  ),
-                  onTap: locked
-                      ? null
-                      : () async {
-                          await Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => InteractiveAcademyLessonScreen(
-                                lesson: academyLesson,
-                              ),
-                            ),
-                          );
-                          await _loadProgress();
-                        },
-                  leading: CircleAvatar(
-                    backgroundColor: course.accent.withValues(alpha: .16),
-                    foregroundColor: course.accent,
-                    child: done
-                        ? const Icon(Icons.check_rounded)
-                        : locked
-                        ? const Icon(Icons.lock_rounded, size: 18)
-                        : Text(
-                            '${index + 1}',
-                            style: const TextStyle(fontWeight: FontWeight.w900),
-                          ),
-                  ),
-                  title: Text(
-                    course.chapters[index],
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  subtitle: Text(
-                    active
-                        ? 'Continue this lesson'
-                        : done
-                        ? 'Completed'
-                        : locked
-                        ? 'Complete the previous lesson to unlock'
-                        : 'Learn the idea, then try a position',
-                  ),
-                  trailing: done
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            ...List<Widget>.generate(
-                              3,
-                              (int star) => Icon(
-                                star < (_mastery[academyLesson.id] ?? 1)
-                                    ? Icons.star_rounded
-                                    : Icons.star_outline_rounded,
-                                size: 17,
-                                color: AppColors.accentGold,
-                              ),
-                            ),
-                            const SizedBox(width: 5),
-                            Icon(
-                              Icons.arrow_forward_rounded,
-                              color: course.accent,
-                            ),
-                          ],
-                        )
-                      : Icon(
-                          locked
-                              ? Icons.lock_outline_rounded
-                              : Icons.arrow_forward_rounded,
-                          color: locked
-                              ? AppColors.textSecondary
-                              : course.accent,
-                        ),
+                label: Text(
+                  nextCourse == null
+                      ? _copy.text('academy.title').toUpperCase()
+                      : _copy
+                            .text(
+                              'path.next',
+                              values: <String, String>{
+                                'lesson': _localizedCourseTitle(
+                                  _copy,
+                                  nextCourse!,
+                                ),
+                              },
+                            )
+                            .toUpperCase(),
+                  textAlign: TextAlign.center,
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.accentGold,
+                  foregroundColor: const Color(0xFF071827),
+                  minimumSize: const Size.fromHeight(52),
+                  textStyle: const TextStyle(fontWeight: FontWeight.w900),
                 ),
               ),
-            );
-          }),
-          const SizedBox(height: 8),
-          ChessVerseCard(
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              children: <Widget>[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: course.accent.withValues(alpha: .14),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _certificates.contains(courseId)
-                        ? Icons.workspace_premium_rounded
-                        : Icons.military_tech_rounded,
-                    color: course.accent,
+            ),
+      body: ResponsivePage(
+        maxWidth: 980,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: course.accent.withValues(alpha: .65)),
+                image: DecorationImage(
+                  image: AssetImage(course.asset),
+                  fit: BoxFit.cover,
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xB8061725),
+                    BlendMode.srcOver,
                   ),
                 ),
-                const SizedBox(width: 13),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        _certificates.contains(courseId)
-                            ? _copy.text('boss.earned')
-                            : _copy.text(
-                                'boss.title',
-                                values: <String, String>{
-                                  'course': _localizedCourseTitle(
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    _localizedCourseBody(_copy, course),
+                    style: const TextStyle(
+                      color: Color(0xFFD2DDE5),
+                      fontSize: 17,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '$completedCount of ${course.chapters.length} lessons',
+                    style: TextStyle(
+                      color: course.accent,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 7,
+                    borderRadius: BorderRadius.circular(99),
+                    backgroundColor: const Color(0xFF263948),
+                    valueColor: AlwaysStoppedAnimation<Color>(course.accent),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 22),
+            const Text(
+              'COURSE LESSONS',
+              style: TextStyle(
+                color: AppColors.accentGold,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.1,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...List<Widget>.generate(course.chapters.length, (int index) {
+              final AcademyLesson academyLesson = AcademyCatalog.forChapter(
+                course.chapters[index],
+              );
+              final bool done = _completed.contains(academyLesson.id);
+              final bool active = !done && index == completedCount;
+              final bool locked = !done && index > completedCount;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: ChessVerseCard(
+                  padding: EdgeInsets.zero,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 7,
+                    ),
+                    onTap: locked
+                        ? null
+                        : () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => InteractiveAcademyLessonScreen(
+                                  lesson: academyLesson,
+                                ),
+                              ),
+                            );
+                            await _loadProgress();
+                          },
+                    leading: CircleAvatar(
+                      backgroundColor: course.accent.withValues(alpha: .16),
+                      foregroundColor: course.accent,
+                      child: done
+                          ? const Icon(Icons.check_rounded)
+                          : locked
+                          ? const Icon(Icons.lock_rounded, size: 18)
+                          : Text(
+                              '${index + 1}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                    ),
+                    title: Text(
+                      course.chapters[index],
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    subtitle: Text(
+                      active
+                          ? 'Continue this lesson'
+                          : done
+                          ? 'Completed'
+                          : locked
+                          ? 'Complete the previous lesson to unlock'
+                          : 'Learn the idea, then try a position',
+                    ),
+                    trailing: done
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              ...List<Widget>.generate(
+                                3,
+                                (int star) => Icon(
+                                  star < (_mastery[academyLesson.id] ?? 1)
+                                      ? Icons.star_rounded
+                                      : Icons.star_outline_rounded,
+                                  size: 17,
+                                  color: AppColors.accentGold,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Icon(
+                                Icons.arrow_forward_rounded,
+                                color: course.accent,
+                              ),
+                            ],
+                          )
+                        : Icon(
+                            locked
+                                ? Icons.lock_outline_rounded
+                                : Icons.arrow_forward_rounded,
+                            color: locked
+                                ? AppColors.textSecondary
+                                : course.accent,
+                          ),
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 8),
+            ChessVerseCard(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                children: <Widget>[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: course.accent.withValues(alpha: .14),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _certificates.contains(courseId)
+                          ? Icons.workspace_premium_rounded
+                          : Icons.military_tech_rounded,
+                      color: course.accent,
+                    ),
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          _certificates.contains(courseId)
+                              ? _copy.text('boss.earned')
+                              : _copy.text(
+                                  'boss.title',
+                                  values: <String, String>{
+                                    'course': _localizedCourseTitle(
+                                      _copy,
+                                      course,
+                                    ),
+                                  },
+                                ),
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                        Text(
+                          _copy.text(
+                            completedCount == course.chapters.length
+                                ? 'boss.unlocked'
+                                : 'boss.locked',
+                          ),
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  FilledButton(
+                    onPressed: completedCount != course.chapters.length
+                        ? null
+                        : () async {
+                            final List<AcademyLesson> lessons = course.chapters
+                                .map(AcademyCatalog.forChapter)
+                                .toList(growable: false);
+                            final List<AcademyLesson> challenge =
+                                <AcademyLesson>[
+                                  lessons.first,
+                                  lessons[lessons.length ~/ 2],
+                                  lessons.last,
+                                ];
+                            await Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => AcademyBossChallengeScreen(
+                                  courseId: courseId,
+                                  courseTitle: _localizedCourseTitle(
                                     _copy,
                                     course,
                                   ),
-                                },
-                              ),
-                        style: const TextStyle(fontWeight: FontWeight.w900),
-                      ),
-                      Text(
-                        _copy.text(
-                          completedCount == course.chapters.length
-                              ? 'boss.unlocked'
-                              : 'boss.locked',
-                        ),
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                FilledButton(
-                  onPressed: completedCount != course.chapters.length
-                      ? null
-                      : () async {
-                          final List<AcademyLesson> lessons = course.chapters
-                              .map(AcademyCatalog.forChapter)
-                              .toList(growable: false);
-                          final List<AcademyLesson> challenge = <AcademyLesson>[
-                            lessons.first,
-                            lessons[lessons.length ~/ 2],
-                            lessons.last,
-                          ];
-                          await Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => AcademyBossChallengeScreen(
-                                courseId: courseId,
-                                courseTitle: _localizedCourseTitle(
-                                  _copy,
-                                  course,
+                                  lessons: challenge,
+                                  accent: course.accent,
                                 ),
-                                lessons: challenge,
-                                accent: course.accent,
                               ),
-                            ),
-                          );
-                          await _loadProgress();
-                        },
-                  child: Text(
-                    _copy.text(
-                      _certificates.contains(courseId)
-                          ? 'boss.view'
-                          : 'boss.start',
+                            );
+                            await _loadProgress();
+                          },
+                    child: Text(
+                      _copy.text(
+                        _certificates.contains(courseId)
+                            ? 'boss.view'
+                            : 'boss.start',
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );

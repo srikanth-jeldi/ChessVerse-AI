@@ -38,6 +38,7 @@ import 'core/widgets/ai_language_picker.dart';
 import 'core/widgets/desktop_app_sidebar.dart';
 import 'core/widgets/network_status_layer.dart';
 import 'core/widgets/coin_balance_badge.dart';
+import 'core/desktop_navigation_bridge.dart';
 import 'features/auth/data/auth_api.dart';
 import 'features/auth/data/auth_session_store.dart';
 import 'features/auth/presentation/auth_screen.dart';
@@ -328,6 +329,7 @@ class _SplashGateState extends State<SplashGate> {
   @override
   void initState() {
     super.initState();
+    DesktopNavigationBridge.request.addListener(_handleDesktopNavigation);
     _forceFreshWebLogin = consumeFreshWebLaunch();
     DailyReminderService.instance.playOpenRequests.addListener(
       _openPlayFromReminder,
@@ -773,6 +775,7 @@ class _SplashGateState extends State<SplashGate> {
 
   @override
   void dispose() {
+    DesktopNavigationBridge.request.removeListener(_handleDesktopNavigation);
     DailyReminderService.instance.playOpenRequests.removeListener(
       _openPlayFromReminder,
     );
@@ -787,6 +790,35 @@ class _SplashGateState extends State<SplashGate> {
     _stopNotificationPolling();
     _sessionValidationTimer?.cancel();
     super.dispose();
+  }
+
+  void _handleDesktopNavigation() {
+    final int? destination = DesktopNavigationBridge.request.value;
+    if (destination == null || !mounted || _stage != _RootStage.home) return;
+    DesktopNavigationBridge.request.value = null;
+    if (destination >= 0 && destination <= 5) {
+      setState(() => _primaryDestination = destination);
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (destination == 6) {
+        unawaited(
+          _push(
+            context,
+            MatchHistoryScreen(
+              onDestinationSelected: (index) =>
+                  _closeSettingsAndSelect(context, index),
+              onResume: (draft) =>
+                  _openGame(context, GameMode.computer, resumeDraft: draft),
+              onPlayAgain: () => _chooseSideAndOpen(context, GameMode.computer),
+            ),
+          ),
+        );
+      } else if (destination == 7) {
+        unawaited(_openRewardsCenter(context));
+      }
+    });
   }
 
   void _openPlayFromReminder() {
@@ -1018,6 +1050,13 @@ class _SplashGateState extends State<SplashGate> {
     ];
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints size) {
+        if (DesktopNavigationBridge.coinBalance.value != _coinBalance) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (DesktopNavigationBridge.coinBalance.value != _coinBalance) {
+              DesktopNavigationBridge.coinBalance.value = _coinBalance;
+            }
+          });
+        }
         // Desktop navigation is a width concern. Keeping a height requirement
         // here made the permanent sidebar disappear in short browser windows
         // (for example when DevTools was docked or the window was resized).
