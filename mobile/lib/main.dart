@@ -1018,8 +1018,10 @@ class _SplashGateState extends State<SplashGate> {
     ];
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints size) {
-        final bool genuineWideLayout =
-            size.maxWidth >= 700 && size.maxHeight >= 600;
+        // Desktop navigation is a width concern. Keeping a height requirement
+        // here made the permanent sidebar disappear in short browser windows
+        // (for example when DevTools was docked or the window was resized).
+        final bool genuineWideLayout = size.maxWidth >= 700;
         final bool useDesktopSidebar = genuineWideLayout;
         final Widget destinationStack = IndexedStack(
           index: _primaryDestination,
@@ -1033,6 +1035,9 @@ class _SplashGateState extends State<SplashGate> {
           _ => 10,
         };
         final double coinRight = switch (_primaryDestination) {
+          // The Learn app bar owns a language picker on the trailing edge.
+          // Reserve its maximum width so the floating wallet never covers it.
+          3 => 128,
           4 => useDesktopSidebar ? 92 : 66,
           5 => useDesktopSidebar ? 112 : 102,
           _ => useDesktopSidebar ? 22 : 12,
