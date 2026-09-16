@@ -28,12 +28,13 @@ class CoinBalanceBadge extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
           child: Container(
             key: const ValueKey<String>('global-coin-balance'),
+            height: expandedLabel ? 48 : null,
             constraints: BoxConstraints(
               minWidth: expandedLabel ? 152 : (compact ? 68 : 82),
             ),
             padding: EdgeInsets.symmetric(
               horizontal: expandedLabel ? 16 : (compact ? 10 : 12),
-              vertical: expandedLabel ? 10 : 8,
+              vertical: expandedLabel ? 0 : 8,
             ),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
@@ -97,8 +98,5 @@ class CoinBalanceBadge extends StatelessWidget {
 
 String formatCoinAmount(int value) {
   final String digits = value.clamp(0, 999999999).toString();
-  return digits.replaceAllMapped(
-    RegExp(r'\B(?=(\d{3})+(?!\d))'),
-    (_) => ',',
-  );
+  return digits.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
 }

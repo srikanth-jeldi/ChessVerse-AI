@@ -1030,7 +1030,7 @@ class _SplashGateState extends State<SplashGate> {
         final double coinTop = switch (_primaryDestination) {
           1 => useDesktopSidebar ? 25 : 8,
           2 => useDesktopSidebar ? 18 : 10,
-          3 => useDesktopSidebar ? 15 : 10,
+          3 => useDesktopSidebar ? 18 : 10,
           4 || 5 => useDesktopSidebar ? 9 : 8,
           _ => 10,
         };

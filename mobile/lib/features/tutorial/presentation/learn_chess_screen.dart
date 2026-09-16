@@ -1845,24 +1845,26 @@ class _LessonLanguageAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLanguage language = AppLanguageController.byCode(languageCode);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 104),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: OutlinedButton.icon(
-          key: const ValueKey<String>('lesson-language-picker'),
-          onPressed: onPressed,
-          icon: const Icon(Icons.translate_rounded, size: 18),
-          label: Text(
-            language.nativeName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.accentGold,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            visualDensity: VisualDensity.compact,
-          ),
+    return SizedBox(
+      width: 112,
+      height: 48,
+      child: OutlinedButton.icon(
+        key: const ValueKey<String>('lesson-language-picker'),
+        onPressed: onPressed,
+        icon: const Icon(Icons.translate_rounded, size: 18),
+        label: Text(
+          language.nativeName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.accentGold,
+          backgroundColor: const Color(0xFF071A2B),
+          side: const BorderSide(color: Color(0x99E7B54D), width: 1.2),
+          shape: const StadiumBorder(),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+          visualDensity: VisualDensity.standard,
         ),
       ),
     );
