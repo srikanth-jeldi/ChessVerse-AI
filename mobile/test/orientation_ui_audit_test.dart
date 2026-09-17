@@ -7,6 +7,7 @@ import 'package:chessverse_ai/features/puzzles/presentation/puzzle_academy_scree
 import 'package:chessverse_ai/features/library/presentation/reference_screens.dart';
 import 'package:chessverse_ai/main.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -43,7 +44,10 @@ void main() {
 
       await tester.drag(find.byType(PageView), Offset(-size.width * 0.75, 0));
       await tester.pumpAndSettle();
-      expect(find.text('AI Coach\nAlways With You'), findsOneWidget);
+      final Finder coachTitle = find.text('AI Coach\nAlways With You');
+      expect(coachTitle, findsOneWidget);
+      final RenderParagraph coachParagraph = tester.renderObject(coachTitle);
+      expect(coachParagraph.didExceedMaxLines, isFalse);
       expect(tester.takeException(), isNull);
 
       await tester.drag(find.byType(PageView), Offset(-size.width * 0.75, 0));

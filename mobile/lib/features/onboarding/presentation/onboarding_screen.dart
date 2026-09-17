@@ -314,18 +314,26 @@ class _OnboardingCopy extends StatelessWidget {
         ],
       ),
       SizedBox(height: compact ? 8 : 13),
-      Text(
-        data.title,
-        maxLines: 2,
-        style: TextStyle(
-          color: AppColors.textPrimary,
-          height: .98,
-          fontSize: wide ? (compact ? 34 : 46) : (compact ? 28 : 38),
-          fontWeight: FontWeight.w900,
-          letterSpacing: -.7,
-          shadows: const <Shadow>[
-            Shadow(color: Color(0xAA000000), blurRadius: 16),
-          ],
+      SizedBox(
+        width: double.infinity,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            data.title,
+            maxLines: 2,
+            softWrap: false,
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              height: .98,
+              fontSize: wide ? (compact ? 34 : 46) : (compact ? 28 : 38),
+              fontWeight: FontWeight.w900,
+              letterSpacing: -.7,
+              shadows: const <Shadow>[
+                Shadow(color: Color(0xAA000000), blurRadius: 16),
+              ],
+            ),
+          ),
         ),
       ),
       SizedBox(height: compact ? 9 : 14),
