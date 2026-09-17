@@ -133,6 +133,32 @@ jobs:
           grep -q 'jar verified' <<< "$verification"
           sha256sum "$aab" > "$aab.sha256"
 
+      - name: Check estimated Play download stays under 30 MB
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          curl --fail --location --retry 3 -o /tmp/bundletool.jar \
+            https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar
+          # APKs are size-estimation artifacts, never the upload artifact.
+          keytool -genkeypair -keystore /tmp/size-check.jks -storepass android \
+            -keypass android -alias size-check -dname 'CN=Size Check' \
+            -keyalg RSA -validity 2 -noprompt
+          java -jar /tmp/bundletool.jar build-apks \
+            --bundle=build/app/outputs/bundle/release/app-release.aab \
+            --output=/tmp/size-check.apks --ks=/tmp/size-check.jks \
+            --ks-key-alias=size-check --ks-pass=pass:android --key-pass=pass:android
+          java -jar /tmp/bundletool.jar get-size total --apks=/tmp/size-check.apks \
+            > build/app/outputs/bundle/release/download-size.csv
+          python3 - <<'PY'
+          import csv
+          from pathlib import Path
+          path = Path('build/app/outputs/bundle/release/download-size.csv')
+          rows = list(csv.DictReader(path.open()))
+          maximum = max(int(row['MAX']) for row in rows)
+          print(f'Estimated maximum Play download: {maximum / 1_000_000:.2f} MB')
+          assert maximum < 30_000_000, 'Estimated Play download exceeds the 30 MB budget'
+          PY
+
       - name: Upload production bundle
         uses: actions/upload-artifact@v7
         with:
@@ -140,6 +166,7 @@ jobs:
           path: |
             mobile/build/app/outputs/bundle/release/app-release.aab
             mobile/build/app/outputs/bundle/release/app-release.aab.sha256
+            mobile/build/app/outputs/bundle/release/download-size.csv
             mobile/build/symbols/**
           if-no-files-found: error
           retention-days: 30

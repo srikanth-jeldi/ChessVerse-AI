@@ -2,6 +2,12 @@ name: Deploy VPS
 
 on:
   workflow_dispatch:
+    inputs:
+      scope:
+        description: Services to deploy
+        type: choice
+        options: [web, all]
+        default: web
 
 permissions:
   contents: read
@@ -68,6 +74,7 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
           DEPLOY_SHA: ${{ steps.revision.outputs.sha }}
+          DEPLOY_SCOPE: ${{ inputs.scope || 'all' }}
         run: |
           set -Eeuo pipefail
           ssh \
@@ -76,9 +83,11 @@ jobs:
             -o BatchMode=yes \
             -o IdentitiesOnly=yes \
             "$VPS_USER@$VPS_HOST" \
-            "bash -s -- '$DEPLOY_SHA'" <<'REMOTE_SCRIPT'
+            "bash -s -- '$DEPLOY_SHA' '$DEPLOY_SCOPE'" <<'REMOTE_SCRIPT'
           set -Eeuo pipefail
           deploy_sha="$1"
+          deploy_scope="$2"
+          [[ "$deploy_scope" == web || "$deploy_scope" == all ]]
           repo_dir=/root/ChessVerse-AI
           deploy_dir="$repo_dir/infrastructure/vps"
 
@@ -96,7 +105,15 @@ jobs:
             docker compose --env-file vps.env -f docker-compose.prod.yml logs --tail=250 backend || true
           }
           trap deploy_diagnostics ERR
-          docker compose --env-file vps.env -f docker-compose.prod.yml up -d --build
+          if [[ "$deploy_scope" == web ]]; then
+            web_id="$(docker compose --env-file vps.env -f docker-compose.prod.yml ps -q web)"
+            old_image="$(docker inspect --format='{{.Image}}' "$web_id")"
+            docker image tag "$old_image" chessverse-web:before-latest-web-release
+            docker compose --env-file vps.env -f docker-compose.prod.yml build web
+            docker compose --env-file vps.env -f docker-compose.prod.yml up -d --no-deps web
+          else
+            docker compose --env-file vps.env -f docker-compose.prod.yml up -d --build
+          fi
           docker compose --env-file vps.env -f docker-compose.prod.yml ps
 
           curl --fail --silent --show-error \

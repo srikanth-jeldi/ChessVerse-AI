@@ -14,6 +14,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../../../core/widgets/ai_language_picker.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
+import 'academy_continue_button.dart';
 import '../data/academy_progress_store.dart';
 import '../domain/academy_lesson.dart';
 
@@ -1525,34 +1526,16 @@ class _CoachPanel extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                FilledButton.icon(
+                AcademyContinueButton(
                   key: const ValueKey<String>('next-academy-lesson'),
                   onPressed: onContinueLearning,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.accentGold,
-                    foregroundColor: const Color(0xFF071827),
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    elevation: 6,
-                  ),
-                  icon: Icon(
-                    nextLesson == null
-                        ? Icons.school_rounded
-                        : Icons.arrow_forward_rounded,
-                  ),
-                  label: Text(
-                    nextLesson == null
-                        ? copy.text('academy.title').toUpperCase()
-                        : copy
-                              .text(
-                                'path.next',
-                                values: <String, String>{
-                                  'lesson': copy.storyChapter(nextLesson!),
-                                },
-                              )
-                              .toUpperCase(),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontWeight: FontWeight.w900),
-                  ),
+                  isLastLesson: nextLesson == null,
+                  label: copy.code == 'en'
+                      ? (nextLesson == null ? 'Keep learning' : 'Next lesson')
+                      : copy.text('ui.continue'),
+                  title: nextLesson == null
+                      ? copy.text('academy.title')
+                      : copy.storyChapter(nextLesson!),
                 ),
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
@@ -1563,7 +1546,7 @@ class _CoachPanel extends StatelessWidget {
                   icon: const Icon(Icons.refresh_rounded),
                   label: Text(
                     copy.code == 'en'
-                        ? 'PRACTICE AGAIN'
+                        ? 'Practice again'
                         : copy.text('ui.restart'),
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),

@@ -101,7 +101,7 @@ class _MasterGamesScreenState extends State<MasterGamesScreen> {
       body: DecoratedBox(
         decoration: const BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/backgrounds/master-games-hall-v1.png'),
+            image: AssetImage('assets/backgrounds/master-games-hall-v1.webp'),
             fit: BoxFit.cover,
             opacity: .12,
           ),
@@ -273,7 +273,7 @@ class _MasterCatalogHero extends StatelessWidget {
             children: <Widget>[
               const Image(
                 image: AssetImage(
-                  'assets/backgrounds/master-games-hall-v1.png',
+                  'assets/backgrounds/master-games-hall-v1.webp',
                 ),
                 fit: BoxFit.cover,
                 alignment: Alignment.centerRight,

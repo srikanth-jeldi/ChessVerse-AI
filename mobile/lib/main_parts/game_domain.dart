@@ -192,43 +192,6 @@ Future<void> _restoreDailyReminder() async {
   }
 }
 
-class _MobileLoadingFeatures extends StatelessWidget {
-  const _MobileLoadingFeatures();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: <Widget>[
-        _MobileLoadingFeature(Icons.extension_rounded, 'Puzzles'),
-        _MobileLoadingFeature(Icons.emoji_events_outlined, 'Compete'),
-        _MobileLoadingFeature(Icons.trending_up_rounded, 'Progress'),
-      ],
-    );
-  }
-}
-
-class _MobileLoadingFeature extends StatelessWidget {
-  const _MobileLoadingFeature(this.icon, this.label);
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: <Widget>[
-        Icon(icon, color: const Color(0xFF59D4C1), size: 26),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-        ),
-      ],
-    );
-  }
-}
-
 extension PlayerSideChoiceDetails on PlayerSideChoice {
   String get label => switch (this) {
     PlayerSideChoice.white => 'White',

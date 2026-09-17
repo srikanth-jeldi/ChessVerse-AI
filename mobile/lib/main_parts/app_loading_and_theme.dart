@@ -120,14 +120,12 @@ class BrandedSplash extends StatelessWidget {
                               vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF02070D,
-                              ).withValues(alpha: 0.72),
+                              color: const Color(0xFF02070D)
+                                  .withValues(alpha: 0.72),
                               borderRadius: BorderRadius.circular(999),
                               border: Border.all(
-                                color: const Color(
-                                  0xFFFFCE6A,
-                                ).withValues(alpha: 0.42),
+                                color: const Color(0xFFFFCE6A)
+                                    .withValues(alpha: 0.42),
                               ),
                             ),
                             child: const FittedBox(
@@ -238,16 +236,14 @@ class _MobilePremiumSplash extends StatelessWidget {
                       ),
                       boxShadow: <BoxShadow>[
                         BoxShadow(
-                          color: const Color(
-                            0xFF63D2B8,
-                          ).withValues(alpha: 0.34),
+                          color: const Color(0xFF63D2B8)
+                              .withValues(alpha: 0.34),
                           blurRadius: 52,
                           spreadRadius: 10,
                         ),
                         BoxShadow(
-                          color: const Color(
-                            0xFFD6A84F,
-                          ).withValues(alpha: 0.18),
+                          color: const Color(0xFFD6A84F)
+                              .withValues(alpha: 0.18),
                           blurRadius: 30,
                           offset: const Offset(0, 14),
                         ),
@@ -366,353 +362,325 @@ class ChessVerseLoadingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF02070D),
-      body: LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints constraints) {
-          final Size viewport = MediaQuery.sizeOf(context);
-          final bool wide =
-              viewport.shortestSide >= 600 && constraints.maxWidth >= 800;
-          return Stack(
-            fit: StackFit.expand,
-            children: <Widget>[
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment(0, -0.05),
-                    radius: 1.05,
-                    colors: <Color>[
-                      Color(0xFF0A5A50),
-                      Color(0xFF071B22),
-                      Color(0xFF02070D),
-                    ],
-                  ),
-                ),
-              ),
-              SafeArea(
-                child: wide
-                    ? const _WideChessVerseLoadingPanel()
-                    : const _MobileChessVerseLoadingPanel(),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _MobileChessVerseLoadingPanel extends StatelessWidget {
-  const _MobileChessVerseLoadingPanel();
-
-  @override
-  Widget build(BuildContext context) {
-    final bool compact = MediaQuery.sizeOf(context).height < 700;
-    return Center(
-      child: SingleChildScrollView(
-        physics: const ClampingScrollPhysics(),
-        padding: EdgeInsets.symmetric(
-          horizontal: 30,
-          vertical: compact ? 18 : 32,
-        ),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 390),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              _LoadingLogo(size: compact ? 102 : 124),
-              SizedBox(height: compact ? 22 : 30),
-              const _LoadingBrand(centered: true),
-              SizedBox(height: compact ? 40 : 64),
-              const _LoadingProgress(centered: true),
-              SizedBox(height: compact ? 22 : 34),
-              const _MobileLoadingFeatures(),
-            ],
+      backgroundColor: const Color(0xFF021018),
+      body: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          Image.asset(
+            'assets/branding/loading-cinematic-v1.webp',
+            fit: BoxFit.cover,
+            excludeFromSemantics: true,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _WideChessVerseLoadingPanel extends StatelessWidget {
-  const _WideChessVerseLoadingPanel();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: SingleChildScrollView(
-        physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.all(28),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1280),
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 610),
-            clipBehavior: Clip.antiAlias,
+          const DecoratedBox(
             decoration: BoxDecoration(
-              color: const Color(0xE6041018),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: const Color(0x66566D70), width: 2),
-              boxShadow: const <BoxShadow>[
-                BoxShadow(color: Color(0x6600B9A8), blurRadius: 48),
-              ],
+              gradient: RadialGradient(
+                radius: .95,
+                colors: <Color>[Color(0x18001018), Color(0x66001018)],
+              ),
             ),
-            child: Stack(
-              children: <Widget>[
-                Positioned.fill(
-                  left: 500,
-                  child: Image.asset(
-                    'assets/backgrounds/home-online-hero-v1.webp',
-                    fit: BoxFit.cover,
-                    alignment: Alignment.centerRight,
-                  ),
-                ),
-                const Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: <Color>[
-                          Color(0xFF031019),
-                          Color(0xF2031019),
-                          Color(0x70031019),
-                          Color(0x12031019),
-                        ],
-                        stops: <double>[0, .37, .62, 1],
-                      ),
+          ),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final bool landscape =
+                    constraints.maxWidth > constraints.maxHeight;
+                final double canvasWidth = landscape ? 760 : 390;
+                final double canvasHeight = landscape ? 480 : 800;
+                return Center(
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: SizedBox(
+                      width: canvasWidth,
+                      height: canvasHeight,
+                      child: landscape ? _landscape() : _portrait(),
                     ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(68, 62, 68, 38),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      const Row(
-                        children: <Widget>[
-                          _LoadingLogo(size: 116),
-                          SizedBox(width: 28),
-                          _LoadingBrand(centered: false),
-                        ],
-                      ),
-                      const SizedBox(height: 42),
-                      const SizedBox(
-                        width: 520,
-                        child: _LoadingProgress(centered: false),
-                      ),
-                      const SizedBox(height: 42),
-                      const _LoadingFeatureStrip(),
-                    ],
-                  ),
-                ),
-              ],
+                );
+              },
             ),
           ),
-        ),
+        ],
       ),
     );
   }
+
+  Widget _portrait() => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 34),
+    child: Column(
+      children: <Widget>[
+        const SizedBox(height: 14),
+        const Align(
+          alignment: Alignment.centerRight,
+          child: Text(
+            'A SMARTER\nPLAYER\nA BRIGHTER\nYOU',
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontFamily: 'ChessVerseSerif',
+              color: Color(0xFF92BCC6),
+              fontSize: 8,
+              height: 1.9,
+              letterSpacing: 3,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        const _LoadingLogo(size: 142),
+        const SizedBox(height: 24),
+        const _LoadingBrand(),
+        const SizedBox(height: 16),
+        const _LoadingCrown(),
+        const SizedBox(height: 28),
+        const _LoadingProgress(),
+        const SizedBox(height: 28),
+        const _CinematicLoadingFeatures(),
+        const Spacer(),
+        const Text(
+          'MORE THAN A GAME\nA BRIGHTER MIND',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'ChessVerseSerif',
+            color: Color(0xFFBED0D2),
+            fontSize: 8,
+            height: 2.3,
+            letterSpacing: 4,
+          ),
+        ),
+        const SizedBox(height: 18),
+      ],
+    ),
+  );
+
+  Widget _landscape() => Padding(
+    padding: const EdgeInsets.all(38),
+    child: Row(
+      children: <Widget>[
+        const Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              _LoadingLogo(size: 152),
+              SizedBox(height: 24),
+              _LoadingBrand(),
+              SizedBox(height: 20),
+              _LoadingCrown(),
+            ],
+          ),
+        ),
+        const SizedBox(width: 40),
+        const Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              _LoadingProgress(),
+              SizedBox(height: 32),
+              _CinematicLoadingFeatures(),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _LoadingLogo extends StatelessWidget {
   const _LoadingLogo({required this.size});
-
   final double size;
-
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      padding: EdgeInsets.all(size * .08),
-      decoration: BoxDecoration(
-        color: const Color(0xE6071520),
-        borderRadius: BorderRadius.circular(size * .25),
-        border: Border.all(color: const Color(0xFFE0B85E), width: 1.4),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(color: Color(0x554DE1C8), blurRadius: 42, spreadRadius: 5),
-        ],
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: const Color(0xFF031320),
+      borderRadius: BorderRadius.circular(size * .26),
+      border: Border.all(color: const Color(0xFFFFDB7B), width: 2.5),
+      boxShadow: const <BoxShadow>[
+        BoxShadow(color: Color(0x6672F5C9), blurRadius: 34, spreadRadius: 3),
+        BoxShadow(color: Color(0x55FFD477), blurRadius: 10),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(size * .18),
+      child: Image.asset(
+        'assets/branding/app_icon.png',
+        semanticLabel: 'ChessVerse AI',
+        fit: BoxFit.cover,
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(size * .18),
-        child: Image.asset('assets/branding/app_icon.png', fit: BoxFit.cover),
-      ),
-    );
-  }
+    ),
+  );
 }
 
 class _LoadingBrand extends StatelessWidget {
-  const _LoadingBrand({required this.centered});
-
-  final bool centered;
-
+  const _LoadingBrand();
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: centered
-          ? CrossAxisAlignment.center
-          : CrossAxisAlignment.start,
-      children: <Widget>[
-        Text.rich(
-          const TextSpan(
+  Widget build(BuildContext context) => const Column(
+    children: <Widget>[
+      FittedBox(
+        child: Text.rich(
+          TextSpan(
             children: <InlineSpan>[
-              TextSpan(text: 'CHESSVERSE'),
+              TextSpan(text: 'CHESSVERSE '),
               TextSpan(
-                text: ' AI',
-                style: TextStyle(color: Color(0xFFF2BF4D)),
+                text: 'AI',
+                style: TextStyle(color: Color(0xFFFFCF69)),
               ),
             ],
           ),
-          textAlign: centered ? TextAlign.center : TextAlign.left,
           style: TextStyle(
-            color: const Color(0xFFF8F2E4),
-            fontSize: centered ? 30 : 42,
-            height: 1,
-            fontWeight: FontWeight.w900,
-            letterSpacing: centered ? .4 : .8,
+            fontFamily: 'ChessVerseSerif',
+            fontFamilyFallback: <String>['Noto Serif', 'serif'],
+            color: Color(0xFFFFFAEF),
+            fontSize: 37,
+            height: 1.1,
+            fontWeight: FontWeight.w600,
+            shadows: <Shadow>[Shadow(color: Color(0x5534C6B7), blurRadius: 14)],
           ),
         ),
-        const SizedBox(height: 12),
-        Text(
-          'Think  •  Move  •  Master',
-          textAlign: centered ? TextAlign.center : TextAlign.left,
-          style: TextStyle(
-            color: const Color(0xFFE0B85E),
-            fontSize: centered ? 16 : 22,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
+      ),
+      SizedBox(height: 7),
+      Text(
+        'Think • Move • Master',
+        style: TextStyle(
+          fontFamily: 'ChessVerseSerif',
+          color: Color(0xFFF1C86E),
+          fontSize: 16,
+          letterSpacing: 2.6,
+        ),
+      ),
+    ],
+  );
+}
+
+class _LoadingCrown extends StatelessWidget {
+  const _LoadingCrown();
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: <Widget>[
+      SizedBox(width: 82, child: Divider(color: Color(0xFFBD974B))),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: ClipPath(
+          clipper: _LoadingCrownClipper(),
+          child: const SizedBox(
+            width: 22,
+            height: 18,
+            child: ColoredBox(color: Color(0xFFF5C55F)),
           ),
         ),
-      ],
-    );
-  }
+      ),
+      SizedBox(width: 82, child: Divider(color: Color(0xFFBD974B))),
+    ],
+  );
+}
+
+class _LoadingCrownClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) => Path()
+    ..moveTo(0, 2)
+    ..lineTo(size.width * .27, size.height * .48)
+    ..lineTo(size.width * .5, 0)
+    ..lineTo(size.width * .73, size.height * .48)
+    ..lineTo(size.width, 2)
+    ..lineTo(size.width * .85, size.height)
+    ..lineTo(size.width * .15, size.height)
+    ..close();
+  @override
+  bool shouldReclip(_LoadingCrownClipper oldClipper) => false;
 }
 
 class _LoadingProgress extends StatelessWidget {
-  const _LoadingProgress({required this.centered});
-
-  final bool centered;
-
+  const _LoadingProgress();
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: centered
-          ? CrossAxisAlignment.center
-          : CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          'Preparing your board',
-          textAlign: centered ? TextAlign.center : TextAlign.left,
-          style: TextStyle(
-            color: const Color(0xFFF8F2E4),
-            fontSize: centered ? 18 : 24,
-            fontWeight: FontWeight.w800,
-          ),
+  Widget build(BuildContext context) => Column(
+    children: <Widget>[
+      const Text(
+        'Preparing your board',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontFamily: 'ChessVerseSerif',
+          color: Color(0xFFFFFAEF),
+          fontSize: 23,
         ),
-        const SizedBox(height: 17),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: const LinearProgressIndicator(
-            minHeight: 8,
-            backgroundColor: Color(0x332F5757),
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF59D4C1)),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Loading pieces, puzzles, and your profile',
-          textAlign: centered ? TextAlign.center : TextAlign.left,
-          style: TextStyle(
-            color: const Color(0xFFAAAEB5),
-            fontSize: centered ? 14 : 17,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _LoadingFeatureStrip extends StatelessWidget {
-  const _LoadingFeatureStrip();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 22),
-      decoration: BoxDecoration(
-        color: const Color(0xD9061822),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0x443E6E72)),
       ),
-      child: const Row(
-        children: <Widget>[
-          Expanded(
-            child: _LoadingFeature(
-              icon: Icons.extension_rounded,
-              title: 'Smart Puzzles',
-              subtitle: 'Train your mind daily',
-            ),
-          ),
-          VerticalDivider(color: Color(0x445A7178)),
-          Expanded(
-            child: _LoadingFeature(
-              icon: Icons.emoji_events_outlined,
-              title: 'Compete',
-              subtitle: 'Challenge players worldwide',
-            ),
-          ),
-          VerticalDivider(color: Color(0x445A7178)),
-          Expanded(
-            child: _LoadingFeature(
-              icon: Icons.trending_up_rounded,
-              title: 'Track Progress',
-              subtitle: 'Improve and climb ranks',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LoadingFeature extends StatelessWidget {
-  const _LoadingFeature({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        Icon(icon, color: const Color(0xFF59D4C1), size: 38),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(color: Color(0xFFADB7C1), fontSize: 13),
-              ),
+      const SizedBox(height: 18),
+      Semantics(
+        label: 'Loading your chess workspace',
+        child: Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(40),
+            border: Border.all(color: const Color(0xFF69E8E5)),
+            color: const Color(0xCC03242D),
+            boxShadow: const <BoxShadow>[
+              BoxShadow(color: Color(0x5536F4DE), blurRadius: 18),
             ],
           ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(30),
+            child: LinearProgressIndicator(
+              minHeight: 10,
+              color: const Color(0xFF37F2DA),
+              backgroundColor: const Color(0xFF123B42),
+              value: MediaQuery.disableAnimationsOf(context) ? .65 : null,
+            ),
+          ),
         ),
-      ],
-    );
-  }
+      ),
+      const SizedBox(height: 13),
+      const Text(
+        'Loading pieces, puzzles, and your profile',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontFamily: 'ChessVerseSerif',
+          color: Color(0xFFA5C6D1),
+          fontSize: 13,
+          height: 1.5,
+        ),
+      ),
+    ],
+  );
+}
+
+class _CinematicLoadingFeatures extends StatelessWidget {
+  const _CinematicLoadingFeatures();
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceAround,
+    children: <Widget>[
+      _feature(Icons.extension_rounded, 'Puzzles'),
+      _feature(Icons.emoji_events_outlined, 'Compete'),
+      _feature(Icons.stacked_bar_chart_rounded, 'Progress'),
+    ],
+  );
+  Widget _feature(IconData icon, String title) => Column(
+    children: <Widget>[
+      Container(
+        width: 57,
+        height: 57,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const RadialGradient(
+            colors: <Color>[Color(0xBB09535D), Color(0xEE021923)],
+          ),
+          border: Border.all(color: const Color(0xFF4BCEC9)),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(color: Color(0x3341F3D5), blurRadius: 12),
+          ],
+        ),
+        child: Icon(icon, size: 29, color: const Color(0xFF5EF7E4)),
+      ),
+      const SizedBox(height: 7),
+      Text(
+        title,
+        style: const TextStyle(
+          fontFamily: 'ChessVerseSerif',
+          color: Color(0xFFFAF7EF),
+          fontSize: 14,
+        ),
+      ),
+    ],
+  );
 }
 
 class ChessVerseTheme {
