@@ -62,6 +62,10 @@ void main() {
       await tester.pump();
 
       expect(find.text('HYDERABAD'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('HYDERABAD championship trophy'),
+        findsWidgets,
+      );
       await tester.scrollUntilVisible(find.text('HOW TO PLAY'), 250,
           scrollable: find.byType(Scrollable).first);
       expect(find.text('HOW TO PLAY'), findsOneWidget);

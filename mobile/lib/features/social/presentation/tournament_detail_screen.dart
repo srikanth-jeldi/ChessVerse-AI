@@ -415,7 +415,14 @@ class _TournamentRewardVault extends StatelessWidget {
                 ],
               ),
               child: Stack(alignment: Alignment.center, children: <Widget>[
-                Icon(theme.icon, color: const Color(0xFFFFE5A1), size: 54),
+                Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Image.asset(
+                    theme.trophyArtwork,
+                    fit: BoxFit.contain,
+                    semanticLabel: '${theme.city} championship trophy',
+                  ),
+                ),
                 const Positioned(
                   right: 16,
                   bottom: 16,
@@ -582,7 +589,15 @@ class _TournamentHero extends StatelessWidget {
                     const _StatusBadge(status: 'FAIR', label: 'FAIR PLAY'),
                   ]),
                   const Spacer(),
-                  Icon(theme.icon, color: const Color(0xFFFFD66F), size: 52),
+                  SizedBox(
+                    width: 54,
+                    height: 54,
+                    child: Image.asset(
+                      theme.trophyArtwork,
+                      fit: BoxFit.contain,
+                      semanticLabel: '${theme.city} championship trophy',
+                    ),
+                  ),
                   const SizedBox(height: 10),
                   Text(theme.city,
                       style: const TextStyle(
