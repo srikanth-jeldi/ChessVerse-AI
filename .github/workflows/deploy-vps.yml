@@ -8,6 +8,10 @@ on:
         type: choice
         options: [web, all]
         default: web
+      enable_ai_coach:
+        description: Enable the conversational AI Coach (requires an existing key in vps.env)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -75,6 +79,7 @@ jobs:
           VPS_PORT: ${{ secrets.VPS_PORT }}
           DEPLOY_SHA: ${{ steps.revision.outputs.sha }}
           DEPLOY_SCOPE: ${{ inputs.scope || 'all' }}
+          ENABLE_AI_COACH: ${{ inputs.enable_ai_coach || 'false' }}
         run: |
           set -Eeuo pipefail
           ssh \
@@ -83,11 +88,13 @@ jobs:
             -o BatchMode=yes \
             -o IdentitiesOnly=yes \
             "$VPS_USER@$VPS_HOST" \
-            "bash -s -- '$DEPLOY_SHA' '$DEPLOY_SCOPE'" <<'REMOTE_SCRIPT'
+            "bash -s -- '$DEPLOY_SHA' '$DEPLOY_SCOPE' '$ENABLE_AI_COACH'" <<'REMOTE_SCRIPT'
           set -Eeuo pipefail
           deploy_sha="$1"
           deploy_scope="$2"
+          enable_ai_coach="$3"
           [[ "$deploy_scope" == web || "$deploy_scope" == all ]]
+          [[ "$enable_ai_coach" == true || "$enable_ai_coach" == false ]]
           repo_dir=/root/ChessVerse-AI
           deploy_dir="$repo_dir/infrastructure/vps"
 
@@ -99,6 +106,19 @@ jobs:
           git merge --ff-only "$deploy_sha"
 
           cd "$deploy_dir"
+          if [[ "$enable_ai_coach" == true ]]; then
+            ai_key="$(sed -n 's/^AI_COACH_LLM_API_KEY=//p' vps.env | tail -n 1)"
+            if [[ -z "$ai_key" || "$ai_key" == replace-* ]]; then
+              echo "AI Coach cannot be enabled: AI_COACH_LLM_API_KEY is missing from vps.env." >&2
+              exit 1
+            fi
+            if grep -q '^AI_COACH_LLM_ENABLED=' vps.env; then
+              sed -i 's/^AI_COACH_LLM_ENABLED=.*/AI_COACH_LLM_ENABLED=true/' vps.env
+            else
+              printf '\nAI_COACH_LLM_ENABLED=true\n' >> vps.env
+            fi
+            echo "AI Coach LLM configuration: enabled=true, key=set"
+          fi
           deploy_diagnostics() {
             echo "VPS deployment failed; collecting container state and backend logs."
             docker compose --env-file vps.env -f docker-compose.prod.yml ps || true

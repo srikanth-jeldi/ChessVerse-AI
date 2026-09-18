@@ -10,11 +10,14 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /** Optional OpenAI-compatible chat-completions adapter. Disabled by default. */
 @Component
 class OpenAiCompatibleCoachLanguageProvider implements CoachLanguageProvider {
+    private static final Logger log = LoggerFactory.getLogger(OpenAiCompatibleCoachLanguageProvider.class);
     private static final String SYSTEM_PROMPT = """
             You are ChessVerseAI's concise chess coach. Use only the supplied Stockfish evidence.
             Never invent a tactic, evaluation, legal move, or personal fact. If the evidence is
@@ -49,6 +52,7 @@ class OpenAiCompatibleCoachLanguageProvider implements CoachLanguageProvider {
         this.metrics = metrics;
         this.configured = enabled && this.endpoint != null && !this.apiKey.isBlank() && !this.model.isBlank()
                 && isSafeEndpoint(this.endpoint);
+        log.info("Conversational AI Coach provider configured={}", this.configured);
     }
 
     @Override
@@ -75,16 +79,19 @@ class OpenAiCompatibleCoachLanguageProvider implements CoachLanguageProvider {
             if (!apiKey.isBlank()) request.header("Authorization", "Bearer " + apiKey);
             HttpResponse<String> response = client().send(request.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                log.warn("Conversational AI Coach provider returned HTTP {}", response.statusCode());
                 metrics.languageFailure(System.nanoTime() - started);
                 return null;
             }
             JsonNode content = json.readTree(response.body()).at("/choices/0/message/content");
             if (!content.isTextual()) {
+                log.warn("Conversational AI Coach provider response did not contain message content");
                 metrics.languageFailure(System.nanoTime() - started);
                 return null;
             }
             String answer = content.asText().trim();
             if (answer.isBlank()) {
+                log.warn("Conversational AI Coach provider returned an empty answer");
                 metrics.languageFailure(System.nanoTime() - started);
                 return null;
             }
@@ -92,6 +99,7 @@ class OpenAiCompatibleCoachLanguageProvider implements CoachLanguageProvider {
             return answer.substring(0, Math.min(answer.length(), 1200));
         } catch (Exception exception) {
             if (exception instanceof InterruptedException) Thread.currentThread().interrupt();
+            log.warn("Conversational AI Coach provider request failed: {}", exception.getClass().getSimpleName());
             metrics.languageFailure(System.nanoTime() - started);
             return null;
         }
