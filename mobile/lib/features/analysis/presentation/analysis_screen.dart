@@ -221,6 +221,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             newestFirst: false,
             result: latest.result,
             knownReviews: latest.moveReviews,
+            initialFen: latest.initialFen,
             knownOpeningName: latest.openingName == null
                 ? null
                 : '${latest.openingEco ?? 'ECO'} • ${n(latest.openingName!)} • ${t('bookMetadata', {'count': '${latest.bookPlies}'})}${latest.firstDeviationPly == null ? '' : ' • ${t('deviation', {'count': '${latest.firstDeviationPly}'})}'}',
@@ -265,6 +266,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                       knownOpeningName: game.openingName,
                       playerSide: game.playerSide,
                       reviewScope: game.reviewScope,
+                      initialFen: game.initialFen,
                     );
                     showAdaptiveAiReview(
                       context,
@@ -1272,6 +1274,7 @@ class _PremiumGameCard extends StatelessWidget {
       knownOpeningName: game.openingName,
       playerSide: game.playerSide,
       reviewScope: game.reviewScope,
+      initialFen: game.initialFen,
     );
     final int mistakes = game.moveReviews
         .where(

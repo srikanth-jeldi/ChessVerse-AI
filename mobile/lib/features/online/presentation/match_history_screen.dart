@@ -926,6 +926,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                           knownReviews: game.moveReviews,
                           playerSide: game.playerSide,
                           reviewScope: game.reviewScope,
+                          initialFen: game.initialFen,
                         ),
                       ),
                       child: const Text('AI Review'),

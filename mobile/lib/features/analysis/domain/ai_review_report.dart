@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/local_game_archive.dart';
+import 'pgn_position_reconstructor.dart';
 
 @immutable
 class AiMoveInsight {
@@ -84,11 +85,16 @@ class AiReviewReport {
     String? knownOpeningName,
     String? playerSide,
     String reviewScope = 'both',
+    String? initialFen,
   }) {
     final List<String> chronological = newestFirst
         ? moves.reversed.toList(growable: false)
         : List<String>.from(moves, growable: false);
     final List<AiMoveInsight> insights = <AiMoveInsight>[];
+    final List<String?> reconstructedFens = reconstructFenBeforeMoves(
+      chronological,
+      initialFen: initialFen,
+    );
     int forcingMoves = 0;
     int captures = 0;
     int developmentMoves = 0;
@@ -160,7 +166,9 @@ class AiReviewReport {
           bestMove: reviewed?.bestMove,
           playedMove: reviewed?.playedMove,
           opponentThreat: reviewed?.opponentThreat,
-          fenBefore: reviewed?.fenBefore,
+          fenBefore: reviewed?.fenBefore.trim().isNotEmpty == true
+              ? reviewed!.fenBefore
+              : reconstructedFens[index],
           centipawnLoss: reviewed?.centipawnLoss,
           evaluationBeforeCp: reviewed?.evaluationBeforeCp,
           evaluationAfterCp: reviewed?.evaluationAfterCp,
