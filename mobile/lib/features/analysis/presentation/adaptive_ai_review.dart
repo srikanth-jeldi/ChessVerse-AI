@@ -319,7 +319,7 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
                       210,
                     );
                     return SizedBox(
-                      height: boardWidth,
+                      height: math.max(boardWidth, 220),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
@@ -429,6 +429,10 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
           children: <Widget>[
             Expanded(
               child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(64),
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                ),
                 onPressed:
                     insight.hasEngineEvidence &&
                         insight.bestMove?.isNotEmpty == true &&
@@ -436,28 +440,54 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
                     ? () => widget.onRetryPosition!(insight)
                     : null,
                 icon: const Icon(Icons.replay_rounded),
-                label: Text(_reviewText('retryPosition', languageCode)),
+                label: Text(
+                  _reviewText('retryPosition', languageCode),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 11),
+                ),
               ),
             ),
             const SizedBox(width: 7),
             Expanded(
               child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(64),
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                ),
                 onPressed: insight.hasEngineEvidence
                     ? () =>
                           _showPositionEvidence(context, insight, languageCode)
                     : null,
                 icon: const Icon(Icons.grid_view_rounded),
-                label: Text(_coachCopy('showOnBoard', languageCode)),
+                label: Text(
+                  _coachCopy('showOnBoard', languageCode),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 11),
+                ),
               ),
             ),
             const SizedBox(width: 7),
             Expanded(
               child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(64),
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                ),
                 onPressed: _selectedIndex < widget.report.insights.length - 1
                     ? () => setState(() => _selectedIndex++)
                     : null,
                 icon: const Icon(Icons.arrow_forward_rounded),
-                label: Text(_coachCopy('nextMove', languageCode)),
+                label: Text(
+                  _coachCopy('nextMove', languageCode),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 11),
+                ),
               ),
             ),
           ],
@@ -685,9 +715,52 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
                       ),
                       Padding(
                         padding: const EdgeInsets.only(top: 5, bottom: 10),
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: Text(_coachTheme(insight)),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: <Widget>[
+                            Text(_coachTheme(insight)),
+                            Wrap(
+                              alignment: WrapAlignment.end,
+                              spacing: 4,
+                              children: <Widget>[
+                                TextButton.icon(
+                                  onPressed: () => _showInteractiveCoach(
+                                    context,
+                                    insight,
+                                    openingEco: widget.openingEco,
+                                    timeControl: widget.timeControl,
+                                  ),
+                                  icon: const Icon(
+                                    Icons.psychology_alt_rounded,
+                                    size: 17,
+                                  ),
+                                  label: Text(
+                                    _reviewText('explain', languageCode),
+                                  ),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () => _showReviewDetail(
+                                    context,
+                                    _reviewText('threatTitle', languageCode),
+                                    insight.opponentThreat?.isNotEmpty == true
+                                        ? '${_reviewText('immediateReply', languageCode)}: ${insight.opponentThreat}.\n\n${_variationText(insight, languageCode)}'
+                                        : _coachCopy(
+                                            'noForcingThreat',
+                                            languageCode,
+                                          ),
+                                    languageCode: languageCode,
+                                  ),
+                                  icon: const Icon(
+                                    Icons.warning_amber_rounded,
+                                    size: 17,
+                                  ),
+                                  label: Text(
+                                    _reviewText('showThreat', languageCode),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                       Expanded(
@@ -716,41 +789,58 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
                       const SizedBox(height: 10),
                       Row(
                         children: <Widget>[
-                          OutlinedButton.icon(
-                            onPressed:
-                                insight.hasEngineEvidence &&
-                                    insight.bestMove?.isNotEmpty == true &&
-                                    widget.onRetryPosition != null
-                                ? () => widget.onRetryPosition!(insight)
-                                : null,
-                            icon: const Icon(Icons.replay_rounded),
-                            label: Text(
-                              _reviewText('retryPosition', languageCode),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed:
+                                  insight.hasEngineEvidence &&
+                                      insight.bestMove?.isNotEmpty == true &&
+                                      widget.onRetryPosition != null
+                                  ? () => widget.onRetryPosition!(insight)
+                                  : null,
+                              icon: const Icon(Icons.replay_rounded),
+                              label: Text(
+                                _reviewText('retryPosition', languageCode),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          OutlinedButton.icon(
-                            onPressed: insight.hasEngineEvidence
-                                ? () => _showPositionEvidence(
-                                    context,
-                                    insight,
-                                    languageCode,
-                                  )
-                                : null,
-                            icon: const Icon(Icons.grid_view_rounded),
-                            label: Text(
-                              _coachCopy('showOnBoard', languageCode),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: insight.hasEngineEvidence
+                                  ? () => _showPositionEvidence(
+                                      context,
+                                      insight,
+                                      languageCode,
+                                    )
+                                  : null,
+                              icon: const Icon(Icons.grid_view_rounded),
+                              label: Text(
+                                _coachCopy('showOnBoard', languageCode),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                              ),
                             ),
                           ),
-                          const Spacer(),
-                          FilledButton.icon(
-                            onPressed:
-                                _selectedIndex <
-                                    widget.report.insights.length - 1
-                                ? () => setState(() => _selectedIndex++)
-                                : null,
-                            icon: const Icon(Icons.arrow_forward_rounded),
-                            label: Text(_coachCopy('nextMove', languageCode)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed:
+                                  _selectedIndex <
+                                      widget.report.insights.length - 1
+                                  ? () => setState(() => _selectedIndex++)
+                                  : null,
+                              icon: const Icon(Icons.arrow_forward_rounded),
+                              label: Text(
+                                _coachCopy('nextMove', languageCode),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
                           ),
                         ],
                       ),
