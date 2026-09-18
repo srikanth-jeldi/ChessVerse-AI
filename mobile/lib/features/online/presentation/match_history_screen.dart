@@ -300,14 +300,24 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       builder: (BuildContext context) => StatefulBuilder(
         builder: (BuildContext context, StateSetter setDialogState) => Dialog(
           backgroundColor: AppColors.backgroundDeep,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 24,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
             side: const BorderSide(color: AppColors.accentGold, width: 1.2),
           ),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 620),
-            child: Padding(
-              padding: const EdgeInsets.all(28),
+            constraints: BoxConstraints(
+              maxWidth: 620,
+              maxHeight: MediaQuery.sizeOf(context).height * .9,
+            ),
+            child: SingleChildScrollView(
+              key: const ValueKey<String>('pgn-review-dialog-scroll'),
+              padding: EdgeInsets.all(
+                MediaQuery.sizeOf(context).width < 480 ? 20 : 28,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -345,28 +355,40 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: _PgnChoiceTile(
-                          selected: side == 'white',
-                          icon: Icons.light_mode_rounded,
-                          title: game.whitePlayer,
-                          subtitle: 'White pieces',
-                          onTap: () => setDialogState(() => side = 'white'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _PgnChoiceTile(
-                          selected: side == 'black',
-                          icon: Icons.dark_mode_rounded,
-                          title: game.blackPlayer,
-                          subtitle: 'Black pieces',
-                          onTap: () => setDialogState(() => side = 'black'),
-                        ),
-                      ),
-                    ],
+                  LayoutBuilder(
+                    builder:
+                        (BuildContext context, BoxConstraints constraints) {
+                          final Widget whiteTile = _PgnChoiceTile(
+                            selected: side == 'white',
+                            icon: Icons.light_mode_rounded,
+                            title: game.whitePlayer,
+                            subtitle: 'White pieces',
+                            onTap: () => setDialogState(() => side = 'white'),
+                          );
+                          final Widget blackTile = _PgnChoiceTile(
+                            selected: side == 'black',
+                            icon: Icons.dark_mode_rounded,
+                            title: game.blackPlayer,
+                            subtitle: 'Black pieces',
+                            onTap: () => setDialogState(() => side = 'black'),
+                          );
+                          if (constraints.maxWidth < 430) {
+                            return Column(
+                              children: <Widget>[
+                                whiteTile,
+                                const SizedBox(height: 9),
+                                blackTile,
+                              ],
+                            );
+                          }
+                          return Row(
+                            children: <Widget>[
+                              Expanded(child: whiteTile),
+                              const SizedBox(width: 12),
+                              Expanded(child: blackTile),
+                            ],
+                          );
+                        },
                   ),
                   const SizedBox(height: 22),
                   const Text(
@@ -1416,6 +1438,8 @@ class _PgnChoiceTile extends StatelessWidget {
                       Expanded(
                         child: Text(
                           title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                       ),
@@ -1433,6 +1457,8 @@ class _PgnChoiceTile extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 12,
