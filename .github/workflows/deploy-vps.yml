@@ -6,7 +6,7 @@ on:
       scope:
         description: Services to deploy
         type: choice
-        options: [web, all]
+        options: [web, backend, all]
         default: web
       enable_ai_coach:
         description: Enable the conversational AI Coach (requires an existing key in vps.env)
@@ -93,7 +93,7 @@ jobs:
           deploy_sha="$1"
           deploy_scope="$2"
           enable_ai_coach="$3"
-          [[ "$deploy_scope" == web || "$deploy_scope" == all ]]
+          [[ "$deploy_scope" == web || "$deploy_scope" == backend || "$deploy_scope" == all ]]
           [[ "$enable_ai_coach" == true || "$enable_ai_coach" == false ]]
           repo_dir=/root/ChessVerse-AI
           deploy_dir="$repo_dir/infrastructure/vps"
@@ -131,6 +131,8 @@ jobs:
             docker image tag "$old_image" chessverse-web:before-latest-web-release
             docker compose --env-file vps.env -f docker-compose.prod.yml build web
             docker compose --env-file vps.env -f docker-compose.prod.yml up -d --no-deps web
+          elif [[ "$deploy_scope" == backend ]]; then
+            docker compose --env-file vps.env -f docker-compose.prod.yml up -d --build --no-deps backend
           else
             docker compose --env-file vps.env -f docker-compose.prod.yml up -d --build
           fi
