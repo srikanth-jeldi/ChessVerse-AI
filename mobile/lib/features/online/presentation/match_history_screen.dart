@@ -5,7 +5,12 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../main.dart'
-    show ChessBoard, ChessPiece, BoardSkin, boardPalettes;
+    show
+        BoardSkin,
+        ChessBoard,
+        ChessPiece,
+        ReviewedPositionRetryDialog,
+        boardPalettes;
 
 import '../../../core/local_game_archive.dart';
 import '../../../core/computer_game_store.dart';
@@ -21,6 +26,7 @@ import '../data/fen_archive_service.dart';
 import '../data/saved_position_api.dart';
 import '../../analysis/domain/ai_review_report.dart';
 import '../../analysis/data/game_analysis_api.dart';
+import '../../analysis/data/engine_candidates_api.dart';
 import '../../analysis/presentation/adaptive_ai_review.dart';
 
 class MatchHistoryScreen extends StatefulWidget {
@@ -44,6 +50,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   static const FenArchiveService _fen = FenArchiveService();
   static const SavedPositionApi _positionsApi = SavedPositionApi();
   static const GameAnalysisApi _analysisApi = GameAnalysisApi();
+  static const EngineCandidatesApi _engineCandidatesApi = EngineCandidatesApi();
   late Future<List<OnlineMatchDto>> _online = _load();
   List<SavedGameRecord> _cloudGames = [];
   List<OnlineMatchDto> _onlineGames = <OnlineMatchDto>[];
@@ -402,48 +409,41 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  ...<
-                        ({
-                          String value,
-                          IconData icon,
-                          String title,
-                          String subtitle,
-                        })
-                      >[
-                        (
-                          value: 'player',
-                          icon: Icons.person_search_rounded,
-                          title: 'Review My Moves',
-                          subtitle:
-                              'My accuracy, mistakes and better alternatives',
-                        ),
-                        (
-                          value: 'opponent',
-                          icon: Icons.visibility_rounded,
-                          title: 'Review Opponent Moves',
-                          subtitle: 'Their best ideas, threats and strategies',
-                        ),
-                        (
-                          value: 'both',
-                          icon: Icons.compare_arrows_rounded,
-                          title: 'Review Both Players',
-                          subtitle: 'A complete move-by-move game analysis',
-                        ),
-                      ]
-                      .map(
-                        (item) => Padding(
-                          padding: const EdgeInsets.only(bottom: 9),
-                          child: _PgnChoiceTile(
-                            selected: scope == item.value,
-                            icon: item.icon,
-                            title: item.title,
-                            subtitle: item.subtitle,
-                            recommended: item.value == 'player',
-                            onTap: () =>
-                                setDialogState(() => scope = item.value),
-                          ),
-                        ),
+                  ...<({String value, IconData icon, String title, String subtitle})>[
+                    (
+                      value: 'player',
+                      icon: Icons.person_search_rounded,
+                      title:
+                          'Analyse ${side == 'white' ? game.whitePlayer : game.blackPlayer}',
+                      subtitle: 'Accuracy, mistakes and better alternatives for this player',
+                    ),
+                    (
+                      value: 'opponent',
+                      icon: Icons.visibility_rounded,
+                      title:
+                          'Analyse ${side == 'white' ? game.blackPlayer : game.whitePlayer}',
+                      subtitle: 'Best ideas, threats and improvements for the other player',
+                    ),
+                    (
+                      value: 'both',
+                      icon: Icons.compare_arrows_rounded,
+                      title:
+                          'Analyse ${game.whitePlayer} and ${game.blackPlayer}',
+                      subtitle: 'Complete coaching for both players',
+                    ),
+                  ].map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 9),
+                      child: _PgnChoiceTile(
+                        selected: scope == item.value,
+                        icon: item.icon,
+                        title: item.title,
+                        subtitle: item.subtitle,
+                        recommended: item.value == 'player',
+                        onTap: () => setDialogState(() => scope = item.value),
                       ),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
@@ -871,6 +871,105 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     );
   }
 
+  Future<void> _openSavedGameReview(SavedGameRecord game) async {
+    final _PgnReviewChoice? choice = await _choosePgnReview(game);
+    if (choice == null || !mounted) return;
+    final AiReviewReport report = AiReviewReport.fromMoves(
+      game.moves,
+      newestFirst: false,
+      result: game.result,
+      knownReviews: game.moveReviews,
+      playerSide: choice.playerSide,
+      reviewScope: choice.reviewScope,
+      initialFen: game.initialFen,
+    );
+    await showAdaptiveAiReview(
+      context,
+      report: report,
+      onRetryPosition: _retrySavedPosition,
+    );
+  }
+
+  Future<void> _retrySavedPosition(AiMoveInsight insight) async {
+    final String? fen = insight.fenBefore;
+    if (fen == null || fen.isEmpty) return;
+    String? bestMove = insight.bestMove;
+    if (bestMove == null || bestMove.length < 4) {
+      final StoredAuthSession? session = await const AuthSessionStore().read();
+      if (session != null) {
+        try {
+          final List<EngineCandidateLine> candidates =
+              await _engineCandidatesApi.analyze(session.token, fen: fen);
+          if (candidates.isNotEmpty) bestMove = candidates.first.move;
+        } on Object {
+          // The coach reports a useful error below if live analysis is offline.
+        }
+      }
+    }
+    if (!mounted) return;
+    if (bestMove == null || bestMove.length < 4) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This position needs engine analysis before retrying.'),
+        ),
+      );
+      return;
+    }
+    final String languageCode = await AppLanguageController.effectiveCode();
+    if (!mounted) return;
+    final List<String> fenParts = fen.split(RegExp(r'\s+'));
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) => ReviewedPositionRetryDialog(
+        fen: fen,
+        initialPieces: _piecesFromFen(fen),
+        whiteToMove: fenParts.length < 2 || fenParts[1] != 'b',
+        bestMove: bestMove!,
+        explanation: 'Find the strongest move from this exact position. Check forcing moves first: checks, captures, and threats.',
+        progressLabel: 'POSITION BEFORE ${_clearMoveLabel(insight)}',
+        languageCode: languageCode,
+      ),
+    );
+  }
+
+  Map<String, ChessPiece> _piecesFromFen(String fen) {
+    final List<String> ranks = fen
+        .trim()
+        .split(RegExp(r'\s+'))
+        .first
+        .split('/');
+    if (ranks.length != 8) throw const FormatException('Invalid FEN board');
+    const String files = 'abcdefgh';
+    final Map<String, ChessPiece> pieces = <String, ChessPiece>{};
+    for (int rankIndex = 0; rankIndex < 8; rankIndex++) {
+      int fileIndex = 0;
+      for (final int rune in ranks[rankIndex].runes) {
+        final String token = String.fromCharCode(rune);
+        final int? empty = int.tryParse(token);
+        if (empty != null) {
+          fileIndex += empty;
+          continue;
+        }
+        if (fileIndex >= 8 || !'prnbqkPRNBQK'.contains(token)) {
+          throw const FormatException('Invalid FEN piece placement');
+        }
+        pieces['${files[fileIndex]}${8 - rankIndex}'] = ChessPiece(
+          token.toUpperCase(),
+          token == token.toUpperCase(),
+        );
+        fileIndex++;
+      }
+      if (fileIndex != 8) throw const FormatException('Invalid FEN rank');
+    }
+    return pieces;
+  }
+
+  String _clearMoveLabel(AiMoveInsight insight) {
+    final int fullMove = (insight.number + 1) ~/ 2;
+    return 'MOVE $fullMove · ${insight.side.toUpperCase()} ${insight.notation}';
+  }
+
   void _openCompleted(SavedGameRecord game) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
@@ -885,9 +984,10 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                   icon: const Icon(Icons.translate_rounded),
                   label: Text(
                     AppLanguageController.byCode(
-                      code ?? AppLanguageController.resolveCode(
-                        AppLanguageController.systemCode,
-                      ),
+                      code ??
+                          AppLanguageController.resolveCode(
+                            AppLanguageController.systemCode,
+                          ),
                     ).nativeName,
                   ),
                 ),
@@ -937,18 +1037,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                   spacing: 8,
                   children: [
                     FilledButton(
-                      onPressed: () => showAdaptiveAiReview(
-                        context,
-                        report: AiReviewReport.fromMoves(
-                          game.moves,
-                          newestFirst: false,
-                          result: game.result,
-                          knownReviews: game.moveReviews,
-                          playerSide: game.playerSide,
-                          reviewScope: game.reviewScope,
-                          initialFen: game.initialFen,
-                        ),
-                      ),
+                      onPressed: () => _openSavedGameReview(game),
                       child: const Text('AI Review'),
                     ),
                     if (game.mode == 'Play vs AI')

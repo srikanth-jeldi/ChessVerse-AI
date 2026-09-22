@@ -222,9 +222,13 @@ class AiCoachService {
         String best = pretty(evidence.bestMove());
         String played = pretty(move);
         String line = evidence.principalVariation().isEmpty()
-                ? "No forcing continuation was returned."
-                : "A concrete line is " + evidence.principalVariation().stream().limit(6).map(AiCoachService::pretty)
-                        .reduce((a, b) -> a + " → " + b).orElse("") + ".";
+                ? "No forcing continuation was returned, so do not invent one. Before moving, name the opponent's strongest check, capture, or threat."
+                : "Three-step consequence: " + evidence.principalVariation().stream().limit(3)
+                        .map(AiCoachService::pretty).reduce((a, b) -> a + " → " + b).orElse("")
+                        + ". Full verified line: "
+                        + evidence.principalVariation().stream().limit(6).map(AiCoachService::pretty)
+                                .reduce((a, b) -> a + " → " + b).orElse("")
+                        + ". Before reading further, what do you think the opponent is threatening after the first reply?";
         String memory = previousQuestion.isBlank() ? "" : "Following your earlier question, \""
                 + previousQuestion.substring(0, Math.min(90, previousQuestion.length())) + "\": ";
         if (candidate != null || question.contains("what if") || question.contains("instead")) {

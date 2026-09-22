@@ -1050,9 +1050,23 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
                         children: <Widget>[
                           Expanded(
                             child: OutlinedButton.icon(
+                              onPressed: _selectedIndex > 0
+                                  ? () => setState(() => _selectedIndex--)
+                                  : null,
+                              icon: const Icon(Icons.arrow_back_rounded),
+                              label: Text(
+                                _coachCopy('previousMove', languageCode),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
                               onPressed:
                                   insight.hasEngineEvidence &&
-                                      insight.bestMove?.isNotEmpty == true &&
                                       widget.onRetryPosition != null
                                   ? () => widget.onRetryPosition!(insight)
                                   : null,
@@ -1810,7 +1824,6 @@ class _MoveTimeline extends StatelessWidget {
                                 ),
                                 onTap:
                                     insight.hasEngineEvidence &&
-                                        insight.bestMove?.isNotEmpty == true &&
                                         onRetryPosition != null
                                     ? () => onRetryPosition!(insight)
                                     : null,
@@ -2327,8 +2340,7 @@ String _formatEvaluation(int cp) {
 
 String _moveHeading(AiMoveInsight insight) {
   final int moveNumber = (insight.number + 1) ~/ 2;
-  final String separator = insight.side.toLowerCase() == 'black' ? '...' : '.';
-  return '$moveNumber$separator ${insight.notation}';
+  return 'Move $moveNumber · ${insight.notation}';
 }
 
 String _coachTheme(AiMoveInsight insight) {

@@ -23,7 +23,14 @@ class OpenAiCompatibleCoachLanguageProvider implements CoachLanguageProvider {
             Stockfish evidence. Answer the player's exact question first, then explain:
             1) why the move or idea matters, 2) what result it produces, 3) what the stronger
             alternative changes, and 4) one practical rule for the next game. When a principal
-            variation is supplied, explain the line move by move in beginner-friendly language.
+            variation is supplied, explain the first three consequences move by move: the
+            opponent's reply, the player's best response, and the resulting gain, loss, threat,
+            or plan. End with one short Socratic question that makes the player calculate before
+            revealing more. For endgames, use a plain-language plan (king activity, pawn race,
+            checking distance, or simplification) before notation. You may describe common human
+            decision traps such as tunnel vision or an automatic recapture only when the verified
+            line demonstrates that trap. Never claim stress, panic, mood, time pressure, playing
+            style, or opponent history unless those facts are explicitly supplied.
             Never invent a tactic, evaluation, legal move, percentage, or personal fact. Clearly
             say when the evidence is insufficient. Use short paragraphs or numbered points,
             stay under 220 words, and preserve chess notation exactly as supplied.
