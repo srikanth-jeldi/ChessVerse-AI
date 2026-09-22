@@ -99,18 +99,6 @@ class BrandedSplash extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 26),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(99),
-                          child: const SizedBox(
-                            width: 132,
-                            child: LinearProgressIndicator(
-                              minHeight: 3,
-                              backgroundColor: Color(0x332F8DFF),
-                              color: Color(0xFFFFCE6A),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
                         ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 260),
                           child: Container(

@@ -940,13 +940,6 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                       ),
                   ],
                 ),
-              if (game.moves.isNotEmpty) ...<Widget>[
-                const Text('Moves'),
-                ...game.moves.indexed.map(
-                  (m) =>
-                      ListTile(leading: Text('${m.$1 + 1}'), title: Text(m.$2)),
-                ),
-              ],
             ],
           ),
         ),
@@ -1493,61 +1486,44 @@ class _PgnCoachBanner extends StatelessWidget {
         colors: <Color>[Color(0xFF10374A), Color(0xFF091D31)],
       ),
     ),
-    child: Stack(
+    child: Row(
       children: <Widget>[
-        Positioned(
-          right: 72,
-          top: -24,
-          bottom: -24,
-          child: Opacity(
-            opacity: .35,
-            child: Image.asset(
-              'assets/pieces/premium_individual/sapphire-elite/black/king.webp',
-              width: 110,
-              fit: BoxFit.contain,
-            ),
+        const Icon(
+          Icons.auto_awesome_rounded,
+          color: Color(0xFF59E4C8),
+          size: 30,
+        ),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'PLAY ANYWHERE. IMPROVE HERE.',
+                style: TextStyle(
+                  color: Color(0xFFF1C45A),
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .8,
+                ),
+              ),
+              SizedBox(height: 3),
+              Text(
+                'Import or export complete PGN games and exact FEN positions.',
+                style: TextStyle(color: Color(0xFFB8CAD5), fontSize: 12),
+              ),
+            ],
           ),
         ),
-        Row(
-          children: <Widget>[
-            const Icon(
-              Icons.auto_awesome_rounded,
-              color: Color(0xFF59E4C8),
-              size: 30,
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    'PLAY ANYWHERE. IMPROVE HERE.',
-                    style: TextStyle(
-                      color: Color(0xFFF1C45A),
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: .8,
-                    ),
-                  ),
-                  SizedBox(height: 3),
-                  Text(
-                    'Import or export complete PGN games and exact FEN positions.',
-                    style: TextStyle(color: Color(0xFFB8CAD5), fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton.filledTonal(
-              tooltip: 'Import PGN or FEN',
-              onPressed: onImport,
-              icon: const Icon(Icons.upload_file_rounded),
-            ),
-            IconButton(
-              tooltip: 'Export PGN or FEN',
-              onPressed: onExport,
-              icon: const Icon(Icons.download_rounded),
-            ),
-          ],
+        const SizedBox(width: 8),
+        IconButton.filledTonal(
+          tooltip: 'Import PGN or FEN',
+          onPressed: onImport,
+          icon: const Icon(Icons.upload_file_rounded),
+        ),
+        IconButton(
+          tooltip: 'Export PGN or FEN',
+          onPressed: onExport,
+          icon: const Icon(Icons.download_rounded),
         ),
       ],
     ),
