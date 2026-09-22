@@ -16,7 +16,6 @@ import '../../../core/local_game_archive.dart';
 import '../../../core/computer_game_store.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/app_language.dart';
-import '../../../core/widgets/ai_language_picker.dart';
 import '../../../core/widgets/skeleton_loader.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../auth/data/auth_session_store.dart';
@@ -970,91 +969,11 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     return 'MOVE $fullMove · ${insight.side.toUpperCase()} ${insight.notation}';
   }
 
-  void _openCompleted(SavedGameRecord game) async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            title: const Text('Saved game'),
-            actions: <Widget>[
-              ValueListenableBuilder<String?>(
-                valueListenable: AppLanguageController.effectiveLanguageChanges,
-                builder: (context, code, _) => TextButton.icon(
-                  onPressed: () => selectAndSaveAiLanguage(context),
-                  icon: const Icon(Icons.translate_rounded),
-                  label: Text(
-                    AppLanguageController.byCode(
-                      code ??
-                          AppLanguageController.resolveCode(
-                            AppLanguageController.systemCode,
-                          ),
-                    ).nativeName,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          body: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Text(game.summary, style: Theme.of(context).textTheme.titleLarge),
-              Text('${game.result} · ${_formatDate(game.playedAt)}'),
-              Text(game.detail),
-              if (game.playerSide != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Chip(
-                    avatar: const Icon(Icons.auto_awesome_rounded, size: 18),
-                    label: Text(
-                      'You played ${game.playerSide == 'white' ? game.whitePlayer : game.blackPlayer} • ${game.reviewScope == 'player'
-                          ? 'Reviewing your moves'
-                          : game.reviewScope == 'opponent'
-                          ? 'Reviewing opponent moves'
-                          : 'Reviewing both players'}',
-                    ),
-                  ),
-                ),
-              if (game.initialFen != null) ...<Widget>[
-                const SizedBox(height: 12),
-                const Text(
-                  'FEN POSITION',
-                  style: TextStyle(
-                    color: AppColors.accentGold,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                SelectableText(
-                  game.initialFen!,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              ],
-              if (game.moves.isNotEmpty)
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    FilledButton(
-                      onPressed: () => _openSavedGameReview(game),
-                      child: const Text('AI Review'),
-                    ),
-                    if (game.mode == 'Play vs AI')
-                      TextButton(
-                        onPressed: widget.onPlayAgain == null
-                            ? null
-                            : _startNewGame,
-                        child: const Text('Play Again'),
-                      ),
-                  ],
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (mounted) await _refresh();
+  Future<void> _openCompleted(SavedGameRecord game) async {
+    // A saved-game card is a review entry point. Opening a second details page
+    // made users repeat the same action before coaching could begin. Export,
+    // selection and deletion remain available from the card's overflow menu.
+    await _openSavedGameReview(game);
   }
 
   @override
