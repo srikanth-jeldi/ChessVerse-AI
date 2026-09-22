@@ -560,11 +560,18 @@ class _MobileReviewSummary extends StatelessWidget {
                         backgroundColor: const Color(0xFF20384A),
                         color: const Color(0xFF59E4C8),
                       ),
-                      Text(
-                        '${report.accuracy}%',
-                        style: const TextStyle(
-                          fontSize: 25,
-                          fontWeight: FontWeight.w900,
+                      Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '${report.accuracy}%',
+                            maxLines: 1,
+                            style: const TextStyle(
+                              fontSize: 25,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -1143,9 +1150,16 @@ class _ReviewOverview extends StatelessWidget {
                       backgroundColor: const Color(0xFF263A46),
                       color: const Color(0xFF59E4C8),
                     ),
-                    Text(
-                      '${report.accuracy}%',
-                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '${report.accuracy}%',
+                          maxLines: 1,
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
                     ),
                   ],
                 ),
