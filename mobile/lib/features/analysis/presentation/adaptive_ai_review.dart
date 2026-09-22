@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/app_language.dart';
+import '../../../core/analysis_dashboard_localizations.dart';
 import '../../../core/coach_localizations.dart';
 import '../../../core/coach_extra_localizations.dart';
 import '../../../core/review_narrative_localizations.dart';
@@ -259,6 +260,7 @@ class _MobileCoachWorkspace extends StatefulWidget {
 
 class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
   int _selectedIndex = 0;
+  bool _showSummary = true;
 
   @override
   void initState() {
@@ -272,6 +274,15 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
   @override
   Widget build(BuildContext context) {
     final String languageCode = _ReviewLanguageScope.of(context);
+    if (_showSummary) {
+      return _MobileReviewSummary(
+        report: widget.report,
+        languageCode: languageCode,
+        onStartReview: widget.report.insights.isEmpty
+            ? null
+            : () => setState(() => _showSummary = false),
+      );
+    }
     final AiMoveInsight insight = widget.report.insights[_selectedIndex];
     final Color qualityColor = _qualityColor(insight.label);
     final List<AiBoardAnnotation> annotations = <AiBoardAnnotation>[
@@ -294,6 +305,11 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
       children: <Widget>[
         Row(
           children: <Widget>[
+            IconButton(
+              tooltip: analysisDashboardText('latestReport', languageCode),
+              onPressed: () => setState(() => _showSummary = true),
+              icon: const Icon(Icons.assessment_outlined, size: 20),
+            ),
             Expanded(
               child: Text(
                 _coachCopy('moveReview', languageCode),
@@ -411,6 +427,22 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
                   color: qualityColor,
                 ),
                 const SizedBox(height: 10),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    backgroundColor: const Color(0xFF123E52),
+                    foregroundColor: const Color(0xFF59E4C8),
+                  ),
+                  onPressed: () => _showInteractiveCoach(
+                    context,
+                    insight,
+                    openingEco: widget.openingEco,
+                    timeControl: widget.timeControl,
+                  ),
+                  icon: const Icon(Icons.forum_outlined),
+                  label: Text(personalCoachText('askPosition', languageCode)),
+                ),
+                const SizedBox(height: 10),
                 _CandidateMovesPanel(
                   insight: insight,
                   languageCode: languageCode,
@@ -467,6 +499,260 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
       ],
     );
   }
+}
+
+class _MobileReviewSummary extends StatelessWidget {
+  const _MobileReviewSummary({
+    required this.report,
+    required this.languageCode,
+    required this.onStartReview,
+  });
+
+  final AiReviewReport report;
+  final String languageCode;
+  final VoidCallback? onStartReview;
+
+  @override
+  Widget build(BuildContext context) {
+    final int total = report.insights.length;
+    final int engineReviewed = report.insights
+        .where((AiMoveInsight item) => item.centipawnLoss != null)
+        .length;
+    int count(Set<String> labels) => report.insights
+        .where((AiMoveInsight item) => labels.contains(item.label))
+        .length;
+    final int excellent = count(const <String>{
+      'Best',
+      'Great',
+      'Excellent',
+      'Power move',
+    });
+    final int solid = count(const <String>{
+      'Good',
+      'Playable',
+      'Principled',
+      'Tactical',
+    });
+    final int improve = count(const <String>{
+      'Inaccuracy',
+      'Mistake',
+      'Blunder',
+    });
+    int percent(int value) => total == 0 ? 0 : (value * 100 / total).round();
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          ChessVerseCard(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: <Widget>[
+                SizedBox(
+                  width: 112,
+                  height: 112,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: <Widget>[
+                      CircularProgressIndicator(
+                        value: report.accuracy / 100,
+                        strokeWidth: 10,
+                        backgroundColor: const Color(0xFF20384A),
+                        color: const Color(0xFF59E4C8),
+                      ),
+                      Text(
+                        '${report.accuracy}%',
+                        style: const TextStyle(
+                          fontSize: 25,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _localizedReviewHeadline(report.headline, languageCode),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.accentGold,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  engineReviewed == total && total > 0
+                      ? analysisDashboardText(
+                          'latestAccuracy',
+                          languageCode,
+                          <String, String>{'count': '${report.accuracy}'},
+                        )
+                      : analysisDashboardText('measurement', languageCode),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _SummaryMetric(
+                  label: CoachLocalizations(languageCode).source('Great'),
+                  count: excellent,
+                  percent: percent(excellent),
+                  color: const Color(0xFF59E4C8),
+                ),
+              ),
+              const SizedBox(width: 7),
+              Expanded(
+                child: _SummaryMetric(
+                  label: CoachLocalizations(languageCode).source('Good'),
+                  count: solid,
+                  percent: percent(solid),
+                  color: const Color(0xFF73BFFF),
+                ),
+              ),
+              const SizedBox(width: 7),
+              Expanded(
+                child: _SummaryMetric(
+                  label: analysisDashboardText('nextFocus', languageCode),
+                  count: improve,
+                  percent: percent(improve),
+                  color: const Color(0xFFFFA65C),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _SummarySection(
+            icon: Icons.thumb_up_alt_outlined,
+            title: analysisDashboardText('strongest', languageCode),
+            body: localizeReviewNarrative(report.strength, languageCode),
+            color: const Color(0xFF59E4C8),
+          ),
+          const SizedBox(height: 8),
+          _SummarySection(
+            icon: Icons.crisis_alert_rounded,
+            title: _reviewText('turningPoint', languageCode),
+            body: localizeReviewNarrative(report.turningPoint, languageCode),
+            color: const Color(0xFFFFA65C),
+          ),
+          const SizedBox(height: 8),
+          _SummarySection(
+            icon: Icons.school_outlined,
+            title: analysisDashboardText('nextFocus', languageCode),
+            body: localizeReviewNarrative(report.trainingFocus, languageCode),
+            color: AppColors.accentGold,
+          ),
+          const SizedBox(height: 8),
+          _SummarySection(
+            icon: Icons.checklist_rounded,
+            title: analysisDashboardText('plan', languageCode),
+            body: report.trainingRecommendations
+                .map(
+                  (String item) =>
+                      '• ${localizeReviewNarrative(item, languageCode)}',
+                )
+                .join('\n'),
+            color: const Color(0xFFB98AFF),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: onStartReview,
+            icon: const Icon(Icons.play_arrow_rounded),
+            label: Text(analysisDashboardText('openReview', languageCode)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryMetric extends StatelessWidget {
+  const _SummaryMetric({
+    required this.label,
+    required this.count,
+    required this.percent,
+    required this.color,
+  });
+
+  final String label;
+  final int count;
+  final int percent;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 11),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: .09),
+      borderRadius: BorderRadius.circular(13),
+      border: Border.all(color: color.withValues(alpha: .4)),
+    ),
+    child: Column(
+      children: <Widget>[
+        Text(
+          '$percent%',
+          style: TextStyle(
+            color: color,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        Text(
+          '$count $label',
+          maxLines: 2,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 10, height: 1.15),
+        ),
+      ],
+    ),
+  );
+}
+
+class _SummarySection extends StatelessWidget {
+  const _SummarySection({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => ChessVerseCard(
+    padding: const EdgeInsets.all(13),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(icon, color: color, size: 21),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                title,
+                style: TextStyle(color: color, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 4),
+              Text(body, style: const TextStyle(height: 1.35)),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _DesktopCoachWorkspace extends StatefulWidget {
@@ -1542,7 +1828,10 @@ class _CandidateMovesPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<_CoachCandidate> candidates = _candidateMoves(insight);
+    final List<_CoachCandidate> candidates = _candidateMoves(
+      insight,
+      languageCode,
+    );
     if (candidates.isEmpty) return const SizedBox.shrink();
     return ChessVerseCard(
       padding: const EdgeInsets.all(12),
@@ -1684,7 +1973,10 @@ class _CoachCandidate {
   final String explanation;
 }
 
-List<_CoachCandidate> _candidateMoves(AiMoveInsight insight) {
+List<_CoachCandidate> _candidateMoves(
+  AiMoveInsight insight,
+  String languageCode,
+) {
   final List<_CoachCandidate> result = <_CoachCandidate>[];
   final Set<String> seen = <String>{};
   void add(String? move, _CandidateKind kind, String explanation) {
@@ -1696,39 +1988,43 @@ List<_CoachCandidate> _candidateMoves(AiMoveInsight insight) {
   add(
     insight.bestMove,
     _CandidateKind.best,
-    'Engine first choice. Calculate this line first and compare its reply with your move.',
+    '${CoachLocalizations(languageCode).text('best')}. ${personalCoachText('calculate', languageCode)}',
   );
   add(
     insight.playedMove ?? insight.notation,
     _CandidateKind.played,
     insight.centipawnLoss == null
-        ? 'Your move. Compare the resulting activity, king safety and material.'
-        : 'Your move lost ${insight.centipawnLoss} centipawns. Find the exact reply that caused the difference.',
+        ? '${personalCoachText('played', languageCode)}. ${analysisDashboardText('slowDetail', languageCode)}'
+        : '${personalCoachText('played', languageCode)} · ${personalCoachText('loss', languageCode)}: ${insight.centipawnLoss} cp. ${personalCoachText('calculate', languageCode)}',
   );
   final String? fen = insight.fenBefore;
   if (fen != null && fen.isNotEmpty) {
     for (final CoachMoveCandidate move in coachMoveCandidates(fen, limit: 12)) {
-      add(move.move, _CandidateKind.compare, _candidateExplanation(move));
+      add(
+        move.move,
+        _CandidateKind.compare,
+        _candidateExplanation(move, languageCode),
+      );
       if (result.length == 5) break;
     }
   }
   return result.take(5).toList(growable: false);
 }
 
-String _candidateExplanation(CoachMoveCandidate move) {
+String _candidateExplanation(CoachMoveCandidate move, String languageCode) {
   if (move.isPromotion) {
-    return 'Promotion candidate. Calculate every forcing check and capture after the new queen appears.';
+    return '${analysisDashboardText('endgame', languageCode)} · ${personalCoachText('calculate', languageCode)}';
   }
   if (move.isCastle) {
-    return 'King-safety candidate. Compare safety and rook activity after castling.';
+    return '${analysisDashboardText('kingSafety', languageCode)} · ${analysisDashboardText('slowDetail', languageCode)}';
   }
   if (move.isCapture) {
-    return 'Forcing capture candidate. Check recaptures and count the final material before choosing it.';
+    return '${analysisDashboardText('missedCaptures', languageCode)} · ${personalCoachText('calculate', languageCode)}';
   }
   if (move.piece == 'N' || move.piece == 'B') {
-    return 'Development candidate. Ask whether it improves activity while keeping the piece protected.';
+    return '${CoachLocalizations(languageCode).text('principled')} · ${analysisDashboardText('slowDetail', languageCode)}';
   }
-  return 'Candidate to compare. Test the opponent’s strongest check, capture and threat before deciding.';
+  return analysisDashboardText('slowDetail', languageCode);
 }
 
 String _candidateLabel(_CandidateKind kind, String languageCode) =>
@@ -1771,8 +2067,15 @@ class _StructuredMoveExplanation extends StatelessWidget {
         children: <Widget>[
           _EvidenceRow(
             icon: Icons.play_circle_outline_rounded,
-            label: _reviewText('explain', languageCode),
+            label: personalCoachText('whyBad', languageCode),
             value: _simpleMoveExplanation(insight, played, languageCode),
+            color: color,
+          ),
+          const SizedBox(height: 8),
+          _EvidenceRow(
+            icon: Icons.insights_rounded,
+            label: personalCoachText('played', languageCode),
+            value: _playedResultExplanation(insight, languageCode),
             color: color,
           ),
           const SizedBox(height: 12),
@@ -1797,8 +2100,8 @@ class _StructuredMoveExplanation extends StatelessWidget {
           const SizedBox(height: 12),
           _EvidenceRow(
             icon: Icons.auto_awesome_rounded,
-            label: _reviewText('alternative', languageCode),
-            value: best,
+            label: CoachLocalizations(languageCode).text('alternative'),
+            value: _betterChoiceExplanation(insight, best, languageCode),
             color: const Color(0xFF59E4C8),
           ),
           const SizedBox(height: 8),
@@ -1912,14 +2215,34 @@ String _simpleMoveExplanation(
   String played,
   String languageCode,
 ) {
-  if (insight.notation.contains('x')) {
-    final String square = insight.notation
-        .split('x')
-        .last
-        .replaceAll(RegExp(r'[^a-h1-8]'), '');
-    return '$played captures on $square and changes the material balance. The capture works only if the moving piece cannot be punished immediately. Check every recapture, check and counterattack before taking.';
-  }
+  if (played.isEmpty) return personalCoachText('unavailable', languageCode);
   return _localizedReviewExplanation(insight.explanation, languageCode);
+}
+
+String _playedResultExplanation(AiMoveInsight insight, String languageCode) {
+  final int? before = insight.evaluationBeforeCp;
+  final int? after = insight.evaluationAfterCp;
+  final int? loss = insight.centipawnLoss;
+  if (before == null || after == null || loss == null) {
+    return '${personalCoachText('unavailable', languageCode)} ${personalCoachText('calculate', languageCode)}';
+  }
+  return '${_coachCopy('evaluation', languageCode)}: ${_formatEvaluation(before)} → ${_formatEvaluation(after)} · ${personalCoachText('loss', languageCode)}: $loss cp.';
+}
+
+String _betterChoiceExplanation(
+  AiMoveInsight insight,
+  String best,
+  String languageCode,
+) {
+  final String played = (insight.playedMove ?? insight.notation).trim();
+  if (insight.bestMove?.isNotEmpty != true) return best;
+  if (played.toLowerCase() == insight.bestMove!.trim().toLowerCase()) {
+    return '$best — ${CoachLocalizations(languageCode).text('bestFound')}';
+  }
+  final String continuation = insight.principalVariation.isEmpty
+      ? personalCoachText('calculate', languageCode)
+      : '${CoachLocalizations(languageCode).text('continuation')}: ${insight.principalVariation.take(5).join(' → ')}.';
+  return '${CoachLocalizations(languageCode).text('best')}: $best. $continuation';
 }
 
 List<(IconData, String, String)> _moveEffects(
