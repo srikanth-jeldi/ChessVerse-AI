@@ -10,6 +10,8 @@ import '../../../main.dart'
 import '../../../core/local_game_archive.dart';
 import '../../../core/computer_game_store.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/app_language.dart';
+import '../../../core/widgets/ai_language_picker.dart';
 import '../../../core/widgets/skeleton_loader.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../auth/data/auth_session_store.dart';
@@ -873,7 +875,25 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (context) => Scaffold(
-          appBar: AppBar(title: const Text('Saved game')),
+          appBar: AppBar(
+            title: const Text('Saved game'),
+            actions: <Widget>[
+              ValueListenableBuilder<String?>(
+                valueListenable: AppLanguageController.effectiveLanguageChanges,
+                builder: (context, code, _) => TextButton.icon(
+                  onPressed: () => selectAndSaveAiLanguage(context),
+                  icon: const Icon(Icons.translate_rounded),
+                  label: Text(
+                    AppLanguageController.byCode(
+                      code ?? AppLanguageController.resolveCode(
+                        AppLanguageController.systemCode,
+                      ),
+                    ).nativeName,
+                  ),
+                ),
+              ),
+            ],
+          ),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [

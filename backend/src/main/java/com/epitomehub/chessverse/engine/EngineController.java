@@ -59,7 +59,15 @@ class EngineController {
             int evaluationCp,
             Integer mateIn,
             List<String> principalVariation,
-            int depth) {
+            int depth,
+            List<CandidateLine> candidates) {
+    }
+
+    record CandidateLine(
+            String move,
+            int evaluationCp,
+            Integer mateIn,
+            List<String> principalVariation) {
     }
 
     record MoveReviewRequest(

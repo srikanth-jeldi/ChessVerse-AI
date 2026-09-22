@@ -4,6 +4,7 @@ import static com.epitomehub.chessverse.engine.EngineController.BestMoveRequest;
 import static com.epitomehub.chessverse.engine.EngineController.BestMoveResponse;
 import static com.epitomehub.chessverse.engine.EngineController.AnalyzeRequest;
 import static com.epitomehub.chessverse.engine.EngineController.AnalyzeResponse;
+import static com.epitomehub.chessverse.engine.EngineController.CandidateLine;
 import static com.epitomehub.chessverse.engine.EngineController.MoveReviewRequest;
 import static com.epitomehub.chessverse.engine.EngineController.MoveReviewResponse;
 
@@ -17,6 +18,8 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -117,12 +120,14 @@ public class StockfishService implements GamePositionAnalyzer {
             send(input, "uci");
             send(input, "setoption name Threads value 1");
             send(input, "setoption name Hash value 32");
+            send(input, "setoption name MultiPV value 5");
             send(input, "isready");
             send(input, "position fen " + fen);
             send(input, "go depth " + depth);
-            AnalysisLine line = CompletableFuture.supplyAsync(() -> readAnalysis(output))
+            MultiAnalysis analysis = CompletableFuture.supplyAsync(() -> readMultiAnalysis(output))
                     .get(responseTimeout.toMillis(), TimeUnit.MILLISECONDS);
-            if (line.bestMove() == null || line.bestMove().equals("(none)")) {
+            AnalysisLine line = analysis.lines().isEmpty() ? null : analysis.lines().getFirst();
+            if (line == null || line.bestMove() == null || line.bestMove().equals("(none)")) {
                 throw new EngineException(HttpStatus.UNPROCESSABLE_ENTITY, "No legal engine move is available.");
             }
             return new AnalyzeResponse(
@@ -131,7 +136,13 @@ public class StockfishService implements GamePositionAnalyzer {
                     line.evaluationCp(),
                     line.mateIn(),
                     line.principalVariation(),
-                    depth);
+                    depth,
+                    analysis.lines().stream()
+                            .limit(5)
+                            .map(candidate -> new CandidateLine(
+                                    candidate.bestMove(), candidate.evaluationCp(),
+                                    candidate.mateIn(), candidate.principalVariation()))
+                            .toList());
         } catch (TimeoutException exception) {
             throw new EngineException(HttpStatus.GATEWAY_TIMEOUT, "Stockfish analysis took too long.");
         } catch (InterruptedException exception) {
@@ -422,10 +433,63 @@ public class StockfishService implements GamePositionAnalyzer {
         return new AnalysisLine(null, evaluationCp, mateIn, pv);
     }
 
+    private MultiAnalysis readMultiAnalysis(BufferedReader output) {
+        Map<Integer, AnalysisLine> lines = new TreeMap<>();
+        String bestMove = null;
+        try {
+            String raw;
+            while ((raw = output.readLine()) != null) {
+                if (raw.startsWith("info ") && raw.contains(" score ") && raw.contains(" pv ")) {
+                    String[] tokens = raw.split("\\s+");
+                    int rank = 1;
+                    int evaluationCp = 0;
+                    Integer mateIn = null;
+                    List<String> pv = List.of();
+                    for (int index = 0; index < tokens.length; index++) {
+                        if (tokens[index].equals("multipv") && index + 1 < tokens.length) {
+                            rank = Integer.parseInt(tokens[index + 1]);
+                        } else if (tokens[index].equals("score") && index + 2 < tokens.length) {
+                            if (tokens[index + 1].equals("cp")) {
+                                evaluationCp = Integer.parseInt(tokens[index + 2]);
+                            } else if (tokens[index + 1].equals("mate")) {
+                                mateIn = Integer.parseInt(tokens[index + 2]);
+                                evaluationCp = mateIn > 0 ? 100000 : -100000;
+                            }
+                        } else if (tokens[index].equals("pv") && index + 1 < tokens.length) {
+                            List<String> moves = new ArrayList<>();
+                            for (int moveIndex = index + 1;
+                                    moveIndex < tokens.length && moves.size() < 8;
+                                    moveIndex++) {
+                                moves.add(tokens[moveIndex]);
+                            }
+                            pv = List.copyOf(moves);
+                            break;
+                        }
+                    }
+                    if (!pv.isEmpty()) {
+                        lines.put(rank, new AnalysisLine(pv.getFirst(), evaluationCp, mateIn, pv));
+                    }
+                } else if (raw.startsWith("bestmove ")) {
+                    bestMove = raw.split("\\s+")[1];
+                    break;
+                }
+            }
+        } catch (IOException | NumberFormatException ignored) {
+            // The caller converts missing analysis into a service error.
+        }
+        if (lines.isEmpty() && bestMove != null) {
+            lines.put(1, new AnalysisLine(bestMove, 0, null, List.of(bestMove)));
+        }
+        return new MultiAnalysis(List.copyOf(lines.values()));
+    }
+
     private record AnalysisLine(
             String bestMove,
             int evaluationCp,
             Integer mateIn,
             List<String> principalVariation) {
+    }
+
+    private record MultiAnalysis(List<AnalysisLine> lines) {
     }
 }

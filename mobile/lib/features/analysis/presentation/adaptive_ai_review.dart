@@ -16,6 +16,7 @@ import '../../../core/widgets/chessverse_card.dart';
 import '../../../core/widgets/ai_language_picker.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../data/ai_coach_api.dart';
+import '../data/engine_candidates_api.dart';
 import '../domain/ai_review_report.dart';
 import '../domain/personal_ai_coach.dart';
 
@@ -1816,7 +1817,7 @@ class _MoveTimeline extends StatelessWidget {
   }
 }
 
-class _CandidateMovesPanel extends StatelessWidget {
+class _CandidateMovesPanel extends StatefulWidget {
   const _CandidateMovesPanel({
     required this.insight,
     required this.languageCode,
@@ -1826,12 +1827,64 @@ class _CandidateMovesPanel extends StatelessWidget {
   final String languageCode;
 
   @override
+  State<_CandidateMovesPanel> createState() => _CandidateMovesPanelState();
+}
+
+class _CandidateMovesPanelState extends State<_CandidateMovesPanel> {
+  Future<List<EngineCandidateLine>>? _engineCandidates;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CandidateMovesPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.insight.fenBefore != widget.insight.fenBefore) _load();
+  }
+
+  void _load() {
+    final String? fen = widget.insight.fenBefore;
+    _engineCandidates = fen == null || fen.isEmpty
+        ? null
+        : _loadCandidates(fen);
+  }
+
+  Future<List<EngineCandidateLine>> _loadCandidates(String fen) async {
+    try {
+      final session = await const AuthSessionStore().read();
+      if (session == null) return const <EngineCandidateLine>[];
+      return await const EngineCandidatesApi().analyze(session.token, fen: fen);
+    } catch (_) {
+      return const <EngineCandidateLine>[];
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final List<_CoachCandidate> candidates = _candidateMoves(
-      insight,
-      languageCode,
+    final List<_CoachCandidate> fallback = _candidateMoves(
+      widget.insight,
+      widget.languageCode,
     );
-    if (candidates.isEmpty) return const SizedBox.shrink();
+    if (fallback.isEmpty) return const SizedBox.shrink();
+    return FutureBuilder<List<EngineCandidateLine>>(
+      future: _engineCandidates,
+      builder: (context, snapshot) {
+        final List<_CoachCandidate> candidates = snapshot.data?.isNotEmpty == true
+            ? _verifiedCandidateMoves(
+                widget.insight,
+                snapshot.data!,
+                widget.languageCode,
+              )
+            : fallback;
+        return _buildCard(candidates, snapshot.connectionState == ConnectionState.waiting);
+      },
+    );
+  }
+
+  Widget _buildCard(List<_CoachCandidate> candidates, bool loading) {
     return ChessVerseCard(
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -1847,7 +1900,7 @@ class _CandidateMovesPanel extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  _coachCopy('movesToCompare', languageCode),
+                  _coachCopy('movesToCompare', widget.languageCode),
                   style: const TextStyle(
                     color: Color(0xFF59E4C8),
                     fontWeight: FontWeight.w900,
@@ -1858,18 +1911,22 @@ class _CandidateMovesPanel extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            _coachCopy('candidateIntro', languageCode),
+            _coachCopy('candidateIntro', widget.languageCode),
             style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 12,
             ),
           ),
           const SizedBox(height: 10),
+          if (loading) ...<Widget>[
+            const LinearProgressIndicator(minHeight: 2),
+            const SizedBox(height: 10),
+          ],
           for (int index = 0; index < candidates.length; index++) ...<Widget>[
             _CandidateMoveTile(
               number: index + 1,
               candidate: candidates[index],
-              languageCode: languageCode,
+              languageCode: widget.languageCode,
             ),
             if (index < candidates.length - 1) const SizedBox(height: 7),
           ],
@@ -1894,7 +1951,9 @@ class _CandidateMoveTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color color = candidate.kind == _CandidateKind.best
         ? AppColors.accentGold
-        : const Color(0xFF59E4C8);
+        : candidate.kind == _CandidateKind.played
+        ? const Color(0xFF59E4C8)
+        : const Color(0xFF73BFFF);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(10),
@@ -1960,7 +2019,7 @@ class _CandidateMoveTile extends StatelessWidget {
   }
 }
 
-enum _CandidateKind { best, played }
+enum _CandidateKind { best, played, alternative }
 
 class _CoachCandidate {
   const _CoachCandidate(this.move, this.kind, this.explanation);
@@ -2002,6 +2061,61 @@ List<_CoachCandidate> _candidateMoves(
   return result;
 }
 
+List<_CoachCandidate> _verifiedCandidateMoves(
+  AiMoveInsight insight,
+  List<EngineCandidateLine> lines,
+  String languageCode,
+) {
+  final List<_CoachCandidate> result = <_CoachCandidate>[];
+  final Set<String> seen = <String>{};
+  for (int index = 0; index < lines.length && result.length < 5; index++) {
+    final EngineCandidateLine line = lines[index];
+    if (!seen.add(line.move.toLowerCase())) continue;
+    final String evaluation = line.mateIn == null
+        ? _formatEvaluation(line.evaluationCp)
+        : '${line.mateIn! > 0 ? '+' : '-'}M${line.mateIn!.abs()}';
+    final String reply = line.principalVariation.length > 1
+        ? line.principalVariation[1]
+        : _coachCopy('noForcingThreat', languageCode);
+    final int gap = (lines.first.evaluationCp - line.evaluationCp).abs();
+    final String consequence = index == 0
+        ? _coachCopy('keepsBestResult', languageCode)
+        : '${_coachCopy('costVsBest', languageCode)}: $gap cp';
+    result.add(
+      _CoachCandidate(
+        _readableUci(line.move),
+        index == 0 ? _CandidateKind.best : _CandidateKind.alternative,
+        '${_coachCopy('evaluation', languageCode)}: $evaluation. '
+        '${_coachCopy('expectedReply', languageCode)}: ${_readableUci(reply)}. '
+        '$consequence. ${_coachCopy('bestLine', languageCode)}: '
+        '${line.principalVariation.take(5).map(_readableUci).join(' → ')}.',
+      ),
+    );
+  }
+  final String played = (insight.playedMove ?? insight.notation).trim();
+  if (played.isNotEmpty && seen.add(played.toLowerCase())) {
+    result.add(
+      _CoachCandidate(
+        _readableUci(played),
+        _CandidateKind.played,
+        _playedChoiceExplanation(insight, languageCode),
+      ),
+    );
+  }
+  return result;
+}
+
+String _readableUci(String move) {
+  final String value = move.trim();
+  if (!RegExp(r'^[a-h][1-8][a-h][1-8][qrbn]?$').hasMatch(value)) {
+    return value;
+  }
+  final String promotion = value.length == 5
+      ? '=${value[4].toUpperCase()}'
+      : '';
+  return '${value.substring(0, 2)} → ${value.substring(2, 4)}$promotion';
+}
+
 String _engineChoiceExplanation(
   AiMoveInsight insight,
   String languageCode,
@@ -2036,6 +2150,7 @@ String _candidateLabel(_CandidateKind kind, String languageCode) =>
     switch (kind) {
       _CandidateKind.best => _coachCopy('engineBest', languageCode),
       _CandidateKind.played => _coachCopy('yourMove', languageCode),
+      _CandidateKind.alternative => _coachCopy('engineAlternative', languageCode),
     };
 
 class _StructuredMoveExplanation extends StatelessWidget {
@@ -2309,10 +2424,14 @@ String _coachCopy(String key, String languageCode) {
         "Before committing, ask: What is my opponent's strongest reply?",
     'moveList': 'Move list',
     'moveReview': 'Move-by-move coaching',
-    'movesToCompare': 'Coach comparison',
-    'candidateIntro': 'Compare Stockfish’s verified choice with your move. The evaluation, loss and expected reply below come from this exact position.',
+    'movesToCompare': '5 engine-verified choices',
+    'candidateIntro': 'Compare five Stockfish-ranked plans from this exact position. Each option shows the expected reply, continuation and cost versus the best move.',
     'engineBest': 'ENGINE BEST',
+    'engineAlternative': 'ENGINE ALTERNATIVE',
     'yourMove': 'YOUR MOVE',
+    'expectedReply': 'Expected opponent reply',
+    'keepsBestResult': 'Keeps the strongest available result',
+    'costVsBest': 'Difference from the best move',
     'showOnBoard': 'Show on board',
     'previousMove': 'Previous move',
     'nextMove': 'Next move',
@@ -2329,10 +2448,14 @@ String _coachCopy(String key, String languageCode) {
     'howToImprove': 'ఎలా మెరుగుపడాలి',
     'moveList': 'ఎత్తుల జాబితా',
     'moveReview': 'ఎత్తుల వారీ కోచింగ్',
-    'movesToCompare': 'కోచ్ పోలిక',
-    'candidateIntro': 'స్టాక్‌ఫిష్ నిర్ధారించిన ఉత్తమ ఎత్తును మీ ఎత్తుతో పోల్చండి. కింది మూల్యాంకనం, నష్టం మరియు సమాధానం ఈ స్థానానికే చెందినవి.',
+    'movesToCompare': 'ఇంజిన్ నిర్ధారించిన 5 ఎంపికలు',
+    'candidateIntro': 'ఈ స్థానానికి స్టాక్‌ఫిష్ ర్యాంక్ చేసిన ఐదు ప్లాన్‌లను పోల్చండి. ప్రతి ఎంపికలో ప్రత్యర్థి సమాధానం, కొనసాగింపు మరియు ఉత్తమ ఎత్తుతో తేడా కనిపిస్తాయి.',
     'engineBest': 'ఇంజిన్ ఉత్తమం',
+    'engineAlternative': 'ఇంజిన్ ప్రత్యామ్నాయం',
     'yourMove': 'మీ ఎత్తు',
+    'expectedReply': 'ప్రత్యర్థి అంచనా సమాధానం',
+    'keepsBestResult': 'అందుబాటులో ఉన్న ఉత్తమ ఫలితాన్ని నిలబెడుతుంది',
+    'costVsBest': 'ఉత్తమ ఎత్తుతో తేడా',
     'showOnBoard': 'బోర్డుపై చూపించు',
     'previousMove': 'మునుపటి ఎత్తు',
     'nextMove': 'తదుపరి ఎత్తు',
