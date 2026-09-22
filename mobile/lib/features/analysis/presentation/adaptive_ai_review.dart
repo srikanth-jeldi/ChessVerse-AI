@@ -17,7 +17,6 @@ import '../../../core/widgets/ai_language_picker.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../data/ai_coach_api.dart';
 import '../domain/ai_review_report.dart';
-import '../domain/pgn_position_reconstructor.dart';
 import '../domain/personal_ai_coach.dart';
 
 class _ReactiveReviewLanguage extends StatelessWidget {
@@ -1895,9 +1894,7 @@ class _CandidateMoveTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color color = candidate.kind == _CandidateKind.best
         ? AppColors.accentGold
-        : candidate.kind == _CandidateKind.played
-        ? const Color(0xFF59E4C8)
-        : const Color(0xFF73BFFF);
+        : const Color(0xFF59E4C8);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(10),
@@ -1963,7 +1960,7 @@ class _CandidateMoveTile extends StatelessWidget {
   }
 }
 
-enum _CandidateKind { best, played, compare }
+enum _CandidateKind { best, played }
 
 class _CoachCandidate {
   const _CoachCandidate(this.move, this.kind, this.explanation);
@@ -1988,50 +1985,57 @@ List<_CoachCandidate> _candidateMoves(
   add(
     insight.bestMove,
     _CandidateKind.best,
-    '${CoachLocalizations(languageCode).text('best')}. ${personalCoachText('calculate', languageCode)}',
+    _engineChoiceExplanation(insight, languageCode),
   );
   add(
     insight.playedMove ?? insight.notation,
     _CandidateKind.played,
-    insight.centipawnLoss == null
-        ? '${personalCoachText('played', languageCode)}. ${analysisDashboardText('slowDetail', languageCode)}'
-        : '${personalCoachText('played', languageCode)} · ${personalCoachText('loss', languageCode)}: ${insight.centipawnLoss} cp. ${personalCoachText('calculate', languageCode)}',
+    _playedChoiceExplanation(insight, languageCode),
   );
-  final String? fen = insight.fenBefore;
-  if (fen != null && fen.isNotEmpty) {
-    for (final CoachMoveCandidate move in coachMoveCandidates(fen, limit: 12)) {
-      add(
-        move.move,
-        _CandidateKind.compare,
-        _candidateExplanation(move, languageCode),
-      );
-      if (result.length == 5) break;
-    }
-  }
-  return result.take(5).toList(growable: false);
+
+  // Do not present locally generated legal moves as engine-ranked candidates.
+  // A legal move is not necessarily a good move, and repeating generic advice
+  // beside those moves made the review look authoritative while providing no
+  // Stockfish evidence. The panel now compares only the engine choice and the
+  // player's actual choice; the verified principal variation is explained as
+  // the expected continuation of the engine choice.
+  return result;
 }
 
-String _candidateExplanation(CoachMoveCandidate move, String languageCode) {
-  if (move.isPromotion) {
-    return '${analysisDashboardText('endgame', languageCode)} · ${personalCoachText('calculate', languageCode)}';
-  }
-  if (move.isCastle) {
-    return '${analysisDashboardText('kingSafety', languageCode)} · ${analysisDashboardText('slowDetail', languageCode)}';
-  }
-  if (move.isCapture) {
-    return '${analysisDashboardText('missedCaptures', languageCode)} · ${personalCoachText('calculate', languageCode)}';
-  }
-  if (move.piece == 'N' || move.piece == 'B') {
-    return '${CoachLocalizations(languageCode).text('principled')} · ${analysisDashboardText('slowDetail', languageCode)}';
-  }
-  return analysisDashboardText('slowDetail', languageCode);
+String _engineChoiceExplanation(
+  AiMoveInsight insight,
+  String languageCode,
+) {
+  final String evaluation = insight.evaluationBeforeCp == null
+      ? ''
+      : ' ${_coachCopy('evaluation', languageCode)}: ${_formatEvaluation(insight.evaluationBeforeCp!)}.';
+  final String line = insight.principalVariation.isEmpty
+      ? ''
+      : ' ${_coachCopy('bestLine', languageCode)}: ${insight.principalVariation.take(5).join(' → ')}.';
+  return '${CoachLocalizations(languageCode).text('best')}.$evaluation$line';
+}
+
+String _playedChoiceExplanation(
+  AiMoveInsight insight,
+  String languageCode,
+) {
+  final String evaluation =
+      insight.evaluationBeforeCp != null && insight.evaluationAfterCp != null
+      ? '${_coachCopy('evaluation', languageCode)}: ${_formatEvaluation(insight.evaluationBeforeCp!)} → ${_formatEvaluation(insight.evaluationAfterCp!)}.'
+      : insight.explanation;
+  final String loss = insight.centipawnLoss == null
+      ? ''
+      : ' ${personalCoachText('loss', languageCode)}: ${insight.centipawnLoss} cp.';
+  final String reply = insight.opponentThreat?.trim().isNotEmpty == true
+      ? ' ${_reviewText('immediateReply', languageCode)}: ${insight.opponentThreat}.'
+      : '';
+  return '$evaluation$loss$reply';
 }
 
 String _candidateLabel(_CandidateKind kind, String languageCode) =>
     switch (kind) {
       _CandidateKind.best => _coachCopy('engineBest', languageCode),
       _CandidateKind.played => _coachCopy('yourMove', languageCode),
-      _CandidateKind.compare => _coachCopy('compareCandidate', languageCode),
     };
 
 class _StructuredMoveExplanation extends StatelessWidget {
@@ -2305,11 +2309,10 @@ String _coachCopy(String key, String languageCode) {
         "Before committing, ask: What is my opponent's strongest reply?",
     'moveList': 'Move list',
     'moveReview': 'Move-by-move coaching',
-    'movesToCompare': '5 moves to compare',
-    'candidateIntro': 'Start with the engine move, compare your choice, then calculate the other practical candidates. Only the first move is engine-ranked.',
+    'movesToCompare': 'Coach comparison',
+    'candidateIntro': 'Compare Stockfish’s verified choice with your move. The evaluation, loss and expected reply below come from this exact position.',
     'engineBest': 'ENGINE BEST',
     'yourMove': 'YOUR MOVE',
-    'compareCandidate': 'COMPARE',
     'showOnBoard': 'Show on board',
     'previousMove': 'Previous move',
     'nextMove': 'Next move',
@@ -2326,11 +2329,10 @@ String _coachCopy(String key, String languageCode) {
     'howToImprove': 'ఎలా మెరుగుపడాలి',
     'moveList': 'ఎత్తుల జాబితా',
     'moveReview': 'ఎత్తుల వారీ కోచింగ్',
-    'movesToCompare': 'పోల్చాల్సిన 5 ఎత్తులు',
-    'candidateIntro': 'ముందుగా ఇంజిన్ ఉత్తమ ఎత్తును చూడండి. తర్వాత మీ ఎత్తును, మిగతా సాధ్యమైన ఎత్తులను లెక్కించి పోల్చండి.',
+    'movesToCompare': 'కోచ్ పోలిక',
+    'candidateIntro': 'స్టాక్‌ఫిష్ నిర్ధారించిన ఉత్తమ ఎత్తును మీ ఎత్తుతో పోల్చండి. కింది మూల్యాంకనం, నష్టం మరియు సమాధానం ఈ స్థానానికే చెందినవి.',
     'engineBest': 'ఇంజిన్ ఉత్తమం',
     'yourMove': 'మీ ఎత్తు',
-    'compareCandidate': 'పోల్చండి',
     'showOnBoard': 'బోర్డుపై చూపించు',
     'previousMove': 'మునుపటి ఎత్తు',
     'nextMove': 'తదుపరి ఎత్తు',
