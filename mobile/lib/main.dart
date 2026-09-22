@@ -51,6 +51,7 @@ import 'features/home/presentation/home_dashboard_screen.dart';
 import 'features/library/presentation/reference_screens.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/online/data/online_match_api.dart';
+import 'features/online/data/pgn_archive_service.dart';
 import 'features/online/presentation/match_history_screen.dart';
 import 'features/online/presentation/spectator_screen.dart';
 import 'features/notifications/data/notification_api.dart';

@@ -945,6 +945,7 @@ class GameResultOverlay extends StatelessWidget {
     required this.onDismiss,
     required this.onReview,
     required this.onShare,
+    required this.onExport,
     super.key,
   });
 
@@ -963,6 +964,7 @@ class GameResultOverlay extends StatelessWidget {
   final VoidCallback onDismiss;
   final VoidCallback onReview;
   final Future<void> Function() onShare;
+  final Future<({String pgn, String fen})> Function() onExport;
 
   @override
   Widget build(BuildContext context) {
@@ -1191,6 +1193,16 @@ class GameResultOverlay extends StatelessWidget {
                             label: const Text('COPY SHAREABLE RESULT'),
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            key: const ValueKey<String>('export-game-data'),
+                            onPressed: () => _showGameExport(context),
+                            icon: const Icon(Icons.file_upload_outlined),
+                            label: const Text('EXPORT PGN / FEN'),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1206,6 +1218,105 @@ class GameResultOverlay extends StatelessWidget {
     // fully readable instead of starting a second celebration over its CTAs.
     return resultCard;
   }
+
+  Future<void> _showGameExport(BuildContext context) async {
+    final ({String pgn, String fen}) data = await onExport();
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: const Row(
+          children: <Widget>[
+            Icon(Icons.ios_share_rounded, color: Color(0xFFD6A84F)),
+            SizedBox(width: 10),
+            Expanded(child: Text('Game export')),
+          ],
+        ),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                _GameExportBlock(label: 'PGN • COMPLETE GAME', value: data.pgn),
+                const SizedBox(height: 14),
+                _GameExportBlock(
+                  label: 'FEN • FINAL POSITION',
+                  value: data.fen,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GameExportBlock extends StatelessWidget {
+  const _GameExportBlock({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: const Color(0xFF102236),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: const Color(0x5559E4C8)),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Color(0xFF59E4C8),
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Copy',
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: value));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${label.split(' • ').first} copied.'),
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.copy_rounded),
+              ),
+            ],
+          ),
+          SelectableText(
+            value,
+            style: const TextStyle(
+              color: Color(0xFFDCE6EE),
+              fontFamily: 'monospace',
+              fontSize: 12,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class CoachInsight extends StatelessWidget {

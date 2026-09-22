@@ -822,7 +822,11 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
   }
 }
 
+// Retained for the report-summary route while the focused coach workspace is
+// the default review experience.
+// ignore: unused_element
 class _ReviewOverview extends StatelessWidget {
+  // ignore: unused_element_parameter
   const _ReviewOverview({required this.report, this.onRetryPosition});
   final AiReviewReport report;
   final ValueChanged<AiMoveInsight>? onRetryPosition;
@@ -1320,11 +1324,18 @@ class _InsightCard extends StatelessWidget {
   );
 }
 
+// Retained for the full timeline route; the focused workspace now navigates
+// one position at a time.
+// ignore: unused_element
 class _MoveTimeline extends StatelessWidget {
+  // ignore: unused_element_parameter
   const _MoveTimeline({
     required this.report,
+    // ignore: unused_element_parameter
     this.openingEco,
+    // ignore: unused_element_parameter
     this.timeControl,
+    // ignore: unused_element_parameter
     this.onRetryPosition,
   });
   final AiReviewReport report;

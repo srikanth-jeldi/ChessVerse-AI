@@ -1819,6 +1819,23 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                 );
                               }
                             },
+                            onExport: () async {
+                              final SavedGameRecord game = SavedGameRecord(
+                                mode: _gameMode.name,
+                                result: _gameResultTitle ?? '*',
+                                detail: _gameResultDetail ?? 'Game complete',
+                                moves: List<String>.from(_moves.reversed),
+                                playedAt: DateTime.now(),
+                                whitePlayer: _whitePlayerName,
+                                blackPlayer: _blackPlayerName,
+                              );
+                              return (
+                                pgn: const PgnArchiveService().exportGames(
+                                  <SavedGameRecord>[game],
+                                ),
+                                fen: _toFen(),
+                              );
+                            },
                           ),
                         ),
                       if (_signedIn &&

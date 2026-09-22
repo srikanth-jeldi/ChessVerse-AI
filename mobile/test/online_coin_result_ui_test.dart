@@ -23,6 +23,10 @@ Widget _result({
         onDismiss: () {},
         onReview: () {},
         onShare: () async {},
+        onExport: () async => (
+          pgn: '[Event "ChessVerseAI Game"]\n\n1. e4 e5 *',
+          fen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2',
+        ),
       ),
     ),
   );
@@ -74,5 +78,18 @@ void main() {
 
     expect(find.text('Puzzle complete'), findsOneWidget);
     expect(find.text('1-0'), findsNothing);
+  });
+
+  testWidgets('finished game exposes PGN and FEN export', (tester) async {
+    await tester.pumpWidget(_result(title: 'You win', coinsEarned: 200));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey<String>('export-game-data')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Game export'), findsOneWidget);
+    expect(find.text('PGN • COMPLETE GAME'), findsOneWidget);
+    expect(find.text('FEN • FINAL POSITION'), findsOneWidget);
+    expect(find.textContaining('[Event "ChessVerseAI Game"]'), findsOneWidget);
   });
 }
