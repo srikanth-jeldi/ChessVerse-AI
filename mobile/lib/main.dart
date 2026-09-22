@@ -313,7 +313,11 @@ class _SplashGateState extends State<SplashGate> {
   final Set<String> _openedNotificationMatchIds = <String>{};
   bool _openingNotificationMatch = false;
   bool _splashArtworkLoadingStarted = false;
-  _RootStage _stage = _RootStage.splash;
+  // The browser owns the first splash while Flutter downloads. Starting the
+  // web app on another Flutter splash caused: loader -> splash -> loader.
+  // Native platforms do not have that HTML hand-off, so they keep the normal
+  // branded splash first.
+  _RootStage _stage = kIsWeb ? _RootStage.loading : _RootStage.splash;
   String _playerName = 'Guest Player';
   String? _username;
   String? _email;
@@ -342,11 +346,15 @@ class _SplashGateState extends State<SplashGate> {
       _openWeeklyReportFromReminder,
     );
     unawaited(DailyReminderService.instance.initialize());
+    if (kIsWeb) {
+      unawaited(_restoreSession(forceFreshLogin: _forceFreshWebLogin));
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (kIsWeb) return;
     if (_splashArtworkLoadingStarted) return;
     _splashArtworkLoadingStarted = true;
     final Size viewport = MediaQuery.sizeOf(context);

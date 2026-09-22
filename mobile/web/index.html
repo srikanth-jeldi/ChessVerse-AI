@@ -26,14 +26,14 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="ChessVerseAI">
-  <link rel="apple-touch-icon" sizes="192x192" href="icons/Icon-192.png?v=king9">
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/Icon-192.png?v=king10">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png?v=king9">
-  <link rel="shortcut icon" type="image/png" href="favicon.png?v=king9">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/Icon-192.png?v=king10">
+  <link rel="shortcut icon" type="image/png" href="icons/Icon-192.png?v=king10">
 
   <title>ChessVerseAI</title>
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json?v=king10">
   <script>
     // Only provider-issued IDs/signatures cross this bridge. ChessVerseAI never
     // receives card numbers, CVV, UPI PINs, or bank credentials.
@@ -202,23 +202,7 @@
 </head>
 <body>
   <link rel="stylesheet" href="loading.css">
-  <div id="splash" role="status" aria-live="polite">
-    <section class="loading-identity">
-      <img class="loading-logo" src="assets/assets/branding/app_icon.png" alt="ChessVerse AI">
-      <h1>CHESSVERSE <span>AI</span></h1>
-      <p class="loading-motto">Think • Move • Master</p>
-      <div class="loading-rule" aria-hidden="true">♛</div>
-    </section>
-    <section class="loading-details">
-      <h2>Preparing your board</h2>
-      <div class="loading-track" aria-hidden="true"><i></i></div>
-      <p>Loading pieces, puzzles, and your profile</p>
-      <div class="loading-features" aria-hidden="true">
-        <div><b>✦</b>Puzzles</div><div><b>♜</b>Compete</div><div><b>↗</b>Progress</div>
-      </div>
-    </section>
-    <footer>MORE THAN A GAME · A BRIGHTER MIND</footer>
-  </div>
+  <div id="splash" role="status" aria-label="Opening ChessVerseAI"></div>
   <script>window.addEventListener('flutter-first-frame', removeSplashFromWeb, {once: true});</script>
 
   <!--

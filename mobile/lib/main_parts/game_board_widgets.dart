@@ -353,7 +353,19 @@ class _ReviewedPositionRetryDialogState
   }
 
   void _tapSquare(String square) {
-    if (_answered) return;
+    if (_answered) {
+      if (_correct) return;
+      final ChessPiece? retryPiece = widget.initialPieces[square];
+      setState(() {
+        _pieces = Map<String, ChessPiece>.from(widget.initialPieces);
+        _selected = retryPiece?.white == widget.whiteToMove ? square : null;
+        _lastFrom = null;
+        _lastTo = null;
+        _message = _retryHintText(_hintStage.clamp(1, 3));
+        _answered = false;
+      });
+      return;
+    }
     final ChessPiece? tapped = _pieces[square];
     if (_selected == null) {
       if (tapped?.white == widget.whiteToMove) {
@@ -373,15 +385,12 @@ class _ReviewedPositionRetryDialogState
         ? _hintStage
         : (_hintStage + 1).clamp(1, 3);
     setState(() {
-      // A wrong attempt and the correct solution belong to two different
-      // positions. Restore the reviewed snapshot before drawing the solution
-      // arrow; otherwise the arrow is painted over a board that already
-      // contains the user's incorrect move and appears displaced.
-      _pieces = correct
-          ? _applyReviewedMove(from, square)
-          : Map<String, ChessPiece>.from(widget.initialPieces);
-      _lastFrom = correct ? from : null;
-      _lastTo = correct ? square : null;
+      // Keep every legal attempt visible. Previously a wrong move was reset in
+      // the same frame, which made the piece appear immovable and also removed
+      // the attempted-move arrow. Retry/Hint explicitly restores the snapshot.
+      _pieces = _applyReviewedMove(from, square);
+      _lastFrom = from;
+      _lastTo = square;
       _selected = null;
       _answered = true;
       _correct = correct;

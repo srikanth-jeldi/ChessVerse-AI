@@ -1,14 +1,16 @@
-@font-face{font-family:ChessSerif;src:url('assets/assets/fonts/ChessVerseSerif.ttf') format('truetype');font-display:swap}
-#splash{box-sizing:border-box;position:fixed;inset:0;z-index:1;overflow:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;padding:32px 24px 60px;color:#fff8e9;background:linear-gradient(#00101822,#00101855),url('assets/assets/branding/loading-cinematic-v1.webp') center/cover,#021018;font-family:ChessSerif,Georgia,serif;text-align:center}
-#splash section{width:min(100%,360px)}
-.loading-logo{width:130px;height:130px;object-fit:cover;border:2px solid #ffdb7b;border-radius:28%;padding:10px;background:#031320;box-shadow:0 0 32px #72f5c966,0 0 10px #ffd47766}
-#splash h1{font-size:38px;margin:20px 0 0;line-height:1.1;font-weight:600;white-space:nowrap}#splash h1 span,.loading-motto,.loading-rule{color:#f1c86e}
-.loading-motto{font-size:19px;letter-spacing:2px;margin:8px 0}.loading-rule{font-size:24px}.loading-rule:before,.loading-rule:after{content:'';display:inline-block;width:75px;height:1px;background:#bd974b;vertical-align:middle;margin:0 12px}
-#splash h2{font-size:28px;font-weight:500;margin:0 0 20px}.loading-details>p{color:#a5c6d1;font-size:17px}
-.loading-track{border:1px solid #69e8e5;border-radius:40px;padding:4px;background:#03242dcc;box-shadow:0 0 18px #36f4de55;overflow:hidden}.loading-track i{display:block;width:65%;height:10px;border-radius:20px;background:linear-gradient(90deg,#0da99b,#37f2da,#d6ffef);box-shadow:0 0 10px #37f2da;animation:chess-loading 1.8s ease-in-out infinite alternate}
-.loading-features{display:flex;justify-content:space-around;margin-top:25px;font-size:18px}.loading-features b{display:grid;place-items:center;width:56px;height:56px;border:1px solid #4bcec9;border-radius:50%;background:radial-gradient(#09535dbb,#021923ee);box-shadow:0 0 12px #41f3d533;color:#5ef7e4;font:32px Georgia,serif;margin:0 auto 8px}
-#splash footer{font:9px Georgia,serif;letter-spacing:3px;color:#bed0d2;margin-top:30px}
-@keyframes chess-loading{from{transform:translateX(-85%)}to{transform:translateX(145%)}}
-@media(min-aspect-ratio:4/3) and (min-width:700px){#splash{flex-direction:row;gap:65px}#splash footer{position:absolute;bottom:24px}}
-@media(max-height:650px) and (max-width:699px){#splash{justify-content:flex-start;gap:16px}.loading-logo{width:90px;height:90px}#splash h1{font-size:32px}#splash footer{margin-top:8px}}
-@media(prefers-reduced-motion:reduce){.loading-track i{animation:none}}
+#splash {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background-color: #02070d;
+  background-image: url('assets/assets/branding/chessverse_king_dual_splash.jpg');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+@media (orientation: portrait) {
+  #splash {
+    background-image: url('assets/assets/branding/splash_screen_mobile_v2.jpg');
+  }
+}

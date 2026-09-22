@@ -138,7 +138,7 @@ void main() {
   });
 
   testWidgets(
-    'wrong retry restores snapshot and progressively reveals solution',
+    'wrong retry shows the attempted move and progressively reveals solution',
     (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
@@ -170,13 +170,24 @@ void main() {
       final ChessBoard board = tester.widget<ChessBoard>(
         find.byType(ChessBoard),
       );
-      expect(board.pieces, contains('e2'));
-      expect(board.pieces, isNot(contains('e3')));
-      expect(board.lastFromSquare, isNull);
-      expect(board.lastToSquare, isNull);
+      expect(board.pieces, isNot(contains('e2')));
+      expect(board.pieces, contains('e3'));
+      expect(board.lastFromSquare, 'e2');
+      expect(board.lastToSquare, 'e3');
       expect(board.coachArrowFrom, isNull);
       expect(board.coachArrowTo, isNull);
       expect(find.textContaining('Hint 1/3'), findsOneWidget);
+
+      // The next board tap starts another attempt immediately instead of
+      // leaving the puzzle silently locked after a wrong move.
+      await tester.tap(wrongE2);
+      await tester.pump();
+      final ChessBoard resetForRetry = tester.widget<ChessBoard>(
+        find.byType(ChessBoard),
+      );
+      expect(resetForRetry.pieces, contains('e2'));
+      expect(resetForRetry.pieces, isNot(contains('e3')));
+      expect(resetForRetry.selectedSquare, 'e2');
 
       await tester.tap(
         find.byKey(const ValueKey<String>('position-retry-hint')),
