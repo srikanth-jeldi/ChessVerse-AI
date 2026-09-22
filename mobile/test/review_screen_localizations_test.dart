@@ -39,6 +39,11 @@ void main() {
             reason: '${language.code} $size');
         expect(tester.takeException(), isNull,
             reason: '${language.code} $size');
+        if (size.width == 360 && language.code == 'en') {
+          expect(find.text('1. e2e4'), findsOneWidget);
+          expect(find.bySemanticsLabel('White king'), findsOneWidget);
+          expect(find.bySemanticsLabel('Black king'), findsOneWidget);
+        }
         if (size.width > 900) {
           final copy = CoachLocalizations(language.code);
           await tester.tap(find.text(copy.text('showThreat')).first);

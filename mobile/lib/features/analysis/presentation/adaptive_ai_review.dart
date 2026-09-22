@@ -384,7 +384,7 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
                             Text(
-                              '${insight.number}... ${insight.notation}',
+                              _moveHeading(insight),
                               style: const TextStyle(
                                 color: AppColors.accentGold,
                                 fontSize: 19,
@@ -648,7 +648,7 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
                                 Text(
-                                  '${insight.number}... ${insight.notation}',
+                                  _moveHeading(insight),
                                   style: const TextStyle(
                                     color: AppColors.accentGold,
                                     fontSize: 22,
@@ -1889,6 +1889,12 @@ String _formatEvaluation(int cp) {
   return '${pawns >= 0 ? '+' : ''}${pawns.toStringAsFixed(1)}';
 }
 
+String _moveHeading(AiMoveInsight insight) {
+  final int moveNumber = (insight.number + 1) ~/ 2;
+  final String separator = insight.side.toLowerCase() == 'black' ? '...' : '.';
+  return '$moveNumber$separator ${insight.notation}';
+}
+
 String _coachTheme(AiMoveInsight insight) {
   final String move = insight.notation;
   if (move.contains('x')) return 'Tactical · Material';
@@ -2588,10 +2594,19 @@ class _CoachPositionBoard extends StatelessWidget {
                           ? const Color(0xFFBDD0D8)
                           : const Color(0xFF416A7C),
                       child: Center(
-                        child: Text(
-                          pieces[square] ?? '',
-                          style: TextStyle(fontSize: box.maxWidth / 12.5),
-                        ),
+                        child: pieces[square] == null
+                            ? const SizedBox.shrink()
+                            : Padding(
+                                padding: EdgeInsets.all(box.maxWidth / 145),
+                                child: Image.asset(
+                                  _coachPieceAsset(pieces[square]!),
+                                  fit: BoxFit.contain,
+                                  filterQuality: FilterQuality.high,
+                                  semanticLabel: _coachPieceLabel(
+                                    pieces[square]!,
+                                  ),
+                                ),
+                              ),
                       ),
                     );
                   },
@@ -2608,20 +2623,6 @@ class _CoachPositionBoard extends StatelessWidget {
   }
 
   static Map<String, String> _fenPieces(String fen) {
-    const Map<String, String> glyph = <String, String>{
-      'K': '♔',
-      'Q': '♕',
-      'R': '♖',
-      'B': '♗',
-      'N': '♘',
-      'P': '♙',
-      'k': '♚',
-      'q': '♛',
-      'r': '♜',
-      'b': '♝',
-      'n': '♞',
-      'p': '♟',
-    };
     final Map<String, String> result = <String, String>{};
     final List<String> ranks = fen.split(' ').first.split('/');
     for (int row = 0; row < ranks.length && row < 8; row++) {
@@ -2632,13 +2633,38 @@ class _CoachPositionBoard extends StatelessWidget {
         if (empty != null) {
           file += empty;
         } else if (file < 8) {
-          result['${String.fromCharCode(97 + file)}${8 - row}'] =
-              glyph[token] ?? '';
+          result['${String.fromCharCode(97 + file)}${8 - row}'] = token;
           file++;
         }
       }
     }
     return result;
+  }
+
+  static String _coachPieceAsset(String token) {
+    const Map<String, String> names = <String, String>{
+      'k': 'king',
+      'q': 'queen',
+      'r': 'rook',
+      'b': 'bishop',
+      'n': 'knight',
+      'p': 'pawn',
+    };
+    final String colour = token == token.toUpperCase() ? 'white' : 'black';
+    return 'assets/pieces/staunton_${colour}_${names[token.toLowerCase()]}.png';
+  }
+
+  static String _coachPieceLabel(String token) {
+    const Map<String, String> names = <String, String>{
+      'k': 'king',
+      'q': 'queen',
+      'r': 'rook',
+      'b': 'bishop',
+      'n': 'knight',
+      'p': 'pawn',
+    };
+    final String colour = token == token.toUpperCase() ? 'White' : 'Black';
+    return '$colour ${names[token.toLowerCase()]}';
   }
 }
 
