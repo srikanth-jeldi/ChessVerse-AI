@@ -72,7 +72,7 @@ void main() {
             await tester.ensureVisible(reviewButton);
             await tester.tap(reviewButton);
             await tester.pumpAndSettle();
-            expect(find.text('1. e2e4'), findsOneWidget);
+      expect(find.text('Move 1 · e2e4'), findsOneWidget);
             expect(
               find.text(personalCoachText('askPosition', language.code)),
               findsOneWidget,
