@@ -20,6 +20,88 @@ List<String?> reconstructFenBeforeMoves(
   return positions;
 }
 
+class CoachMoveCandidate {
+  const CoachMoveCandidate({
+    required this.move,
+    required this.piece,
+    required this.isCapture,
+    required this.isPromotion,
+    required this.isCastle,
+  });
+
+  final String move;
+  final String piece;
+  final bool isCapture;
+  final bool isPromotion;
+  final bool isCastle;
+}
+
+/// Returns useful legal-looking moves from [fen] for coaching comparison.
+///
+/// Engine evidence is still the authority for the best move. These candidates
+/// give learners a short calculation menu instead of pretending that one line
+/// was their only choice.
+List<CoachMoveCandidate> coachMoveCandidates(String fen, {int limit = 5}) {
+  final _PgnBoard? board = _PgnBoard.fromFen(fen);
+  if (board == null || limit <= 0) return const <CoachMoveCandidate>[];
+  final List<({CoachMoveCandidate candidate, int score})> ranked = [];
+  for (final MapEntry<String, String> entry in board.pieces.entries) {
+    final String piece = entry.value;
+    if (_PgnBoard._isWhite(piece) != board.whiteToMove) continue;
+    for (int file = 0; file < 8; file++) {
+      for (int rank = 1; rank <= 8; rank++) {
+        final String target = _PgnBoard._square(file, rank);
+        if (target == entry.key) continue;
+        final bool capture =
+            board.pieces.containsKey(target) ||
+            (piece.toUpperCase() == 'P' && board.enPassant == target);
+        bool castle = false;
+        bool canMove = board._canMove(entry.key, target, piece, capture);
+        if (piece.toUpperCase() == 'K' &&
+            (entry.key.codeUnitAt(0) - target.codeUnitAt(0)).abs() == 2) {
+          castle = board._canCastle(entry.key, target, piece);
+          canMove = castle;
+        }
+        if (!canMove) continue;
+        final bool promotion =
+            piece.toUpperCase() == 'P' &&
+            (target[1] == '1' || target[1] == '8');
+        final String move = '${entry.key}$target${promotion ? 'q' : ''}';
+        final String? captured = board.pieces[target];
+        int score = capture ? 500 + _pieceValue(captured) : 0;
+        if (promotion) score += 800;
+        if (castle) score += 260;
+        if ('d4e4d5e5'.contains(target)) score += 90;
+        if (piece.toUpperCase() == 'N' || piece.toUpperCase() == 'B') {
+          final bool home = entry.key[1] == (board.whiteToMove ? '1' : '8');
+          if (home) score += 75;
+        }
+        score += 20 - (file - 3).abs() - (rank - 4).abs();
+        ranked.add((
+          candidate: CoachMoveCandidate(
+            move: move,
+            piece: piece.toUpperCase(),
+            isCapture: capture,
+            isPromotion: promotion,
+            isCastle: castle,
+          ),
+          score: score,
+        ));
+      }
+    }
+  }
+  ranked.sort((left, right) => right.score.compareTo(left.score));
+  return ranked.take(limit).map((item) => item.candidate).toList();
+}
+
+int _pieceValue(String? piece) => switch (piece?.toUpperCase()) {
+  'Q' => 900,
+  'R' => 500,
+  'B' || 'N' => 300,
+  'P' => 100,
+  _ => 0,
+};
+
 class _PgnBoard {
   _PgnBoard({
     required this.pieces,
@@ -175,6 +257,22 @@ class _PgnBoard {
         return df.abs() <= 1 && dr.abs() <= 1;
     }
     return false;
+  }
+
+  bool _canCastle(String from, String to, String piece) {
+    if (piece.toUpperCase() != 'K') return false;
+    final bool white = _isWhite(piece);
+    final String rank = white ? '1' : '8';
+    if (from != 'e$rank' || (to != 'g$rank' && to != 'c$rank')) return false;
+    final bool kingSide = to[0] == 'g';
+    final String right = white
+        ? (kingSide ? 'K' : 'Q')
+        : (kingSide ? 'k' : 'q');
+    if (!castling.contains(right)) return false;
+    final List<String> clear = kingSide
+        ? <String>['f$rank', 'g$rank']
+        : <String>['b$rank', 'c$rank', 'd$rank'];
+    return clear.every((square) => !pieces.containsKey(square));
   }
 
   bool _rayClear(int ff, int fr, int tf, int tr) {

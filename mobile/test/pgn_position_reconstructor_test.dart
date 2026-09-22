@@ -46,4 +46,18 @@ void main() {
     ], initialFen: '7k/P7/8/8/8/8/8/7K w - - 0 1');
     expect(promotion.single, '7k/P7/8/8/8/8/8/7K w - - 0 1');
   });
+
+  test('offers five practical candidate moves from an imported position', () {
+    final candidates = coachMoveCandidates(standardInitialFen, limit: 5);
+
+    expect(candidates, hasLength(5));
+    expect(candidates.map((candidate) => candidate.move).toSet(), hasLength(5));
+    expect(
+      candidates.every(
+        (candidate) => RegExp(r'^[a-h][1-8][a-h][1-8][qrbn]?$')
+            .hasMatch(candidate.move),
+      ),
+      isTrue,
+    );
+  });
 }

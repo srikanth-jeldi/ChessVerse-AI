@@ -16,6 +16,7 @@ import '../../../core/widgets/ai_language_picker.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../data/ai_coach_api.dart';
 import '../domain/ai_review_report.dart';
+import '../domain/pgn_position_reconstructor.dart';
 import '../domain/personal_ai_coach.dart';
 
 class _ReactiveReviewLanguage extends StatelessWidget {
@@ -258,15 +259,14 @@ class _MobileCoachWorkspace extends StatefulWidget {
 
 class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
   int _selectedIndex = 0;
-  int _mode = 1;
 
   @override
   void initState() {
     super.initState();
-    final int latest = widget.report.insights.lastIndexWhere(
+    final int first = widget.report.insights.indexWhere(
       (AiMoveInsight insight) => insight.hasEngineEvidence,
     );
-    _selectedIndex = latest < 0 ? 0 : latest;
+    _selectedIndex = first < 0 ? 0 : first;
   }
 
   @override
@@ -292,19 +292,37 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
     ];
     return Column(
       children: <Widget>[
-        SizedBox(
-          width: double.infinity,
-          child: SegmentedButton<int>(
-            segments: const <ButtonSegment<int>>[
-              ButtonSegment<int>(value: 0, label: Text('Simple')),
-              ButtonSegment<int>(value: 1, label: Text('Coach')),
-              ButtonSegment<int>(value: 2, label: Text('Engine')),
-            ],
-            selected: <int>{_mode},
-            showSelectedIcon: false,
-            onSelectionChanged: (Set<int> value) {
-              setState(() => _mode = value.first);
-            },
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                _coachCopy('moveReview', languageCode),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.accentGold,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${_selectedIndex + 1} / ${widget.report.insights.length}',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: LinearProgressIndicator(
+            value: (_selectedIndex + 1) / widget.report.insights.length,
+            minHeight: 5,
+            backgroundColor: const Color(0xFF183249),
+            color: qualityColor,
           ),
         ),
         const SizedBox(height: 10),
@@ -314,111 +332,89 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
               children: <Widget>[
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final double boardWidth = math.min(
-                      constraints.maxWidth * .48,
-                      210,
+                    final double boardSize = math.min(
+                      constraints.maxWidth,
+                      430,
                     );
-                    return SizedBox(
-                      height: math.max(boardWidth, 220),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          SizedBox(
-                            width: boardWidth,
-                            child: ChessVerseCard(
-                              padding: const EdgeInsets.all(7),
-                              child: insight.hasEngineEvidence
-                                  ? _CoachPositionBoard(
-                                      fen: insight.fenBefore!,
-                                      annotations: annotations,
-                                      languageCode: languageCode,
-                                    )
-                                  : Center(
-                                      child: Text(
-                                        _coachCopy(
-                                          'positionUnavailable',
-                                          languageCode,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
+                    return Center(
+                      child: SizedBox.square(
+                        dimension: boardSize,
+                        child: ChessVerseCard(
+                          padding: const EdgeInsets.all(7),
+                          child: insight.hasEngineEvidence
+                              ? _CoachPositionBoard(
+                                  fen: insight.fenBefore!,
+                                  annotations: annotations,
+                                  languageCode: languageCode,
+                                )
+                              : Center(
+                                  child: Text(
+                                    _coachCopy(
+                                      'positionUnavailable',
+                                      languageCode,
                                     ),
-                            ),
-                          ),
-                          const SizedBox(width: 9),
-                          Expanded(
-                            child: ChessVerseCard(
-                              padding: const EdgeInsets.all(10),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: <Widget>[
-                                  Text(
-                                    '${insight.number}... ${insight.notation}',
-                                    style: const TextStyle(
-                                      color: AppColors.accentGold,
-                                      fontSize: 19,
-                                      fontWeight: FontWeight.w900,
-                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  const SizedBox(height: 7),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: qualityColor.withValues(
-                                        alpha: .16,
-                                      ),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: qualityColor),
-                                    ),
-                                    child: Text(
-                                      _localizedReviewQuality(
-                                        insight.label,
-                                        languageCode,
-                                      ),
-                                      style: TextStyle(
-                                        color: qualityColor,
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 7),
-                                  Text(
-                                    _coachTheme(insight),
-                                    style: const TextStyle(fontSize: 11),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
+                                ),
+                        ),
                       ),
                     );
                   },
                 ),
                 const SizedBox(height: 10),
-                if (_mode == 0)
-                  ChessVerseCard(
-                    child: _EvidenceRow(
-                      icon: Icons.lightbulb_outline_rounded,
-                      label: _reviewText('explain', languageCode),
-                      value: _simpleMoveExplanation(
-                        insight,
-                        insight.playedMove ?? insight.notation,
-                        languageCode,
+                ChessVerseCard(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: <Widget>[
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: qualityColor.withValues(alpha: .15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.psychology_alt_rounded,
+                          color: qualityColor,
+                        ),
                       ),
-                      color: qualityColor,
-                    ),
-                  )
-                else
-                  _StructuredMoveExplanation(
-                    insight: insight,
-                    languageCode: languageCode,
-                    color: qualityColor,
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              '${insight.number}... ${insight.notation}',
+                              style: const TextStyle(
+                                color: AppColors.accentGold,
+                                fontSize: 19,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            Text(
+                              '${_localizedReviewQuality(insight.label, languageCode)} • ${_coachTheme(insight)}',
+                              style: TextStyle(
+                                color: qualityColor,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+                const SizedBox(height: 10),
+                _StructuredMoveExplanation(
+                  insight: insight,
+                  languageCode: languageCode,
+                  color: qualityColor,
+                ),
+                const SizedBox(height: 10),
+                _CandidateMovesPanel(
+                  insight: insight,
+                  languageCode: languageCode,
+                ),
                 const SizedBox(height: 12),
               ],
             ),
@@ -433,36 +429,12 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
                   minimumSize: const Size.fromHeight(64),
                   padding: const EdgeInsets.symmetric(horizontal: 5),
                 ),
-                onPressed:
-                    insight.hasEngineEvidence &&
-                        insight.bestMove?.isNotEmpty == true &&
-                        widget.onRetryPosition != null
-                    ? () => widget.onRetryPosition!(insight)
+                onPressed: _selectedIndex > 0
+                    ? () => setState(() => _selectedIndex--)
                     : null,
-                icon: const Icon(Icons.replay_rounded),
+                icon: const Icon(Icons.arrow_back_rounded),
                 label: Text(
-                  _reviewText('retryPosition', languageCode),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 11),
-                ),
-              ),
-            ),
-            const SizedBox(width: 7),
-            Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(64),
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                ),
-                onPressed: insight.hasEngineEvidence
-                    ? () =>
-                          _showPositionEvidence(context, insight, languageCode)
-                    : null,
-                icon: const Icon(Icons.grid_view_rounded),
-                label: Text(
-                  _coachCopy('showOnBoard', languageCode),
+                  _coachCopy('previousMove', languageCode),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
@@ -516,15 +488,14 @@ class _DesktopCoachWorkspace extends StatefulWidget {
 
 class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
   int _selectedIndex = 0;
-  int _mode = 1;
 
   @override
   void initState() {
     super.initState();
-    final int latest = widget.report.insights.lastIndexWhere(
+    final int first = widget.report.insights.indexWhere(
       (AiMoveInsight insight) => insight.hasEngineEvidence,
     );
-    _selectedIndex = latest < 0 ? 0 : latest;
+    _selectedIndex = first < 0 ? 0 : first;
   }
 
   @override
@@ -550,18 +521,18 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
     ];
     return Column(
       children: <Widget>[
-        Center(
-          child: SegmentedButton<int>(
-            segments: const <ButtonSegment<int>>[
-              ButtonSegment<int>(value: 0, label: Text('Simple')),
-              ButtonSegment<int>(value: 1, label: Text('Coach')),
-              ButtonSegment<int>(value: 2, label: Text('Engine')),
-            ],
-            selected: <int>{_mode},
-            onSelectionChanged: (Set<int> value) {
-              setState(() => _mode = value.first);
-            },
-          ),
+        Row(
+          children: <Widget>[
+            Text(
+              _coachCopy('moveReview', languageCode),
+              style: const TextStyle(
+                color: AppColors.accentGold,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const Spacer(),
+            Text('${_selectedIndex + 1} / ${widget.report.insights.length}'),
+          ],
         ),
         const SizedBox(height: 14),
         Expanded(
@@ -764,27 +735,22 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
                         ),
                       ),
                       Expanded(
-                        child: _mode == 0
-                            ? SingleChildScrollView(
-                                child: _ReviewOverview(
-                                  report: widget.report,
-                                  onRetryPosition: widget.onRetryPosition,
-                                ),
-                              )
-                            : _mode == 2
-                            ? _MoveTimeline(
-                                report: widget.report,
-                                openingEco: widget.openingEco,
-                                timeControl: widget.timeControl,
-                                onRetryPosition: widget.onRetryPosition,
-                              )
-                            : SingleChildScrollView(
-                                child: _StructuredMoveExplanation(
-                                  insight: insight,
-                                  languageCode: languageCode,
-                                  color: qualityColor,
-                                ),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: <Widget>[
+                              _StructuredMoveExplanation(
+                                insight: insight,
+                                languageCode: languageCode,
+                                color: qualityColor,
                               ),
+                              const SizedBox(height: 10),
+                              _CandidateMovesPanel(
+                                insight: insight,
+                                languageCode: languageCode,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 10),
                       Row(
@@ -1554,6 +1520,213 @@ class _MoveTimeline extends StatelessWidget {
   }
 }
 
+class _CandidateMovesPanel extends StatelessWidget {
+  const _CandidateMovesPanel({
+    required this.insight,
+    required this.languageCode,
+  });
+
+  final AiMoveInsight insight;
+  final String languageCode;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<_CoachCandidate> candidates = _candidateMoves(insight);
+    if (candidates.isEmpty) return const SizedBox.shrink();
+    return ChessVerseCard(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              const Icon(
+                Icons.account_tree_outlined,
+                color: Color(0xFF59E4C8),
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _coachCopy('movesToCompare', languageCode),
+                  style: const TextStyle(
+                    color: Color(0xFF59E4C8),
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _coachCopy('candidateIntro', languageCode),
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 10),
+          for (int index = 0; index < candidates.length; index++) ...<Widget>[
+            _CandidateMoveTile(
+              number: index + 1,
+              candidate: candidates[index],
+              languageCode: languageCode,
+            ),
+            if (index < candidates.length - 1) const SizedBox(height: 7),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CandidateMoveTile extends StatelessWidget {
+  const _CandidateMoveTile({
+    required this.number,
+    required this.candidate,
+    required this.languageCode,
+  });
+
+  final int number;
+  final _CoachCandidate candidate;
+  final String languageCode;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = candidate.kind == _CandidateKind.best
+        ? AppColors.accentGold
+        : candidate.kind == _CandidateKind.played
+        ? const Color(0xFF59E4C8)
+        : const Color(0xFF73BFFF);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: color.withValues(alpha: .35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          CircleAvatar(
+            radius: 15,
+            backgroundColor: color.withValues(alpha: .18),
+            child: Text(
+              '$number',
+              style: TextStyle(color: color, fontWeight: FontWeight.w900),
+            ),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: <Widget>[
+                    Text(
+                      candidate.move,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      _candidateLabel(candidate.kind, languageCode),
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  candidate.explanation,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _CandidateKind { best, played, compare }
+
+class _CoachCandidate {
+  const _CoachCandidate(this.move, this.kind, this.explanation);
+
+  final String move;
+  final _CandidateKind kind;
+  final String explanation;
+}
+
+List<_CoachCandidate> _candidateMoves(AiMoveInsight insight) {
+  final List<_CoachCandidate> result = <_CoachCandidate>[];
+  final Set<String> seen = <String>{};
+  void add(String? move, _CandidateKind kind, String explanation) {
+    final String value = (move ?? '').trim();
+    if (value.isEmpty || !seen.add(value.toLowerCase())) return;
+    result.add(_CoachCandidate(value, kind, explanation));
+  }
+
+  add(
+    insight.bestMove,
+    _CandidateKind.best,
+    'Engine first choice. Calculate this line first and compare its reply with your move.',
+  );
+  add(
+    insight.playedMove ?? insight.notation,
+    _CandidateKind.played,
+    insight.centipawnLoss == null
+        ? 'Your move. Compare the resulting activity, king safety and material.'
+        : 'Your move lost ${insight.centipawnLoss} centipawns. Find the exact reply that caused the difference.',
+  );
+  final String? fen = insight.fenBefore;
+  if (fen != null && fen.isNotEmpty) {
+    for (final CoachMoveCandidate move in coachMoveCandidates(fen, limit: 12)) {
+      add(move.move, _CandidateKind.compare, _candidateExplanation(move));
+      if (result.length == 5) break;
+    }
+  }
+  return result.take(5).toList(growable: false);
+}
+
+String _candidateExplanation(CoachMoveCandidate move) {
+  if (move.isPromotion) {
+    return 'Promotion candidate. Calculate every forcing check and capture after the new queen appears.';
+  }
+  if (move.isCastle) {
+    return 'King-safety candidate. Compare safety and rook activity after castling.';
+  }
+  if (move.isCapture) {
+    return 'Forcing capture candidate. Check recaptures and count the final material before choosing it.';
+  }
+  if (move.piece == 'N' || move.piece == 'B') {
+    return 'Development candidate. Ask whether it improves activity while keeping the piece protected.';
+  }
+  return 'Candidate to compare. Test the opponent’s strongest check, capture and threat before deciding.';
+}
+
+String _candidateLabel(_CandidateKind kind, String languageCode) =>
+    switch (kind) {
+      _CandidateKind.best => _coachCopy('engineBest', languageCode),
+      _CandidateKind.played => _coachCopy('yourMove', languageCode),
+      _CandidateKind.compare => _coachCopy('compareCandidate', languageCode),
+    };
+
 class _StructuredMoveExplanation extends StatelessWidget {
   const _StructuredMoveExplanation({
     required this.insight,
@@ -1791,7 +1964,14 @@ String _coachCopy(String key, String languageCode) {
     'generalInsight':
         "Before committing, ask: What is my opponent's strongest reply?",
     'moveList': 'Move list',
+    'moveReview': 'Move-by-move coaching',
+    'movesToCompare': '5 moves to compare',
+    'candidateIntro': 'Start with the engine move, compare your choice, then calculate the other practical candidates. Only the first move is engine-ranked.',
+    'engineBest': 'ENGINE BEST',
+    'yourMove': 'YOUR MOVE',
+    'compareCandidate': 'COMPARE',
     'showOnBoard': 'Show on board',
+    'previousMove': 'Previous move',
     'nextMove': 'Next move',
     'positionUnavailable': 'Board evidence is unavailable for this move.',
   };
@@ -1805,7 +1985,14 @@ String _coachCopy(String key, String languageCode) {
     'coachInsight': 'కోచ్ సూచన',
     'howToImprove': 'ఎలా మెరుగుపడాలి',
     'moveList': 'ఎత్తుల జాబితా',
+    'moveReview': 'ఎత్తుల వారీ కోచింగ్',
+    'movesToCompare': 'పోల్చాల్సిన 5 ఎత్తులు',
+    'candidateIntro': 'ముందుగా ఇంజిన్ ఉత్తమ ఎత్తును చూడండి. తర్వాత మీ ఎత్తును, మిగతా సాధ్యమైన ఎత్తులను లెక్కించి పోల్చండి.',
+    'engineBest': 'ఇంజిన్ ఉత్తమం',
+    'yourMove': 'మీ ఎత్తు',
+    'compareCandidate': 'పోల్చండి',
     'showOnBoard': 'బోర్డుపై చూపించు',
+    'previousMove': 'మునుపటి ఎత్తు',
     'nextMove': 'తదుపరి ఎత్తు',
     'positionUnavailable': 'ఈ ఎత్తుకు బోర్డు ఆధారం అందుబాటులో లేదు.',
   };
