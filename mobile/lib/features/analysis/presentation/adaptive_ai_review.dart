@@ -2063,20 +2063,40 @@ class _LinePlayerDialogState extends State<_LinePlayerDialog> {
           const SizedBox(height: 6),
           Wrap(
             alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: <Widget>[
               IconButton(
                 tooltip: 'Restart',
                 onPressed: () => _seek(0),
+                constraints: const BoxConstraints.tightFor(
+                  width: 52,
+                  height: 52,
+                ),
+                padding: const EdgeInsets.all(12),
+                visualDensity: VisualDensity.standard,
                 icon: const Icon(Icons.restart_alt_rounded),
               ),
               IconButton(
                 tooltip: 'Previous',
                 onPressed: _index > 0 ? () => _seek(_index - 1) : null,
+                constraints: const BoxConstraints.tightFor(
+                  width: 52,
+                  height: 52,
+                ),
+                padding: const EdgeInsets.all(12),
+                visualDensity: VisualDensity.standard,
                 icon: const Icon(Icons.skip_previous_rounded),
               ),
               IconButton.filled(
                 tooltip: _playing ? 'Pause' : 'Play',
                 onPressed: _positions.length > 1 ? _togglePlay : null,
+                constraints: const BoxConstraints.tightFor(
+                  width: 56,
+                  height: 56,
+                ),
+                padding: const EdgeInsets.all(14),
+                visualDensity: VisualDensity.standard,
                 icon: Icon(
                   _playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
                 ),
@@ -2086,6 +2106,12 @@ class _LinePlayerDialogState extends State<_LinePlayerDialog> {
                 onPressed: _index < _positions.length - 1
                     ? () => _seek(_index + 1)
                     : null,
+                constraints: const BoxConstraints.tightFor(
+                  width: 52,
+                  height: 52,
+                ),
+                padding: const EdgeInsets.all(12),
+                visualDensity: VisualDensity.standard,
                 icon: const Icon(Icons.skip_next_rounded),
               ),
             ],
