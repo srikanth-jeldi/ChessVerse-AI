@@ -24,7 +24,8 @@ final class LeaderboardDtos {
             int losses,
             long careerCoinsWon,
             long globalRank,
-            long countryRank) {
+            long countryRank,
+            String photoUrl) {
     }
 
     record LeaderboardEntryDto(
@@ -38,7 +39,8 @@ final class LeaderboardDtos {
             int draws,
             int losses,
             long careerCoinsWon,
-            boolean you) {
+            boolean you,
+            String photoUrl) {
     }
 
     record LeaderboardDto(

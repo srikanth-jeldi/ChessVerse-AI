@@ -696,9 +696,11 @@ class _LeaderboardTile extends StatelessWidget {
         ? 'C'
         : trimmedName.substring(0, 1).toUpperCase();
     final String? usablePhotoUrl =
-        entry.you &&
-            profilePhotoUrl != null &&
-            profilePhotoUrl!.trim().isNotEmpty
+        entry.photoUrl != null && entry.photoUrl!.trim().isNotEmpty
+        ? entry.photoUrl!.trim()
+        : entry.you &&
+              profilePhotoUrl != null &&
+              profilePhotoUrl!.trim().isNotEmpty
         ? profilePhotoUrl!.trim()
         : null;
     return Container(

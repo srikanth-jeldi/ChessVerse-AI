@@ -1375,6 +1375,7 @@ class _TopPlayersPreview extends StatelessWidget {
             _CompactRankingRow(
               rank: rank,
               name: 'Loading player…',
+              country: null,
               rating: null,
               highlight: false,
             ),
@@ -1382,6 +1383,7 @@ class _TopPlayersPreview extends StatelessWidget {
           _CompactRankingRow(
             rank: 0,
             name: playerName,
+            country: null,
             rating: null,
             highlight: true,
             photoUrl: profilePhotoUrl,
@@ -1409,10 +1411,13 @@ class _TopPlayersPreview extends StatelessWidget {
             name: index < leaders.length
                 ? leaders[index].displayName
                 : 'Rank awaiting player',
+            country: index < leaders.length ? leaders[index].country : null,
             rating: index < leaders.length ? leaders[index].rating : null,
             highlight: index < leaders.length && leaders[index].you,
             photoUrl: index < leaders.length && leaders[index].you
-                ? profilePhotoUrl
+                ? (leaders[index].photoUrl ?? profilePhotoUrl)
+                : index < leaders.length
+                ? leaders[index].photoUrl
                 : null,
           ),
         if (!currentAlreadyListed) ...<Widget>[
@@ -1420,9 +1425,10 @@ class _TopPlayersPreview extends StatelessWidget {
           _CompactRankingRow(
             rank: current?.globalRank ?? 0,
             name: current?.displayName ?? playerName,
+            country: current?.country,
             rating: current?.rating,
             highlight: true,
-            photoUrl: profilePhotoUrl,
+            photoUrl: current?.photoUrl ?? profilePhotoUrl,
           ),
         ],
       ],
@@ -1434,12 +1440,14 @@ class _CompactRankingRow extends StatelessWidget {
   const _CompactRankingRow({
     required this.rank,
     required this.name,
+    required this.country,
     required this.rating,
     required this.highlight,
     this.photoUrl,
   });
   final int rank;
   final String name;
+  final String? country;
   final int? rating;
   final bool highlight;
   final String? photoUrl;
@@ -1474,15 +1482,34 @@ class _CompactRankingRow extends StatelessWidget {
         _Avatar(photoUrl: photoUrl, size: 28),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(
-            highlight ? 'YOU • $name' : name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                highlight ? 'YOU • $name' : name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (country != null && country!.trim().isNotEmpty)
+                Text(
+                  country!.trim().toLowerCase() == 'unknown'
+                      ? '🌐 Country not set'
+                      : '🌐 ${country!.trim()}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF91A9BA),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+            ],
           ),
         ),
         if (rating != null)

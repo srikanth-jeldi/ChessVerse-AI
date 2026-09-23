@@ -39,7 +39,7 @@ class OnlineMatchServiceTest {
             AuthenticatedPlayer player = invocation.getArgument(0);
             return new LeaderboardDtos.PlayerRatingDto(
                     player.id(), player.displayName(), "India", 1200, 1200,
-                    0, 0, 0, 0, 0, 1, 1);
+                    0, 0, 0, 0, 0, 1, 1, player.photoUrl());
         });
     }
 

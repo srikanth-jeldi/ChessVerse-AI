@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.data.domain.PageImpl;
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +19,7 @@ class OnlineRatingServiceTest {
     void settlesEqualRatedWinOnceAndStoresMatchSnapshot() {
         OnlinePlayerRatingRepository repository =
                 mock(OnlinePlayerRatingRepository.class);
-        OnlineRatingService service = new OnlineRatingService(repository);
+        OnlineRatingService service = new OnlineRatingService(repository, mock(JdbcTemplate.class));
         UUID whiteId = UUID.randomUUID();
         UUID blackId = UUID.randomUUID();
         OnlinePlayerRating white = new OnlinePlayerRating(whiteId, "White");
@@ -54,7 +55,7 @@ class OnlineRatingServiceTest {
     void drawUpdatesStatisticsWithoutChangingEqualRatings() {
         OnlinePlayerRatingRepository repository =
                 mock(OnlinePlayerRatingRepository.class);
-        OnlineRatingService service = new OnlineRatingService(repository);
+        OnlineRatingService service = new OnlineRatingService(repository, mock(JdbcTemplate.class));
         UUID whiteId = UUID.randomUUID();
         UUID blackId = UUID.randomUUID();
         OnlinePlayerRating white = new OnlinePlayerRating(whiteId, "White");
@@ -83,7 +84,7 @@ class OnlineRatingServiceTest {
     @Test
     void leaderboardRanksNewProfilesSoNamesAreVisibleBeforeFirstGame() {
         OnlinePlayerRatingRepository repository = mock(OnlinePlayerRatingRepository.class);
-        OnlineRatingService service = new OnlineRatingService(repository);
+        OnlineRatingService service = new OnlineRatingService(repository, mock(JdbcTemplate.class));
         UUID playerId = UUID.randomUUID();
         OnlinePlayerRating player = new OnlinePlayerRating(playerId, "Player");
         when(repository.lockByPlayerId(playerId)).thenReturn(Optional.of(player));
@@ -106,7 +107,7 @@ class OnlineRatingServiceTest {
     @Test
     void profileRankUsesTheSameTieBreakOrderAsLeaderboardRows() {
         OnlinePlayerRatingRepository repository = mock(OnlinePlayerRatingRepository.class);
-        OnlineRatingService service = new OnlineRatingService(repository);
+        OnlineRatingService service = new OnlineRatingService(repository, mock(JdbcTemplate.class));
         UUID playerId = UUID.randomUUID();
         OnlinePlayerRating player = new OnlinePlayerRating(playerId, "Player");
         player.country = "India";

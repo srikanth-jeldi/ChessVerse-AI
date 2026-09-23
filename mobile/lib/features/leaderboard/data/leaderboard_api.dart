@@ -19,6 +19,7 @@ class PlayerRatingDto {
     required this.careerCoinsWon,
     required this.globalRank,
     required this.countryRank,
+    this.photoUrl,
   });
 
   final String playerId;
@@ -33,6 +34,7 @@ class PlayerRatingDto {
   final int careerCoinsWon;
   final int globalRank;
   final int countryRank;
+  final String? photoUrl;
 
   factory PlayerRatingDto.fromJson(Map<String, dynamic> json) =>
       PlayerRatingDto(
@@ -48,6 +50,7 @@ class PlayerRatingDto {
         careerCoinsWon: (json['careerCoinsWon'] as num?)?.toInt() ?? 0,
         globalRank: (json['globalRank'] as num?)?.toInt() ?? 1,
         countryRank: (json['countryRank'] as num?)?.toInt() ?? 1,
+        photoUrl: json['photoUrl'] as String?,
       );
 }
 
@@ -64,6 +67,7 @@ class LeaderboardEntryDto {
     required this.losses,
     required this.careerCoinsWon,
     required this.you,
+    this.photoUrl,
   });
 
   final int rank;
@@ -77,6 +81,7 @@ class LeaderboardEntryDto {
   final int losses;
   final int careerCoinsWon;
   final bool you;
+  final String? photoUrl;
 
   factory LeaderboardEntryDto.fromJson(Map<String, dynamic> json) =>
       LeaderboardEntryDto(
@@ -91,25 +96,26 @@ class LeaderboardEntryDto {
         losses: (json['losses'] as num?)?.toInt() ?? 0,
         careerCoinsWon: (json['careerCoinsWon'] as num?)?.toInt() ?? 0,
         you: json['you'] as bool? ?? false,
+        photoUrl: json['photoUrl'] as String?,
       );
 
   factory LeaderboardEntryDto.current(
     PlayerRatingDto player, {
     required String scope,
-  }) =>
-      LeaderboardEntryDto(
-        rank: scope == 'country' ? player.countryRank : player.globalRank,
-        playerId: player.playerId,
-        displayName: player.displayName,
-        country: player.country,
-        rating: player.rating,
-        gamesPlayed: player.gamesPlayed,
-        wins: player.wins,
-        draws: player.draws,
-        losses: player.losses,
-        careerCoinsWon: player.careerCoinsWon,
-        you: true,
-      );
+  }) => LeaderboardEntryDto(
+    rank: scope == 'country' ? player.countryRank : player.globalRank,
+    playerId: player.playerId,
+    displayName: player.displayName,
+    country: player.country,
+    rating: player.rating,
+    gamesPlayed: player.gamesPlayed,
+    wins: player.wins,
+    draws: player.draws,
+    losses: player.losses,
+    careerCoinsWon: player.careerCoinsWon,
+    you: true,
+    photoUrl: player.photoUrl,
+  );
 }
 
 class LeaderboardDto {
@@ -134,20 +140,20 @@ class LeaderboardDto {
   final List<LeaderboardEntryDto> entries;
 
   factory LeaderboardDto.fromJson(Map<String, dynamic> json) => LeaderboardDto(
-        scope: json['scope'] as String? ?? 'global',
-        country: json['country'] as String?,
-        you: PlayerRatingDto.fromJson(
-          json['you'] as Map<String, dynamic>? ?? <String, dynamic>{},
-        ),
-        page: (json['page'] as num?)?.toInt() ?? 0,
-        pageSize: (json['pageSize'] as num?)?.toInt() ?? 50,
-        totalPlayers: (json['totalPlayers'] as num?)?.toInt() ?? 0,
-        hasNext: json['hasNext'] as bool? ?? false,
-        entries: (json['entries'] as List<dynamic>? ?? <dynamic>[])
-            .whereType<Map<String, dynamic>>()
-            .map(LeaderboardEntryDto.fromJson)
-            .toList(growable: false),
-      );
+    scope: json['scope'] as String? ?? 'global',
+    country: json['country'] as String?,
+    you: PlayerRatingDto.fromJson(
+      json['you'] as Map<String, dynamic>? ?? <String, dynamic>{},
+    ),
+    page: (json['page'] as num?)?.toInt() ?? 0,
+    pageSize: (json['pageSize'] as num?)?.toInt() ?? 50,
+    totalPlayers: (json['totalPlayers'] as num?)?.toInt() ?? 0,
+    hasNext: json['hasNext'] as bool? ?? false,
+    entries: (json['entries'] as List<dynamic>? ?? <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .map(LeaderboardEntryDto.fromJson)
+        .toList(growable: false),
+  );
 }
 
 class LeaderboardApi {
@@ -172,12 +178,16 @@ class LeaderboardApi {
   }
 
   Future<PlayerRatingDto> syncCountry(String token, String country) async {
-    final Uri uri =
-        Uri.parse('${AppConfig.apiBaseUrl}/api/v1/leaderboard/me/country');
+    final Uri uri = Uri.parse(
+      '${AppConfig.apiBaseUrl}/api/v1/leaderboard/me/country',
+    );
     return PlayerRatingDto.fromJson(
-      await _request(token, 'PUT', uri, body: <String, Object?>{
-        'country': country,
-      }),
+      await _request(
+        token,
+        'PUT',
+        uri,
+        body: <String, Object?>{'country': country},
+      ),
     );
   }
 
@@ -194,16 +204,18 @@ class LeaderboardApi {
     try {
       final http.Response response = method == 'PUT'
           ? await http
-              .put(uri, headers: headers, body: jsonEncode(body))
-              .timeout(const Duration(seconds: 15))
+                .put(uri, headers: headers, body: jsonEncode(body))
+                .timeout(const Duration(seconds: 15))
           : await http
-              .get(uri, headers: headers)
-              .timeout(const Duration(seconds: 15));
-      final Object? decoded =
-          response.body.isEmpty ? null : jsonDecode(response.body);
+                .get(uri, headers: headers)
+                .timeout(const Duration(seconds: 15));
+      final Object? decoded = response.body.isEmpty
+          ? null
+          : jsonDecode(response.body);
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        final Map<String, dynamic> error =
-            decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+        final Map<String, dynamic> error = decoded is Map<String, dynamic>
+            ? decoded
+            : <String, dynamic>{};
         throw LeaderboardException(
           error['message'] as String? ?? 'Leaderboard request failed.',
         );

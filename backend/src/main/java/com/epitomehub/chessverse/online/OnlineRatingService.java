@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @Service
 public class OnlineRatingService {
@@ -18,9 +19,11 @@ public class OnlineRatingService {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final OnlinePlayerRatingRepository ratings;
+    private final JdbcTemplate jdbc;
 
-    public OnlineRatingService(OnlinePlayerRatingRepository ratings) {
+    public OnlineRatingService(OnlinePlayerRatingRepository ratings, JdbcTemplate jdbc) {
         this.ratings = ratings;
+        this.jdbc = jdbc;
     }
 
     @Transactional
@@ -102,7 +105,8 @@ public class OnlineRatingService {
                     row.playerId, row.displayName, row.country, row.rating,
                     row.gamesPlayed, row.wins, row.draws, row.losses,
                     row.careerCoinsWon,
-                    row.playerId.equals(player.id())));
+                    row.playerId.equals(player.id()),
+                    profilePhotoUrl(row.playerId)));
         }
         return new LeaderboardDtos.LeaderboardDto(
                 scope, scope.equals("country") ? country : null, profileDto(you),
@@ -141,7 +145,18 @@ public class OnlineRatingService {
                 rating.playerId, rating.displayName, rating.country, rating.rating,
                 rating.peakRating, rating.gamesPlayed, rating.wins, rating.draws, rating.losses,
                 rating.careerCoinsWon,
-                globalRank, countryRank);
+                globalRank, countryRank, profilePhotoUrl(rating.playerId));
+    }
+
+    private String profilePhotoUrl(UUID playerId) {
+        try {
+            return jdbc.queryForObject(
+                    "select photo_url from player_account where id = ?",
+                    String.class,
+                    playerId);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 
     private String normalizeCountry(String rawCountry) {
