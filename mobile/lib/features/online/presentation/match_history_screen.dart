@@ -56,6 +56,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   bool _historySyncFailed = false;
   String _filter = 'All';
   final Set<String> _selectedGameIds = <String>{};
+  bool _selectionMode = false;
   late Future<List<ComputerGameDraft>> _drafts = _loadDrafts();
   Future<List<ComputerGameDraft>> _loadDrafts() async {
     final owner = await ComputerGameStore.activeOwner();
@@ -472,60 +473,6 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     );
   }
 
-  Future<void> _exportPgn() async {
-    final List<SavedGameRecord> games = _allSavedGames();
-    if (games.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Play or import a game before exporting PGN.'),
-        ),
-      );
-      return;
-    }
-    final String pgn = _pgn.exportGames(games);
-    await FilePicker.saveFile(
-      dialogTitle: 'Export ChessVerseAI games',
-      fileName: 'chessverseai-games.pgn',
-      type: FileType.custom,
-      allowedExtensions: const <String>['pgn'],
-      bytes: Uint8List.fromList(utf8.encode(pgn)),
-    );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Exported ${games.length} game${games.length == 1 ? '' : 's'} as PGN.',
-        ),
-      ),
-    );
-  }
-
-  Future<void> _exportFen() async {
-    try {
-      final fen = _fen.exportPositions(_allSavedGames());
-      final count = fen.split('\n').length;
-      await FilePicker.saveFile(
-        dialogTitle: 'Export ChessVerseAI positions',
-        fileName: 'chessverseai-positions.fen',
-        type: FileType.custom,
-        allowedExtensions: const <String>['fen'],
-        bytes: Uint8List.fromList(utf8.encode('$fen\n')),
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Exported $count FEN position${count == 1 ? '' : 's'}.',
-          ),
-        ),
-      );
-    } on FormatException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
-    }
-  }
-
   List<SavedGameRecord> _allSavedGames() {
     final Map<String, SavedGameRecord> unique = <String, SavedGameRecord>{};
     for (final SavedGameRecord game in <SavedGameRecord>[
@@ -701,6 +648,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   void _toggleGameSelection(SavedGameRecord game) {
     final String id = _gameFingerprint(game);
     setState(() {
+      _selectionMode = true;
       if (!_selectedGameIds.add(id)) _selectedGameIds.remove(id);
     });
   }
@@ -712,12 +660,21 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     final List<SavedGameRecord> selected = games
         .where((game) => _selectedGameIds.contains(_gameFingerprint(game)))
         .toList(growable: false);
+    if (selected.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select at least one game to export.')),
+      );
+      return;
+    }
     for (final SavedGameRecord game in selected) {
       if (!mounted) return;
       await _exportSingleGame(game, format);
     }
     if (!mounted) return;
-    setState(_selectedGameIds.clear);
+    setState(() {
+      _selectedGameIds.clear();
+      _selectionMode = false;
+    });
   }
 
   Future<void> _chooseImportFormat() async {
@@ -727,9 +684,24 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   }
 
   Future<void> _chooseExportFormat() async {
-    final format = await _chooseArchiveFormat(importing: false);
-    if (format == 'pgn') await _exportPgn();
-    if (format == 'fen') await _exportFen();
+    final List<SavedGameRecord> games = _allSavedGames();
+    if (games.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Play or import a game before exporting.'),
+        ),
+      );
+      return;
+    }
+    setState(() {
+      _selectedGameIds.clear();
+      _selectionMode = true;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Select one or more games, then choose PGN or FEN.'),
+      ),
+    );
   }
 
   Future<String?> _chooseArchiveFormat({
@@ -771,7 +743,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                 title: 'PGN • COMPLETE GAMES',
                 subtitle: importing
                     ? 'Import move history from Chess.com or another chess app'
-                    : 'Export all saved games with players, result and moves',
+                    : 'Select games, then export players, result and moves',
                 onTap: () => Navigator.pop(context, 'pgn'),
               ),
               const SizedBox(height: 12),
@@ -1240,12 +1212,14 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                                       )
                                       .toList(),
                             ),
-                            if (_selectedGameIds.isNotEmpty) ...<Widget>[
+                            if (_selectionMode) ...<Widget>[
                               const SizedBox(height: 12),
                               _MultiSelectToolbar(
                                 count: _selectedGameIds.length,
-                                onCancel: () =>
-                                    setState(_selectedGameIds.clear),
+                                onCancel: () => setState(() {
+                                  _selectedGameIds.clear();
+                                  _selectionMode = false;
+                                }),
                                 onExportPgn: () => _exportSelectedGames(
                                   exportableGames,
                                   'pgn',
@@ -1279,8 +1253,8 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                                   selected: _selectedGameIds.contains(
                                     _gameFingerprint(game),
                                   ),
-                                  selectionMode: _selectedGameIds.isNotEmpty,
-                                  onTap: () => _selectedGameIds.isNotEmpty
+                                  selectionMode: _selectionMode,
+                                  onTap: () => _selectionMode
                                       ? _toggleGameSelection(game)
                                       : _openCompleted(game),
                                   onReplay: () => Navigator.of(context)
@@ -1320,9 +1294,8 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                                       selected: _selectedGameIds.contains(
                                         _gameFingerprint(g),
                                       ),
-                                      selectionMode:
-                                          _selectedGameIds.isNotEmpty,
-                                      onTap: () => _selectedGameIds.isNotEmpty
+                                      selectionMode: _selectionMode,
+                                      onTap: () => _selectionMode
                                           ? _toggleGameSelection(g)
                                           : _openCompleted(g),
                                       onLongPress: () => _showGameActions(g),
