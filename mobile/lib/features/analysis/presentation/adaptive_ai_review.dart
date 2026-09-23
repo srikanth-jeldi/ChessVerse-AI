@@ -3445,7 +3445,6 @@ class _CoachPositionBoardState extends State<_CoachPositionBoard> {
   @override
   void initState() {
     super.initState();
-    _candidateAnnotations = _localCandidateAnnotations();
     _loadCandidateArrows();
   }
 
@@ -3459,7 +3458,7 @@ class _CoachPositionBoardState extends State<_CoachPositionBoard> {
         .map((item) => '${item.from}${item.to}:${item.kind}')
         .join('|');
     if (oldWidget.fen != widget.fen || oldSignature != newSignature) {
-      _candidateAnnotations = _localCandidateAnnotations();
+      _candidateAnnotations = const <AiBoardAnnotation>[];
       _loadCandidateArrows();
     }
   }
@@ -3503,33 +3502,9 @@ class _CoachPositionBoardState extends State<_CoachPositionBoard> {
       }
       setState(() => _candidateAnnotations = alternatives);
     } on Object {
-      // Keep the played move and deterministic legal alternatives visible.
-      // A later revisit retries engine verification through the shared API.
+      // Keep only the played and best arrows. Showing guessed alternatives
+      // before Stockfish responds makes blue arrows visibly change in place.
     }
-  }
-
-  List<AiBoardAnnotation> _localCandidateAnnotations() {
-    final Set<String> primaryMoves = widget.annotations
-        .map((AiBoardAnnotation item) => '${item.from}${item.to}')
-        .toSet();
-    final List<AiBoardAnnotation> alternatives = <AiBoardAnnotation>[];
-    for (final CoachMoveCandidate candidate in coachMoveCandidates(
-      widget.fen,
-      limit: 8,
-    )) {
-      final String move = candidate.move.trim().toLowerCase();
-      if (move.length < 4 || !primaryMoves.add(move.substring(0, 4))) continue;
-      alternatives.add(
-        AiBoardAnnotation(
-          move.substring(0, 2),
-          move.substring(2, 4),
-          'candidate',
-          _reviewText('alternative', widget.languageCode),
-        ),
-      );
-      if (alternatives.length == 3) break;
-    }
-    return alternatives;
   }
 
   @override
