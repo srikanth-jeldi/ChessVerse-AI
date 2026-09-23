@@ -2572,7 +2572,7 @@ class _StructuredMoveExplanation extends StatelessWidget {
         : _coachCopy('noAlternative', languageCode);
     final String threat = insight.opponentThreat?.isNotEmpty == true
         ? '${insight.opponentThreat!}. ${_coachCopy('replyReason', languageCode)}'
-        : _coachCopy('noForcingThreat', languageCode);
+        : '${_readableUci(played)} — ${_coachCopy('noForcingThreat', languageCode)}';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -2645,7 +2645,7 @@ class _StructuredMoveExplanation extends StatelessWidget {
           _EvidenceRow(
             icon: Icons.warning_amber_rounded,
             label: _coachCopy('beCareful', languageCode),
-            value: _coachCopy('captureChecklist', languageCode),
+            value: _moveCaution(insight, languageCode),
             color: const Color(0xFFFFA65C),
           ),
           const SizedBox(height: 8),
@@ -2659,7 +2659,7 @@ class _StructuredMoveExplanation extends StatelessWidget {
           _EvidenceRow(
             icon: Icons.school_outlined,
             label: _coachCopy('howToImprove', languageCode),
-            value: _coachCopy('improveRoutine', languageCode),
+            value: _moveImprovement(insight, languageCode),
             color: AppColors.accentGold,
           ),
         ],
@@ -2819,27 +2819,55 @@ List<(IconData, String, String)> _moveEffects(
       (
         Icons.balance_rounded,
         _coachCopy('material', languageCode),
-        _coachCopy('materialChanged', languageCode),
+        '${_readableUci(insight.playedMove ?? insight.notation)} · ${_coachCopy('materialChanged', languageCode)}',
       ),
     (
       Icons.open_with_rounded,
       _coachCopy('activity', languageCode),
-      _coachCopy('pieceActivity', languageCode),
+      '${_readableUci(insight.playedMove ?? insight.notation)} · ${_localizedReviewQuality(insight.label, languageCode)}',
     ),
     (
       Icons.health_and_safety_outlined,
       _coachCopy('kingSafety', languageCode),
       insight.opponentThreat?.isNotEmpty == true
-          ? _coachCopy('checkReply', languageCode)
+          ? '${_coachCopy('checkReply', languageCode)}: ${insight.opponentThreat}'
           : _coachCopy('noImmediateDanger', languageCode),
     ),
   ];
 }
 
-String _coachInsight(AiMoveInsight insight, String languageCode) =>
-    insight.notation.contains('x')
-    ? _coachCopy('captureInsight', languageCode)
-    : _coachCopy('generalInsight', languageCode);
+String _coachInsight(AiMoveInsight insight, String languageCode) {
+  final String classification = _localizedReviewQuality(
+    insight.label,
+    languageCode,
+  );
+  final String explanation = _localizedReviewExplanation(
+    insight.explanation,
+    languageCode,
+  );
+  return '$classification · ${_readableUci(insight.playedMove ?? insight.notation)} — $explanation';
+}
+
+String _moveCaution(AiMoveInsight insight, String languageCode) {
+  if (insight.opponentThreat?.trim().isNotEmpty == true) {
+    return '${insight.opponentThreat!.trim()} · ${personalCoachText('calculate', languageCode)}';
+  }
+  final String evidence = insight.centipawnLoss == null
+      ? _localizedReviewExplanation(insight.explanation, languageCode)
+      : '${personalCoachText('loss', languageCode)}: ${insight.centipawnLoss} cp';
+  return '${_readableUci(insight.playedMove ?? insight.notation)} · $evidence';
+}
+
+String _moveImprovement(AiMoveInsight insight, String languageCode) {
+  final String? best = insight.bestMove?.trim();
+  if (best != null && best.isNotEmpty) {
+    final String line = insight.principalVariation.isEmpty
+        ? personalCoachText('calculate', languageCode)
+        : '${CoachLocalizations(languageCode).text('continuation')}: ${insight.principalVariation.take(5).map(_readableUci).join(' → ')}';
+    return '${CoachLocalizations(languageCode).text('best')}: ${_readableUci(best)} · $line';
+  }
+  return '${_coachTheme(insight, languageCode)} · ${_localizedReviewExplanation(insight.explanation, languageCode)}';
+}
 
 String _coachCopy(String key, String languageCode) {
   const english = <String, String>{
