@@ -971,6 +971,7 @@ class _SplashGateState extends State<SplashGate> {
         }),
         onNotifications: () => _openNotificationCenter(context),
         onCoins: () => _openRewardsCenter(context),
+        onLanguage: () => _openLanguageCentre(context),
         onLearnChess: () => setState(() => _primaryDestination = 3),
         onProfile: () => setState(() => _primaryDestination = 4),
         onSettings: () => _push(

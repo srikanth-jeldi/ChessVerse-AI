@@ -38,6 +38,7 @@ class HomeDashboardScreen extends StatelessWidget {
     this.onTournaments = _noOnlineAction,
     this.onNotifications = _noOnlineAction,
     this.onCoins = _noOnlineAction,
+    this.onLanguage = _noOnlineAction,
     required this.onSettings,
     this.showPrimaryNavigation = true,
     super.key,
@@ -64,6 +65,7 @@ class HomeDashboardScreen extends StatelessWidget {
   final VoidCallback onTournaments;
   final VoidCallback onNotifications;
   final VoidCallback onCoins;
+  final VoidCallback onLanguage;
   final VoidCallback onSettings;
   final bool showPrimaryNavigation;
 
@@ -98,6 +100,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 onTournaments: onTournaments,
                 onNotifications: onNotifications,
                 onCoins: onCoins,
+                onLanguage: onLanguage,
                 onSettings: onSettings,
                 showPrimaryNavigation: showPrimaryNavigation,
               );
@@ -124,6 +127,7 @@ class HomeDashboardScreen extends StatelessWidget {
               onTournaments: onTournaments,
               onNotifications: onNotifications,
               onCoins: onCoins,
+              onLanguage: onLanguage,
               onSettings: onSettings,
               showPrimaryNavigation: showPrimaryNavigation,
             );
@@ -157,6 +161,7 @@ class _MobileHome extends StatefulWidget {
     required this.onTournaments,
     required this.onNotifications,
     required this.onCoins,
+    required this.onLanguage,
     required this.onSettings,
     required this.showPrimaryNavigation,
   });
@@ -182,6 +187,7 @@ class _MobileHome extends StatefulWidget {
   final VoidCallback onTournaments;
   final VoidCallback onNotifications;
   final VoidCallback onCoins;
+  final VoidCallback onLanguage;
   final VoidCallback onSettings;
   final bool showPrimaryNavigation;
 
@@ -219,6 +225,7 @@ class _MobileHomeState extends State<_MobileHome> {
                       onSettings: widget.onSettings,
                       onNotifications: widget.onNotifications,
                       onCoins: widget.onCoins,
+                      onLanguage: widget.onLanguage,
                     ),
                     const SizedBox(height: 8),
                     const _BrandHero(compact: true),
@@ -448,6 +455,7 @@ class _WideHome extends StatefulWidget {
     required this.onTournaments,
     required this.onNotifications,
     required this.onCoins,
+    required this.onLanguage,
     required this.onSettings,
     required this.showPrimaryNavigation,
   });
@@ -473,6 +481,7 @@ class _WideHome extends StatefulWidget {
   final VoidCallback onTournaments;
   final VoidCallback onNotifications;
   final VoidCallback onCoins;
+  final VoidCallback onLanguage;
   final VoidCallback onSettings;
   final bool showPrimaryNavigation;
 
@@ -524,6 +533,7 @@ class _WideHomeState extends State<_WideHome> {
                           onSettings: widget.onSettings,
                           onNotifications: widget.onNotifications,
                           onCoins: widget.onCoins,
+                          onLanguage: widget.onLanguage,
                           wide: true,
                         ),
                         SizedBox(height: compact ? 10 : 16),
@@ -1535,6 +1545,7 @@ class _PlayerHeader extends StatelessWidget {
     required this.onSettings,
     required this.onNotifications,
     required this.onCoins,
+    required this.onLanguage,
     this.wide = false,
   });
   final String playerName;
@@ -1544,6 +1555,7 @@ class _PlayerHeader extends StatelessWidget {
   final VoidCallback onSettings;
   final VoidCallback onNotifications;
   final VoidCallback onCoins;
+  final VoidCallback onLanguage;
   final bool wide;
 
   @override
@@ -1611,6 +1623,20 @@ class _PlayerHeader extends StatelessWidget {
         style: TextStyle(fontWeight: FontWeight.w800),
       ),
     );
+    final Widget languages = TextButton.icon(
+      key: const ValueKey<String>('home-language'),
+      onPressed: onLanguage,
+      style: TextButton.styleFrom(
+        foregroundColor: const Color(0xFF59E4C8),
+        backgroundColor: const Color(0xFF102A40),
+        padding: EdgeInsets.symmetric(horizontal: wide ? 12 : 9, vertical: 9),
+      ),
+      icon: const Icon(Icons.translate_rounded, size: 19),
+      label: const Text(
+        'Languages (34)',
+        style: TextStyle(fontWeight: FontWeight.w800),
+      ),
+    );
 
     if (!wide) {
       return Column(
@@ -1634,6 +1660,7 @@ class _PlayerHeader extends StatelessWidget {
               spacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: <Widget>[
+                languages,
                 freeCoins,
                 CoinBalanceBadge(
                   balance: coinBalance,
@@ -1652,6 +1679,8 @@ class _PlayerHeader extends StatelessWidget {
         profile,
         const SizedBox(width: 12),
         identity,
+        languages,
+        const SizedBox(width: 6),
         freeCoins,
         const SizedBox(width: 6),
         CoinBalanceBadge(
