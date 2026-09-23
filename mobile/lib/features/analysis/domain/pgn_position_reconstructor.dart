@@ -174,6 +174,11 @@ class _PgnBoard {
 
   bool play(String rawMove) {
     String san = rawMove.trim().replaceFirst(RegExp(r'^\d+\.(?:\.\.)?'), '');
+    // In-app histories use readable coordinate captures such as `d5 x c7`
+    // and `e5 x d6 e.p.`. PGN imports normally omit those spaces, so
+    // normalize both forms before replaying the move.
+    san = san.replaceAll(RegExp(r'\s+'), '');
+    san = san.replaceFirst(RegExp(r'e\.?p\.?$', caseSensitive: false), '');
     san = san.replaceAll(RegExp(r'[!?+#]+$'), '');
     if (san.isEmpty || san == 'e.p.' || san == 'ep') return san.isNotEmpty;
 

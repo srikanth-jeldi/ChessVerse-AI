@@ -78,4 +78,19 @@ void main() {
     expect(positions.every((String? fen) => fen != null), isTrue);
     expect(positions.last, contains(' b '));
   });
+
+  test('reconstructs spaced in-app coordinate captures and later moves', () {
+    final positions = reconstructFenBeforeMoves(<String>[
+      'b1c3',
+      'f7f6',
+      'c3d5',
+      'b7b6',
+      'd5 x c7',
+      'b8c6',
+    ]);
+
+    expect(positions, hasLength(6));
+    expect(positions.every((String? fen) => fen != null), isTrue);
+    expect(positions.last, startsWith('rnbqkbnr/p1Npp1pp/1p3p2/8/8/8/'));
+  });
 }
