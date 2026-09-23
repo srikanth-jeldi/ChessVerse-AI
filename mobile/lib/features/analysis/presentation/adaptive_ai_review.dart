@@ -2960,7 +2960,8 @@ String _coachCopy(String key, String languageCode) {
     'keepsBestResult': coach.text('bestFound'),
     'costVsBest': personalCoachText('loss', languageCode),
     'showOnBoard': personalCoachText('boardSemantics', languageCode),
-    'previousMove': coach.text('back'),
+    'previousMove':
+        '${coach.text('back')} ${reviewNarrativeText('move', languageCode, const <String, String>{'count': ''}).trim()}',
     'nextMove': coachExtraText('nextPuzzle', languageCode),
     'positionUnavailable': personalCoachText('unavailable', languageCode),
   };
