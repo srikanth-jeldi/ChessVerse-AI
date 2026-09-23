@@ -14,7 +14,6 @@ void main() {
     int? coinBalance,
     TournamentDto? nextTournament,
     VoidCallback? onSavedGames,
-    VoidCallback? onLanguage,
   }) {
     return MaterialApp(
       theme: AppTheme.darkTheme,
@@ -32,7 +31,6 @@ void main() {
         onSavedGames: onSavedGames ?? () {},
         onLearnChess: () {},
         onProfile: () {},
-        onLanguage: onLanguage ?? () {},
         onSettings: () {},
         onTournaments: () {},
       ),
@@ -66,30 +64,6 @@ void main() {
     await tester.pump();
     expect(onlineLaunches, 0);
     expect(computerLaunches, 1);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('home exposes all languages directly from its header', (
-    WidgetTester tester,
-  ) async {
-    var opens = 0;
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    await tester.pumpWidget(
-      app(onOnline: () {}, onComputer: () {}, onLanguage: () => opens++),
-    );
-    await tester.pumpAndSettle();
-
-    final Finder languages = find.byKey(
-      const ValueKey<String>('home-language'),
-    );
-    expect(languages, findsOneWidget);
-    expect(find.text('Languages (34)'), findsOneWidget);
-    await tester.tap(languages);
-    expect(opens, 1);
     expect(tester.takeException(), isNull);
   });
 
