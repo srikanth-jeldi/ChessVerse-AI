@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -45,8 +44,6 @@ class MatchHistoryScreen extends StatefulWidget {
 }
 
 class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
-  static const String _standardInitialFen =
-      'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
   final OnlineMatchApi _api = const OnlineMatchApi();
   static const PgnArchiveService _pgn = PgnArchiveService();
   static const FenArchiveService _fen = FenArchiveService();
@@ -59,8 +56,6 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   bool _historySyncFailed = false;
   String _filter = 'All';
   final Set<String> _selectedGameIds = <String>{};
-  final Map<String, List<SavedMoveReview>> _onlineReviews =
-      <String, List<SavedMoveReview>>{};
   late Future<List<ComputerGameDraft>> _drafts = _loadDrafts();
   Future<List<ComputerGameDraft>> _loadDrafts() async {
     final owner = await ComputerGameStore.activeOwner();
@@ -557,168 +552,11 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     whitePlayer: match.whitePlayerName ?? 'White',
     blackPlayer: match.blackPlayerName ?? 'Black',
     playerSide: match.yourColor.toLowerCase(),
-    moveReviews: _onlineReviews[match.id] ?? const <SavedMoveReview>[],
     // The online API's `fen` is the match's latest/final position, not the
     // position before the first move. Feeding it to the review reconstructor as
     // an initial FEN makes otherwise valid move histories lose board evidence.
     // Online arena games currently start from the standard chess position.
     initialFen: null,
-  );
-
-  Future<void> _openOnlineGameReview(OnlineMatchDto match) async {
-    SavedGameRecord game = _onlineAsSavedGame(match);
-    final _PgnReviewChoice? choice = await _choosePgnReview(game);
-    if (choice == null || !mounted) return;
-    if (game.moveReviews.isEmpty) {
-      final StoredAuthSession? session = await const AuthSessionStore().read();
-      if (session == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Sign in to run the real Stockfish game analysis.'),
-          ),
-        );
-        return;
-      }
-      if (!mounted) return;
-      BuildContext? progressContext;
-      unawaited(
-        showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext dialogContext) {
-            progressContext = dialogContext;
-            return const AlertDialog(
-              backgroundColor: AppColors.backgroundDeep,
-              content: Row(
-                children: <Widget>[
-                  CircularProgressIndicator(),
-                  SizedBox(width: 18),
-                  Expanded(
-                    child: Text(
-                      'Stockfish is reviewing every move…\nThis creates the real score, classifications and alternatives.',
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      );
-      try {
-        CloudAnalysisJob job = await _createOnlineAnalysisJob(
-          session,
-          match,
-          game,
-          clientRequestId: 'online-v2-${match.id}',
-        );
-        if (job.status == 'FAILED') {
-          try {
-            job = await _analysisApi.retry(session.token, job.id);
-          } on GameAnalysisApiException catch (error) {
-            if (!error.message.toLowerCase().contains('retry limit')) rethrow;
-            job = await _createOnlineAnalysisJob(
-              session,
-              match,
-              game,
-              clientRequestId:
-                  'online-v2-${match.id}-${DateTime.now().millisecondsSinceEpoch}',
-            );
-          }
-        }
-        for (
-          int attempt = 0;
-          attempt < 600 &&
-              (job.status == 'QUEUED' || job.status == 'ANALYZING');
-          attempt++
-        ) {
-          await Future<void>.delayed(const Duration(seconds: 2));
-          job = await _analysisApi.results(session.token, job.id);
-        }
-        if (job.status != 'COMPLETED' || job.plies.isEmpty) {
-          throw GameAnalysisApiException(
-            job.errorMessage ?? 'Stockfish analysis did not complete.',
-          );
-        }
-        final List<SavedMoveReview> reviews = job.plies
-            .map(_savedReviewFromCloud)
-            .toList(growable: false);
-        _onlineReviews[match.id] = reviews;
-        game = _onlineAsSavedGame(match);
-      } on Object catch (error) {
-        if (progressContext case final BuildContext dialogContext
-            when dialogContext.mounted) {
-          Navigator.of(dialogContext).pop();
-          progressContext = null;
-        }
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Real game analysis failed: $error')),
-        );
-        return;
-      }
-      if (progressContext case final BuildContext dialogContext
-          when dialogContext.mounted) {
-        Navigator.of(dialogContext).pop();
-      }
-    }
-    if (!mounted) return;
-    final AiReviewReport report = AiReviewReport.fromMoves(
-      game.moves,
-      newestFirst: false,
-      result: game.result,
-      knownReviews: game.moveReviews,
-      playerSide: choice.playerSide,
-      reviewScope: choice.reviewScope,
-      initialFen: game.initialFen,
-    );
-    await showAdaptiveAiReview(
-      context,
-      report: report,
-      onRetryPosition: _retrySavedPosition,
-    );
-  }
-
-  SavedMoveReview _savedReviewFromCloud(
-    CloudAnalysisPly ply,
-  ) => SavedMoveReview(
-    ply: ply.ply,
-    fenBefore: ply.fenBefore,
-    playedMove: ply.playedMove,
-    bestMove: ply.bestMove,
-    classification: ply.classification,
-    coachingTheme: ply.coachingTheme,
-    centipawnLoss: ply.centipawnLoss,
-    evaluationBeforeCp: ply.evaluationBeforeCp,
-    evaluationAfterCp: ply.evaluationAfterCp,
-    mateBefore: ply.mateBefore,
-    mateAfter: ply.mateAfter,
-    opponentThreat: ply.principalVariation.length > 1
-        ? ply.principalVariation[1]
-        : '',
-    explanation: ply.classification == 'Best'
-        ? 'This matched Stockfish’s strongest continuation.'
-        : '${ply.bestMove} was stronger by ${ply.centipawnLoss} centipawns.',
-    principalVariation: ply.principalVariation,
-  );
-
-  Future<CloudAnalysisJob> _createOnlineAnalysisJob(
-    StoredAuthSession session,
-    OnlineMatchDto match,
-    SavedGameRecord game, {
-    required String clientRequestId,
-  }) => _analysisApi.create(
-    session.token,
-    clientRequestId: clientRequestId,
-    initialFen: _standardInitialFen,
-    moves: game.moves,
-    depth: 16,
-    playerColor: game.playerSide?.toUpperCase(),
-    sourceFormat: 'CHESSVERSE',
-    sourceSite: 'ChessVerseAI Online Arena',
-    whitePlayer: game.whitePlayer,
-    blackPlayer: game.blackPlayer,
-    gameResult: game.result,
   );
 
   Future<void> _exportSingleGame(SavedGameRecord game, String format) async {
@@ -1444,7 +1282,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                                   selectionMode: _selectedGameIds.isNotEmpty,
                                   onTap: () => _selectedGameIds.isNotEmpty
                                       ? _toggleGameSelection(game)
-                                      : _openOnlineGameReview(match),
+                                      : _openCompleted(game),
                                   onReplay: () => Navigator.of(context)
                                       .push<void>(
                                         MaterialPageRoute<void>(
