@@ -619,6 +619,9 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
           blackPlayer: game.blackPlayer,
           gameResult: game.result,
         );
+        if (job.status == 'FAILED') {
+          job = await _analysisApi.retry(session.token, job.id);
+        }
         for (
           int attempt = 0;
           attempt < 600 &&
