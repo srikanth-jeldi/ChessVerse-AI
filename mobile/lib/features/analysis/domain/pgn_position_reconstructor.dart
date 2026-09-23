@@ -216,8 +216,58 @@ class _PgnBoard {
         })
         .map((MapEntry<String, String> entry) => entry.key)
         .toList(growable: false);
-    if (candidates.length != 1) return false;
-    return _apply(candidates.single, target, match.group(5));
+    if (candidates.isEmpty) return false;
+    if (candidates.length == 1) {
+      return _apply(candidates.single, target, match.group(5));
+    }
+
+    // SAN only disambiguates pieces that can legally move. A pinned piece can
+    // look like a second candidate to the lightweight movement parser, which
+    // previously stopped reconstruction for this and every later PGN move.
+    // Resolve that common case by rejecting candidates that expose their king.
+    final List<String> legal = candidates
+        .where((String from) => _keepsOwnKingSafe(from, target, match.group(5)))
+        .toList(growable: false);
+    if (legal.length != 1) return false;
+    return _apply(legal.single, target, match.group(5));
+  }
+
+  bool _keepsOwnKingSafe(String from, String to, String? promotion) {
+    final _PgnBoard copy = _PgnBoard(
+      pieces: Map<String, String>.from(pieces),
+      whiteToMove: whiteToMove,
+      castling: castling,
+      enPassant: enPassant,
+      halfmove: halfmove,
+      fullmove: fullmove,
+    );
+    final bool movingWhite = whiteToMove;
+    if (!copy._apply(from, to, promotion)) return false;
+    final MapEntry<String, String>? king = copy.pieces.entries
+        .cast<MapEntry<String, String>?>()
+        .firstWhere(
+          (MapEntry<String, String>? entry) =>
+              entry!.value == (movingWhite ? 'K' : 'k'),
+          orElse: () => null,
+        );
+    return king != null && !copy._isAttacked(king.key, byWhite: !movingWhite);
+  }
+
+  bool _isAttacked(String square, {required bool byWhite}) {
+    for (final MapEntry<String, String> entry in pieces.entries) {
+      if (_isWhite(entry.value) != byWhite) continue;
+      final String piece = entry.value;
+      if (piece.toUpperCase() == 'P') {
+        final int fileDelta = square.codeUnitAt(0) - entry.key.codeUnitAt(0);
+        final int rankDelta = int.parse(square[1]) - int.parse(entry.key[1]);
+        if (fileDelta.abs() == 1 && rankDelta == (byWhite ? 1 : -1)) {
+          return true;
+        }
+      } else if (_canMove(entry.key, square, piece, true)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   bool _canMove(String from, String to, String piece, bool capture) {

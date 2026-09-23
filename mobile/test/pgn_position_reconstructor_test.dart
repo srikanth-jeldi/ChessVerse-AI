@@ -45,6 +45,13 @@ void main() {
       'a8=Q',
     ], initialFen: '7k/P7/8/8/8/8/8/7K w - - 0 1');
     expect(promotion.single, '7k/P7/8/8/8/8/8/7K w - - 0 1');
+
+    final coordinatePromotion = reconstructFenBeforeMoves(<String>[
+      'a7a8=Q',
+      'Kh7',
+    ], initialFen: '7k/P7/8/8/8/8/8/7K w - - 0 1');
+    expect(coordinatePromotion.every((String? fen) => fen != null), isTrue);
+    expect(coordinatePromotion.last, startsWith('Q6k/'));
   });
 
   test('offers five practical candidate moves from an imported position', () {
@@ -54,10 +61,21 @@ void main() {
     expect(candidates.map((candidate) => candidate.move).toSet(), hasLength(5));
     expect(
       candidates.every(
-        (candidate) => RegExp(r'^[a-h][1-8][a-h][1-8][qrbn]?$')
-            .hasMatch(candidate.move),
+        (candidate) =>
+            RegExp(r'^[a-h][1-8][a-h][1-8][qrbn]?$').hasMatch(candidate.move),
       ),
       isTrue,
     );
+  });
+
+  test('keeps reconstructing when SAN has a pinned pseudo-candidate', () {
+    final positions = reconstructFenBeforeMoves(<String>[
+      'Nd4',
+      'Ka7',
+    ], initialFen: 'k3r3/8/8/8/8/5N2/4N3/4K3 w - - 0 1');
+
+    expect(positions, hasLength(2));
+    expect(positions.every((String? fen) => fen != null), isTrue);
+    expect(positions.last, contains(' b '));
   });
 }

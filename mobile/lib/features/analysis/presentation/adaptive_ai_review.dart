@@ -291,7 +291,7 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
         AiBoardAnnotation(
           insight.playedMove!.substring(0, 2),
           insight.playedMove!.substring(2, 4),
-          'played',
+          _playedAnnotationKind(insight),
           insight.label,
         ),
       if ((insight.bestMove ?? '').length >= 4)
@@ -549,29 +549,29 @@ class _MobileReviewSummary extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: <Widget>[
-                SizedBox(
-                  width: 112,
-                  height: 112,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: <Widget>[
-                      CircularProgressIndicator(
-                        value: report.accuracy / 100,
-                        strokeWidth: 10,
-                        backgroundColor: const Color(0xFF20384A),
-                        color: const Color(0xFF59E4C8),
-                      ),
-                      Text(
-                        '${report.accuracy}%',
-                        maxLines: 1,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 25,
-                          height: 1,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 22,
+                    vertical: 13,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF102C38),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: const Color(0xFF59E4C8),
+                      width: 2,
+                    ),
+                  ),
+                  child: Text(
+                    '${report.accuracy} / 100',
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFF59E4C8),
+                      fontSize: 25,
+                      height: 1,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -798,7 +798,7 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
         AiBoardAnnotation(
           insight.playedMove!.substring(0, 2),
           insight.playedMove!.substring(2, 4),
-          'played',
+          _playedAnnotationKind(insight),
           insight.label,
         ),
       if ((insight.bestMove ?? '').length >= 4)
@@ -1149,30 +1149,23 @@ class _ReviewOverview extends StatelessWidget {
         ChessVerseCard(
           child: Row(
             children: <Widget>[
-              SizedBox(
-                width: 82,
-                height: 82,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: <Widget>[
-                    CircularProgressIndicator(
-                      value: report.accuracy / 100,
-                      strokeWidth: 8,
-                      backgroundColor: const Color(0xFF263A46),
-                      color: const Color(0xFF59E4C8),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          '${report.accuracy}%',
-                          maxLines: 1,
-                          style: const TextStyle(fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                    ),
-                  ],
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF102C38),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFF59E4C8)),
+                ),
+                child: Text(
+                  '${report.accuracy} / 100',
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: Color(0xFF59E4C8),
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -2594,7 +2587,7 @@ Future<void> _showPositionEvidence(
       AiBoardAnnotation(
         insight.playedMove!.substring(0, 2),
         insight.playedMove!.substring(2, 4),
-        'played',
+        _playedAnnotationKind(insight),
         insight.label,
       ),
     if ((insight.bestMove ?? '').length >= 4)
@@ -3206,7 +3199,9 @@ class _CoachArrowPainter extends CustomPainter {
       final Color color = switch (annotation.kind) {
         'threat' => const Color(0xE6FF5263),
         'candidate' => const Color(0xE650B8FF),
-        _ => const Color(0xE659E4C8),
+        'played-wrong' => const Color(0xE6FF5263),
+        'best' || 'played-correct' => const Color(0xE659E4C8),
+        _ => const Color(0xE68B7CFF),
       };
       final Offset from = _center(annotation.from, cell);
       final Offset to = _center(annotation.to, cell);
@@ -3240,6 +3235,14 @@ class _CoachArrowPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _CoachArrowPainter oldDelegate) =>
       !listEquals(oldDelegate.annotations, annotations);
+}
+
+String _playedAnnotationKind(AiMoveInsight insight) {
+  final String played = (insight.playedMove ?? '').trim().toLowerCase();
+  final String best = (insight.bestMove ?? '').trim().toLowerCase();
+  return played.isNotEmpty && best.isNotEmpty && played == best
+      ? 'played-correct'
+      : 'played-wrong';
 }
 
 class _ReviewAction extends StatelessWidget {
