@@ -699,12 +699,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   int _onlineConnectedPlayers = 0;
   bool _onlineSocketConnected = false;
   bool _onlineSubmitting = false;
+  bool _onlineRefreshing = false;
   String? _onlineCelebrationMatchId;
   String? _quickChatMessage;
   bool _quickChatMine = false;
   String? _selectedSquare;
-  String? _premoveFrom;
-  String? _premoveTo;
   String? _lastFromSquare;
   String? _lastToSquare;
   String? _lastCaptureSquare;
@@ -1183,7 +1182,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final String? checkedKingSquare = sideInCheck
         ? _kingSquare(sideToMoveWhite)
         : null;
-    final Set<String> legalTargets = !_showMoveHints || _selectedSquare == null
+    final bool onlineBoardLocked =
+        _gameMode == GameMode.online &&
+        (_onlineMatch == null ||
+            !_onlineMatch!.isActive ||
+            widget.spectatorMode ||
+            !_onlineMatch!.isYourTurn ||
+            _onlineSubmitting);
+    final Set<String> legalTargets =
+        onlineBoardLocked || !_showMoveHints || _selectedSquare == null
         ? <String>{}
         : _legalTargetsFor(_selectedSquare!).toSet();
 
@@ -1286,7 +1293,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
               final Widget board = ChessBoard(
                 pieces: _pieces,
-                selectedSquare: _selectedSquare,
+                selectedSquare: onlineBoardLocked ? null : _selectedSquare,
                 legalTargets: legalTargets,
                 lastFromSquare: _lastFromSquare,
                 lastToSquare: _lastToSquare,
@@ -2909,7 +2916,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         return;
       }
       if (!onlineMatch.isYourTurn) {
-        _handlePremoveTap(square);
+        setState(() {
+          _selectedSquare = null;
+          _coachArrowFrom = null;
+          _coachArrowTo = null;
+          _coachNote = 'Board locked • Waiting for your opponent to move.';
+        });
         return;
       }
     }
@@ -3167,77 +3179,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _restartTurnReminder();
       }
     }
-  }
-
-  void _handlePremoveTap(String square) {
-    final ChessPiece? tapped = _pieces[square];
-    if (_selectedSquare == null) {
-      if (tapped?.white != _humanPlaysWhite) {
-        setState(() {
-          _premoveFrom = null;
-          _premoveTo = null;
-          _coachNote = 'Premove cancelled. Select one of your pieces.';
-        });
-        return;
-      }
-      setState(() {
-        _selectedSquare = square;
-        _premoveFrom = null;
-        _premoveTo = null;
-        _coachNote = 'Premove: choose where $square should move.';
-      });
-      return;
-    }
-    final String from = _selectedSquare!;
-    final List<String> targets = _legalTargetsFor(from);
-    setState(() {
-      _selectedSquare = null;
-      if (!targets.contains(square)) {
-        _premoveFrom = null;
-        _premoveTo = null;
-        _coachNote = 'That premove is not legal on the current board.';
-        return;
-      }
-      _premoveFrom = from;
-      _premoveTo = square;
-      _coachArrowFrom = from;
-      _coachArrowTo = square;
-      _coachNote =
-          'Premove queued: $from → $square. Tap another piece to replace it.';
-    });
-    unawaited(ChessSoundService.instance.tap());
-  }
-
-  void _executePremoveIfReady(OnlineMatchDto match) {
-    final String? from = _premoveFrom;
-    final String? to = _premoveTo;
-    if (!match.isActive ||
-        !match.isYourTurn ||
-        from == null ||
-        to == null ||
-        _onlineSubmitting) {
-      return;
-    }
-    final ChessPiece? piece = _pieces[from];
-    final bool legal =
-        piece?.white == _humanPlaysWhite && _legalTargetsFor(from).contains(to);
-    setState(() {
-      _premoveFrom = null;
-      _premoveTo = null;
-      _coachArrowFrom = null;
-      _coachArrowTo = null;
-      _coachNote = legal
-          ? 'Playing premove $from → $to…'
-          : 'Premove cancelled because the position changed.';
-    });
-    if (!legal) return;
-    final bool promotes =
-        piece!.code == 'P' &&
-        ((piece.white && to.endsWith('8')) ||
-            (!piece.white && to.endsWith('1')));
-    unawaited(
-      _submitOnlineMove('$from$to${promotes ? 'q' : ''}', match.plyCount),
-    );
   }
 
   void _dismissTurnReminder() {
@@ -5145,16 +5086,26 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Future<void> _refreshOnlineMatch({bool forceBoardReplay = false}) async {
     final OnlineMatchDto? current = _onlineMatch;
     final String? token = _authToken;
-    if (current == null || token == null || _onlineSubmitting) return;
+    if (current == null || token == null || _onlineRefreshing) return;
+    _onlineRefreshing = true;
     try {
       final OnlineMatchDto latest = widget.spectatorMode
           ? await _onlineApi.spectate(token, current.id)
           : await _onlineApi.getMatch(token, current.id);
       if (!mounted) return;
+      // Keep the optimistic local move visible until the server has accepted
+      // it. Once the authoritative ply advances, polling can recover the game
+      // even if the original submit response was delayed or lost.
+      if (_onlineSubmitting && latest.plyCount <= current.plyCount) return;
+      if (_onlineSubmitting && latest.plyCount > current.plyCount) {
+        _onlineSubmitting = false;
+      }
       _rebuildFromOnline(latest, forceBoardReplay: forceBoardReplay);
     } on OnlineMatchException catch (error) {
       if (!mounted) return;
       setState(() => _coachNote = 'Reconnect pending: ${error.message}');
+    } finally {
+      _onlineRefreshing = false;
     }
   }
 
@@ -5163,6 +5114,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     bool forceBoardReplay = false,
   }) {
     final OnlineMatchDto? previous = _onlineMatch;
+    if (previous != null &&
+        previous.id == match.id &&
+        match.plyCount < previous.plyCount) {
+      return;
+    }
     final bool shouldRestartIdleHint =
         forceBoardReplay ||
         previous == null ||
@@ -5271,7 +5227,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
     });
     _applyOnlineLifecycle(match);
-    _executePremoveIfReady(match);
     if (shouldRestartIdleHint) {
       _scheduleIdleMoveHint(clearVisibleHint: true);
     }
