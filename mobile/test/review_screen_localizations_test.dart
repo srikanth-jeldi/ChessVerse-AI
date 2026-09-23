@@ -72,13 +72,23 @@ void main() {
             await tester.ensureVisible(reviewButton);
             await tester.tap(reviewButton);
             await tester.pumpAndSettle();
-      expect(find.text('Move 1 · e2e4'), findsOneWidget);
+            expect(find.text('Move 1 · e2e4'), findsOneWidget);
             expect(
               find.text(personalCoachText('askPosition', language.code)),
               findsOneWidget,
             );
             expect(find.bySemanticsLabel('White king'), findsOneWidget);
             expect(find.bySemanticsLabel('Black king'), findsOneWidget);
+            await tester.scrollUntilVisible(
+              find.text('5 possible moves to compare'),
+              300,
+              scrollable: find.byType(Scrollable).first,
+            );
+            expect(find.text('5 possible moves to compare'), findsOneWidget);
+            expect(
+              find.textContaining('A legal candidate from this position.'),
+              findsNWidgets(4),
+            );
           }
           if (size.width > 900) {
             final copy = CoachLocalizations(language.code);

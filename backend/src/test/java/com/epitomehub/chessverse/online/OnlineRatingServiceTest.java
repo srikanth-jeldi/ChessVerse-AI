@@ -81,22 +81,26 @@ class OnlineRatingServiceTest {
     }
 
     @Test
-    void leaderboardExcludesUnplayedProfilesAndReportsPagination() {
+    void leaderboardRanksNewProfilesSoNamesAreVisibleBeforeFirstGame() {
         OnlinePlayerRatingRepository repository = mock(OnlinePlayerRatingRepository.class);
         OnlineRatingService service = new OnlineRatingService(repository);
         UUID playerId = UUID.randomUUID();
         OnlinePlayerRating player = new OnlinePlayerRating(playerId, "Player");
         when(repository.lockByPlayerId(playerId)).thenReturn(Optional.of(player));
-        when(repository.global(any())).thenReturn(new PageImpl<>(java.util.List.of()));
+        when(repository.global(any())).thenReturn(new PageImpl<>(java.util.List.of(player)));
+        when(repository.countGlobalPlayersAhead(1200, 0, 0, playerId)).thenReturn(0L);
+        when(repository.countCountryPlayersAhead("Unknown", 1200, 0, 0, playerId))
+                .thenReturn(0L);
 
         LeaderboardDtos.LeaderboardDto board = service.leaderboard(
                 new com.epitomehub.chessverse.auth.AuthenticatedPlayer(
                         playerId, "player", "Player", null),
                 "global", null, 0, 50);
 
-        assertEquals(0, board.totalPlayers());
-        assertEquals(0, board.you().globalRank());
-        assertEquals(0, board.entries().size());
+        assertEquals(1, board.totalPlayers());
+        assertEquals(1, board.you().globalRank());
+        assertEquals(1, board.entries().size());
+        assertEquals("Player", board.entries().getFirst().displayName());
     }
 
     @Test

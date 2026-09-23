@@ -30,21 +30,20 @@ interface OnlinePlayerRatingRepository extends JpaRepository<OnlinePlayerRating,
 
     @Query("""
             select rating from OnlinePlayerRating rating
-            where rating.gamesPlayed > 0
             order by rating.rating desc, rating.wins desc, rating.gamesPlayed desc, rating.playerId
             """)
     Page<OnlinePlayerRating> global(Pageable pageable);
 
     @Query("""
             select rating from OnlinePlayerRating rating
-            where rating.gamesPlayed > 0 and lower(rating.country) = lower(:country)
+            where lower(rating.country) = lower(:country)
             order by rating.rating desc, rating.wins desc, rating.gamesPlayed desc, rating.playerId
             """)
     Page<OnlinePlayerRating> byCountry(@Param("country") String country, Pageable pageable);
 
     @Query(value = """
             select count(*) from online_player_rating candidate
-            where candidate.games_played > 0 and (
+            where (
                 candidate.rating > :rating
                 or (candidate.rating = :rating and candidate.wins > :wins)
                 or (candidate.rating = :rating and candidate.wins = :wins
@@ -62,8 +61,7 @@ interface OnlinePlayerRatingRepository extends JpaRepository<OnlinePlayerRating,
 
     @Query(value = """
             select count(*) from online_player_rating candidate
-            where candidate.games_played > 0
-              and lower(candidate.country) = lower(:country)
+            where lower(candidate.country) = lower(:country)
               and (
                 candidate.rating > :rating
                 or (candidate.rating = :rating and candidate.wins > :wins)

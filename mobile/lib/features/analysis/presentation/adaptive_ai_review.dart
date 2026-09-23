@@ -19,6 +19,7 @@ import '../data/ai_coach_api.dart';
 import '../data/engine_candidates_api.dart';
 import '../domain/ai_review_report.dart';
 import '../domain/personal_ai_coach.dart';
+import '../domain/pgn_position_reconstructor.dart';
 
 class _ReactiveReviewLanguage extends StatelessWidget {
   const _ReactiveReviewLanguage({
@@ -560,18 +561,14 @@ class _MobileReviewSummary extends StatelessWidget {
                         backgroundColor: const Color(0xFF20384A),
                         color: const Color(0xFF59E4C8),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            '${report.accuracy}%',
-                            maxLines: 1,
-                            style: const TextStyle(
-                              fontSize: 25,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
+                      Text(
+                        '${report.accuracy}%',
+                        maxLines: 1,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 25,
+                          height: 1,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                     ],
@@ -1895,23 +1892,63 @@ class _CandidateMovesPanelState extends State<_CandidateMovesPanel> {
       widget.insight,
       widget.languageCode,
     );
+    final String? fen = widget.insight.fenBefore;
+    if (fen != null && fen.isNotEmpty && fallback.length < 5) {
+      final Set<String> seen = fallback
+          .map((candidate) => _candidateIdentity(candidate.move))
+          .toSet();
+      for (final CoachMoveCandidate candidate in coachMoveCandidates(
+        fen,
+        limit: 12,
+      )) {
+        if (fallback.length >= 5) break;
+        final String move = _readableUci(candidate.move);
+        if (!seen.add(_candidateIdentity(move))) continue;
+        fallback.add(
+          _CoachCandidate(
+            move,
+            _CandidateKind.possible,
+            _coachCopy('possibleMoveExplanation', widget.languageCode),
+          ),
+        );
+      }
+    }
     if (fallback.isEmpty) return const SizedBox.shrink();
     return FutureBuilder<List<EngineCandidateLine>>(
       future: _engineCandidates,
       builder: (context, snapshot) {
-        final List<_CoachCandidate> candidates = snapshot.data?.isNotEmpty == true
+        final List<EngineCandidateLine> verifiedLines =
+            snapshot.data ?? const <EngineCandidateLine>[];
+        final List<_CoachCandidate> candidates = verifiedLines.isNotEmpty
             ? _verifiedCandidateMoves(
                 widget.insight,
-                snapshot.data!,
+                verifiedLines,
                 widget.languageCode,
               )
-            : fallback;
-        return _buildCard(candidates, snapshot.connectionState == ConnectionState.waiting);
+            : <_CoachCandidate>[];
+        final Set<String> seen = candidates
+            .map((candidate) => _candidateIdentity(candidate.move))
+            .toSet();
+        for (final _CoachCandidate candidate in fallback) {
+          if (candidates.length >= 5) break;
+          if (seen.add(_candidateIdentity(candidate.move))) {
+            candidates.add(candidate);
+          }
+        }
+        return _buildCard(
+          candidates,
+          snapshot.connectionState == ConnectionState.waiting,
+          engineVerified: verifiedLines.length >= 5,
+        );
       },
     );
   }
 
-  Widget _buildCard(List<_CoachCandidate> candidates, bool loading) {
+  Widget _buildCard(
+    List<_CoachCandidate> candidates,
+    bool loading, {
+    required bool engineVerified,
+  }) {
     return ChessVerseCard(
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -1927,7 +1964,12 @@ class _CandidateMovesPanelState extends State<_CandidateMovesPanel> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  _coachCopy('movesToCompare', widget.languageCode),
+                  engineVerified
+                      ? _coachCopy('movesToCompare', widget.languageCode)
+                      : _coachCopy(
+                          'possibleMovesToCompare',
+                          widget.languageCode,
+                        ),
                   style: const TextStyle(
                     color: Color(0xFF59E4C8),
                     fontWeight: FontWeight.w900,
@@ -1938,7 +1980,9 @@ class _CandidateMovesPanelState extends State<_CandidateMovesPanel> {
           ),
           const SizedBox(height: 4),
           Text(
-            _coachCopy('candidateIntro', widget.languageCode),
+            engineVerified
+                ? _coachCopy('candidateIntro', widget.languageCode)
+                : _coachCopy('possibleCandidateIntro', widget.languageCode),
             style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 12,
@@ -2046,7 +2090,7 @@ class _CandidateMoveTile extends StatelessWidget {
   }
 }
 
-enum _CandidateKind { best, played, alternative }
+enum _CandidateKind { best, played, alternative, possible }
 
 class _CoachCandidate {
   const _CoachCandidate(this.move, this.kind, this.explanation);
@@ -2143,10 +2187,10 @@ String _readableUci(String move) {
   return '${value.substring(0, 2)} → ${value.substring(2, 4)}$promotion';
 }
 
-String _engineChoiceExplanation(
-  AiMoveInsight insight,
-  String languageCode,
-) {
+String _candidateIdentity(String move) =>
+    move.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+String _engineChoiceExplanation(AiMoveInsight insight, String languageCode) {
   final String evaluation = insight.evaluationBeforeCp == null
       ? ''
       : ' ${_coachCopy('evaluation', languageCode)}: ${_formatEvaluation(insight.evaluationBeforeCp!)}.';
@@ -2156,10 +2200,7 @@ String _engineChoiceExplanation(
   return '${CoachLocalizations(languageCode).text('best')}.$evaluation$line';
 }
 
-String _playedChoiceExplanation(
-  AiMoveInsight insight,
-  String languageCode,
-) {
+String _playedChoiceExplanation(AiMoveInsight insight, String languageCode) {
   final String evaluation =
       insight.evaluationBeforeCp != null && insight.evaluationAfterCp != null
       ? '${_coachCopy('evaluation', languageCode)}: ${_formatEvaluation(insight.evaluationBeforeCp!)} → ${_formatEvaluation(insight.evaluationAfterCp!)}.'
@@ -2177,7 +2218,11 @@ String _candidateLabel(_CandidateKind kind, String languageCode) =>
     switch (kind) {
       _CandidateKind.best => _coachCopy('engineBest', languageCode),
       _CandidateKind.played => _coachCopy('yourMove', languageCode),
-      _CandidateKind.alternative => _coachCopy('engineAlternative', languageCode),
+      _CandidateKind.alternative => _coachCopy(
+        'engineAlternative',
+        languageCode,
+      ),
+      _CandidateKind.possible => _coachCopy('possibleMove', languageCode),
     };
 
 class _StructuredMoveExplanation extends StatelessWidget {
@@ -2452,6 +2497,10 @@ String _coachCopy(String key, String languageCode) {
     'moveReview': 'Move-by-move coaching',
     'movesToCompare': '5 engine-verified choices',
     'candidateIntro': 'Compare five Stockfish-ranked plans from this exact position. Each option shows the expected reply, continuation and cost versus the best move.',
+    'possibleMovesToCompare': '5 possible moves to compare',
+    'possibleCandidateIntro': 'Compare these legal choices from this exact position while engine verification loads or is unavailable.',
+    'possibleMoveExplanation': 'A legal candidate from this position. Compare its checks, captures, threats and the opponent reply before choosing it.',
+    'possibleMove': 'POSSIBLE MOVE',
     'engineBest': 'ENGINE BEST',
     'engineAlternative': 'ENGINE ALTERNATIVE',
     'yourMove': 'YOUR MOVE',
@@ -2476,6 +2525,10 @@ String _coachCopy(String key, String languageCode) {
     'moveReview': 'ఎత్తుల వారీ కోచింగ్',
     'movesToCompare': 'ఇంజిన్ నిర్ధారించిన 5 ఎంపికలు',
     'candidateIntro': 'ఈ స్థానానికి స్టాక్‌ఫిష్ ర్యాంక్ చేసిన ఐదు ప్లాన్‌లను పోల్చండి. ప్రతి ఎంపికలో ప్రత్యర్థి సమాధానం, కొనసాగింపు మరియు ఉత్తమ ఎత్తుతో తేడా కనిపిస్తాయి.',
+    'possibleMovesToCompare': 'పోల్చడానికి 5 ఎత్తులు',
+    'possibleCandidateIntro': 'ఇంజిన్ ధృవీకరణ లోడ్ అవుతున్నప్పుడు లేదా అందుబాటులో లేనప్పుడు ఈ స్థానం నుండి చట్టబద్ధమైన ఎంపికలను పోల్చండి.',
+    'possibleMoveExplanation': 'ఈ స్థానం నుండి చట్టబద్ధమైన ఎంపిక. ఎంచుకునే ముందు చెక్‌లు, క్యాప్చర్‌లు, థ్రెట్‌లు, ప్రత్యర్థి సమాధానాన్ని పోల్చండి.',
+    'possibleMove': 'పోల్చదగిన ఎత్తు',
     'engineBest': 'ఇంజిన్ ఉత్తమం',
     'engineAlternative': 'ఇంజిన్ ప్రత్యామ్నాయం',
     'yourMove': 'మీ ఎత్తు',
