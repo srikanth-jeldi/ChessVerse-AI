@@ -93,4 +93,17 @@ void main() {
     expect(positions.every((String? fen) => fen != null), isTrue);
     expect(positions.last, startsWith('rnbqkbnr/p1Npp1pp/1p3p2/8/8/8/'));
   });
+
+  test('replays an engine principal variation and keeps every position', () {
+    final positions = replayUciLine(standardInitialFen, <String>[
+      'e2e4',
+      'e7e5',
+      'g1f3',
+    ]);
+
+    expect(positions, hasLength(4));
+    expect(positions.first, standardInitialFen);
+    expect(positions.last, contains(' b KQkq '));
+    expect(positions.last, startsWith('rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/'));
+  });
 }

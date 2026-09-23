@@ -20,6 +20,19 @@ List<String?> reconstructFenBeforeMoves(
   return positions;
 }
 
+/// Returns the position after each move in a UCI principal variation.
+/// Invalid/truncated lines stop safely at the last valid position.
+List<String> replayUciLine(String initialFen, List<String> moves) {
+  final _PgnBoard? board = _PgnBoard.fromFen(initialFen);
+  if (board == null) return const <String>[];
+  final List<String> positions = <String>[board.fen];
+  for (final String move in moves) {
+    if (!board.play(move)) break;
+    positions.add(board.fen);
+  }
+  return positions;
+}
+
 class CoachMoveCandidate {
   const CoachMoveCandidate({
     required this.move,

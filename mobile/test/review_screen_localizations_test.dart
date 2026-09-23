@@ -79,10 +79,21 @@ void main() {
             expect(find.text('Move 1 · e2e4'), findsOneWidget);
             expect(
               find.text(personalCoachText('askPosition', language.code)),
-              findsOneWidget,
+              findsNothing,
             );
             expect(find.bySemanticsLabel('White king'), findsOneWidget);
             expect(find.bySemanticsLabel('Black king'), findsOneWidget);
+            expect(
+              find.byKey(const ValueKey<String>('vertical-evaluation-bar')),
+              findsOneWidget,
+            );
+            expect(find.text('5 possible moves to compare'), findsNothing);
+            await tester.tap(find.text('Advanced'));
+            await tester.pumpAndSettle();
+            expect(
+              find.text(personalCoachText('askPosition', language.code)),
+              findsOneWidget,
+            );
             await tester.scrollUntilVisible(
               find.text('5 possible moves to compare'),
               300,

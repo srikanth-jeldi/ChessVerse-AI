@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -157,7 +158,7 @@ Future<void> showAdaptiveAiReview(
   );
 }
 
-class _AiReviewWorkspace extends StatelessWidget {
+class _AiReviewWorkspace extends StatefulWidget {
   const _AiReviewWorkspace({
     required this.report,
     required this.desktop,
@@ -175,9 +176,16 @@ class _AiReviewWorkspace extends StatelessWidget {
   final VoidCallback? onGeneratePuzzles;
 
   @override
+  State<_AiReviewWorkspace> createState() => _AiReviewWorkspaceState();
+}
+
+class _AiReviewWorkspaceState extends State<_AiReviewWorkspace> {
+  bool _advanced = false;
+
+  @override
   Widget build(BuildContext context) {
     final String languageCode = _ReviewLanguageScope.of(context);
-    final int puzzleCount = report.insights
+    final int puzzleCount = widget.report.insights
         .where(
           (AiMoveInsight item) =>
               item.hasEngineEvidence &&
@@ -189,7 +197,7 @@ class _AiReviewWorkspace extends StatelessWidget {
         )
         .length;
     return Padding(
-      padding: EdgeInsets.all(desktop ? 24 : 16),
+      padding: EdgeInsets.all(widget.desktop ? 24 : 16),
       child: Column(
         children: <Widget>[
           Row(
@@ -206,13 +214,19 @@ class _AiReviewWorkspace extends StatelessWidget {
                   ),
                 ),
               ),
-              if (puzzleCount > 0 && onGeneratePuzzles != null)
+              if (puzzleCount > 0 && widget.onGeneratePuzzles != null)
                 IconButton(
                   tooltip:
                       '${_reviewText('resumeMistakes', languageCode)} ($puzzleCount)',
-                  onPressed: onGeneratePuzzles,
+                  onPressed: widget.onGeneratePuzzles,
                   icon: const Icon(Icons.extension_rounded),
                 ),
+              IconButton(
+                key: const ValueKey<String>('review-language'),
+                tooltip: 'Languages (34)',
+                onPressed: () => selectAndSaveAiLanguage(context),
+                icon: const Icon(Icons.translate_rounded),
+              ),
               IconButton(
                 onPressed: () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.close_rounded),
@@ -220,20 +234,42 @@ class _AiReviewWorkspace extends StatelessWidget {
             ],
           ),
           const Divider(),
+          Center(
+            child: SegmentedButton<bool>(
+              key: const ValueKey<String>('review-mode-toggle'),
+              segments: const <ButtonSegment<bool>>[
+                ButtonSegment<bool>(
+                  value: false,
+                  icon: Icon(Icons.lightbulb_outline_rounded),
+                  label: Text('Simple'),
+                ),
+                ButtonSegment<bool>(
+                  value: true,
+                  icon: Icon(Icons.analytics_outlined),
+                  label: Text('Advanced'),
+                ),
+              ],
+              selected: <bool>{_advanced},
+              onSelectionChanged: (Set<bool> value) =>
+                  setState(() => _advanced = value.first),
+            ),
+          ),
           const SizedBox(height: 8),
           Expanded(
-            child: desktop
+            child: widget.desktop
                 ? _DesktopCoachWorkspace(
-                    report: report,
-                    openingEco: openingEco,
-                    timeControl: timeControl,
-                    onRetryPosition: onRetryPosition,
+                    report: widget.report,
+                    advanced: _advanced,
+                    openingEco: widget.openingEco,
+                    timeControl: widget.timeControl,
+                    onRetryPosition: widget.onRetryPosition,
                   )
                 : _MobileCoachWorkspace(
-                    report: report,
-                    openingEco: openingEco,
-                    timeControl: timeControl,
-                    onRetryPosition: onRetryPosition,
+                    report: widget.report,
+                    advanced: _advanced,
+                    openingEco: widget.openingEco,
+                    timeControl: widget.timeControl,
+                    onRetryPosition: widget.onRetryPosition,
                   ),
           ),
         ],
@@ -245,12 +281,14 @@ class _AiReviewWorkspace extends StatelessWidget {
 class _MobileCoachWorkspace extends StatefulWidget {
   const _MobileCoachWorkspace({
     required this.report,
+    required this.advanced,
     this.openingEco,
     this.timeControl,
     this.onRetryPosition,
   });
 
   final AiReviewReport report;
+  final bool advanced;
   final String? openingEco;
   final String? timeControl;
   final ValueChanged<AiMoveInsight>? onRetryPosition;
@@ -342,15 +380,24 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
                       430,
                     );
                     return Center(
-                      child: SizedBox.square(
-                        dimension: boardSize,
+                      child: SizedBox(
+                        width: boardSize,
+                        height: boardSize - 24,
                         child: ChessVerseCard(
                           padding: const EdgeInsets.all(7),
                           child: insight.hasEngineEvidence
-                              ? _CoachPositionBoard(
-                                  fen: insight.fenBefore!,
-                                  annotations: annotations,
-                                  languageCode: languageCode,
+                              ? Row(
+                                  children: <Widget>[
+                                    _VerticalEvaluationBar(insight: insight),
+                                    const SizedBox(width: 7),
+                                    Expanded(
+                                      child: _CoachPositionBoard(
+                                        fen: insight.fenBefore!,
+                                        annotations: annotations,
+                                        languageCode: languageCode,
+                                      ),
+                                    ),
+                                  ],
                                 )
                               : Center(
                                   child: Text(
@@ -397,7 +444,7 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
                               ),
                             ),
                             Text(
-                              '${_localizedReviewQuality(insight.label, languageCode)} • ${_coachTheme(insight)}',
+                              '${_classificationSymbol(insight.label)} ${_localizedReviewQuality(insight.label, languageCode)} • ${_coachTheme(insight)}',
                               style: TextStyle(
                                 color: qualityColor,
                                 fontWeight: FontWeight.w800,
@@ -410,32 +457,42 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                _StructuredMoveExplanation(
-                  insight: insight,
-                  languageCode: languageCode,
-                  color: qualityColor,
-                ),
-                const SizedBox(height: 10),
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(52),
-                    backgroundColor: const Color(0xFF123E52),
-                    foregroundColor: const Color(0xFF59E4C8),
+                if (widget.advanced)
+                  _StructuredMoveExplanation(
+                    insight: insight,
+                    languageCode: languageCode,
+                    color: qualityColor,
+                  )
+                else
+                  _SimpleMoveExplanation(
+                    insight: insight,
+                    languageCode: languageCode,
+                    color: qualityColor,
                   ),
-                  onPressed: () => _showInteractiveCoach(
-                    context,
-                    insight,
-                    openingEco: widget.openingEco,
-                    timeControl: widget.timeControl,
+                if (widget.advanced) ...<Widget>[
+                  const SizedBox(height: 10),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                      backgroundColor: const Color(0xFF123E52),
+                      foregroundColor: const Color(0xFF59E4C8),
+                    ),
+                    onPressed: () => _showInteractiveCoach(
+                      context,
+                      insight,
+                      openingEco: widget.openingEco,
+                      timeControl: widget.timeControl,
+                    ),
+                    icon: const Icon(Icons.forum_outlined),
+                    label: Text(personalCoachText('askPosition', languageCode)),
                   ),
-                  icon: const Icon(Icons.forum_outlined),
-                  label: Text(personalCoachText('askPosition', languageCode)),
-                ),
+                ],
                 const SizedBox(height: 10),
-                _CandidateMovesPanel(
-                  insight: insight,
-                  languageCode: languageCode,
-                ),
+                if (widget.advanced)
+                  _CandidateMovesPanel(
+                    insight: insight,
+                    languageCode: languageCode,
+                  ),
                 const SizedBox(height: 12),
               ],
             ),
@@ -751,12 +808,14 @@ class _SummarySection extends StatelessWidget {
 class _DesktopCoachWorkspace extends StatefulWidget {
   const _DesktopCoachWorkspace({
     required this.report,
+    required this.advanced,
     this.openingEco,
     this.timeControl,
     this.onRetryPosition,
   });
 
   final AiReviewReport report;
+  final bool advanced;
   final String? openingEco;
   final String? timeControl;
   final ValueChanged<AiMoveInsight>? onRetryPosition;
@@ -815,12 +874,20 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
                       child: ChessVerseCard(
                         padding: const EdgeInsets.all(10),
                         child: insight.hasEngineEvidence
-                            ? Center(
-                                child: _CoachPositionBoard(
-                                  fen: insight.fenBefore!,
-                                  annotations: annotations,
-                                  languageCode: languageCode,
-                                ),
+                            ? Row(
+                                children: <Widget>[
+                                  _VerticalEvaluationBar(insight: insight),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Center(
+                                      child: _CoachPositionBoard(
+                                        fen: insight.fenBefore!,
+                                        annotations: annotations,
+                                        languageCode: languageCode,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               )
                             : Center(
                                 child: Text(
@@ -871,10 +938,7 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
                                       ),
                                     ),
                                     trailing: Text(
-                                      _localizedReviewQuality(
-                                        item.label,
-                                        languageCode,
-                                      ),
+                                      '${_classificationSymbol(item.label)} ${_localizedReviewQuality(item.label, languageCode)}',
                                       style: TextStyle(
                                         color: _qualityColor(item.label),
                                         fontSize: 10,
@@ -939,10 +1003,7 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
                               border: Border.all(color: qualityColor),
                             ),
                             child: Text(
-                              _localizedReviewQuality(
-                                insight.label,
-                                languageCode,
-                              ),
+                              '${_classificationSymbol(insight.label)} ${_localizedReviewQuality(insight.label, languageCode)}',
                               style: TextStyle(
                                 color: qualityColor,
                                 fontWeight: FontWeight.w900,
@@ -1005,16 +1066,24 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
                         child: SingleChildScrollView(
                           child: Column(
                             children: <Widget>[
-                              _StructuredMoveExplanation(
-                                insight: insight,
-                                languageCode: languageCode,
-                                color: qualityColor,
-                              ),
+                              if (widget.advanced)
+                                _StructuredMoveExplanation(
+                                  insight: insight,
+                                  languageCode: languageCode,
+                                  color: qualityColor,
+                                )
+                              else
+                                _SimpleMoveExplanation(
+                                  insight: insight,
+                                  languageCode: languageCode,
+                                  color: qualityColor,
+                                ),
                               const SizedBox(height: 10),
-                              _CandidateMovesPanel(
-                                insight: insight,
-                                languageCode: languageCode,
-                              ),
+                              if (widget.advanced)
+                                _CandidateMovesPanel(
+                                  insight: insight,
+                                  languageCode: languageCode,
+                                ),
                             ],
                           ),
                         ),
@@ -1564,6 +1633,16 @@ Color _qualityColor(String label) => switch (label) {
   _ => const Color(0xFF8EA4B7),
 };
 
+String _classificationSymbol(String label) => switch (label) {
+  'Best' => '★',
+  'Brilliant' || 'Great' || 'Excellent' || 'Power move' => '!!',
+  'Good' || 'Playable' || 'Principled' || 'Tactical' => '✓',
+  'Inaccuracy' => '?!',
+  'Mistake' => '?',
+  'Blunder' => '??',
+  _ => '•',
+};
+
 class _InsightCard extends StatelessWidget {
   const _InsightCard({
     required this.icon,
@@ -1825,6 +1904,204 @@ class _CandidateMovesPanel extends StatefulWidget {
   State<_CandidateMovesPanel> createState() => _CandidateMovesPanelState();
 }
 
+class _VerticalEvaluationBar extends StatelessWidget {
+  const _VerticalEvaluationBar({required this.insight});
+
+  final AiMoveInsight insight;
+
+  @override
+  Widget build(BuildContext context) {
+    final int evaluation =
+        insight.evaluationAfterCp ?? insight.evaluationBeforeCp ?? 0;
+    final double whiteShare = (.5 + evaluation.clamp(-1000, 1000) / 2000).clamp(
+      .06,
+      .94,
+    );
+    final int? mate = insight.mateAfter ?? insight.mateBefore;
+    final String label = mate == null
+        ? '${evaluation >= 0 ? '+' : ''}${(evaluation / 100).toStringAsFixed(1)}'
+        : '${mate < 0 ? '-' : ''}M${mate.abs()}';
+    return Tooltip(
+      message: 'Evaluation $label',
+      child: SizedBox(
+        key: const ValueKey<String>('vertical-evaluation-bar'),
+        width: 28,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Stack(
+            fit: StackFit.expand,
+            children: <Widget>[
+              Column(
+                children: <Widget>[
+                  Expanded(
+                    flex: ((1 - whiteShare) * 1000).round(),
+                    child: const ColoredBox(color: Color(0xFF11151C)),
+                  ),
+                  Expanded(
+                    flex: (whiteShare * 1000).round(),
+                    child: const ColoredBox(color: Color(0xFFF3F0E8)),
+                  ),
+                ],
+              ),
+              Center(
+                child: RotatedBox(
+                  quarterTurns: 3,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
+                    color: const Color(0xCC123E52),
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LinePlayerDialog extends StatefulWidget {
+  const _LinePlayerDialog({
+    required this.initialFen,
+    required this.line,
+    required this.languageCode,
+  });
+
+  final String initialFen;
+  final EngineCandidateLine line;
+  final String languageCode;
+
+  @override
+  State<_LinePlayerDialog> createState() => _LinePlayerDialogState();
+}
+
+class _LinePlayerDialogState extends State<_LinePlayerDialog> {
+  late final List<String> _positions;
+  Timer? _timer;
+  int _index = 0;
+  bool _playing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _positions = replayUciLine(
+      widget.initialFen,
+      widget.line.principalVariation,
+    );
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _togglePlay() {
+    if (_playing) {
+      _timer?.cancel();
+      setState(() => _playing = false);
+      return;
+    }
+    if (_index >= _positions.length - 1) _index = 0;
+    setState(() => _playing = true);
+    _timer = Timer.periodic(const Duration(milliseconds: 850), (Timer timer) {
+      if (!mounted) return;
+      if (_index >= _positions.length - 1) {
+        timer.cancel();
+        setState(() {
+          _playing = false;
+          _index = 0;
+        });
+        return;
+      }
+      setState(() => _index++);
+    });
+  }
+
+  void _seek(int index) {
+    _timer?.cancel();
+    setState(() {
+      _playing = false;
+      _index = index.clamp(0, _positions.length - 1);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Try this line'),
+    content: SizedBox(
+      width: 480,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          AspectRatio(
+            aspectRatio: 1,
+            child: _CoachPositionBoard(
+              fen: _positions[_index],
+              annotations: const <AiBoardAnnotation>[],
+              languageCode: widget.languageCode,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _index == 0
+                ? 'Original position'
+                : '$_index/${_positions.length - 1}  ${_readableUci(widget.line.principalVariation[_index - 1])}',
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            alignment: WrapAlignment.center,
+            children: <Widget>[
+              IconButton(
+                tooltip: 'Restart',
+                onPressed: () => _seek(0),
+                icon: const Icon(Icons.restart_alt_rounded),
+              ),
+              IconButton(
+                tooltip: 'Previous',
+                onPressed: _index > 0 ? () => _seek(_index - 1) : null,
+                icon: const Icon(Icons.skip_previous_rounded),
+              ),
+              IconButton.filled(
+                tooltip: _playing ? 'Pause' : 'Play',
+                onPressed: _positions.length > 1 ? _togglePlay : null,
+                icon: Icon(
+                  _playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Next',
+                onPressed: _index < _positions.length - 1
+                    ? () => _seek(_index + 1)
+                    : null,
+                icon: const Icon(Icons.skip_next_rounded),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+    actions: <Widget>[
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Close'),
+      ),
+    ],
+  );
+}
+
 class _CandidateMovesPanelState extends State<_CandidateMovesPanel> {
   Future<List<EngineCandidateLine>>? _engineCandidates;
 
@@ -1969,6 +2246,7 @@ class _CandidateMovesPanelState extends State<_CandidateMovesPanel> {
               number: index + 1,
               candidate: candidates[index],
               languageCode: widget.languageCode,
+              initialFen: widget.insight.fenBefore,
             ),
             if (index < candidates.length - 1) const SizedBox(height: 7),
           ],
@@ -1983,11 +2261,13 @@ class _CandidateMoveTile extends StatelessWidget {
     required this.number,
     required this.candidate,
     required this.languageCode,
+    required this.initialFen,
   });
 
   final int number;
   final _CoachCandidate candidate;
   final String languageCode;
+  final String? initialFen;
 
   @override
   Widget build(BuildContext context) {
@@ -2052,6 +2332,23 @@ class _CandidateMoveTile extends StatelessWidget {
                     height: 1.3,
                   ),
                 ),
+                if (candidate.line?.principalVariation.isNotEmpty == true &&
+                    initialFen?.isNotEmpty == true) ...<Widget>[
+                  const SizedBox(height: 7),
+                  OutlinedButton.icon(
+                    key: ValueKey<String>('try-line-$number'),
+                    onPressed: () => showDialog<void>(
+                      context: context,
+                      builder: (BuildContext context) => _LinePlayerDialog(
+                        initialFen: initialFen!,
+                        line: candidate.line!,
+                        languageCode: languageCode,
+                      ),
+                    ),
+                    icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                    label: const Text('Try this line'),
+                  ),
+                ],
               ],
             ),
           ),
@@ -2064,11 +2361,12 @@ class _CandidateMoveTile extends StatelessWidget {
 enum _CandidateKind { best, played, alternative, possible }
 
 class _CoachCandidate {
-  const _CoachCandidate(this.move, this.kind, this.explanation);
+  const _CoachCandidate(this.move, this.kind, this.explanation, {this.line});
 
   final String move;
   final _CandidateKind kind;
   final String explanation;
+  final EngineCandidateLine? line;
 }
 
 List<_CoachCandidate> _candidateMoves(
@@ -2131,6 +2429,7 @@ List<_CoachCandidate> _verifiedCandidateMoves(
         '${_coachCopy('expectedReply', languageCode)}: ${_readableUci(reply)}. '
         '$consequence. ${_coachCopy('bestLine', languageCode)}: '
         '${line.principalVariation.take(5).map(_readableUci).join(' → ')}.',
+        line: line,
       ),
     );
   }
@@ -2195,6 +2494,38 @@ String _candidateLabel(_CandidateKind kind, String languageCode) =>
       ),
       _CandidateKind.possible => _coachCopy('possibleMove', languageCode),
     };
+
+class _SimpleMoveExplanation extends StatelessWidget {
+  const _SimpleMoveExplanation({
+    required this.insight,
+    required this.languageCode,
+    required this.color,
+  });
+
+  final AiMoveInsight insight;
+  final String languageCode;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => ChessVerseCard(
+    padding: const EdgeInsets.all(12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(Icons.lightbulb_outline_rounded, color: color),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            localizeReviewNarrative(insight.explanation, languageCode),
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(height: 1.35),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
 class _StructuredMoveExplanation extends StatelessWidget {
   const _StructuredMoveExplanation({
