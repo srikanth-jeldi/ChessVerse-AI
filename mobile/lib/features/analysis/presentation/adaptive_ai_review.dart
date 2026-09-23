@@ -436,7 +436,7 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
                             Text(
-                              _moveHeading(insight),
+                              _moveHeading(insight, languageCode),
                               style: const TextStyle(
                                 color: AppColors.accentGold,
                                 fontSize: 19,
@@ -444,7 +444,7 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
                               ),
                             ),
                             Text(
-                              '${_classificationSymbol(insight.label)} ${_localizedReviewQuality(insight.label, languageCode)} • ${_coachTheme(insight)}',
+                              '${_classificationSymbol(insight.label)} ${_localizedReviewQuality(insight.label, languageCode)} • ${_coachTheme(insight, languageCode)}',
                               style: TextStyle(
                                 color: qualityColor,
                                 fontWeight: FontWeight.w800,
@@ -979,7 +979,7 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
                                 Text(
-                                  _moveHeading(insight),
+                                  _moveHeading(insight, languageCode),
                                   style: const TextStyle(
                                     color: AppColors.accentGold,
                                     fontSize: 22,
@@ -987,7 +987,7 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
                                   ),
                                 ),
                                 Text(
-                                  '${CoachLocalizations(languageCode).source(insight.side)} to move',
+                                  '${CoachLocalizations(languageCode).source(insight.side)} ${_coachCopy('toMove', languageCode)}',
                                 ),
                               ],
                             ),
@@ -1017,7 +1017,7 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: <Widget>[
-                            Text(_coachTheme(insight)),
+                            Text(_coachTheme(insight, languageCode)),
                             Wrap(
                               alignment: WrapAlignment.end,
                               spacing: 4,
@@ -1771,7 +1771,7 @@ class _MoveTimeline extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${_localizedReviewPhase(insight.phase, languageCode)} · ${_coachTheme(insight)}',
+                            '${_localizedReviewPhase(insight.phase, languageCode)} · ${_coachTheme(insight, languageCode)}',
                             style: const TextStyle(
                               color: AppColors.textSecondary,
                               height: 1.35,
@@ -2756,20 +2756,21 @@ String _formatEvaluation(int cp) {
   return '${pawns >= 0 ? '+' : ''}${pawns.toStringAsFixed(1)}';
 }
 
-String _moveHeading(AiMoveInsight insight) {
+String _moveHeading(AiMoveInsight insight, String languageCode) {
   final int moveNumber = (insight.number + 1) ~/ 2;
-  return 'Move $moveNumber · ${insight.notation}';
+  return '${_coachCopy('move', languageCode)} $moveNumber · ${insight.notation}';
 }
 
-String _coachTheme(AiMoveInsight insight) {
+String _coachTheme(AiMoveInsight insight, String languageCode) {
   final String move = insight.notation;
-  if (move.contains('x')) return 'Tactical · Material';
+  if (move.contains('x')) return _coachCopy('tacticalMaterial', languageCode);
   return switch ((insight.coachingTheme ?? '').toLowerCase()) {
-    'king_safety' || 'king safety' => 'Strategic · King safety',
-    'development' => 'Strategic · Development',
-    'endgame' => 'Technique · Endgame',
-    'opening' => 'Principled · Opening',
-    _ => 'Calculation · Decision making',
+    'king_safety' ||
+    'king safety' => _coachCopy('strategicKingSafety', languageCode),
+    'development' => _coachCopy('strategicDevelopment', languageCode),
+    'endgame' => _coachCopy('techniqueEndgame', languageCode),
+    'opening' => _coachCopy('principledOpening', languageCode),
+    _ => _coachCopy('calculationDecision', languageCode),
   };
 }
 
@@ -2843,6 +2844,14 @@ String _coachInsight(AiMoveInsight insight, String languageCode) =>
 String _coachCopy(String key, String languageCode) {
   const Map<String, String> english = <String, String>{
     'evaluation': 'Evaluation',
+    'move': 'Move',
+    'toMove': 'to move',
+    'tacticalMaterial': 'Tactical · Material',
+    'strategicKingSafety': 'Strategic · King safety',
+    'strategicDevelopment': 'Strategic · Development',
+    'techniqueEndgame': 'Technique · Endgame',
+    'principledOpening': 'Principled · Opening',
+    'calculationDecision': 'Calculation · Decision making',
     'whatChanged': 'What changed?',
     'bestReply': "Opponent's best reply",
     'bestContinuation': 'Best continuation',
@@ -2890,6 +2899,14 @@ String _coachCopy(String key, String languageCode) {
   };
   const Map<String, String> telugu = <String, String>{
     'evaluation': 'మూల్యాంకనం',
+    'move': 'ఎత్తు',
+    'toMove': 'ఆడాలి',
+    'tacticalMaterial': 'వ్యూహాత్మక దాడి · మెటీరియల్',
+    'strategicKingSafety': 'వ్యూహం · రాజు భద్రత',
+    'strategicDevelopment': 'వ్యూహం · పావుల అభివృద్ధి',
+    'techniqueEndgame': 'టెక్నిక్ · ఎండ్‌గేమ్',
+    'principledOpening': 'సూత్రబద్ధమైనది · ఓపెనింగ్',
+    'calculationDecision': 'లెక్కింపు · నిర్ణయం తీసుకోవడం',
     'whatChanged': 'ఏం మారింది?',
     'bestReply': 'ప్రత్యర్థి ఉత్తమ సమాధానం',
     'bestContinuation': 'ఉత్తమ కొనసాగింపు',
@@ -2901,6 +2918,21 @@ String _coachCopy(String key, String languageCode) {
     'playedArrow': 'ఆడిన తప్పు',
     'bestArrow': 'ఇంజిన్ ఉత్తమం',
     'alternativeArrow': 'ఇతర ఎంపికలు',
+    'noForcingThreat': 'తక్షణ బలవంతపు సమాధానం కనిపించలేదు. ఈ ఎత్తు నేరుగా ప్రమాదం సృష్టించడం కంటే స్థితిని మెరుగుపరుస్తుంది.',
+    'replyReason': 'ఈ సమాధానం కదిలిన పావును సవాలు చేస్తుందా లేదా ప్రతిదాడిని సృష్టిస్తుందా పరిశీలించండి.',
+    'captureChecklist': 'ప్రత్యర్థి తిరిగి పట్టుకోగలడా, చెక్ ఇవ్వగలడా, ప్రతిదాడి ప్రారంభించగలడా లేదా పట్టుకున్న పావును చిక్కించగలడా?',
+    'improveRoutine': 'ప్రతి క్యాప్చర్‌కు ముందు చెక్‌లు → క్యాప్చర్‌లు → ప్రమాదాలు → తిరిగి క్యాప్చర్‌లను పరిశీలించండి. తర్వాత చివరి మెటీరియల్‌ను పోల్చండి.',
+    'material': 'మెటీరియల్',
+    'activity': 'చురుకుదనం',
+    'kingSafety': 'రాజు భద్రత',
+    'materialChanged': 'మార్పిడి మారింది',
+    'pieceActivity': 'పావు స్థానాన్ని మార్చింది',
+    'noImmediateDanger': 'బలవంతపు సమాధానం లేదు',
+    'checkReply': 'బలవంతపు సమాధానం ఉంది',
+    'captureInsight':
+        'పట్టుకున్న పావు సురక్షితంగా ఉంటేనే మెటీరియల్ గెలవడం ఉపయోగకరం.',
+    'generalInsight':
+        'ఎత్తు వేయడానికి ముందు అడగండి: ప్రత్యర్థి యొక్క బలమైన సమాధానం ఏది?',
     'moveList': 'ఎత్తుల జాబితా',
     'moveReview': 'ఎత్తుల వారీ కోచింగ్',
     'movesToCompare': 'ఇంజిన్ నిర్ధారించిన 5 ఎంపికలు',
