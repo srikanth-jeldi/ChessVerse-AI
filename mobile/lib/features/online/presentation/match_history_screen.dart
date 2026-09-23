@@ -606,21 +606,25 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
         ),
       );
       try {
-        CloudAnalysisJob job = await _analysisApi.create(
-          session.token,
-          clientRequestId: 'online-${match.id}',
-          initialFen: _standardInitialFen,
-          moves: game.moves,
-          depth: 16,
-          playerColor: game.playerSide?.toUpperCase(),
-          sourceFormat: 'CHESSVERSE',
-          sourceSite: 'ChessVerseAI Online Arena',
-          whitePlayer: game.whitePlayer,
-          blackPlayer: game.blackPlayer,
-          gameResult: game.result,
+        CloudAnalysisJob job = await _createOnlineAnalysisJob(
+          session,
+          match,
+          game,
+          clientRequestId: 'online-v2-${match.id}',
         );
         if (job.status == 'FAILED') {
-          job = await _analysisApi.retry(session.token, job.id);
+          try {
+            job = await _analysisApi.retry(session.token, job.id);
+          } on GameAnalysisApiException catch (error) {
+            if (!error.message.toLowerCase().contains('retry limit')) rethrow;
+            job = await _createOnlineAnalysisJob(
+              session,
+              match,
+              game,
+              clientRequestId:
+                  'online-v2-${match.id}-${DateTime.now().millisecondsSinceEpoch}',
+            );
+          }
         }
         for (
           int attempt = 0;
@@ -696,6 +700,25 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
         ? 'This matched Stockfish’s strongest continuation.'
         : '${ply.bestMove} was stronger by ${ply.centipawnLoss} centipawns.',
     principalVariation: ply.principalVariation,
+  );
+
+  Future<CloudAnalysisJob> _createOnlineAnalysisJob(
+    StoredAuthSession session,
+    OnlineMatchDto match,
+    SavedGameRecord game, {
+    required String clientRequestId,
+  }) => _analysisApi.create(
+    session.token,
+    clientRequestId: clientRequestId,
+    initialFen: _standardInitialFen,
+    moves: game.moves,
+    depth: 16,
+    playerColor: game.playerSide?.toUpperCase(),
+    sourceFormat: 'CHESSVERSE',
+    sourceSite: 'ChessVerseAI Online Arena',
+    whitePlayer: game.whitePlayer,
+    blackPlayer: game.blackPlayer,
+    gameResult: game.result,
   );
 
   Future<void> _exportSingleGame(SavedGameRecord game, String format) async {
