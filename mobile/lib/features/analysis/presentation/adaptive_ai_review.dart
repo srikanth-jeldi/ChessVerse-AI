@@ -2842,7 +2842,7 @@ String _coachInsight(AiMoveInsight insight, String languageCode) =>
     : _coachCopy('generalInsight', languageCode);
 
 String _coachCopy(String key, String languageCode) {
-  const Map<String, String> english = <String, String>{
+  const english = <String, String>{
     'evaluation': 'Evaluation',
     'move': 'Move',
     'toMove': 'to move',
@@ -2897,62 +2897,74 @@ String _coachCopy(String key, String languageCode) {
     'nextMove': 'Next move',
     'positionUnavailable': 'Board evidence is unavailable for this move.',
   };
-  const Map<String, String> telugu = <String, String>{
-    'evaluation': 'మూల్యాంకనం',
-    'move': 'ఎత్తు',
-    'toMove': 'ఆడాలి',
-    'tacticalMaterial': 'వ్యూహాత్మక దాడి · మెటీరియల్',
-    'strategicKingSafety': 'వ్యూహం · రాజు భద్రత',
-    'strategicDevelopment': 'వ్యూహం · పావుల అభివృద్ధి',
-    'techniqueEndgame': 'టెక్నిక్ · ఎండ్‌గేమ్',
-    'principledOpening': 'సూత్రబద్ధమైనది · ఓపెనింగ్',
-    'calculationDecision': 'లెక్కింపు · నిర్ణయం తీసుకోవడం',
-    'whatChanged': 'ఏం మారింది?',
-    'bestReply': 'ప్రత్యర్థి ఉత్తమ సమాధానం',
-    'bestContinuation': 'ఉత్తమ కొనసాగింపు',
-    'bestLine': 'ఉత్తమ లైన్',
-    'beCareful': 'జాగ్రత్త',
-    'coachInsight': 'కోచ్ సూచన',
-    'howToImprove': 'ఎలా మెరుగుపడాలి',
-    'noAlternative': 'ఇంజిన్ ఉత్తమ ఎత్తు ఆకుపచ్చ బాణంతో కనిపిస్తుంది.',
-    'playedArrow': 'ఆడిన తప్పు',
-    'bestArrow': 'ఇంజిన్ ఉత్తమం',
-    'alternativeArrow': 'ఇతర ఎంపికలు',
-    'noForcingThreat': 'తక్షణ బలవంతపు సమాధానం కనిపించలేదు. ఈ ఎత్తు నేరుగా ప్రమాదం సృష్టించడం కంటే స్థితిని మెరుగుపరుస్తుంది.',
-    'replyReason': 'ఈ సమాధానం కదిలిన పావును సవాలు చేస్తుందా లేదా ప్రతిదాడిని సృష్టిస్తుందా పరిశీలించండి.',
-    'captureChecklist': 'ప్రత్యర్థి తిరిగి పట్టుకోగలడా, చెక్ ఇవ్వగలడా, ప్రతిదాడి ప్రారంభించగలడా లేదా పట్టుకున్న పావును చిక్కించగలడా?',
-    'improveRoutine': 'ప్రతి క్యాప్చర్‌కు ముందు చెక్‌లు → క్యాప్చర్‌లు → ప్రమాదాలు → తిరిగి క్యాప్చర్‌లను పరిశీలించండి. తర్వాత చివరి మెటీరియల్‌ను పోల్చండి.',
-    'material': 'మెటీరియల్',
-    'activity': 'చురుకుదనం',
-    'kingSafety': 'రాజు భద్రత',
-    'materialChanged': 'మార్పిడి మారింది',
-    'pieceActivity': 'పావు స్థానాన్ని మార్చింది',
-    'noImmediateDanger': 'బలవంతపు సమాధానం లేదు',
-    'checkReply': 'బలవంతపు సమాధానం ఉంది',
-    'captureInsight':
-        'పట్టుకున్న పావు సురక్షితంగా ఉంటేనే మెటీరియల్ గెలవడం ఉపయోగకరం.',
-    'generalInsight':
-        'ఎత్తు వేయడానికి ముందు అడగండి: ప్రత్యర్థి యొక్క బలమైన సమాధానం ఏది?',
-    'moveList': 'ఎత్తుల జాబితా',
-    'moveReview': 'ఎత్తుల వారీ కోచింగ్',
-    'movesToCompare': 'ఇంజిన్ నిర్ధారించిన 5 ఎంపికలు',
-    'candidateIntro': 'ఈ స్థానానికి స్టాక్‌ఫిష్ ర్యాంక్ చేసిన ఐదు ప్లాన్‌లను పోల్చండి. ప్రతి ఎంపికలో ప్రత్యర్థి సమాధానం, కొనసాగింపు మరియు ఉత్తమ ఎత్తుతో తేడా కనిపిస్తాయి.',
-    'possibleMovesToCompare': 'పోల్చడానికి 5 ఎత్తులు',
-    'possibleCandidateIntro': 'ఇంజిన్ ధృవీకరణ లోడ్ అవుతున్నప్పుడు లేదా అందుబాటులో లేనప్పుడు ఈ స్థానం నుండి చట్టబద్ధమైన ఎంపికలను పోల్చండి.',
-    'possibleMoveExplanation': 'ఈ స్థానం నుండి చట్టబద్ధమైన ఎంపిక. ఎంచుకునే ముందు చెక్‌లు, క్యాప్చర్‌లు, థ్రెట్‌లు, ప్రత్యర్థి సమాధానాన్ని పోల్చండి.',
-    'possibleMove': 'పోల్చదగిన ఎత్తు',
-    'engineBest': 'ఇంజిన్ ఉత్తమం',
-    'engineAlternative': 'ఇంజిన్ ప్రత్యామ్నాయం',
-    'yourMove': 'మీ ఎత్తు',
-    'expectedReply': 'ప్రత్యర్థి అంచనా సమాధానం',
-    'keepsBestResult': 'అందుబాటులో ఉన్న ఉత్తమ ఫలితాన్ని నిలబెడుతుంది',
-    'costVsBest': 'ఉత్తమ ఎత్తుతో తేడా',
-    'showOnBoard': 'బోర్డుపై చూపించు',
-    'previousMove': 'మునుపటి ఎత్తు',
-    'nextMove': 'తదుపరి ఎత్తు',
-    'positionUnavailable': 'ఈ ఎత్తుకు బోర్డు ఆధారం అందుబాటులో లేదు.',
+  if (AppLanguageController.resolveCode(languageCode) == 'en') {
+    return english[key] ?? key;
+  }
+  final coach = CoachLocalizations(languageCode);
+  String dashboard(String value) => analysisDashboardText(value, languageCode);
+  final localized = <String, String>{
+    'evaluation': dashboard('analysis'),
+    'move': reviewNarrativeText('move', languageCode, const <String, String>{
+      'count': '',
+    }).trim(),
+    'toMove': coach
+        .text('findContinuation', <String, String>{'side': ''})
+        .split('·')
+        .first
+        .trim(),
+    'tacticalMaterial':
+        '${dashboard('tactics')} · ${dashboard('hangingPieces')}',
+    'strategicKingSafety': '${dashboard('focus')} · ${dashboard('kingSafety')}',
+    'strategicDevelopment': '${dashboard('focus')} · ${coach.text('opening')}',
+    'techniqueEndgame': '${dashboard('calculation')} · ${dashboard('endgame')}',
+    'principledOpening':
+        '${coach.text('principled')} · ${coach.text('opening')}',
+    'calculationDecision':
+        '${dashboard('calculation')} · ${dashboard('focus')}',
+    'whatChanged': dashboard('improved'),
+    'bestReply': coach.text('immediateReply'),
+    'bestContinuation': coach.text('continuation'),
+    'bestLine': coach.text('continuation'),
+    'beCareful': personalCoachText('opponentThreat', languageCode),
+    'coachInsight': dashboard('focus'),
+    'howToImprove': dashboard('nextFocus'),
+    'noAlternative': coach.text('bestFound'),
+    'playedArrow': personalCoachText('played', languageCode),
+    'bestArrow': coach.text('best'),
+    'alternativeArrow': coach.text('alternative'),
+    'noForcingThreat': coachExtraText('noThreat', languageCode),
+    'replyReason': personalCoachText('calculate', languageCode),
+    'captureChecklist': dashboard('focusLoss'),
+    'improveRoutine': dashboard('slowDetail'),
+    'material': dashboard('hangingPieces'),
+    'activity': dashboard('focus'),
+    'kingSafety': dashboard('kingSafety'),
+    'materialChanged': dashboard('improved'),
+    'pieceActivity': coach.text('principledExplanation'),
+    'noImmediateDanger': coachExtraText('noThreat', languageCode),
+    'checkReply': coach.text('immediateReply'),
+    'captureInsight': dashboard('focusLoss'),
+    'generalInsight': dashboard('slowDetail'),
+    'moveList': dashboard('movesReviewed'),
+    'moveReview': coach.text('moveByMove'),
+    'movesToCompare': personalCoachText('compare', languageCode),
+    'candidateIntro': dashboard('slowDetail'),
+    'possibleMovesToCompare': personalCoachText('compare', languageCode),
+    'possibleCandidateIntro': personalCoachText('calculate', languageCode),
+    'possibleMoveExplanation': dashboard('slowDetail'),
+    'possibleMove': coach.text('playable'),
+    'engineBest': coach.text('best'),
+    'engineAlternative': coach.text('alternative'),
+    'yourMove': personalCoachText('played', languageCode),
+    'expectedReply': coach.text('immediateReply'),
+    'keepsBestResult': coach.text('bestFound'),
+    'costVsBest': personalCoachText('loss', languageCode),
+    'showOnBoard': personalCoachText('boardSemantics', languageCode),
+    'previousMove': coach.text('back'),
+    'nextMove': coachExtraText('nextPuzzle', languageCode),
+    'positionUnavailable': personalCoachText('unavailable', languageCode),
   };
-  if (languageCode == 'te' && telugu.containsKey(key)) return telugu[key]!;
+  if (localized.containsKey(key)) return localized[key]!;
   return english[key] ?? key;
 }
 
