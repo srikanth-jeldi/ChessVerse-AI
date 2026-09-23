@@ -1064,8 +1064,7 @@ class _PremiumHero extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 14),
-            SizedBox(
-              width: 240,
+            Flexible(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
