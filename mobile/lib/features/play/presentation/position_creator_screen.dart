@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/desktop_navigation_shell.dart';
+
 class PositionSetup {
   const PositionSetup({required this.pieces, required this.humanWhite});
 
@@ -103,43 +105,46 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
   Widget build(BuildContext context) {
     final bool wide = MediaQuery.sizeOf(context).width >= 800;
     final Widget controls = _controls();
-    return Scaffold(
-      backgroundColor: const Color(0xFF061524),
-      appBar: AppBar(
-        title: const Text('POSITION CREATOR'),
-        backgroundColor: const Color(0xFF071B2D),
-        actions: <Widget>[
-          TextButton.icon(
-            onPressed: () => setState(
-              () => _pieces = <String, String>{'e1': 'wK', 'e8': 'bK'},
+    return DesktopNavigationShell(
+      selected: 'Play',
+      child: Scaffold(
+        backgroundColor: const Color(0xFF061524),
+        appBar: AppBar(
+          title: const Text('POSITION CREATOR'),
+          backgroundColor: const Color(0xFF071B2D),
+          actions: <Widget>[
+            TextButton.icon(
+              onPressed: () => setState(
+                () => _pieces = <String, String>{'e1': 'wK', 'e8': 'bK'},
+              ),
+              icon: const Icon(Icons.delete_sweep_rounded),
+              label: const Text('CLEAR'),
             ),
-            icon: const Icon(Icons.delete_sweep_rounded),
-            label: const Text('CLEAR'),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1120),
-              child: wide
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Expanded(flex: 6, child: _board()),
-                        const SizedBox(width: 28),
-                        Expanded(flex: 4, child: controls),
-                      ],
-                    )
-                  : Column(
-                      children: <Widget>[
-                        _board(),
-                        const SizedBox(height: 20),
-                        controls,
-                      ],
-                    ),
+          ],
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1120),
+                child: wide
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Expanded(flex: 6, child: _board()),
+                          const SizedBox(width: 28),
+                          Expanded(flex: 4, child: controls),
+                        ],
+                      )
+                    : Column(
+                        children: <Widget>[
+                          _board(),
+                          const SizedBox(height: 20),
+                          controls,
+                        ],
+                      ),
+              ),
             ),
           ),
         ),

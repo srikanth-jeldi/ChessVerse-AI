@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/desktop_navigation_shell.dart';
 import '../data/online_match_api.dart';
 
 class SpectatorScreen extends StatefulWidget {
@@ -62,30 +63,33 @@ class _SpectatorScreenState extends State<SpectatorScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFF061524),
-    appBar: AppBar(
-      title: const Text('WATCH & LEARN'),
-      backgroundColor: const Color(0xFF071B2D),
-      actions: <Widget>[
-        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
-      ],
-    ),
-    body: _loading
-        ? const Center(child: CircularProgressIndicator())
-        : _error != null
-        ? Center(child: Text(_error!))
-        : _games.isEmpty
-        ? const _EmptyArena()
-        : ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 60),
-            itemCount: _games.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 14),
-            itemBuilder: (_, int index) => _LiveGameCard(
-              game: _games[index],
-              onTap: () => Navigator.pop(context, _games[index]),
+  Widget build(BuildContext context) => DesktopNavigationShell(
+    selected: 'Play',
+    child: Scaffold(
+      backgroundColor: const Color(0xFF061524),
+      appBar: AppBar(
+        title: const Text('WATCH & LEARN'),
+        backgroundColor: const Color(0xFF071B2D),
+        actions: <Widget>[
+          IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
+        ],
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? Center(child: Text(_error!))
+          : _games.isEmpty
+          ? const _EmptyArena()
+          : ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 60),
+              itemCount: _games.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 14),
+              itemBuilder: (_, int index) => _LiveGameCard(
+                game: _games[index],
+                onTap: () => Navigator.pop(context, _games[index]),
+              ),
             ),
-          ),
+    ),
   );
 }
 

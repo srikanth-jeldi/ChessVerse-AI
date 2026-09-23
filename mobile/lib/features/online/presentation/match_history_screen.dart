@@ -972,6 +972,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
             onLearn: () => navigate(3),
             onProfile: () => navigate(4),
             onFriends: () => navigate(5),
+            onCollection: () => navigate(7),
           ),
           Expanded(child: _buildPage(showBackButton: false)),
         ],
