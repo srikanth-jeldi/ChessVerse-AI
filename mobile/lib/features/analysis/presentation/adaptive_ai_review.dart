@@ -550,6 +550,7 @@ class _MobileReviewSummary extends StatelessWidget {
             child: Column(
               children: <Widget>[
                 Container(
+                  key: const ValueKey<String>('ai-review-score-badge'),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 22,
                     vertical: 13,
@@ -1150,6 +1151,7 @@ class _ReviewOverview extends StatelessWidget {
           child: Row(
             children: <Widget>[
               Container(
+                key: const ValueKey<String>('ai-review-score-badge'),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 10,

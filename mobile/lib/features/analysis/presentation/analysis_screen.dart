@@ -1134,29 +1134,22 @@ class _PremiumSummary extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              width: 128,
-              height: 128,
-              child: Stack(
-                alignment: Alignment.center,
-                children: <Widget>[
-                  SizedBox.expand(
-                    child: CircularProgressIndicator(
-                      value: accuracy / 100,
-                      strokeWidth: 13,
-                      backgroundColor: const Color(0xFF12355C),
-                      color: const Color(0xFFFFD35F),
-                      strokeCap: StrokeCap.round,
-                    ),
-                  ),
-                  Text(
-                    '$accuracy%',
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
+            Container(
+              key: const ValueKey<String>('analysis-progress-score-badge'),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF102C38),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: const Color(0xFF59E4C8), width: 2),
+              ),
+              child: Text(
+                '$accuracy / 100',
+                style: const TextStyle(
+                  color: Color(0xFF59E4C8),
+                  fontSize: 25,
+                  height: 1,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
             const SizedBox(height: 18),

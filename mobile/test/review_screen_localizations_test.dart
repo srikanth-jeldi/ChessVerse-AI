@@ -65,7 +65,11 @@ void main() {
             );
           }
           if (size.width == 360 && language.code == 'en') {
-            expect(find.textContaining('%'), findsWidgets);
+            expect(
+              find.byKey(const ValueKey<String>('ai-review-score-badge')),
+              findsOneWidget,
+            );
+            expect(find.text('${report.accuracy} / 100'), findsOneWidget);
             final reviewButton = find.text(
               analysisDashboardText('openReview', language.code),
             );

@@ -99,6 +99,22 @@ class _FinishedOnlineApi extends OnlineMatchApi {
   }
 }
 
+class _StaticOnlineApi extends OnlineMatchApi {
+  const _StaticOnlineApi(this.match);
+  final OnlineMatchDto match;
+
+  @override
+  Future<OnlineMatchDto> getMatch(String token, String matchId) async => match;
+
+  @override
+  Future<WebSocketChannel> openMatchChannel(
+    String token,
+    String matchId,
+  ) async {
+    throw StateError('Socket intentionally unavailable in widget test');
+  }
+}
+
 void main() {
   testWidgets('review retry board validates the stored engine move', (
     WidgetTester tester,
@@ -446,6 +462,54 @@ void main() {
     expect(board.lastFromSquare, 'd7');
     expect(board.lastToSquare, 'd5');
     expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('opponent turn never exposes selection or coach hint paths', (
+    WidgetTester tester,
+  ) async {
+    const OnlineMatchDto match = OnlineMatchDto(
+      id: '44444444-4444-4444-4444-444444444444',
+      roomCode: 'CVLOCK',
+      status: 'ACTIVE',
+      yourColor: 'WHITE',
+      activeColor: 'BLACK',
+      whitePlayerName: 'White player',
+      blackPlayerName: 'Black player',
+      fen: '',
+      moves: <OnlineMoveDto>[OnlineMoveDto(ply: 0, uci: 'e2e4')],
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+          initialGameMode: GameMode.online,
+          initialOnlineMatch: match,
+          initialAuthToken: 'test-token',
+          onlineApi: _StaticOnlineApi(match),
+        ),
+      ),
+    );
+    await tester.pump();
+    ChessBoard board = tester.widget<ChessBoard>(find.byType(ChessBoard));
+    board.onSquareTap('b1');
+    await tester.pump();
+
+    board = tester.widget<ChessBoard>(find.byType(ChessBoard));
+    expect(board.selectedSquare, isNull);
+    expect(board.legalTargets, isEmpty);
+    expect(board.coachArrowFrom, isNull);
+    expect(board.coachArrowTo, isNull);
+    expect(board.idleHintFrom, isNull);
+    expect(board.idleHintTo, isNull);
+
+    await tester.pump(const Duration(seconds: 11));
+    board = tester.widget<ChessBoard>(find.byType(ChessBoard));
+    expect(board.idleHintFrom, isNull);
+    expect(board.idleHintTo, isNull);
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
