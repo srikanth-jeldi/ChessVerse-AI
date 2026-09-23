@@ -3079,7 +3079,7 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
   );
 }
 
-class _CoachPositionBoard extends StatelessWidget {
+class _CoachPositionBoard extends StatefulWidget {
   const _CoachPositionBoard({
     required this.fen,
     required this.annotations,
@@ -3090,10 +3090,72 @@ class _CoachPositionBoard extends StatelessWidget {
   final String languageCode;
 
   @override
+  State<_CoachPositionBoard> createState() => _CoachPositionBoardState();
+}
+
+class _CoachPositionBoardState extends State<_CoachPositionBoard> {
+  List<AiBoardAnnotation> _candidateAnnotations = const <AiBoardAnnotation>[];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCandidateArrows();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CoachPositionBoard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.fen != widget.fen) {
+      _candidateAnnotations = const <AiBoardAnnotation>[];
+      _loadCandidateArrows();
+    }
+  }
+
+  Future<void> _loadCandidateArrows() async {
+    try {
+      final StoredAuthSession? session = await const AuthSessionStore().read();
+      if (session == null) return;
+      final List<EngineCandidateLine> candidates =
+          await const EngineCandidatesApi().analyze(
+            session.token,
+            fen: widget.fen,
+          );
+      if (!mounted) return;
+      final Set<String> primaryMoves = widget.annotations
+          .map((AiBoardAnnotation item) => '${item.from}${item.to}')
+          .toSet();
+      final List<AiBoardAnnotation> alternatives = <AiBoardAnnotation>[];
+      for (final EngineCandidateLine candidate in candidates) {
+        final String move = candidate.move.trim().toLowerCase();
+        if (move.length < 4 || !primaryMoves.add(move.substring(0, 4))) {
+          continue;
+        }
+        alternatives.add(
+          AiBoardAnnotation(
+            move.substring(0, 2),
+            move.substring(2, 4),
+            'candidate',
+            _reviewText('alternative', widget.languageCode),
+          ),
+        );
+        if (alternatives.length == 3) break;
+      }
+      setState(() => _candidateAnnotations = alternatives);
+    } on Object {
+      // The real played/best arrows remain visible if candidate analysis is
+      // temporarily unavailable. The candidate panel shows the same state.
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final Map<String, String> pieces = _fenPieces(fen);
+    final Map<String, String> pieces = _fenPieces(widget.fen);
+    final List<AiBoardAnnotation> visibleAnnotations = <AiBoardAnnotation>[
+      ...widget.annotations,
+      ..._candidateAnnotations,
+    ];
     return Semantics(
-      label: personalCoachText('boardSemantics', languageCode),
+      label: personalCoachText('boardSemantics', widget.languageCode),
       child: AspectRatio(
         aspectRatio: 1,
         child: LayoutBuilder(
@@ -3134,7 +3196,9 @@ class _CoachPositionBoard extends StatelessWidget {
                   },
                 ),
                 Positioned.fill(
-                  child: CustomPaint(painter: _CoachArrowPainter(annotations)),
+                  child: CustomPaint(
+                    painter: _CoachArrowPainter(visibleAnnotations),
+                  ),
                 ),
               ],
             );
