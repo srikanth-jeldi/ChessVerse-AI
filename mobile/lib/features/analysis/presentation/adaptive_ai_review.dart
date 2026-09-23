@@ -286,22 +286,10 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
     }
     final AiMoveInsight insight = widget.report.insights[_selectedIndex];
     final Color qualityColor = _qualityColor(insight.label);
-    final List<AiBoardAnnotation> annotations = <AiBoardAnnotation>[
-      if ((insight.playedMove ?? '').length >= 4)
-        AiBoardAnnotation(
-          insight.playedMove!.substring(0, 2),
-          insight.playedMove!.substring(2, 4),
-          _playedAnnotationKind(insight),
-          insight.label,
-        ),
-      if ((insight.bestMove ?? '').length >= 4)
-        AiBoardAnnotation(
-          insight.bestMove!.substring(0, 2),
-          insight.bestMove!.substring(2, 4),
-          'best',
-          _reviewText('best', languageCode),
-        ),
-    ];
+    final List<AiBoardAnnotation> annotations = _reviewBoardAnnotations(
+      insight,
+      languageCode,
+    );
     return Column(
       children: <Widget>[
         Row(
@@ -794,22 +782,10 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
     final String languageCode = _ReviewLanguageScope.of(context);
     final AiMoveInsight insight = widget.report.insights[_selectedIndex];
     final Color qualityColor = _qualityColor(insight.label);
-    final List<AiBoardAnnotation> annotations = <AiBoardAnnotation>[
-      if ((insight.playedMove ?? '').length >= 4)
-        AiBoardAnnotation(
-          insight.playedMove!.substring(0, 2),
-          insight.playedMove!.substring(2, 4),
-          _playedAnnotationKind(insight),
-          insight.label,
-        ),
-      if ((insight.bestMove ?? '').length >= 4)
-        AiBoardAnnotation(
-          insight.bestMove!.substring(0, 2),
-          insight.bestMove!.substring(2, 4),
-          'best',
-          _reviewText('best', languageCode),
-        ),
-    ];
+    final List<AiBoardAnnotation> annotations = _reviewBoardAnnotations(
+      insight,
+      languageCode,
+    );
     return Column(
       children: <Widget>[
         Row(
@@ -2251,6 +2227,8 @@ class _StructuredMoveExplanation extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
+          _ArrowLegend(languageCode: languageCode),
+          const SizedBox(height: 10),
           _EvidenceRow(
             icon: Icons.play_circle_outline_rounded,
             label: personalCoachText('whyBad', languageCode),
@@ -2331,6 +2309,49 @@ class _StructuredMoveExplanation extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ArrowLegend extends StatelessWidget {
+  const _ArrowLegend({required this.languageCode});
+
+  final String languageCode;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 12,
+    runSpacing: 6,
+    children: <Widget>[
+      _item(const Color(0xE6FF5263), _coachCopy('playedArrow', languageCode)),
+      _item(const Color(0xE659E4C8), _coachCopy('bestArrow', languageCode)),
+      _item(
+        const Color(0xE650B8FF),
+        _coachCopy('alternativeArrow', languageCode),
+      ),
+    ],
+  );
+
+  Widget _item(Color color, String label) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      Container(
+        width: 18,
+        height: 4,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
+      const SizedBox(width: 5),
+      Text(
+        label,
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    ],
+  );
 }
 
 class _MoveEffectChip extends StatelessWidget {
@@ -2472,7 +2493,10 @@ String _coachCopy(String key, String languageCode) {
     'beCareful': 'Be careful',
     'coachInsight': 'Coach insight',
     'howToImprove': 'How to improve',
-    'noAlternative': 'No stronger alternative was found in this review.',
+    'noAlternative': 'The engine best move is marked by the green arrow.',
+    'playedArrow': 'Played mistake',
+    'bestArrow': 'Engine best',
+    'alternativeArrow': 'Other options',
     'noForcingThreat': 'No immediate forcing reply was found. This move is about improving the position, not creating a direct threat.',
     'replyReason': 'Check whether this reply challenges the moved piece or creates counterplay.',
     'captureChecklist': 'Can the opponent recapture, give a check, launch a counterattack, or trap the capturing piece?',
@@ -2516,6 +2540,10 @@ String _coachCopy(String key, String languageCode) {
     'beCareful': 'జాగ్రత్త',
     'coachInsight': 'కోచ్ సూచన',
     'howToImprove': 'ఎలా మెరుగుపడాలి',
+    'noAlternative': 'ఇంజిన్ ఉత్తమ ఎత్తు ఆకుపచ్చ బాణంతో కనిపిస్తుంది.',
+    'playedArrow': 'ఆడిన తప్పు',
+    'bestArrow': 'ఇంజిన్ ఉత్తమం',
+    'alternativeArrow': 'ఇతర ఎంపికలు',
     'moveList': 'ఎత్తుల జాబితా',
     'moveReview': 'ఎత్తుల వారీ కోచింగ్',
     'movesToCompare': 'ఇంజిన్ నిర్ధారించిన 5 ఎంపికలు',
@@ -2585,20 +2613,7 @@ Future<void> _showPositionEvidence(
   String languageCode,
 ) {
   final List<AiBoardAnnotation> annotations = <AiBoardAnnotation>[
-    if ((insight.playedMove ?? '').length >= 4)
-      AiBoardAnnotation(
-        insight.playedMove!.substring(0, 2),
-        insight.playedMove!.substring(2, 4),
-        _playedAnnotationKind(insight),
-        insight.label,
-      ),
-    if ((insight.bestMove ?? '').length >= 4)
-      AiBoardAnnotation(
-        insight.bestMove!.substring(0, 2),
-        insight.bestMove!.substring(2, 4),
-        'best',
-        _reviewText('best', languageCode),
-      ),
+    ..._reviewBoardAnnotations(insight, languageCode),
     if ((insight.opponentThreat ?? '').length >= 4)
       AiBoardAnnotation(
         insight.opponentThreat!.substring(0, 2),
@@ -3094,6 +3109,8 @@ class _CoachPositionBoard extends StatefulWidget {
 }
 
 class _CoachPositionBoardState extends State<_CoachPositionBoard> {
+  static final Map<String, List<EngineCandidateLine>> _candidateCache =
+      <String, List<EngineCandidateLine>>{};
   List<AiBoardAnnotation> _candidateAnnotations = const <AiBoardAnnotation>[];
 
   @override
@@ -3105,40 +3122,70 @@ class _CoachPositionBoardState extends State<_CoachPositionBoard> {
   @override
   void didUpdateWidget(covariant _CoachPositionBoard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.fen != widget.fen) {
+    final String oldSignature = oldWidget.annotations
+        .map((item) => '${item.from}${item.to}:${item.kind}')
+        .join('|');
+    final String newSignature = widget.annotations
+        .map((item) => '${item.from}${item.to}:${item.kind}')
+        .join('|');
+    if (oldWidget.fen != widget.fen || oldSignature != newSignature) {
       _candidateAnnotations = const <AiBoardAnnotation>[];
       _loadCandidateArrows();
     }
   }
 
   Future<void> _loadCandidateArrows() async {
+    final String requestedFen = widget.fen;
     try {
-      final StoredAuthSession? session = await const AuthSessionStore().read();
-      if (session == null) return;
-      final List<EngineCandidateLine> candidates =
-          await const EngineCandidatesApi().analyze(
-            session.token,
-            fen: widget.fen,
-          );
-      if (!mounted) return;
+      List<EngineCandidateLine>? candidates = _candidateCache[requestedFen];
+      if (candidates == null) {
+        final StoredAuthSession? session = await const AuthSessionStore()
+            .read();
+        if (session == null) return;
+        Object? lastError;
+        for (int attempt = 0; attempt < 2; attempt++) {
+          try {
+            candidates = await const EngineCandidatesApi().analyze(
+              session.token,
+              fen: requestedFen,
+            );
+            break;
+          } on Object catch (error) {
+            lastError = error;
+            if (attempt == 0) {
+              await Future<void>.delayed(const Duration(milliseconds: 350));
+            }
+          }
+        }
+        if (candidates == null) throw lastError ?? StateError('No candidates');
+        _candidateCache[requestedFen] = candidates;
+      }
+      if (!mounted || widget.fen != requestedFen) return;
       final Set<String> primaryMoves = widget.annotations
           .map((AiBoardAnnotation item) => '${item.from}${item.to}')
           .toSet();
       final List<AiBoardAnnotation> alternatives = <AiBoardAnnotation>[];
-      for (final EngineCandidateLine candidate in candidates) {
+      final bool alreadyHasBest = widget.annotations.any(
+        (AiBoardAnnotation item) =>
+            item.kind == 'best' || item.kind == 'played-correct',
+      );
+      for (int index = 0; index < candidates.length; index++) {
+        final EngineCandidateLine candidate = candidates[index];
         final String move = candidate.move.trim().toLowerCase();
-        if (move.length < 4 || !primaryMoves.add(move.substring(0, 4))) {
-          continue;
-        }
+        if (move.length < 4) continue;
+        final String moveKey = move.substring(0, 4);
+        final bool isBest = index == 0 && !alreadyHasBest;
+        if (!isBest && !primaryMoves.add(moveKey)) continue;
         alternatives.add(
           AiBoardAnnotation(
             move.substring(0, 2),
             move.substring(2, 4),
-            'candidate',
-            _reviewText('alternative', widget.languageCode),
+            isBest ? 'best' : 'candidate',
+            _reviewText(isBest ? 'best' : 'alternative', widget.languageCode),
           ),
         );
-        if (alternatives.length == 3) break;
+        primaryMoves.add(moveKey);
+        if (alternatives.length == 4) break;
       }
       setState(() => _candidateAnnotations = alternatives);
     } on Object {
@@ -3150,10 +3197,9 @@ class _CoachPositionBoardState extends State<_CoachPositionBoard> {
   @override
   Widget build(BuildContext context) {
     final Map<String, String> pieces = _fenPieces(widget.fen);
-    final List<AiBoardAnnotation> visibleAnnotations = <AiBoardAnnotation>[
-      ...widget.annotations,
-      ..._candidateAnnotations,
-    ];
+    final List<AiBoardAnnotation> visibleAnnotations = _mergeCoachAnnotations(
+      <AiBoardAnnotation>[...widget.annotations, ..._candidateAnnotations],
+    );
     return Semantics(
       label: personalCoachText('boardSemantics', widget.languageCode),
       child: AspectRatio(
@@ -3303,12 +3349,59 @@ class _CoachArrowPainter extends CustomPainter {
       !listEquals(oldDelegate.annotations, annotations);
 }
 
-String _playedAnnotationKind(AiMoveInsight insight) {
-  final String played = (insight.playedMove ?? '').trim().toLowerCase();
-  final String best = (insight.bestMove ?? '').trim().toLowerCase();
-  return played.isNotEmpty && best.isNotEmpty && played == best
-      ? 'played-correct'
-      : 'played-wrong';
+List<AiBoardAnnotation> _reviewBoardAnnotations(
+  AiMoveInsight insight,
+  String languageCode,
+) {
+  final String? played = _uciMove(insight.playedMove ?? insight.notation);
+  final String? best = _uciMove(insight.bestMove);
+  return _mergeCoachAnnotations(<AiBoardAnnotation>[
+    if (played != null)
+      AiBoardAnnotation(
+        played.substring(0, 2),
+        played.substring(2, 4),
+        played == best ? 'played-correct' : 'played-wrong',
+        insight.label,
+      ),
+    if (best != null)
+      AiBoardAnnotation(
+        best.substring(0, 2),
+        best.substring(2, 4),
+        'best',
+        _reviewText('best', languageCode),
+      ),
+  ]);
+}
+
+String? _uciMove(String? value) {
+  if (value == null) return null;
+  final RegExpMatch? match = RegExp(
+    r'([a-h][1-8])\s*(?:[-x>→:]*)\s*([a-h][1-8])',
+    caseSensitive: false,
+  ).firstMatch(value.trim());
+  if (match == null) return null;
+  return '${match.group(1)}${match.group(2)}'.toLowerCase();
+}
+
+List<AiBoardAnnotation> _mergeCoachAnnotations(
+  List<AiBoardAnnotation> annotations,
+) {
+  int priority(String kind) => switch (kind) {
+    'best' || 'played-correct' => 4,
+    'played-wrong' => 3,
+    'threat' => 2,
+    _ => 1,
+  };
+  final Map<String, AiBoardAnnotation> merged = <String, AiBoardAnnotation>{};
+  for (final AiBoardAnnotation annotation in annotations) {
+    final String key = '${annotation.from}${annotation.to}';
+    final AiBoardAnnotation? existing = merged[key];
+    if (existing == null ||
+        priority(annotation.kind) > priority(existing.kind)) {
+      merged[key] = annotation;
+    }
+  }
+  return merged.values.toList(growable: false);
 }
 
 class _ReviewAction extends StatelessWidget {
