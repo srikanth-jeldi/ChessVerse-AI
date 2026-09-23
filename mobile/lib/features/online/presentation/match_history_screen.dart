@@ -996,18 +996,6 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
         ),
         backgroundColor: const Color(0xD9071827),
         actions: <Widget>[
-          IconButton(
-            key: const ValueKey<String>('import-pgn'),
-            tooltip: 'Import PGN game or FEN position',
-            onPressed: _chooseImportFormat,
-            icon: const Icon(Icons.upload_file_rounded),
-          ),
-          IconButton(
-            key: const ValueKey<String>('export-pgn'),
-            tooltip: 'Export as PGN or FEN',
-            onPressed: _chooseExportFormat,
-            icon: const Icon(Icons.download_rounded),
-          ),
           PopupMenuButton<String>(
             tooltip: 'Manage saved games',
             onSelected: (String value) {
