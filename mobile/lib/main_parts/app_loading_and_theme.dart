@@ -438,34 +438,23 @@ class ChessVerseLoadingScreen extends StatelessWidget {
     ),
   );
 
-  Widget _landscape() => Padding(
-    padding: const EdgeInsets.all(38),
-    child: Row(
-      children: <Widget>[
-        const Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              _LoadingLogo(size: 152),
-              SizedBox(height: 24),
-              _LoadingBrand(),
-              SizedBox(height: 20),
-              _LoadingCrown(),
-            ],
-          ),
-        ),
-        const SizedBox(width: 40),
-        const Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              _LoadingProgress(),
-              SizedBox(height: 32),
-              _CinematicLoadingFeatures(),
-            ],
-          ),
-        ),
-      ],
+  Widget _landscape() => const Center(
+    child: SizedBox(
+      width: 470,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          _LoadingLogo(size: 118),
+          SizedBox(height: 16),
+          _LoadingBrand(),
+          SizedBox(height: 12),
+          _LoadingCrown(),
+          SizedBox(height: 18),
+          _LoadingProgress(),
+          SizedBox(height: 20),
+          _CinematicLoadingFeatures(),
+        ],
+      ),
     ),
   );
 }

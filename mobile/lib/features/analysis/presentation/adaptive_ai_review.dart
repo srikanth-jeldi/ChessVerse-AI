@@ -3109,13 +3109,12 @@ class _CoachPositionBoard extends StatefulWidget {
 }
 
 class _CoachPositionBoardState extends State<_CoachPositionBoard> {
-  static final Map<String, List<EngineCandidateLine>> _candidateCache =
-      <String, List<EngineCandidateLine>>{};
   List<AiBoardAnnotation> _candidateAnnotations = const <AiBoardAnnotation>[];
 
   @override
   void initState() {
     super.initState();
+    _candidateAnnotations = _localCandidateAnnotations();
     _loadCandidateArrows();
   }
 
@@ -3129,7 +3128,7 @@ class _CoachPositionBoardState extends State<_CoachPositionBoard> {
         .map((item) => '${item.from}${item.to}:${item.kind}')
         .join('|');
     if (oldWidget.fen != widget.fen || oldSignature != newSignature) {
-      _candidateAnnotations = const <AiBoardAnnotation>[];
+      _candidateAnnotations = _localCandidateAnnotations();
       _loadCandidateArrows();
     }
   }
@@ -3137,29 +3136,13 @@ class _CoachPositionBoardState extends State<_CoachPositionBoard> {
   Future<void> _loadCandidateArrows() async {
     final String requestedFen = widget.fen;
     try {
-      List<EngineCandidateLine>? candidates = _candidateCache[requestedFen];
-      if (candidates == null) {
-        final StoredAuthSession? session = await const AuthSessionStore()
-            .read();
-        if (session == null) return;
-        Object? lastError;
-        for (int attempt = 0; attempt < 2; attempt++) {
-          try {
-            candidates = await const EngineCandidatesApi().analyze(
-              session.token,
-              fen: requestedFen,
-            );
-            break;
-          } on Object catch (error) {
-            lastError = error;
-            if (attempt == 0) {
-              await Future<void>.delayed(const Duration(milliseconds: 350));
-            }
-          }
-        }
-        if (candidates == null) throw lastError ?? StateError('No candidates');
-        _candidateCache[requestedFen] = candidates;
-      }
+      final StoredAuthSession? session = await const AuthSessionStore().read();
+      if (session == null) return;
+      final List<EngineCandidateLine> candidates =
+          await const EngineCandidatesApi().analyze(
+            session.token,
+            fen: requestedFen,
+          );
       if (!mounted || widget.fen != requestedFen) return;
       final Set<String> primaryMoves = widget.annotations
           .map((AiBoardAnnotation item) => '${item.from}${item.to}')
@@ -3189,9 +3172,33 @@ class _CoachPositionBoardState extends State<_CoachPositionBoard> {
       }
       setState(() => _candidateAnnotations = alternatives);
     } on Object {
-      // The real played/best arrows remain visible if candidate analysis is
-      // temporarily unavailable. The candidate panel shows the same state.
+      // Keep the played move and deterministic legal alternatives visible.
+      // A later revisit retries engine verification through the shared API.
     }
+  }
+
+  List<AiBoardAnnotation> _localCandidateAnnotations() {
+    final Set<String> primaryMoves = widget.annotations
+        .map((AiBoardAnnotation item) => '${item.from}${item.to}')
+        .toSet();
+    final List<AiBoardAnnotation> alternatives = <AiBoardAnnotation>[];
+    for (final CoachMoveCandidate candidate in coachMoveCandidates(
+      widget.fen,
+      limit: 8,
+    )) {
+      final String move = candidate.move.trim().toLowerCase();
+      if (move.length < 4 || !primaryMoves.add(move.substring(0, 4))) continue;
+      alternatives.add(
+        AiBoardAnnotation(
+          move.substring(0, 2),
+          move.substring(2, 4),
+          'candidate',
+          _reviewText('alternative', widget.languageCode),
+        ),
+      );
+      if (alternatives.length == 3) break;
+    }
+    return alternatives;
   }
 
   @override

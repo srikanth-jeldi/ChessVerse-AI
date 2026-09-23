@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
@@ -51,6 +52,7 @@ public class StockfishService implements GamePositionAnalyzer {
 
     private final String stockfishPath;
     private final Duration responseTimeout;
+    private final Semaphore engineSlots = new Semaphore(2, true);
 
     StockfishService(
             @Value("${chessverse.engine.stockfish-path:stockfish}") String stockfishPath,
@@ -68,7 +70,7 @@ public class StockfishService implements GamePositionAnalyzer {
         int levelIndex = request.level() - 1;
         int targetElo = ELO_LEVELS.get(levelIndex);
         int moveTimeMs = MOVE_TIMES_MS.get(levelIndex);
-        Process process = startEngine();
+        Process process = startManagedEngine();
 
         try (BufferedWriter input = new BufferedWriter(new OutputStreamWriter(
                 process.getOutputStream(), StandardCharsets.UTF_8));
@@ -103,6 +105,7 @@ public class StockfishService implements GamePositionAnalyzer {
             throw new EngineException(HttpStatus.SERVICE_UNAVAILABLE, "Stockfish could not calculate a move.");
         } finally {
             process.destroyForcibly();
+            engineSlots.release();
         }
     }
 
@@ -112,7 +115,7 @@ public class StockfishService implements GamePositionAnalyzer {
             throw new EngineException(HttpStatus.BAD_REQUEST, "The supplied chess position is invalid.");
         }
         int depth = ANALYSIS_DEPTHS.get(request.level() - 1);
-        Process process = startEngine();
+        Process process = startManagedEngine();
         try (BufferedWriter input = new BufferedWriter(new OutputStreamWriter(
                 process.getOutputStream(), StandardCharsets.UTF_8));
                 BufferedReader output = new BufferedReader(new InputStreamReader(
@@ -152,6 +155,7 @@ public class StockfishService implements GamePositionAnalyzer {
             throw new EngineException(HttpStatus.SERVICE_UNAVAILABLE, "Stockfish could not analyze the position.");
         } finally {
             process.destroyForcibly();
+            engineSlots.release();
         }
     }
 
@@ -265,7 +269,7 @@ public class StockfishService implements GamePositionAnalyzer {
     }
 
     private AnalysisLine analyzeLine(String fen, int depth, List<String> moves) {
-        Process process = startEngine();
+        Process process = startManagedEngine();
         try (BufferedWriter input = new BufferedWriter(new OutputStreamWriter(
                 process.getOutputStream(), StandardCharsets.UTF_8));
                 BufferedReader output = new BufferedReader(new InputStreamReader(
@@ -287,6 +291,7 @@ public class StockfishService implements GamePositionAnalyzer {
             throw new EngineException(HttpStatus.SERVICE_UNAVAILABLE, "Stockfish could not review the move.");
         } finally {
             process.destroyForcibly();
+            engineSlots.release();
         }
     }
 
@@ -431,6 +436,27 @@ public class StockfishService implements GamePositionAnalyzer {
             // The caller converts an empty best move into a service error.
         }
         return new AnalysisLine(null, evaluationCp, mateIn, pv);
+    }
+
+    private Process startManagedEngine() {
+        try {
+            if (!engineSlots.tryAcquire(responseTimeout.toMillis(), TimeUnit.MILLISECONDS)) {
+                throw new EngineException(
+                        HttpStatus.SERVICE_UNAVAILABLE,
+                        "The analysis engine is busy. Please retry shortly.");
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new EngineException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "The analysis request was interrupted while waiting for the engine.");
+        }
+        try {
+            return startEngine();
+        } catch (RuntimeException exception) {
+            engineSlots.release();
+            throw exception;
+        }
     }
 
     private MultiAnalysis readMultiAnalysis(BufferedReader output) {
