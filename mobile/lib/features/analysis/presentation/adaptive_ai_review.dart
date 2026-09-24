@@ -609,6 +609,7 @@ class _MobileReviewSummary extends StatelessWidget {
       'Blunder',
     });
     int percent(int value) => total == 0 ? 0 : (value * 100 / total).round();
+    final bool hasMeasuredAccuracy = report.hasMeasuredAccuracy;
 
     return SingleChildScrollView(
       child: Column(
@@ -618,32 +619,46 @@ class _MobileReviewSummary extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: <Widget>[
-                Container(
-                  key: const ValueKey<String>('ai-review-score-badge'),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 22,
-                    vertical: 13,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF102C38),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: const Color(0xFF59E4C8),
-                      width: 2,
+                if (hasMeasuredAccuracy)
+                  Container(
+                    key: const ValueKey<String>('ai-review-score-badge'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 13,
                     ),
-                  ),
-                  child: Text(
-                    '${report.accuracy} / 100',
-                    maxLines: 1,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF102C38),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: const Color(0xFF59E4C8),
+                        width: 2,
+                      ),
+                    ),
+                    child: Text(
+                      '${report.accuracy} / 100',
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Color(0xFF59E4C8),
+                        fontSize: 25,
+                        height: 1,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  )
+                else
+                  Text(
+                    analysisDashboardText('emptyTrend', languageCode),
+                    key: const ValueKey<String>(
+                      'ai-review-accuracy-unavailable',
+                    ),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Color(0xFF59E4C8),
-                      fontSize: 25,
-                      height: 1,
-                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                ),
                 const SizedBox(height: 12),
                 Text(
                   _localizedReviewHeadline(report.headline, languageCode),
@@ -672,37 +687,39 @@ class _MobileReviewSummary extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: _SummaryMetric(
-                  label: CoachLocalizations(languageCode).source('Great'),
-                  count: excellent,
-                  percent: percent(excellent),
-                  color: const Color(0xFF59E4C8),
+          if (hasMeasuredAccuracy) ...<Widget>[
+            const SizedBox(height: 10),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: _SummaryMetric(
+                    label: CoachLocalizations(languageCode).source('Great'),
+                    count: excellent,
+                    percent: percent(excellent),
+                    color: const Color(0xFF59E4C8),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 7),
-              Expanded(
-                child: _SummaryMetric(
-                  label: CoachLocalizations(languageCode).source('Good'),
-                  count: solid,
-                  percent: percent(solid),
-                  color: const Color(0xFF73BFFF),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: _SummaryMetric(
+                    label: CoachLocalizations(languageCode).source('Good'),
+                    count: solid,
+                    percent: percent(solid),
+                    color: const Color(0xFF73BFFF),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 7),
-              Expanded(
-                child: _SummaryMetric(
-                  label: analysisDashboardText('nextFocus', languageCode),
-                  count: improve,
-                  percent: percent(improve),
-                  color: const Color(0xFFFFA65C),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: _SummaryMetric(
+                    label: analysisDashboardText('nextFocus', languageCode),
+                    count: improve,
+                    percent: percent(improve),
+                    color: const Color(0xFFFFA65C),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
           const SizedBox(height: 10),
           _SummarySection(
             icon: Icons.thumb_up_alt_outlined,

@@ -37,6 +37,7 @@ void main() {
         'd7d5',
       ]);
       expect(report.insights.single.evaluationAfterCp, -26);
+      expect(report.hasMeasuredAccuracy, isTrue);
       expect(report.openingName, "King's Pawn Opening");
       expect(report.trainingRecommendations, hasLength(3));
     },
@@ -87,6 +88,17 @@ void main() {
     expect(report.accuracy, inInclusiveRange(0, 100));
     expect(report.turningPoint, contains('Qh5+'));
     expect(report.recommendedLesson, isNotEmpty);
+    expect(report.hasMeasuredAccuracy, isFalse);
+  });
+
+  test('AI review does not present heuristic fallback as measured accuracy', () {
+    final AiReviewReport report = AiReviewReport.fromMoves(
+      const <String>[],
+      newestFirst: false,
+    );
+
+    expect(report.accuracy, 62);
+    expect(report.hasMeasuredAccuracy, isFalse);
   });
 
   test(
@@ -99,6 +111,7 @@ void main() {
       );
 
       expect(report.accuracy, 91);
+      expect(report.hasMeasuredAccuracy, isTrue);
       expect(report.turningPoint, 'Move 18 — missed fork');
     },
   );

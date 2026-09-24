@@ -50,6 +50,7 @@ class AiMoveInsight {
 class AiReviewReport {
   const AiReviewReport({
     required this.accuracy,
+    required this.hasMeasuredAccuracy,
     required this.headline,
     required this.summary,
     required this.strength,
@@ -63,6 +64,7 @@ class AiReviewReport {
   });
 
   final int accuracy;
+  final bool hasMeasuredAccuracy;
   final String headline;
   final String summary;
   final String strength;
@@ -292,6 +294,7 @@ class AiReviewReport {
         : knownMistakes.take(3).toList(growable: false);
     return AiReviewReport(
       accuracy: accuracy,
+      hasMeasuredAccuracy: knownAccuracy != null || scopedReviews.isNotEmpty,
       headline: accuracy >= 85
           ? 'Confident, accurate chess'
           : accuracy >= 70

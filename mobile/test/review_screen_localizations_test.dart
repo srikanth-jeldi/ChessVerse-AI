@@ -22,7 +22,7 @@ void main() {
         'e2e4',
         'e7e5',
         'Ng1f3',
-      ], newestFirst: false);
+      ], newestFirst: false, knownAccuracy: 82);
       for (final size in [const Size(360, 800), const Size(1280, 900)]) {
         tester.view.physicalSize = size;
         for (final language in AppLanguageController.supported.where(
@@ -137,4 +137,43 @@ void main() {
       }
     },
   );
+
+  testWidgets('mobile review hides fallback score and empty quality cards', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(360, 800);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final report = AiReviewReport.fromMoves(
+      const <String>[],
+      newestFirst: false,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => showAdaptiveAiReview(context, report: report),
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('62 / 100'), findsNothing);
+    expect(
+      find.byKey(const ValueKey<String>('ai-review-score-badge')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('ai-review-accuracy-unavailable')),
+      findsOneWidget,
+    );
+    expect(find.text('0%'), findsNothing);
+  });
 }
