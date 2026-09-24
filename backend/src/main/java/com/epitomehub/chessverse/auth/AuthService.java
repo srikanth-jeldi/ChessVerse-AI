@@ -404,7 +404,6 @@ class AuthService {
             // player behind a permanent 409. Never silently link a provider
             // to an already verified account.
             if (!player.verified) {
-                player.displayName = oauthDisplayName(rawDisplayName, email);
                 player.guestAccount = false;
                 player.verified = true;
                 player.failedLoginAttempts = 0;

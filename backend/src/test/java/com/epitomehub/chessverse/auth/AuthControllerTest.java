@@ -295,7 +295,7 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").isNotEmpty())
                 .andExpect(jsonPath("$.player.username").value("pending_oauth_player"))
-                .andExpect(jsonPath("$.player.displayName").value("Verified Google Player"))
+                .andExpect(jsonPath("$.player.displayName").value("Pending Player"))
                 .andExpect(jsonPath("$.player.email").value("pending-oauth@example.com"))
                 .andExpect(jsonPath("$.player.guest").value(false));
 
