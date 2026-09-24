@@ -1058,7 +1058,7 @@ class _PuzzleHero extends StatelessWidget {
                           icon: Icons.extension_rounded,
                           value: '$solved solved',
                         ),
-                        const _HeroStat(
+                        _HeroStat(
                           icon: Icons.grid_view_rounded,
                           value: '${PuzzleCatalog.all.length} puzzles',
                         ),
