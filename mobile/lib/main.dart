@@ -669,8 +669,11 @@ class _SplashGateState extends State<SplashGate> {
               MatchHistoryScreen(
                 onDestinationSelected: (index) =>
                     _closeSettingsAndSelect(context, index),
-                onResume: (draft) =>
-                    _openGame(context, GameMode.computer, resumeDraft: draft),
+                onResume: (draft) => _openGame(
+                  context,
+                  GameMode.computer,
+                  resumeDraft: draft,
+                ),
                 onPlayAgain: () =>
                     _chooseSideAndOpen(context, GameMode.computer),
               ),
@@ -964,11 +967,8 @@ class _SplashGateState extends State<SplashGate> {
               MatchHistoryScreen(
                 onDestinationSelected: (index) =>
                     _closeSettingsAndSelect(context, index),
-                onResume: (draft) => _openGame(
-                  context,
-                  GameMode.computer,
-                  resumeDraft: draft,
-                ),
+                onResume: (draft) =>
+                    _openGame(context, GameMode.computer, resumeDraft: draft),
                 onPlayAgain: () =>
                     _chooseSideAndOpen(context, GameMode.computer),
               ),
@@ -1930,6 +1930,30 @@ class _SplashGateState extends State<SplashGate> {
                   api: const OnlineMatchApi(),
                   token: session.token,
                   initialMode: lobbyMode,
+                  onMyGames: () {
+                    Navigator.of(context).pop();
+                    if (!mounted) return;
+                    unawaited(
+                      _push(
+                        context,
+                        MatchHistoryScreen(
+                          onDestinationSelected: (index) =>
+                              _closeSettingsAndSelect(context, index),
+                          onResume: (draft) => _openGame(
+                            context,
+                            GameMode.computer,
+                            resumeDraft: draft,
+                          ),
+                          onPlayAgain: () =>
+                              _chooseSideAndOpen(context, GameMode.computer),
+                        ),
+                      ),
+                    );
+                  },
+                  onCollection: () {
+                    Navigator.of(context).pop();
+                    if (mounted) unawaited(_openRewardsCenter(context));
+                  },
                   onProfile: () {
                     Navigator.of(context).pop();
                     if (mounted) setState(() => _primaryDestination = 4);

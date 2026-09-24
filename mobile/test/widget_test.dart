@@ -938,6 +938,36 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('desktop online lobby keeps complete navigation', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: OnlineMatchmakingSheet(
+            api: _PreferenceOnlineApi(),
+            token: 'test-token',
+            onProfile: _noop,
+            onMyGames: _noop,
+            onCollection: _noop,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('My Games'), findsOneWidget);
+    expect(find.text('Community'), findsOneWidget);
+    expect(find.text('Collection'), findsOneWidget);
+  });
+
   testWidgets('mobile lobby keeps coin controls below the hero artwork', (
     WidgetTester tester,
   ) async {

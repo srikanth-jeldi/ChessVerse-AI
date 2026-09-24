@@ -14,6 +14,8 @@ class OnlineMatchmakingSheet extends StatefulWidget {
     required this.api,
     required this.token,
     required this.onProfile,
+    this.onMyGames,
+    this.onCollection,
     this.onAiFallback,
     this.initialMode = OnlineLobbyMode.random,
     super.key,
@@ -22,6 +24,8 @@ class OnlineMatchmakingSheet extends StatefulWidget {
   final OnlineMatchApi api;
   final String token;
   final VoidCallback onProfile;
+  final VoidCallback? onMyGames;
+  final VoidCallback? onCollection;
   final Future<void> Function(String rivalName)? onAiFallback;
   final OnlineLobbyMode initialMode;
 
@@ -967,12 +971,15 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
               selected: 'Play',
               onHome: () => Navigator.of(context).pop(),
               onPlay: () {},
+              onMyGames: widget.onMyGames ?? () => Navigator.of(context).pop(),
               onPuzzles: () => Navigator.of(context).pop(),
               onLearn: () => Navigator.of(context).pop(),
               onProfile: widget.onProfile,
               onAnalysis: () => Navigator.of(context).pop(),
               onRankings: () => Navigator.of(context).pop(),
               onFriends: () {},
+              onCollection:
+                  widget.onCollection ?? () => Navigator.of(context).pop(),
               onEvents: () {},
               onStore: () {},
               onSettings: () => Navigator.of(context).pop(),
