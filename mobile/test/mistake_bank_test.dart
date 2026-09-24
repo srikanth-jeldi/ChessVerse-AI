@@ -60,4 +60,22 @@ void main() {
 
     expect(items.single.review.classification, 'Inaccuracy');
   });
+
+  test(
+    'bank returns every playable mistake unless a batch limit is requested',
+    () {
+      final DateTime now = DateTime.utc(2026, 9, 10);
+      final List<SavedMoveReview> reviews = List<SavedMoveReview>.generate(
+        8,
+        (int index) =>
+            review(ply: index + 1, classification: 'Mistake', loss: 50 + index),
+      );
+      final List<SavedGameRecord> games = <SavedGameRecord>[
+        game(now.subtract(const Duration(days: 1)), reviews),
+      ];
+
+      expect(MistakeBank.weekly(games, now: now), hasLength(8));
+      expect(MistakeBank.weekly(games, now: now, limit: 5), hasLength(5));
+    },
+  );
 }

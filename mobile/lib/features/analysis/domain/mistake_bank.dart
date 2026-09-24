@@ -34,7 +34,7 @@ abstract final class MistakeBank {
   static List<MistakeBankItem> weekly(
     Iterable<SavedGameRecord> games, {
     DateTime? now,
-    int limit = 5,
+    int? limit,
   }) {
     final DateTime today = (now ?? DateTime.now()).toUtc();
     final DateTime cutoff = today.subtract(const Duration(days: 7));
@@ -50,10 +50,10 @@ abstract final class MistakeBank {
       (MistakeBankItem a, MistakeBankItem b) =>
           b.review.centipawnLoss.compareTo(a.review.centipawnLoss),
     );
-    return source
-        .where((MistakeBankItem item) => item.isPlayable)
-        .take(limit)
-        .toList();
+    final Iterable<MistakeBankItem> playable = source.where(
+      (MistakeBankItem item) => item.isPlayable,
+    );
+    return (limit == null ? playable : playable.take(limit)).toList();
   }
 
   static List<MistakeBankItem> _collect(

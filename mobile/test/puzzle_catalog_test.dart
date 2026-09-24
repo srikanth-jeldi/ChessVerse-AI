@@ -2,22 +2,22 @@ import 'package:chessverse_ai/features/puzzles/domain/puzzle_catalog.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('catalog contains 50 unique puzzles per difficulty', () {
-    expect(PuzzleCatalog.all, hasLength(150));
+  test('catalog contains 200 unique puzzles per difficulty', () {
+    expect(PuzzleCatalog.all, hasLength(600));
     expect(
       PuzzleCatalog.all.map((ChessPuzzle puzzle) => puzzle.id).toSet(),
-      hasLength(150),
+      hasLength(600),
     );
     expect(
       PuzzleCatalog.all
           .map((ChessPuzzle puzzle) => puzzle.positionSignature)
           .toSet(),
-      hasLength(150),
+      hasLength(600),
       reason: 'Every catalog entry must map to an independent board layout.',
     );
     expect(
       PuzzleCatalog.all.map((ChessPuzzle puzzle) => puzzle.sourceId).toSet(),
-      hasLength(150),
+      hasLength(600),
     );
     for (final ChessPuzzle puzzle in PuzzleCatalog.all) {
       expect(puzzle.fen.split(' '), hasLength(6));
@@ -34,7 +34,7 @@ void main() {
       expect(puzzle.playerMoveGoal, (puzzle.solution.length + 1) ~/ 2);
     }
     for (final PuzzleDifficulty difficulty in PuzzleDifficulty.values) {
-      expect(PuzzleCatalog.forDifficulty(difficulty), hasLength(50));
+      expect(PuzzleCatalog.forDifficulty(difficulty), hasLength(200));
     }
   });
 
@@ -46,8 +46,9 @@ void main() {
     expect(next.id, 'easy-003');
   });
 
-  test('next puzzle stays inside its category and stops after level 50', () {
+  test('next puzzle stays inside its category and stops after level 200', () {
     expect(PuzzleCatalog.nextAfter('medium-001')?.id, 'medium-002');
-    expect(PuzzleCatalog.nextAfter('medium-050'), isNull);
+    expect(PuzzleCatalog.nextAfter('medium-050')?.id, 'medium-051');
+    expect(PuzzleCatalog.nextAfter('medium-200'), isNull);
   });
 }

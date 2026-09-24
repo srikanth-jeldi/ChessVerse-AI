@@ -107,7 +107,8 @@ class MistakeBankScreen extends StatefulWidget {
 
 class _MistakeBankScreenState extends State<MistakeBankScreen> {
   static const AcademyProgressStore _progressStore = AcademyProgressStore();
-  late final List<MistakeBankItem> _items;
+  late final List<MistakeBankItem> _allItems;
+  List<MistakeBankItem> _items = <MistakeBankItem>[];
   Set<String> _solved = <String>{};
   int _index = 0;
   String? _currentFen;
@@ -126,7 +127,8 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   @override
   void initState() {
     super.initState();
-    _items = MistakeBank.weekly(LocalGameArchive.games);
+    _allItems = MistakeBank.weekly(LocalGameArchive.games);
+    _items = _allItems.take(5).toList(growable: false);
     if (_items.isNotEmpty) _currentFen = _items.first.review.fenBefore;
     AppLanguageController.effectiveLanguageChanges.addListener(_onLanguage);
     AppLanguageController.effectiveCode().then((String code) {
@@ -138,7 +140,17 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   Future<void> _loadSolved() async {
     try {
       final Set<String> value = await _progressStore.readSolvedMistakes();
-      if (mounted) setState(() => _solved = value);
+      if (mounted) {
+        setState(() {
+          _solved = value;
+          _items = _allItems
+              .where((MistakeBankItem item) => !_solved.contains(item.id))
+              .take(5)
+              .toList(growable: false);
+          _index = 0;
+          _currentFen = _items.isEmpty ? null : _items.first.review.fenBefore;
+        });
+      }
     } on Object {
       // Practice remains available if secure storage is unavailable.
     }

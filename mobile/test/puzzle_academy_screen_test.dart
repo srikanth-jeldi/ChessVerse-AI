@@ -61,7 +61,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(easyCategory);
     await tester.pumpAndSettle();
-    expect(find.text('EASY · 50 PUZZLES'), findsOneWidget);
+    expect(find.text('EASY · 200 PUZZLES'), findsOneWidget);
     await tester.tap(
       find.byKey(const ValueKey<String>('puzzle-level-easy-001')),
     );
@@ -121,7 +121,7 @@ void main() {
     expect(
       find.byWidgetPredicate(
         (Widget widget) =>
-            widget is Text && (widget.data?.endsWith('/50') ?? false),
+            widget is Text && (widget.data?.endsWith('/200') ?? false),
       ),
       findsNWidgets(3),
     );
@@ -201,7 +201,7 @@ void main() {
     expect(
       find.descendant(
         of: hardCategory,
-        matching: find.text('${hardBefore + 1}/50'),
+        matching: find.text('${hardBefore + 1}/200'),
       ),
       findsOneWidget,
     );

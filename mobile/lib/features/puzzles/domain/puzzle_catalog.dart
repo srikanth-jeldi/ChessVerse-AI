@@ -27,10 +27,10 @@ class ChessPuzzle {
   int get playerMoveGoal => (solution.length + 1) ~/ 2;
 
   String get label => switch (difficulty) {
-        PuzzleDifficulty.easy => 'Easy',
-        PuzzleDifficulty.medium => 'Medium',
-        PuzzleDifficulty.hard => 'Hard',
-      };
+    PuzzleDifficulty.easy => 'Easy',
+    PuzzleDifficulty.medium => 'Medium',
+    PuzzleDifficulty.hard => 'Hard',
+  };
 
   String get title => '$label Puzzle ${number.toString().padLeft(2, '0')}';
 }
@@ -38,7 +38,7 @@ class ChessPuzzle {
 class PuzzleCatalog {
   PuzzleCatalog._();
 
-  static const int puzzlesPerDifficulty = 50;
+  static const int puzzlesPerDifficulty = 200;
 
   static const List<ChessPuzzle> all = _curatedPuzzles;
 
@@ -87,44 +87,40 @@ class PuzzleCatalog {
   ) {
     final Set<String> focusTags = switch (coachingTheme) {
       'kingSafety' => <String>{
-          'mate',
-          'backRankMate',
-          'kingsideAttack',
-          'defensiveMove',
-        },
+        'mate',
+        'backRankMate',
+        'kingsideAttack',
+        'defensiveMove',
+      },
       'hangingPieces' => <String>{
-          'hangingPiece',
-          'trappedPiece',
-          'overloading',
-          'deflection',
-        },
+        'hangingPiece',
+        'trappedPiece',
+        'overloading',
+        'deflection',
+      },
       'endgame' => <String>{
-          'endgame',
-          'pawnEndgame',
-          'rookEndgame',
-          'queenEndgame',
-        },
+        'endgame',
+        'pawnEndgame',
+        'rookEndgame',
+        'queenEndgame',
+      },
       'opening' => <String>{'opening', 'development', 'advantage'},
       'calculation' => <String>{
-          'long',
-          'sacrifice',
-          'discoveredAttack',
-          'interference',
-        },
-      _ => <String>{
-          'fork',
-          'pin',
-          'skewer',
-          'discoveredAttack',
-          'doubleCheck',
-        },
+        'long',
+        'sacrifice',
+        'discoveredAttack',
+        'interference',
+      },
+      _ => <String>{'fork', 'pin', 'skewer', 'discoveredAttack', 'doubleCheck'},
     };
     final List<ChessPuzzle> available = all
         .where((ChessPuzzle puzzle) => !completedIds.contains(puzzle.id))
         .toList(growable: false);
     final List<ChessPuzzle> focused = available
-        .where((ChessPuzzle puzzle) =>
-            puzzle.themes.any((String theme) => focusTags.contains(theme)))
+        .where(
+          (ChessPuzzle puzzle) =>
+              puzzle.themes.any((String theme) => focusTags.contains(theme)),
+        )
         .take(6)
         .toList();
     final Set<String> used = focused.map((ChessPuzzle item) => item.id).toSet();

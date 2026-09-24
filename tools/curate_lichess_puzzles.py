@@ -1,7 +1,7 @@
 """Build ChessVerseAI's pinned CC0 puzzle set from the official Lichess API.
 
 The output is deterministic after collection: candidates are sorted by rating,
-solution length, and source id before the first 50 in each tier are selected.
+solution length, and source id before the first 200 in each tier are selected.
 Every accepted puzzle is reconstructed from its game PGN and validated with
 python-chess. Only legal, white-to-move, forced mate lines with no castling or
 en-passant dependency are admitted, matching the app's local rules engine.
@@ -21,6 +21,26 @@ import chess
 import chess.pgn
 
 ENDPOINT = "https://lichess.org/api/puzzle/next"
+
+
+def normalize_white_to_move(
+    board: chess.Board, solution: list[str]
+) -> tuple[chess.Board, list[str]]:
+    """Canonicalize Black-to-move source puzzles without changing the tactic."""
+    if board.turn == chess.WHITE:
+        return board, solution
+    mirrored = board.mirror()
+    mirrored_solution = []
+    for uci in solution:
+        move = chess.Move.from_uci(uci)
+        mirrored_solution.append(
+            chess.Move(
+                chess.square_mirror(move.from_square),
+                chess.square_mirror(move.to_square),
+                promotion=move.promotion,
+            ).uci()
+        )
+    return mirrored, mirrored_solution
 
 
 def tier_for(rating: int) -> str | None:
@@ -51,15 +71,18 @@ def candidate(payload: dict) -> dict | None:
     board = game.board()
     for move in moves[:initial_count]:
         board.push(move)
-    if board.turn != chess.WHITE or board.castling_rights or board.ep_square:
-        return None
     if board.is_checkmate() or board.is_stalemate():
         return None
 
-    start_fen = board.fen()
     solution = [str(move).lower() for move in puzzle["solution"]]
     if not solution or len(solution) % 2 == 0:
         return None
+    if any(len(move) != 4 for move in solution):
+        return None
+    board, solution = normalize_white_to_move(board, solution)
+    if board.castling_rights or board.ep_square:
+        return None
+    start_fen = board.fen()
     for uci in solution:
         try:
             move = chess.Move.from_uci(uci)
@@ -85,7 +108,7 @@ def candidate(payload: dict) -> dict | None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True)
-    parser.add_argument("--target", type=int, default=50)
+    parser.add_argument("--target", type=int, default=200)
     parser.add_argument("--max-requests", type=int, default=5000)
     parser.add_argument("--delay", type=float, default=0.12)
     parser.add_argument("--csv")
@@ -97,7 +120,8 @@ def main() -> None:
     }
     if output.exists():
         for item in json.loads(output.read_text(encoding="utf-8")):
-            buckets[item["difficulty"]][item["sourceId"]] = item
+            if all(len(move) == 4 for move in item["solution"]):
+                buckets[item["difficulty"]][item["sourceId"]] = item
 
     if args.csv:
         with Path(args.csv).open(newline="", encoding="utf-8") as source:
@@ -117,10 +141,11 @@ def main() -> None:
                     if blunder not in board.legal_moves:
                         continue
                     board.push(blunder)
-                    start_fen = board.fen()
                     solution = moves[1:]
-                    if board.turn != chess.WHITE or board.castling_rights or board.ep_square:
+                    board, solution = normalize_white_to_move(board, solution)
+                    if board.castling_rights or board.ep_square:
                         continue
+                    start_fen = board.fen()
                     for uci in solution:
                         move = chess.Move.from_uci(uci)
                         if move not in board.legal_moves:
@@ -146,9 +171,8 @@ def main() -> None:
                     "playerMoveGoal": (len(solution) + 1) // 2,
                 }
         counts = {key: len(value) for key, value in buckets.items()}
-        if not all(count >= args.target for count in counts.values()):
-            raise SystemExit(f"not enough valid CSV candidates: {counts}")
-    for request_number in range(1, 1 if args.csv else args.max_requests + 1):
+        print(f"validated CSV candidates: {counts}", flush=True)
+    for request_number in range(1, args.max_requests + 1):
         if all(len(items) >= args.target for items in buckets.values()):
             break
         request = urllib.request.Request(
@@ -173,9 +197,7 @@ def main() -> None:
                 output.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
         time.sleep(args.delay)
     else:
-        if args.csv:
-            pass
-        elif not all(len(items) >= args.target for items in buckets.values()):
+        if not all(len(items) >= args.target for items in buckets.values()):
             raise SystemExit("request limit reached before all tiers were filled")
 
     selected = []

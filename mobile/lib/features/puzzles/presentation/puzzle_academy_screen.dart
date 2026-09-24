@@ -99,7 +99,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                 children: <Widget>[
                   Expanded(
                     child: Text(
-                      '${difficulty.name.toUpperCase()} · 50 PUZZLES',
+                      '${difficulty.name.toUpperCase()} · ${PuzzleCatalog.puzzlesPerDifficulty} PUZZLES',
                       style: TextStyle(
                         color: accent,
                         fontSize: 18,
@@ -305,8 +305,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                             const _SectionHeading(
                               eyebrow: 'SPEED ARENA',
                               title: 'Think fast. Stay accurate.',
-                              subtitle:
-                                  'Three competitive sessions powered by real curated positions.',
+                              subtitle: 'Three competitive sessions powered by real curated positions.',
                             ),
                             const SizedBox(height: 14),
                             _SprintModeStrip(
@@ -317,8 +316,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                             const _SectionHeading(
                               eyebrow: 'TACTICAL TRAINING',
                               title: 'Choose your challenge',
-                              subtitle:
-                                  'Every position is interactive and validated by the ChessVerseAI rules engine.',
+                              subtitle: 'Every position is interactive and validated by the ChessVerseAI rules engine.',
                             ),
                             const SizedBox(height: 14),
                             _DifficultyCard(
@@ -459,8 +457,7 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
                           const _SectionHeading(
                             eyebrow: 'TACTICAL TRAINING',
                             title: 'Choose your challenge',
-                            subtitle:
-                                'Every position is interactive and validated by the ChessVerseAI rules engine.',
+                            subtitle: 'Every position is interactive and validated by the ChessVerseAI rules engine.',
                           ),
                           const SizedBox(height: 12),
                           _SprintModeStrip(
@@ -1063,7 +1060,7 @@ class _PuzzleHero extends StatelessWidget {
                         ),
                         const _HeroStat(
                           icon: Icons.grid_view_rounded,
-                          value: '150 puzzles',
+                          value: '${PuzzleCatalog.all.length} puzzles',
                         ),
                         FilledButton.icon(
                           key: const ValueKey<String>('daily-puzzle-start'),
@@ -1243,7 +1240,7 @@ class _DifficultyCard extends StatelessWidget {
                             ),
                             const Spacer(),
                             Text(
-                              '$solved/50',
+                              '$solved/${PuzzleCatalog.puzzlesPerDifficulty}',
                               style: const TextStyle(
                                 color: Color(0xFF8399A7),
                                 fontSize: 10,
