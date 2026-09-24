@@ -398,6 +398,26 @@ class AuthService {
         String email = normalizeEmail(rawEmail);
         PlayerAccount player = players.findByEmailIgnoreCase(email).orElse(null);
         if (player != null) {
+            // A registration can leave an unverified placeholder when email
+            // delivery is delayed. A provider-verified login for that exact
+            // email may safely finish the account instead of trapping the
+            // player behind a permanent 409. Never silently link a provider
+            // to an already verified account.
+            if (!player.verified) {
+                player.displayName = oauthDisplayName(rawDisplayName, email);
+                player.guestAccount = false;
+                player.verified = true;
+                player.failedLoginAttempts = 0;
+                player.lockedUntil = null;
+                applyProviderPhoto(player, photoUrl);
+                player.updatedAt = Instant.now();
+                players.save(player);
+                jdbcTemplate.update(
+                        "delete from email_verification where player_id = ?",
+                        player.id);
+                oauthIdentities.save(new OAuthIdentity(provider, subject, player));
+                return createSession(player);
+            }
             throw new AuthException(
                     HttpStatus.CONFLICT,
                     "An account already exists for this email. Sign in to that account before linking "

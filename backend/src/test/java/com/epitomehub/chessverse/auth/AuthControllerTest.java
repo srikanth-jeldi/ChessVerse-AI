@@ -269,6 +269,45 @@ class AuthControllerTest {
     }
 
     @Test
+    void providerLoginClaimsAnUnverifiedPendingRegistration() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username":"pending_oauth_player",
+                                  "displayName":"Pending Player",
+                                  "email":"pending-oauth@example.com",
+                                  "password":"StrongPass123"
+                                }
+                                """))
+                .andExpect(status().isAccepted());
+
+        when(googleIdentityVerifier.verify("pending-google-token"))
+                .thenReturn(new GoogleIdentityVerifier.VerifiedGoogleIdentity(
+                        "pending-google-subject",
+                        "pending-oauth@example.com",
+                        "Verified Google Player",
+                        "https://example.com/pending-avatar.png"));
+
+        mockMvc.perform(post("/api/auth/google")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"idToken\":\"pending-google-token\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty())
+                .andExpect(jsonPath("$.player.username").value("pending_oauth_player"))
+                .andExpect(jsonPath("$.player.displayName").value("Verified Google Player"))
+                .andExpect(jsonPath("$.player.email").value("pending-oauth@example.com"))
+                .andExpect(jsonPath("$.player.guest").value(false));
+
+        mockMvc.perform(post("/api/auth/resend-verification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"pending-oauth@example.com\"}"))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.message").value(
+                        "If an eligible account exists, a code has been sent."));
+    }
+
+    @Test
     void existingFacebookIdentityRemainsBoundWhenProviderEmailChanges() throws Exception {
         when(facebookIdentityVerifier.verify("first-facebook-token"))
                 .thenReturn(new FacebookIdentityVerifier.VerifiedFacebookIdentity(
