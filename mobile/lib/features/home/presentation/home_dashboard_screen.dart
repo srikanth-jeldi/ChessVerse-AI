@@ -10,6 +10,7 @@ import '../../../core/widgets/coin_balance_badge.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../../leaderboard/data/leaderboard_api.dart';
 import '../../analysis/domain/player_learning_profile.dart';
+import '../../analysis/presentation/mistake_bank_screen.dart';
 import '../../notifications/presentation/notification_bell_button.dart';
 import '../../social/data/community_api.dart';
 
@@ -400,6 +401,8 @@ class _MobileHomeState extends State<_MobileHome> {
                       ],
                     ),
                     const SizedBox(height: 12),
+                    const MistakeBankEntryCard(),
+                    const SizedBox(height: 12),
                     ValueListenableBuilder<int>(
                       valueListenable: LocalGameArchive.activityRevision,
                       builder: (_, _, _) => _PersonalTrainingCard(
@@ -693,6 +696,8 @@ class _WideHomeState extends State<_WideHome> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 18),
+                        const MistakeBankEntryCard(),
                         const SizedBox(height: 18),
                         ValueListenableBuilder<int>(
                           valueListenable: LocalGameArchive.activityRevision,

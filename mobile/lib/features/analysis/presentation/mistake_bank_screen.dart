@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/analysis_dashboard_localizations.dart';
 import '../../../core/app_language.dart';
+import '../../../core/coach_extra_localizations.dart';
+import '../../../core/coach_localizations.dart';
 import '../../../core/desktop_navigation_bridge.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/review_narrative_localizations.dart';
@@ -11,6 +13,89 @@ import '../../../core/widgets/coin_balance_badge.dart';
 import '../../../core/widgets/desktop_navigation_shell.dart';
 import '../../tutorial/data/academy_progress_store.dart';
 import '../domain/mistake_bank.dart';
+
+class MistakeBankEntryCard extends StatelessWidget {
+  const MistakeBankEntryCard({super.key});
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<int>(
+    valueListenable: LocalGameArchive.activityRevision,
+    builder: (context, _, _) => ValueListenableBuilder<String?>(
+      valueListenable: AppLanguageController.effectiveLanguageChanges,
+      builder: (context, selectedLanguage, _) {
+        final String language = AppLanguageController.resolveCode(
+          selectedLanguage ?? AppLanguageController.systemCode,
+        );
+        final int count = MistakeBank.weekly(LocalGameArchive.games).length;
+        final String subtitle = count > 0
+            ? '$count · ${CoachLocalizations(language).text('trainMistakes')}'
+            : coachExtraText('completeGame', language);
+        return ChessVerseCard(
+          key: const ValueKey<String>('mistake-bank-card'),
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(builder: (_) => const MistakeBankScreen()),
+          ),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFFF8A72).withValues(alpha: .12),
+                  border: Border.all(color: const Color(0xFFFF8A72)),
+                ),
+                child: const Icon(
+                  Icons.psychology_alt_rounded,
+                  color: Color(0xFFFF8A72),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const Text(
+                      'Mistake Bank',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 17,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.accentGold.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text(
+                  '$count',
+                  style: const TextStyle(
+                    color: AppColors.accentGold,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.arrow_forward_rounded),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
 
 class MistakeBankScreen extends StatefulWidget {
   const MistakeBankScreen({super.key});

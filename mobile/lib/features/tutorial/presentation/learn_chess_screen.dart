@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/academy_story_localizations.dart';
-import '../../../core/analysis_dashboard_localizations.dart';
 import '../../../core/app_language.dart';
 import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/chess_piece_appearance.dart';
@@ -348,7 +347,7 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
               copy: _copy,
             ),
             const SizedBox(height: 14),
-            _MistakeBankCard(languageCode: _languageCode),
+            const MistakeBankEntryCard(),
             const SizedBox(height: 14),
             _BlindfoldLabCard(copy: _copy),
             const SizedBox(height: 14),
@@ -398,87 +397,6 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
             _CoachEvaluationPanel(copy: _copy),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _MistakeBankCard extends StatelessWidget {
-  const _MistakeBankCard({required this.languageCode});
-
-  final String languageCode;
-
-  @override
-  Widget build(BuildContext context) {
-    final int count = LocalGameArchive.games
-        .expand((SavedGameRecord game) => game.moveReviews)
-        .where(
-          (SavedMoveReview review) => const <String>{
-            'inaccuracy',
-            'mistake',
-            'blunder',
-          }.contains(review.classification.toLowerCase()),
-        )
-        .length;
-    return ChessVerseCard(
-      key: const ValueKey<String>('mistake-bank-card'),
-      onTap: () => Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(builder: (_) => const MistakeBankScreen()),
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFFFF8A72).withValues(alpha: .12),
-              border: Border.all(color: const Color(0xFFFF8A72)),
-            ),
-            child: const Icon(
-              Icons.psychology_alt_rounded,
-              color: Color(0xFFFF8A72),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  analysisDashboardText('mistakeReplay', languageCode),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 17,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  analysisDashboardText(
-                    'focusedPositions',
-                    languageCode,
-                    <String, String>{'focus': '$count'},
-                  ),
-                  style: const TextStyle(color: AppColors.textSecondary),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.accentGold.withValues(alpha: .12),
-              borderRadius: BorderRadius.circular(99),
-            ),
-            child: Text(
-              '$count',
-              style: const TextStyle(
-                color: AppColors.accentGold,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
