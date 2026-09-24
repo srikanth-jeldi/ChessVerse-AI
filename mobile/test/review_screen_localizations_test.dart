@@ -183,7 +183,6 @@ void main() {
       find.byKey(const ValueKey<String>('review-mistake-bank-row')),
       findsOneWidget,
     );
-    expect(find.text('Mistake Bank'), findsOneWidget);
-    expect(find.textContaining('(0)'), findsOneWidget);
+    expect(find.text('Mistake Bank (0)'), findsOneWidget);
   });
 }

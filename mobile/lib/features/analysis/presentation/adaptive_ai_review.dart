@@ -252,20 +252,19 @@ class _AiReviewWorkspaceState extends State<_AiReviewWorkspace> {
                     size: 21,
                   ),
                   const SizedBox(width: 9),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Mistake Bank',
-                      style: TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                  OutlinedButton(
-                    key: const ValueKey<String>('review-mistake-bank'),
-                    onPressed: widget.onGeneratePuzzles,
-                    child: Text(
-                      '${_reviewText('resumeMistakes', languageCode)} ($puzzleCount)',
+                      'Mistake Bank ($puzzleCount)',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
+                  ),
+                  IconButton.outlined(
+                    key: const ValueKey<String>('review-mistake-bank'),
+                    onPressed: widget.onGeneratePuzzles,
+                    tooltip: _reviewText('resumeMistakes', languageCode),
+                    icon: const Icon(Icons.play_arrow_rounded),
                   ),
                 ],
               ),
