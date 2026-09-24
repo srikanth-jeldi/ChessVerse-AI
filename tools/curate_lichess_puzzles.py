@@ -90,6 +90,8 @@ def candidate(payload: dict) -> dict | None:
             return None
         if move not in board.legal_moves:
             return None
+        if board.is_en_passant(move):
+            return None
         board.push(move)
     if not board.is_checkmate():
         return None
@@ -150,6 +152,8 @@ def main() -> None:
                         move = chess.Move.from_uci(uci)
                         if move not in board.legal_moves:
                             raise ValueError("illegal solution")
+                        if board.is_en_passant(move):
+                            raise ValueError("unsupported en-passant solution")
                         board.push(move)
                     if not board.is_checkmate():
                         continue
