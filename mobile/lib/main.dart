@@ -959,9 +959,29 @@ class _SplashGateState extends State<SplashGate> {
             },
             onHome: () => _closeSettingsAndSelect(context, 0),
             onPlay: () => _closeSettingsAndSelect(context, 1),
+            onMyGames: () => _push(
+              context,
+              MatchHistoryScreen(
+                onDestinationSelected: (index) =>
+                    _closeSettingsAndSelect(context, index),
+                onResume: (draft) => _openGame(
+                  context,
+                  GameMode.computer,
+                  resumeDraft: draft,
+                ),
+                onPlayAgain: () =>
+                    _chooseSideAndOpen(context, GameMode.computer),
+              ),
+            ),
             onPuzzles: () => _closeSettingsAndSelect(context, 2),
             onLearn: () => _closeSettingsAndSelect(context, 3),
             onProfile: () => _closeSettingsAndSelect(context, 4),
+            onCommunity: () => _closeSettingsAndSelect(context, 5),
+            onCollection: () async {
+              Navigator.of(context).pop();
+              if (!mounted) return;
+              await _openRewardsCenter(context);
+            },
           ),
         ),
         onCommunity: () => setState(() => _primaryDestination = 5),

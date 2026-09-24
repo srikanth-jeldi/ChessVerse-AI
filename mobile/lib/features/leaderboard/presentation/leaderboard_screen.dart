@@ -15,9 +15,12 @@ class LeaderboardScreen extends StatefulWidget {
     this.profilePhotoUrl,
     this.onHome,
     this.onPlay,
+    this.onMyGames,
     this.onPuzzles,
     this.onLearn,
     this.onProfile,
+    this.onCommunity,
+    this.onCollection,
     this.onOpenMatch,
     super.key,
   });
@@ -25,9 +28,12 @@ class LeaderboardScreen extends StatefulWidget {
   final String? profilePhotoUrl;
   final VoidCallback? onHome;
   final VoidCallback? onPlay;
+  final VoidCallback? onMyGames;
   final VoidCallback? onPuzzles;
   final VoidCallback? onLearn;
   final VoidCallback? onProfile;
+  final VoidCallback? onCommunity;
+  final VoidCallback? onCollection;
   final ValueChanged<OnlineMatchDto>? onOpenMatch;
 
   @override
@@ -366,10 +372,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           selected: 'Rankings',
           onHome: widget.onHome ?? () => Navigator.maybePop(context),
           onPlay: widget.onPlay,
+          onMyGames: widget.onMyGames,
           onPuzzles: widget.onPuzzles,
           onLearn: widget.onLearn,
           onProfile: widget.onProfile,
           onRankings: () {},
+          onFriends: widget.onCommunity,
+          onCollection: widget.onCollection,
         ),
         Expanded(child: page),
       ],
