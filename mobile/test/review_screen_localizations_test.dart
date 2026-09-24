@@ -18,11 +18,11 @@ void main() {
       addTearDown(
         () => AppLanguageController.effectiveLanguageChanges.value = null,
       );
-      final report = AiReviewReport.fromMoves([
-        'e2e4',
-        'e7e5',
-        'Ng1f3',
-      ], newestFirst: false, knownAccuracy: 82);
+      final report = AiReviewReport.fromMoves(
+        ['e2e4', 'e7e5', 'Ng1f3'],
+        newestFirst: false,
+        knownAccuracy: 82,
+      );
       for (final size in [const Size(360, 800), const Size(1280, 900)]) {
         tester.view.physicalSize = size;
         for (final language in AppLanguageController.supported.where(
@@ -155,7 +155,11 @@ void main() {
         home: Builder(
           builder: (context) => Scaffold(
             body: TextButton(
-              onPressed: () => showAdaptiveAiReview(context, report: report),
+              onPressed: () => showAdaptiveAiReview(
+                context,
+                report: report,
+                onGeneratePuzzles: () {},
+              ),
               child: const Text('Open'),
             ),
           ),
@@ -175,5 +179,11 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('0%'), findsNothing);
+    expect(
+      find.byKey(const ValueKey<String>('review-mistake-bank-row')),
+      findsOneWidget,
+    );
+    expect(find.text('Mistake Bank'), findsOneWidget);
+    expect(find.textContaining('(0)'), findsOneWidget);
   });
 }

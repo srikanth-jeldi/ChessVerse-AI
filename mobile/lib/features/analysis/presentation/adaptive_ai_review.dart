@@ -214,18 +214,12 @@ class _AiReviewWorkspaceState extends State<_AiReviewWorkspace> {
                   ),
                 ),
               ),
-              if (widget.desktop &&
-                  puzzleCount > 0 &&
-                  widget.onGeneratePuzzles != null)
+              if (widget.desktop && widget.onGeneratePuzzles != null)
                 OutlinedButton.icon(
                   key: const ValueKey<String>('review-mistake-bank'),
                   onPressed: widget.onGeneratePuzzles,
                   icon: const Icon(Icons.extension_rounded, size: 18),
-                  label: Text(
-                    '${_reviewText('resumeMistakes', languageCode)} ($puzzleCount)',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  label: Text('Mistake Bank ($puzzleCount)'),
                 ),
               IconButton(
                 key: const ValueKey<String>('review-language'),
@@ -240,20 +234,40 @@ class _AiReviewWorkspaceState extends State<_AiReviewWorkspace> {
             ],
           ),
           const Divider(),
-          if (!widget.desktop &&
-              puzzleCount > 0 &&
-              widget.onGeneratePuzzles != null) ...<Widget>[
-            SizedBox(
+          if (!widget.desktop && widget.onGeneratePuzzles != null) ...<Widget>[
+            Container(
+              key: const ValueKey<String>('review-mistake-bank-row'),
               width: double.infinity,
-              child: OutlinedButton.icon(
-                key: const ValueKey<String>('review-mistake-bank'),
-                onPressed: widget.onGeneratePuzzles,
-                icon: const Icon(Icons.extension_rounded, size: 18),
-                label: Text(
-                  '${_reviewText('resumeMistakes', languageCode)} ($puzzleCount)',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0B2130),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF29465D)),
+              ),
+              child: Row(
+                children: <Widget>[
+                  const Icon(
+                    Icons.extension_rounded,
+                    color: Color(0xFF59E4C8),
+                    size: 21,
+                  ),
+                  const SizedBox(width: 9),
+                  const Expanded(
+                    child: Text(
+                      'Mistake Bank',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  OutlinedButton(
+                    key: const ValueKey<String>('review-mistake-bank'),
+                    onPressed: widget.onGeneratePuzzles,
+                    child: Text(
+                      '${_reviewText('resumeMistakes', languageCode)} ($puzzleCount)',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 8),
