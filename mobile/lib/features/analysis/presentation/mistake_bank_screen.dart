@@ -501,21 +501,6 @@ class _MistakeBoard extends StatelessWidget {
   final String? hintFrom;
   final String? hintTo;
 
-  static const Map<String, String> symbols = <String, String>{
-    'K': '♔',
-    'Q': '♕',
-    'R': '♖',
-    'B': '♗',
-    'N': '♘',
-    'P': '♙',
-    'k': '♚',
-    'q': '♛',
-    'r': '♜',
-    'b': '♝',
-    'n': '♞',
-    'p': '♟',
-  };
-
   Map<String, String> get pieces {
     final List<String> ranks = fen.split(' ').first.split('/');
     final Map<String, String> result = <String, String>{};
@@ -571,19 +556,40 @@ class _MistakeBoard extends StatelessWidget {
                         : (row + col).isEven
                         ? const Color(0xFFD8C5A7)
                         : const Color(0xFF6D4A32),
-                    child: Center(
-                      child: FittedBox(
-                        child: Text(
-                          symbols[board['$row-$col']] ?? '',
-                          style: const TextStyle(fontSize: 46, height: 1),
-                        ),
-                      ),
-                    ),
+                    child: Center(child: _piece(board['$row-$col'])),
                   ),
                 );
               },
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _piece(String? token) {
+    if (token == null) return const SizedBox.shrink();
+    const Map<String, String> names = <String, String>{
+      'k': 'king',
+      'q': 'queen',
+      'r': 'rook',
+      'b': 'bishop',
+      'n': 'knight',
+      'p': 'pawn',
+    };
+    final bool white = token == token.toUpperCase();
+    final String colour = white ? 'white' : 'black';
+    final String name = names[token.toLowerCase()]!;
+    return Padding(
+      padding: const EdgeInsets.all(2),
+      child: Transform.scale(
+        scale: 1.1,
+        child: Image.asset(
+          'assets/pieces/premium_individual/obsidian-regal/'
+          '$colour/$name.webp',
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+          semanticLabel: '${white ? 'White' : 'Black'} $name',
         ),
       ),
     );
