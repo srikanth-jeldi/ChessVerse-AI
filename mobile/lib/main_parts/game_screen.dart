@@ -2483,6 +2483,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _onlineMatch = null;
     setState(() {
       _gameMode = mode;
+      // Changing modes starts a normal game. A same-mode retry keeps the
+      // Position Creator FEN so the exact challenge can be played again.
+      _initialGameFen = _standardInitialFen;
       if (_isTacticsMode) {
         _humanPlaysWhite = true;
       }
@@ -4064,6 +4067,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
     final Map<String, ChessPiece> resetPieces = _isTacticsMode
         ? _dailyStartingPosition(challenge)
+        : _gameMode == GameMode.computer
+        ? _piecesFromFen(_initialGameFen)
         : Map<String, ChessPiece>.from(_initialPieces);
     _aiWatchdogTimer?.cancel();
     _aiMoveEpoch++;
@@ -4932,6 +4937,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     _onlineMatch = null;
                     setState(() {
                       _gameMode = GameMode.computer;
+                      _initialGameFen = _standardInitialFen;
                       _humanPlaysWhite = true;
                       _whitePlayerName = _playerDisplayName;
                       _blackPlayerName = '$rivalName • AI Rival';
