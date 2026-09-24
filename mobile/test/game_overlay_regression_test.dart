@@ -4,17 +4,17 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   GameSnapshot snapshotWithPly(int ply) => GameSnapshot(
-        pieces: const <String, ChessPiece>{},
-        moves: List<String>.filled(ply, 'move'),
-        capturedWhite: const <ChessPiece>[],
-        capturedBlack: const <ChessPiece>[],
-        coachNote: 'test',
-        lastFromSquare: null,
-        lastToSquare: null,
-        lastCaptureSquare: null,
-        whiteSeconds: 600,
-        blackSeconds: 600,
-      );
+    pieces: const <String, ChessPiece>{},
+    moves: List<String>.filled(ply, 'move'),
+    capturedWhite: const <ChessPiece>[],
+    capturedBlack: const <ChessPiece>[],
+    coachNote: 'test',
+    lastFromSquare: null,
+    lastToSquare: null,
+    lastCaptureSquare: null,
+    whiteSeconds: 600,
+    blackSeconds: 600,
+  );
 
   test('computer undo always restores the latest human-turn snapshot', () {
     final List<GameSnapshot> aiThinkingHistory = <GameSnapshot>[
@@ -23,10 +23,7 @@ void main() {
       snapshotWithPly(2),
     ];
     expect(
-      computerUndoSnapshotIndex(
-        aiThinkingHistory,
-        humanPlaysWhite: true,
-      ),
+      computerUndoSnapshotIndex(aiThinkingHistory, humanPlaysWhite: true),
       2,
     );
 
@@ -35,34 +32,28 @@ void main() {
       snapshotWithPly(3),
     ];
     expect(
-      computerUndoSnapshotIndex(
-        afterAiReplyHistory,
-        humanPlaysWhite: true,
-      ),
+      computerUndoSnapshotIndex(afterAiReplyHistory, humanPlaysWhite: true),
       2,
     );
     expect(
-      computerUndoSnapshotIndex(
-        <GameSnapshot>[
-          snapshotWithPly(0),
-          snapshotWithPly(1),
-          snapshotWithPly(2),
-        ],
-        humanPlaysWhite: false,
-      ),
+      computerUndoSnapshotIndex(<GameSnapshot>[
+        snapshotWithPly(0),
+        snapshotWithPly(1),
+        snapshotWithPly(2),
+      ], humanPlaysWhite: false),
       1,
     );
     expect(
-      computerUndoSnapshotIndex(
-        <GameSnapshot>[snapshotWithPly(0)],
-        humanPlaysWhite: false,
-      ),
+      computerUndoSnapshotIndex(<GameSnapshot>[
+        snapshotWithPly(0),
+      ], humanPlaysWhite: false),
       -1,
     );
   });
 
-  testWidgets('turn reminder is text-only and has no popup subtitle',
-      (WidgetTester tester) async {
+  testWidgets('turn reminder is text-only and has no popup subtitle', (
+    WidgetTester tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -83,8 +74,9 @@ void main() {
     );
   });
 
-  testWidgets('coach recommendation suppresses the previous-move arrow',
-      (WidgetTester tester) async {
+  testWidgets('coach recommendation suppresses the previous-move arrow', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -123,66 +115,22 @@ void main() {
     expect(painter.to, 'f6');
   });
 
-  testWidgets('latest move arrow remains visible after its entrance animation',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: ChessBoard(
-            pieces: const <String, ChessPiece>{
-              'e4': ChessPiece('P', true),
-            },
-            selectedSquare: null,
-            legalTargets: const <String>{},
-            lastFromSquare: 'e2',
-            lastToSquare: 'e4',
-            lastCaptureSquare: null,
-            moveSequence: 1,
-            checkedKingSquare: null,
-            decisiveSquare: null,
-            coachArrowFrom: null,
-            coachArrowTo: null,
-            flipped: false,
-            showCoordinates: true,
-            palette: boardPalettes[BoardSkin.royalWalnut]!,
-            onSquareTap: (_) {},
-          ),
-        ),
-      ),
-    );
-    await tester.pump(const Duration(seconds: 2));
-
-    final LastMoveTrailPainter painter = tester
-        .widgetList<CustomPaint>(find.byType(CustomPaint))
-        .map((CustomPaint paint) => paint.painter)
-        .whereType<LastMoveTrailPainter>()
-        .single;
-    expect(painter.from, 'e2');
-    expect(painter.to, 'e4');
-    expect(painter.progress, 1);
-    expect(painter.fadeOut, isFalse);
-  });
-
-  testWidgets('losing king falls and victory title zooms over fireworks',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Stack(children: <Widget>[
-            ChessBoard(
-              pieces: const <String, ChessPiece>{
-                'e1': ChessPiece('K', true),
-                'e8': ChessPiece('K', false),
-              },
+  testWidgets(
+    'latest move arrow remains visible after its entrance animation',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ChessBoard(
+              pieces: const <String, ChessPiece>{'e4': ChessPiece('P', true)},
               selectedSquare: null,
               legalTargets: const <String>{},
-              lastFromSquare: 'h5',
-              lastToSquare: 'e8',
+              lastFromSquare: 'e2',
+              lastToSquare: 'e4',
               lastCaptureSquare: null,
-              moveSequence: 12,
-              checkedKingSquare: 'e8',
-              decisiveSquare: 'e8',
-              fallenKingSquare: 'e8',
+              moveSequence: 1,
+              checkedKingSquare: null,
+              decisiveSquare: null,
               coachArrowFrom: null,
               coachArrowTo: null,
               flipped: false,
@@ -190,18 +138,71 @@ void main() {
               palette: boardPalettes[BoardSkin.royalWalnut]!,
               onSquareTap: (_) {},
             ),
-            const OnlineVictoryCelebration(
-              winnerAtTop: true,
-              title: 'You win',
-            ),
-          ]),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 2));
+
+      final LastMoveTrailPainter painter = tester
+          .widgetList<CustomPaint>(find.byType(CustomPaint))
+          .map((CustomPaint paint) => paint.painter)
+          .whereType<LastMoveTrailPainter>()
+          .single;
+      expect(painter.from, 'e2');
+      expect(painter.to, 'e4');
+      expect(painter.progress, 1);
+      expect(painter.fadeOut, isFalse);
+    },
+  );
+
+  testWidgets('losing king falls and victory title zooms over fireworks', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Stack(
+            children: <Widget>[
+              ChessBoard(
+                pieces: const <String, ChessPiece>{
+                  'e1': ChessPiece('K', true),
+                  'e8': ChessPiece('K', false),
+                },
+                selectedSquare: null,
+                legalTargets: const <String>{},
+                lastFromSquare: 'h5',
+                lastToSquare: 'e8',
+                lastCaptureSquare: null,
+                moveSequence: 12,
+                checkedKingSquare: 'e8',
+                decisiveSquare: 'e8',
+                fallenKingSquare: 'e8',
+                coachArrowFrom: null,
+                coachArrowTo: null,
+                flipped: false,
+                showCoordinates: true,
+                palette: boardPalettes[BoardSkin.royalWalnut]!,
+                onSquareTap: (_) {},
+              ),
+              const OnlineVictoryCelebration(
+                winnerAtTop: true,
+                title: 'You win',
+              ),
+            ],
+          ),
         ),
       ),
     );
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.byKey(const ValueKey<String>('king-fall-e8-true')),
-        findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('king-fall-e8-true')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('checkmate-effect-e8')),
+      findsOneWidget,
+    );
     expect(find.text('YOU WIN'), findsOneWidget);
     expect(find.byType(CustomPaint), findsWidgets);
   });

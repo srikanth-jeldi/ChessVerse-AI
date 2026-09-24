@@ -1178,267 +1178,333 @@ class BoardSquare extends StatelessWidget {
 
     final bool idleHint = idleHintSource || idleHintTarget;
 
-    return InkWell(
-      key: idleHintSource
-          ? const ValueKey<String>('idle-hint-source')
-          : idleHintTarget
-          ? const ValueKey<String>('idle-hint-target')
-          : null,
-      onTap: onTap,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(
-          begin: 0,
-          end:
-              selected ||
-                  legalTarget ||
-                  lastCapture ||
-                  checkedKing ||
-                  decisiveMove ||
-                  idleHint
-              ? 1
-              : 0,
-        ),
-        duration: const Duration(milliseconds: 420),
-        curve: Curves.easeOutCubic,
-        builder: (BuildContext context, double glow, Widget? child) {
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: <Color>[
-                  Color.alphaBlend(
-                    Colors.white.withValues(alpha: dark ? 0.10 : 0.22),
+    return ClipRect(
+      child: InkWell(
+        key: idleHintSource
+            ? const ValueKey<String>('idle-hint-source')
+            : idleHintTarget
+            ? const ValueKey<String>('idle-hint-target')
+            : null,
+        onTap: onTap,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(
+            begin: 0,
+            end:
+                selected ||
+                    legalTarget ||
+                    lastCapture ||
+                    checkedKing ||
+                    decisiveMove ||
+                    idleHint
+                ? 1
+                : 0,
+          ),
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOutCubic,
+          builder: (BuildContext context, double glow, Widget? child) {
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: <Color>[
+                    Color.alphaBlend(
+                      Colors.white.withValues(alpha: dark ? 0.10 : 0.22),
+                      squareColor,
+                    ),
                     squareColor,
-                  ),
-                  squareColor,
-                  Color.alphaBlend(
-                    Colors.black.withValues(alpha: dark ? 0.18 : 0.08),
-                    squareColor,
-                  ),
+                    Color.alphaBlend(
+                      Colors.black.withValues(alpha: dark ? 0.18 : 0.08),
+                      squareColor,
+                    ),
+                  ],
+                  stops: const <double>[0, 0.48, 1],
+                ),
+                border: Border.all(
+                  color: idleHint
+                      ? const Color(0xFF68C8FF)
+                      : selected
+                      ? const Color(0xFFF8E7B0)
+                      : (dark ? Colors.black : Colors.white).withValues(
+                          alpha: 0.08,
+                        ),
+                  width: idleHint
+                      ? 3.2
+                      : selected
+                      ? 3
+                      : 1,
+                ),
+                boxShadow: <BoxShadow>[
+                  if (idleHint)
+                    BoxShadow(
+                      color: const Color(0xFF42B8FF)
+                          .withValues(alpha: 0.9 * glow),
+                      blurRadius: 26,
+                      spreadRadius: 5,
+                    ),
+                  if (legalTarget)
+                    BoxShadow(
+                      color: const Color(0xFFBDE6FF)
+                          .withValues(alpha: 0.72 * glow),
+                      blurRadius: 22,
+                      spreadRadius: 4,
+                    ),
+                  if (lastCapture || captureTarget)
+                    BoxShadow(
+                      color: const Color(0xFFFF1744)
+                          .withValues(alpha: 0.55 * glow),
+                      blurRadius: 24,
+                      spreadRadius: 3,
+                    ),
+                  if (checkedKing)
+                    BoxShadow(
+                      color: const Color(0xFFFF1744)
+                          .withValues(alpha: 0.9 * glow),
+                      blurRadius: 28,
+                      spreadRadius: 5,
+                    ),
+                  if (decisiveMove)
+                    BoxShadow(
+                      color: palette.accent.withValues(alpha: 0.8 * glow),
+                      blurRadius: 24,
+                      spreadRadius: 4,
+                    ),
                 ],
-                stops: const <double>[0, 0.48, 1],
               ),
-              border: Border.all(
-                color: idleHint
-                    ? const Color(0xFF68C8FF)
-                    : selected
-                    ? const Color(0xFFF8E7B0)
-                    : (dark ? Colors.black : Colors.white).withValues(
-                        alpha: 0.08,
-                      ),
-                width: idleHint
-                    ? 3.2
-                    : selected
-                    ? 3
-                    : 1,
-              ),
-              boxShadow: <BoxShadow>[
-                if (idleHint)
-                  BoxShadow(
-                    color: const Color(0xFF42B8FF)
-                        .withValues(alpha: 0.9 * glow),
-                    blurRadius: 26,
-                    spreadRadius: 5,
-                  ),
-                if (legalTarget)
-                  BoxShadow(
-                    color: const Color(0xFFBDE6FF)
-                        .withValues(alpha: 0.72 * glow),
-                    blurRadius: 22,
-                    spreadRadius: 4,
-                  ),
-                if (lastCapture || captureTarget)
-                  BoxShadow(
-                    color: const Color(0xFFFF1744)
-                        .withValues(alpha: 0.55 * glow),
-                    blurRadius: 24,
-                    spreadRadius: 3,
-                  ),
-                if (checkedKing)
-                  BoxShadow(
-                    color: const Color(0xFFFF1744)
-                        .withValues(alpha: 0.9 * glow),
-                    blurRadius: 28,
-                    spreadRadius: 5,
-                  ),
-                if (decisiveMove)
-                  BoxShadow(
-                    color: palette.accent.withValues(alpha: 0.8 * glow),
-                    blurRadius: 24,
-                    spreadRadius: 4,
-                  ),
-              ],
-            ),
-            child: child,
-          );
-        },
-        child: Stack(
-          children: <Widget>[
-            Positioned.fill(
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: <Color>[
-                        Colors.white.withValues(alpha: dark ? 0.045 : 0.09),
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: dark ? 0.10 : 0.045),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 5,
-              left: 6,
-              child: Text(
-                showRank ? square.substring(1) : '',
-                style: TextStyle(
-                  color: coordinateColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            Positioned(
-              right: 6,
-              bottom: 4,
-              child: Text(
-                showFile ? square.substring(0, 1) : '',
-                style: TextStyle(
-                  color: coordinateColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            Center(
-              child: AnimatedScale(
-                duration: const Duration(milliseconds: 360),
-                curve: Curves.easeOutBack,
-                scale: legalTarget && piece == null ? 1 : 0,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    gradient: RadialGradient(
-                      colors: <Color>[
-                        Colors.white.withValues(alpha: 0.92),
-                        const Color(0xFFCBEAFF).withValues(alpha: 0.72),
-                        const Color(0xFF6DBDFF).withValues(alpha: 0.28),
-                      ],
-                    ),
-                    boxShadow: <BoxShadow>[
-                      BoxShadow(
-                        color: const Color(0xFF8EDBFF).withValues(alpha: 0.72),
-                        blurRadius: 24,
-                        spreadRadius: 5,
-                      ),
-                      BoxShadow(
-                        color: Colors.white.withValues(alpha: 0.42),
-                        blurRadius: 8,
-                        spreadRadius: -1,
-                      ),
-                    ],
-                  ),
-                  child: const SizedBox(width: 28, height: 28),
-                ),
-              ),
-            ),
-            if (captureTarget)
+              child: child,
+            );
+          },
+          child: Stack(
+            clipBehavior: Clip.hardEdge,
+            children: <Widget>[
               Positioned.fill(
                 child: IgnorePointer(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      border: Border.all(
-                        color: const Color(0xFFFF1744),
-                        width: 4,
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: <Color>[
+                          Colors.white.withValues(alpha: dark ? 0.045 : 0.09),
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: dark ? 0.10 : 0.045),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 5,
+                left: 6,
+                child: Text(
+                  showRank ? square.substring(1) : '',
+                  style: TextStyle(
+                    color: coordinateColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 6,
+                bottom: 4,
+                child: Text(
+                  showFile ? square.substring(0, 1) : '',
+                  style: TextStyle(
+                    color: coordinateColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Center(
+                child: AnimatedScale(
+                  duration: const Duration(milliseconds: 360),
+                  curve: Curves.easeOutBack,
+                  scale: legalTarget && piece == null ? 1 : 0,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: RadialGradient(
+                        colors: <Color>[
+                          Colors.white.withValues(alpha: 0.92),
+                          const Color(0xFFCBEAFF).withValues(alpha: 0.72),
+                          const Color(0xFF6DBDFF).withValues(alpha: 0.28),
+                        ],
                       ),
                       boxShadow: <BoxShadow>[
                         BoxShadow(
-                          color: const Color(0xFFFF1744)
+                          color: const Color(0xFF8EDBFF)
                               .withValues(alpha: 0.72),
-                          blurRadius: 20,
-                          spreadRadius: 3,
+                          blurRadius: 24,
+                          spreadRadius: 5,
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            if (checkedKing)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: const Color(0xFFFFD1D8),
-                        width: 4,
-                      ),
-                      boxShadow: <BoxShadow>[
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.48),
-                          blurRadius: 9,
-                          spreadRadius: -2,
+                          color: Colors.white.withValues(alpha: 0.42),
+                          blurRadius: 8,
+                          spreadRadius: -1,
                         ),
                       ],
                     ),
+                    child: const SizedBox(width: 28, height: 28),
                   ),
                 ),
               ),
-            Center(
-              child: piece == null
-                  ? const SizedBox.shrink()
-                  : TweenAnimationBuilder<double>(
-                      key: ValueKey<String>('king-fall-$square-$kingFallen'),
-                      tween: Tween<double>(begin: 0, end: kingFallen ? 1 : 0),
-                      duration: const Duration(milliseconds: 900),
-                      curve: Curves.easeInOutBack,
-                      builder:
-                          (BuildContext context, double fall, Widget? child) {
-                            return Transform.translate(
-                              offset: Offset(0, fall * 9),
-                              child: Transform.rotate(
-                                alignment: Alignment.bottomCenter,
-                                angle:
-                                    (piece!.white ? 1 : -1) *
-                                    math.pi *
-                                    .48 *
-                                    fall,
-                                child: child,
-                              ),
-                            );
-                          },
-                      child: ChessCoin(
-                        key: ValueKey<String>(
-                          '$square-${piece!.white}-${piece!.code}',
+              if (captureTarget)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: const Color(0xFFFF1744),
+                          width: 4,
                         ),
-                        piece: piece!,
-                        selected: selected,
-                        accent: palette.accent,
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: const Color(0xFFFF1744)
+                                .withValues(alpha: 0.72),
+                            blurRadius: 20,
+                            spreadRadius: 3,
+                          ),
+                        ],
                       ),
                     ),
-            ),
-            if (lastCapture)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: CaptureBurst(
-                    key: ValueKey<String>(
-                      'capture-burst-$square-${piece?.white}-${piece?.code}',
+                  ),
+                ),
+              if (checkedKing)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: const Color(0xFFFFD1D8),
+                          width: 4,
+                        ),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.48),
+                            blurRadius: 9,
+                            spreadRadius: -2,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
+              if (kingFallen)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: _CheckmateSquareEffect(
+                      key: ValueKey<String>('checkmate-effect-$square'),
+                    ),
+                  ),
+                ),
+              Center(
+                child: piece == null
+                    ? const SizedBox.shrink()
+                    : TweenAnimationBuilder<double>(
+                        key: ValueKey<String>('king-fall-$square-$kingFallen'),
+                        tween: Tween<double>(begin: 0, end: kingFallen ? 1 : 0),
+                        duration: const Duration(milliseconds: 900),
+                        curve: Curves.easeInOutBack,
+                        builder:
+                            (BuildContext context, double fall, Widget? child) {
+                              return Transform.translate(
+                                offset: Offset(0, fall * 3),
+                                child: Transform.rotate(
+                                  alignment: Alignment.center,
+                                  angle:
+                                      (piece!.white ? 1 : -1) *
+                                      math.pi *
+                                      .44 *
+                                      fall,
+                                  child: child,
+                                ),
+                              );
+                            },
+                        child: ChessCoin(
+                          key: ValueKey<String>(
+                            '$square-${piece!.white}-${piece!.code}',
+                          ),
+                          piece: piece!,
+                          selected: selected,
+                          accent: palette.accent,
+                        ),
+                      ),
               ),
-          ],
+              if (lastCapture)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: CaptureBurst(
+                      key: ValueKey<String>(
+                        'capture-burst-$square-${piece?.white}-${piece?.code}',
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _CheckmateSquareEffect extends StatelessWidget {
+  const _CheckmateSquareEffect({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 1200),
+      curve: Curves.easeOutCubic,
+      builder: (BuildContext context, double progress, Widget? child) =>
+          CustomPaint(painter: _CheckmateSquarePainter(progress)),
+    );
+  }
+}
+
+class _CheckmateSquarePainter extends CustomPainter {
+  const _CheckmateSquarePainter(this.progress);
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Offset center = size.center(Offset.zero);
+    final double extent = math.min(size.width, size.height);
+    final Paint glow = Paint()
+      ..shader = RadialGradient(
+        colors: <Color>[
+          const Color(0xFFFFD166).withValues(alpha: .46 * progress),
+          const Color(0xFFFF3158).withValues(alpha: .28 * progress),
+          Colors.transparent,
+        ],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, glow);
+
+    final Paint particle = Paint()..style = PaintingStyle.fill;
+    for (int index = 0; index < 12; index++) {
+      final double angle = index * math.pi * 2 / 12 + .28;
+      final double radius = extent * (.12 + .28 * progress);
+      particle.color =
+          (index.isEven ? const Color(0xFFFFE7A3) : const Color(0xFFFFB23E))
+              .withValues(alpha: (.9 - progress * .34).clamp(0, 1));
+      canvas.drawCircle(
+        center + Offset(math.cos(angle), math.sin(angle)) * radius,
+        extent * (index.isEven ? .026 : .018),
+        particle,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CheckmateSquarePainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 class CaptureBurst extends StatelessWidget {
@@ -1547,16 +1613,14 @@ class ChessCoin extends StatelessWidget {
                       classic2d ? 1.56 : 1.72,
                   };
             final double pieceSize = size * pieceScale;
-            final double silhouetteScale = royalAsset
-                ? 1.0
-                : switch (piece.code) {
-                    'K' => 1.00,
-                    'Q' => .98,
-                    'N' => .96,
-                    'B' => .94,
-                    'R' => .91,
-                    _ => .88,
-                  };
+            final double silhouetteScale = switch (piece.code) {
+              'K' => 1.00,
+              'Q' => .98,
+              'N' => .96,
+              'B' => .94,
+              'R' => .91,
+              _ => royalAsset ? .80 : .88,
+            };
 
             return AnimatedRotation(
               turns: selected ? -0.012 : 0,
