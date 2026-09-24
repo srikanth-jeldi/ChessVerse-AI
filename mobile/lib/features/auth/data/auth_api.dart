@@ -35,7 +35,7 @@ class AuthApi {
       throw const AuthApiException(_connectionMessage);
     }
 
-    return _decode(response);
+    return _decode(response, path: path);
   }
 
   Future<Map<String, dynamic>> refresh(String refreshToken) =>
@@ -219,7 +219,7 @@ class AuthApi {
     _decode(response);
   }
 
-  Map<String, dynamic> _decode(http.Response response) {
+  Map<String, dynamic> _decode(http.Response response, {String? path}) {
     Object? decoded;
     if (response.body.isNotEmpty) {
       try {
@@ -232,8 +232,11 @@ class AuthApi {
         decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AuthApiException(
-        data['message'] as String? ??
-            'ChessVerseAI server rejected the request (${response.statusCode}).',
+        authFriendlyErrorMessage(
+          path: path,
+          statusCode: response.statusCode,
+          serverMessage: data['message'] as String?,
+        ),
         statusCode: response.statusCode,
       );
     }
@@ -242,6 +245,29 @@ class AuthApi {
 
   static const String _connectionMessage =
       'Cannot reach ChessVerseAI. Check your connection and try again.';
+}
+
+String authFriendlyErrorMessage({
+  required String? path,
+  required int statusCode,
+  String? serverMessage,
+}) {
+  if (path == 'register' && statusCode == 409) {
+    return 'An account already exists for this email. Open Login instead.';
+  }
+  if (path == 'login' && statusCode == 401) {
+    return 'Invalid user ID or password.';
+  }
+  if (path == 'facebook' && statusCode == 409) {
+    return 'Account already exists. Sign in first before linking Facebook.';
+  }
+  if (path == 'google' && statusCode == 409) {
+    return 'Account already exists. Sign in first before linking Google.';
+  }
+  final String message = serverMessage?.trim() ?? '';
+  return message.isNotEmpty
+      ? message
+      : 'ChessVerseAI server rejected the request ($statusCode).';
 }
 
 class AuthApiException implements Exception {
