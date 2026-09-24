@@ -214,12 +214,18 @@ class _AiReviewWorkspaceState extends State<_AiReviewWorkspace> {
                   ),
                 ),
               ),
-              if (puzzleCount > 0 && widget.onGeneratePuzzles != null)
-                IconButton(
-                  tooltip:
-                      '${_reviewText('resumeMistakes', languageCode)} ($puzzleCount)',
+              if (widget.desktop &&
+                  puzzleCount > 0 &&
+                  widget.onGeneratePuzzles != null)
+                OutlinedButton.icon(
+                  key: const ValueKey<String>('review-mistake-bank'),
                   onPressed: widget.onGeneratePuzzles,
-                  icon: const Icon(Icons.extension_rounded),
+                  icon: const Icon(Icons.extension_rounded, size: 18),
+                  label: Text(
+                    '${_reviewText('resumeMistakes', languageCode)} ($puzzleCount)',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               IconButton(
                 key: const ValueKey<String>('review-language'),
@@ -234,6 +240,24 @@ class _AiReviewWorkspaceState extends State<_AiReviewWorkspace> {
             ],
           ),
           const Divider(),
+          if (!widget.desktop &&
+              puzzleCount > 0 &&
+              widget.onGeneratePuzzles != null) ...<Widget>[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const ValueKey<String>('review-mistake-bank'),
+                onPressed: widget.onGeneratePuzzles,
+                icon: const Icon(Icons.extension_rounded, size: 18),
+                label: Text(
+                  '${_reviewText('resumeMistakes', languageCode)} ($puzzleCount)',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           Center(
             child: SegmentedButton<bool>(
               key: const ValueKey<String>('review-mode-toggle'),
@@ -3640,12 +3664,15 @@ class _CoachPositionBoardState extends State<_CoachPositionBoard> {
                             ? const SizedBox.shrink()
                             : Padding(
                                 padding: EdgeInsets.all(box.maxWidth / 145),
-                                child: Image.asset(
-                                  _coachPieceAsset(pieces[square]!),
-                                  fit: BoxFit.contain,
-                                  filterQuality: FilterQuality.high,
-                                  semanticLabel: _coachPieceLabel(
-                                    pieces[square]!,
+                                child: Transform.scale(
+                                  scale: 1.12,
+                                  child: Image.asset(
+                                    _coachPieceAsset(pieces[square]!),
+                                    fit: BoxFit.contain,
+                                    filterQuality: FilterQuality.high,
+                                    semanticLabel: _coachPieceLabel(
+                                      pieces[square]!,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -3695,7 +3722,8 @@ class _CoachPositionBoardState extends State<_CoachPositionBoard> {
       'p': 'pawn',
     };
     final String colour = token == token.toUpperCase() ? 'white' : 'black';
-    return 'assets/pieces/staunton_${colour}_${names[token.toLowerCase()]}.png';
+    return 'assets/pieces/premium_individual/obsidian-regal/'
+        '$colour/${names[token.toLowerCase()]}.webp';
   }
 
   static String _coachPieceLabel(String token) {
