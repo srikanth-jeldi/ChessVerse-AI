@@ -7,6 +7,32 @@ class PositionSetup {
 
   final Map<String, String> pieces;
   final bool humanWhite;
+
+  String get initialFen {
+    final List<String> ranks = <String>[];
+    for (int rank = 8; rank >= 1; rank--) {
+      int empty = 0;
+      final StringBuffer row = StringBuffer();
+      for (int file = 0; file < 8; file++) {
+        final String square = '${String.fromCharCode(97 + file)}$rank';
+        final String? piece = pieces[square];
+        if (piece == null) {
+          empty++;
+          continue;
+        }
+        if (empty > 0) {
+          row.write(empty);
+          empty = 0;
+        }
+        final String code = piece.substring(1);
+        row.write(piece.startsWith('w') ? code : code.toLowerCase());
+      }
+      if (empty > 0) row.write(empty);
+      ranks.add(row.toString());
+    }
+    // Position Creator always starts with White to move and disables castling.
+    return '${ranks.join('/')} w - - 0 1';
+  }
 }
 
 class PositionCreatorScreen extends StatefulWidget {

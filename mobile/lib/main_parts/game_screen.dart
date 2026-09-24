@@ -416,7 +416,11 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
+  static const String _standardInitialFen =
+      'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
   String _draftId = DateTime.now().microsecondsSinceEpoch.toString();
+  String _initialGameFen = _standardInitialFen;
   String? _draftOwner;
   String? _lastDraftFingerprint;
   bool _computerPaused = false;
@@ -519,6 +523,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             state: {
               ..._encodePosition(_currentPosition),
               'version': 1,
+              'initialFen': _initialGameFen,
               'humanWhite': _humanPlaysWhite,
               'level': _aiLevel,
               'aiStyle': _aiStyle.name,
@@ -552,6 +557,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       final state = <String, dynamic>{
         ..._encodePosition(_currentPosition),
         'version': 1,
+        'initialFen': _initialGameFen,
         'humanWhite': _humanPlaysWhite,
         'level': _aiLevel,
         'aiStyle': _aiStyle.name,
@@ -614,6 +620,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _restoreComputerDraft(ComputerGameDraft draft) {
     final data = draft.state;
+    _initialGameFen = data['initialFen'] as String? ?? _standardInitialFen;
     final position = _decodePosition(data);
     _draftId = draft.id;
     _pieces = position.pieces;
@@ -1835,6 +1842,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                 playedAt: DateTime.now(),
                                 whitePlayer: _whitePlayerName,
                                 blackPlayer: _blackPlayerName,
+                                initialFen: _initialGameFen,
                               );
                               return (
                                 pgn: const PgnArchiveService().exportGames(
@@ -4197,6 +4205,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         playedAt: archivedAt,
         whitePlayer: _whitePlayerName,
         blackPlayer: _blackPlayerName,
+        initialFen: _initialGameFen,
         playerOutcome: playerOutcomeForResult(
           _gameResultTitle!,
           humanPlaysWhite: _humanPlaysWhite,
@@ -4308,7 +4317,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       CloudAnalysisJob job = await _gameAnalysisApi.create(
         token,
         clientRequestId: archivedAt.toUtc().toIso8601String(),
-        initialFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+        initialFen: _initialGameFen,
         moves: uciMoves,
         depth: 16,
         playerColor: _humanPlaysWhite ? 'WHITE' : 'BLACK',
@@ -4411,6 +4420,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       knownTurningPoint: _turningPoint,
       knownMistakes: _importantMistakes.reversed.toList(growable: false),
       knownReviews: _moveReviews,
+      initialFen: _initialGameFen,
     );
     showAdaptiveAiReview(
       context,

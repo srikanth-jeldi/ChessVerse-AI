@@ -1731,6 +1731,7 @@ class _SplashGateState extends State<SplashGate> {
       updatedAt: DateTime.now(),
       state: <String, dynamic>{
         'version': 1,
+        'initialFen': setup.initialFen,
         'pieces': setup.pieces,
         'moves': <String>[],
         'capturedWhite': <String>[],
