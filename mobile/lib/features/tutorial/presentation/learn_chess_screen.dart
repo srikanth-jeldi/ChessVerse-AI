@@ -2019,7 +2019,13 @@ class _CourseScreenState extends State<_CourseScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      '$completedCount of ${course.chapters.length} lessons',
+                      _copy.text(
+                        'course.progress',
+                        values: <String, String>{
+                          'done': '$completedCount',
+                          'total': '${course.chapters.length}',
+                        },
+                      ),
                       style: TextStyle(
                         color: course.accent,
                         fontWeight: FontWeight.w900,
@@ -2037,9 +2043,9 @@ class _CourseScreenState extends State<_CourseScreen> {
                 ),
               ),
               const SizedBox(height: 22),
-              const Text(
-                'COURSE LESSONS',
-                style: TextStyle(
+              Text(
+                _copy.text('academy.sectionTitle'),
+                style: const TextStyle(
                   color: AppColors.accentGold,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.1,
@@ -2090,7 +2096,7 @@ class _CourseScreenState extends State<_CourseScreen> {
                               ),
                       ),
                       title: Text(
-                        course.chapters[index],
+                        _copy.storyTitle(academyLesson),
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                       subtitle: Text(

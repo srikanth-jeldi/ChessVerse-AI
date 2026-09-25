@@ -20,8 +20,41 @@ class AcademyStoryLocalizations {
 
   Map<String, String>? get _copy => _translations[code];
 
-  String storyChapter(AcademyLesson lesson) =>
-      _copy?['${lesson.copyId}.chapter'] ?? lesson.storyChapter;
+  String storyChapter(AcademyLesson lesson) {
+    final String localized =
+        _copy?['${lesson.copyId}.chapter'] ?? lesson.storyChapter;
+    if (code == 'en' || lesson.stage != AcademyStage.foundation) {
+      return localized;
+    }
+
+    final List<AcademyLesson> foundationLessons = AcademyCatalog.lessons
+        .where((AcademyLesson item) => item.stage == AcademyStage.foundation)
+        .toList(growable: false);
+    final int chapter =
+        foundationLessons.indexWhere(
+          (AcademyLesson item) => item.id == lesson.id,
+        ) +
+        1;
+    if (chapter <= 0) return localized;
+
+    final String boardChapter =
+        _copy?['board.chapter'] ?? AcademyCatalog.lessons.first.storyChapter;
+    final Match? chapterLabelMatch = RegExp(r'^(.+?)\s*\d+')
+        .firstMatch(boardChapter);
+    final String chapterLabel =
+        chapterLabelMatch?.group(1)?.trim() ?? 'Chapter';
+    final String title = localized
+        .replaceFirst(RegExp(r'^.*?\d+\s*[·:.-]\s*'), '')
+        .trim();
+    return '$chapterLabel $chapter · $title';
+  }
+
+  String storyTitle(AcademyLesson lesson) {
+    if (code == 'en') return lesson.title;
+    final String chapter = storyChapter(lesson);
+    final int separator = chapter.indexOf('·');
+    return separator < 0 ? chapter : chapter.substring(separator + 1).trim();
+  }
 
   String storyNarration(AcademyLesson lesson) {
     final String value =

@@ -211,7 +211,7 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('Watch the AI coach demonstrate the move.'), findsNothing);
-    expect(find.text('అధ్యాయం 3 · కోట కాపరి'), findsWidgets);
+    expect(find.text('అధ్యాయం 6 · కోట కాపరి'), findsWidgets);
   });
 
   testWidgets('academy journey chrome follows the selected offline language', (

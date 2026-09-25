@@ -85,12 +85,26 @@ void main() {
     final AcademyLesson lesson = AcademyCatalog.forChapter(
       'Meet the chessboard',
     );
-    final String prompt = AcademyStoryLocalizations(
-      'te',
-    ).lessonInstruction(lesson);
+    final String prompt = AcademyStoryLocalizations('te')
+        .lessonInstruction(lesson);
 
     expect(prompt, contains('a1 → a8'));
     expect(prompt, isNot(contains('Move the highlighted rook')));
     expect(prompt, startsWith('అధ్యాయం 1'));
+  });
+
+  test('foundation chapter numbers follow the actual lesson order', () {
+    final AcademyStoryLocalizations copy = AcademyStoryLocalizations('te');
+    final AcademyLesson pawnCapture = AcademyCatalog.forChapter(
+      'Pawn: capture diagonally',
+    );
+    final AcademyLesson pawnPromotion = AcademyCatalog.forChapter(
+      'Pawn: promote on the last rank',
+    );
+
+    expect(copy.storyChapter(pawnCapture), startsWith('అధ్యాయం 3 ·'));
+    expect(copy.storyChapter(pawnPromotion), startsWith('అధ్యాయం 4 ·'));
+    expect(copy.storyTitle(pawnCapture), isNot(contains('అధ్యాయం')));
+    expect(copy.storyTitle(pawnCapture), isNot(contains('Pawn:')));
   });
 }
