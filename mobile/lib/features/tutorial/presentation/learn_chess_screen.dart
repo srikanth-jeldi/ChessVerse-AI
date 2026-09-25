@@ -2101,12 +2101,12 @@ class _CourseScreenState extends State<_CourseScreen> {
                       ),
                       subtitle: Text(
                         active
-                            ? 'Continue this lesson'
+                            ? _copy.text('course.continue')
                             : done
-                            ? 'Completed'
+                            ? _copy.text('missions.claimed')
                             : locked
-                            ? 'Complete the previous lesson to unlock'
-                            : 'Learn the idea, then try a position',
+                            ? _copy.text('course.locked')
+                            : _copy.text('course.start'),
                       ),
                       trailing: done
                           ? Row(

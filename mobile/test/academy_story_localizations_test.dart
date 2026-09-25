@@ -107,4 +107,31 @@ void main() {
     expect(copy.storyTitle(pawnCapture), isNot(contains('అధ్యాయం')));
     expect(copy.storyTitle(pawnCapture), isNot(contains('Pawn:')));
   });
+
+  test('every language supplies localized academy course card copy', () {
+    const List<String> keys = <String>[
+      'academy.sectionTitle',
+      'course.progress',
+      'course.continue',
+      'course.locked',
+      'course.start',
+      'missions.claimed',
+    ];
+    final AcademyLesson pawnCapture = AcademyCatalog.forChapter(
+      'Pawn: capture diagonally',
+    );
+
+    for (final AppLanguage language in AppLanguageController.supported.where(
+      (AppLanguage language) =>
+          language.code != AppLanguageController.systemCode,
+    )) {
+      final AcademyStoryLocalizations copy = AcademyStoryLocalizations(
+        language.code,
+      );
+      expect(copy.storyTitle(pawnCapture), isNotEmpty, reason: language.code);
+      for (final String key in keys) {
+        expect(copy.text(key), isNot(key), reason: '${language.code}: $key');
+      }
+    }
+  });
 }
