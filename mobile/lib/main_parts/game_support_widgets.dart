@@ -1236,10 +1236,24 @@ class GameResultOverlay extends StatelessWidget {
         ),
       ),
     );
-    // The board already presents the cinematic king-fall/title/fireworks
-    // sequence before this result sheet is revealed. Keep the sheet calm and
-    // fully readable instead of starting a second celebration over its CTAs.
-    return resultCard;
+    // The board celebration starts before this sheet is revealed. Replay only
+    // the non-interactive sparks here so a player who is looking at the final
+    // result still sees the win celebration. The result card remains readable
+    // and all of its actions stay tappable because the effect ignores input.
+    if (draw || missed) return resultCard;
+    return Stack(
+      key: const ValueKey<String>('victory-result-fireworks'),
+      children: <Widget>[
+        resultCard,
+        const Positioned.fill(
+          child: OnlineVictoryCelebration(
+            winnerAtTop: true,
+            title: '',
+            showTitle: false,
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _showGameExport(BuildContext context) async {

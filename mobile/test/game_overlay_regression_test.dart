@@ -206,4 +206,32 @@ void main() {
     expect(find.text('YOU WIN'), findsOneWidget);
     expect(find.byType(CustomPaint), findsWidgets);
   });
+
+  testWidgets(
+    'victory result sheet replays fireworks when it becomes visible',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GameResultOverlay(
+            title: 'You win',
+            detail: 'Checkmate',
+            scoreLabel: '1 - 0',
+            accuracy: 79,
+            turningPoint: null,
+            onNewGame: () {},
+            onDismiss: () {},
+            onReview: () {},
+            onShare: () async {},
+            onExport: () async => (pgn: '', fen: ''),
+          ),
+        ),
+      );
+
+      expect(
+        find.byKey(const ValueKey<String>('victory-result-fireworks')),
+        findsOneWidget,
+      );
+      expect(find.byType(OnlineVictoryCelebration), findsOneWidget);
+    },
+  );
 }
