@@ -683,7 +683,10 @@ class _InteractiveAcademyLessonScreenState
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        SizedBox(width: 230, child: _CurriculumRail(lesson: widget.lesson)),
+        SizedBox(
+          width: 230,
+          child: _CurriculumRail(lesson: widget.lesson, copy: _copy),
+        ),
         const SizedBox(width: 20),
         Expanded(
           child: Center(
@@ -1664,49 +1667,52 @@ class _MobileLessonHeader extends StatelessWidget {
 }
 
 class _CurriculumRail extends StatelessWidget {
-  const _CurriculumRail({required this.lesson});
+  const _CurriculumRail({required this.lesson, required this.copy});
   final AcademyLesson lesson;
+  final AcademyStoryLocalizations copy;
 
   @override
   Widget build(BuildContext context) => ChessVerseCard(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        const Text(
-          'LESSON FLOW',
-          style: TextStyle(
+        Text(
+          copy.code == 'en' ? 'LESSON FLOW' : copy.text('academy.sectionTitle'),
+          style: const TextStyle(
             color: AppColors.accentGold,
             fontWeight: FontWeight.w900,
             letterSpacing: 1.1,
           ),
         ),
         const SizedBox(height: 18),
-        const _RailStep(
+        _RailStep(
           number: '01',
-          title: 'Watch',
+          title: copy.code == 'en' ? 'Watch' : copy.text('method.watch'),
           icon: Icons.animation_rounded,
         ),
         const _RailLine(),
-        const _RailStep(
+        _RailStep(
           number: '02',
-          title: 'Understand',
+          title: copy.code == 'en' ? 'Understand' : copy.text('ui.thinkTitle'),
           icon: Icons.psychology_rounded,
         ),
         const _RailLine(),
-        const _RailStep(
+        _RailStep(
           number: '03',
-          title: 'Practice',
+          title: copy.code == 'en' ? 'Practice' : copy.text('method.practice'),
           icon: Icons.touch_app_rounded,
         ),
         const _RailLine(),
-        const _RailStep(
+        _RailStep(
           number: '04',
-          title: 'Master',
+          title: copy.code == 'en' ? 'Master' : copy.text('method.master'),
           icon: Icons.workspace_premium_rounded,
         ),
         const Spacer(),
         Text(
-          lesson.eyebrow,
+          copy.code == 'en'
+              ? lesson.eyebrow
+              : copy.text('academy.sectionEyebrow'),
           style: const TextStyle(
             color: Color(0xFF59E4C8),
             fontSize: 11,
@@ -1715,7 +1721,7 @@ class _CurriculumRail extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          lesson.title,
+          copy.storyTitle(lesson),
           style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
         ),
       ],
