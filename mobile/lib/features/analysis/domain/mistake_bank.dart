@@ -25,6 +25,8 @@ class MistakeBankItem {
 }
 
 abstract final class MistakeBank {
+  static const int maxItems = 100;
+
   static const Set<String> _mistakeLabels = <String>{
     'inaccuracy',
     'mistake',
@@ -46,11 +48,19 @@ abstract final class MistakeBank {
     final List<MistakeBankItem> source = recent.isNotEmpty
         ? recent
         : _collect(games);
+    // Keep the bank bounded. Prefer the newest reviewed positions when the
+    // seven-day window (or its all-time fallback) contains more than the
+    // training capacity, then rank that retained set by severity.
     source.sort(
       (MistakeBankItem a, MistakeBankItem b) =>
-          b.review.centipawnLoss.compareTo(a.review.centipawnLoss),
+          b.game.playedAt.compareTo(a.game.playedAt),
     );
-    final Iterable<MistakeBankItem> playable = source.where(
+    final List<MistakeBankItem> retained = source.take(maxItems).toList()
+      ..sort(
+        (MistakeBankItem a, MistakeBankItem b) =>
+            b.review.centipawnLoss.compareTo(a.review.centipawnLoss),
+      );
+    final Iterable<MistakeBankItem> playable = retained.where(
       (MistakeBankItem item) => item.isPlayable,
     );
     return (limit == null ? playable : playable.take(limit)).toList();

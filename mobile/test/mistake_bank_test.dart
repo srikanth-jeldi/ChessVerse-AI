@@ -78,4 +78,27 @@ void main() {
       expect(MistakeBank.weekly(games, now: now, limit: 5), hasLength(5));
     },
   );
+
+  test('bank keeps only the newest 100 trainable mistakes', () {
+    final DateTime now = DateTime.utc(2026, 9, 10);
+    final List<SavedGameRecord> games = List<SavedGameRecord>.generate(
+      105,
+      (int index) =>
+          game(now.subtract(Duration(minutes: index)), <SavedMoveReview>[
+            review(ply: index + 1, classification: 'Mistake', loss: index + 1),
+          ]),
+    );
+
+    final List<MistakeBankItem> items = MistakeBank.weekly(games, now: now);
+
+    expect(items, hasLength(MistakeBank.maxItems));
+    expect(
+      items.any((MistakeBankItem item) => item.review.centipawnLoss == 105),
+      isFalse,
+    );
+    expect(
+      items.any((MistakeBankItem item) => item.review.centipawnLoss == 100),
+      isTrue,
+    );
+  });
 }
