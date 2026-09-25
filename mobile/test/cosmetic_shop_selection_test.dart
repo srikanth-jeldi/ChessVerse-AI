@@ -21,7 +21,7 @@ CosmeticItemDto item({
 
 void main() {
   test(
-    'equipped premium board and pieces can return to their free defaults',
+    'free board and pieces offer default restore when premium is equipped',
     () {
       final CosmeticItemDto boardDefault = item(
         id: 'board-default',
@@ -54,9 +54,10 @@ void main() {
 
       expect(defaultCosmeticFor(catalog, 'BOARD'), same(boardDefault));
       expect(defaultCosmeticFor(catalog, 'PIECES'), same(piecesDefault));
-      expect(canRestoreDefaultCosmetic(premiumBoard, catalog), isTrue);
-      expect(canRestoreDefaultCosmetic(premiumPieces, catalog), isTrue);
-      expect(canRestoreDefaultCosmetic(boardDefault, catalog), isFalse);
+      expect(canRestoreDefaultCosmetic(boardDefault, catalog), isTrue);
+      expect(canRestoreDefaultCosmetic(piecesDefault, catalog), isTrue);
+      expect(canRestoreDefaultCosmetic(premiumBoard, catalog), isFalse);
+      expect(canRestoreDefaultCosmetic(premiumPieces, catalog), isFalse);
     },
   );
 
@@ -85,5 +86,19 @@ void main() {
 
     expect(canRestoreDefaultCosmetic(premiumFrame, catalog), isFalse);
     expect(canRestoreDefaultCosmetic(premiumBoard, catalog), isFalse);
+  });
+
+  test('active free defaults remain equipped instead of offering restore', () {
+    final CosmeticItemDto boardDefault = item(
+      id: 'board-default',
+      category: 'BOARD',
+      currency: 'FREE',
+      equipped: true,
+    );
+
+    expect(
+      canRestoreDefaultCosmetic(boardDefault, <CosmeticItemDto>[boardDefault]),
+      isFalse,
+    );
   });
 }

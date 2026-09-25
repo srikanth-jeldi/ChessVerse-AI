@@ -34,11 +34,17 @@ CosmeticItemDto? defaultCosmeticFor(
 bool canRestoreDefaultCosmetic(
   CosmeticItemDto item,
   Iterable<CosmeticItemDto> items,
-) =>
-    item.equipped &&
-    (item.category == 'BOARD' || item.category == 'PIECES') &&
-    item.priceCurrency != 'FREE' &&
-    defaultCosmeticFor(items, item.category) != null;
+) {
+  if ((item.category != 'BOARD' && item.category != 'PIECES') ||
+      item.priceCurrency != 'FREE' ||
+      item.equipped) {
+    return false;
+  }
+  return items.any(
+    (CosmeticItemDto candidate) =>
+        candidate.category == item.category && candidate.equipped,
+  );
+}
 
 class CosmeticShopScreen extends StatefulWidget {
   const CosmeticShopScreen({
@@ -124,9 +130,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     setState(() => _busy = true);
     try {
       final bool restoreDefault = _canRestoreDefault(item);
-      final CosmeticItemDto target = restoreDefault
-          ? _defaultItem(item.category)!
-          : item;
+      final CosmeticItemDto target = item;
       final ShopDto value = restoreDefault || item.owned
           ? await _api.equip(widget.token, target.category, target.id)
           : await _api.purchase(widget.token, item.id);
@@ -160,10 +164,6 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         );
       }
     }
-  }
-
-  CosmeticItemDto? _defaultItem(String category) {
-    return defaultCosmeticFor(_shop?.items ?? const [], category);
   }
 
   bool _canRestoreDefault(CosmeticItemDto item) =>
