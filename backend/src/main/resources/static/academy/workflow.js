@@ -71,7 +71,7 @@ profile = function approvedStudentProfile() {
   let html = approvedProfile();
   if (!state.data.students.length) return html;
   const student = state.student;
-  const nav = `<nav class="profile-sections" aria-label="Student sections"><a href="#student-overview">Overview</a><a href="#student-games">Games</a><a href="#student-training">Assignments</a>${trainer() ? `<button type="button" data-action="report-form" data-id="${esc(student)}">Generate report</button>` : ''}</nav>`;
+  const nav = `<nav class="profile-sections" aria-label="Student sections"><a href="${esc(location.pathname + location.search)}#student-overview">Overview</a><a href="${esc(location.pathname + location.search)}#student-games">Games</a><a href="${esc(location.pathname + location.search)}#student-training">Assignments</a>${trainer() ? `<button type="button" data-action="report-form" data-id="${esc(student)}">Generate report</button>` : ''}</nav>`;
   html = html.replace('<div class="grid-2">', nav + '<div class="grid-2" id="student-overview">');
   html = html.replace('<h2>Assigned Training</h2>', '<h2 id="student-training">Assigned Training</h2>');
   html = html.replace('<h2>Recent Games</h2>', '<h2 id="student-games">Recent Games</h2>');

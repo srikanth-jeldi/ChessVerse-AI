@@ -45,7 +45,7 @@ rollback() {
 }
 trap rollback ERR
 "${compose[@]}" -f "$backup/web-override.yml" up -d --no-deps --no-build web
-curl -fsS --retry 12 --retry-delay 5 --retry-all-errors https://academy.chessverseai.com/academy/index.html > "$backup/portal.html"
+curl -fsS --retry 12 --retry-delay 5 --retry-all-errors https://academy.chessverseai.com/academy > "$backup/portal.html"
 curl -fsS https://api.chessverseai.com/api/v1/health
 curl -fsS https://chessverseai.com/play/ > /dev/null
 docker inspect --format '{{.Id}} {{.Image}} {{.State.StartedAt}}' "$backend_id" > "$backup/backend-after.txt"

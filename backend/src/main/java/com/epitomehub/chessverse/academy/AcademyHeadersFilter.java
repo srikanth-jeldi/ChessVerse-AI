@@ -10,7 +10,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 class AcademyHeadersFilter extends OncePerRequestFilter {
     @Override protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain) throws ServletException,IOException {
         String path=request.getRequestURI();
-        if(path.startsWith("/api/v1/academy") || path.startsWith("/academy/")) {
+        if(path.startsWith("/api/v1/academy") || path.equals("/academy") || path.startsWith("/academy/")) {
             response.setHeader("Cache-Control","no-store");
             response.setHeader("X-Content-Type-Options","nosniff");
             response.setHeader("Referrer-Policy","no-referrer");

@@ -17,9 +17,14 @@ class AcademyWebBoundaryTest {
     @Test void directoryRoutesReachStaticEntryAndPreserveDemoMode() throws Exception {
         var mvc=MockMvcBuilders.standaloneSetup(new AcademyPortalController()).addFilters(new AcademyHeadersFilter()).build();
         mvc.perform(get("/academy/").param("demo",""))
-            .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/academy/index.html?demo"))
+            .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/academy?demo"))
             .andExpect(header().string("Cache-Control","no-store"));
-        mvc.perform(get("/academy")).andExpect(redirectedUrl("/academy/index.html"));
+        mvc.perform(get("/academy")).andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("<base href=\"/academy/\">")))
+            .andExpect(header().string("Cache-Control","no-store"));
+        mvc.perform(get("/academy/index.html").param("demo",""))
+            .andExpect(redirectedUrl("/academy?demo"));
     }
     @Test void invalidRolesAndNestedImportAreRejectedBeforeWrites() throws Exception {
         var auth=mock(PlayerAuthenticationService.class);var db=mock(JdbcTemplate.class);

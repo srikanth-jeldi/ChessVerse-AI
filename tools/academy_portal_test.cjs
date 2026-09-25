@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const path = require('node:path');
 const root=path.join(__dirname,'../backend/src/main/resources/static/academy');
 function harness() {
-  const context=vm.createContext({window:{__ACADEMY_TEST__:true},location:{search:'?demo'},URLSearchParams,Date,structuredClone,crypto:require('node:crypto').webcrypto,document:{addEventListener(){}},setTimeout(){}});
+  const context=vm.createContext({window:{__ACADEMY_TEST__:true},location:{search:'?demo',pathname:'/academy'},URLSearchParams,Date,structuredClone,crypto:require('node:crypto').webcrypto,document:{addEventListener(){}},setTimeout(){}});
   vm.runInContext(fs.readFileSync(path.join(root,'demo.js'),'utf8'),context);
   vm.runInContext(fs.readFileSync(path.join(root,'portal.js'),'utf8'),context);
   vm.runInContext(fs.readFileSync(path.join(root,'premium.js'),'utf8'),context);

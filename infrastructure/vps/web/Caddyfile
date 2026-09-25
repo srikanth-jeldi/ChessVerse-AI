@@ -54,7 +54,7 @@ www.{$APP_DOMAIN} {
 # same-origin; unrelated consumer APIs are not exposed through this host.
 academy.{$APP_DOMAIN} {
 	encode zstd gzip
-	redir / /academy/ temporary
+	redir / /academy temporary
 	handle /api/auth/login {
 		reverse_proxy backend:8080
 	}
