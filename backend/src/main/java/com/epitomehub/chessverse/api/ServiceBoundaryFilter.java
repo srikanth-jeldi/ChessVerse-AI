@@ -73,7 +73,7 @@ final class ServiceBoundaryFilter extends OncePerRequestFilter {
                 "/api/v1/purchases",
                 "/api/v1/shop",
                 "/api/v1/progression")),
-        PLATFORM(List.of("/api/contact"));
+        PLATFORM(List.of("/api/contact", "/api/v1/academy", "/academy"));
 
         private final List<String> paths;
 

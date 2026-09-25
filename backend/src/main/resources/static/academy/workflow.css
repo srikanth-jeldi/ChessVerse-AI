@@ -1,0 +1,47 @@
+/* Approved academy reference: navy navigation, light workspace, blue/teal data. */
+:root { --accent:#326af4; }
+.nav-item.active { background:linear-gradient(105deg,#2658ce,#244183); border-color:#74a0ff33; }
+.stat-icon { background:#edf3ff; color:#326af4; box-shadow:none; }
+.stat:nth-child(3) .stat-icon { background:#edf7fb; color:#1584a2; }
+.stat:nth-child(4) .stat-icon { background:#fff6df; color:#bb8c29; }
+.stat:after { background:linear-gradient(90deg,#3987ff30,transparent); }
+.workspace-stamp { display:flex; justify-content:space-between; gap:12px; align-items:center; margin:-8px 0 17px; color:#78869b; font-size:10px; }
+.workspace-stamp > span { display:flex; align-items:center; gap:6px; }
+.workspace-stamp .icon { width:14px; height:14px; }
+.workspace-stamp .link { display:flex; gap:6px; align-items:center; }
+.coach-overview { display:grid; grid-template-columns:1.2fr 1.1fr .9fr; gap:18px; margin-bottom:19px; }
+.coach-overview .card { overflow:hidden; }
+.coach-overview .insights-card { grid-column:auto; }
+.attention-rating { display:block; color:#8090a5; font-size:10px; margin-top:5px; text-align:left; }
+.attention-focus { white-space:normal; display:block; line-height:1.6; }
+.coach-overview td,.coach-overview th { padding:13px 6px; }
+.coach-overview .person { text-align:left; white-space:normal; }
+.coaching-action { display:flex; gap:12px; padding:17px 0; border-bottom:1px solid var(--line); }
+.coaching-action:first-child { padding-top:0; }
+.coaching-action strong { font-size:12px; }
+.coaching-action p { color:#74829b; font-size:11px; line-height:1.7; margin:7px 0; }
+.coaching-action .link { padding-left:0; margin-right:10px; }
+.coaching-action .link .icon { width:13px; height:13px; }
+.coaching-action .avatar { background:#e7f8f2; color:#18a880; }
+.profile-sections { display:flex; align-items:center; gap:30px; background:white; border:1px solid var(--line); border-radius:11px; padding:16px 22px; margin-bottom:18px; flex-wrap:wrap; }
+.profile-sections a,.profile-sections button { color:#526582; font-size:12px; text-decoration:none; }
+.profile-sections a:first-child { color:#326af4; font-weight:650; }
+.profile-sections a:hover { color:#326af4; text-decoration:underline; }
+.profile-next { display:flex; justify-content:space-between; align-items:center; gap:24px; padding:25px; margin-top:20px; background:#11243b; border-radius:14px; color:white; }
+.profile-next .eyebrow { color:#d9b969; }
+.profile-next h2 { font-size:18px; margin:8px 0; }
+.profile-next p { color:#adbed3; font-size:12px; line-height:1.7; margin:0; }
+.profile-next .button { background:#e4bc61; color:#152139; flex-shrink:0; }
+.profile-next .button .icon { order:2; }
+.batch-overview { display:grid; grid-template-columns:minmax(0,2fr) minmax(240px,1fr); gap:18px; margin-bottom:20px; }
+.schedule-text { display:block; white-space:normal; min-width:150px; max-width:230px; line-height:1.6; }
+.training-filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+.training-filters button { display:flex; align-items:center; gap:12px; padding:12px 17px; border:1px solid var(--line); background:white; border-radius:9px; color:#62738e; font-size:12px; }
+.training-filters button[aria-pressed=true] { border-color:#326af4; background:#edf3ff; color:#215acf; }
+.training-filters span { background:#eff2f7; padding:3px 7px; border-radius:5px; font-variant-numeric:tabular-nums; }
+.chart-point[role=button] { cursor:pointer; }
+.chart-point[role=button]:focus-visible { outline:2px solid #326af4; outline-offset:4px; }
+#student-overview,#student-training,#student-games { scroll-margin-top:25px; }
+dialog.form-drawer { inset:0 0 0 auto; margin:0; height:100dvh; max-height:100dvh; max-width:510px; border-radius:16px 0 0 16px; padding:35px 28px; }
+@media(max-width:1350px) { .coach-overview { grid-template-columns:1fr 1fr; }.coach-overview > :last-child { grid-column:1/-1; }.coach-overview .coaching-action { display:inline-flex; width:32%; vertical-align:top; padding:12px; border-bottom:0; }.batch-overview { grid-template-columns:1fr; } }
+@media(max-width:800px) { .coach-overview { grid-template-columns:1fr; }.coach-overview > :last-child { grid-column:auto; }.coach-overview .coaching-action { display:flex; width:100%; padding:15px 0; }.profile-next { align-items:flex-start; flex-direction:column; }.workspace-stamp { align-items:flex-start; }.workspace-stamp > span { line-height:1.6; }.profile-sections { gap:20px; }.training-filters button { padding:10px 12px; }.assignment { flex-wrap:wrap; }.assignment .details { flex-basis:100%; } }

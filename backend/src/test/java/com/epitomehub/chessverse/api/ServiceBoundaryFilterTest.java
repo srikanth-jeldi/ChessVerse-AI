@@ -9,6 +9,13 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 class ServiceBoundaryFilterTest {
     @Test
+    void academyPortalBelongsToPlatformService() throws Exception {
+        ServiceBoundaryFilter platform = new ServiceBoundaryFilter("platform");
+        assertThat(run(platform, "/academy/index.html").getStatus()).isEqualTo(200);
+        assertThat(run(platform, "/api/v1/academy/me").getStatus()).isEqualTo(200);
+        assertThat(run(new ServiceBoundaryFilter("play"), "/api/v1/academy/me").getStatus()).isEqualTo(404);
+    }
+    @Test
     void playRoleAllowsOnlineButHidesEconomyEndpoints() throws Exception {
         ServiceBoundaryFilter filter = new ServiceBoundaryFilter("play");
 

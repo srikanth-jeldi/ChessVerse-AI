@@ -50,6 +50,31 @@ www.{$APP_DOMAIN} {
 	redir https://{$APP_DOMAIN}{uri} permanent
 }
 
+# Academy assets are packaged with the backend. Keep auth and tenant APIs
+# same-origin; unrelated consumer APIs are not exposed through this host.
+academy.{$APP_DOMAIN} {
+	encode zstd gzip
+	redir / /academy/ temporary
+	handle /api/auth/login {
+		reverse_proxy backend:8080
+	}
+	@academy path /academy /academy/* /api/v1/academy /api/v1/academy/*
+	handle @academy {
+		reverse_proxy academy:8080
+	}
+	handle {
+		respond "Not found" 404
+	}
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Cache-Control "no-store"
+	}
+}
+
 {$API_DOMAIN} {
 	encode zstd gzip
 	reverse_proxy backend:8080

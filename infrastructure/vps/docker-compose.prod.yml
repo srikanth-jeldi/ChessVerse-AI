@@ -49,7 +49,7 @@ services:
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
-      ALLOWED_ORIGIN_PATTERNS: https://${APP_DOMAIN}
+      ALLOWED_ORIGIN_PATTERNS: https://${APP_DOMAIN},https://academy.${APP_DOMAIN}
       AUTH_DELIVERY: mail
       AUTH_RATE_LIMIT_ENABLED: "true"
       API_RATE_LIMIT_ENABLED: "true"
@@ -98,6 +98,17 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  academy:
+    extends:
+      service: backend
+    environment:
+      CHESSVERSE_SERVICE_ROLE: platform
+      ALLOWED_ORIGIN_PATTERNS: https://academy.${APP_DOMAIN}
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "5"
+      AI_COACH_LLM_ENABLED: "false"
+    mem_limit: 1024m
+    cpus: 0.50
 
   web:
     build:
