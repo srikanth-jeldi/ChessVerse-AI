@@ -6,12 +6,13 @@ const vm = require('node:vm');
 const path = require('node:path');
 const root=path.join(__dirname,'../backend/src/main/resources/static/academy');
 function harness() {
-  const context=vm.createContext({window:{__ACADEMY_TEST__:true},location:{search:'?demo',pathname:'/academy'},URLSearchParams,Date,structuredClone,crypto:require('node:crypto').webcrypto,document:{addEventListener(){}},setTimeout(){}});
+  const context=vm.createContext({window:{__ACADEMY_TEST__:true},location:{search:'?demo',pathname:'/academy'},URLSearchParams,Date,structuredClone,crypto:require('node:crypto').webcrypto,document:{addEventListener(){},querySelector(){return null;}},setTimeout(){}});
   vm.runInContext(fs.readFileSync(path.join(root,'demo.js'),'utf8'),context);
   vm.runInContext(fs.readFileSync(path.join(root,'portal.js'),'utf8'),context);
   vm.runInContext(fs.readFileSync(path.join(root,'premium.js'),'utf8'),context);
   vm.runInContext(fs.readFileSync(path.join(root,'workflow.js'),'utf8'),context);
   vm.runInContext(fs.readFileSync(path.join(root,'signin.js'),'utf8'),context);
+  vm.runInContext(fs.readFileSync(path.join(root,'onboarding.js'),'utf8'),context);
   const run=code=>vm.runInContext(code,context);
   run("state.source=window.createAcademyDemo(); state.me={name:'Rohit',superAdmin:true,organizations:[state.source.organization]}; demoScope();");
   return run;

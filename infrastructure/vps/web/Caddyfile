@@ -55,7 +55,7 @@ www.{$APP_DOMAIN} {
 academy.{$APP_DOMAIN} {
 	encode zstd gzip
 	redir / /academy temporary
-	@academyAuth path /api/auth/login /api/auth/password/forgot /api/auth/password/reset
+	@academyAuth path /api/auth/login /api/auth/register /api/auth/verify-email /api/auth/resend-verification /api/auth/password/forgot /api/auth/password/reset
 	handle @academyAuth {
 		reverse_proxy backend:8080
 	}

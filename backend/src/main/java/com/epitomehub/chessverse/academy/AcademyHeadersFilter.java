@@ -14,7 +14,7 @@ class AcademyHeadersFilter extends OncePerRequestFilter {
             response.setHeader("Cache-Control","no-store");
             response.setHeader("X-Content-Type-Options","nosniff");
             response.setHeader("Referrer-Policy","no-referrer");
-            response.setHeader("Content-Security-Policy","default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+            response.setHeader("Content-Security-Policy","default-src 'self'; script-src 'self' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://api.razorpay.com; frame-src https://api.razorpay.com https://checkout.razorpay.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
         }
         chain.doFilter(request,response);
     }

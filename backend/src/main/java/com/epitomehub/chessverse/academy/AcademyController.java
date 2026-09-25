@@ -84,6 +84,8 @@ public class AcademyController {
         var member = rows("SELECT * FROM academy_member WHERE organization_id=? AND account_id=? AND active=TRUE",org,account);
         require(!member.isEmpty(),HttpStatus.FORBIDDEN,"No active membership in this organization");
         require(!organization(org).get("status").equals("SUSPENDED"),HttpStatus.FORBIDDEN,"Organization is suspended; contact EpitomeHub support");
+        var license=organization(org);
+        require(license.get("renewal_date")==null||LocalDate.parse(license.get("renewal_date").toString()).isAfter(LocalDate.now()),HttpStatus.PAYMENT_REQUIRED,"Your academy plan has expired. Ask your owner to renew.");
         return new Access(account,uuid(member.getFirst().get("id")),member.getFirst().get("role").toString());
     }
     private Access admin(String bearer, UUID org) {
