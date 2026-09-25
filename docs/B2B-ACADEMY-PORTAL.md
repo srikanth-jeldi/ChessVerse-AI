@@ -84,15 +84,24 @@ Only numeric aggregates of up to 60 recent sessions within 30 days are sent: acc
 
 ## Hostinger VPS subdomain
 
-Production Caddy now routes `academy.{$APP_DOMAIN}` to the academy backend.
+Production Caddy routes `academy.{$APP_DOMAIN}` to a dedicated `academy` container.
 With `APP_DOMAIN=chessverseai.com`, this is `academy.chessverseai.com`.
 The root redirects to `/academy/`. Portal assets, `/api/auth/login`, and
 `/api/v1/academy` use the same origin; unrelated routes return 404.
-The backend origin allowlist includes the academy host.
+Login proxies to the existing backend; tenant endpoints and assets proxy to
+`academy:8080`. The academy process uses the `platform` service role, preventing
+consumer matchmaking, purchase reconciliation and analysis recovery schedulers
+from running there. It has a 1 GiB memory limit, half a CPU and a five-connection
+database pool. The database remains shared; tenant access is enforced by the
+academy service and composite constraints.
 
 Before rollout, back up the database and retain the current backend/web images.
-Deploy the reviewed backend including Flyway V62 and static assets, together
-with the updated Caddy web image. Provision organization memberships explicitly;
+Run `bash infrastructure/vps/deploy-academy.sh` from the repository root on the
+VPS. It verifies a private database dump, builds/tests the academy service,
+applies Flyway V62, checks readiness, and layers routing over the exact current
+web image. It verifies that the consumer backend container and start time stay
+unchanged. Failed web verification restores the previous web image; additive
+academy tables and their data are retained. Provision memberships explicitly;
 deployment itself does not grant users academy access.
 
 In Hostinger DNS, create an `A` record named `academy` pointing to the existing
