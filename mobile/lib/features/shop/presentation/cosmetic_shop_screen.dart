@@ -21,6 +21,25 @@ String formatFreeCoinCountdown(Duration remaining) {
   return '${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}';
 }
 
+CosmeticItemDto? defaultCosmeticFor(
+  Iterable<CosmeticItemDto> items,
+  String category,
+) {
+  for (final CosmeticItemDto item in items) {
+    if (item.category == category && item.priceCurrency == 'FREE') return item;
+  }
+  return null;
+}
+
+bool canRestoreDefaultCosmetic(
+  CosmeticItemDto item,
+  Iterable<CosmeticItemDto> items,
+) =>
+    item.equipped &&
+    (item.category == 'BOARD' || item.category == 'PIECES') &&
+    item.priceCurrency != 'FREE' &&
+    defaultCosmeticFor(items, item.category) != null;
+
 class CosmeticShopScreen extends StatefulWidget {
   const CosmeticShopScreen({
     required this.token,
@@ -104,8 +123,12 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   Future<void> _act(CosmeticItemDto item) async {
     setState(() => _busy = true);
     try {
-      final ShopDto value = item.owned
-          ? await _api.equip(widget.token, item.category, item.id)
+      final bool restoreDefault = _canRestoreDefault(item);
+      final CosmeticItemDto target = restoreDefault
+          ? _defaultItem(item.category)!
+          : item;
+      final ShopDto value = restoreDefault || item.owned
+          ? await _api.equip(widget.token, target.category, target.id)
           : await _api.purchase(widget.token, item.id);
       // Persist what the server actually equipped. This keeps web/mobile and
       // the account loadout in sync after both purchases and equip actions.
@@ -117,7 +140,11 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${item.name} equipped • Ready for your next game'),
+            content: Text(
+              restoreDefault
+                  ? 'Default ${item.category == 'BOARD' ? 'board' : 'pieces'} restored • Ready for your next game'
+                  : '${item.name} equipped • Ready for your next game',
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -134,6 +161,13 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       }
     }
   }
+
+  CosmeticItemDto? _defaultItem(String category) {
+    return defaultCosmeticFor(_shop?.items ?? const [], category);
+  }
+
+  bool _canRestoreDefault(CosmeticItemDto item) =>
+      canRestoreDefaultCosmetic(item, _shop?.items ?? const []);
 
   @override
   Widget build(BuildContext context) {
@@ -530,6 +564,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   Widget _card(CosmeticItemDto item) {
     final a = _color(item.primaryColor, const Color(0xFFE7D6B0)),
         b = _color(item.secondaryColor, const Color(0xFF6E4128));
+    final bool canRestoreDefault = _canRestoreDefault(item);
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF0A2033),
@@ -614,16 +649,22 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: _busy || item.equipped ? null : () => _act(item),
+                    onPressed: _busy || (item.equipped && !canRestoreDefault)
+                        ? null
+                        : () => _act(item),
                     icon: Icon(
-                      item.owned
+                      canRestoreDefault
+                          ? Icons.restart_alt_rounded
+                          : item.owned
                           ? Icons.checkroom_rounded
                           : item.priceCurrency == 'DIAMONDS'
                           ? Icons.diamond_rounded
                           : Icons.paid_rounded,
                     ),
                     label: Text(
-                      item.equipped
+                      canRestoreDefault
+                          ? 'USE DEFAULT'
+                          : item.equipped
                           ? 'EQUIPPED'
                           : item.owned
                           ? 'EQUIP'
