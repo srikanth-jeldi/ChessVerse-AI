@@ -103,6 +103,20 @@ class EconomyControllerTest {
     }
 
     @Test
+    void boardAndPiecesCanReturnToTheBaseAppAppearance() throws Exception {
+        String authorization = "Bearer " + guest(UUID.randomUUID().toString());
+
+        mockMvc.perform(put("/api/v1/shop/loadout/BOARD").header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"itemId\":null}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.category == 'BOARD' && @.equipped == true)]").isEmpty());
+        mockMvc.perform(put("/api/v1/shop/loadout/PIECES").header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"itemId\":null}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.category == 'PIECES' && @.equipped == true)]").isEmpty());
+    }
+
+    @Test
     void realMoneyOrderUsesServerPriceAndIsIdempotent() throws Exception {
         String token = guest(UUID.randomUUID().toString());
         String authorization = "Bearer " + token;

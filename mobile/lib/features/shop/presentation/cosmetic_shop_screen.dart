@@ -21,30 +21,9 @@ String formatFreeCoinCountdown(Duration remaining) {
   return '${twoDigits(hours)}:${twoDigits(minutes)}:${twoDigits(seconds)}';
 }
 
-CosmeticItemDto? defaultCosmeticFor(
-  Iterable<CosmeticItemDto> items,
-  String category,
-) {
-  for (final CosmeticItemDto item in items) {
-    if (item.category == category && item.priceCurrency == 'FREE') return item;
-  }
-  return null;
-}
-
-bool canRestoreDefaultCosmetic(
-  CosmeticItemDto item,
-  Iterable<CosmeticItemDto> items,
-) {
-  if ((item.category != 'BOARD' && item.category != 'PIECES') ||
-      item.priceCurrency != 'FREE' ||
-      item.equipped) {
-    return false;
-  }
-  return items.any(
-    (CosmeticItemDto candidate) =>
-        candidate.category == item.category && candidate.equipped,
-  );
-}
+bool canRestoreDefaultCosmetic(CosmeticItemDto item) =>
+    item.equipped &&
+    (item.category == 'BOARD' || item.category == 'PIECES');
 
 class CosmeticShopScreen extends StatefulWidget {
   const CosmeticShopScreen({
@@ -130,10 +109,17 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     setState(() => _busy = true);
     try {
       final bool restoreDefault = _canRestoreDefault(item);
-      final CosmeticItemDto target = item;
-      final ShopDto value = restoreDefault || item.owned
-          ? await _api.equip(widget.token, target.category, target.id)
+      final ShopDto value = restoreDefault
+          ? await _api.useDefault(widget.token, item.category)
+          : item.owned
+          ? await _api.equip(widget.token, item.category, item.id)
           : await _api.purchase(widget.token, item.id);
+      if (restoreDefault) {
+        await const AppPreferences().writeString(
+          item.category == 'BOARD' ? 'boardTheme' : 'pieceFinish',
+          item.category == 'BOARD' ? 'Royal Walnut' : 'classic-staunton',
+        );
+      }
       // Persist what the server actually equipped. This keeps web/mobile and
       // the account loadout in sync after both purchases and equip actions.
       await _syncEquippedCosmetics(value);
@@ -167,7 +153,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   }
 
   bool _canRestoreDefault(CosmeticItemDto item) =>
-      canRestoreDefaultCosmetic(item, _shop?.items ?? const []);
+      canRestoreDefaultCosmetic(item);
 
   @override
   Widget build(BuildContext context) {

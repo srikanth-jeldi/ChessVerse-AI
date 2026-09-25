@@ -47,11 +47,16 @@ class ShopService {
     ShopDtos.ShopDto equip(AuthenticatedPlayer player,String rawSlot,UUID itemId){
         String slot=rawSlot.toUpperCase();
         if(!List.of("BOARD","PIECES","EFFECT","FRAME").contains(slot)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Unknown cosmetic slot.");
+        ensureLoadout(player.id());
+        String column=switch(slot){case "BOARD"->"board_item_id";case "PIECES"->"pieces_item_id";case "EFFECT"->"effect_item_id";default->"frame_item_id";};
+        if(itemId==null){
+            if(!List.of("BOARD","PIECES").contains(slot)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"This cosmetic slot requires an item.");
+            jdbc.update("update player_cosmetic_loadout set "+column+"=null,updated_at=? where player_id=?",Timestamp.from(Instant.now()),player.id());
+            return load(player);
+        }
         Item item=item(itemId,false);
         if(!slot.equals(item.category)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Item does not match this slot.");
         if(!"FREE".equals(item.currency)&&!owned(player.id(),itemId)) throw new ResponseStatusException(HttpStatus.CONFLICT,"Purchase this item before equipping it.");
-        ensureLoadout(player.id());
-        String column=switch(slot){case "BOARD"->"board_item_id";case "PIECES"->"pieces_item_id";case "EFFECT"->"effect_item_id";default->"frame_item_id";};
         jdbc.update("update player_cosmetic_loadout set "+column+"=?,updated_at=? where player_id=?",itemId,Timestamp.from(Instant.now()),player.id());
         return load(player);
     }

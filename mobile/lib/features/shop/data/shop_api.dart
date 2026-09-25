@@ -67,6 +67,9 @@ class ShopApi {
   Future<ShopDto> equip(String token, String slot, String id) =>
       _request(token, 'PUT', '/api/v1/shop/loadout/$slot',
           body: {'itemId': id});
+  Future<ShopDto> useDefault(String token, String slot) =>
+      _request(token, 'PUT', '/api/v1/shop/loadout/$slot',
+          body: {'itemId': null});
   Future<ShopDto> _request(String token, String method, String path,
       {Map<String, dynamic>? body}) async {
     try {

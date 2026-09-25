@@ -21,7 +21,7 @@ CosmeticItemDto item({
 
 void main() {
   test(
-    'free board and pieces offer default restore when premium is equipped',
+    'every equipped collection board or piece set can use the app default',
     () {
       final CosmeticItemDto boardDefault = item(
         id: 'board-default',
@@ -45,19 +45,10 @@ void main() {
         currency: 'COINS',
         equipped: true,
       );
-      final List<CosmeticItemDto> catalog = <CosmeticItemDto>[
-        boardDefault,
-        premiumBoard,
-        piecesDefault,
-        premiumPieces,
-      ];
-
-      expect(defaultCosmeticFor(catalog, 'BOARD'), same(boardDefault));
-      expect(defaultCosmeticFor(catalog, 'PIECES'), same(piecesDefault));
-      expect(canRestoreDefaultCosmetic(boardDefault, catalog), isTrue);
-      expect(canRestoreDefaultCosmetic(piecesDefault, catalog), isTrue);
-      expect(canRestoreDefaultCosmetic(premiumBoard, catalog), isFalse);
-      expect(canRestoreDefaultCosmetic(premiumPieces, catalog), isFalse);
+      expect(canRestoreDefaultCosmetic(boardDefault), isFalse);
+      expect(canRestoreDefaultCosmetic(piecesDefault), isFalse);
+      expect(canRestoreDefaultCosmetic(premiumBoard), isTrue);
+      expect(canRestoreDefaultCosmetic(premiumPieces), isTrue);
     },
   );
 
@@ -78,17 +69,12 @@ void main() {
       category: 'BOARD',
       currency: 'COINS',
     );
-    final List<CosmeticItemDto> catalog = <CosmeticItemDto>[
-      defaultFrame,
-      premiumFrame,
-      premiumBoard,
-    ];
-
-    expect(canRestoreDefaultCosmetic(premiumFrame, catalog), isFalse);
-    expect(canRestoreDefaultCosmetic(premiumBoard, catalog), isFalse);
+    expect(canRestoreDefaultCosmetic(defaultFrame), isFalse);
+    expect(canRestoreDefaultCosmetic(premiumFrame), isFalse);
+    expect(canRestoreDefaultCosmetic(premiumBoard), isFalse);
   });
 
-  test('active free defaults remain equipped instead of offering restore', () {
+  test('an equipped free collection item also offers the app default', () {
     final CosmeticItemDto boardDefault = item(
       id: 'board-default',
       category: 'BOARD',
@@ -97,8 +83,8 @@ void main() {
     );
 
     expect(
-      canRestoreDefaultCosmetic(boardDefault, <CosmeticItemDto>[boardDefault]),
-      isFalse,
+      canRestoreDefaultCosmetic(boardDefault),
+      isTrue,
     );
   });
 }
