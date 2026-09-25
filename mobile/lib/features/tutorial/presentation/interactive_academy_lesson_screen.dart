@@ -553,66 +553,30 @@ class _InteractiveAcademyLessonScreenState
     final bool desktop = viewport.width >= 900 && viewport.height >= 620;
     final bool phoneLandscape =
         viewport.width > viewport.height && viewport.shortestSide < 600;
+    final String lessonTitle = _languageCode == 'en'
+        ? widget.lesson.title
+        : _copy.storyChapter(widget.lesson);
+    final String lessonMove = _languageCode == 'en'
+        ? widget.lesson.eyebrow
+        : '${widget.lesson.from} → ${widget.lesson.to}';
     final Widget page = Scaffold(
       backgroundColor: const Color(0xFF04111B),
       appBar: AppBar(
         backgroundColor: const Color(0xF2071827),
-        titleSpacing: 4,
-        toolbarHeight: desktop ? null : 116,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              _languageCode == 'en'
-                  ? widget.lesson.title
-                  : _copy.storyChapter(widget.lesson),
-              maxLines: 2,
-              overflow: TextOverflow.visible,
-              style: const TextStyle(fontWeight: FontWeight.w900),
-            ),
-            Text(
-              _languageCode == 'en'
-                  ? widget.lesson.eyebrow
-                  : '${widget.lesson.from} → ${widget.lesson.to}',
-              style: const TextStyle(
-                color: AppColors.accentGold,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.2,
+        automaticallyImplyLeading: desktop,
+        titleSpacing: desktop ? 4 : 8,
+        toolbarHeight: desktop ? null : 132,
+        title: desktop
+            ? _LessonHeaderTitle(title: lessonTitle, move: lessonMove)
+            : _MobileLessonHeader(
+                title: lessonTitle,
+                move: lessonMove,
+                languageName: AppLanguageController.byCode(_languageCode)
+                    .nativeName,
+                onBack: () => Navigator.maybePop(context),
+                onChooseLanguage: _chooseLanguage,
+                onReplay: _playDemonstration,
               ),
-            ),
-            if (!desktop) ...<Widget>[
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: OutlinedButton.icon(
-                      key: const ValueKey<String>('lesson-language-picker'),
-                      onPressed: _chooseLanguage,
-                      icon: const Icon(Icons.translate_rounded, size: 18),
-                      label: Text(
-                        AppLanguageController.byCode(_languageCode).nativeName,
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.accentGold,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Replay demonstration',
-                    onPressed: _playDemonstration,
-                    icon: const Icon(Icons.replay_rounded),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
         actions: <Widget>[
           if (desktop)
             Padding(
@@ -1581,6 +1545,122 @@ class _CoachPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LessonHeaderTitle extends StatelessWidget {
+  const _LessonHeaderTitle({required this.title, required this.move});
+
+  final String title;
+  final String move;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: <Widget>[
+      Text(
+        title,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontWeight: FontWeight.w900),
+      ),
+      Text(
+        move,
+        style: const TextStyle(
+          color: AppColors.accentGold,
+          fontSize: 13,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.2,
+        ),
+      ),
+    ],
+  );
+}
+
+class _MobileLessonHeader extends StatelessWidget {
+  const _MobileLessonHeader({
+    required this.title,
+    required this.move,
+    required this.languageName,
+    required this.onBack,
+    required this.onChooseLanguage,
+    required this.onReplay,
+  });
+
+  final String title;
+  final String move;
+  final String languageName;
+  final VoidCallback onBack;
+  final VoidCallback onChooseLanguage;
+  final VoidCallback onReplay;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: <Widget>[
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          IconButton(
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+            onPressed: onBack,
+            icon: const Icon(Icons.arrow_back_rounded),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    height: 1.15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  move,
+                  key: const ValueKey<String>('lesson-move-notation'),
+                  style: const TextStyle(
+                    color: AppColors.accentGold,
+                    fontSize: 15,
+                    height: 1.2,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: <Widget>[
+          OutlinedButton.icon(
+            key: const ValueKey<String>('lesson-language-picker'),
+            onPressed: onChooseLanguage,
+            icon: const Icon(Icons.translate_rounded, size: 18),
+            label: Text(languageName),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.accentGold,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+          IconButton(
+            tooltip: 'Replay demonstration',
+            onPressed: onReplay,
+            icon: const Icon(Icons.replay_rounded),
+          ),
+        ],
+      ),
+    ],
+  );
 }
 
 class _CurriculumRail extends StatelessWidget {
