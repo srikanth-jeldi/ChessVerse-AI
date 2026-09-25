@@ -85,20 +85,14 @@ class CloudNarrationService {
     final String cacheKey = '$language\u0000$cleanText';
     Uint8List? audio = _memoryCache.remove(cacheKey);
     if (audio != null) _memoryCache[cacheKey] = audio;
-    // Browser speech must begin directly inside the user's click gesture.
-    // Waiting on a slow cloud request first can make Chrome reject playback.
-    final String normalizedLanguage = language.toLowerCase();
-    final bool english =
-        normalizedLanguage == 'en' || normalizedLanguage.startsWith('en-');
-    if (audio == null && _preferImmediateLocal && english) {
-      return _speakLocalFallback(cleanText, language);
-    }
     try {
       audio ??= await _fetchAudio(
         cleanText,
         language,
         cacheKey,
-      ).timeout(const Duration(seconds: 8));
+      ).timeout(
+        Duration(seconds: _preferImmediateLocal ? 8 : 20),
+      );
       if (audio == null) {
         return await _speakLocalFallback(cleanText, language);
       }
