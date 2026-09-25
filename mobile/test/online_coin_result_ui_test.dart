@@ -35,7 +35,7 @@ Widget _result({
 void main() {
   testWidgets('winner sees the full coin-pool reward', (tester) async {
     await tester.pumpWidget(_result(title: 'You win', coinsEarned: 200));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('+200 COINS WON'), findsOneWidget);
     expect(find.text('100 + 100 = 200 coin pool'), findsOneWidget);
@@ -43,7 +43,7 @@ void main() {
 
   testWidgets('draw sees the entry refund', (tester) async {
     await tester.pumpWidget(_result(title: 'Draw', coinsEarned: 0));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('100 COINS REFUNDED'), findsOneWidget);
     expect(find.text('Draw refund completed'), findsOneWidget);
@@ -51,7 +51,7 @@ void main() {
 
   testWidgets('loss does not show a zero-coin reward card', (tester) async {
     await tester.pumpWidget(_result(title: 'Opponent wins', coinsEarned: 0));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('0 COINS WON'), findsNothing);
     expect(find.text('100 + 100 = 200 coin pool'), findsNothing);
@@ -64,7 +64,7 @@ void main() {
     await tester.pumpWidget(
       _result(title: 'Challenge complete', coinsEarned: 0),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('Challenge complete'), findsOneWidget);
     expect(find.text('1-0'), findsNothing);
@@ -74,7 +74,7 @@ void main() {
     await tester.pumpWidget(
       _result(title: 'Puzzle complete', coinsEarned: 0, showScore: false),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('Puzzle complete'), findsOneWidget);
     expect(find.text('1-0'), findsNothing);
@@ -82,10 +82,10 @@ void main() {
 
   testWidgets('finished game exposes PGN and FEN export', (tester) async {
     await tester.pumpWidget(_result(title: 'You win', coinsEarned: 200));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
 
     await tester.tap(find.byKey(const ValueKey<String>('export-game-data')));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Game export'), findsOneWidget);
     expect(find.text('PGN • COMPLETE GAME'), findsOneWidget);
