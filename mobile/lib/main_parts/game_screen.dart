@@ -99,7 +99,8 @@ class _PlayDestination extends StatelessWidget {
                         title: 'Position Creator',
                         subtitle: 'Build any legal setup and challenge the AI',
                         color: const Color(0xFF7B5DA8),
-                        asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
+                        asset:
+                            'assets/backgrounds/position-creator-card-v1.webp',
                         onTap: onPositionCreator,
                       ),
                       _PlayModeCard(
