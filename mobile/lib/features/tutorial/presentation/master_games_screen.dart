@@ -651,18 +651,7 @@ class _MasterGameStudyScreenState extends State<_MasterGameStudyScreen> {
             CloudNarrationState.paused => _MasterNarrationState.paused,
             CloudNarrationState.stopped => _MasterNarrationState.stopped,
           });
-    unawaited(_prepareNarration());
   }
-
-  String get _narration => <String>[
-    _lessonCopy('question', widget.lesson.question),
-    if (_choice != null) _lessonCopy('idea', widget.lesson.idea),
-  ].join(' ');
-
-  Future<void> _prepareNarration() => _narrator.prepare(
-    text: _narration,
-    language: widget.copy.code,
-  );
 
   void _setNarrationState(_MasterNarrationState state) {
     if (mounted) setState(() => _narrationState = state);
@@ -678,8 +667,13 @@ class _MasterGameStudyScreenState extends State<_MasterGameStudyScreen> {
         await _narrator.resume();
         return;
       }
+      final MasterGameLesson lesson = widget.lesson;
+      final String narration = <String>[
+        _lessonCopy('question', lesson.question),
+        if (_choice != null) _lessonCopy('idea', lesson.idea),
+      ].join(' ');
       final bool started = await _narrator.speak(
-        text: _narration,
+        text: narration,
         language: widget.copy.code,
       );
       if (!started) _setNarrationState(_MasterNarrationState.stopped);
@@ -893,13 +887,10 @@ class _MasterGameStudyScreenState extends State<_MasterGameStudyScreen> {
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 10),
                                 child: OutlinedButton.icon(
-                                   key: ValueKey<String>('master-choice-$move'),
-                                   onPressed: _choice == null
-                                       ? () {
-                                           setState(() => _choice = move);
-                                           unawaited(_prepareNarration());
-                                         }
-                                       : null,
+                                  key: ValueKey<String>('master-choice-$move'),
+                                  onPressed: _choice == null
+                                      ? () => setState(() => _choice = move)
+                                      : null,
                                   style: OutlinedButton.styleFrom(
                                     alignment: Alignment.centerLeft,
                                     padding: const EdgeInsets.symmetric(

@@ -106,28 +106,28 @@ void main() {
     },
   );
 
-  test('web-style narration tries Azure before built-in fallback', () async {
+  test('web-style narration does not wait for a slow cloud request', () async {
     int requests = 0;
-    int localSpeaks = 0;
     final CloudNarrationService service = CloudNarrationService(
       preferImmediateLocal: true,
       tokenProvider: () async => 'session-token',
       client: MockClient((http.Request request) async {
         requests++;
+        await Future<void>.delayed(const Duration(seconds: 5));
         return http.Response('', 503);
       }),
-      localSpeaker: (_, _) async {
-        localSpeaks++;
-        return true;
-      },
+      localSpeaker: (text, language) async =>
+          text == 'Immediate lesson' && language == 'en',
     );
 
+    final Stopwatch watch = Stopwatch()..start();
     expect(
-      await service.speak(text: 'Azure lesson', language: 'en'),
+      await service.speak(text: 'Immediate lesson', language: 'en'),
       isTrue,
     );
-    expect(requests, 1);
-    expect(localSpeaks, 1);
+    watch.stop();
+    expect(watch.elapsed, lessThan(const Duration(seconds: 1)));
+    expect(requests, 0);
     await service.dispose();
   });
 
