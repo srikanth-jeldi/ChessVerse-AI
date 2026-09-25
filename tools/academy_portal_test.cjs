@@ -11,6 +11,7 @@ function harness() {
   vm.runInContext(fs.readFileSync(path.join(root,'portal.js'),'utf8'),context);
   vm.runInContext(fs.readFileSync(path.join(root,'premium.js'),'utf8'),context);
   vm.runInContext(fs.readFileSync(path.join(root,'workflow.js'),'utf8'),context);
+  vm.runInContext(fs.readFileSync(path.join(root,'signin.js'),'utf8'),context);
   const run=code=>vm.runInContext(code,context);
   run("state.source=window.createAcademyDemo(); state.me={name:'Rohit',superAdmin:true,organizations:[state.source.organization]}; demoScope();");
   return run;
