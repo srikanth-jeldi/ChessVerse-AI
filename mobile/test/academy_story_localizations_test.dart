@@ -4,6 +4,36 @@ import 'package:chessverse_ai/features/tutorial/domain/academy_lesson.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('mission streak uses singular copy in every language', () {
+    for (final AppLanguage language in AppLanguageController.supported.skip(
+      1,
+    )) {
+      final String streak = AcademyStoryLocalizations(language.code)
+          .missionStreak(1);
+      expect(streak, isNotEmpty, reason: language.code);
+      expect(streak, isNot(contains('{count}')), reason: language.code);
+    }
+    expect(AcademyStoryLocalizations('te').missionStreak(1), '1 రోజు వరుస');
+    expect(AcademyStoryLocalizations('te').missionStreak(2), '2 రోజుల వరుస');
+  });
+
+  test('decision questions substitute their destination in every language', () {
+    final AcademyLesson lesson = AcademyCatalog.lessons.firstWhere(
+      (AcademyLesson item) => item.stage == AcademyStage.safety,
+    );
+
+    for (final AppLanguage language in AppLanguageController.supported.skip(
+      1,
+    )) {
+      final String question = AcademyStoryLocalizations(language.code)
+          .decisionQuestion(lesson);
+      expect(question, isNot(contains('{to}')), reason: language.code);
+      if (language.code == 'te') {
+        expect(question, contains(lesson.to));
+      }
+    }
+  });
+
   test(
     'every selectable non-English language has a complete offline catalog',
     () {

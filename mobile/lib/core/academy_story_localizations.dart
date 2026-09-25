@@ -435,12 +435,15 @@ class AcademyStoryLocalizations {
     return result;
   }
 
-  String decisionQuestion(AcademyStage stage) => text(switch (stage) {
-    AcademyStage.safety => 'decision.safety',
-    AcademyStage.tactics => 'decision.tactics',
-    AcademyStage.endgame => 'decision.endgame',
-    AcademyStage.foundation => 'decision.foundation',
-  });
+  String decisionQuestion(AcademyLesson lesson) => text(
+    switch (lesson.stage) {
+      AcademyStage.safety => 'decision.safety',
+      AcademyStage.tactics => 'decision.tactics',
+      AcademyStage.endgame => 'decision.endgame',
+      AcademyStage.foundation => 'decision.foundation',
+    },
+    values: <String, String>{'to': lesson.to},
+  );
 
   String decisionInsight(AcademyLesson lesson) => text(
     switch (lesson.stage) {
@@ -451,6 +454,54 @@ class AcademyStoryLocalizations {
     },
     values: <String, String>{'to': lesson.to},
   );
+
+  String missionStreak(int count) {
+    if (count != 1) {
+      return text(
+        'mission.streak',
+        values: <String, String>{'count': '$count'},
+      );
+    }
+    return _singularMissionStreak[code] ??
+        text('mission.streak', values: const <String, String>{'count': '1'});
+  }
+
+  static const Map<String, String> _singularMissionStreak = <String, String>{
+    'en': '1 day streak',
+    'te': '1 రోజు వరుస',
+    'hi': '1 दिन की लय',
+    'ta': '1 நாள் தொடர்',
+    'kn': '1 ದಿನದ ಸರಣಿ',
+    'ml': '1 ദിവസത്തെ തുടർച്ച',
+    'mr': '1 दिवसाची मालिका',
+    'bn': '1 দিনের ধারা',
+    'gu': '1 દિવસની સળંગતા',
+    'pa': '1 ਦਿਨ ਦੀ ਲੜੀ',
+    'ur': '1 دن کا تسلسل',
+    'ar': 'سلسلة يوم واحد',
+    'es': 'Racha de 1 día',
+    'fr': 'Série de 1 jour',
+    'de': 'Serie: 1 Tag',
+    'it': 'Serie di 1 giorno',
+    'pt': 'Sequência de 1 dia',
+    'ru': 'Серия: 1 день',
+    'uk': 'Серія: 1 день',
+    'tr': '1 günlük seri',
+    'fa': 'روز پیوسته: 1',
+    'zh': '连续学习1天',
+    'ja': '1日連続',
+    'ko': '1일 연속 학습',
+    'id': 'Runtunan 1 hari',
+    'ms': 'Rentetan 1 hari',
+    'th': 'ต่อเนื่อง 1 วัน',
+    'vi': 'Chuỗi 1 ngày',
+    'pl': 'Seria: 1 dzień',
+    'nl': 'Reeks van 1 dag',
+    'sv': 'Svit: 1 dag',
+    'el': 'Σερί 1 ημέρας',
+    'he': 'רצף של יום אחד',
+    'sw': 'Mfululizo wa siku 1',
+  };
 
   static const Map<String, String> _english = <String, String>{
     'blindfold.title': 'BLINDFOLD LAB',

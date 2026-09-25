@@ -214,7 +214,7 @@ class _InteractiveAcademyLessonScreenState
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     Text(
-                      _copy.decisionQuestion(widget.lesson.stage),
+                      _copy.decisionQuestion(widget.lesson),
                       style: const TextStyle(
                         color: Color(0xFFEAF2F6),
                         height: 1.4,

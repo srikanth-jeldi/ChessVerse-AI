@@ -892,12 +892,7 @@ class _DailyAcademyMissionCard extends StatelessWidget {
                   Icons.local_fire_department_rounded,
                   size: 17,
                 ),
-                label: Text(
-                  copy.text(
-                    'mission.streak',
-                    values: <String, String>{'count': '$streak'},
-                  ),
-                ),
+                label: Text(copy.missionStreak(streak)),
               ),
             ],
           ),

@@ -798,8 +798,8 @@ class _OnlineVictoryCelebrationState extends State<OnlineVictoryCelebration>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 2400),
-  )..repeat();
+    duration: const Duration(milliseconds: 1900),
+  )..forward();
 
   @override
   void dispose() {
@@ -887,37 +887,60 @@ class _VictoryFireworksPainter extends CustomPainter {
   final double progress;
   final bool winnerAtTop;
 
-  static const List<Color> _colors = <Color>[
-    Color(0xFFFFC857),
-    Color(0xFF63D2B8),
-    Color(0xFFFF6B6B),
-    Color(0xFF6EA8FF),
-    Color(0xFFC77DFF),
+  static const List<Color> _gold = <Color>[
+    Color(0xFFFFF1B8),
+    Color(0xFFFFD66F),
+    Color(0xFFFFB52E),
+    Color(0xFFE58E16),
   ];
 
   @override
   void paint(Canvas canvas, Size size) {
     final double bandCenter = winnerAtTop
-        ? size.height * .24
-        : size.height * .76;
-    final Paint paint = Paint()..style = PaintingStyle.fill;
-    for (int burst = 0; burst < 5; burst++) {
-      final double phase = (progress + burst * .19) % 1;
-      final double opacity = (1 - phase).clamp(0.0, 1.0);
+        ? size.height * .27
+        : size.height * .73;
+    final double scale = math.min(1.35, size.shortestSide / 420);
+    final Paint glow = Paint()..style = PaintingStyle.fill;
+    final Paint spark = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    const List<double> starts = <double>[0, .16, .33];
+    for (int burst = 0; burst < starts.length; burst++) {
+      final double phase = ((progress - starts[burst]) / .67).clamp(0.0, 1.0);
+      if (progress < starts[burst] || phase >= 1) continue;
+      final double opacity = math.sin(phase * math.pi).clamp(0.0, 1.0);
       final Offset center = Offset(
-        size.width * (.14 + burst * .18),
-        bandCenter + math.sin(burst * 1.7) * size.height * .08,
+        size.width * (.22 + burst * .28),
+        bandCenter + math.sin(burst * 1.9) * size.height * .055,
       );
-      for (int ray = 0; ray < 12; ray++) {
-        final double angle = (math.pi * 2 * ray / 12) + burst * .35;
-        final double radius =
-            (18 + 88 * phase) * math.min(1.25, size.shortestSide / 420);
-        final Offset particle =
-            center + Offset(math.cos(angle) * radius, math.sin(angle) * radius);
-        paint.color = _colors[(burst + ray) % _colors.length].withValues(
-          alpha: opacity,
-        );
-        canvas.drawCircle(particle, 2.2 + 2.8 * opacity, paint);
+
+      glow.shader = RadialGradient(
+        colors: <Color>[
+          const Color(0xFFFFE6A0).withValues(alpha: opacity * .24),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: 62 * scale));
+      canvas.drawCircle(center, 62 * scale, glow);
+
+      for (int ray = 0; ray < 18; ray++) {
+        final double angle = math.pi * 2 * ray / 18 + burst * .41;
+        final double speed = (54 + (ray % 5) * 10) * scale;
+        final double radius = speed * phase;
+        final double gravity = 30 * phase * phase * scale;
+        final Offset direction = Offset(math.cos(angle), math.sin(angle));
+        final Offset tip = center + direction * radius + Offset(0, gravity);
+        final double trailLength = (8 + 17 * (1 - phase)) * scale;
+        final Offset tail = tip - direction * trailLength;
+        spark
+          ..color = _gold[(ray + burst) % _gold.length].withValues(
+            alpha: opacity * .92,
+          )
+          ..strokeWidth = (1.1 + (ray % 3) * .45) * scale;
+        canvas.drawLine(tail, tip, spark);
+
+        final Paint ember = Paint()
+          ..color = const Color(0xFFFFF4C8).withValues(alpha: opacity);
+        canvas.drawCircle(tip, (1.1 + (ray % 2) * .7) * scale, ember);
       }
     }
   }
