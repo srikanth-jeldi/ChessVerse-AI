@@ -14,6 +14,15 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import tools.jackson.databind.ObjectMapper;
 
 class AcademyWebBoundaryTest {
+    @Test void publicInformationPagesWorkWithoutAuthentication() throws Exception {
+        var mvc=MockMvcBuilders.standaloneSetup(new AcademyPortalController()).addFilters(new AcademyHeadersFilter()).build();
+        for (String page : java.util.List.of("about", "pricing", "contact", "terms", "privacy", "refunds")) {
+            mvc.perform(get("/academy/"+page)).andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("EPITOMEHUB TECHNOLOGIES PRIVATE LIMITED")));
+        }
+        mvc.perform(get("/academy/not-a-public-page")).andExpect(status().isNotFound());
+    }
     @Test void directoryRoutesReachStaticEntryAndPreserveDemoMode() throws Exception {
         var mvc=MockMvcBuilders.standaloneSetup(new AcademyPortalController()).addFilters(new AcademyHeadersFilter()).build();
         mvc.perform(get("/academy/").param("demo",""))

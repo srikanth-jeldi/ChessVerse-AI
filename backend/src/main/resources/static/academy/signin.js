@@ -13,7 +13,7 @@ function academySignInView() {
     <div class="signin-options"><label><input id="remember-identity" type="checkbox"> Remember email</label><button type="button" data-signin="forgot">Forgot password?</button></div>
     <div class="error" role="alert"></div><button class="signin-submit" type="submit">Sign in to workspace ${icon('arrow')}</button></form>
     <div class="signin-divider"><span>OR</span></div><button class="signin-demo" type="button" data-action="demo">${icon('home')} Explore demo academy</button><p class="signin-demo-note">The demo uses synthetic data and resets when you reload.</p></div>
-    <footer class="signin-footer">Powered by EpitomeHub<span>More than a game.<br>A brighter future.</span></footer></section></div>`;
+    <footer class="signin-footer">Powered by EpitomeHub<nav class="academy-public-links" aria-label="Academy information"><a href="/academy/pricing">Plans</a><a href="/academy/about">About</a><a href="/academy/contact">Contact</a><a href="/academy/terms">Terms</a><a href="/academy/privacy">Privacy</a><a href="/academy/refunds">Refunds</a></nav><span>More than a game.<br>A brighter future.</span></footer></section></div>`;
 }
 
 login = function academySignIn() {

@@ -31,3 +31,9 @@ Paid invoices snapshot seller and buyer details and monetary values, with a sequ
 - [CBIC export-of-services clarification](https://cbic-gst.gov.in/pdf/Circular_78-52-2018_Export_Services.pdf)
 
 Tests cover tenant isolation, registration idempotency, unauthorized invoice access, capture failure, signature rejection, duplicate activation, missed-callback reconciliation, coupons before GST, invoice immutability, interstate/intrastate taxes, unverified accounts and disabled/unapproved billing. Provider verification is mocked in integration tests; a real merchant checkout smoke test remains required before live charges are enabled.
+
+## Public academy information
+
+Clean public routes: `/academy/about`, `/academy/pricing`, `/academy/contact`, `/academy/terms`, `/academy/privacy`, `/academy/refunds`. These pages require no login; the sign-in footer links to them. Pricing reads the same server catalog as onboarding, supports INR/USD display, and reports checkout availability without starting a payment. Seller contact/address/GSTIN are public on Contact.
+
+The refund page currently states that paid checkout is not open and the final refund policy is pending. It describes manual renewal, digital delivery and payment support only; no unapproved refund guarantee or deadline is published. Obtain the merchant's choice of refund terms before payment launch or submitting the site as fully review-ready.
