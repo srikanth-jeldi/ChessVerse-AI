@@ -52,6 +52,9 @@ class AcademyControllerTest {
         db.execute("CREATE TABLE player_account(id UUID PRIMARY KEY,display_name VARCHAR(100),email VARCHAR(254),verified BOOLEAN DEFAULT TRUE)");
         db.execute("CREATE TABLE computer_game_history(player_id UUID,game_id VARCHAR(80),draft TEXT,created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(player_id,game_id))");
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V62__organization_portal.sql")).execute(ds);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V63__academy_self_service.sql")).execute(ds);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V64__academy_invitations.sql")).execute(ds);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V65__academy_operations.sql")).execute(ds);
         orgA=org("Academy A"); orgB=org("School B");
         adminA=account("admin-a");adminB=account("admin-b");coachAccount=account("coach");parentAccount=account("parent");studentAccount=account("student");
         member(orgA,adminA,"ORGANIZATION_ADMIN");member(orgB,adminB,"ORGANIZATION_ADMIN");
@@ -168,5 +171,15 @@ class AcademyControllerTest {
         assertEquals(30,db.queryForObject("SELECT seats FROM academy_organization WHERE id=?",Integer.class,orgA));
         denied(HttpStatus.FORBIDDEN,()->controller.workspace("platform",orgA));
         assertEquals(2,list(controller.platform("platform"),"organizations").size());
+    }
+    @Test void onlyPlatformAdminCanReviewSubscriptionChanges() {
+        UUID platform=account("platform-review");db.update("INSERT INTO academy_super_admin(account_id) VALUES(?)",platform);
+        UUID member=db.queryForObject("SELECT id FROM academy_member WHERE organization_id=? AND account_id=?",UUID.class,orgA,adminA),request=UUID.randomUUID();
+        db.update("INSERT INTO academy_subscription_request(id,organization_id,requested_by,action,plan_code,seats,effective_on) VALUES(?,?,?,?,?,?,?)",request,orgA,member,"UPGRADE","GROWTH",30,LocalDate.now());
+        denied(HttpStatus.FORBIDDEN,()->controller.reviewSubscription("admin-a",request,"approve"));
+        controller.reviewSubscription("platform-review",request,"approve");
+        assertEquals("APPLIED",db.queryForObject("SELECT status FROM academy_subscription_request WHERE id=?",String.class,request));
+        assertEquals(30,db.queryForObject("SELECT seats FROM academy_organization WHERE id=?",Integer.class,orgA));
+        denied(HttpStatus.CONFLICT,()->controller.reviewSubscription("platform-review",request,"approve"));
     }
 }

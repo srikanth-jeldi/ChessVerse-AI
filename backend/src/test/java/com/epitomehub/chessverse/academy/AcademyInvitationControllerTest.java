@@ -51,7 +51,9 @@ class AcademyInvitationControllerTest {
         db.execute("CREATE TABLE player_account(id UUID PRIMARY KEY,display_name VARCHAR(100),email VARCHAR(254),verified BOOLEAN DEFAULT TRUE)");
         new ResourceDatabasePopulator(
                 new ClassPathResource("db/migration/V62__organization_portal.sql"),
-                new ClassPathResource("db/migration/V64__academy_invitations.sql")).execute(ds);
+                new ClassPathResource("db/migration/V63__academy_self_service.sql"),
+                new ClassPathResource("db/migration/V64__academy_invitations.sql"),
+                new ClassPathResource("db/migration/V65__academy_operations.sql")).execute(ds);
         org = UUID.randomUUID();
         db.update("INSERT INTO academy_organization(id,name,kind,seats,status) VALUES(?,?,'ACADEMY',2,'ACTIVE')", org, "Invite Academy");
         account("admin", "admin@example.com", true);

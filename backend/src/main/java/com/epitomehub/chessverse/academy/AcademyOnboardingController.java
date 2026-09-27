@@ -6,6 +6,7 @@ import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 import java.util.*;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -19,8 +20,14 @@ public class AcademyOnboardingController {
     private final PlayerAuthenticationService auth;
     private final AcademyPaymentGateway gateway;
     private final ObjectMapper json;
+    private final AcademyBillingMailService mail;
     public AcademyOnboardingController(JdbcTemplate db, PlayerAuthenticationService auth, AcademyPaymentGateway gateway, ObjectMapper json) {
+        this(db,auth,gateway,json,null);
+    }
+    @Autowired
+    public AcademyOnboardingController(JdbcTemplate db, PlayerAuthenticationService auth, AcademyPaymentGateway gateway, ObjectMapper json, AcademyBillingMailService mail) {
         this.db=db; this.auth=auth; this.gateway=gateway; this.json=json;
+        this.mail=mail;
     }
     public record Enrollment(@NotBlank @Size(max=100) String name,
         @NotNull @Pattern(regexp="ACADEMY|SCHOOL") String kind,
@@ -39,7 +46,7 @@ public class AcademyOnboardingController {
         @Size(max=15) String gstin) {}
     @PutMapping("/billing") public Object billing(@RequestHeader("Authorization") String bearer,@Valid @RequestBody BillingDetails b) {
         var e=enrollment(account(bearer));
-        check(db.queryForObject("SELECT COUNT(*) FROM academy_checkout WHERE enrollment_id=? AND status='PENDING'",Integer.class,e.get("id"))==0,HttpStatus.CONFLICT,"A payment order is pending; contact support to correct its billing details.");
+        check(db.queryForObject("SELECT COUNT(*) FROM academy_checkout WHERE enrollment_id=? AND status='PENDING' AND failed_at IS NULL",Integer.class,e.get("id"))==0,HttpStatus.CONFLICT,"A payment order is pending; contact support to correct its billing details.");
         if("IN".equals(e.get("country"))) {
             check(b.postalCode.matches("[1-9][0-9]{5}")&&b.stateCode!=null&&b.stateCode.matches("0[1-9]|[12][0-9]|3[0-8]"),HttpStatus.BAD_REQUEST,"Enter a valid Indian pincode and GST state code.");
             check(b.gstin==null||b.gstin.isBlank()||(b.gstin.matches("[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]")&&b.gstin.startsWith(b.stateCode)),HttpStatus.BAD_REQUEST,"GSTIN must match the billing state.");
@@ -98,7 +105,7 @@ public class AcademyOnboardingController {
             check(org.get("renewal_date")!=null&&!LocalDate.parse(org.get("renewal_date").toString()).isAfter(LocalDate.now()),HttpStatus.CONFLICT,"Your academy plan is already active.");
         }
         // Resume a pending checkout instead of producing duplicate payable orders.
-        var pending=rows("SELECT * FROM academy_checkout WHERE enrollment_id=? AND status='PENDING' ORDER BY created_at DESC",e.get("id"));
+        var pending=rows("SELECT * FROM academy_checkout WHERE enrollment_id=? AND status='PENDING' AND failed_at IS NULL ORDER BY created_at DESC",e.get("id"));
         if(!pending.isEmpty()){samePending(pending.getFirst(),input);check(Objects.equals(input.expectedTotal,((Number)pending.getFirst().get("amount_minor")).longValue()),HttpStatus.CONFLICT,"Review the payment total again.");return checkoutView(pending.getFirst());}
         String currency="IN".equals(e.get("country"))?"INR":"USD";
         var prices=rows("SELECT * FROM academy_plan_price WHERE plan_code=? AND currency=? AND enabled=TRUE AND seats IS NOT NULL AND amount_minor IS NOT NULL",input.planCode,currency);
@@ -118,7 +125,7 @@ public class AcademyOnboardingController {
     }
     @PostMapping("/quote") public Object quote(@RequestHeader("Authorization") String bearer,@Valid @RequestBody Plan input) {
         var e=enrollment(account(bearer));String currency="IN".equals(e.get("country"))?"INR":"USD";
-        var pending=rows("SELECT * FROM academy_checkout WHERE enrollment_id=? AND status='PENDING'",e.get("id"));
+        var pending=rows("SELECT * FROM academy_checkout WHERE enrollment_id=? AND status='PENDING' AND failed_at IS NULL",e.get("id"));
         if(!pending.isEmpty()) {var o=pending.getFirst();samePending(o,input);return json.readTree(o.get("billing_snapshot").toString());}
         var prices=rows("SELECT * FROM academy_plan_price WHERE plan_code=? AND currency=? AND enabled=TRUE AND seats IS NOT NULL AND amount_minor IS NOT NULL",input.planCode,currency);
         check(!prices.isEmpty(),HttpStatus.CONFLICT,"This plan is awaiting pricing confirmation.");
@@ -161,10 +168,15 @@ public class AcademyOnboardingController {
     @PostMapping("/webhook") public Object webhook(@RequestBody String raw,@RequestHeader(value="X-Razorpay-Signature",required=false) String signature) {
         check(gateway.validWebhookSignature(raw,signature),HttpStatus.BAD_REQUEST,"Invalid webhook signature.");
         var payload=json.readTree(raw);
-        if(!"payment.captured".equals(payload.path("event").asText()))return Map.of("received",true);
         var payment=payload.path("payload").path("payment").path("entity");
         var orders=rows("SELECT id FROM academy_checkout WHERE provider_order=?",payment.path("order_id").asText());
-        if(!orders.isEmpty())activate(id(orders.getFirst().get("id")),payment.path("id").asText());
+        if("payment.failed".equals(payload.path("event").asText())&&!orders.isEmpty()){
+            String reason=payment.path("error_description").asText("Payment failed");reason=reason.substring(0,Math.min(200,reason.length()));UUID checkout=id(orders.getFirst().get("id"));
+            int changed=db.update("UPDATE academy_checkout SET failure_reason=?,failed_at=CURRENT_TIMESTAMP WHERE id=? AND status='PENDING' AND failed_at IS NULL",reason,checkout);
+            if(changed==1&&mail!=null){var owner=rows("SELECT p.email,e.name FROM academy_checkout c JOIN academy_enrollment e ON e.id=c.enrollment_id JOIN player_account p ON p.id=e.account_id WHERE c.id=?",checkout);if(!owner.isEmpty())mail.failed(owner.getFirst().get("email").toString(),owner.getFirst().get("name").toString(),reason);}
+            return Map.of("received",true);
+        }
+        if("payment.captured".equals(payload.path("event").asText())&&!orders.isEmpty())activate(id(orders.getFirst().get("id")),payment.path("id").asText());
         return Map.of("received",true);
     }
     private Object activate(UUID checkout,String payment) {
@@ -191,6 +203,7 @@ public class AcademyOnboardingController {
         String number="CV"+String.format("%02d",(LocalDate.now().getMonthValue()<4?LocalDate.now().getYear()-1:LocalDate.now().getYear())%100)+"/"+String.format("%09d",sequence);
         db.update("INSERT INTO academy_invoice_document(invoice_id,invoice_number,snapshot) VALUES(?,?,?)",checkout,number,o.get("billing_snapshot"));
         db.update("UPDATE academy_checkout SET status='PAID',payment_id=?,paid_at=CURRENT_TIMESTAMP WHERE id=?",payment,checkout);
+        if(mail!=null){var owner=rows("SELECT p.email,e.name FROM academy_enrollment e JOIN player_account p ON p.id=e.account_id WHERE e.id=?",e.get("id"));if(!owner.isEmpty()&&mail.invoice(owner.getFirst().get("email").toString(),owner.getFirst().get("name").toString(),number,o.get("currency")+" "+(((Number)o.get("amount_minor")).longValue()/100.0)))db.update("UPDATE academy_checkout SET invoice_emailed_at=CURRENT_TIMESTAMP WHERE id=?",checkout);}
         return Map.of("active",true,"organizationId",org);
     }
     @GetMapping("/invoices/{checkout}") public Object invoice(@RequestHeader("Authorization") String bearer,@PathVariable UUID checkout) {

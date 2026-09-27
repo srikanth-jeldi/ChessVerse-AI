@@ -111,3 +111,24 @@ test('Invitation acceptance starts before workspace selection and removes token 
   assert.match(source,/history\.replaceState\(null,'',location\.pathname\)/);
   assert.match(source,/navigator\.clipboard\.writeText/);
 });
+
+test('Operations pages render safely for their allowed roles',()=>{
+  const run=harness();
+  run("state.ops={announcements:[{id:'a1',title:'Class update',message:'Bring a board',audience:'ALL',created_at:'2026-09-28'}],attendance:[{student_id:'s0',class_date:'2026-09-28',status:'PRESENT',note:'On time'}],preferences:{announcements:true,assignments:true,reports:true,billing:true,email_enabled:true},audit:[{event_type:'ATTENDANCE_RECORDED',target_type:'STUDENT',target_id:'s0',created_at:'2026-09-28'}],subscriptions:[],schedules:[]}");
+  for(const pageName of ['communications','attendance','preferences','audit']){
+    run(`state.page='${pageName}'`);
+    const html=run("page('Rohit')");
+    assert.match(html,/<h1>/,pageName);
+    assert.equal(html.includes('undefined'),false,pageName);
+  }
+  assert.match(run('nav()'),/Announcements/);
+  assert.match(run('nav()'),/Audit Log/);
+});
+
+test('Operations forms route to authenticated tenant endpoints',()=>{
+  const source=fs.readFileSync(path.join(root,'portal.js'),'utf8');
+  for(const route of ['announcements','attendance','preferences','subscription-requests','report-schedules'])
+    assert.match(source,new RegExp(`path='${route}'`));
+  assert.match(source,/delete-announcement/);
+  assert.match(source,/deactivate-member/);
+});

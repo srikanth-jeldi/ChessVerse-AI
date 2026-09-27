@@ -21,6 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -40,10 +41,17 @@ public class AcademyInvitationController {
     private static final SecureRandom RANDOM = new SecureRandom();
     private final JdbcTemplate db;
     private final PlayerAuthenticationService auth;
+    private final AcademyInvitationMailService mail;
 
     public AcademyInvitationController(JdbcTemplate db, PlayerAuthenticationService auth) {
+        this(db, auth, null);
+    }
+
+    @Autowired
+    public AcademyInvitationController(JdbcTemplate db, PlayerAuthenticationService auth, AcademyInvitationMailService mail) {
         this.db = db;
         this.auth = auth;
+        this.mail = mail;
     }
 
     public record InviteInput(
@@ -57,7 +65,7 @@ public class AcademyInvitationController {
             @RequestHeader("Authorization") String bearer, @PathVariable UUID org) {
         admin(bearer, org);
         expire(org);
-        return rows("SELECT id,email,role,status,expires_at,created_at,accepted_at FROM academy_invitation WHERE organization_id=? ORDER BY created_at DESC", org);
+        return rows("SELECT id,email,role,status,expires_at,created_at,accepted_at,email_sent_at,reminder_sent_at FROM academy_invitation WHERE organization_id=? ORDER BY created_at DESC", org);
     }
 
     @PostMapping("/{org}/invitations")
@@ -77,8 +85,29 @@ public class AcademyInvitationController {
         Instant expires = Instant.now().plus(7, ChronoUnit.DAYS);
         db.update("INSERT INTO academy_invitation(id,organization_id,email,role,token_hash,invited_by,expires_at) VALUES(?,?,?,?,?,?,?)",
                 id, org, email, input.role(), hash(token), inviter, Timestamp.from(expires));
+        String academy = db.queryForObject("SELECT name FROM academy_organization WHERE id=?", String.class, org);
+        boolean emailSent = mail != null && mail.sendInvitation(email, academy, input.role(), token, false);
+        if (emailSent) db.update("UPDATE academy_invitation SET email_sent_at=CURRENT_TIMESTAMP WHERE id=?", id);
         return Map.of("id", id, "email", email, "role", input.role(), "token", token,
-                "inviteUrl", "/academy/?invite=" + token, "expiresAt", expires.toString());
+                "inviteUrl", "/academy/?invite=" + token, "expiresAt", expires.toString(), "emailSent", emailSent);
+    }
+
+    @PostMapping("/{org}/invitations/{id}/remind")
+    public Map<String, Object> remind(@RequestHeader("Authorization") String bearer,
+            @PathVariable UUID org, @PathVariable UUID id) {
+        admin(bearer, org); expire(org);
+        Map<String, Object> invitation = rows("SELECT i.*,o.name academy_name FROM academy_invitation i JOIN academy_organization o ON o.id=i.organization_id WHERE i.id=? AND i.organization_id=? AND i.status='PENDING'", id, org)
+                .stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Active invitation not found."));
+        require(invitation.get("reminder_sent_at") == null, HttpStatus.TOO_MANY_REQUESTS,
+                "A reminder was already sent for this invitation.");
+        // A new one-time link replaces the old hash so copied stale links cannot be reused.
+        String token = token();
+        boolean sent = mail != null && mail.sendInvitation(invitation.get("email").toString(),
+                invitation.get("academy_name").toString(), invitation.get("role").toString(), token, true);
+        require(sent, HttpStatus.SERVICE_UNAVAILABLE, "Invitation email is temporarily unavailable. Copy the existing link instead.");
+        db.update("UPDATE academy_invitation SET token_hash=?,reminder_sent_at=CURRENT_TIMESTAMP,expires_at=? WHERE id=?",
+                hash(token), Timestamp.from(Instant.now().plus(7, ChronoUnit.DAYS)), id);
+        return Map.of("sent", true);
     }
 
     @DeleteMapping("/{org}/invitations/{id}")

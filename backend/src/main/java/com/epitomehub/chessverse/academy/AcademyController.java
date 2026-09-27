@@ -301,7 +301,8 @@ public class AcademyController {
     public Map<String,Object> platform(@RequestHeader("Authorization") String bearer) {
         superAdmin(bearer);
         return Map.of("organizations",rows("SELECT o.*,(SELECT COUNT(*) FROM academy_student s WHERE s.organization_id=o.id AND s.active=TRUE) AS students,(SELECT COUNT(*) FROM academy_game g WHERE g.organization_id=o.id) AS games FROM academy_organization o ORDER BY o.name"),
-            "support",rows("SELECT * FROM academy_support ORDER BY created_at DESC"),"seatRequests",rows("SELECT * FROM academy_seat_request ORDER BY created_at DESC"));
+            "support",rows("SELECT * FROM academy_support ORDER BY created_at DESC"),"seatRequests",rows("SELECT * FROM academy_seat_request ORDER BY created_at DESC"),
+            "subscriptionRequests",rows("SELECT * FROM academy_subscription_request ORDER BY created_at DESC"));
     }
     @PostMapping("/platform/organizations")
     public Map<String,Object> createOrganization(@RequestHeader("Authorization") String bearer,@Valid @RequestBody OrganizationInput i) {
@@ -328,5 +329,13 @@ public class AcademyController {
         require(r.get("status").equals("PENDING"),HttpStatus.CONFLICT,"Request already processed");
         db.update("UPDATE academy_organization SET seats=seats+? WHERE id=?",r.get("seats"),r.get("organization_id"));
         db.update("UPDATE academy_seat_request SET status='APPROVED' WHERE id=?",id);
+    }
+    @PostMapping("/platform/subscription-requests/{id}/{decision}")
+    public void reviewSubscription(@RequestHeader("Authorization")String bearer,@PathVariable UUID id,@PathVariable @Pattern(regexp="approve|reject") String decision){
+        UUID reviewer=auth.requireBearer(bearer).id();superAdmin(bearer);
+        var requests=rows("SELECT * FROM academy_subscription_request WHERE id=? FOR UPDATE",id);require(!requests.isEmpty(),HttpStatus.NOT_FOUND,"Request not found");var r=requests.getFirst();
+        require("PENDING".equals(r.get("status")),HttpStatus.CONFLICT,"Request already reviewed");
+        String status="approve".equals(decision)?"APPROVED":"REJECTED";db.update("UPDATE academy_subscription_request SET status=?,reviewed_by=?,reviewed_at=CURRENT_TIMESTAMP WHERE id=?",status,reviewer,id);
+        if("APPROVED".equals(status)&&!LocalDate.parse(r.get("effective_on").toString()).isAfter(LocalDate.now()))new AcademySubscriptionProcessor(db).apply(id);
     }
 }

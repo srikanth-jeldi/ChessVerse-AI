@@ -36,3 +36,4 @@
 .review-square.light { background:#f0eadf; }
 .review-square.dark { background:#9dafba; }
 @media(max-width:550px) { .game-review-grid { grid-template-columns:1fr; } }
+.academy-language{position:fixed;right:18px;bottom:18px;z-index:120;display:flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid #dce4f2;border-radius:10px;background:#fff;box-shadow:0 8px 30px #10204022;color:#435170}.academy-language select{border:0;background:transparent;color:inherit;max-width:150px}.academy-language select:focus{outline:2px solid var(--accent)}[dir="rtl"] .academy-language{right:auto;left:18px}[dir="rtl"] .sidebar{left:auto;right:0}[dir="rtl"] .workspace{grid-column:1}[dir="rtl"] .shell{grid-template-columns:minmax(0,1fr) 234px}
