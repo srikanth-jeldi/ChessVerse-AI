@@ -103,17 +103,45 @@ List<SavedMoveReview> _savedReviewsFromCloud(CloudAnalysisJob job) => job.plies
     )
     .toList(growable: false);
 
+final Completer<void> _localArchiveReady = Completer<void>();
+
+Future<void> _initializeAfterFirstFrame() async {
+  try {
+    await LocalGameArchive.init().timeout(const Duration(seconds: 5));
+  } on Object {
+    // A damaged keystore or slow platform channel must not hold the UI thread.
+  } finally {
+    if (!_localArchiveReady.isCompleted) _localArchiveReady.complete();
+  }
+
+  // These SDKs are independent. None is required to paint or navigate the
+  // first screen, so initialize them concurrently after Flutter is responsive.
+  await Future.wait<void>(
+    <Future<void>>[
+      FirebasePushService.instance.initialize(),
+      RewardedCoinService.instance.initialize(),
+      AppAnalytics.initialize(),
+      AppDiagnostics.initialize(),
+    ].map((Future<void> task) async {
+      try {
+        await task.timeout(const Duration(seconds: 8));
+      } on Object {
+        // Every service already degrades gracefully; startup must do the same.
+      }
+    }),
+  );
+  unawaited(PostMatchAdService.instance.load());
+  unawaited(_restoreDailyReminder());
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await FirebasePushService.instance.initialize();
-  await RewardedCoinService.instance.initialize();
-  unawaited(PostMatchAdService.instance.load());
-  await AppAnalytics.initialize();
-  await AppDiagnostics.initialize();
   if (!kIsWeb) {
-    await SystemChrome.setPreferredOrientations(const <DeviceOrientation>[
-      DeviceOrientation.portraitUp,
-    ]);
+    unawaited(
+      SystemChrome.setPreferredOrientations(const <DeviceOrientation>[
+        DeviceOrientation.portraitUp,
+      ]).timeout(const Duration(seconds: 2)).catchError((Object _) {}),
+    );
   }
   if (kIsWeb) {
     try {
@@ -130,10 +158,11 @@ Future<void> main() async {
       // from starting; the login action reports its own recoverable error.
     }
   }
-  await LocalGameArchive.init();
-  unawaited(_restoreDailyReminder());
   AppConfig.validate();
   runApp(const ChessVerseApp());
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(_initializeAfterFirstFrame());
+  });
 }
 
 class ChessVerseApp extends StatelessWidget {
@@ -385,6 +414,13 @@ class _SplashGateState extends State<SplashGate> {
   }
 
   Future<void> _restoreSession({required bool forceFreshLogin}) async {
+    // LocalGameArchive starts after the first frame. Bound the wait so a slow
+    // device/keystore can never leave the app permanently on its loader.
+    try {
+      await _localArchiveReady.future.timeout(const Duration(seconds: 6));
+    } on TimeoutException {
+      // Continue with authentication; archive operations can recover later.
+    }
     if (forceFreshLogin) {
       try {
         await _sessionStore.clear();
@@ -669,11 +705,8 @@ class _SplashGateState extends State<SplashGate> {
               MatchHistoryScreen(
                 onDestinationSelected: (index) =>
                     _closeSettingsAndSelect(context, index),
-                onResume: (draft) => _openGame(
-                  context,
-                  GameMode.computer,
-                  resumeDraft: draft,
-                ),
+                onResume: (draft) =>
+                    _openGame(context, GameMode.computer, resumeDraft: draft),
                 onPlayAgain: () =>
                     _chooseSideAndOpen(context, GameMode.computer),
               ),
