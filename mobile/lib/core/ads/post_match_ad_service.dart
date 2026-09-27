@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import 'ad_sdk_initializer.dart';
+
 class PostMatchAdService {
   PostMatchAdService._();
 
@@ -18,14 +20,15 @@ class PostMatchAdService {
   DateTime? _lastShownAt;
   final Set<String> _handledMatches = <String>{};
 
-  bool get supported =>
-      !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.android ||
-          defaultTargetPlatform == TargetPlatform.iOS);
+  bool get supported => AdSdkInitializer.supported;
 
   Future<void> load() async {
     if (!supported || _loading || _ad != null) return;
     _loading = true;
+    if (!await AdSdkInitializer.ensureReady()) {
+      _loading = false;
+      return;
+    }
     InterstitialAd.load(
       adUnitId: defaultTargetPlatform == TargetPlatform.android
           ? _androidTest
@@ -46,7 +49,8 @@ class PostMatchAdService {
     _resetDailyCounter();
     _completedMatches++;
     final DateTime now = DateTime.now().toUtc();
-    final bool cooledDown = _lastShownAt == null ||
+    final bool cooledDown =
+        _lastShownAt == null ||
         now.difference(_lastShownAt!) >= const Duration(minutes: 3);
     if (_completedMatches.isOdd || _shownToday >= 6 || !cooledDown) {
       unawaited(load());

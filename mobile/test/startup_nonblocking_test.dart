@@ -21,7 +21,12 @@ void main() {
 
     final String criticalPath = source.substring(mainStart, runAppIndex);
     expect(criticalPath, isNot(contains('MobileAds')));
-    expect(criticalPath, isNot(contains('FirebasePushService.instance.initialize')));
+    expect(
+      criticalPath,
+      isNot(contains('FirebasePushService.instance.initialize')),
+    );
     expect(criticalPath, isNot(contains('LocalGameArchive.init')));
+    expect(source, isNot(contains('RewardedCoinService.instance.initialize')));
+    expect(source, isNot(contains('PostMatchAdService.instance.load()')));
   });
 }

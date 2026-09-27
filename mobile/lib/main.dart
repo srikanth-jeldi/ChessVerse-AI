@@ -19,7 +19,6 @@ import 'core/live_coach_localizations.dart';
 import 'core/analysis_dashboard_localizations.dart';
 import 'core/computer_game_store.dart';
 import 'core/review_narrative_localizations.dart';
-import 'core/ads/rewarded_coin_service.dart';
 import 'core/ads/post_match_ad_service.dart';
 import 'core/audio/chess_sound_service.dart';
 import 'core/auth/facebook_sdk_ready.dart';
@@ -119,7 +118,6 @@ Future<void> _initializeAfterFirstFrame() async {
   await Future.wait<void>(
     <Future<void>>[
       FirebasePushService.instance.initialize(),
-      RewardedCoinService.instance.initialize(),
       AppAnalytics.initialize(),
       AppDiagnostics.initialize(),
     ].map((Future<void> task) async {
@@ -130,7 +128,6 @@ Future<void> _initializeAfterFirstFrame() async {
       }
     }),
   );
-  unawaited(PostMatchAdService.instance.load());
   unawaited(_restoreDailyReminder());
 }
 
