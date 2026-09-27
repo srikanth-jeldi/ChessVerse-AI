@@ -5,7 +5,6 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.AndroidConfig;
-import com.google.firebase.messaging.AndroidNotification;
 import com.google.firebase.messaging.AndroidConfig.Priority;
 import com.google.firebase.messaging.Message;
 import java.io.FileInputStream;
@@ -67,10 +66,9 @@ class FirebasePushService {
                         .setCollapseKey(notificationId.toString())
                         .setPriority(Priority.HIGH);
                 if (encryptedBody == null) {
-                    builder.setNotification(com.google.firebase.messaging.Notification.builder()
-                            .setTitle(title).setBody(body).build());
-                    android.setNotification(AndroidNotification.builder()
-                            .setTag(notificationId.toString()).build());
+                    // Data-only delivery lets the app render the title/body in
+                    // the player's selected AI language in every app state.
+                    builder.putData("body", body == null ? "" : body);
                 } else {
                     builder.putData("encryptedBody", encryptedBody);
                 }

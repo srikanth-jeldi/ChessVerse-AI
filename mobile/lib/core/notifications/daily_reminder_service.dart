@@ -4,7 +4,10 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../academy_story_localizations.dart';
+import '../app_language.dart';
 import '../app_preferences.dart';
+import '../live_coach_localizations.dart';
 
 class DailyReminderService {
   DailyReminderService._();
@@ -12,6 +15,8 @@ class DailyReminderService {
   static final DailyReminderService instance = DailyReminderService._();
   static const int _notificationId = 7714;
   static const int _weeklyReportNotificationId = 7715;
+  static const int _dailyPuzzleNotificationId = 7716;
+  static const int _analysisReadyNotificationId = 7717;
   static const int _playReminderIdBase = 7720;
   static const int _scheduledPlayReminderCount = 28;
   final FlutterLocalNotificationsPlugin _plugin =
@@ -20,6 +25,7 @@ class DailyReminderService {
   bool _enabled = false;
   static const AppPreferences _preferences = AppPreferences();
   static const String _activityKey = 'playReminderLastActivity';
+  static const String _preferredHourKey = 'playReminderPreferredHour';
   bool _pendingPlayOpen = false;
   bool _pendingTournamentOpen = false;
   bool _pendingWeeklyReportOpen = false;
@@ -50,6 +56,9 @@ class DailyReminderService {
       _handleNotificationResponse(launchDetails!.notificationResponse!);
     }
     _initialized = true;
+    AppLanguageController.effectiveLanguageChanges.addListener(
+      _languageChanged,
+    );
   }
 
   void _handleNotificationResponse(NotificationResponse response) {
@@ -125,6 +134,11 @@ class DailyReminderService {
       );
     }
     await _schedulePlayReminders(activity);
+    await _scheduleDailyPuzzle(activity.hour);
+    final String language = await AppLanguageController.effectiveCode();
+    final AcademyStoryLocalizations academy = AcademyStoryLocalizations(
+      language,
+    );
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     tz.TZDateTime weekly = tz.TZDateTime(
       tz.local,
@@ -138,8 +152,8 @@ class DailyReminderService {
     }
     await _plugin.zonedSchedule(
       _weeklyReportNotificationId,
-      'Your weekly AI report is ready',
-      'See your strongest skill, biggest weakness, and next 5-minute lesson.',
+      academy.text('report.title'),
+      academy.text('report.empty'),
       weekly,
       const NotificationDetails(
         android: AndroidNotificationDetails(
@@ -165,6 +179,7 @@ class DailyReminderService {
     _enabled = false;
     await _plugin.cancel(_notificationId);
     await _plugin.cancel(_weeklyReportNotificationId);
+    await _plugin.cancel(_dailyPuzzleNotificationId);
     await _cancelPlayReminders();
   }
 
@@ -178,7 +193,9 @@ class DailyReminderService {
       _activityKey,
       activity.toUtc().toIso8601String(),
     );
+    await _preferences.writeString(_preferredHourKey, '${activity.hour}');
     await _schedulePlayReminders(activity);
+    await _scheduleDailyPuzzle(activity.hour);
   }
 
   Future<void> _cancelPlayReminders() async {
@@ -189,6 +206,7 @@ class DailyReminderService {
 
   Future<void> _schedulePlayReminders(tz.TZDateTime lastActivity) async {
     await _cancelPlayReminders();
+    final String language = await AppLanguageController.effectiveCode();
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     final int elapsedDays = now.difference(lastActivity).inDays;
     final tz.TZDateTime anchor = elapsedDays > 1
@@ -200,10 +218,12 @@ class DailyReminderService {
       final bool followUp = index.isOdd;
       await _plugin.zonedSchedule(
         _playReminderIdBase + index,
-        followUp ? 'Your next move is waiting ♟️' : 'Let’s Play Chess ♟️',
         followUp
-            ? 'A quick game is ready whenever you are.'
-            : 'Challenge a rival, solve a puzzle, or continue your tournament.',
+            ? '${localizeLiveCoach('Your turn.', language)} ♟️'
+            : '${localizeLiveCoach('ONLINE BATTLE', language)} ♟️',
+        followUp
+            ? localizeLiveCoach('Waiting for an online opponent.', language)
+            : localizeLiveCoach('Play a live opponent', language),
         plan[index],
         const NotificationDetails(
           android: AndroidNotificationDetails(
@@ -220,6 +240,64 @@ class DailyReminderService {
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       );
     }
+  }
+
+  Future<void> _scheduleDailyPuzzle(int preferredHour) async {
+    await _plugin.cancel(_dailyPuzzleNotificationId);
+    final String language = await AppLanguageController.effectiveCode();
+    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    final int safeHour = preferredHour.clamp(8, 21) as int;
+    tz.TZDateTime next = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      safeHour,
+    );
+    if (!next.isAfter(now)) next = next.add(const Duration(days: 1));
+    await _plugin.zonedSchedule(
+      _dailyPuzzleNotificationId,
+      localizeLiveCoach('DAILY CHALLENGE', language),
+      localizeLiveCoach('A new Daily Checkmate is ready.', language),
+      next,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'daily_puzzle',
+          'Daily puzzle',
+          channelDescription: 'One daily puzzle at your preferred play time',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      payload: 'open_play',
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
+  void _languageChanged() {
+    if (!_enabled) return;
+    Future<void>(() async {
+      final String saved = await _preferences.readString(
+        _activityKey,
+        fallback: '',
+      );
+      final DateTime? previous = DateTime.tryParse(saved);
+      final tz.TZDateTime activity = previous == null
+          ? tz.TZDateTime.now(tz.local)
+          : tz.TZDateTime.from(previous, tz.local);
+      final int preferredHour =
+          int.tryParse(
+            await _preferences.readString(
+              _preferredHourKey,
+              fallback: '${activity.hour}',
+            ),
+          ) ??
+          activity.hour;
+      await _schedulePlayReminders(activity);
+      await _scheduleDailyPuzzle(preferredHour);
+    });
   }
 
   Future<void> scheduleTournamentReminders({
@@ -311,6 +389,29 @@ class DailyReminderService {
         ),
         iOS: DarwinNotificationDetails(),
       ),
+    );
+  }
+
+  Future<void> showAnalysisReady() async {
+    if (kIsWeb) return;
+    await initialize();
+    final String language = await AppLanguageController.effectiveCode();
+    final AcademyStoryLocalizations copy = AcademyStoryLocalizations(language);
+    await _plugin.show(
+      _analysisReadyNotificationId,
+      copy.text('report.title'),
+      copy.text('report.empty'),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'analysis_complete',
+          'AI analysis complete',
+          channelDescription: 'Completed Stockfish and AI review alerts',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      payload: 'open_weekly_report',
     );
   }
 }

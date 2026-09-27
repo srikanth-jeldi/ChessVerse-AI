@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/layout/responsive_page.dart';
 import '../../../core/analysis_dashboard_localizations.dart';
 import '../../../core/analysis_metadata_localizations.dart';
+import '../../../core/academy_story_localizations.dart';
 import '../../../core/app_language.dart';
 import '../../../core/coach_localizations.dart';
 import '../../../core/review_narrative_localizations.dart';
@@ -1079,8 +1080,8 @@ class _PremiumHero extends StatelessWidget {
                       letterSpacing: 1.1,
                     ),
                   ),
-                  const Text(
-                    'Deeper insights. Faster learning. Better chess.',
+                  Text(
+                    _d(context, 'snapshot'),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: Color(0xFFD5E8FF)),
@@ -1092,8 +1093,8 @@ class _PremiumHero extends StatelessWidget {
         ),
         Text(
           gameCount == 0
-              ? '“Every game is a lesson.”'
-              : '$gameCount games ready for intelligent review',
+              ? _d(context, 'unlock')
+              : _d(context, 'analyzed', {'count': '$gameCount'}),
           style: const TextStyle(
             color: Color(0xFFBFD8F6),
             fontStyle: FontStyle.italic,
@@ -1124,7 +1125,7 @@ class _PremiumSummary extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'YOUR PROGRESS',
+                _d(context, 'snapshot'),
                 style: TextStyle(
                   color: AppColors.accentGold,
                   fontWeight: FontWeight.w900,
@@ -1154,12 +1155,22 @@ class _PremiumSummary extends StatelessWidget {
             const SizedBox(height: 18),
             Row(
               children: <Widget>[
-                Expanded(child: _MiniMetric('$games', 'GAMES')),
-                const SizedBox(width: 8),
-                Expanded(child: _MiniMetric('$reviewed', 'MOVES')),
+                Expanded(
+                  child: _MiniMetric(
+                    '$games',
+                    _d(context, 'gameLabel', {'count': ''}).trim(),
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _MiniMetric('${trend >= 0 ? '+' : ''}$trend', 'TREND'),
+                  child: _MiniMetric('$reviewed', _d(context, 'movesReviewed')),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _MiniMetric(
+                    '${trend >= 0 ? '+' : ''}$trend',
+                    _d(context, 'weeklyTrend'),
+                  ),
                 ),
               ],
             ),
@@ -1171,8 +1182,8 @@ class _PremiumSummary extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Text(
-              'REVIEW SIGNALS',
+            Text(
+              _d(context, 'measurement'),
               style: TextStyle(
                 color: Color(0xFFFFD35F),
                 fontWeight: FontWeight.w900,
@@ -1181,20 +1192,20 @@ class _PremiumSummary extends StatelessWidget {
             const SizedBox(height: 12),
             _Signal(
               Icons.auto_awesome_rounded,
-              '$reviewed analyzed moves',
+              '$reviewed ${_d(context, 'movesReviewed')}',
               const Color(0xFF56E5C5),
             ),
             const SizedBox(height: 9),
             _Signal(
               Icons.warning_amber_rounded,
-              '$mistakes learning moments',
+              '$mistakes ${CoachLocalizations(_AnalysisLocale.of(context)).text('trainMistakes')}',
               const Color(0xFFFF8A65),
             ),
             const SizedBox(height: 9),
-            const _Signal(
+            _Signal(
               Icons.lightbulb_rounded,
-              'AI explanations grounded in engine evidence',
-              Color(0xFFFFD35F),
+              _d(context, 'impactEnough'),
+              const Color(0xFFFFD35F),
             ),
           ],
         ),
@@ -1214,10 +1225,24 @@ class _PremiumFilters extends StatelessWidget {
     runSpacing: 8,
     children:
         <(String, String, IconData)>[
-          ('recent', 'RECENT', Icons.schedule_rounded),
-          ('reviewed', 'REVIEWED', Icons.workspace_premium_rounded),
-          ('mistakes', 'MISTAKES', Icons.analytics_outlined),
-          ('wins', 'WINS', Icons.star_rounded),
+          ('recent', _d(context, 'latestReport'), Icons.schedule_rounded),
+          (
+            'reviewed',
+            _d(context, 'movesReviewed'),
+            Icons.workspace_premium_rounded,
+          ),
+          (
+            'mistakes',
+            CoachLocalizations(_AnalysisLocale.of(context))
+                .text('trainMistakes'),
+            Icons.analytics_outlined,
+          ),
+          (
+            'wins',
+            AcademyStoryLocalizations(_AnalysisLocale.of(context))
+                .text('mission.WEEKLY_WINS.title'),
+            Icons.star_rounded,
+          ),
         ].map((item) {
           final bool active = selected == item.$1;
           return ChoiceChip(
@@ -1327,8 +1352,8 @@ class _PremiumGameCard extends StatelessWidget {
                   ),
                   _StatusPill(
                     game.moveReviews.isEmpty
-                        ? 'READY TO ANALYZE'
-                        : 'REVIEW READY',
+                        ? _d(context, 'latestEmpty')
+                        : _d(context, 'latestReport'),
                   ),
                 ],
               ),
@@ -1344,7 +1369,7 @@ class _PremiumGameCard extends StatelessWidget {
                   _Meta(Icons.bolt_rounded, game.mode),
                   _Meta(
                     Icons.query_stats_rounded,
-                    '${report.accuracy}% accuracy',
+                    '${report.accuracy}% ${_d(context, 'accuracy')}',
                   ),
                 ],
               ),
@@ -1362,16 +1387,16 @@ class _PremiumGameCard extends StatelessWidget {
                 children: <Widget>[
                   _OutlineTag(
                     Icons.lightbulb_rounded,
-                    '${game.moveReviews.length} analyzed',
+                    '${game.moveReviews.length} ${_d(context, 'movesReviewed')}',
                   ),
                   _OutlineTag(
                     Icons.warning_amber_rounded,
-                    '$mistakes learning moments',
+                    '$mistakes ${CoachLocalizations(_AnalysisLocale.of(context)).text('trainMistakes')}',
                   ),
                   FilledButton.icon(
                     onPressed: onReview,
                     icon: const Icon(Icons.arrow_forward_rounded),
-                    label: const Text('OPEN AI REVIEW'),
+                    label: Text(_d(context, 'openReview')),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFFFFC84D),
                       foregroundColor: const Color(0xFF07182B),
@@ -1543,15 +1568,19 @@ class _OutlineTag extends StatelessWidget {
 class _PremiumEmptyState extends StatelessWidget {
   const _PremiumEmptyState();
   @override
-  Widget build(BuildContext context) => const _GlassPanel(
+  Widget build(BuildContext context) => _GlassPanel(
     child: Padding(
       padding: EdgeInsets.symmetric(vertical: 40),
       child: Column(
         children: <Widget>[
-          Icon(Icons.auto_awesome_rounded, size: 46, color: Color(0xFFFFD35F)),
-          SizedBox(height: 12),
+          const Icon(
+            Icons.auto_awesome_rounded,
+            size: 46,
+            color: Color(0xFFFFD35F),
+          ),
+          const SizedBox(height: 12),
           Text(
-            'Play or import a game to unlock your AI review.',
+            _d(context, 'unlock'),
             textAlign: TextAlign.center,
             style: TextStyle(fontWeight: FontWeight.w800),
           ),

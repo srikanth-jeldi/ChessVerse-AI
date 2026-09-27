@@ -9,6 +9,9 @@ import '../../features/auth/data/auth_session_store.dart';
 import '../../features/notifications/data/notification_api.dart';
 import '../../features/social/data/community_api.dart';
 import '../../features/social/data/e2ee_chat_service.dart';
+import '../academy_story_localizations.dart';
+import '../app_language.dart';
+import '../live_coach_localizations.dart';
 import 'daily_reminder_service.dart';
 import 'notification_preview.dart';
 
@@ -20,27 +23,84 @@ Future<void> chessVerseFirebaseBackgroundHandler(RemoteMessage message) async {
 
 Future<void> _showPushMessage(RemoteMessage message) async {
   final RemoteNotification? notification = message.notification;
-  final String title =
-      notification?.title ?? message.data['title'] ?? 'ChessVerseAI';
+  String title = notification?.title ?? message.data['title'] ?? 'ChessVerseAI';
   String body =
       notification?.body ?? message.data['body'] ?? 'You have a new update.';
   final String? encryptedBody = message.data['encryptedBody'];
   if (encryptedBody != null && encryptedBody.isNotEmpty) {
     try {
-      final String? plaintext = await E2eeChatService(
-        api: const CommunityApi(),
-      ).decryptNotification(encryptedBody);
+      final String? plaintext = await E2eeChatService(api: const CommunityApi())
+          .decryptNotification(encryptedBody);
       body = notificationMessagePreview(plaintext);
     } on Object {
-      body = 'New message — open chat to read.';
+      final String language = await AppLanguageController.effectiveCode();
+      body = localizeLiveCoach('Your turn.', language);
     }
   }
+  final String language = await AppLanguageController.effectiveCode();
+  final (String, String) localized = localizePushCopy(
+    actionType: message.data['actionType'] ?? '',
+    title: title,
+    body: body,
+    languageCode: language,
+  );
+  title = localized.$1;
+  body = localized.$2;
   final String stableId =
       message.data['notificationId'] ?? message.messageId ?? '$title|$body';
   await DailyReminderService.instance.showRealtime(
     stableId.hashCode,
     title,
     body,
+  );
+}
+
+/// Localizes semantic push categories on-device so foreground, background and
+/// terminated delivery all follow the same selected AI language.
+(String, String) localizePushCopy({
+  required String actionType,
+  required String title,
+  required String body,
+  required String languageCode,
+}) {
+  final String language = AppLanguageController.resolveCode(languageCode);
+  if (language == 'en') return (title, body);
+  final String action = actionType.toUpperCase();
+  final String? person = RegExp(
+    r'^(.+?)\s+(?:wants|challenged|accepted|declined|is)\b',
+  ).firstMatch(body)?.group(1)?.trim();
+  if (action == 'CHALLENGE' || action == 'MATCH') {
+    return (
+      localizeLiveCoach('ONLINE BATTLE', language),
+      '${person == null ? '' : '$person • '}${localizeLiveCoach('Play a live opponent', language)}',
+    );
+  }
+  if (action == 'FRIEND_REQUEST' ||
+      action == 'FRIEND_ONLINE' ||
+      action == 'COMMUNITY') {
+    return (
+      localizeLiveCoach('ONLINE BATTLE', language),
+      person == null
+          ? localizeLiveCoach('Play a live opponent', language)
+          : localizeLiveCoach('Welcome $person. Your game is ready.', language),
+    );
+  }
+  if (action == 'CHAT') {
+    return (localizeLiveCoach('ONLINE BATTLE', language), body);
+  }
+  if (action == 'CLUB' || action == 'TOURNAMENTS') {
+    return (
+      localizeLiveCoach('ONLINE BATTLE', language),
+      localizeLiveCoach('Play a live opponent', language),
+    );
+  }
+  if (action == 'ANALYSIS' || action == 'REVIEW') {
+    final AcademyStoryLocalizations copy = AcademyStoryLocalizations(language);
+    return (copy.text('report.title'), copy.text('report.empty'));
+  }
+  return (
+    title == 'ChessVerseAI' ? title : localizeLiveCoach(title, language),
+    localizeLiveCoach(body, language),
   );
 }
 

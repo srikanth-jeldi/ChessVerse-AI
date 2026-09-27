@@ -768,6 +768,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   bool _resultVisible = true;
   bool _checkWarningActive = false;
   bool _resultSaved = false;
+  bool _analysisReadyNotified = false;
   bool _soundEnabled = true;
   bool _showCoordinates = true;
   bool _showMoveHints = true;
@@ -3314,6 +3315,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       });
       if (_resultSaved) {
         LocalGameArchive.updateLatestGameReviews(_moveReviews);
+        _notifyAnalysisReadyIfComplete();
       }
       _scheduleMoveQualityDismiss();
     } on EngineApiException {
@@ -4121,6 +4123,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           : null;
       _resultVisible = true;
       _resultSaved = false;
+      _analysisReadyNotified = false;
       _checkWarningActive = false;
     });
     _restartTurnReminder();
@@ -4222,6 +4225,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       ),
     );
     unawaited(_submitFinishedGameForCloudAnalysis(archivedAt));
+    _notifyAnalysisReadyIfComplete();
+  }
+
+  void _notifyAnalysisReadyIfComplete() {
+    if (!_resultSaved ||
+        _analysisReadyNotified ||
+        _playerMoveScores.isEmpty ||
+        _moveReviews.length < _playerMoveScores.length) {
+      return;
+    }
+    _analysisReadyNotified = true;
+    unawaited(DailyReminderService.instance.showAnalysisReady());
   }
 
   Future<void> _maybeRequestStoreReview() {
@@ -5000,6 +5015,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _gameResultDetail = null;
         _resultVisible = false;
         _resultSaved = false;
+        _analysisReadyNotified = false;
         _selectedSquare = null;
         _lastFromSquare = null;
         _lastToSquare = null;
@@ -5303,6 +5319,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _gameResultDetail = null;
       _resultVisible = false;
       _resultSaved = false;
+      _analysisReadyNotified = false;
       _handledDrawOfferKey = null;
       _joiningRematchId = null;
       _onlineResultPresentationTimer?.cancel();

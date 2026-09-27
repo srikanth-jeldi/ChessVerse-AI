@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -11,15 +12,46 @@ class OnlinePresenceService {
     static final Duration PRESENCE_LEASE = Duration.ofSeconds(45);
 
     private final ConcurrentHashMap<UUID, Instant> lastSeen = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, Instant> lastFriendAlert = new ConcurrentHashMap<>();
+    private final JdbcTemplate jdbc;
+    private final PlayerNotificationService notifications;
+
+    OnlinePresenceService(JdbcTemplate jdbc, PlayerNotificationService notifications) {
+        this.jdbc = jdbc;
+        this.notifications = notifications;
+    }
 
     long heartbeat(UUID playerId) {
         Instant now = Instant.now();
+        Instant previous = lastSeen.get(playerId);
+        boolean cameOnline = previous == null || previous.isBefore(now.minus(PRESENCE_LEASE));
         lastSeen.put(playerId, now);
         Instant cutoff = now.minus(PRESENCE_LEASE);
         lastSeen.entrySet().removeIf(entry -> entry.getValue().isBefore(cutoff));
+        if (cameOnline && canAlertFriends(playerId, now)) notifyFriends(playerId);
         return lastSeen.entrySet().stream()
                 .filter(entry -> !entry.getValue().isBefore(cutoff))
                 .count();
+    }
+
+    private boolean canAlertFriends(UUID playerId, Instant now) {
+        Instant previous = lastFriendAlert.putIfAbsent(playerId, now);
+        if (previous == null) return true;
+        if (previous.isAfter(now.minus(Duration.ofHours(6)))) return false;
+        return lastFriendAlert.replace(playerId, previous, now);
+    }
+
+    private void notifyFriends(UUID playerId) {
+        String displayName = jdbc.queryForObject(
+                "select display_name from player_account where id=?", String.class, playerId);
+        if (displayName == null || displayName.isBlank()) return;
+        jdbc.queryForList("""
+                select case when requester_id=? then addressee_id else requester_id end
+                from friend_connection
+                where status='ACCEPTED' and (requester_id=? or addressee_id=?)
+                """, UUID.class, playerId, playerId, playerId).forEach(friendId ->
+                notifications.create(friendId, "FRIEND_ONLINE", "Friend online",
+                        displayName + " is online now.", "FRIEND_ONLINE", playerId));
     }
 
     boolean isOnline(UUID playerId) {
