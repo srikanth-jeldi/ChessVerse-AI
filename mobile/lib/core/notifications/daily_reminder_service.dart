@@ -8,6 +8,7 @@ import '../academy_story_localizations.dart';
 import '../app_language.dart';
 import '../app_preferences.dart';
 import '../live_coach_localizations.dart';
+import 'tournament_reminder_localizations.dart';
 
 class DailyReminderService {
   DailyReminderService._();
@@ -246,7 +247,7 @@ class DailyReminderService {
     await _plugin.cancel(_dailyPuzzleNotificationId);
     final String language = await AppLanguageController.effectiveCode();
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
-    final int safeHour = preferredHour.clamp(8, 21) as int;
+    final int safeHour = preferredHour.clamp(8, 21);
     tz.TZDateTime next = tz.TZDateTime(
       tz.local,
       now.year,
@@ -311,32 +312,24 @@ class DailyReminderService {
     await cancelTournamentReminders(tournamentId);
     final tz.TZDateTime start = tz.TZDateTime.from(startsAt, tz.local);
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
-    final List<(Duration, String, String)> reminders =
-        <(Duration, String, String)>[
-          (
-            const Duration(hours: 24),
-            '$tournamentName starts tomorrow',
-            'Review your preparation and return for your pairing.',
-          ),
-          (
-            const Duration(hours: 1),
-            '$tournamentName starts in 1 hour',
-            'Your registered tournament is almost ready.',
-          ),
-          (
-            const Duration(minutes: 10),
-            '$tournamentName starts in 10 minutes',
-            'Open the tournament bracket and get ready to play.',
-          ),
-        ];
-    for (int index = 0; index < reminders.length; index++) {
-      final item = reminders[index];
-      final tz.TZDateTime when = start.subtract(item.$1);
+    final String language = await AppLanguageController.effectiveCode();
+    const List<Duration> offsets = <Duration>[
+      Duration(hours: 24),
+      Duration(hours: 1),
+      Duration(minutes: 10),
+    ];
+    for (int index = 0; index < offsets.length; index++) {
+      final copy = localizeTournamentReminder(
+        languageCode: language,
+        tournamentName: tournamentName,
+        reminderIndex: index,
+      );
+      final tz.TZDateTime when = start.subtract(offsets[index]);
       if (!when.isAfter(now)) continue;
       await _plugin.zonedSchedule(
         base + index,
-        item.$2,
-        item.$3,
+        copy.title,
+        copy.body,
         when,
         const NotificationDetails(
           android: AndroidNotificationDetails(
