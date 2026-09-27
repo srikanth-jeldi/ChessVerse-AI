@@ -94,3 +94,20 @@ test('Student profile actions retain the selected student and parent is read onl
   run("state.demoRole='PARENT'; demoScope(); state.student='s0'");
   assert.equal(run("profile().includes('data-action=\"assignment-form\"')"),false);
 });
+
+test('Admin invitation UI renders pending invitations without exposing a token',()=>{
+  const run=harness();
+  run("state.invitations=[{id:'invite-1',email:'student@example.com',role:'STUDENT',status:'PENDING',expires_at:'2030-01-01T00:00:00Z'}]; state.page='roles'");
+  const html=run('roles()');
+  assert.match(html,/Academy invitations/);
+  assert.match(html,/student@example\.com/);
+  assert.match(html,/data-action="revoke-invite"/);
+  assert.equal(html.includes('token'),false);
+});
+
+test('Invitation acceptance starts before workspace selection and removes token from URL',()=>{
+  const source=fs.readFileSync(path.join(root,'portal.js'),'utf8');
+  assert.match(source,/api\('\/invitations\/accept','POST',\{token:state\.invite\}\)/);
+  assert.match(source,/history\.replaceState\(null,'',location\.pathname\)/);
+  assert.match(source,/navigator\.clipboard\.writeText/);
+});
