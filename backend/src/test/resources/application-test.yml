@@ -10,6 +10,9 @@ spring:
     enabled: false
 
 chessverse:
+  auth:
+    activity-report:
+      enabled: false
   api:
     rate-limit:
       enabled: false

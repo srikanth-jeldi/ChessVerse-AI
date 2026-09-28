@@ -37,6 +37,7 @@ class AuthService {
     private final FacebookIdentityVerifier facebookIdentityVerifier;
     private final OtpDelivery otpDelivery;
     private final AuthSecurityMetrics securityMetrics;
+    private final AuthActivityReportService activityReports;
     private final JdbcTemplate jdbcTemplate;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
     private final SecureRandom random = new SecureRandom();
@@ -58,6 +59,7 @@ class AuthService {
             FacebookIdentityVerifier facebookIdentityVerifier,
             OtpDelivery otpDelivery,
             AuthSecurityMetrics securityMetrics,
+            AuthActivityReportService activityReports,
             JdbcTemplate jdbcTemplate,
             @Value("${chessverse.auth.otp-expiry-minutes:10}") long otpExpiryMinutes,
             @Value("${chessverse.auth.session-expiry-days:30}") long sessionExpiryDays,
@@ -75,6 +77,7 @@ class AuthService {
         this.facebookIdentityVerifier = facebookIdentityVerifier;
         this.otpDelivery = otpDelivery;
         this.securityMetrics = securityMetrics;
+        this.activityReports = activityReports;
         this.jdbcTemplate = jdbcTemplate;
         this.otpExpiry = Duration.ofMinutes(otpExpiryMinutes);
         this.sessionExpiry = Duration.ofDays(sessionExpiryDays);
@@ -222,6 +225,7 @@ class AuthService {
         player.updatedAt = Instant.now();
         verifications.save(verification);
         players.save(player);
+        activityReports.record(player, "REGISTERED", "PASSWORD");
         return createSession(player);
     }
 
@@ -265,6 +269,7 @@ class AuthService {
         player.lockedUntil = null;
         player.updatedAt = now;
         players.save(player);
+        activityReports.record(player, "LOGIN", "PASSWORD");
         return createSession(player);
     }
 
@@ -278,11 +283,13 @@ class AuthService {
             applyProviderPhoto(existingIdentity.player, google.photoUrl());
             existingIdentity.player.updatedAt = Instant.now();
             players.save(existingIdentity.player);
+            activityReports.record(existingIdentity.player, "LOGIN", "GOOGLE");
             return createSession(existingIdentity.player);
         }
 
         String email = normalizeEmail(google.email());
         PlayerAccount player = players.findByEmailIgnoreCase(email).orElse(null);
+        boolean newRegistration = player == null || !player.verified;
         if (player == null) {
             String displayName = google.displayName() == null || google.displayName().isBlank()
                     ? email.substring(0, email.indexOf('@'))
@@ -300,6 +307,7 @@ class AuthService {
         player.updatedAt = Instant.now();
         players.save(player);
         oauthIdentities.save(new OAuthIdentity("google", google.subject(), player));
+        activityReports.record(player, newRegistration ? "REGISTERED" : "LOGIN", "GOOGLE");
         return createSession(player);
     }
 
@@ -324,6 +332,7 @@ class AuthService {
             applyProviderPhoto(identity.player, google.photoUrl());
             identity.player.updatedAt = Instant.now();
             players.save(identity.player);
+            activityReports.record(identity.player, "LOGIN", "GOOGLE");
             return createSession(identity.player);
         }
 
@@ -352,6 +361,7 @@ class AuthService {
             oauthIdentities.save(new OAuthIdentity("google", google.subject(), guest));
         }
         sessions.deleteByPlayerId(guest.id);
+        activityReports.record(guest, "REGISTERED", "GOOGLE");
         return createSession(guest);
     }
 
@@ -392,6 +402,7 @@ class AuthService {
             applyProviderPhoto(existingIdentity.player, photoUrl);
             existingIdentity.player.updatedAt = Instant.now();
             players.save(existingIdentity.player);
+            activityReports.record(existingIdentity.player, "LOGIN", provider.toUpperCase(Locale.ROOT));
             return createSession(existingIdentity.player);
         }
 
@@ -415,6 +426,7 @@ class AuthService {
                         "delete from email_verification where player_id = ?",
                         player.id);
                 oauthIdentities.save(new OAuthIdentity(provider, subject, player));
+                activityReports.record(player, "REGISTERED", provider.toUpperCase(Locale.ROOT));
                 return createSession(player);
             }
             throw new AuthException(
@@ -435,6 +447,7 @@ class AuthService {
         player.updatedAt = Instant.now();
         players.save(player);
         oauthIdentities.save(new OAuthIdentity(provider, subject, player));
+        activityReports.record(player, "REGISTERED", provider.toUpperCase(Locale.ROOT));
         return createSession(player);
     }
 
@@ -461,6 +474,7 @@ class AuthService {
             applyProviderPhoto(identity.player, photoUrl);
             identity.player.updatedAt = Instant.now();
             players.save(identity.player);
+            activityReports.record(identity.player, "LOGIN", provider.toUpperCase(Locale.ROOT));
             return createSession(identity.player);
         }
 
@@ -483,6 +497,7 @@ class AuthService {
         players.save(guest);
         if (identity == null) oauthIdentities.save(new OAuthIdentity(provider, subject, guest));
         sessions.deleteByPlayerId(guest.id);
+        activityReports.record(guest, "REGISTERED", provider.toUpperCase(Locale.ROOT));
         return createSession(guest);
     }
 
