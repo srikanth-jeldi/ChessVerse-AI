@@ -138,20 +138,24 @@ Future<void> showAdaptiveAiReview(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
+    useSafeArea: true,
     isDismissible: false,
     enableDrag: false,
     backgroundColor: const Color(0xFF061722),
     builder: (BuildContext context) => FractionallySizedBox(
       heightFactor: .94,
-      child: _ReactiveReviewLanguage(
-        languageCode: languageCode,
-        child: _AiReviewWorkspace(
-          report: report,
-          desktop: false,
-          openingEco: openingEco,
-          timeControl: timeControl,
-          onRetryPosition: onRetryPosition,
-          onGeneratePuzzles: onGeneratePuzzles,
+      child: SafeArea(
+        top: false,
+        child: _ReactiveReviewLanguage(
+          languageCode: languageCode,
+          child: _AiReviewWorkspace(
+            report: report,
+            desktop: false,
+            openingEco: openingEco,
+            timeControl: timeControl,
+            onRetryPosition: onRetryPosition,
+            onGeneratePuzzles: onGeneratePuzzles,
+          ),
         ),
       ),
     ),
@@ -219,11 +223,14 @@ class _AiReviewWorkspaceState extends State<_AiReviewWorkspace> {
                   key: const ValueKey<String>('review-mistake-bank'),
                   onPressed: widget.onGeneratePuzzles,
                   icon: const Icon(Icons.extension_rounded, size: 18),
-                  label: Text('Mistake Bank ($puzzleCount)'),
+                  label: Text(
+                    '${CoachLocalizations(languageCode).text('trainMistakes')} ($puzzleCount)',
+                  ),
                 ),
               IconButton(
                 key: const ValueKey<String>('review-language'),
-                tooltip: 'Languages (34)',
+                tooltip:
+                    '${analysisDashboardText('language', languageCode)} (34)',
                 onPressed: () => selectAndSaveAiLanguage(context),
                 icon: const Icon(Icons.translate_rounded),
               ),
@@ -254,7 +261,7 @@ class _AiReviewWorkspaceState extends State<_AiReviewWorkspace> {
                   const SizedBox(width: 9),
                   Expanded(
                     child: Text(
-                      'Mistake Bank ($puzzleCount)',
+                      '${CoachLocalizations(languageCode).text('trainMistakes')} ($puzzleCount)',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w800),
@@ -274,16 +281,16 @@ class _AiReviewWorkspaceState extends State<_AiReviewWorkspace> {
           Center(
             child: SegmentedButton<bool>(
               key: const ValueKey<String>('review-mode-toggle'),
-              segments: const <ButtonSegment<bool>>[
+              segments: <ButtonSegment<bool>>[
                 ButtonSegment<bool>(
                   value: false,
-                  icon: Icon(Icons.lightbulb_outline_rounded),
-                  label: Text('Simple'),
+                  icon: const Icon(Icons.lightbulb_outline_rounded),
+                  label: Text(_reviewText('explain', languageCode)),
                 ),
                 ButtonSegment<bool>(
                   value: true,
-                  icon: Icon(Icons.analytics_outlined),
-                  label: Text('Advanced'),
+                  icon: const Icon(Icons.analytics_outlined),
+                  label: Text(_reviewText('moveByMove', languageCode)),
                 ),
               ],
               selected: <bool>{_advanced},
@@ -365,221 +372,216 @@ class _MobileCoachWorkspaceState extends State<_MobileCoachWorkspace> {
       insight,
       languageCode,
     );
-    return Column(
-      children: <Widget>[
-        Row(
-          children: <Widget>[
-            IconButton(
-              tooltip: analysisDashboardText('latestReport', languageCode),
-              onPressed: () => setState(() => _showSummary = true),
-              icon: const Icon(Icons.assessment_outlined, size: 20),
-            ),
-            Expanded(
-              child: Text(
-                _coachCopy('moveReview', languageCode),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+    return SingleChildScrollView(
+      child: Column(
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              IconButton(
+                tooltip: analysisDashboardText('latestReport', languageCode),
+                onPressed: () => setState(() => _showSummary = true),
+                icon: const Icon(Icons.assessment_outlined, size: 20),
+              ),
+              Expanded(
+                child: Text(
+                  _coachCopy('moveReview', languageCode),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.accentGold,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${_selectedIndex + 1} / ${widget.report.insights.length}',
                 style: const TextStyle(
-                  color: AppColors.accentGold,
-                  fontWeight: FontWeight.w900,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '${_selectedIndex + 1} / ${widget.report.insights.length}',
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: LinearProgressIndicator(
-            value: (_selectedIndex + 1) / widget.report.insights.length,
-            minHeight: 5,
-            backgroundColor: const Color(0xFF183249),
-            color: qualityColor,
+            ],
           ),
-        ),
-        const SizedBox(height: 10),
-        Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              children: <Widget>[
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final double boardSize = math.min(
-                      constraints.maxWidth,
-                      430,
-                    );
-                    return Center(
-                      child: SizedBox(
-                        width: boardSize,
-                        height: boardSize - 24,
-                        child: ChessVerseCard(
-                          padding: const EdgeInsets.all(7),
-                          child: insight.hasEngineEvidence
-                              ? Row(
-                                  children: <Widget>[
-                                    _VerticalEvaluationBar(insight: insight),
-                                    const SizedBox(width: 7),
-                                    Expanded(
-                                      child: _CoachPositionBoard(
-                                        fen: insight.fenBefore!,
-                                        annotations: annotations,
-                                        languageCode: languageCode,
-                                      ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: LinearProgressIndicator(
+              value: (_selectedIndex + 1) / widget.report.insights.length,
+              minHeight: 5,
+              backgroundColor: const Color(0xFF183249),
+              color: qualityColor,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Column(
+            children: <Widget>[
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final double boardSize = math.min(constraints.maxWidth, 430);
+                  return Center(
+                    child: SizedBox(
+                      width: boardSize,
+                      height: boardSize - 24,
+                      child: ChessVerseCard(
+                        padding: const EdgeInsets.all(7),
+                        child: insight.hasEngineEvidence
+                            ? Row(
+                                children: <Widget>[
+                                  _VerticalEvaluationBar(insight: insight),
+                                  const SizedBox(width: 7),
+                                  Expanded(
+                                    child: _CoachPositionBoard(
+                                      fen: insight.fenBefore!,
+                                      annotations: annotations,
+                                      languageCode: languageCode,
                                     ),
-                                  ],
-                                )
-                              : Center(
-                                  child: Text(
-                                    _coachCopy(
-                                      'positionUnavailable',
-                                      languageCode,
-                                    ),
-                                    textAlign: TextAlign.center,
                                   ),
+                                ],
+                              )
+                            : Center(
+                                child: Text(
+                                  _coachCopy(
+                                    'positionUnavailable',
+                                    languageCode,
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 10),
-                ChessVerseCard(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: <Widget>[
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: qualityColor.withValues(alpha: .15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.psychology_alt_rounded,
-                          color: qualityColor,
-                        ),
-                      ),
-                      const SizedBox(width: 11),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              _moveHeading(insight, languageCode),
-                              style: const TextStyle(
-                                color: AppColors.accentGold,
-                                fontSize: 19,
-                                fontWeight: FontWeight.w900,
                               ),
-                            ),
-                            Text(
-                              '${_classificationSymbol(insight.label)} ${_localizedReviewQuality(insight.label, languageCode)} • ${_coachTheme(insight, languageCode)}',
-                              style: TextStyle(
-                                color: qualityColor,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+              ChessVerseCard(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: <Widget>[
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: qualityColor.withValues(alpha: .15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.psychology_alt_rounded,
+                        color: qualityColor,
+                      ),
+                    ),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            _moveHeading(insight, languageCode),
+                            style: const TextStyle(
+                              color: AppColors.accentGold,
+                              fontSize: 19,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          Text(
+                            '${_classificationSymbol(insight.label)} ${_localizedReviewQuality(insight.label, languageCode)} • ${_coachTheme(insight, languageCode)}',
+                            style: TextStyle(
+                              color: qualityColor,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              const SizedBox(height: 10),
+              if (widget.advanced)
+                _StructuredMoveExplanation(
+                  insight: insight,
+                  languageCode: languageCode,
+                  color: qualityColor,
+                )
+              else
+                _SimpleMoveExplanation(
+                  insight: insight,
+                  languageCode: languageCode,
+                  color: qualityColor,
+                ),
+              if (widget.advanced) ...<Widget>[
                 const SizedBox(height: 10),
-                if (widget.advanced)
-                  _StructuredMoveExplanation(
-                    insight: insight,
-                    languageCode: languageCode,
-                    color: qualityColor,
-                  )
-                else
-                  _SimpleMoveExplanation(
-                    insight: insight,
-                    languageCode: languageCode,
-                    color: qualityColor,
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    backgroundColor: const Color(0xFF123E52),
+                    foregroundColor: const Color(0xFF59E4C8),
                   ),
-                if (widget.advanced) ...<Widget>[
-                  const SizedBox(height: 10),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(52),
-                      backgroundColor: const Color(0xFF123E52),
-                      foregroundColor: const Color(0xFF59E4C8),
-                    ),
-                    onPressed: () => _showInteractiveCoach(
-                      context,
-                      insight,
-                      openingEco: widget.openingEco,
-                      timeControl: widget.timeControl,
-                    ),
-                    icon: const Icon(Icons.forum_outlined),
-                    label: Text(personalCoachText('askPosition', languageCode)),
+                  onPressed: () => _showInteractiveCoach(
+                    context,
+                    insight,
+                    openingEco: widget.openingEco,
+                    timeControl: widget.timeControl,
                   ),
-                ],
-                const SizedBox(height: 10),
-                if (widget.advanced)
-                  _CandidateMovesPanel(
-                    insight: insight,
-                    languageCode: languageCode,
-                  ),
-                const SizedBox(height: 12),
+                  icon: const Icon(Icons.forum_outlined),
+                  label: Text(personalCoachText('askPosition', languageCode)),
+                ),
               ],
-            ),
+              const SizedBox(height: 10),
+              if (widget.advanced)
+                _CandidateMovesPanel(
+                  insight: insight,
+                  languageCode: languageCode,
+                ),
+              const SizedBox(height: 12),
+            ],
           ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(64),
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                ),
-                onPressed: _selectedIndex > 0
-                    ? () => setState(() => _selectedIndex--)
-                    : null,
-                icon: const Icon(Icons.arrow_back_rounded),
-                label: Text(
-                  _coachCopy('previousMove', languageCode),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 11),
-                ),
-              ),
-            ),
-            const SizedBox(width: 7),
-            Expanded(
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(64),
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                ),
-                onPressed: _selectedIndex < widget.report.insights.length - 1
-                    ? () => setState(() => _selectedIndex++)
-                    : null,
-                icon: const Icon(Icons.arrow_forward_rounded),
-                label: Text(
-                  _coachCopy('nextMove', languageCode),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 11),
+          const SizedBox(height: 8),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(64),
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                  ),
+                  onPressed: _selectedIndex > 0
+                      ? () => setState(() => _selectedIndex--)
+                      : null,
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  label: Text(
+                    _coachCopy('previousMove', languageCode),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 11),
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ],
+              const SizedBox(width: 7),
+              Expanded(
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(64),
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                  ),
+                  onPressed: _selectedIndex < widget.report.insights.length - 1
+                      ? () => setState(() => _selectedIndex++)
+                      : null,
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  label: Text(
+                    _coachCopy('nextMove', languageCode),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -737,21 +739,21 @@ class _MobileReviewSummary extends StatelessWidget {
           _SummarySection(
             icon: Icons.thumb_up_alt_outlined,
             title: analysisDashboardText('strongest', languageCode),
-            body: localizeReviewNarrative(report.strength, languageCode),
+            body: _localizedReviewNarrative(report.strength, languageCode),
             color: const Color(0xFF59E4C8),
           ),
           const SizedBox(height: 8),
           _SummarySection(
             icon: Icons.crisis_alert_rounded,
             title: _reviewText('turningPoint', languageCode),
-            body: localizeReviewNarrative(report.turningPoint, languageCode),
+            body: _localizedReviewNarrative(report.turningPoint, languageCode),
             color: const Color(0xFFFFA65C),
           ),
           const SizedBox(height: 8),
           _SummarySection(
             icon: Icons.school_outlined,
             title: analysisDashboardText('nextFocus', languageCode),
-            body: localizeReviewNarrative(report.trainingFocus, languageCode),
+            body: _localizedReviewNarrative(report.trainingFocus, languageCode),
             color: AppColors.accentGold,
           ),
           const SizedBox(height: 8),
@@ -761,7 +763,7 @@ class _MobileReviewSummary extends StatelessWidget {
             body: report.trainingRecommendations
                 .map(
                   (String item) =>
-                      '• ${localizeReviewNarrative(item, languageCode)}',
+                      '• ${_localizedReviewNarrative(item, languageCode)}',
                 )
                 .join('\n'),
             color: const Color(0xFFB98AFF),
@@ -1077,6 +1079,9 @@ class _DesktopCoachWorkspaceState extends State<_DesktopCoachWorkspace> {
                               spacing: 4,
                               children: <Widget>[
                                 TextButton.icon(
+                                  key: ValueKey<String>(
+                                    'review-explain-${insight.number}',
+                                  ),
                                   onPressed: () => _showInteractiveCoach(
                                     context,
                                     insight,
@@ -2790,15 +2795,20 @@ class _MoveEffectChip extends StatelessWidget {
       children: <Widget>[
         Icon(icon, size: 17, color: const Color(0xFF59E4C8)),
         const SizedBox(width: 7),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(title, style: const TextStyle(fontSize: 10)),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
-            ),
-          ],
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(title, style: const TextStyle(fontSize: 10)),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     ),

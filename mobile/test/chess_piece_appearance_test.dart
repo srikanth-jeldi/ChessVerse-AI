@@ -181,4 +181,79 @@ void main() {
     expect(find.text('♙'), findsNWidgets(2));
     expect(find.text('♟︎'), findsNWidgets(2));
   });
+
+  testWidgets(
+    'premium mobile pieces use shape contrast without letter badges',
+    (WidgetTester tester) async {
+      ChessPieceAppearanceController.current.value = const ChessPieceAppearance(
+        finish: 'obsidian-regal',
+      );
+      addTearDown(() {
+        ChessPieceAppearanceController.current.value =
+            const ChessPieceAppearance();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Wrap(
+            children: <Widget>[
+              for (String code in <String>['K', 'Q', 'R', 'B', 'N', 'P'])
+                SizedBox.square(
+                  dimension: 48,
+                  child: ChessCoin(
+                    piece: ChessPiece(code, true),
+                    selected: false,
+                    accent: Colors.teal,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+
+      expect(find.byType(ImageFiltered), findsNWidgets(6));
+      for (final String letter in <String>['K', 'Q', 'R', 'B', 'N', 'P']) {
+        expect(find.text(letter), findsNothing);
+      }
+      for (final String name in <String>[
+        'king',
+        'queen',
+        'rook',
+        'bishop',
+        'knight',
+        'pawn',
+      ]) {
+        expect(find.bySemanticsLabel('White $name'), findsOneWidget);
+      }
+    },
+  );
+
+  testWidgets('base mobile pieces also receive silhouette contrast', (
+    WidgetTester tester,
+  ) async {
+    ChessPieceAppearanceController.current.value = const ChessPieceAppearance(
+      finish: 'classic-staunton',
+    );
+    addTearDown(() {
+      ChessPieceAppearanceController.current.value =
+          const ChessPieceAppearance();
+    });
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SizedBox.square(
+          dimension: 48,
+          child: ChessCoin(
+            piece: ChessPiece('R', false),
+            selected: false,
+            accent: Colors.teal,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(ImageFiltered), findsOneWidget);
+    expect(find.bySemanticsLabel('Black rook'), findsOneWidget);
+    expect(find.text('R'), findsNothing);
+  });
 }

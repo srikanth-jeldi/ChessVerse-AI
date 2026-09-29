@@ -2,6 +2,7 @@ import 'package:chessverse_ai/core/app_language.dart';
 import 'package:chessverse_ai/core/analysis_dashboard_localizations.dart';
 import 'package:chessverse_ai/core/coach_localizations.dart';
 import 'package:chessverse_ai/core/personal_coach_localizations.dart';
+import 'package:chessverse_ai/core/review_training_localizations.dart';
 import 'package:chessverse_ai/features/analysis/domain/ai_review_report.dart';
 import 'package:chessverse_ai/features/analysis/presentation/adaptive_ai_review.dart';
 import 'package:flutter/material.dart';
@@ -58,10 +59,20 @@ void main() {
             reason: '${language.code} $size',
           );
           if (size.width == 360) {
+            final copy = CoachLocalizations(language.code);
             expect(
               find.text(analysisDashboardText('openReview', language.code)),
               findsOneWidget,
               reason: 'summary action ${language.code}',
+            );
+            expect(find.text(copy.text('explain')), findsOneWidget);
+            expect(find.text(copy.text('moveByMove')), findsOneWidget);
+            expect(
+              find.text(
+                localizeReviewTraining(report.trainingFocus, language.code),
+              ),
+              findsOneWidget,
+              reason: 'training focus ${language.code}',
             );
           }
           if (size.width == 360 && language.code == 'en') {
@@ -88,7 +99,14 @@ void main() {
               findsOneWidget,
             );
             expect(find.text('5 possible moves to compare'), findsNothing);
-            await tester.tap(find.text('Advanced'));
+            await tester.tap(
+              find.descendant(
+                of: find.byKey(const ValueKey<String>('review-mode-toggle')),
+                matching: find.text(
+                  CoachLocalizations(language.code).text('moveByMove'),
+                ),
+              ),
+            );
             await tester.pumpAndSettle();
             expect(
               find.text(personalCoachText('askPosition', language.code)),
@@ -117,7 +135,11 @@ void main() {
             );
             await tester.tap(find.text(copy.text('gotIt')));
             await tester.pumpAndSettle();
-            await tester.tap(find.text(copy.text('explain')).first);
+            final explainAction = find.byKey(
+              const ValueKey<String>('review-explain-1'),
+            );
+            await tester.ensureVisible(explainAction);
+            await tester.tap(explainAction);
             await tester.pumpAndSettle();
             expect(
               find.text(personalCoachText('title', language.code)),
@@ -145,6 +167,8 @@ void main() {
     tester.view.physicalSize = const Size(360, 800);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    FlutterSecureStorage.setMockInitialValues({'settings.language': 'en'});
+    AppLanguageController.effectiveLanguageChanges.value = null;
     final report = AiReviewReport.fromMoves(
       const <String>[],
       newestFirst: false,
@@ -183,6 +207,9 @@ void main() {
       find.byKey(const ValueKey<String>('review-mistake-bank-row')),
       findsOneWidget,
     );
-    expect(find.text('Mistake Bank (0)'), findsOneWidget);
+    expect(
+      find.text('${CoachLocalizations('en').text('trainMistakes')} (0)'),
+      findsOneWidget,
+    );
   });
 }

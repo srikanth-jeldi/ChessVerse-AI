@@ -1615,11 +1615,11 @@ class ChessCoin extends StatelessWidget {
             final double pieceSize = size * pieceScale;
             final double silhouetteScale = switch (piece.code) {
               'K' => 1.00,
-              'Q' => .98,
-              'N' => .96,
-              'B' => .94,
-              'R' => .91,
-              _ => royalAsset ? .80 : .88,
+              'Q' => 1.00,
+              'N' => .98,
+              'B' => .98,
+              'R' => .98,
+              _ => royalAsset ? .94 : .92,
             };
 
             return AnimatedRotation(
@@ -1789,7 +1789,10 @@ class ChessCoin extends StatelessWidget {
       filterQuality: FilterQuality.high,
       semanticLabel: semanticLabel,
     );
-    Widget image = pieceImage(semanticLabel: label);
+    // The outer Semantics owns the accessible name. Keeping the duplicated
+    // outline images silent prevents screen readers from announcing one
+    // chess piece multiple times.
+    Widget image = pieceImage();
     if (appearance.style == ChessPieceVisualStyle.highContrast) {
       image = ColorFiltered(
         colorFilter: ColorFilter.mode(
@@ -1803,10 +1806,38 @@ class ChessCoin extends StatelessWidget {
       if (premiumAsset != null) {
         return Semantics(
           label: label,
-          child: Image.asset(
-            premiumAsset,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
+          child: Stack(
+            alignment: Alignment.center,
+            children: <Widget>[
+              // A restrained opposite-tone silhouette preserves the royal
+              // texture while separating every shape from both square colors.
+              // It is deliberately visual only: no Q/R/P text is placed on
+              // the board.
+              ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: 1.8, sigmaY: 1.8),
+                child: ColorFiltered(
+                  colorFilter: ColorFilter.mode(
+                    piece.white
+                        ? const Color(0xFF152033).withValues(alpha: .78)
+                        : const Color(0xFFFFE8AE).withValues(alpha: .72),
+                    BlendMode.srcIn,
+                  ),
+                  child: Transform.scale(
+                    scale: 1.045,
+                    child: Image.asset(
+                      premiumAsset,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
+                    ),
+                  ),
+                ),
+              ),
+              Image.asset(
+                premiumAsset,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
+              ),
+            ],
           ),
         );
       }
@@ -1827,7 +1858,27 @@ class ChessCoin extends StatelessWidget {
         );
       }
     }
-    return Semantics(label: label, child: image);
+    return Semantics(
+      label: label,
+      child: Stack(
+        alignment: Alignment.center,
+        children: <Widget>[
+          ImageFiltered(
+            imageFilter: ui.ImageFilter.blur(sigmaX: 1.6, sigmaY: 1.6),
+            child: ColorFiltered(
+              colorFilter: ColorFilter.mode(
+                piece.white
+                    ? const Color(0xFF152033).withValues(alpha: .76)
+                    : const Color(0xFFFFE8AE).withValues(alpha: .68),
+                BlendMode.srcIn,
+              ),
+              child: Transform.scale(scale: 1.04, child: image),
+            ),
+          ),
+          image,
+        ],
+      ),
+    );
   }
 }
 
