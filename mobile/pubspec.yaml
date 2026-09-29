@@ -1,7 +1,7 @@
 name: chessverse_ai
 description: Cross-platform ChessVerse AI application.
 publish_to: "none"
-version: 1.3.1+230
+version: 1.3.1+231
 
 environment:
   sdk: ">=3.13.0 <4.0.0"
@@ -112,6 +112,8 @@ flutter:
     - assets/pieces/premium_individual/sapphire-elite/black/
     - assets/pieces/premium_individual/emerald-sovereign/white/
     - assets/pieces/premium_individual/emerald-sovereign/black/
+    - assets/pieces/premium_individual/mobile-readable/white/
+    - assets/pieces/premium_individual/mobile-readable/black/
 
 flutter_launcher_icons:
   android: true

@@ -72,7 +72,7 @@ void main() {
       },
     );
 
-    test('every premium set bundles twelve mobile-readable pieces', () async {
+    test('every premium set uses the shared mobile-readable pieces', () async {
       final Set<String> assets = <String>{};
       for (final String finish in <String>[
         'crimson-crown-3d',
@@ -88,7 +88,7 @@ void main() {
               finish,
               ChessPiece(code, white),
             );
-            expect(asset, contains('/$finish/'));
+            expect(asset, contains('/mobile-readable/'));
             expect(asset, endsWith('.png'));
             assets.add(asset!);
             final ByteData bytes = await rootBundle.load(asset);
@@ -96,7 +96,7 @@ void main() {
           }
         }
       }
-      expect(assets, hasLength(72));
+      expect(assets, hasLength(12));
     });
 
     test('all twelve Royal Collection boards use premium gameplay images', () {

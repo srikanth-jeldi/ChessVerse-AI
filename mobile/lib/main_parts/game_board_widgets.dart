@@ -1910,16 +1910,18 @@ class ChessCoin extends StatelessWidget {
 }
 
 String? mobileReadablePremiumPieceAsset(String finish, ChessPiece piece) {
-  final String? folder = switch (finish) {
-    'crimson-crown-3d' => 'crimson-crown-3d',
-    'inferno-gold' || 'golden-crown' => 'inferno-gold',
-    'ruby-emperor' => 'ruby-emperor',
-    'obsidian-regal' || 'ivory-obsidian' => 'obsidian-regal',
-    'sapphire-elite' => 'sapphire-elite',
-    'emerald-sovereign' => 'emerald-sovereign',
-    _ => null,
+  final bool premiumFinish = switch (finish) {
+    'crimson-crown-3d' ||
+    'inferno-gold' ||
+    'golden-crown' ||
+    'ruby-emperor' ||
+    'obsidian-regal' ||
+    'ivory-obsidian' ||
+    'sapphire-elite' ||
+    'emerald-sovereign' => true,
+    _ => false,
   };
-  if (folder == null) return null;
+  if (!premiumFinish) return null;
   final String name = switch (piece.code) {
     'K' => 'king',
     'Q' => 'queen',
@@ -1929,7 +1931,7 @@ String? mobileReadablePremiumPieceAsset(String finish, ChessPiece piece) {
     _ => 'pawn',
   };
   final String side = piece.white ? 'white' : 'black';
-  return 'assets/pieces/premium_individual/$folder/$side/mobile-$name.png';
+  return 'assets/pieces/premium_individual/mobile-readable/$side/$name.png';
 }
 
 String? premiumPieceAsset(String finish, ChessPiece piece) {
