@@ -1151,9 +1151,39 @@ class BoardSquare extends StatelessWidget {
     final Color base = (dark ? palette.dark : palette.light).withValues(
       alpha: premiumTexture ? (dark ? .98 : .96) : 1,
     );
-    final Color coordinateColor = dark
-        ? palette.light.withValues(alpha: 0.72)
-        : palette.dark.withValues(alpha: 0.72);
+    final Color coordinateColor = dark ? palette.light : palette.dark;
+
+    Widget coordinateBadge(String label) => IgnorePointer(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: (dark ? palette.dark : palette.light).withValues(alpha: .92),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: coordinateColor.withValues(alpha: .42),
+            width: .7,
+          ),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: Colors.black.withValues(alpha: .28),
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: coordinateColor,
+              fontSize: 9,
+              height: 1,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ),
+    );
 
     final Color squareColor = checkedKing
         ? Color.alphaBlend(
@@ -1296,30 +1326,6 @@ class BoardSquare extends StatelessWidget {
                   ),
                 ),
               ),
-              Positioned(
-                top: 5,
-                left: 6,
-                child: Text(
-                  showRank ? square.substring(1) : '',
-                  style: TextStyle(
-                    color: coordinateColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 6,
-                bottom: 4,
-                child: Text(
-                  showFile ? square.substring(0, 1) : '',
-                  style: TextStyle(
-                    color: coordinateColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
               Center(
                 child: AnimatedScale(
                   duration: const Duration(milliseconds: 360),
@@ -1435,6 +1441,21 @@ class BoardSquare extends StatelessWidget {
                         ),
                       ),
               ),
+              // Coordinates are the final board overlay. Their opaque corner
+              // chips keep labels visually separate from wide premium bases
+              // instead of letting the piece artwork cover or absorb them.
+              if (showRank)
+                Positioned(
+                  top: 2,
+                  left: 2,
+                  child: coordinateBadge(square.substring(1)),
+                ),
+              if (showFile)
+                Positioned(
+                  right: 2,
+                  bottom: 2,
+                  child: coordinateBadge(square.substring(0, 1)),
+                ),
               if (lastCapture)
                 Positioned.fill(
                   child: IgnorePointer(
@@ -1604,9 +1625,11 @@ class ChessCoin extends StatelessWidget {
                 premiumPieceAsset(appearance.finish, piece) != null;
             final double pieceScale = royalAsset
                 ? switch (appearance.size) {
-                    ChessPieceVisualSize.large => 1.00,
-                    ChessPieceVisualSize.extraLarge => 1.08,
-                    ChessPieceVisualSize.doubleExtraLarge => 1.16,
+                    ChessPieceVisualSize.large => mobileBoard ? 1.11 : 1.00,
+                    ChessPieceVisualSize.extraLarge =>
+                      mobileBoard ? 1.20 : 1.08,
+                    ChessPieceVisualSize.doubleExtraLarge =>
+                      mobileBoard ? 1.28 : 1.16,
                   }
                 : switch (appearance.size) {
                     ChessPieceVisualSize.large => classic2d ? 1.31 : 1.43,
@@ -1845,16 +1868,21 @@ class ChessCoin extends StatelessWidget {
               // It is deliberately visual only: no Q/R/P text is placed on
               // the board.
               ImageFiltered(
-                imageFilter: ui.ImageFilter.blur(sigmaX: 1.8, sigmaY: 1.8),
+                imageFilter: ui.ImageFilter.blur(
+                  sigmaX: mobileBoard ? .75 : 1.8,
+                  sigmaY: mobileBoard ? .75 : 1.8,
+                ),
                 child: ColorFiltered(
                   colorFilter: ColorFilter.mode(
                     piece.white
-                        ? const Color(0xFF152033).withValues(alpha: .78)
-                        : const Color(0xFFFFE8AE).withValues(alpha: .72),
+                        ? const Color(0xFF101827)
+                              .withValues(alpha: mobileBoard ? .94 : .78)
+                        : const Color(0xFFFFEDC2)
+                              .withValues(alpha: mobileBoard ? .90 : .72),
                     BlendMode.srcIn,
                   ),
                   child: Transform.scale(
-                    scale: 1.045,
+                    scale: mobileBoard ? 1.065 : 1.045,
                     child: Image.asset(
                       premiumAsset,
                       fit: BoxFit.contain,
