@@ -135,9 +135,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (!kIsWeb) {
     unawaited(
-      SystemChrome.setPreferredOrientations(const <DeviceOrientation>[
-        DeviceOrientation.portraitUp,
-      ]).timeout(const Duration(seconds: 2)).catchError((Object _) {}),
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge)
+          .timeout(const Duration(seconds: 2))
+          .catchError((Object _) {}),
     );
   }
   if (kIsWeb) {

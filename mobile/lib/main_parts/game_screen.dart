@@ -1219,8 +1219,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           ),
         ),
         child: SafeArea(
-          left: false,
-          right: false,
           child: LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
               final bool landscape =

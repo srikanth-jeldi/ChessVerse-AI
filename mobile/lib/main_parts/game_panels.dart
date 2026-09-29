@@ -22,9 +22,13 @@ class _GameStudioHeader extends StatelessWidget {
   final VoidCallback? onPause;
 
   @override
-  Widget build(BuildContext context) {
-    final bool compact =
-        MediaQuery.sizeOf(context).width < (onPause == null ? 1050 : 1500);
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => _buildHeader(context, constraints.maxWidth),
+  );
+
+  Widget _buildHeader(BuildContext context, double availableWidth) {
+    // Use the width left after system insets, including in tablet windows.
+    final bool compact = availableWidth < (onPause == null ? 1400 : 1500);
     final String title = switch (gameMode) {
       GameMode.daily => 'Daily Challenge',
       GameMode.puzzle => 'Puzzle Academy',
@@ -937,9 +941,11 @@ class _CoachProgress extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          Text(
-            _localizedCoachUiLabel('progress', languageCode),
-            style: const TextStyle(fontWeight: FontWeight.w700),
+          Flexible(
+            child: Text(
+              _localizedCoachUiLabel('progress', languageCode),
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
