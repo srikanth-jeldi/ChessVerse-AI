@@ -1595,6 +1595,8 @@ class ChessCoin extends StatelessWidget {
               constraints.maxWidth,
               constraints.maxHeight,
             );
+            final bool mobileBoard =
+                MediaQuery.sizeOf(context).shortestSide < 600;
             final bool classic2d =
                 appearance.style == ChessPieceVisualStyle.classic2d;
             final bool royalAsset =
@@ -1692,7 +1694,11 @@ class ChessCoin extends StatelessWidget {
                         offset: Offset(0, selected ? -pieceSize * 0.035 : 0),
                         child: Transform.scale(
                           scale: silhouetteScale,
-                          child: _pieceVisual(appearance, pieceSize),
+                          child: _pieceVisual(
+                            appearance,
+                            pieceSize,
+                            mobileBoard: mobileBoard,
+                          ),
                         ),
                       ),
                       Positioned(
@@ -1730,7 +1736,11 @@ class ChessCoin extends StatelessWidget {
     );
   }
 
-  Widget _pieceVisual(ChessPieceAppearance appearance, double pieceSize) {
+  Widget _pieceVisual(
+    ChessPieceAppearance appearance,
+    double pieceSize, {
+    required bool mobileBoard,
+  }) {
     final String label =
         '${piece.white ? 'White' : 'Black'} ${pieceName(piece.code)}';
     if (appearance.style == ChessPieceVisualStyle.classic2d) {
@@ -1802,8 +1812,29 @@ class ChessCoin extends StatelessWidget {
         child: image,
       );
     } else if (appearance.style == ChessPieceVisualStyle.premium3d) {
-      final String? premiumAsset = premiumPieceAsset(appearance.finish, piece);
+      final String? premiumAsset = mobileBoard
+          ? mobileReadablePremiumPieceAsset(appearance.finish, piece)
+          : premiumPieceAsset(appearance.finish, piece);
       if (premiumAsset != null) {
+        final List<Color>? mobileFinishColors = mobileBoard
+            ? premiumPieceFinishColors(appearance.finish, piece.white)
+            : null;
+        final Widget foreground = mobileFinishColors == null
+            ? Image.asset(
+                premiumAsset,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
+              )
+            : ColorFiltered(
+                colorFilter: ColorFilter.matrix(
+                  premiumPieceColorMatrix(mobileFinishColors),
+                ),
+                child: Image.asset(
+                  premiumAsset,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                ),
+              );
         return Semantics(
           label: label,
           child: Stack(
@@ -1832,11 +1863,7 @@ class ChessCoin extends StatelessWidget {
                   ),
                 ),
               ),
-              Image.asset(
-                premiumAsset,
-                fit: BoxFit.contain,
-                filterQuality: FilterQuality.high,
-              ),
+              foreground,
             ],
           ),
         );
@@ -1880,6 +1907,29 @@ class ChessCoin extends StatelessWidget {
       ),
     );
   }
+}
+
+String? mobileReadablePremiumPieceAsset(String finish, ChessPiece piece) {
+  final String? folder = switch (finish) {
+    'crimson-crown-3d' => 'crimson-crown-3d',
+    'inferno-gold' || 'golden-crown' => 'inferno-gold',
+    'ruby-emperor' => 'ruby-emperor',
+    'obsidian-regal' || 'ivory-obsidian' => 'obsidian-regal',
+    'sapphire-elite' => 'sapphire-elite',
+    'emerald-sovereign' => 'emerald-sovereign',
+    _ => null,
+  };
+  if (folder == null) return null;
+  final String name = switch (piece.code) {
+    'K' => 'king',
+    'Q' => 'queen',
+    'R' => 'rook',
+    'B' => 'bishop',
+    'N' => 'knight',
+    _ => 'pawn',
+  };
+  final String side = piece.white ? 'white' : 'black';
+  return 'assets/pieces/premium_individual/$folder/$side/mobile-$name.png';
 }
 
 String? premiumPieceAsset(String finish, ChessPiece piece) {

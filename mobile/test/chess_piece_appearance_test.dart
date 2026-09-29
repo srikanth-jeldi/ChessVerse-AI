@@ -72,6 +72,33 @@ void main() {
       },
     );
 
+    test('every premium set bundles twelve mobile-readable pieces', () async {
+      final Set<String> assets = <String>{};
+      for (final String finish in <String>[
+        'crimson-crown-3d',
+        'inferno-gold',
+        'ruby-emperor',
+        'obsidian-regal',
+        'sapphire-elite',
+        'emerald-sovereign',
+      ]) {
+        for (final bool white in <bool>[true, false]) {
+          for (final String code in <String>['K', 'Q', 'R', 'B', 'N', 'P']) {
+            final String? asset = mobileReadablePremiumPieceAsset(
+              finish,
+              ChessPiece(code, white),
+            );
+            expect(asset, contains('/$finish/'));
+            expect(asset, endsWith('.png'));
+            assets.add(asset!);
+            final ByteData bytes = await rootBundle.load(asset);
+            expect(bytes.lengthInBytes, greaterThan(50000), reason: asset);
+          }
+        }
+      }
+      expect(assets, hasLength(72));
+    });
+
     test('all twelve Royal Collection boards use premium gameplay images', () {
       for (final BoardPalette palette in boardPalettes.values.take(12)) {
         expect(premiumBoardAsset(palette.label), endsWith('-v1.webp'));
