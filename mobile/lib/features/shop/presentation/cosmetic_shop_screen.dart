@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/app_preferences.dart';
 import '../../../core/ads/rewarded_coin_service.dart';
+import '../../../core/chess_piece_appearance.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../data/shop_api.dart';
 import '../data/economy_rewards_api.dart';
@@ -22,8 +23,12 @@ String formatFreeCoinCountdown(Duration remaining) {
 }
 
 bool canRestoreDefaultCosmetic(CosmeticItemDto item) =>
-    item.equipped &&
-    (item.category == 'BOARD' || item.category == 'PIECES');
+    item.equipped && (item.category == 'BOARD' || item.category == 'PIECES');
+
+ChessPieceAppearance appearanceForEquippedPieceSet(
+  ChessPieceAppearance current,
+  String finish,
+) => current.copyWith(style: ChessPieceVisualStyle.premium3d, finish: finish);
 
 class CosmeticShopScreen extends StatefulWidget {
   const CosmeticShopScreen({
@@ -99,6 +104,12 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
           await const AppPreferences().writeString('boardTheme', item.name);
         case 'PIECES':
           await const AppPreferences().writeString('pieceFinish', item.slug);
+          await const AppPreferences().writeString('pieceStyle', 'Premium 3D');
+          ChessPieceAppearanceController.current.value =
+              appearanceForEquippedPieceSet(
+                ChessPieceAppearanceController.current.value,
+                item.slug,
+              );
         case 'FRAME':
           await const AppPreferences().writeString('profileBadge', item.slug);
       }
@@ -119,6 +130,14 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
           item.category == 'BOARD' ? 'boardTheme' : 'pieceFinish',
           item.category == 'BOARD' ? 'Royal Walnut' : 'classic-staunton',
         );
+        if (item.category == 'PIECES') {
+          await const AppPreferences().writeString('pieceStyle', 'Premium 3D');
+          ChessPieceAppearanceController.current.value =
+              appearanceForEquippedPieceSet(
+                ChessPieceAppearanceController.current.value,
+                'classic-staunton',
+              );
+        }
       }
       // Persist what the server actually equipped. This keeps web/mobile and
       // the account loadout in sync after both purchases and equip actions.

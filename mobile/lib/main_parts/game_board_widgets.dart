@@ -721,6 +721,8 @@ class _ChessBoardState extends State<ChessBoard> {
     final ValueChanged<String> onSquareTap = widget.onSquareTap;
     final bool moveAnimating =
         _activeMoveToken != null && _activeMoveToken == _moveToken(widget);
+    final bool showBoardCoordinates =
+        showCoordinates && MediaQuery.sizeOf(context).shortestSide >= 600;
 
     return AspectRatio(
       aspectRatio: 1,
@@ -781,8 +783,8 @@ class _ChessBoardState extends State<ChessBoard> {
                   palette: palette,
                   premiumTexture: premiumBoardAsset(palette.label) != null,
                   piece: piece,
-                  showRank: showCoordinates && col == 0,
-                  showFile: showCoordinates && row == 7,
+                  showRank: showBoardCoordinates && col == 0,
+                  showFile: showBoardCoordinates && row == 7,
                   onTap: () => onSquareTap(square),
                 );
               },
@@ -1151,39 +1153,9 @@ class BoardSquare extends StatelessWidget {
     final Color base = (dark ? palette.dark : palette.light).withValues(
       alpha: premiumTexture ? (dark ? .98 : .96) : 1,
     );
-    final Color coordinateColor = dark ? palette.light : palette.dark;
-
-    Widget coordinateBadge(String label) => IgnorePointer(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: (dark ? palette.dark : palette.light).withValues(alpha: .92),
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: coordinateColor.withValues(alpha: .42),
-            width: .7,
-          ),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: Colors.black.withValues(alpha: .28),
-              blurRadius: 3,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: coordinateColor,
-              fontSize: 9,
-              height: 1,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-      ),
-    );
+    final Color coordinateColor = dark
+        ? palette.light.withValues(alpha: .72)
+        : palette.dark.withValues(alpha: .72);
 
     final Color squareColor = checkedKing
         ? Color.alphaBlend(
@@ -1441,20 +1413,31 @@ class BoardSquare extends StatelessWidget {
                         ),
                       ),
               ),
-              // Coordinates are the final board overlay. Their opaque corner
-              // chips keep labels visually separate from wide premium bases
-              // instead of letting the piece artwork cover or absorb them.
               if (showRank)
                 Positioned(
-                  top: 2,
-                  left: 2,
-                  child: coordinateBadge(square.substring(1)),
+                  top: 4,
+                  left: 5,
+                  child: Text(
+                    square.substring(1),
+                    style: TextStyle(
+                      color: coordinateColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
               if (showFile)
                 Positioned(
-                  right: 2,
-                  bottom: 2,
-                  child: coordinateBadge(square.substring(0, 1)),
+                  right: 5,
+                  bottom: 3,
+                  child: Text(
+                    square.substring(0, 1),
+                    style: TextStyle(
+                      color: coordinateColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
               if (lastCapture)
                 Positioned.fill(
@@ -1623,7 +1606,10 @@ class ChessCoin extends StatelessWidget {
             final bool royalAsset =
                 appearance.style == ChessPieceVisualStyle.premium3d &&
                 premiumPieceAsset(appearance.finish, piece) != null;
-            final double pieceScale = royalAsset
+            final bool default3d =
+                appearance.style == ChessPieceVisualStyle.premium3d &&
+                appearance.finish == 'classic-staunton';
+            final double pieceScale = royalAsset || default3d
                 ? switch (appearance.size) {
                     ChessPieceVisualSize.large => mobileBoard ? 1.11 : 1.00,
                     ChessPieceVisualSize.extraLarge =>
@@ -1912,6 +1898,10 @@ class ChessCoin extends StatelessWidget {
           child: image,
         );
       }
+    }
+    if (appearance.style == ChessPieceVisualStyle.premium3d &&
+        appearance.finish == 'classic-staunton') {
+      return Semantics(label: label, child: image);
     }
     return Semantics(
       label: label,

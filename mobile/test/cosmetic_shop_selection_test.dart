@@ -1,5 +1,6 @@
 import 'package:chessverse_ai/features/shop/data/shop_api.dart';
 import 'package:chessverse_ai/features/shop/presentation/cosmetic_shop_screen.dart';
+import 'package:chessverse_ai/core/chess_piece_appearance.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 CosmeticItemDto item({
@@ -45,10 +46,10 @@ void main() {
         currency: 'COINS',
         equipped: true,
       );
-      expect(canRestoreDefaultCosmetic(boardDefault), isFalse);
-      expect(canRestoreDefaultCosmetic(piecesDefault), isFalse);
-      expect(canRestoreDefaultCosmetic(premiumBoard), isTrue);
-      expect(canRestoreDefaultCosmetic(premiumPieces), isTrue);
+      expect(canRestoreDefaultCosmetic(boardDefault), false);
+      expect(canRestoreDefaultCosmetic(piecesDefault), false);
+      expect(canRestoreDefaultCosmetic(premiumBoard), true);
+      expect(canRestoreDefaultCosmetic(premiumPieces), true);
     },
   );
 
@@ -69,9 +70,9 @@ void main() {
       category: 'BOARD',
       currency: 'COINS',
     );
-    expect(canRestoreDefaultCosmetic(defaultFrame), isFalse);
-    expect(canRestoreDefaultCosmetic(premiumFrame), isFalse);
-    expect(canRestoreDefaultCosmetic(premiumBoard), isFalse);
+    expect(canRestoreDefaultCosmetic(defaultFrame), false);
+    expect(canRestoreDefaultCosmetic(premiumFrame), false);
+    expect(canRestoreDefaultCosmetic(premiumBoard), false);
   });
 
   test('an equipped free collection item also offers the app default', () {
@@ -82,9 +83,22 @@ void main() {
       equipped: true,
     );
 
-    expect(
-      canRestoreDefaultCosmetic(boardDefault),
-      isTrue,
+    expect(canRestoreDefaultCosmetic(boardDefault), true);
+  });
+
+  test('equipping a premium set activates its finish for the game board', () {
+    const ChessPieceAppearance classic = ChessPieceAppearance(
+      style: ChessPieceVisualStyle.classic2d,
+      size: ChessPieceVisualSize.extraLarge,
     );
+
+    final ChessPieceAppearance equipped = appearanceForEquippedPieceSet(
+      classic,
+      'ruby-emperor',
+    );
+
+    expect(equipped.style, ChessPieceVisualStyle.premium3d);
+    expect(equipped.finish, 'ruby-emperor');
+    expect(equipped.size, ChessPieceVisualSize.extraLarge);
   });
 }
