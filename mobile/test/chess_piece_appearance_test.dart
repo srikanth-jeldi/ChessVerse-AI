@@ -255,7 +255,7 @@ void main() {
     },
   );
 
-  testWidgets('base mobile pieces also receive silhouette contrast', (
+  testWidgets('base mobile pieces render once without a duplicate layer', (
     WidgetTester tester,
   ) async {
     ChessPieceAppearanceController.current.value = const ChessPieceAppearance(
@@ -279,7 +279,7 @@ void main() {
       ),
     );
 
-    expect(find.byType(ImageFiltered), findsOneWidget);
+    expect(find.byType(ImageFiltered), findsNothing);
     expect(find.bySemanticsLabel('Black rook'), findsOneWidget);
     expect(find.text('R'), findsNothing);
   });
