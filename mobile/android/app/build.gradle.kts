@@ -37,7 +37,10 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         ndk {
-            abiFilters += "arm64-v8a"
+            // Physical Android devices primarily use ARM64, while ChromeOS and
+            // some Play-supported environments run x86_64. Packaging both
+            // prevents Flutter's ARM engine from being loaded in an x86 process.
+            abiFilters += listOf("arm64-v8a", "x86_64")
         }
     }
 

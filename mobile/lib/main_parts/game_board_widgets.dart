@@ -1825,60 +1825,12 @@ class ChessCoin extends StatelessWidget {
           ? mobileReadablePremiumPieceAsset(appearance.finish, piece)
           : premiumPieceAsset(appearance.finish, piece);
       if (premiumAsset != null) {
-        final List<Color>? mobileFinishColors = mobileBoard
-            ? premiumPieceFinishColors(appearance.finish, piece.white)
-            : null;
-        final Widget foreground = mobileFinishColors == null
-            ? Image.asset(
-                premiumAsset,
-                fit: BoxFit.contain,
-                filterQuality: FilterQuality.high,
-              )
-            : ColorFiltered(
-                colorFilter: ColorFilter.matrix(
-                  premiumPieceColorMatrix(mobileFinishColors),
-                ),
-                child: Image.asset(
-                  premiumAsset,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.high,
-                ),
-              );
         return Semantics(
           label: label,
-          child: Stack(
-            alignment: Alignment.center,
-            children: <Widget>[
-              // A restrained opposite-tone silhouette preserves the royal
-              // texture while separating every shape from both square colors.
-              // It is deliberately visual only: no Q/R/P text is placed on
-              // the board.
-              ImageFiltered(
-                imageFilter: ui.ImageFilter.blur(
-                  sigmaX: mobileBoard ? .75 : 1.8,
-                  sigmaY: mobileBoard ? .75 : 1.8,
-                ),
-                child: ColorFiltered(
-                  colorFilter: ColorFilter.mode(
-                    piece.white
-                        ? const Color(0xFF101827)
-                              .withValues(alpha: mobileBoard ? .94 : .78)
-                        : const Color(0xFFFFEDC2)
-                              .withValues(alpha: mobileBoard ? .90 : .72),
-                    BlendMode.srcIn,
-                  ),
-                  child: Transform.scale(
-                    scale: mobileBoard ? 1.065 : 1.045,
-                    child: Image.asset(
-                      premiumAsset,
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.high,
-                    ),
-                  ),
-                ),
-              ),
-              foreground,
-            ],
+          child: Image.asset(
+            premiumAsset,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
           ),
         );
       }
@@ -1928,18 +1880,16 @@ class ChessCoin extends StatelessWidget {
 }
 
 String? mobileReadablePremiumPieceAsset(String finish, ChessPiece piece) {
-  final bool premiumFinish = switch (finish) {
-    'crimson-crown-3d' ||
-    'inferno-gold' ||
-    'golden-crown' ||
-    'ruby-emperor' ||
-    'obsidian-regal' ||
-    'ivory-obsidian' ||
-    'sapphire-elite' ||
-    'emerald-sovereign' => true,
-    _ => false,
+  final String? folder = switch (finish) {
+    'crimson-crown-3d' => 'crimson-crown-3d',
+    'inferno-gold' || 'golden-crown' => 'inferno-gold',
+    'ruby-emperor' => 'ruby-emperor',
+    'obsidian-regal' || 'ivory-obsidian' => 'obsidian-regal',
+    'sapphire-elite' => 'sapphire-elite',
+    'emerald-sovereign' => 'emerald-sovereign',
+    _ => null,
   };
-  if (!premiumFinish) return null;
+  if (folder == null) return null;
   final String name = switch (piece.code) {
     'K' => 'king',
     'Q' => 'queen',
@@ -1949,7 +1899,7 @@ String? mobileReadablePremiumPieceAsset(String finish, ChessPiece piece) {
     _ => 'pawn',
   };
   final String side = piece.white ? 'white' : 'black';
-  return 'assets/pieces/premium_individual/mobile-readable/$side/$name.png';
+  return 'assets/pieces/premium_individual/mobile-readable/$folder/$side/$name.png';
 }
 
 String? premiumPieceAsset(String finish, ChessPiece piece) {

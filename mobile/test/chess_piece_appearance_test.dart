@@ -72,7 +72,7 @@ void main() {
       },
     );
 
-    test('every premium set uses the shared mobile-readable pieces', () async {
+    test('every premium set uses its own mobile-readable pieces', () async {
       final Set<String> assets = <String>{};
       for (final String finish in <String>[
         'crimson-crown-3d',
@@ -88,7 +88,7 @@ void main() {
               finish,
               ChessPiece(code, white),
             );
-            expect(asset, contains('/mobile-readable/'));
+            expect(asset, contains('/mobile-readable/$finish/'));
             expect(asset, endsWith('.png'));
             assets.add(asset!);
             final ByteData bytes = await rootBundle.load(asset);
@@ -96,7 +96,7 @@ void main() {
           }
         }
       }
-      expect(assets, hasLength(12));
+      expect(assets, hasLength(72));
     });
 
     test('all twelve Royal Collection boards use premium gameplay images', () {
@@ -210,7 +210,7 @@ void main() {
   });
 
   testWidgets(
-    'premium mobile pieces use shape contrast without letter badges',
+    'premium mobile pieces render one themed image without letter badges',
     (WidgetTester tester) async {
       ChessPieceAppearanceController.current.value = const ChessPieceAppearance(
         finish: 'obsidian-regal',
@@ -238,7 +238,8 @@ void main() {
         ),
       );
 
-      expect(find.byType(ImageFiltered), findsNWidgets(6));
+      expect(find.byType(ImageFiltered), findsNothing);
+      expect(find.byType(Image), findsNWidgets(6));
       for (final String letter in <String>['K', 'Q', 'R', 'B', 'N', 'P']) {
         expect(find.text(letter), findsNothing);
       }
