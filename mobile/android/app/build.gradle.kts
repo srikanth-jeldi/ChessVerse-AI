@@ -79,6 +79,15 @@ dependencies {
     // before Flutter is even started. Pin the newest line that still supports
     // this app's minSdk so AndroidX Startup uses the fixed implementation.
     implementation("androidx.work:work-runtime:2.9.1")
+
+    // Google Mobile Ads currently resolves HSDP 2.0.1, whose shim activity can
+    // crash when Play launches it without targetPackageName. Keep the patched
+    // Play library on the runtime classpath.
+    implementation("com.google.android.play:hsdp:2.1.0")
+
+    // Stay on Billing 8 for Flutter plugin compatibility while taking the
+    // latest 8.x fixes for ProxyBillingActivity/PendingIntent handling.
+    implementation("com.android.billingclient:billing:8.3.0")
 }
 
 kotlin {

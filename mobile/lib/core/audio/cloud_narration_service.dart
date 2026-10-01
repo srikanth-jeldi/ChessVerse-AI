@@ -139,7 +139,18 @@ class CloudNarrationService {
         language,
         cacheKey,
       );
-      download.whenComplete(() => _pendingAudio.remove(cacheKey));
+      // `whenComplete` creates a second Future. If the download fails and that
+      // Future is detached, Flutter reports an uncaught fatal error even when
+      // the caller correctly handles the original failure and falls back to
+      // local narration.
+      unawaited(
+        download.then<void>(
+          (_) => _pendingAudio.remove(cacheKey),
+          onError: (Object error, StackTrace stackTrace) {
+            _pendingAudio.remove(cacheKey);
+          },
+        ),
+      );
       return download;
     });
   }

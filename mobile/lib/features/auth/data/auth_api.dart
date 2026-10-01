@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
-
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/app_config.dart';
@@ -10,12 +10,15 @@ import 'auth_session_store.dart';
 class AuthApi {
   const AuthApi();
 
+  static final Future<_ClientDevice> _clientDevice = _loadClientDevice();
+
   Future<Map<String, dynamic>> post(
     String path,
     Map<String, String> body,
   ) async {
     final String installationId =
         await const AuthSessionStore().installationId();
+    final _ClientDevice device = await _clientDevice;
     final http.Response response;
     try {
       response = await http
@@ -24,7 +27,8 @@ class AuthApi {
             headers: <String, String>{
               'Content-Type': 'application/json',
               'X-Device-Id': installationId,
-              'X-Device-Name': 'ChessVerseAI app',
+              'X-Device-Name': device.name,
+              'X-Client-Platform': device.platform,
             },
             body: jsonEncode(body),
           )
@@ -42,10 +46,12 @@ class AuthApi {
       post('refresh', <String, String>{'refreshToken': refreshToken});
 
   Future<List<Map<String, dynamic>>> sessions(String token) async {
-    final http.Response response = await http.get(
-      Uri.parse('${AppConfig.apiBaseUrl}/api/auth/sessions'),
-      headers: <String, String>{'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 12));
+    final http.Response response = await http
+        .get(
+          Uri.parse('${AppConfig.apiBaseUrl}/api/auth/sessions'),
+          headers: <String, String>{'Authorization': 'Bearer $token'},
+        )
+        .timeout(const Duration(seconds: 12));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       _decode(response);
     }
@@ -57,28 +63,34 @@ class AuthApi {
   }
 
   Future<void> revokeSession(String token, String sessionId) async {
-    final http.Response response = await http.delete(
-      Uri.parse('${AppConfig.apiBaseUrl}/api/auth/sessions/$sessionId'),
-      headers: <String, String>{'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 12));
+    final http.Response response = await http
+        .delete(
+          Uri.parse('${AppConfig.apiBaseUrl}/api/auth/sessions/$sessionId'),
+          headers: <String, String>{'Authorization': 'Bearer $token'},
+        )
+        .timeout(const Duration(seconds: 12));
     _decode(response);
   }
 
   Future<void> logoutAll(String token) async {
-    final http.Response response = await http.post(
-      Uri.parse('${AppConfig.apiBaseUrl}/api/auth/logout-all'),
-      headers: <String, String>{'Authorization': 'Bearer $token'},
-    ).timeout(const Duration(seconds: 12));
+    final http.Response response = await http
+        .post(
+          Uri.parse('${AppConfig.apiBaseUrl}/api/auth/logout-all'),
+          headers: <String, String>{'Authorization': 'Bearer $token'},
+        )
+        .timeout(const Duration(seconds: 12));
     _decode(response);
   }
 
   Future<Map<String, dynamic>> currentPlayer(String token) async {
     final http.Response response;
     try {
-      response = await http.get(
-        Uri.parse('${AppConfig.apiBaseUrl}/api/auth/me'),
-        headers: <String, String>{'Authorization': 'Bearer $token'},
-      ).timeout(const Duration(seconds: 12));
+      response = await http
+          .get(
+            Uri.parse('${AppConfig.apiBaseUrl}/api/auth/me'),
+            headers: <String, String>{'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 12));
     } catch (_) {
       throw const AuthApiException(_connectionMessage);
     }
@@ -115,18 +127,18 @@ class AuthApi {
     String filename,
   ) async {
     try {
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('${AppConfig.apiBaseUrl}/api/auth/profile-photo'),
-      )
-        ..headers['Authorization'] = 'Bearer $token'
-        ..files.add(http.MultipartFile.fromBytes(
-          'file',
-          bytes,
-          filename: filename,
-        ));
-      final streamed =
-          await request.send().timeout(const Duration(seconds: 25));
+      final request =
+          http.MultipartRequest(
+              'POST',
+              Uri.parse('${AppConfig.apiBaseUrl}/api/auth/profile-photo'),
+            )
+            ..headers['Authorization'] = 'Bearer $token'
+            ..files.add(
+              http.MultipartFile.fromBytes('file', bytes, filename: filename),
+            );
+      final streamed = await request.send().timeout(
+        const Duration(seconds: 25),
+      );
       return _decode(await http.Response.fromStream(streamed));
     } on TimeoutException {
       throw const AuthApiException('The photo upload took too long.');
@@ -186,10 +198,12 @@ class AuthApi {
 
   Future<void> logout(String token) async {
     try {
-      await http.post(
-        Uri.parse('${AppConfig.apiBaseUrl}/api/auth/logout'),
-        headers: <String, String>{'Authorization': 'Bearer $token'},
-      ).timeout(const Duration(seconds: 8));
+      await http
+          .post(
+            Uri.parse('${AppConfig.apiBaseUrl}/api/auth/logout'),
+            headers: <String, String>{'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 8));
     } catch (_) {
       // Local session removal must still succeed when the server is offline.
     }
@@ -198,18 +212,22 @@ class AuthApi {
   Future<void> deleteAccount(String token) async {
     http.Response response;
     try {
-      response = await http.post(
-        Uri.parse('${AppConfig.apiBaseUrl}/api/auth/account/delete'),
-        headers: <String, String>{'Authorization': 'Bearer $token'},
-      ).timeout(const Duration(seconds: 15));
+      response = await http
+          .post(
+            Uri.parse('${AppConfig.apiBaseUrl}/api/auth/account/delete'),
+            headers: <String, String>{'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 15));
       // Older deployed backends expose only the canonical DELETE endpoint.
       // Keep Android compatible during rolling deployments without asking the
       // user to install a server-matched APK.
       if (response.statusCode == 404 || response.statusCode == 405) {
-        response = await http.delete(
-          Uri.parse('${AppConfig.apiBaseUrl}/api/auth/account'),
-          headers: <String, String>{'Authorization': 'Bearer $token'},
-        ).timeout(const Duration(seconds: 15));
+        response = await http
+            .delete(
+              Uri.parse('${AppConfig.apiBaseUrl}/api/auth/account'),
+              headers: <String, String>{'Authorization': 'Bearer $token'},
+            )
+            .timeout(const Duration(seconds: 15));
       }
     } on TimeoutException {
       throw const AuthApiException('The server took too long to respond.');
@@ -245,6 +263,52 @@ class AuthApi {
 
   static const String _connectionMessage =
       'Cannot reach ChessVerseAI. Check your connection and try again.';
+
+  static Future<_ClientDevice> _loadClientDevice() async {
+    try {
+      final DeviceInfoPlugin info = DeviceInfoPlugin();
+      if (kIsWeb) {
+        final WebBrowserInfo web = await info.webBrowserInfo;
+        return _ClientDevice(
+          '${web.browserName.name} browser',
+          web.platform ?? 'Web',
+        );
+      }
+      switch (defaultTargetPlatform) {
+        case TargetPlatform.android:
+          final AndroidDeviceInfo android = await info.androidInfo;
+          final String maker = android.manufacturer.trim();
+          final String model = android.model.trim();
+          return _ClientDevice(
+            <String>{
+              maker,
+              model,
+            }.where((String value) => value.isNotEmpty).join(' '),
+            'Android ${android.version.release} (SDK ${android.version.sdkInt})',
+          );
+        case TargetPlatform.iOS:
+          final IosDeviceInfo ios = await info.iosInfo;
+          return _ClientDevice(
+            '${ios.name} (${ios.model})',
+            'iOS ${ios.systemVersion}',
+          );
+        default:
+          return _ClientDevice(
+            'ChessVerseAI ${defaultTargetPlatform.name}',
+            defaultTargetPlatform.name,
+          );
+      }
+    } catch (_) {
+      return const _ClientDevice('Unknown device', 'Unknown');
+    }
+  }
+}
+
+class _ClientDevice {
+  const _ClientDevice(this.name, this.platform);
+
+  final String name;
+  final String platform;
 }
 
 String authFriendlyErrorMessage({
