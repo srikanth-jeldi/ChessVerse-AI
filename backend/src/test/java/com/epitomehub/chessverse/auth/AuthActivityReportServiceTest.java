@@ -14,7 +14,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 
 class AuthActivityReportServiceTest {
     @Test
-    void recordsOnlyPrivacySafeActivityMetadata() {
+    void recordsUsefulActivityMetadataWithoutRawSecrets() {
         AuthActivityEventRepository repository = mock(AuthActivityEventRepository.class);
         AuthActivityReportService service = new AuthActivityReportService(
                 mock(JdbcTemplate.class), repository, mock(JavaMailSender.class),
@@ -22,15 +22,20 @@ class AuthActivityReportServiceTest {
         PlayerAccount player = new PlayerAccount("public_user", "Public Player",
                 "private@example.com", "hash");
 
-        service.record(player, "REGISTERED", "GOOGLE");
+        service.record(player, "REGISTERED", "GOOGLE",
+                "Samsung SM-S921B", "Android 15", "IN", true);
 
         ArgumentCaptor<AuthActivityEvent> event = ArgumentCaptor.forClass(AuthActivityEvent.class);
         verify(repository).save(event.capture());
         assertThat(event.getValue().player).isSameAs(player);
         assertThat(event.getValue().eventType).isEqualTo("REGISTERED");
         assertThat(event.getValue().authMethod).isEqualTo("GOOGLE");
+        assertThat(event.getValue().deviceName).isEqualTo("Samsung SM-S921B");
+        assertThat(event.getValue().clientPlatform).isEqualTo("Android 15");
+        assertThat(event.getValue().countryCode).isEqualTo("IN");
+        assertThat(event.getValue().newDevice).isTrue();
         assertThat(Arrays.stream(AuthActivityEvent.class.getDeclaredFields()).map(Field::getName))
-                .doesNotContain("email", "ip", "deviceName", "location", "token");
+                .doesNotContain("password", "ip", "location", "token", "deviceId");
     }
 
     @Test

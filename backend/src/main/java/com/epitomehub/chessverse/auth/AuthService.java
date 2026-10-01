@@ -225,7 +225,7 @@ class AuthService {
         player.updatedAt = Instant.now();
         verifications.save(verification);
         players.save(player);
-        activityReports.record(player, "REGISTERED", "PASSWORD");
+        recordActivity(player, "REGISTERED", "PASSWORD");
         return createSession(player);
     }
 
@@ -269,7 +269,7 @@ class AuthService {
         player.lockedUntil = null;
         player.updatedAt = now;
         players.save(player);
-        activityReports.record(player, "LOGIN", "PASSWORD");
+        recordActivity(player, "LOGIN", "PASSWORD");
         return createSession(player);
     }
 
@@ -283,7 +283,7 @@ class AuthService {
             applyProviderPhoto(existingIdentity.player, google.photoUrl());
             existingIdentity.player.updatedAt = Instant.now();
             players.save(existingIdentity.player);
-            activityReports.record(existingIdentity.player, "LOGIN", "GOOGLE");
+            recordActivity(existingIdentity.player, "LOGIN", "GOOGLE");
             return createSession(existingIdentity.player);
         }
 
@@ -307,7 +307,7 @@ class AuthService {
         player.updatedAt = Instant.now();
         players.save(player);
         oauthIdentities.save(new OAuthIdentity("google", google.subject(), player));
-        activityReports.record(player, newRegistration ? "REGISTERED" : "LOGIN", "GOOGLE");
+        recordActivity(player, newRegistration ? "REGISTERED" : "LOGIN", "GOOGLE");
         return createSession(player);
     }
 
@@ -332,7 +332,7 @@ class AuthService {
             applyProviderPhoto(identity.player, google.photoUrl());
             identity.player.updatedAt = Instant.now();
             players.save(identity.player);
-            activityReports.record(identity.player, "LOGIN", "GOOGLE");
+            recordActivity(identity.player, "LOGIN", "GOOGLE");
             return createSession(identity.player);
         }
 
@@ -361,7 +361,7 @@ class AuthService {
             oauthIdentities.save(new OAuthIdentity("google", google.subject(), guest));
         }
         sessions.deleteByPlayerId(guest.id);
-        activityReports.record(guest, "REGISTERED", "GOOGLE");
+        recordActivity(guest, "REGISTERED", "GOOGLE");
         return createSession(guest);
     }
 
@@ -402,7 +402,7 @@ class AuthService {
             applyProviderPhoto(existingIdentity.player, photoUrl);
             existingIdentity.player.updatedAt = Instant.now();
             players.save(existingIdentity.player);
-            activityReports.record(existingIdentity.player, "LOGIN", provider.toUpperCase(Locale.ROOT));
+            recordActivity(existingIdentity.player, "LOGIN", provider.toUpperCase(Locale.ROOT));
             return createSession(existingIdentity.player);
         }
 
@@ -426,7 +426,7 @@ class AuthService {
                         "delete from email_verification where player_id = ?",
                         player.id);
                 oauthIdentities.save(new OAuthIdentity(provider, subject, player));
-                activityReports.record(player, "REGISTERED", provider.toUpperCase(Locale.ROOT));
+                recordActivity(player, "REGISTERED", provider.toUpperCase(Locale.ROOT));
                 return createSession(player);
             }
             throw new AuthException(
@@ -447,7 +447,7 @@ class AuthService {
         player.updatedAt = Instant.now();
         players.save(player);
         oauthIdentities.save(new OAuthIdentity(provider, subject, player));
-        activityReports.record(player, "REGISTERED", provider.toUpperCase(Locale.ROOT));
+        recordActivity(player, "REGISTERED", provider.toUpperCase(Locale.ROOT));
         return createSession(player);
     }
 
@@ -474,7 +474,7 @@ class AuthService {
             applyProviderPhoto(identity.player, photoUrl);
             identity.player.updatedAt = Instant.now();
             players.save(identity.player);
-            activityReports.record(identity.player, "LOGIN", provider.toUpperCase(Locale.ROOT));
+            recordActivity(identity.player, "LOGIN", provider.toUpperCase(Locale.ROOT));
             return createSession(identity.player);
         }
 
@@ -497,7 +497,7 @@ class AuthService {
         players.save(guest);
         if (identity == null) oauthIdentities.save(new OAuthIdentity(provider, subject, guest));
         sessions.deleteByPlayerId(guest.id);
-        activityReports.record(guest, "REGISTERED", provider.toUpperCase(Locale.ROOT));
+        recordActivity(guest, "REGISTERED", provider.toUpperCase(Locale.ROOT));
         return createSession(guest);
     }
 
@@ -655,6 +655,18 @@ class AuthService {
         return createSession(player, UUID.randomUUID(), device.id(), device.name());
     }
 
+    private void recordActivity(PlayerAccount player, String eventType, String authMethod) {
+        DeviceDetails device = requestDevice();
+        boolean newDevice = device.id() == null || sessions
+                .findAllByPlayerIdOrderByLastUsedAtDesc(player.id).stream()
+                .noneMatch(session -> device.id().equals(session.deviceId));
+        activityReports.record(player, eventType, authMethod, device.name(),
+                requestHeader("X-Client-Platform", 120, "Unknown"),
+                requestHeader("CF-IPCountry", 8,
+                        requestHeader("X-Country-Code", 8, "Unknown")),
+                newDevice);
+    }
+
     private AuthResponse createSession(PlayerAccount player, UUID familyId,
             String deviceId, String deviceName) {
         String token = randomToken();
@@ -679,6 +691,14 @@ class AuthService {
             return new DeviceDetails(id, name == null ? "Unknown device" : name);
         }
         return new DeviceDetails(null, "Unknown device");
+    }
+
+    private String requestHeader(String name, int maxLength, String fallback) {
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
+            String value = cleanHeader(attributes.getRequest().getHeader(name), maxLength);
+            return value == null ? fallback : value;
+        }
+        return fallback;
     }
 
     private String cleanHeader(String value, int maxLength) {

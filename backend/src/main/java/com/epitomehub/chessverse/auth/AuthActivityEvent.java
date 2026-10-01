@@ -25,6 +25,18 @@ class AuthActivityEvent {
     @Column(name = "auth_method", nullable = false, length = 24)
     String authMethod;
 
+    @Column(name = "device_name", length = 160)
+    String deviceName;
+
+    @Column(name = "client_platform", length = 120)
+    String clientPlatform;
+
+    @Column(name = "country_code", length = 8)
+    String countryCode;
+
+    @Column(name = "new_device", nullable = false)
+    boolean newDevice;
+
     @Column(name = "created_at", nullable = false)
     Instant createdAt;
 
@@ -33,12 +45,16 @@ class AuthActivityEvent {
 
     protected AuthActivityEvent() {}
 
-    AuthActivityEvent(PlayerAccount player, String eventType, String authMethod) {
+    AuthActivityEvent(PlayerAccount player, String eventType, String authMethod,
+            String deviceName, String clientPlatform, String countryCode, boolean newDevice) {
         this.id = UUID.randomUUID();
         this.player = player;
         this.eventType = eventType;
         this.authMethod = authMethod;
+        this.deviceName = deviceName;
+        this.clientPlatform = clientPlatform;
+        this.countryCode = countryCode;
+        this.newDevice = newDevice;
         this.createdAt = Instant.now();
     }
 }
-
