@@ -99,7 +99,7 @@ chessverse:
     mail-logo-url: ${MAIL_LOGO_URL:https://chessverseai.com/landing-assets/app-icon.png}
     activity-report:
       enabled: ${AUTH_ACTIVITY_REPORT_ENABLED:true}
-      recipient: ${AUTH_ACTIVITY_REPORT_EMAIL:cheseverseai@gmail.com}
+      recipient: ${AUTH_ACTIVITY_REPORT_EMAIL:chessverseai@gmail.com}
       interval-ms: ${AUTH_ACTIVITY_REPORT_INTERVAL_MS:60000}
       initial-delay-ms: ${AUTH_ACTIVITY_REPORT_INITIAL_DELAY_MS:10000}
   web:

@@ -41,7 +41,7 @@ class AuthActivityReportService {
             AuthActivityEventRepository events,
             JavaMailSender mailSender,
             @Value("${chessverse.auth.mail-from:}") String from,
-            @Value("${chessverse.auth.activity-report.recipient:cheseverseai@gmail.com}") String recipient,
+            @Value("${chessverse.auth.activity-report.recipient:chessverseai@gmail.com}") String recipient,
             @Value("${chessverse.auth.activity-report.enabled:true}") boolean enabled) {
         this.jdbc = jdbc;
         this.events = events;

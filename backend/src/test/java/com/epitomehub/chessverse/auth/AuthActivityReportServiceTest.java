@@ -18,7 +18,7 @@ class AuthActivityReportServiceTest {
         AuthActivityEventRepository repository = mock(AuthActivityEventRepository.class);
         AuthActivityReportService service = new AuthActivityReportService(
                 mock(JdbcTemplate.class), repository, mock(JavaMailSender.class),
-                "from@example.com", "cheseverseai@gmail.com", true);
+                "from@example.com", "chessverseai@gmail.com", true);
         PlayerAccount player = new PlayerAccount("public_user", "Public Player",
                 "private@example.com", "hash");
 
@@ -42,7 +42,7 @@ class AuthActivityReportServiceTest {
     void neutralizesSpreadsheetFormulaInjection() {
         AuthActivityReportService service = new AuthActivityReportService(
                 mock(JdbcTemplate.class), mock(AuthActivityEventRepository.class),
-                mock(JavaMailSender.class), "from@example.com", "cheseverseai@gmail.com", true);
+                mock(JavaMailSender.class), "from@example.com", "chessverseai@gmail.com", true);
 
         assertThat(service.csvCell("=HYPERLINK(\"https://bad.example\")"))
                 .isEqualTo("\"'=HYPERLINK(\"\"https://bad.example\"\")\"");
