@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:chessverse_ai/core/chess_piece_appearance.dart';
 import 'package:chessverse_ai/main.dart';
 import 'package:flutter/material.dart';
@@ -90,10 +92,21 @@ void main() {
             );
             expect(asset, contains('/mobile-readable/$finish/'));
             expect(asset, endsWith('.png'));
-            assets.add(asset!);
-            final ByteData bytes = await rootBundle.load(asset);
-            expect(bytes.lengthInBytes, greaterThan(50000), reason: asset);
-          }
+              assets.add(asset!);
+              final ByteData bytes = await rootBundle.load(asset);
+              expect(bytes.lengthInBytes, greaterThan(10000), reason: asset);
+              final ui.Codec codec = await ui.instantiateImageCodec(
+                bytes.buffer.asUint8List(
+                  bytes.offsetInBytes,
+                  bytes.lengthInBytes,
+                ),
+              );
+              final ui.FrameInfo frame = await codec.getNextFrame();
+              expect(frame.image.width, 300, reason: asset);
+              expect(frame.image.height, 300, reason: asset);
+              frame.image.dispose();
+              codec.dispose();
+            }
         }
       }
       expect(assets, hasLength(72));
