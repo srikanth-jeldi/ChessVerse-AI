@@ -642,6 +642,14 @@ class _AuthScreenState extends State<AuthScreen> {
           SizedBox(height: dense ? 8 : 14),
         ],
         _premiumSocialButtons(),
+        if (widget.guestUpgradeToken != null) ...<Widget>[
+          SizedBox(height: dense ? 10 : 14),
+          OutlinedButton.icon(
+            onPressed: _loading ? null : _loginGuestWithEmail,
+            icon: const Icon(Icons.mail_outline_rounded),
+            label: const Text('LOGIN WITH EMAIL'),
+          ),
+        ],
         if (widget.guestUpgradeToken == null) ...<Widget>[
           SizedBox(height: dense ? 8 : 18),
           if (!dense) const _SecurityNote(),
@@ -1835,6 +1843,114 @@ class _AuthScreenState extends State<AuthScreen> {
         setState(() => _loading = false);
       }
     }
+  }
+
+  Future<void> _loginGuestWithEmail() async {
+    final TextEditingController identityController = TextEditingController();
+    final TextEditingController passwordController = TextEditingController();
+    String? dialogError;
+    bool submitting = false;
+    final Map<String, dynamic>? data = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (BuildContext dialogContext) => StatefulBuilder(
+        builder: (BuildContext context, StateSetter setDialogState) =>
+            AlertDialog(
+              scrollable: true,
+              title: const Text('Login with email'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  const Text(
+                    'Sign in to your existing ChessVerseAI account. Your guest profile remains safe on this device.',
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: identityController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      labelText: 'User ID or email',
+                      prefixIcon: Icon(Icons.mail_outline_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: Icon(Icons.lock_outline_rounded),
+                    ),
+                  ),
+                  if (dialogError != null) ...<Widget>[
+                    const SizedBox(height: 12),
+                    Text(
+                      dialogError!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: submitting
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: submitting
+                      ? null
+                      : () async {
+                          final String identity = identityController.text
+                              .trim();
+                          if (identity.isEmpty ||
+                              passwordController.text.isEmpty) {
+                            setDialogState(() {
+                              dialogError =
+                                  'Enter your user ID/email and password.';
+                            });
+                            return;
+                          }
+                          setDialogState(() {
+                            submitting = true;
+                            dialogError = null;
+                          });
+                          try {
+                            final Map<String, dynamic> response = await _authApi
+                                .post('login', <String, String>{
+                                  'identity': identity,
+                                  'password': passwordController.text,
+                                });
+                            if (dialogContext.mounted) {
+                              Navigator.of(dialogContext).pop(response);
+                            }
+                          } on AuthApiException catch (error) {
+                            if (dialogContext.mounted) {
+                              setDialogState(() {
+                                submitting = false;
+                                dialogError = error.message;
+                              });
+                            }
+                          }
+                        },
+                  child: submitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Login'),
+                ),
+              ],
+            ),
+      ),
+    );
+    identityController.dispose();
+    passwordController.dispose();
+    if (data != null && mounted) await _completeAuthentication(data);
   }
 
   Future<void> _showPasswordResetDialog(String email) async {

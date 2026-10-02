@@ -224,7 +224,11 @@ class _MobileHomeState extends State<_MobileHome> {
                     const SizedBox(height: 8),
                     const _BrandHero(compact: true),
                     const SizedBox(height: 10),
-                    _ProgressPulse(games: widget.activityGames),
+                    ValueListenableBuilder<int>(
+                      valueListenable: LocalGameArchive.activityRevision,
+                      builder: (_, _, _) =>
+                          _ProgressPulse(games: widget.activityGames),
+                    ),
                     const SizedBox(height: 10),
                     _HomeHeroCarousel(
                       controller: _heroController,
@@ -530,7 +534,13 @@ class _WideHomeState extends State<_WideHome> {
                           wide: true,
                         ),
                         SizedBox(height: compact ? 10 : 16),
-                        _ProgressPulse(wide: true, games: widget.activityGames),
+                        ValueListenableBuilder<int>(
+                          valueListenable: LocalGameArchive.activityRevision,
+                          builder: (_, _, _) => _ProgressPulse(
+                            wide: true,
+                            games: widget.activityGames,
+                          ),
+                        ),
                         SizedBox(height: compact ? 10 : 16),
                         _HomeHeroCarousel(
                           controller: _heroController,
@@ -809,7 +819,7 @@ class _ProgressPulse extends StatelessWidget {
       coins: games.length * 8 + wins * 18,
       level: level,
       levelProgress: ((xp - (level - 1) * 120) / 120).clamp(0, 1),
-      streak: 0,
+      streak: LocalGameArchive.stats().dailyStreak,
       badges: const <RewardBadge>[],
     );
   }

@@ -524,6 +524,7 @@ class AuthService {
         GuestInstallation installation = guestInstallations
                 .findWithPlayerByInstallationHash(installationHash)
                 .orElse(null);
+        boolean newGuest = installation == null;
         PlayerAccount player;
         if (installation == null) {
             String number = availableGuestNumber();
@@ -541,6 +542,7 @@ class AuthService {
             installation.lastSeenAt = Instant.now();
         }
         guestInstallations.save(installation);
+        recordActivity(player, newGuest ? "REGISTERED" : "LOGIN", "GUEST");
         sessions.deleteByPlayerId(player.id);
         return createSession(player);
     }
@@ -638,6 +640,7 @@ class AuthService {
         jdbcTemplate.update("delete from oauth_identity where player_id = ?", player.id);
         jdbcTemplate.update("delete from password_reset where player_id = ?", player.id);
         jdbcTemplate.update("delete from email_verification where player_id = ?", player.id);
+        jdbcTemplate.update("delete from auth_activity_event where player_id = ?", player.id);
         players.delete(player);
         players.flush();
     }

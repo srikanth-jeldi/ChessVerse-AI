@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -16,8 +17,8 @@ class AuthApi {
     String path,
     Map<String, String> body,
   ) async {
-    final String installationId =
-        await const AuthSessionStore().installationId();
+    final String installationId = await const AuthSessionStore()
+        .installationId();
     final _ClientDevice device = await _clientDevice;
     final http.Response response;
     try {
@@ -29,6 +30,7 @@ class AuthApi {
               'X-Device-Id': installationId,
               'X-Device-Name': device.name,
               'X-Client-Platform': device.platform,
+              'X-Country-Code': device.countryCode,
             },
             body: jsonEncode(body),
           )
@@ -55,8 +57,9 @@ class AuthApi {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       _decode(response);
     }
-    final Object? decoded =
-        response.body.isEmpty ? null : jsonDecode(response.body);
+    final Object? decoded = response.body.isEmpty
+        ? null
+        : jsonDecode(response.body);
     return decoded is List
         ? decoded.whereType<Map<String, dynamic>>().toList()
         : <Map<String, dynamic>>[];
@@ -246,8 +249,9 @@ class AuthApi {
         decoded = null;
       }
     }
-    final Map<String, dynamic> data =
-        decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    final Map<String, dynamic> data = decoded is Map<String, dynamic>
+        ? decoded
+        : <String, dynamic>{};
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AuthApiException(
         authFriendlyErrorMessage(
@@ -272,6 +276,7 @@ class AuthApi {
         return _ClientDevice(
           '${web.browserName.name} browser',
           web.platform ?? 'Web',
+          _deviceCountryCode(),
         );
       }
       switch (defaultTargetPlatform) {
@@ -285,30 +290,41 @@ class AuthApi {
               model,
             }.where((String value) => value.isNotEmpty).join(' '),
             'Android ${android.version.release} (SDK ${android.version.sdkInt})',
+            _deviceCountryCode(),
           );
         case TargetPlatform.iOS:
           final IosDeviceInfo ios = await info.iosInfo;
           return _ClientDevice(
             '${ios.name} (${ios.model})',
             'iOS ${ios.systemVersion}',
+            _deviceCountryCode(),
           );
         default:
           return _ClientDevice(
             'ChessVerseAI ${defaultTargetPlatform.name}',
             defaultTargetPlatform.name,
+            _deviceCountryCode(),
           );
       }
     } catch (_) {
-      return const _ClientDevice('Unknown device', 'Unknown');
+      return _ClientDevice('Unknown device', 'Unknown', _deviceCountryCode());
     }
+  }
+
+  static String _deviceCountryCode() {
+    final String? code = PlatformDispatcher.instance.locale.countryCode;
+    return code == null || code.trim().isEmpty
+        ? 'Unknown'
+        : code.trim().toUpperCase();
   }
 }
 
 class _ClientDevice {
-  const _ClientDevice(this.name, this.platform);
+  const _ClientDevice(this.name, this.platform, this.countryCode);
 
   final String name;
   final String platform;
+  final String countryCode;
 }
 
 String authFriendlyErrorMessage({

@@ -972,7 +972,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _loadCoachLanguage() async {
-    final String language = await AppLanguageController.selectedCode();
+    final String language = await AppLanguageController.effectiveCode();
     if (mounted) {
       setState(() {
         _coachLanguageCode =
@@ -985,7 +985,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Future<void> _chooseGameCoachLanguage() async {
     final String? language = await selectAndSaveAiLanguage(context);
     if (language != null && mounted) {
-      setState(() => _coachLanguageCode = language);
+      final String effective = await AppLanguageController.effectiveCode();
+      if (mounted) setState(() => _coachLanguageCode = effective);
     }
   }
 

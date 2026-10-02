@@ -194,11 +194,6 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
     if (code != null && mounted) setState(() => _languageCode = code);
   }
 
-  Future<void> _chooseLanguage() async {
-    final String? code = await selectAndSaveAiLanguage(context);
-    if (code != null && mounted) setState(() => _languageCode = code);
-  }
-
   @override
   void dispose() {
     AppLanguageController.effectiveLanguageChanges.removeListener(
@@ -274,30 +269,10 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            if (!wide) ...<Widget>[
-              const SizedBox(height: 9),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: <Widget>[
-                  _LessonLanguageAction(
-                    languageCode: _languageCode,
-                    onPressed: _chooseLanguage,
-                  ),
-                ],
-              ),
-            ],
           ],
         ),
         backgroundColor: const Color(0xE6071827),
-        actions: <Widget>[
-          if (wide) ...<Widget>[
-            _LessonLanguageAction(
-              languageCode: _languageCode,
-              onPressed: _chooseLanguage,
-            ),
-            const SizedBox(width: 8),
-          ],
-        ],
+        actions: const <Widget>[],
       ),
       body: ResponsivePage(
         maxWidth: wide ? 1240 : null,
