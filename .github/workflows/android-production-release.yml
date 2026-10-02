@@ -160,6 +160,7 @@ jobs:
           PY
 
       - name: Upload production bundle
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: chessverse-${{ inputs.release_name }}-${{ github.sha }}
