@@ -100,8 +100,8 @@ chessverse:
     activity-report:
       enabled: ${AUTH_ACTIVITY_REPORT_ENABLED:true}
       recipient: ${AUTH_ACTIVITY_REPORT_EMAIL:chessverseai@gmail.com}
-      interval-ms: ${AUTH_ACTIVITY_REPORT_INTERVAL_MS:60000}
-      initial-delay-ms: ${AUTH_ACTIVITY_REPORT_INITIAL_DELAY_MS:10000}
+      cron: ${AUTH_ACTIVITY_REPORT_CRON:0 30 23 * * *}
+      zone: ${AUTH_ACTIVITY_REPORT_ZONE:Asia/Kolkata}
   web:
     allowed-origin-patterns: ${ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
 

@@ -4,6 +4,7 @@ import jakarta.mail.internet.MimeMessage;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -71,8 +72,8 @@ class AuthActivityReportService {
     }
 
     @Scheduled(
-            fixedDelayString = "${chessverse.auth.activity-report.interval-ms:60000}",
-            initialDelayString = "${chessverse.auth.activity-report.initial-delay-ms:10000}")
+            cron = "${chessverse.auth.activity-report.cron:0 30 23 * * *}",
+            zone = "${chessverse.auth.activity-report.zone:Asia/Kolkata}")
     @Transactional
     public void sendPendingReport() {
         if (!enabled || !StringUtils.hasText(from) || !StringUtils.hasText(recipient)) return;
@@ -102,8 +103,6 @@ class AuthActivityReportService {
                 result.getString("client_platform"), result.getString("country_code"),
                 result.getString("app_version"), result.getString("installation_fingerprint"),
                 result.getBoolean("new_device")));
-        if (rows.isEmpty()) return;
-
         byte[] attachment;
         try {
             attachment = workbook(rows);
@@ -116,8 +115,9 @@ class AuthActivityReportService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
             helper.setFrom(from);
             helper.setTo(recipient);
-            helper.setSubject("ChessVerseAI registration and login Excel report • " + rows.size() + " events");
-            helper.setText("Attached are retained historical or newly recorded ChessVerseAI registrations and logins. "
+            helper.setSubject("ChessVerseAI daily login report • "
+                    + LocalDate.now(REPORT_ZONE) + " • " + rows.size() + " events");
+            helper.setText("Attached is the daily ChessVerseAI registration and login report. "
                     + "New-device logins are marked. Installation IDs are one-way pseudonymous fingerprints. "
                     + "Passwords, OTPs, tokens, raw IP addresses and precise locations are never included.");
             helper.addAttachment("chessverse-auth-activity.xlsx", new ByteArrayResource(attachment),
