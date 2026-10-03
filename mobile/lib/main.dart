@@ -514,6 +514,12 @@ class _SplashGateState extends State<SplashGate> {
       // A valid unexpired local session keeps the user signed in while the
       // network is temporarily unavailable.
     }
+    try {
+      await syncCosmeticLoadoutForSession(restoredSession.token);
+    } on Object {
+      // The sync resets pieces to normal before the network request. Never
+      // retain another account's premium selection while offline.
+    }
     if (!mounted) return;
     await LocalGameArchive.activateIdentity(
       await _sessionStore.progressIdentity(restoredSession),
@@ -920,6 +926,15 @@ class _SplashGateState extends State<SplashGate> {
           onAuthenticated: (ChessVerseAuthResult result) async {
             final StoredAuthSession session = result.session;
             if (!mounted) return;
+            if (result.token != null) {
+              try {
+                await syncCosmeticLoadoutForSession(result.token!);
+              } on Object {
+                // Normal pieces remain active when the catalog is offline.
+              }
+            } else {
+              await resetToDefaultPieceAppearance();
+            }
             await LocalGameArchive.activateIdentity(
               await _sessionStore.progressIdentity(session),
             );
@@ -2035,10 +2050,7 @@ class _SplashGateState extends State<SplashGate> {
     await const AcademyProgressStore().clearCurrentIdentity();
     await LocalGameArchive.clearDeviceUserData();
     await sessionStore.clear();
-    await const AppPreferences().writeString(
-      'pieceFinish',
-      'classic-staunton',
-    );
+    await const AppPreferences().writeString('pieceFinish', 'classic-staunton');
     await const AppPreferences().writeString('pieceStyle', 'Premium 3D');
     ChessPieceAppearanceController.current.value = const ChessPieceAppearance();
     LocalGameArchive.onCloudRelevantChange = null;

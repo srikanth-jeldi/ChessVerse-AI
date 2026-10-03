@@ -81,7 +81,7 @@ class ShopService {
         if(postgres){
             jdbc.update("""
                 insert into player_cosmetic_loadout(player_id,board_item_id,pieces_item_id,updated_at)
-                values (?, '41000000-0000-0000-0000-000000000001','42000000-0000-0000-0000-000000000001',?)
+                values (?, '41000000-0000-0000-0000-000000000001',null,?)
                 on conflict (player_id) do nothing
                 """,playerId,now);
             return;
@@ -89,7 +89,7 @@ class ShopService {
         jdbc.update("""
                 merge into player_cosmetic_loadout target
                 using (values (?, '41000000-0000-0000-0000-000000000001',
-                                  '42000000-0000-0000-0000-000000000001',?))
+                                  null,?))
                       source(player_id,board_item_id,pieces_item_id,updated_at)
                 on target.player_id=source.player_id
                 when not matched then insert(player_id,board_item_id,pieces_item_id,updated_at)

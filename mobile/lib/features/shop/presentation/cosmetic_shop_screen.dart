@@ -30,6 +30,43 @@ ChessPieceAppearance appearanceForEquippedPieceSet(
   String finish,
 ) => current.copyWith(style: ChessPieceVisualStyle.premium3d, finish: finish);
 
+Future<void> resetToDefaultPieceAppearance() async {
+  await const AppPreferences().writeString('pieceFinish', 'classic-staunton');
+  await const AppPreferences().writeString('pieceStyle', 'Premium 3D');
+  ChessPieceAppearanceController.current.value = appearanceForEquippedPieceSet(
+    ChessPieceAppearanceController.current.value,
+    'classic-staunton',
+  );
+}
+
+Future<void> applyServerCosmeticLoadout(ShopDto shop) async {
+  // Always clear a previous account/browser selection first. Premium pieces
+  // are restored only from an explicitly equipped server loadout.
+  await resetToDefaultPieceAppearance();
+  for (final CosmeticItemDto item in shop.items.where((e) => e.equipped)) {
+    switch (item.category) {
+      case 'BOARD':
+        await const AppPreferences().writeString('boardTheme', item.name);
+      case 'PIECES':
+        await const AppPreferences().writeString('pieceFinish', item.slug);
+        await const AppPreferences().writeString('pieceStyle', 'Premium 3D');
+        ChessPieceAppearanceController.current.value =
+            appearanceForEquippedPieceSet(
+              ChessPieceAppearanceController.current.value,
+              item.slug,
+            );
+      case 'FRAME':
+        await const AppPreferences().writeString('profileBadge', item.slug);
+    }
+  }
+}
+
+Future<void> syncCosmeticLoadoutForSession(String token) async {
+  await resetToDefaultPieceAppearance();
+  final ShopDto shop = await const ShopApi().load(token);
+  await applyServerCosmeticLoadout(shop);
+}
+
 class CosmeticShopScreen extends StatefulWidget {
   const CosmeticShopScreen({
     required this.token,
@@ -72,7 +109,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   Future<void> _load() async {
     try {
       final value = await _api.load(widget.token);
-      await _syncEquippedCosmetics(value);
+      await applyServerCosmeticLoadout(value);
       EconomyRewardStatus? rewards;
       try {
         rewards = await _rewardsApi.status(widget.token);
@@ -93,40 +130,6 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
           _busy = false;
           _error = e is ShopException ? e.message : 'Shop unavailable.';
         });
-      }
-    }
-  }
-
-  Future<void> _syncEquippedCosmetics(ShopDto shop) async {
-    final bool hasEquippedPieces = shop.items.any(
-      (CosmeticItemDto item) => item.category == 'PIECES' && item.equipped,
-    );
-    if (!hasEquippedPieces) {
-      await const AppPreferences().writeString(
-        'pieceFinish',
-        'classic-staunton',
-      );
-      await const AppPreferences().writeString('pieceStyle', 'Premium 3D');
-      ChessPieceAppearanceController.current.value =
-          appearanceForEquippedPieceSet(
-            ChessPieceAppearanceController.current.value,
-            'classic-staunton',
-          );
-    }
-    for (final CosmeticItemDto item in shop.items.where((e) => e.equipped)) {
-      switch (item.category) {
-        case 'BOARD':
-          await const AppPreferences().writeString('boardTheme', item.name);
-        case 'PIECES':
-          await const AppPreferences().writeString('pieceFinish', item.slug);
-          await const AppPreferences().writeString('pieceStyle', 'Premium 3D');
-          ChessPieceAppearanceController.current.value =
-              appearanceForEquippedPieceSet(
-                ChessPieceAppearanceController.current.value,
-                item.slug,
-              );
-        case 'FRAME':
-          await const AppPreferences().writeString('profileBadge', item.slug);
       }
     }
   }
@@ -157,7 +160,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       }
       // Persist what the server actually equipped. This keeps web/mobile and
       // the account loadout in sync after both purchases and equip actions.
-      await _syncEquippedCosmetics(value);
+      await applyServerCosmeticLoadout(value);
       if (mounted) {
         setState(() {
           _shop = value;

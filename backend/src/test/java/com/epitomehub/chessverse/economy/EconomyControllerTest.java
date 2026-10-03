@@ -118,6 +118,25 @@ class EconomyControllerTest {
     }
 
     @Test
+    void premiumPiecesRequireExplicitEquipForANewPlayer() throws Exception {
+        String authorization = "Bearer " + guest(UUID.randomUUID().toString());
+        String premiumPieces = "42000000-0000-0000-0000-000000000001";
+
+        mockMvc.perform(get("/api/v1/shop").header("Authorization", authorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.category == 'PIECES' && @.equipped == true)]").isEmpty());
+        mockMvc.perform(put("/api/v1/shop/loadout/PIECES").header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"itemId\":\"" + premiumPieces + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.id == '" + premiumPieces + "')].equipped").value(true));
+        mockMvc.perform(put("/api/v1/shop/loadout/PIECES").header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"itemId\":null}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.category == 'PIECES' && @.equipped == true)]").isEmpty());
+    }
+
+    @Test
     void realMoneyOrderUsesServerPriceAndIsIdempotent() throws Exception {
         String token = guest(UUID.randomUUID().toString());
         String authorization = "Bearer " + token;

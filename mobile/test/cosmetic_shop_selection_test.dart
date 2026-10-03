@@ -1,6 +1,7 @@
 import 'package:chessverse_ai/features/shop/data/shop_api.dart';
 import 'package:chessverse_ai/features/shop/presentation/cosmetic_shop_screen.dart';
 import 'package:chessverse_ai/core/chess_piece_appearance.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 CosmeticItemDto item({
@@ -21,6 +22,11 @@ CosmeticItemDto item({
 );
 
 void main() {
+  setUp(() {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{});
+    ChessPieceAppearanceController.current.value = const ChessPieceAppearance();
+  });
+
   test(
     'every equipped collection board or piece set can use the app default',
     () {
@@ -100,5 +106,38 @@ void main() {
     expect(equipped.style, ChessPieceVisualStyle.premium3d);
     expect(equipped.finish, 'ruby-emperor');
     expect(equipped.size, ChessPieceVisualSize.extraLarge);
+  });
+
+  test('server loadout uses premium pieces only while explicitly equipped', () async {
+    ShopDto loadout({required bool equipped}) => ShopDto(
+      playerId: 'player',
+      wallet: const WalletDto(coins: 0, diamonds: 0),
+      items: <CosmeticItemDto>[
+        item(
+          id: 'crimson-crown-3d',
+          category: 'PIECES',
+          currency: 'FREE',
+          equipped: equipped,
+        ),
+      ],
+    );
+
+    await applyServerCosmeticLoadout(loadout(equipped: false));
+    expect(
+      ChessPieceAppearanceController.current.value.finish,
+      'classic-staunton',
+    );
+
+    await applyServerCosmeticLoadout(loadout(equipped: true));
+    expect(
+      ChessPieceAppearanceController.current.value.finish,
+      'crimson-crown-3d',
+    );
+
+    await applyServerCosmeticLoadout(loadout(equipped: false));
+    expect(
+      ChessPieceAppearanceController.current.value.finish,
+      'classic-staunton',
+    );
   });
 }
