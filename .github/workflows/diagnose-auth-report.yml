@@ -41,13 +41,13 @@ jobs:
             test -n "$MAIL_USERNAME" && echo "MAIL_USERNAME=set" || echo "MAIL_USERNAME=missing"
             test -n "$MAIL_PASSWORD" && echo "MAIL_PASSWORD=set" || echo "MAIL_PASSWORD=missing"
             test -n "$MAIL_FROM" && echo "MAIL_FROM=set" || echo "MAIL_FROM=missing"
-          '
+          ' </dev/null
           echo -n 'pending_excel_events='
           "${compose[@]}" exec -T postgres sh -c \
-            'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select count(*) from auth_activity_event where excel_reported_at is null"'
+            'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select count(*) from auth_activity_event where excel_reported_at is null"' </dev/null
           echo -n 'reported_excel_events='
           "${compose[@]}" exec -T postgres sh -c \
-            'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select count(*) from auth_activity_event where excel_reported_at is not null"'
+            'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select count(*) from auth_activity_event where excel_reported_at is not null"' </dev/null
           "${compose[@]}" logs --since=30m backend 2>&1 \
             | grep -E 'Auth activity report|Could not create auth activity workbook|Could not record privacy-safe auth activity' \
             | tail -n 30 || true
