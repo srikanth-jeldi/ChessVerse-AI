@@ -19,7 +19,7 @@ final class CloudProgressDtos {
             @Min(0) @Max(4) int chessLevel,
             @Min(0) @Max(5) int avatar,
             Instant profileUpdatedAt,
-            @Min(0) int dailyStreak,
+            @Min(0) @Max(3650) int dailyStreak,
             @Min(0) Integer openingWeakness,
             @Min(0) Integer kingSafetyWeakness,
             @Min(0) Integer hangingPiecesWeakness,

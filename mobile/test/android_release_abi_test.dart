@@ -17,4 +17,16 @@ void main() {
       contains('--target-platform android-arm,android-arm64,android-x64'),
     );
   });
+
+  test('Facebook login avoids broken native ProxyAuth activities', () {
+    final sources = <String>[
+      File('lib/features/auth/presentation/auth_screen.dart').readAsStringSync(),
+      File('lib/features/profile/presentation/linked_accounts_screen.dart')
+          .readAsStringSync(),
+      File('lib/main_parts/game_screen.dart').readAsStringSync(),
+    ];
+    for (final source in sources) {
+      expect(source, contains('loginBehavior: LoginBehavior.webOnly'));
+    }
+  });
 }

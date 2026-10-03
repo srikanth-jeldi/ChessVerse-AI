@@ -89,6 +89,33 @@ class AuthController {
         return authService.guestLogin(request);
     }
 
+    @GetMapping("/linked-accounts")
+    LinkedAccountsResponse linkedAccounts(
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        return authService.linkedAccounts(bearerToken(authorization));
+    }
+
+    @PostMapping("/linked-accounts/google")
+    LinkedAccountsResponse linkGoogle(
+            @RequestHeader(name = "Authorization", required = false) String authorization,
+            @Valid @RequestBody LinkGoogleRequest request) {
+        return authService.linkGoogle(bearerToken(authorization), request);
+    }
+
+    @PostMapping("/linked-accounts/facebook")
+    LinkedAccountsResponse linkFacebook(
+            @RequestHeader(name = "Authorization", required = false) String authorization,
+            @Valid @RequestBody LinkFacebookRequest request) {
+        return authService.linkFacebook(bearerToken(authorization), request);
+    }
+
+    @DeleteMapping("/linked-accounts/{provider}")
+    LinkedAccountsResponse unlinkProvider(
+            @RequestHeader(name = "Authorization", required = false) String authorization,
+            @PathVariable String provider) {
+        return authService.unlinkProvider(bearerToken(authorization), provider);
+    }
+
     @PostMapping("/password/forgot")
     @ResponseStatus(HttpStatus.ACCEPTED)
     MessageResponse forgotPassword(@Valid @RequestBody EmailRequest request) {

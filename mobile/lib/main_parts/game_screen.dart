@@ -2011,6 +2011,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (kIsWeb) await ensureFacebookSdkReady();
       final LoginResult result = await FacebookAuth.instance.login(
         permissions: const <String>['email', 'public_profile'],
+        loginBehavior: LoginBehavior.webOnly,
       );
       if (result.status == LoginStatus.cancelled) {
         if (mounted) {
@@ -2409,6 +2410,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     await const AcademyProgressStore().clearCurrentIdentity();
     await LocalGameArchive.clearDeviceUserData();
     await _sessionStore.clear();
+    await const AppPreferences().writeString(
+      'pieceFinish',
+      'classic-staunton',
+    );
+    await const AppPreferences().writeString('pieceStyle', 'Premium 3D');
+    ChessPieceAppearanceController.current.value = const ChessPieceAppearance();
     if (!mounted) return;
     setState(() {
       _authToken = null;
@@ -2824,7 +2831,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
     _gameResultTitle = 'Challenge complete';
-    _gameResultDetail = _dailyUnlockMessage();
+    final int streak = LocalGameArchive.stats().dailyStreak;
+    _gameResultDetail =
+        '$streak ${streak == 1 ? 'day' : 'days'} streak. '
+        '${_dailyUnlockMessage()}';
     _resultVisible = true;
     _coachNote = _dailyUnlockMessage();
   }
@@ -2836,10 +2846,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       LocalGameArchive.markDailyChallengeComplete(_dailyChallenge.id);
     }
     _gameResultTitle = 'Challenge complete';
-    _gameResultDetail = _dailyUnlockMessage();
+    final int streak = LocalGameArchive.stats().dailyStreak;
+    final bool milestoneBonus =
+        firstCompletion && streak > 0 && streak % 7 == 0;
+    _gameResultDetail =
+        '$streak ${streak == 1 ? 'day' : 'days'} streak. '
+        '${milestoneBonus ? '+100 streak bonus coins! ' : ''}'
+        '${_dailyUnlockMessage()}';
     _resultVisible = true;
     _coachNote =
         "Brilliant! Today's ${_dailyDifficulty.label.toLowerCase()} challenge is complete. "
+        '$streak ${streak == 1 ? 'day' : 'days'} streak. '
+        '${milestoneBonus ? '+100 streak bonus coins! ' : ''}'
         '${_dailyUnlockMessage()}';
     if (firstCompletion) {
       _archiveFinishedGame();

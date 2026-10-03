@@ -610,7 +610,11 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         SizedBox(height: dense ? 6 : 10),
         Text(
-          _loginMode ? 'Login to continue your games,\nratings and progress' : 'Create your ChessVerseAI identity\nand keep your progress secure',
+          widget.guestUpgradeToken != null
+              ? 'Choose Email, Google or Facebook. Your guest progress stays safe.'
+              : _loginMode
+              ? 'Login to continue your games,\nratings and progress'
+              : 'Create your ChessVerseAI identity\nand keep your progress secure',
           style: TextStyle(
             color: Color(0xFF9EACC2),
             fontSize: dense ? 13 : 16,
@@ -1181,7 +1185,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         const SizedBox(height: 18),
                         if (widget.guestUpgradeToken != null) ...<Widget>[
                           const Text(
-                            'Link Google or Facebook to keep this guest profile, rating and match history across devices. Your existing progress will not be deleted.',
+                            'Use Email, Google or Facebook to secure this guest profile, rating and match history across devices. Your existing progress will not be deleted.',
                             style: TextStyle(
                               color: AppColors.textSecondary,
                               height: 1.45,
@@ -1366,6 +1370,10 @@ class _AuthScreenState extends State<AuthScreen> {
       if (kIsWeb) await ensureFacebookSdkReady();
       final LoginResult result = await FacebookAuth.instance.login(
         permissions: const <String>['email', 'public_profile'],
+        // Some Facebook app variants expose ProxyAuth in package metadata but
+        // cannot launch it, which crashes the native SDK before it can fall
+        // back. Browser OAuth is consistent across Android devices.
+        loginBehavior: LoginBehavior.webOnly,
       );
       if (result.status == LoginStatus.cancelled) return;
       if (result.status != LoginStatus.success || result.accessToken == null) {

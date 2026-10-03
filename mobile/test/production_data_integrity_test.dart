@@ -51,6 +51,14 @@ void main() {
   });
 
   group('daily streak integrity', () {
+    test('awards 100 coins once per seven-day milestone', () {
+      expect(dailyStreakBonusCoins(0), 0);
+      expect(dailyStreakBonusCoins(6), 0);
+      expect(dailyStreakBonusCoins(7), 100);
+      expect(dailyStreakBonusCoins(13), 100);
+      expect(dailyStreakBonusCoins(14), 200);
+    });
+
     test('starts at one and increments on the next UTC calendar day', () {
       expect(
         dailyStreakAfterCompletion(

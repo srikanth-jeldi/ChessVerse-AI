@@ -57,6 +57,7 @@ import 'features/notifications/data/notification_api.dart';
 import 'features/notifications/presentation/notification_center_screen.dart';
 import 'features/leaderboard/presentation/leaderboard_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
+import 'features/profile/presentation/linked_accounts_screen.dart';
 import 'features/missions/presentation/missions_screen.dart';
 import 'features/shop/presentation/cosmetic_shop_screen.dart';
 import 'features/shop/data/economy_rewards_api.dart';
@@ -1072,6 +1073,7 @@ class _SplashGateState extends State<SplashGate> {
         profilePhotoUrl: _photoUrl,
         isGuest: _isGuest,
         onSecureProgress: _isGuest ? () => _secureGuestProgress(context) : null,
+        onLinkedAccounts: !_isGuest ? () => _openLinkedAccounts(context) : null,
         onDisplayNameChanged: _updateDisplayName,
         onProfilePhotoChanged: _updateProfilePhoto,
         onLanguage: () => _openLanguageCentre(context),
@@ -2033,6 +2035,12 @@ class _SplashGateState extends State<SplashGate> {
     await const AcademyProgressStore().clearCurrentIdentity();
     await LocalGameArchive.clearDeviceUserData();
     await sessionStore.clear();
+    await const AppPreferences().writeString(
+      'pieceFinish',
+      'classic-staunton',
+    );
+    await const AppPreferences().writeString('pieceStyle', 'Premium 3D');
+    ChessPieceAppearanceController.current.value = const ChessPieceAppearance();
     LocalGameArchive.onCloudRelevantChange = null;
     if (!mounted) return;
 
@@ -2165,12 +2173,20 @@ class _SplashGateState extends State<SplashGate> {
             }
             Navigator.of(upgradeContext).pop();
             ScaffoldMessenger.of(currentRouteContext).showSnackBar(
-              const SnackBar(
-                content: Text('Progress secured with Google successfully.'),
-              ),
+              const SnackBar(content: Text('Progress secured successfully.')),
             );
           },
         ),
+      ),
+    );
+  }
+
+  Future<void> _openLinkedAccounts(BuildContext context) async {
+    final StoredAuthSession? session = await _sessionStore.read();
+    if (session == null || !context.mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => LinkedAccountsScreen(token: session.token),
       ),
     );
   }
@@ -2202,6 +2218,7 @@ class _SplashGateState extends State<SplashGate> {
       await academyStore.writeCompleted(
         LocalGameArchive.completedAcademyLessonIds,
       );
+      await _refreshCoinBalance(token);
     } on CloudProgressException {
       // Local progress stays authoritative until the next successful sync.
     } finally {

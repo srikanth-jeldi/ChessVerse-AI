@@ -98,6 +98,21 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   }
 
   Future<void> _syncEquippedCosmetics(ShopDto shop) async {
+    final bool hasEquippedPieces = shop.items.any(
+      (CosmeticItemDto item) => item.category == 'PIECES' && item.equipped,
+    );
+    if (!hasEquippedPieces) {
+      await const AppPreferences().writeString(
+        'pieceFinish',
+        'classic-staunton',
+      );
+      await const AppPreferences().writeString('pieceStyle', 'Premium 3D');
+      ChessPieceAppearanceController.current.value =
+          appearanceForEquippedPieceSet(
+            ChessPieceAppearanceController.current.value,
+            'classic-staunton',
+          );
+    }
     for (final CosmeticItemDto item in shop.items.where((e) => e.equipped)) {
       switch (item.category) {
         case 'BOARD':
@@ -120,6 +135,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     setState(() => _busy = true);
     try {
       final bool restoreDefault = _canRestoreDefault(item);
+      final bool purchasing = !restoreDefault && !item.owned;
       final ShopDto value = restoreDefault
           ? await _api.useDefault(widget.token, item.category)
           : item.owned
@@ -152,6 +168,8 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
             content: Text(
               restoreDefault
                   ? 'Default ${item.category == 'BOARD' ? 'board' : 'pieces'} restored • Ready for your next game'
+                  : purchasing
+                  ? '${item.name} purchased • Tap Equip to use it'
                   : '${item.name} equipped • Ready for your next game',
             ),
             behavior: SnackBarBehavior.floating,

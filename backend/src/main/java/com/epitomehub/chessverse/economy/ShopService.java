@@ -33,14 +33,16 @@ class ShopService {
     @Transactional
     ShopDtos.ShopDto purchase(AuthenticatedPlayer player,UUID itemId){
         Item item=item(itemId,true);
-        if(owned(player.id(),itemId)||"FREE".equals(item.currency)) return equipIfFree(player,item);
+        if(owned(player.id(),itemId)) return load(player);
+        if("FREE".equals(item.currency)) return equipIfFree(player,item);
         economy.spend(player.id(),item.currency,item.price,"COSMETIC_PURCHASE",
                 "cosmetic:"+itemId,"Purchased "+item.name);
         jdbc.update("insert into player_cosmetic_inventory(player_id,item_id,acquired_at) values(?,?,?)",
                 player.id(),itemId,Timestamp.from(Instant.now()));
-        // A purchase is an explicit choice of appearance. Equip it immediately
-        // so the next game uses the board/pieces/badge the player just bought.
-        return equip(player,item.category,item.id);
+        // Buying grants permanent ownership only. Rendering changes solely via
+        // the explicit Equip action, so premium pieces never replace the
+        // normal set just because a user purchased or restored an item.
+        return load(player);
     }
 
     @Transactional

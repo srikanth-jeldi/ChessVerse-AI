@@ -30,15 +30,17 @@ final class OnlineDtos {
     }
 
     record QueueRequest(
-            @Min(3) @Max(15) int timeControlMinutes,
+            @Min(3) @Max(15) Integer timeControlMinutes,
             @Pattern(regexp = "^(WORLDWIDE|COUNTRY)$") String region,
-            @Min(0) @Max(800) int ratingRange,
-            @Min(100) @Max(500) int entryCoins,
+            @Min(0) @Max(800) Integer ratingRange,
+            @Min(100) @Max(500) Integer entryCoins,
             @Pattern(regexp = "^(EXCELLENT|STANDARD|LIMITED)$") String connectionQuality) {
         QueueRequest {
-            if (timeControlMinutes == 0) timeControlMinutes = 10;
+            // Older clients omit newer preferences; normalize before validation.
+            if (timeControlMinutes == null || timeControlMinutes == 0) timeControlMinutes = 10;
             if (region == null || region.isBlank()) region = "WORLDWIDE";
-            if (entryCoins == 0) entryCoins = 100;
+            if (ratingRange == null) ratingRange = 0;
+            if (entryCoins == null || entryCoins == 0) entryCoins = 100;
             if (connectionQuality == null || connectionQuality.isBlank()) connectionQuality = "STANDARD";
         }
 

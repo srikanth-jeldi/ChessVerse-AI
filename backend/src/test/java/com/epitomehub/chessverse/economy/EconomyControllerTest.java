@@ -75,16 +75,17 @@ class EconomyControllerTest {
     }
 
     @Test
-    void purchaseIsPermanentAndDuplicateRequestDoesNotChargeTwice() throws Exception {
+    void purchaseIsPermanentButOnlyExplicitEquipChangesTheLoadout() throws Exception {
         String token = guest(UUID.randomUUID().toString());
         String authorization = "Bearer " + token;
         String item = "41000000-0000-0000-0000-000000000099";
         mockMvc.perform(post("/api/v1/shop/items/" + item + "/purchase").header("Authorization", authorization))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.wallet.coins").value(400))
                 .andExpect(jsonPath("$.items[1].owned").value(true))
-                .andExpect(jsonPath("$.items[1].equipped").value(true));
+                .andExpect(jsonPath("$.items[1].equipped").value(false));
         mockMvc.perform(post("/api/v1/shop/items/" + item + "/purchase").header("Authorization", authorization))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.wallet.coins").value(400));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.wallet.coins").value(400))
+                .andExpect(jsonPath("$.items[1].equipped").value(false));
         mockMvc.perform(put("/api/v1/shop/loadout/BOARD").header("Authorization", authorization)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"itemId\":\"" + item + "\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.items[1].equipped").value(true));

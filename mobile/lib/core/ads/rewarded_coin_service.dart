@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'ad_sdk_initializer.dart';
+import '../config/app_config.dart';
 
 class RewardedCoinService {
   RewardedCoinService._();
@@ -13,7 +14,20 @@ class RewardedCoinService {
   static const String _androidTest = 'ca-app-pub-3940256099942544/5224354917';
   static const String _iosTest = 'ca-app-pub-3940256099942544/1712485313';
 
-  bool get supported => AdSdkInitializer.supported;
+  String get _adUnitId => defaultTargetPlatform == TargetPlatform.android
+      ? (kReleaseMode && AppConfig.admobAndroidRewardedId.isNotEmpty
+            ? AppConfig.admobAndroidRewardedId
+            : _androidTest)
+      : (kReleaseMode && AppConfig.admobIosRewardedId.isNotEmpty
+            ? AppConfig.admobIosRewardedId
+            : _iosTest);
+
+  bool get supported =>
+      AdSdkInitializer.supported &&
+      (!kReleaseMode ||
+          (defaultTargetPlatform == TargetPlatform.android
+              ? AppConfig.admobAndroidRewardedId.isNotEmpty
+              : AppConfig.admobIosRewardedId.isNotEmpty));
 
   Future<void> load() async {
     if (!supported || _loading || _ad != null) return;
@@ -23,9 +37,7 @@ class RewardedCoinService {
       return;
     }
     RewardedAd.load(
-      adUnitId: defaultTargetPlatform == TargetPlatform.android
-          ? _androidTest
-          : _iosTest,
+      adUnitId: _adUnitId,
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {

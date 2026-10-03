@@ -46,6 +46,28 @@ class OtpMailService implements OtpDelivery {
                 "Didn’t request a password reset? You can safely ignore this email. Your password remains unchanged.");
     }
 
+    @Override
+    public void sendSecurityNotice(
+            String email, String displayName, String subject, String notice) {
+        if (!StringUtils.hasText(from)) return;
+        String safeName = escapeHtml(StringUtils.hasText(displayName) ? displayName.trim() : "Player");
+        String safeNotice = escapeHtml(notice);
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, StandardCharsets.UTF_8.name());
+            helper.setFrom(from);
+            helper.setTo(email);
+            helper.setSubject(subject);
+            helper.setText("Hello " + displayName + ",\n\n" + notice
+                    + "\n\nIf this was not you, reset your password and contact ChessVerseAI support.",
+                    "<p>Hello " + safeName + ",</p><p>" + safeNotice
+                    + "</p><p>If this was not you, reset your password and contact ChessVerseAI support.</p>");
+            mailSender.send(message);
+        } catch (MessagingException | RuntimeException ignored) {
+            // A security notification must never roll back a successful identity link.
+        }
+    }
+
     private void sendCode(
             String email, String subject, String displayName, String code,
             String heading, String heroCopy, String bodyCopy, String warning) {

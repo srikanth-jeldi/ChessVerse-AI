@@ -100,6 +100,53 @@ class AuthApi {
     return _decode(response);
   }
 
+  Future<Map<String, dynamic>> linkedAccounts(String token) =>
+      _authorizedJson('GET', 'linked-accounts', token);
+
+  Future<Map<String, dynamic>> linkGoogle(
+          String token, String idToken, [String? password]) =>
+      _authorizedJson('POST', 'linked-accounts/google', token,
+          <String, String>{
+            'idToken': idToken,
+            'password': ?password,
+          });
+
+  Future<Map<String, dynamic>> linkFacebook(
+          String token, String accessToken, [String? password]) =>
+      _authorizedJson('POST', 'linked-accounts/facebook', token,
+          <String, String>{
+            'accessToken': accessToken,
+            'password': ?password,
+          });
+
+  Future<Map<String, dynamic>> unlinkProvider(String token, String provider) =>
+      _authorizedJson('DELETE', 'linked-accounts/$provider', token);
+
+  Future<Map<String, dynamic>> _authorizedJson(
+    String method,
+    String path,
+    String token, [
+    Map<String, String>? body,
+  ]) async {
+    final Uri uri = Uri.parse('${AppConfig.apiBaseUrl}/api/auth/$path');
+    final Map<String, String> headers = <String, String>{
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+    try {
+      final http.Response response = switch (method) {
+        'GET' => await http.get(uri, headers: headers),
+        'DELETE' => await http.delete(uri, headers: headers),
+        _ => await http.post(uri, headers: headers, body: jsonEncode(body)),
+      };
+      return _decode(response, path: path);
+    } on AuthApiException {
+      rethrow;
+    } catch (_) {
+      throw const AuthApiException(_connectionMessage);
+    }
+  }
+
   Future<Map<String, dynamic>> updateProfile(
     String token,
     String displayName,

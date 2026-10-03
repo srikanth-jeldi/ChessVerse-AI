@@ -16,8 +16,8 @@ abstract final class AppConfig {
   static String get apiBaseUrl => _configuredApiBaseUrl.isNotEmpty
       ? _configuredApiBaseUrl
       : kReleaseMode
-          ? 'https://api.chessverseai.com'
-          : 'http://127.0.0.1:8080';
+      ? 'https://api.chessverseai.com'
+      : 'http://127.0.0.1:8080';
 
   static const String webBaseUrl = String.fromEnvironment(
     'WEB_BASE_URL',
@@ -26,14 +26,12 @@ abstract final class AppConfig {
 
   static const String googleWebClientId = String.fromEnvironment(
     'GOOGLE_WEB_CLIENT_ID',
-    defaultValue:
-        '823774384869-32hoj2oa79ftoe9geq78h4iklcnmd0rl.apps.googleusercontent.com',
+    defaultValue: '823774384869-32hoj2oa79ftoe9geq78h4iklcnmd0rl.apps.googleusercontent.com',
   );
 
   static const String googleAndroidClientId = String.fromEnvironment(
     'GOOGLE_ANDROID_CLIENT_ID',
-    defaultValue:
-        '823774384869-a820693rjfthu04ltg72b9a5jifkirt8.apps.googleusercontent.com',
+    defaultValue: '823774384869-a820693rjfthu04ltg72b9a5jifkirt8.apps.googleusercontent.com',
   );
 
   static const String googleIosClientId = String.fromEnvironment(
@@ -77,6 +75,23 @@ abstract final class AppConfig {
   );
 
   static const bool arenaPreview = bool.fromEnvironment('ARENA_PREVIEW');
+
+  static const String admobAndroidInterstitialId = String.fromEnvironment(
+    'ADMOB_ANDROID_INTERSTITIAL_ID',
+    defaultValue: '',
+  );
+  static const String admobIosInterstitialId = String.fromEnvironment(
+    'ADMOB_IOS_INTERSTITIAL_ID',
+    defaultValue: '',
+  );
+  static const String admobAndroidRewardedId = String.fromEnvironment(
+    'ADMOB_ANDROID_REWARDED_ID',
+    defaultValue: '',
+  );
+  static const String admobIosRewardedId = String.fromEnvironment(
+    'ADMOB_IOS_REWARDED_ID',
+    defaultValue: '',
+  );
 
   static bool get usesDummySocialConfig =>
       googleWebClientId.startsWith('replace-') ||

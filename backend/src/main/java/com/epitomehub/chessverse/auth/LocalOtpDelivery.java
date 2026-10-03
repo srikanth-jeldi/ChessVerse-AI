@@ -21,4 +21,9 @@ class LocalOtpDelivery implements OtpDelivery {
     public void sendPasswordResetCode(String email, String displayName, String code) {
         log.info("Local ChessVerse password reset requested");
     }
+
+    @Override
+    public void sendSecurityNotice(String email, String displayName, String subject, String message) {
+        log.info("Local ChessVerse security notice requested: {}", subject);
+    }
 }

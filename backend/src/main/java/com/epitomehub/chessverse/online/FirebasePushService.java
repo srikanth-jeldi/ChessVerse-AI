@@ -8,6 +8,9 @@ import com.google.firebase.messaging.AndroidConfig;
 import com.google.firebase.messaging.AndroidConfig.Priority;
 import com.google.firebase.messaging.Message;
 import java.io.FileInputStream;
+import java.time.Clock;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -18,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 class FirebasePushService {
+    static final ZoneId NOTIFICATION_ZONE = ZoneId.of("Asia/Kolkata");
     private static final Logger log = LoggerFactory.getLogger(FirebasePushService.class);
     private final JdbcTemplate jdbc;
     private FirebaseMessaging messaging;
@@ -51,7 +55,7 @@ class FirebasePushService {
 
     private void send(UUID playerId, UUID notificationId, String title, String body,
                       String actionType, UUID actionId, String encryptedBody) {
-        if (messaging == null) return;
+        if (messaging == null || isQuietHours(Clock.systemUTC())) return;
         for (String token : jdbc.queryForList(
                 "select token from push_notification_device where player_id=? and enabled=true",
                 String.class, playerId)) {
@@ -78,5 +82,10 @@ class FirebasePushService {
                 log.warn("FCM delivery failed for player {}: {}", playerId, exception.getMessage());
             }
         }
+    }
+
+    static boolean isQuietHours(Clock clock) {
+        LocalTime time = LocalTime.now(clock.withZone(NOTIFICATION_ZONE));
+        return !time.isBefore(LocalTime.of(22, 0)) || time.isBefore(LocalTime.of(7, 0));
     }
 }

@@ -66,6 +66,34 @@ Future<void> _showPushMessage(RemoteMessage message) async {
   final String language = AppLanguageController.resolveCode(languageCode);
   if (language == 'en') return (title, body);
   final String action = actionType.toUpperCase();
+  if (action == 'DAILY_PUZZLE') {
+    if (language == 'te') {
+      return ('రోజువారీ పజిల్', 'ఈరోజు చెస్ ఛాలెంజ్ సిద్ధంగా ఉంది. పూర్తి చేసి నీ స్ట్రీక్‌ను పెంచుకో!');
+    }
+    return (
+      localizeLiveCoach('DAILY PUZZLE', language),
+      localizeLiveCoach('Find the strongest move', language),
+    );
+  }
+  if (action == 'DAILY_GAME_REMINDER') {
+    if (language == 'te') {
+      return ('నీ బోర్డ్ ఎదురుచూస్తోంది', 'ఈరోజు ఒక క్విక్ గేమ్ ఆడి నీ మొదటి స్ట్రీక్‌ను ప్రారంభించు!');
+    }
+    return (
+      localizeLiveCoach('ONLINE BATTLE', language),
+      localizeLiveCoach('Play a live opponent', language),
+    );
+  }
+  if (action.startsWith('STREAK_REMINDER_DAY_')) {
+    final int day = int.tryParse(action.split('_').last) ?? 1;
+    if (language == 'te') return _teluguStreakReminder(day);
+  }
+  if (action == 'STREAK_MILESTONE' && language == 'te') {
+    return (
+      '🎉 కాంగ్రాట్స్ ఛాంప్!',
+      'నువ్వు సక్సెస్‌ఫుల్‌గా 7 రోజుల స్ట్రీక్ పూర్తి చేశావు. ఇదే జోష్‌తో రేపటి నుండి కొత్త వారం స్టార్ట్ చేద్దాం!',
+    );
+  }
   final String? person = RegExp(
     r'^(.+?)\s+(?:wants|challenged|accepted|declined|is)\b',
   ).firstMatch(body)?.group(1)?.trim();
@@ -102,6 +130,19 @@ Future<void> _showPushMessage(RemoteMessage message) async {
     title == 'ChessVerseAI' ? title : localizeLiveCoach(title, language),
     localizeLiveCoach(body, language),
   );
+}
+
+(String, String) _teluguStreakReminder(int day) {
+  const List<(String, String)> copy = <(String, String)>[
+    ('', ''),
+    ('🔥 నీ మొదటి స్ట్రీక్ ప్రమాదంలో ఉంది బ్రో!', 'నువ్వు నిన్న సూపర్ గేమ్ ఆడావు. ఈరోజు కూడా ఒక ఆట ఆడి నీ డే-2 స్ట్రీక్‌ని అందుకో!'),
+    ('⚡ జోరు మీదున్నావ్ బ్రో!', '2 రోజుల స్ట్రీక్ పూర్తయింది. ఈరోజు నీ AI కోచ్‌తో ఆడి 3వ రోజుకి చేరుకో!'),
+    ('🧠 నువ్వు సీరియస్ ప్లేయర్‌వి బ్రో!', 'నీ 3 రోజుల స్ట్రీక్ కంటిన్యూ చేయడానికి ఇదో మంచి ఛాన్స్. ఇప్పుడే బోర్డ్ ఓపెన్ చెయ్!'),
+    ('🏆 హాఫ్-వే మార్క్ దాటేశావ్!', '4 రోజుల స్ట్రీక్ అంటే మామూలు విషయం కాదు. గ్రాండ్ మాస్టర్ లాగా కన్సిస్టెన్సీ మెయింటైన్ చెయ్!'),
+    ('🚀 ఇంకా రెండు రోజులే బ్రో!', 'నీ 5-Day Streak ని కోల్పోవద్దు. ఈరోజు ఒక క్విక్ మ్యాచ్ ఆడి రికార్డ్ వైపు అడుగులేయ్!'),
+    ('👑 వారం పూర్తి కావడానికి ఒక్క అడుగు!', 'రేపటితో నీ వారం రోజుల స్ట్రీక్ పూర్తవుతుంది. ఈరోజు మ్యాచ్ అస్సలు మిస్ అవ్వద్దు బ్రో!'),
+  ];
+  return copy[day.clamp(1, 6)];
 }
 
 class FirebasePushService {

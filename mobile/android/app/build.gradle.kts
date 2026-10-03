@@ -11,6 +11,9 @@ plugins {
 
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
+val admobAndroidAppId = providers.gradleProperty("ADMOB_ANDROID_APP_ID")
+    .orElse(providers.environmentVariable("ADMOB_ANDROID_APP_ID"))
+    .orElse("ca-app-pub-3940256099942544~3347511713")
 if (keystorePropertiesFile.exists()) {
     FileInputStream(keystorePropertiesFile).use {
         keystoreProperties.load(it)
@@ -36,6 +39,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["admobApplicationId"] = admobAndroidAppId.get()
         ndk {
             // Keep every ABI served by Play aligned with a matching Flutter
             // engine. Some 64-bit-capable phones still run a 32-bit Android

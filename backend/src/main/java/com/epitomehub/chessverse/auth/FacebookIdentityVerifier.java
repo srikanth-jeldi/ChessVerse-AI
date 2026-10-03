@@ -59,6 +59,7 @@ class FacebookIdentityVerifier {
                     + encode(accessToken));
             String subject = profile.path("id").asText();
             String email = profile.path("email").asText();
+            boolean emailAvailable = !email.isBlank();
             if (!subject.equals(debug.path("user_id").asText())) {
                 log.warn("Facebook profile subject did not match the validated token user");
                 throw invalidToken();
@@ -72,7 +73,7 @@ class FacebookIdentityVerifier {
             }
             String name = profile.path("name").asText(null);
             String photo = profile.path("picture").path("data").path("url").asText(null);
-            return new VerifiedFacebookIdentity(subject, email, name, photo);
+            return new VerifiedFacebookIdentity(subject, email, name, photo, emailAvailable);
         } catch (AuthException exception) {
             throw exception;
         } catch (IOException | InterruptedException | RuntimeException exception) {
@@ -135,6 +136,11 @@ class FacebookIdentityVerifier {
         return new AuthException(HttpStatus.UNAUTHORIZED, "Facebook sign-in could not be verified.");
     }
 
-    record VerifiedFacebookIdentity(String subject, String email, String displayName, String photoUrl) {
+    record VerifiedFacebookIdentity(String subject, String email, String displayName,
+            String photoUrl, boolean emailAvailable) {
+        VerifiedFacebookIdentity(String subject, String email, String displayName, String photoUrl) {
+            this(subject, email, displayName, photoUrl,
+                    email != null && !email.endsWith(".invalid"));
+        }
     }
 }

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'ad_sdk_initializer.dart';
+import '../config/app_config.dart';
 
 class PostMatchAdService {
   PostMatchAdService._();
@@ -11,6 +12,14 @@ class PostMatchAdService {
   static final PostMatchAdService instance = PostMatchAdService._();
   static const String _androidTest = 'ca-app-pub-3940256099942544/1033173712';
   static const String _iosTest = 'ca-app-pub-3940256099942544/4411468910';
+
+  String get _adUnitId => defaultTargetPlatform == TargetPlatform.android
+      ? (kReleaseMode && AppConfig.admobAndroidInterstitialId.isNotEmpty
+            ? AppConfig.admobAndroidInterstitialId
+            : _androidTest)
+      : (kReleaseMode && AppConfig.admobIosInterstitialId.isNotEmpty
+            ? AppConfig.admobIosInterstitialId
+            : _iosTest);
 
   InterstitialAd? _ad;
   bool _loading = false;
@@ -20,7 +29,12 @@ class PostMatchAdService {
   DateTime? _lastShownAt;
   final Set<String> _handledMatches = <String>{};
 
-  bool get supported => AdSdkInitializer.supported;
+  bool get supported =>
+      AdSdkInitializer.supported &&
+      (!kReleaseMode ||
+          (defaultTargetPlatform == TargetPlatform.android
+              ? AppConfig.admobAndroidInterstitialId.isNotEmpty
+              : AppConfig.admobIosInterstitialId.isNotEmpty));
 
   Future<void> load() async {
     if (!supported || _loading || _ad != null) return;
@@ -30,9 +44,7 @@ class PostMatchAdService {
       return;
     }
     InterstitialAd.load(
-      adUnitId: defaultTargetPlatform == TargetPlatform.android
-          ? _androidTest
-          : _iosTest,
+      adUnitId: _adUnitId,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (InterstitialAd ad) {

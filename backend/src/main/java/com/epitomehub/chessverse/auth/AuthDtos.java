@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 final class AuthDtos {
@@ -46,6 +47,12 @@ final class AuthDtos {
     record FacebookLoginRequest(@NotBlank String accessToken) {
     }
 
+    record LinkGoogleRequest(@NotBlank String idToken, @Size(max = 72) String password) {
+    }
+
+    record LinkFacebookRequest(@NotBlank String accessToken, @Size(max = 72) String password) {
+    }
+
     record GuestLoginRequest(
             @NotBlank
             @Pattern(regexp = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$")
@@ -71,6 +78,13 @@ final class AuthDtos {
 
     record DeviceSessionResponse(UUID id, String deviceName, Instant createdAt,
             Instant lastUsedAt, boolean current) {
+    }
+
+    record LinkedAccountResponse(String provider, boolean linked) {
+    }
+
+    record LinkedAccountsResponse(boolean emailLoginAvailable,
+            List<LinkedAccountResponse> providers) {
     }
 
     record PlayerResponse(

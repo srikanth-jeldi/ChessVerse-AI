@@ -289,6 +289,10 @@ class AuthService {
 
         String email = normalizeEmail(google.email());
         PlayerAccount player = players.findByEmailIgnoreCase(email).orElse(null);
+        if (player != null && !player.verified) {
+            throw new AuthException(HttpStatus.FORBIDDEN,
+                    "Verify your ChessVerseAI email with the OTP before linking Google.");
+        }
         boolean newRegistration = player == null || !player.verified;
         if (player == null) {
             String displayName = google.displayName() == null || google.displayName().isBlank()
@@ -307,6 +311,9 @@ class AuthService {
         player.updatedAt = Instant.now();
         players.save(player);
         oauthIdentities.save(new OAuthIdentity("google", google.subject(), player));
+        if (!newRegistration) {
+            sendProviderSecurityNotice(player, "Google", "linked");
+        }
         recordActivity(player, newRegistration ? "REGISTERED" : "LOGIN", "GOOGLE");
         return createSession(player);
     }
@@ -374,7 +381,8 @@ class AuthService {
                 facebook.subject(),
                 facebook.email(),
                 facebook.displayName(),
-                facebook.photoUrl());
+                facebook.photoUrl(),
+                facebook.emailAvailable());
     }
 
     @Transactional
@@ -395,7 +403,8 @@ class AuthService {
             String subject,
             String rawEmail,
             String rawDisplayName,
-            String photoUrl) {
+            String photoUrl,
+            boolean providerEmailVerified) {
         OAuthIdentity existingIdentity =
                 oauthIdentities.findByProviderAndSubject(provider, subject).orElse(null);
         if (existingIdentity != null) {
@@ -415,24 +424,19 @@ class AuthService {
             // player behind a permanent 409. Never silently link a provider
             // to an already verified account.
             if (!player.verified) {
-                player.guestAccount = false;
-                player.verified = true;
-                player.failedLoginAttempts = 0;
-                player.lockedUntil = null;
+                throw new AuthException(HttpStatus.FORBIDDEN,
+                        "Verify your ChessVerseAI email with the OTP before linking "
+                                + providerDisplayName(provider) + ".");
+            }
+            if (providerEmailVerified) {
+                oauthIdentities.save(new OAuthIdentity(provider, subject, player));
                 applyProviderPhoto(player, photoUrl);
                 player.updatedAt = Instant.now();
                 players.save(player);
-                jdbcTemplate.update(
-                        "delete from email_verification where player_id = ?",
-                        player.id);
-                oauthIdentities.save(new OAuthIdentity(provider, subject, player));
-                recordActivity(player, "REGISTERED", provider.toUpperCase(Locale.ROOT));
+                sendProviderSecurityNotice(player, providerDisplayName(provider), "linked");
+                recordActivity(player, "LOGIN", provider.toUpperCase(Locale.ROOT));
                 return createSession(player);
             }
-            throw new AuthException(
-                    HttpStatus.CONFLICT,
-                    "An account already exists for this email. Sign in to that account before linking "
-                            + providerDisplayName(provider) + ".");
         }
         String displayName = oauthDisplayName(rawDisplayName, email);
         player = new PlayerAccount(
@@ -449,6 +453,120 @@ class AuthService {
         oauthIdentities.save(new OAuthIdentity(provider, subject, player));
         recordActivity(player, "REGISTERED", provider.toUpperCase(Locale.ROOT));
         return createSession(player);
+    }
+
+    @Transactional(readOnly = true)
+    LinkedAccountsResponse linkedAccounts(String token) {
+        return linkedAccountsFor(requireSession(token).player);
+    }
+
+    @Transactional
+    LinkedAccountsResponse linkGoogle(String token, LinkGoogleRequest request) {
+        PlayerAccount player = requireSession(token).player;
+        if (player.guestAccount) {
+            throw new AuthException(HttpStatus.CONFLICT,
+                    "Use Secure Guest Progress to upgrade this guest profile.");
+        }
+        GoogleIdentityVerifier.VerifiedGoogleIdentity identity =
+                googleIdentityVerifier.verify(request.idToken());
+        String email = normalizeEmail(identity.email());
+        requirePasswordForMismatchedEmail(player, email, request.password(), "Google");
+        linkProviderIdentity(player, "google", identity.subject());
+        applyProviderPhoto(player, identity.photoUrl());
+        players.save(player);
+        return linkedAccountsFor(player);
+    }
+
+    @Transactional
+    LinkedAccountsResponse linkFacebook(String token, LinkFacebookRequest request) {
+        PlayerAccount player = requireSession(token).player;
+        if (player.guestAccount) {
+            throw new AuthException(HttpStatus.CONFLICT,
+                    "Use Secure Guest Progress to upgrade this guest profile.");
+        }
+        FacebookIdentityVerifier.VerifiedFacebookIdentity identity =
+                facebookIdentityVerifier.verify(request.accessToken());
+        if (identity.emailAvailable()) {
+            requirePasswordForMismatchedEmail(
+                    player, normalizeEmail(identity.email()), request.password(), "Facebook");
+        }
+        linkProviderIdentity(player, "facebook", identity.subject());
+        applyProviderPhoto(player, identity.photoUrl());
+        players.save(player);
+        return linkedAccountsFor(player);
+    }
+
+    @Transactional
+    LinkedAccountsResponse unlinkProvider(String token, String rawProvider) {
+        PlayerAccount player = requireSession(token).player;
+        String provider = rawProvider == null ? "" : rawProvider.trim().toLowerCase(Locale.ROOT);
+        if (!provider.equals("google") && !provider.equals("facebook")) {
+            throw new AuthException(HttpStatus.BAD_REQUEST, "Unsupported login provider.");
+        }
+        OAuthIdentity identity = oauthIdentities.findByProviderAndPlayer_Id(provider, player.id)
+                .orElseThrow(() -> new AuthException(HttpStatus.NOT_FOUND,
+                        providerDisplayName(provider) + " is not linked."));
+        boolean emailLoginAvailable = hasPublicVerifiedEmail(player);
+        int providerCount = oauthIdentities.findAllByPlayer_Id(player.id).size();
+        if (!emailLoginAvailable && providerCount <= 1) {
+            throw new AuthException(HttpStatus.CONFLICT,
+                    "Link another sign-in method before removing your final login method.");
+        }
+        oauthIdentities.delete(identity);
+        sendProviderSecurityNotice(player, providerDisplayName(provider), "unlinked");
+        return linkedAccountsFor(player);
+    }
+
+    private void linkProviderIdentity(PlayerAccount player, String provider, String subject) {
+        OAuthIdentity existing = oauthIdentities.findByProviderAndSubject(provider, subject).orElse(null);
+        if (existing != null && !existing.player.id.equals(player.id)) {
+            throw new AuthException(HttpStatus.CONFLICT,
+                    "That " + providerDisplayName(provider) + " account is linked to another ChessVerseAI account.");
+        }
+        if (existing == null) {
+            oauthIdentities.findByProviderAndPlayer_Id(provider, player.id)
+                    .ifPresent(oauthIdentities::delete);
+            oauthIdentities.save(new OAuthIdentity(provider, subject, player));
+            sendProviderSecurityNotice(player, providerDisplayName(provider), "linked");
+        }
+    }
+
+    private void requirePasswordForMismatchedEmail(
+            PlayerAccount player, String providerEmail, String password, String provider) {
+        if (player.email != null && player.email.equalsIgnoreCase(providerEmail)) return;
+        if (!hasPublicVerifiedEmail(player)) {
+            throw new AuthException(HttpStatus.CONFLICT,
+                    "Add and verify a ChessVerseAI email before linking a different " + provider + " email.");
+        }
+        if (password == null || password.isBlank()) {
+            throw new AuthException(HttpStatus.PRECONDITION_REQUIRED,
+                    "PASSWORD_CONFIRMATION_REQUIRED: Enter your ChessVerseAI password to link this different "
+                            + provider + " email.");
+        }
+        if (!passwordEncoder.matches(password, player.passwordHash)) {
+            throw new AuthException(HttpStatus.UNAUTHORIZED,
+                    "ChessVerseAI password confirmation failed.");
+        }
+    }
+
+    private LinkedAccountsResponse linkedAccountsFor(PlayerAccount player) {
+        return new LinkedAccountsResponse(hasPublicVerifiedEmail(player), List.of(
+                new LinkedAccountResponse("google",
+                        oauthIdentities.existsByProviderAndPlayer_Id("google", player.id)),
+                new LinkedAccountResponse("facebook",
+                        oauthIdentities.existsByProviderAndPlayer_Id("facebook", player.id))));
+    }
+
+    private boolean hasPublicVerifiedEmail(PlayerAccount player) {
+        return player.verified && player.email != null && player.email.contains("@")
+                && !player.email.toLowerCase(Locale.ROOT).endsWith(".invalid");
+    }
+
+    private void sendProviderSecurityNotice(PlayerAccount player, String provider, String action) {
+        if (!hasPublicVerifiedEmail(player)) return;
+        otpDelivery.sendSecurityNotice(player.email, player.displayName,
+                provider + " sign-in " + action + " on ChessVerseAI",
+                provider + " sign-in was " + action + " for your ChessVerseAI account.");
     }
 
     private String providerDisplayName(String provider) {

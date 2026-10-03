@@ -18,6 +18,7 @@ class ProfileScreen extends StatefulWidget {
     this.onDisplayNameChanged,
     this.onProfilePhotoChanged,
     this.onSecureProgress,
+    this.onLinkedAccounts,
     this.onShop,
     this.onMissions,
     this.onLanguage,
@@ -33,6 +34,7 @@ class ProfileScreen extends StatefulWidget {
   final Future<String?> Function(Uint8List bytes, String filename)?
       onProfilePhotoChanged;
   final Future<void> Function()? onSecureProgress;
+  final Future<void> Function()? onLinkedAccounts;
   final VoidCallback? onShop;
   final VoidCallback? onMissions;
   final VoidCallback? onLanguage;
@@ -242,7 +244,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: <Widget>[
                 Text(
                   widget.isGuest
-                      ? 'Guest identity and online progress are safe on this device. Secure with Google to restore them after reinstalling or changing devices.'
+                      ? 'Guest progress is safe on this device. Secure it with Email, Google or Facebook to restore it after reinstalling or changing devices.'
                       : '${accountEmail ?? 'Email not shared'}\nYour identity and training progress are ready across ChessVerseAI.',
                   style:
                       const TextStyle(color: Color(0xFFA9BBC4), height: 1.45),
@@ -264,14 +266,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         : 'CHANGE PROFILE PHOTO'),
                   ),
                 ],
+                if (!widget.isGuest && widget.onLinkedAccounts != null) ...<Widget>[
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => widget.onLinkedAccounts!.call(),
+                    icon: const Icon(Icons.link_rounded),
+                    label: const Text('SECURITY & LINKED ACCOUNTS'),
+                  ),
+                ],
                 if (widget.isGuest &&
                     widget.onSecureProgress != null) ...<Widget>[
                   const SizedBox(height: 14),
                   FilledButton.icon(
                     key: const ValueKey<String>('secure-guest-progress'),
                     onPressed: () => widget.onSecureProgress!.call(),
-                    icon: const Icon(Icons.g_mobiledata_rounded),
-                    label: const Text('SECURE PROGRESS WITH GOOGLE'),
+                    icon: const Icon(Icons.security_rounded),
+                    label: const Text('SECURE PROGRESS'),
                   ),
                 ],
               ],

@@ -187,7 +187,7 @@ public class StockfishService implements GamePositionAnalyzer {
                     100000,
                     "kingSafety",
                     "",
-                    "Checkmate. You found the winning move and ended the game.",
+                    "You found the strongest continuation.",
                     List.of(playedMove),
                     ANALYSIS_DEPTHS.get(request.level() - 1));
         }

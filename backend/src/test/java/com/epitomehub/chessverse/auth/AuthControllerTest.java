@@ -241,7 +241,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void facebookLoginDoesNotSilentlyLinkAnExistingEmailAccount() throws Exception {
+    void facebookLoginLinksProviderVerifiedEmailToExistingAccount() throws Exception {
         when(googleIdentityVerifier.verify("existing-email-google-token"))
                 .thenReturn(new GoogleIdentityVerifier.VerifiedGoogleIdentity(
                         "google-existing-email-subject",
@@ -263,13 +263,13 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/auth/facebook")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"accessToken\":\"unlinked-facebook-token\"}"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value(
-                        "An account already exists for this email. Sign in to that account before linking Facebook."));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.player.username").value("shared-oauth-email"))
+                .andExpect(jsonPath("$.player.email").value("shared-oauth-email@example.com"));
     }
 
     @Test
-    void providerLoginClaimsAnUnverifiedPendingRegistration() throws Exception {
+    void providerLoginRequiresOtpForUnverifiedPendingRegistration() throws Exception {
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -288,6 +288,19 @@ class AuthControllerTest {
                         "pending-oauth@example.com",
                         "Verified Google Player",
                         "https://example.com/pending-avatar.png"));
+
+        mockMvc.perform(post("/api/auth/google")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"idToken\":\"pending-google-token\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value(
+                        "Verify your ChessVerseAI email with the OTP before linking Google."));
+
+        mockMvc.perform(post("/api/auth/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"pending-oauth@example.com\",\"code\":\""
+                                + otpDelivery.latestVerificationCode + "\"}"))
+                .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/auth/google")
                         .contentType(MediaType.APPLICATION_JSON)

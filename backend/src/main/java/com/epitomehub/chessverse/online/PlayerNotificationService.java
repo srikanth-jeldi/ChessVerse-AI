@@ -26,6 +26,18 @@ class PlayerNotificationService {
         push.send(playerId, notificationId, title, body, actionType, actionId);
     }
 
+    @Transactional
+    boolean createOnce(UUID playerId, String type, String deliveryKey, String title,
+                       String body, String actionType, UUID actionId) {
+        int claimed = jdbc.update("""
+                insert into notification_delivery_guard(player_id,notification_type,delivery_key)
+                values(?,?,?) on conflict do nothing
+                """, playerId, type, deliveryKey);
+        if (claimed == 0) return false;
+        create(playerId, type, title, body, actionType, actionId);
+        return true;
+    }
+
     void createEncryptedMessage(UUID playerId, String title, String encryptedBody,
                                 UUID senderId) {
         UUID notificationId = UUID.randomUUID();

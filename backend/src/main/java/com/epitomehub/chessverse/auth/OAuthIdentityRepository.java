@@ -1,6 +1,7 @@
 package com.epitomehub.chessverse.auth;
 
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -14,4 +15,8 @@ interface OAuthIdentityRepository extends JpaRepository<OAuthIdentity, UUID> {
             @Param("subject") String subject);
 
     boolean existsByProviderAndPlayer_Id(String provider, UUID playerId);
+
+    Optional<OAuthIdentity> findByProviderAndPlayer_Id(String provider, UUID playerId);
+
+    List<OAuthIdentity> findAllByPlayer_Id(UUID playerId);
 }

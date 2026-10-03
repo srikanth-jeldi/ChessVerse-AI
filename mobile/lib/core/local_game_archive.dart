@@ -203,6 +203,8 @@ int dailyStreakAfterCompletion({
   return 1;
 }
 
+int dailyStreakBonusCoins(int streak) => (streak.clamp(0, 3650) ~/ 7) * 100;
+
 class RewardBadge {
   const RewardBadge({
     required this.title,
@@ -950,7 +952,8 @@ class LocalGameArchive {
         (localStats.wins * 18) +
         (localStats.dailySolved * 35) +
         (localStats.puzzlesSolved * 12) +
-        (localStats.dailyStreak * 10);
+        (localStats.dailyStreak * 10) +
+        dailyStreakBonusCoins(localStats.dailyStreak);
     final int reviewedGames = _games
         .where((SavedGameRecord game) => game.moveReviews.isNotEmpty)
         .length;
