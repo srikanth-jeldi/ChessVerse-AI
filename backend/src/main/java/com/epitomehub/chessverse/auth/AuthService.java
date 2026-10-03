@@ -785,7 +785,14 @@ class AuthService {
                 requestHeader("X-Client-Platform", 120, "Unknown"),
                 requestHeader("CF-IPCountry", 8,
                         requestHeader("X-Country-Code", 8, "Unknown")),
+                requestHeader("X-App-Version", 40, "Unknown"),
+                installationFingerprint(device.id()),
                 newDevice);
+    }
+
+    private String installationFingerprint(String installationId) {
+        if (installationId == null || installationId.isBlank()) return "Unknown";
+        return sha256(installationId).substring(0, 16);
     }
 
     private AuthResponse createSession(PlayerAccount player, UUID familyId,

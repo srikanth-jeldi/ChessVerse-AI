@@ -23,7 +23,8 @@ class AuthActivityReportServiceTest {
                 "private@example.com", "hash");
 
         service.record(player, "REGISTERED", "GOOGLE",
-                "Samsung SM-S921B", "Android 15", "IN", true);
+                "Samsung SM-S921B", "Android 15", "IN", "1.3.1+246",
+                "a1b2c3d4e5f60708", true);
 
         ArgumentCaptor<AuthActivityEvent> event = ArgumentCaptor.forClass(AuthActivityEvent.class);
         verify(repository).save(event.capture());
@@ -33,6 +34,8 @@ class AuthActivityReportServiceTest {
         assertThat(event.getValue().deviceName).isEqualTo("Samsung SM-S921B");
         assertThat(event.getValue().clientPlatform).isEqualTo("Android 15");
         assertThat(event.getValue().countryCode).isEqualTo("IN");
+        assertThat(event.getValue().appVersion).isEqualTo("1.3.1+246");
+        assertThat(event.getValue().installationFingerprint).isEqualTo("a1b2c3d4e5f60708");
         assertThat(event.getValue().newDevice).isTrue();
         assertThat(Arrays.stream(AuthActivityEvent.class.getDeclaredFields()).map(Field::getName))
                 .doesNotContain("password", "ip", "location", "token", "deviceId");

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/config/app_config.dart';
 import 'auth_session_store.dart';
@@ -31,6 +32,7 @@ class AuthApi {
               'X-Device-Name': device.name,
               'X-Client-Platform': device.platform,
               'X-Country-Code': device.countryCode,
+              'X-App-Version': device.appVersion,
             },
             body: jsonEncode(body),
           )
@@ -104,20 +106,26 @@ class AuthApi {
       _authorizedJson('GET', 'linked-accounts', token);
 
   Future<Map<String, dynamic>> linkGoogle(
-          String token, String idToken, [String? password]) =>
-      _authorizedJson('POST', 'linked-accounts/google', token,
-          <String, String>{
-            'idToken': idToken,
-            'password': ?password,
-          });
+    String token,
+    String idToken, [
+    String? password,
+  ]) => _authorizedJson(
+    'POST',
+    'linked-accounts/google',
+    token,
+    <String, String>{'idToken': idToken, 'password': ?password},
+  );
 
   Future<Map<String, dynamic>> linkFacebook(
-          String token, String accessToken, [String? password]) =>
-      _authorizedJson('POST', 'linked-accounts/facebook', token,
-          <String, String>{
-            'accessToken': accessToken,
-            'password': ?password,
-          });
+    String token,
+    String accessToken, [
+    String? password,
+  ]) => _authorizedJson(
+    'POST',
+    'linked-accounts/facebook',
+    token,
+    <String, String>{'accessToken': accessToken, 'password': ?password},
+  );
 
   Future<Map<String, dynamic>> unlinkProvider(String token, String provider) =>
       _authorizedJson('DELETE', 'linked-accounts/$provider', token);
@@ -318,12 +326,15 @@ class AuthApi {
   static Future<_ClientDevice> _loadClientDevice() async {
     try {
       final DeviceInfoPlugin info = DeviceInfoPlugin();
+      final PackageInfo package = await PackageInfo.fromPlatform();
+      final String appVersion = '${package.version}+${package.buildNumber}';
       if (kIsWeb) {
         final WebBrowserInfo web = await info.webBrowserInfo;
         return _ClientDevice(
           '${web.browserName.name} browser',
           web.platform ?? 'Web',
           _deviceCountryCode(),
+          appVersion,
         );
       }
       switch (defaultTargetPlatform) {
@@ -338,6 +349,7 @@ class AuthApi {
             }.where((String value) => value.isNotEmpty).join(' '),
             'Android ${android.version.release} (SDK ${android.version.sdkInt})',
             _deviceCountryCode(),
+            appVersion,
           );
         case TargetPlatform.iOS:
           final IosDeviceInfo ios = await info.iosInfo;
@@ -345,16 +357,23 @@ class AuthApi {
             '${ios.name} (${ios.model})',
             'iOS ${ios.systemVersion}',
             _deviceCountryCode(),
+            appVersion,
           );
         default:
           return _ClientDevice(
             'ChessVerseAI ${defaultTargetPlatform.name}',
             defaultTargetPlatform.name,
             _deviceCountryCode(),
+            appVersion,
           );
       }
     } catch (_) {
-      return _ClientDevice('Unknown device', 'Unknown', _deviceCountryCode());
+      return _ClientDevice(
+        'Unknown device',
+        'Unknown',
+        _deviceCountryCode(),
+        'Unknown',
+      );
     }
   }
 
@@ -367,11 +386,17 @@ class AuthApi {
 }
 
 class _ClientDevice {
-  const _ClientDevice(this.name, this.platform, this.countryCode);
+  const _ClientDevice(
+    this.name,
+    this.platform,
+    this.countryCode,
+    this.appVersion,
+  );
 
   final String name;
   final String platform;
   final String countryCode;
+  final String appVersion;
 }
 
 String authFriendlyErrorMessage({

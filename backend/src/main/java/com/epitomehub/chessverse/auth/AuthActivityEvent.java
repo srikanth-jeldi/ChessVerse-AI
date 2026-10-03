@@ -34,6 +34,12 @@ class AuthActivityEvent {
     @Column(name = "country_code", length = 8)
     String countryCode;
 
+    @Column(name = "app_version", length = 40)
+    String appVersion;
+
+    @Column(name = "installation_fingerprint", length = 32)
+    String installationFingerprint;
+
     @Column(name = "new_device", nullable = false)
     boolean newDevice;
 
@@ -46,7 +52,8 @@ class AuthActivityEvent {
     protected AuthActivityEvent() {}
 
     AuthActivityEvent(PlayerAccount player, String eventType, String authMethod,
-            String deviceName, String clientPlatform, String countryCode, boolean newDevice) {
+            String deviceName, String clientPlatform, String countryCode,
+            String appVersion, String installationFingerprint, boolean newDevice) {
         this.id = UUID.randomUUID();
         this.player = player;
         this.eventType = eventType;
@@ -54,6 +61,8 @@ class AuthActivityEvent {
         this.deviceName = deviceName;
         this.clientPlatform = clientPlatform;
         this.countryCode = countryCode;
+        this.appVersion = appVersion;
+        this.installationFingerprint = installationFingerprint;
         this.newDevice = newDevice;
         this.createdAt = Instant.now();
     }

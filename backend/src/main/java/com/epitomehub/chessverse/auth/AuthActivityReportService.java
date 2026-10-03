@@ -1,6 +1,7 @@
 package com.epitomehub.chessverse.auth;
 
 import jakarta.mail.internet.MimeMessage;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.ZoneId;
@@ -9,6 +10,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,10 +58,12 @@ class AuthActivityReportService {
     }
 
     void record(PlayerAccount player, String eventType, String authMethod,
-            String deviceName, String clientPlatform, String countryCode, boolean newDevice) {
+            String deviceName, String clientPlatform, String countryCode,
+            String appVersion, String installationFingerprint, boolean newDevice) {
         try {
             events.save(new AuthActivityEvent(player, eventType, authMethod,
-                    deviceName, clientPlatform, countryCode, newDevice));
+                    deviceName, clientPlatform, countryCode, appVersion,
+                    installationFingerprint, newDevice));
         } catch (RuntimeException exception) {
             // Reporting must never prevent a player from registering or signing in.
             log.warn("Could not record privacy-safe auth activity: {}", exception.getClass().getSimpleName());
@@ -77,10 +85,12 @@ class AuthActivityReportService {
                        coalesce(e.device_name,'Unknown device') device_name,
                        coalesce(e.client_platform,'Unknown') client_platform,
                        coalesce(e.country_code,'Unknown') country_code,
+                       coalesce(e.app_version,'Unknown') app_version,
+                       coalesce(e.installation_fingerprint,'Unknown') installation_fingerprint,
                        e.new_device
                   from auth_activity_event e
                   left join player_account p on p.id=e.player_id
-                 where e.reported_at is null
+                 where e.excel_reported_at is null
                  order by e.created_at
                  limit 1000
                  for update of e skip locked
@@ -90,19 +100,28 @@ class AuthActivityReportService {
                 result.getString("username"), result.getString("display_name"),
                 result.getBoolean("verified"), result.getString("device_name"),
                 result.getString("client_platform"), result.getString("country_code"),
+                result.getString("app_version"), result.getString("installation_fingerprint"),
                 result.getBoolean("new_device")));
         if (rows.isEmpty()) return;
 
-        byte[] attachment = csv(rows).getBytes(StandardCharsets.UTF_8);
+        byte[] attachment;
+        try {
+            attachment = workbook(rows);
+        } catch (Exception exception) {
+            log.warn("Could not create auth activity workbook: {}", exception.getClass().getSimpleName());
+            return;
+        }
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
             helper.setFrom(from);
             helper.setTo(recipient);
-            helper.setSubject("ChessVerseAI registration and login report • " + rows.size() + " events");
-            helper.setText("Attached are the latest ChessVerseAI registrations and logins. "
-                    + "New-device logins are marked. Passwords, tokens, raw IP addresses and precise locations are never included.");
-            helper.addAttachment("chessverse-auth-activity.csv", new ByteArrayResource(attachment), "text/csv");
+            helper.setSubject("ChessVerseAI registration and login Excel report • " + rows.size() + " events");
+            helper.setText("Attached are retained historical or newly recorded ChessVerseAI registrations and logins. "
+                    + "New-device logins are marked. Installation IDs are one-way pseudonymous fingerprints. "
+                    + "Passwords, OTPs, tokens, raw IP addresses and precise locations are never included.");
+            helper.addAttachment("chessverse-auth-activity.xlsx", new ByteArrayResource(attachment),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             mailSender.send(message);
             markReported(rows);
         } catch (Exception exception) {
@@ -115,28 +134,48 @@ class AuthActivityReportService {
         List<Object[]> arguments = new ArrayList<>(rows.size());
         for (AuthActivityRow row : rows) arguments.add(new Object[] {row.id()});
         jdbc.batchUpdate(
-                "update auth_activity_event set reported_at=current_timestamp where id=? and reported_at is null",
+                "update auth_activity_event set reported_at=coalesce(reported_at,current_timestamp), "
+                        + "excel_reported_at=current_timestamp where id=? and excel_reported_at is null",
                 arguments);
     }
 
-    private String csv(List<AuthActivityRow> rows) {
-        StringBuilder output = new StringBuilder(
-                "Time (IST),Event,Method,Email,Username,@Handle,Display name,Verified,New device,Device,Platform,Country\r\n");
-        for (AuthActivityRow row : rows) {
-            output.append(csvCell(REPORT_TIME.format(row.createdAt().toInstant()))).append(',')
-                    .append(csvCell(row.eventType())).append(',')
-                    .append(csvCell(row.authMethod())).append(',')
-                    .append(csvCell(row.email())).append(',')
-                    .append(csvCell(row.username())).append(',')
-                    .append(csvCell("@" + row.username())).append(',')
-                    .append(csvCell(row.displayName())).append(',')
-                    .append(row.verified() ? "Yes" : "No").append(',')
-                    .append(row.newDevice() ? "Yes" : "No").append(',')
-                    .append(csvCell(row.deviceName())).append(',')
-                    .append(csvCell(row.clientPlatform())).append(',')
-                    .append(csvCell(row.countryCode())).append("\r\n");
+    byte[] workbook(List<AuthActivityRow> rows) throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Login activity");
+            sheet.createFreezePane(0, 1);
+            String[] headers = {"Time (IST)", "Event", "Method", "Email", "Username", "@Handle",
+                    "Display name", "Verified", "New device", "Device manufacturer/model",
+                    "Platform / OS / browser", "App version", "Approximate country",
+                    "Installation fingerprint"};
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setFont(headerFont);
+            Row header = sheet.createRow(0);
+            for (int column = 0; column < headers.length; column++) {
+                header.createCell(column).setCellValue(headers[column]);
+                header.getCell(column).setCellStyle(headerStyle);
+            }
+            int index = 1;
+            for (AuthActivityRow value : rows) {
+                Row row = sheet.createRow(index++);
+                String[] cells = {REPORT_TIME.format(value.createdAt().toInstant()), value.eventType(),
+                        value.authMethod(), value.email(), value.username(), "@" + value.username(),
+                        value.displayName(), value.verified() ? "Yes" : "No",
+                        value.newDevice() ? "Yes" : "No", value.deviceName(), value.clientPlatform(),
+                        value.appVersion(), value.countryCode(), value.installationFingerprint()};
+                for (int column = 0; column < cells.length; column++) {
+                    row.createCell(column).setCellValue(cells[column] == null ? "" : cells[column]);
+                }
+            }
+            for (int column = 0; column < headers.length; column++) {
+                sheet.autoSizeColumn(column);
+                sheet.setColumnWidth(column, Math.min(sheet.getColumnWidth(column) + 512, 12_000));
+            }
+            workbook.write(output);
+            return output.toByteArray();
         }
-        return "\uFEFF" + output;
     }
 
     String csvCell(String value) {
@@ -149,5 +188,6 @@ class AuthActivityReportService {
     private record AuthActivityRow(
             UUID id, Timestamp createdAt, String eventType, String authMethod,
             String email, String username, String displayName, boolean verified,
-            String deviceName, String clientPlatform, String countryCode, boolean newDevice) {}
+            String deviceName, String clientPlatform, String countryCode,
+            String appVersion, String installationFingerprint, boolean newDevice) {}
 }
