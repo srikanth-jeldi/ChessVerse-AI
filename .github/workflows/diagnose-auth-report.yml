@@ -1,0 +1,54 @@
+name: Diagnose auth activity report
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 5
+    steps:
+      - name: Configure SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -Eeuo pipefail
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/chessverse_vps
+          chmod 600 ~/.ssh/chessverse_vps
+          ssh-keyscan -p "$VPS_PORT" -H "$VPS_HOST" > ~/.ssh/known_hosts
+
+      - name: Inspect report scheduler
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          set -Eeuo pipefail
+          ssh -i ~/.ssh/chessverse_vps -p "$VPS_PORT" -o BatchMode=yes -o IdentitiesOnly=yes \
+            "$VPS_USER@$VPS_HOST" 'bash -s' <<'REMOTE_SCRIPT'
+          set -Eeuo pipefail
+          cd /root/ChessVerse-AI/infrastructure/vps
+          compose=(docker compose --env-file vps.env -f docker-compose.prod.yml)
+          "${compose[@]}" ps backend
+          "${compose[@]}" exec -T backend sh -c '
+            test -n "$MAIL_USERNAME" && echo "MAIL_USERNAME=set" || echo "MAIL_USERNAME=missing"
+            test -n "$MAIL_PASSWORD" && echo "MAIL_PASSWORD=set" || echo "MAIL_PASSWORD=missing"
+            test -n "$MAIL_FROM" && echo "MAIL_FROM=set" || echo "MAIL_FROM=missing"
+          '
+          echo -n 'pending_excel_events='
+          "${compose[@]}" exec -T postgres sh -c \
+            'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select count(*) from auth_activity_event where excel_reported_at is null"'
+          echo -n 'reported_excel_events='
+          "${compose[@]}" exec -T postgres sh -c \
+            'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select count(*) from auth_activity_event where excel_reported_at is not null"'
+          "${compose[@]}" logs --since=30m backend 2>&1 \
+            | grep -E 'Auth activity report|Could not create auth activity workbook|Could not record privacy-safe auth activity' \
+            | tail -n 30 || true
+          REMOTE_SCRIPT
