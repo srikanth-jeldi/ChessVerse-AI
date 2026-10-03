@@ -48,6 +48,12 @@ jobs:
           echo -n 'reported_excel_events='
           "${compose[@]}" exec -T postgres sh -c \
             'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select count(*) from auth_activity_event where excel_reported_at is not null"' </dev/null
+          echo -n 'migration_v72='
+          "${compose[@]}" exec -T postgres sh -c \
+            'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select count(*) from flyway_schema_history where version::int=72 and success"' </dev/null
+          echo -n 'latest_excel_reported_at='
+          "${compose[@]}" exec -T postgres sh -c \
+            'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select max(excel_reported_at) from auth_activity_event"' </dev/null
           "${compose[@]}" logs --since=30m backend 2>&1 \
             | grep -E 'Auth activity report|Could not create auth activity workbook|Could not record privacy-safe auth activity' \
             | tail -n 30 || true
