@@ -100,7 +100,7 @@ chessverse:
     activity-report:
       enabled: ${AUTH_ACTIVITY_REPORT_ENABLED:true}
       recipient: ${AUTH_ACTIVITY_REPORT_EMAIL:chessverseai@gmail.com}
-      cron: ${AUTH_ACTIVITY_REPORT_CRON:0 30 23 * * *}
+      cron: ${AUTH_ACTIVITY_REPORT_CRON:0 59 23 * * *}
       zone: ${AUTH_ACTIVITY_REPORT_ZONE:Asia/Kolkata}
   web:
     allowed-origin-patterns: ${ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}

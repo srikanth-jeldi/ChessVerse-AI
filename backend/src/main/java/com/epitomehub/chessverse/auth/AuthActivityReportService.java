@@ -72,7 +72,7 @@ class AuthActivityReportService {
     }
 
     @Scheduled(
-            cron = "${chessverse.auth.activity-report.cron:0 30 23 * * *}",
+            cron = "${chessverse.auth.activity-report.cron:0 59 23 * * *}",
             zone = "${chessverse.auth.activity-report.zone:Asia/Kolkata}")
     @Transactional
     public void sendPendingReport() {
