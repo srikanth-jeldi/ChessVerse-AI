@@ -48,6 +48,28 @@ class PuzzleSprintController {
                 request.score(), request.attempted(), request.durationSeconds(), playedAt);
     }
 
+    // Client-reported practice results, not engine-verified ratings or rewards.
+    record PositionRetryRequest(@jakarta.validation.constraints.NotNull UUID id, boolean correct) {}
+    @PostMapping("/position-retries")
+    void positionRetry(@RequestHeader("Authorization") String authorization,@Valid @RequestBody PositionRetryRequest request) {
+        UUID player=authentication.requireBearer(authorization).id();
+        if(!academySharingEnabled(player)) return;
+        jdbc.update("INSERT INTO player_position_retry(id,player_id,correct) VALUES(?,?,?) ON CONFLICT (id) DO NOTHING",request.id,player,request.correct);
+    }
+    record PuzzleCompletionRequest(@jakarta.validation.constraints.NotNull @Pattern(regexp="(easy|medium|hard)-[0-9]{1,3}") String puzzleId) {}
+    @PostMapping("/puzzle-completions")
+    void puzzleCompletion(@RequestHeader("Authorization") String authorization,@Valid @RequestBody PuzzleCompletionRequest request) {
+        UUID player=authentication.requireBearer(authorization).id();
+        int number=Integer.parseInt(request.puzzleId.substring(request.puzzleId.indexOf('-')+1));
+        if(number<1||number>200)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Unknown puzzle");
+        if(!academySharingEnabled(player))return;
+        jdbc.update("INSERT INTO player_puzzle_completion(player_id,puzzle_id) VALUES(?,?) ON CONFLICT (player_id,puzzle_id) DO NOTHING",player,request.puzzleId);
+    }
+    private boolean academySharingEnabled(UUID player) {
+        // Only students who explicitly enabled academy sharing contribute telemetry.
+        int eligible=jdbc.queryForObject("SELECT COUNT(*) FROM academy_activity_sharing c JOIN academy_student s ON s.organization_id=c.organization_id AND s.id=c.student_id AND s.account_id=c.account_id JOIN academy_member m ON m.organization_id=s.organization_id AND m.account_id=s.account_id JOIN academy_organization o ON o.id=s.organization_id WHERE c.account_id=? AND c.enabled=TRUE AND s.active=TRUE AND m.active=TRUE AND m.role='STUDENT' AND o.status<>'SUSPENDED' AND (o.renewal_date IS NULL OR o.renewal_date>CURRENT_DATE)",Integer.class,player);
+        return eligible>0;
+    }
     @GetMapping("/history")
     List<SprintResult> history(@RequestHeader("Authorization") String authorization) {
         AuthenticatedPlayer player = authentication.requireBearer(authorization);

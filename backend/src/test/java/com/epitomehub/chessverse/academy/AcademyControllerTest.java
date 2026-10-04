@@ -51,10 +51,13 @@ class AcademyControllerTest {
         db.execute("DROP ALL OBJECTS");
         db.execute("CREATE TABLE player_account(id UUID PRIMARY KEY,display_name VARCHAR(100),email VARCHAR(254),verified BOOLEAN DEFAULT TRUE)");
         db.execute("CREATE TABLE computer_game_history(player_id UUID,game_id VARCHAR(80),draft TEXT,created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(player_id,game_id))");
+        db.execute("CREATE TABLE player_weakness_event(player_id UUID,category VARCHAR(40),classification VARCHAR(20),occurred_at TIMESTAMP WITH TIME ZONE)");
+        db.execute("CREATE TABLE online_match(id UUID,white_player_id UUID,black_player_id UUID,started_at TIMESTAMP WITH TIME ZONE,finished_at TIMESTAMP WITH TIME ZONE)");
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V62__organization_portal.sql")).execute(ds);
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V63__academy_self_service.sql")).execute(ds);
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V64__academy_invitations.sql")).execute(ds);
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V65__academy_operations.sql")).execute(ds);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V54__puzzle_sprint_history.sql"),new ClassPathResource("db/migration/V73__academy_activity_sharing.sql"),new ClassPathResource("db/migration/V74__academy_student_training.sql")).execute(ds);
         orgA=org("Academy A"); orgB=org("School B");
         adminA=account("admin-a");adminB=account("admin-b");coachAccount=account("coach");parentAccount=account("parent");studentAccount=account("student");
         member(orgA,adminA,"ORGANIZATION_ADMIN");member(orgB,adminB,"ORGANIZATION_ADMIN");
@@ -74,6 +77,80 @@ class AcademyControllerTest {
         denied(HttpStatus.FORBIDDEN,()->controller.workspace("admin-a",orgB));
         denied(HttpStatus.NOT_FOUND,()->controller.editStudent("admin-a",orgA,studentB,input("Hacked",null,null)));
         assertEquals("Secret B",db.queryForObject("SELECT name FROM academy_student WHERE id=?",String.class,studentB));
+    }
+    @Test void twoStudentsCompleteOnlyTheirOwnAssignmentsAndCoachSeesResults() {
+        UUID second=account("student-two");member(orgA,second,"STUDENT");
+        db.update("UPDATE academy_student SET account_id=?,coach_id=? WHERE id=?",second,coachMember,otherStudent);
+        controller.assign("coach",orgA,new AcademyController.AssignmentInput(List.of(studentA,otherStudent),"Fork puzzle","PUZZLES","Solve easy-1",LocalDate.now(),"easy-1",null,null));
+        UUID task=db.queryForObject("SELECT id FROM academy_assignment WHERE student_id=?",UUID.class,studentA);
+        var failed=new AcademyController.AssignmentResultInput(UUID.randomUUID(),2,false,"Missed the fork");
+        denied(HttpStatus.NOT_FOUND,()->controller.assignmentResult("student-two",orgA,task,failed));
+        denied(HttpStatus.FORBIDDEN,()->controller.assignmentResult("parent",orgA,task,failed));
+        controller.assignmentResult("student",orgA,task,failed);
+        assertNull(db.queryForObject("SELECT completed_at FROM academy_assignment WHERE id=?",Object.class,task));
+        var success=new AcademyController.AssignmentResultInput(UUID.randomUUID(),1,true,"Found it");
+        controller.assignmentResult("student",orgA,task,success);
+        controller.assignmentResult("student",orgA,task,success);
+        assertEquals(2,list(controller.workspace("coach",orgA),"assignmentResults").size());
+        assertTrue(list(controller.workspace("student-two",orgA),"assignmentResults").isEmpty());
+        assertNotNull(db.queryForObject("SELECT completed_at FROM academy_assignment WHERE id=?",Object.class,task));
+        controller.report("coach",orgA,new AcademyController.ReportInput(studentA,"WEEKLY"));
+        String summary=db.queryForObject("SELECT summary FROM academy_report WHERE student_id=?",String.class,studentA);
+        assertTrue(summary.contains("Found it"));assertTrue(summary.contains("assignmentResults"));
+        assertTrue(list(controller.appActivity("student",orgA),"events").isEmpty()); // assignments do not require personal sharing
+    }
+    @Test void dailyMetricsAndReportSnapshotAreNotLimitedToFeedPage() {
+        controller.activitySharing("student",orgA,new AcademyController.ActivitySharingInput(true));
+        db.update("UPDATE academy_activity_sharing SET enabled_at=?",java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(60)));
+        for(int i=0;i<120;i++)db.update("INSERT INTO puzzle_sprint_result VALUES(?,?, 'RUSH',3,5,60,CURRENT_TIMESTAMP)",UUID.randomUUID(),studentAccount);
+        db.update("INSERT INTO player_puzzle_completion VALUES(?,'easy-1',CURRENT_TIMESTAMP)",studentAccount);
+        var activity=controller.appActivity("coach",orgA);
+        assertEquals(100,list(activity,"events").size());
+        assertEquals(121,list(activity,"daily").stream().mapToLong(r->((Number)r.get("events")).longValue()).sum());
+        controller.report("coach",orgA,new AcademyController.ReportInput(studentA,"WEEKLY"));
+        String snapshot=db.queryForObject("SELECT summary FROM academy_report WHERE student_id=?",String.class,studentA);
+        assertTrue(snapshot.contains("PUZZLE_COMPLETED"));
+        controller.activitySharing("student",orgA,new AcademyController.ActivitySharingInput(false));
+        assertTrue(list(controller.appActivity("coach",orgA),"daily").isEmpty());
+        assertEquals(snapshot,db.queryForObject("SELECT summary FROM academy_report WHERE student_id=?",String.class,studentA));
+    }
+    @Test void appActivityIsOptInScopedAndRevocable() {
+        db.update("INSERT INTO computer_game_history(player_id,game_id,draft,created_at) VALUES(?,?,?,?)",studentAccount,"old","private",java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(3600)));
+        assertTrue(list(controller.appActivity("coach",orgA),"events").isEmpty());
+        denied(HttpStatus.FORBIDDEN,()->controller.activitySharing("coach",orgA,new AcademyController.ActivitySharingInput(true)));
+        denied(HttpStatus.FORBIDDEN,()->controller.appActivity("admin-a",orgB));
+        controller.activitySharing("student",orgA,new AcademyController.ActivitySharingInput(true));
+        db.update("INSERT INTO computer_game_history(player_id,game_id,draft,created_at) VALUES(?,?,?,?)",studentAccount,"new","private",java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(1)));
+        db.update("INSERT INTO puzzle_sprint_result VALUES(?,?, 'RUSH',3,5,60,?)",UUID.randomUUID(),studentAccount,java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(1)));
+        var events=list(controller.appActivity("coach",orgA),"events");
+        assertEquals(2,events.size());
+        db.update("INSERT INTO player_weakness_event VALUES(?,'tactics','Blunder',?)",studentAccount,java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(1)));
+        db.update("INSERT INTO player_position_retry(id,player_id,correct,received_at) VALUES(?,?,FALSE,?)",UUID.randomUUID(),studentAccount,java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(1)));
+        assertEquals(1,list(controller.appActivity("coach",orgA),"weaknesses").size());
+        assertFalse(events.toString().contains("private"));
+        assertEquals(3,list(controller.appActivity("parent",orgA),"events").size());
+        assertEquals(3,list(controller.appActivity("coach",orgA),"events").size()); // reads never duplicate events
+        db.update("INSERT INTO online_match VALUES(?,?,?,CURRENT_TIMESTAMP,?)",UUID.randomUUID(),adminB,studentAccount,java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(1)));
+        assertEquals(4,list(controller.appActivity("coach",orgA),"events").size());
+        db.update("UPDATE academy_student SET coach_id=NULL WHERE id=?",studentA);
+        assertTrue(list(controller.appActivity("coach",orgA),"events").isEmpty());
+        controller.activitySharing("student",orgA,new AcademyController.ActivitySharingInput(false));
+        assertTrue(list(controller.appActivity("admin-a",orgA),"events").isEmpty());
+        assertTrue(list(controller.appActivity("admin-a",orgA),"weaknesses").isEmpty());
+    }
+    @Test void activityRequiresActiveLinkedStudentMembershipAndFreshConsent() {
+        controller.activitySharing("student",orgA,new AcademyController.ActivitySharingInput(true));
+        db.update("UPDATE academy_activity_sharing SET enabled_at=?",java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(100)));
+        db.update("INSERT INTO computer_game_history(player_id,game_id,draft,created_at) VALUES(?,?,?,?)",studentAccount,"recent","private",java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(10)));
+        assertEquals(1,list(controller.appActivity("admin-a",orgA),"events").size());
+        controller.activitySharing("student",orgA,new AcademyController.ActivitySharingInput(true));
+        assertEquals(1,list(controller.appActivity("admin-a",orgA),"events").size()); // repeated opt-in keeps boundary
+        db.update("UPDATE academy_member SET active=FALSE WHERE account_id=?",studentAccount);
+        assertTrue(list(controller.appActivity("admin-a",orgA),"events").isEmpty());
+        db.update("UPDATE academy_member SET active=TRUE WHERE account_id=?",studentAccount);
+        controller.activitySharing("student",orgA,new AcademyController.ActivitySharingInput(false));
+        controller.activitySharing("student",orgA,new AcademyController.ActivitySharingInput(true));
+        assertTrue(list(controller.appActivity("admin-a",orgA),"events").isEmpty());
     }
     @Test void coachParentAndStudentOnlySeeTheirOwnScope() {
         for(String token:List.of("coach","parent","student")) {

@@ -11,6 +11,8 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'core/analytics/app_analytics.dart';
+import 'core/academy_activity.dart';
+import 'features/academy/presentation/my_academy_screen.dart';
 import 'core/ai_bot_preset_store.dart';
 import 'core/app_language.dart';
 import 'core/coach_localizations.dart';
@@ -1218,6 +1220,7 @@ class _SplashGateState extends State<SplashGate> {
                   onProfile: () => selectDestination(4),
                   onFriends: () => selectDestination(5),
                   onCollection: () => _openRewardsCenter(context),
+                  onAcademy: () => _openMyAcademy(context),
                 ),
                 Expanded(child: content),
               ],
@@ -1228,6 +1231,10 @@ class _SplashGateState extends State<SplashGate> {
           extendBody: true,
           backgroundColor: Colors.transparent,
           body: content,
+          floatingActionButton: _primaryDestination == 0 ? FloatingActionButton.extended(
+            onPressed: () => _openMyAcademy(context),
+            icon: const Icon(Icons.school_rounded), label: const Text('My Academy'),
+          ) : null,
           bottomNavigationBar: _GlassBottomNavigation(
             selectedIndex: _primaryDestination,
             onDestinationSelected: _selectPrimaryDestination,
@@ -1235,6 +1242,22 @@ class _SplashGateState extends State<SplashGate> {
         );
       },
     );
+  }
+
+  Future<void> _openMyAcademy(BuildContext context) async {
+    if(_isGuest){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Sign in with your verified student account to join an academy.')));return;}
+    final session=await const AuthSessionStore().read();
+    final token=_notificationPollingToken??session?.token;
+    if(!context.mounted)return;
+    if(token==null){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Please sign in again to open your academy.')));return;}
+    await _push(context,MyAcademyScreen(token:token,
+      onPuzzle:(id)=>_openGame(context,GameMode.puzzle,puzzleId:id),
+      onPosition:(fen,bestMove,instructions) async {
+        final pieces=<String,ChessPiece>{};final ranks=fen.split(' ').first.split('/');
+        for(var row=0;row<8;row++){var file=0;for(final rune in ranks[row].runes){final symbol=String.fromCharCode(rune);final empty=int.tryParse(symbol);if(empty!=null){file+=empty;}else{pieces['${'abcdefgh'[file]}${8-row}']=ChessPiece(symbol.toUpperCase(),symbol==symbol.toUpperCase());file++;}}}
+        await showDialog<void>(context:context,barrierDismissible:false,builder:(_)=>ReviewedPositionRetryDialog(fen:fen,initialPieces:pieces,whiteToMove:fen.split(' ')[1]=='w',bestMove:bestMove,explanation:instructions,progressLabel:'ACADEMY POSITION',nextLabel:'Back to assignment'));
+      },
+    ));
   }
 
   void _selectPrimaryDestination(int destination) {

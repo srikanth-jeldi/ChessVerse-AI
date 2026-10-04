@@ -41,7 +41,12 @@ public class AcademyController {
     public record ParentInput(@NotNull UUID memberId, @NotNull UUID studentId) {}
     public record AssignmentInput(@NotEmpty @Size(max=200) List<UUID> studentIds, @NotBlank @Size(max=150) String title,
         @NotNull @Pattern(regexp="PUZZLES|POSITIONS|OPENINGS|MASTER_GAMES") String kind,
-        @NotBlank @Size(max=2000) String instructions, @NotNull LocalDate dueDate) {}
+        @NotBlank @Size(max=2000) String instructions, @NotNull LocalDate dueDate,
+        @Pattern(regexp="(easy|medium|hard)-[0-9]{1,3}") String puzzleId,
+        @Size(max=120) String positionFen, @Pattern(regexp="[a-h][1-8][a-h][1-8][qrbn]?") String bestMove) {
+        public AssignmentInput(List<UUID> students,String title,String kind,String instructions,LocalDate dueDate) {this(students,title,kind,instructions,dueDate,null,null,null);}
+    }
+    public record AssignmentResultInput(@NotNull UUID id,@Min(1) @Max(1000) int attempts,boolean solved,@NotNull @Size(max=2000) String notes) {}
     public record ObservationInput(@NotNull UUID studentId, @NotNull @PastOrPresent LocalDate practicedOn,
         @Min(0) @Max(4000) int rating, @Min(0) @Max(100) int accuracy, @Min(1) @Max(1440) int minutes,
         @Min(0) @Max(10000) int tactics, @Min(0) @Max(1000) int blunders,
@@ -142,11 +147,66 @@ public class AcademyController {
             result.put(table+"s",rows("SELECT "+columns+" FROM academy_"+table+" WHERE organization_id=? ORDER BY created_at DESC",org)
                 .stream().filter(r -> ids.contains(uuid(r.get("student_id")))).toList());
         }
+        result.put("assignmentResults",rows("SELECT * FROM academy_assignment_result WHERE organization_id=? ORDER BY created_at DESC",org).stream().filter(r->ids.contains(uuid(r.get("student_id")))).toList());
         result.put("invoices",a.admin()?rows("SELECT * FROM academy_invoice WHERE organization_id=? ORDER BY issued_on DESC",org):List.of());
         result.put("seatRequests",a.admin()?rows("SELECT * FROM academy_seat_request WHERE organization_id=? ORDER BY created_at DESC",org):List.of());
         result.put("support",a.admin()?rows("SELECT * FROM academy_support WHERE organization_id=? ORDER BY created_at DESC",org):List.of());
         result.put("parentLinks",a.admin()?rows("SELECT * FROM academy_parent_link WHERE organization_id=?",org):List.of());
         return result;
+    }
+    // Activity has its own bounded read endpoint; personal game bodies are never returned.
+    @GetMapping("/{org}/app-activity")
+    public Map<String,Object> appActivity(@RequestHeader("Authorization") String bearer,@PathVariable UUID org) {
+        Access a=access(bearer,org);
+        var visible=students(org,a).stream().filter(s->Boolean.TRUE.equals(s.get("active"))).map(s->uuid(s.get("id"))).toList();
+        if(visible.isEmpty()) return Map.of("events",List.of(),"sharing",List.of(),"weaknesses",List.of(),"checkedAt",java.time.Instant.now().toString());
+        String placeholders=String.join(",",Collections.nCopies(visible.size(),"?"));
+        List<Object> args=new ArrayList<>();args.add(org);args.addAll(visible);
+        var query=activityQuery(org,visible);
+        var events=rows(query.sql+" LIMIT 100",query.args.toArray());
+        var sharing=rows("SELECT c.student_id,c.enabled,c.enabled_at FROM academy_activity_sharing c JOIN academy_student s ON s.organization_id=c.organization_id AND s.id=c.student_id AND s.account_id=c.account_id WHERE c.organization_id=? AND c.student_id IN ("+placeholders+")",args.toArray());
+        String eligible=" FROM academy_activity_sharing c JOIN academy_student s ON s.organization_id=c.organization_id AND s.id=c.student_id AND s.account_id=c.account_id JOIN academy_member m ON m.organization_id=s.organization_id AND m.account_id=s.account_id AND m.role='STUDENT' AND m.active=TRUE ";
+        String scope=" c.organization_id=? AND s.id IN ("+placeholders+") AND s.active=TRUE AND c.enabled=TRUE ";
+        List<Object> weaknessArgs=new ArrayList<>(args);weaknessArgs.add(java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(30L*86400)));
+        var weaknesses=rows("SELECT s.id AS student_id,w.category,COUNT(*) AS mistakes,SUM(CASE WHEN w.classification='Blunder' THEN 1 ELSE 0 END) AS blunders"+eligible+"JOIN player_weakness_event w ON w.player_id=s.account_id WHERE "+scope+" AND w.occurred_at>=c.enabled_at AND w.occurred_at>=? GROUP BY s.id,w.category ORDER BY mistakes DESC LIMIT 100",weaknessArgs.toArray());
+        LocalDate today=LocalDate.now(java.time.ZoneOffset.UTC);
+        var assignmentResults=rows("SELECT r.*,a.title,a.kind FROM academy_assignment_result r JOIN academy_assignment a ON a.organization_id=r.organization_id AND a.id=r.assignment_id WHERE r.organization_id=? AND r.student_id IN ("+placeholders+") ORDER BY r.created_at DESC LIMIT 100",args.toArray());
+        return Map.of("events",events,"sharing",sharing,"weaknesses",weaknesses,"daily",activityDaily(org,visible,today.minusDays(29),today),"assignmentResults",assignmentResults,"checkedAt",java.time.Instant.now().toString());
+    }
+    private List<Map<String,Object>> activityDaily(UUID org,List<UUID> ids,LocalDate from,LocalDate to) {
+        if(ids.isEmpty())return List.of();
+        var query=activityQuery(org,ids);var args=new ArrayList<>(query.args);
+        args.add(java.sql.Timestamp.from(from.atStartOfDay(java.time.ZoneOffset.UTC).toInstant()));
+        args.add(java.sql.Timestamp.from(to.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant()));
+        return rows("SELECT student_id,CAST(occurred_at AS DATE) AS \"day\",kind,COUNT(*) AS events,SUM(solved) AS solved,SUM(attempted) AS attempted,SUM(seconds) AS seconds FROM ("+query.sql+") history WHERE occurred_at>=? AND occurred_at<? GROUP BY student_id,CAST(occurred_at AS DATE),kind ORDER BY \"day\",kind",args.toArray());
+    }
+    private record ActivityQuery(String sql,List<Object> args) {}
+    private ActivityQuery activityQuery(UUID org,List<UUID> visible) {
+        String placeholders=String.join(",",Collections.nCopies(visible.size(),"?"));
+        List<Object> args=new ArrayList<>();args.add(org);args.addAll(visible);
+        String eligible=" FROM academy_activity_sharing c JOIN academy_student s ON s.organization_id=c.organization_id AND s.id=c.student_id AND s.account_id=c.account_id JOIN academy_member m ON m.organization_id=s.organization_id AND m.account_id=s.account_id AND m.role='STUDENT' AND m.active=TRUE ";
+        String scope=" c.organization_id=? AND s.id IN ("+placeholders+") AND s.active=TRUE AND c.enabled=TRUE ";
+        String games="SELECT s.id AS student_id, 'GAME_SAVED' AS kind, g.game_id AS source_id, g.created_at AS occurred_at, 0 AS solved, 0 AS attempted, 0 AS seconds"+eligible+"JOIN computer_game_history g ON g.player_id=s.account_id WHERE "+scope+" AND g.created_at>=c.enabled_at";
+        String puzzles="SELECT s.id AS student_id, 'PUZZLE_SPRINT' AS kind, CAST(p.id AS VARCHAR(80)) AS source_id, p.played_at AS occurred_at, p.score AS solved, p.attempted, p.duration_seconds AS seconds"+eligible+"JOIN puzzle_sprint_result p ON p.player_id=s.account_id WHERE "+scope+" AND p.played_at>=c.enabled_at";
+        String retries="SELECT s.id AS student_id, 'POSITION_RETRY' AS kind, CAST(p.id AS VARCHAR(80)) AS source_id, p.received_at AS occurred_at, CASE WHEN p.correct THEN 1 ELSE 0 END AS solved, 1 AS attempted, 0 AS seconds"+eligible+"JOIN player_position_retry p ON p.player_id=s.account_id WHERE "+scope+" AND p.received_at>=c.enabled_at";
+        String online="SELECT s.id AS student_id, 'ONLINE_GAME' AS kind, CAST(g.id AS VARCHAR(80)) AS source_id, g.finished_at AS occurred_at, 0 AS solved, 0 AS attempted, 0 AS seconds"+eligible+"JOIN online_match g ON (g.white_player_id=s.account_id OR g.black_player_id=s.account_id) WHERE "+scope+" AND g.started_at IS NOT NULL AND g.finished_at>=c.enabled_at";
+        String normal="SELECT s.id AS student_id, 'PUZZLE_COMPLETED' AS kind, p.puzzle_id AS source_id, p.received_at AS occurred_at, 1 AS solved, 1 AS attempted, 0 AS seconds"+eligible+"JOIN player_puzzle_completion p ON p.player_id=s.account_id WHERE "+scope+" AND p.received_at>=c.enabled_at";
+        List<Object> both=new ArrayList<>(args);both.addAll(args);both.addAll(args);both.addAll(args);both.addAll(args);
+        return new ActivityQuery("SELECT * FROM ("+games+" UNION ALL "+puzzles+" UNION ALL "+retries+" UNION ALL "+online+" UNION ALL "+normal+") activity ORDER BY occurred_at DESC,source_id DESC",both);
+    }
+    public record ActivitySharingInput(boolean enabled) {}
+    @PutMapping("/{org}/app-activity/sharing")
+    public void activitySharing(@RequestHeader("Authorization") String bearer,@PathVariable UUID org,@RequestBody ActivitySharingInput input) {
+        Access a=access(bearer,org);
+        require(a.role.equals("STUDENT"),HttpStatus.FORBIDDEN,"Only a student can change their own activity sharing");
+        var own=students(org,a);
+        require(own.size()==1,HttpStatus.CONFLICT,"Link an active student profile first");
+        UUID id=uuid(own.getFirst().get("id"));
+        db.queryForObject("SELECT id FROM academy_student WHERE organization_id=? AND id=? FOR UPDATE",UUID.class,org,id);
+        var existing=rows("SELECT * FROM academy_activity_sharing WHERE organization_id=? AND student_id=?",org,id);
+        if(existing.isEmpty()) db.update("INSERT INTO academy_activity_sharing(organization_id,student_id,account_id,enabled) VALUES(?,?,?,?)",org,id,a.account,input.enabled);
+        else if(!Objects.equals(existing.getFirst().get("enabled"),input.enabled)||!Objects.equals(existing.getFirst().get("account_id"),a.account))
+            db.update("UPDATE academy_activity_sharing SET account_id=?,enabled=?,enabled_at=CURRENT_TIMESTAMP WHERE organization_id=? AND student_id=?",a.account,input.enabled,org,id);
     }
     @PostMapping("/{org}/students")
     public Map<String,Object> addStudent(@RequestHeader("Authorization") String bearer,@PathVariable UUID org,@Valid @RequestBody StudentInput input) {
@@ -219,10 +279,34 @@ public class AcademyController {
     @PostMapping("/{org}/assignments")
     public void assign(@RequestHeader("Authorization") String bearer,@PathVariable UUID org,@Valid @RequestBody AssignmentInput i) {
         Access a=trainer(bearer,org); require(!i.dueDate.isBefore(LocalDate.now()),HttpStatus.BAD_REQUEST,"Due date must be today or later");
+        if(i.puzzleId!=null) require(i.kind.equals("PUZZLES") && Integer.parseInt(i.puzzleId.substring(i.puzzleId.indexOf('-')+1))>=1 && Integer.parseInt(i.puzzleId.substring(i.puzzleId.indexOf('-')+1))<=200,HttpStatus.BAD_REQUEST,"Choose a puzzle from 1 to 200");
+        if(i.positionFen!=null || i.bestMove!=null) {
+            require(i.kind.equals("POSITIONS") && i.positionFen!=null && i.bestMove!=null,HttpStatus.BAD_REQUEST,"Position practice needs FEN and best move");
+            require(validTrainingFen(i.positionFen),HttpStatus.BAD_REQUEST,"Use a valid FEN with both kings");
+        }
         for(UUID id:new HashSet<>(i.studentIds)) {
             require(Boolean.TRUE.equals(student(org,id,a).get("active")),HttpStatus.CONFLICT,"Student is inactive");
-            db.update("INSERT INTO academy_assignment(id,organization_id,student_id,created_by,title,kind,instructions,due_date) VALUES(?,?,?,?,?,?,?,?)",UUID.randomUUID(),org,id,a.member,i.title,i.kind,i.instructions,i.dueDate);
+            db.update("INSERT INTO academy_assignment(id,organization_id,student_id,created_by,title,kind,instructions,due_date,puzzle_id,position_fen,best_move) VALUES(?,?,?,?,?,?,?,?,?,?,?)",UUID.randomUUID(),org,id,a.member,i.title,i.kind,i.instructions,i.dueDate,i.puzzleId,i.positionFen,i.bestMove);
         }
+    }
+    private boolean validTrainingFen(String fen) {
+        String[] fields=fen.trim().split("\\s+"); if(fields.length!=6 || !fields[1].matches("[wb]")) return false;
+        String[] ranks=fields[0].split("/");if(ranks.length!=8)return false;
+        for(String rank:ranks){int squares=0;for(char c:rank.toCharArray()){if(c>='1'&&c<='8')squares+=c-'0';else if("prnbqkPRNBQK".indexOf(c)>=0)squares++;else return false;}if(squares!=8)return false;}
+        return fields[0].chars().filter(c->c=='K').count()==1 && fields[0].chars().filter(c->c=='k').count()==1 && fields[2].matches("-|[KQkq]+") && fields[3].matches("-|[a-h][36]") && fields[4].matches("[0-9]{1,5}") && fields[5].matches("[1-9][0-9]{0,4}");
+    }
+    @PostMapping("/{org}/assignments/{id}/results")
+    public void assignmentResult(@RequestHeader("Authorization") String bearer,@PathVariable UUID org,@PathVariable UUID id,@Valid @RequestBody AssignmentResultInput i) {
+        Access a=access(bearer,org); require(a.role.equals("STUDENT"),HttpStatus.FORBIDDEN,"Only the assigned student can submit practice");
+        var found=rows("SELECT * FROM academy_assignment WHERE organization_id=? AND id=? FOR UPDATE",org,id);
+        require(!found.isEmpty(),HttpStatus.NOT_FOUND,"Assignment not found"); var assignment=found.getFirst();
+        UUID studentId=uuid(assignment.get("student_id"));student(org,studentId,a);
+        var duplicate=rows("SELECT organization_id,assignment_id,student_id FROM academy_assignment_result WHERE id=?",i.id);
+        if(!duplicate.isEmpty()){var old=duplicate.getFirst();require(org.equals(old.get("organization_id"))&&id.equals(old.get("assignment_id"))&&studentId.equals(old.get("student_id")),HttpStatus.CONFLICT,"Result identifier already used");return;}
+        require(assignment.get("completed_at")==null,HttpStatus.CONFLICT,"Assignment already completed");
+        if(List.of("OPENINGS","MASTER_GAMES").contains(assignment.get("kind")))require(!i.notes.isBlank(),HttpStatus.BAD_REQUEST,"Add your study notes for coach review");
+        db.update("INSERT INTO academy_assignment_result(id,organization_id,assignment_id,student_id,attempts,solved,notes) VALUES(?,?,?,?,?,?,?)",i.id,org,id,studentId,i.attempts,i.solved,i.notes);
+        if(i.solved)db.update("UPDATE academy_assignment SET completed_at=CURRENT_TIMESTAMP WHERE organization_id=? AND id=?",org,id);
     }
     @PostMapping("/{org}/assignments/{id}/complete")
     public void complete(@RequestHeader("Authorization") String bearer,@PathVariable UUID org,@PathVariable UUID id) {
@@ -271,7 +355,9 @@ public class AcademyController {
         LocalDate end=LocalDate.now(),start=i.period.equals("WEEKLY")?end.minusDays(6):end.minusMonths(1).plusDays(1);
         var observations=rows("SELECT * FROM academy_observation WHERE organization_id=? AND student_id=? AND practiced_on BETWEEN ? AND ? ORDER BY practiced_on,created_at",org,i.studentId,start,end);
         var assignments=rows("SELECT title,due_date,completed_at FROM academy_assignment WHERE organization_id=? AND student_id=? AND due_date BETWEEN ? AND ?",org,i.studentId,start,end);
-        String summary=json.writeValueAsString(Map.of("student",s.get("name"),"from",start.toString(),"to",end.toString(),"source","Coach-recorded training observations","observations",observations,"assignments",assignments));
+        var appDaily=activityDaily(org,List.of(i.studentId),start,end);
+        var results=rows("SELECT r.*,a.title,a.kind FROM academy_assignment_result r JOIN academy_assignment a ON a.organization_id=r.organization_id AND a.id=r.assignment_id WHERE r.organization_id=? AND r.student_id=? AND r.created_at>=? AND r.created_at<? ORDER BY r.created_at",org,i.studentId,java.sql.Timestamp.valueOf(start.atStartOfDay()),java.sql.Timestamp.valueOf(end.plusDays(1).atStartOfDay()));
+        String summary=json.writeValueAsString(Map.of("student",s.get("name"),"from",start.toString(),"to",end.toString(),"source","Coach observations and separately labelled app-reported practice","observations",observations,"assignments",assignments,"appDaily",appDaily,"assignmentResults",results));
         db.update("INSERT INTO academy_report(id,organization_id,student_id,created_by,period,summary) VALUES(?,?,?,?,?,?)",UUID.randomUUID(),org,i.studentId,a.member,i.period,summary);
     }
     @PostMapping("/{org}/students/{id}/guidance")

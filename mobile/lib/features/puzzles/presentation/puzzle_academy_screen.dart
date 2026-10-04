@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/local_game_archive.dart';
+import '../../../core/academy_activity.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../analysis/domain/player_learning_profile.dart';
@@ -734,7 +735,9 @@ class _PuzzleSprintSheetState extends State<_PuzzleSprintSheet> {
       puzzle.id,
     );
     setState(() => _launching = true);
-    await widget.onStartPuzzle(puzzle.id);
+    AcademyPracticeCapture.inSprint=true;
+    try { await widget.onStartPuzzle(puzzle.id); }
+    finally { AcademyPracticeCapture.inSprint=false; }
     if (!mounted) return;
     final bool solvedAfter = LocalGameArchive.completedPuzzleIds.contains(
       puzzle.id,

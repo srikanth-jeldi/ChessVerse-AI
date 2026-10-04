@@ -72,6 +72,17 @@ Seat allocation and imports lock the organization row; imports and multi-student
 
 ## Consumer game and analytics boundary
 
+### Student app and academy dashboard (October 4)
+
+Students use the existing ChessVerseAI app/web **My Academy** screen; coaches and administrators use the separate academy web dashboard. Both use authenticated organization membership. Students accept email-bound invitations, see their batch/coach, practice assigned puzzles or positions, submit study notes, and read announcements and reports. Results are app-reported, not engine-verified ratings. Assignment results are academy records independent of optional personal activity sharing.
+
+The App activity panel separately labels saved/online game metadata, normal puzzle completions, puzzle sprints, Position Retry and weakness counts. Only activity after student opt-in is visible to authorized staff and linked parents. Disabling hides current activity reads; previously generated report snapshots retain their recorded totals. Re-enabling starts a fresh boundary. No private game bodies or opponent identities are exposed.
+
+The panel polls every 15 seconds while visible and rejects late responses after organization/account switches. Its latest-event feed is limited to 100; 30-day charts and report aggregates query the full requested interval independently of that limit. New reports include separately labelled app totals and assignment results, with print and App CSV export. Existing report snapshots are unchanged.
+
+V73 adds sharing and retry events; V74 adds normal puzzle completions and assignment training/results. Normal puzzle completion is deduplicated per player/puzzle. Sprint and assignment practice are excluded from personal completion capture to avoid double counting. Personal telemetry is best-effort, with no offline queue; assignment submissions require explicit server confirmation and support idempotent retries.
+
+Release requires backend, academy and Flutter web updates. Android source uses the same screen but installed Android clients require a later app release; no AAB is required for web rollout. Payments remain disabled pending merchant/tax configuration. Interactive shared-game replay and scheduled report generation are outside this change.
 Consumer history remains personal. It is not automatically copied to any academy, including when a member joins multiple organizations. A Student can explicitly select one of their 100 most recent saved computer games and share it with one organization. The backend reads the game using the authenticated player's ID and stores a tenant-bound snapshot; arbitrary game bodies and another player's IDs are rejected. Only in-scope staff, the student, and linked parents can view the snapshot. Phase one presents the saved position, players, result and move history; interactive move-by-move replay is not included.
 
 Training metrics currently come from coach-recorded sessions, not automatic aggregation of all consumer game analysis. These records are labelled accordingly. Do not interpret recorded ratings as certified FIDE ratings, shared-game counts as analyzed-game counts, or practice activity as attendance. Enrollment does not expose historical consumer analysis, social records or gameplay APIs.

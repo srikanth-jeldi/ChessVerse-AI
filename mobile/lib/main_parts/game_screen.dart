@@ -2866,6 +2866,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _completePuzzle() {
+    unawaited(recordAcademyPuzzleCompletion(_activePuzzle.id));
     final bool firstCompletion = !LocalGameArchive.isPuzzleComplete(
       _activePuzzle.id,
     );

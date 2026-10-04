@@ -381,6 +381,7 @@ class _ReviewedPositionRetryDialogState
     if (!_legalTargets.contains(square)) return;
     final String attempted = '$from$square'.toLowerCase();
     final bool correct = widget.bestMove.toLowerCase().startsWith(attempted);
+    unawaited(recordAcademyPositionRetry(correct));
     final int nextHintStage = correct
         ? _hintStage
         : (_hintStage + 1).clamp(1, 3);

@@ -19,6 +19,7 @@ class DesktopAppSidebar extends StatelessWidget {
     this.onStore,
     this.onSettings,
     this.onCollection,
+    this.onAcademy,
     super.key,
   });
 
@@ -36,6 +37,7 @@ class DesktopAppSidebar extends StatelessWidget {
   final VoidCallback? onStore;
   final VoidCallback? onSettings;
   final VoidCallback? onCollection;
+  final VoidCallback? onAcademy;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +49,7 @@ class DesktopAppSidebar extends StatelessWidget {
             (icon: Icons.history_rounded, label: 'My Games', onTap: onMyGames),
           (icon: Icons.extension_rounded, label: 'Puzzles', onTap: onPuzzles),
           (icon: Icons.school_rounded, label: 'Learn', onTap: onLearn),
+          if(onAcademy != null) (icon: Icons.groups_rounded, label: 'My Academy', onTap: onAcademy),
           (icon: Icons.person_rounded, label: 'Profile', onTap: onProfile),
           if (onFriends != null)
             (
