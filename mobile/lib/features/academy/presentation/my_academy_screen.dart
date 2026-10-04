@@ -86,8 +86,9 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
         announcements = notices;
       });
     } catch (e) {
-      if (mounted && request == generation)
+      if (mounted && request == generation) {
         setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+      }
     } finally {
       if (mounted && request == generation) setState(() => busy = false);
     }
@@ -117,8 +118,9 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
   }
 
   void message(String text) {
-    if (mounted)
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    }
   }
 
   Widget box(Widget child) => Card(
@@ -261,12 +263,13 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                         if (context.mounted) Navigator.pop(context);
                         message('Result saved for your coach.');
                       } catch (e) {
-                        if (context.mounted)
+                        if (context.mounted) {
                           update(() {
                             sending = false;
                             sendError =
                                 'Not saved. Check your connection and retry. $e';
                           });
+                        }
                       }
                     },
               child: Text(sending ? 'Saving…' : 'Submit to coach'),
@@ -462,8 +465,9 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                                         await load();
                                       } catch (e) {
                                         message(e.toString());
-                                        if (mounted)
+                                        if (mounted) {
                                           setState(() => busy = false);
+                                        }
                                       }
                                     },
                             ),

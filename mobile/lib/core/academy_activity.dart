@@ -19,8 +19,10 @@ Future<void> recordAcademyPositionRetry(bool correct) async {
 
 Future<void> recordAcademyPuzzleCompletion(String puzzleId) async {
   AcademyPracticeCapture.active?.puzzleCompleted(puzzleId);
-  if (AcademyPracticeCapture.inSprint || AcademyPracticeCapture.active != null)
+  if (AcademyPracticeCapture.inSprint ||
+      AcademyPracticeCapture.active != null) {
     return;
+  }
   await _recordPractice('puzzle-completions', {'puzzleId': puzzleId});
 }
 

@@ -89,14 +89,22 @@ void main() {
             expect(id, 'easy-1');
             AcademyPracticeCapture.active!.puzzleCompleted(id);
           },
-          onPosition: (_, __, ___) async {},
+          onPosition: (_, _, _) async {},
         ),
       ),
     );
     await tester.pumpAndSettle();
     expect(find.text('Test Academy'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Start practice'), 250,
-        scrollable: find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first);
+    await tester.scrollUntilVisible(
+      find.text('Start practice'),
+      250,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Start practice'));
     await tester.pumpAndSettle();

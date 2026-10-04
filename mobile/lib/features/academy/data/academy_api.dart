@@ -34,12 +34,13 @@ class AcademyApi {
     } catch (_) {
       throw Exception('Academy service is unavailable. Please try again.');
     }
-    if (response.statusCode >= 400)
+    if (response.statusCode >= 400) {
       throw Exception(
         data is Map
             ? data['message'] ?? data['detail'] ?? 'Unable to access this academy. Check your sign-in and membership.'
             : 'Academy request failed.',
       );
+    }
     return data;
   }
 }
