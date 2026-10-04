@@ -107,6 +107,20 @@ List<SavedMoveReview> _savedReviewsFromCloud(CloudAnalysisJob job) => job.plies
 
 final Completer<void> _localArchiveReady = Completer<void>();
 
+Future<void> _configureSystemUiAfterFirstFrame() async {
+  if (kIsWeb) return;
+  try {
+    // Window inset changes can recreate or relayout the Android rendering
+    // surface. Wait until Flutter has presented its first frame so low-end and
+    // OEM-customised Android devices are not asked to mutate the window while
+    // the engine is still attaching its initial surface.
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge)
+        .timeout(const Duration(seconds: 2));
+  } on Object {
+    // System UI configuration is cosmetic and must never delay app startup.
+  }
+}
+
 Future<void> _initializeAfterFirstFrame() async {
   try {
     await LocalGameArchive.init().timeout(const Duration(seconds: 5));
@@ -136,13 +150,6 @@ Future<void> _initializeAfterFirstFrame() async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (!kIsWeb) {
-    unawaited(
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge)
-          .timeout(const Duration(seconds: 2))
-          .catchError((Object _) {}),
-    );
-  }
   if (kIsWeb) {
     try {
       await ensureFacebookSdkReady().timeout(const Duration(seconds: 8));
@@ -161,6 +168,7 @@ Future<void> main() async {
   AppConfig.validate();
   runApp(const ChessVerseApp());
   WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(_configureSystemUiAfterFirstFrame());
     unawaited(_initializeAfterFirstFrame());
   });
 }
