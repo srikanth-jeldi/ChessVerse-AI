@@ -312,7 +312,12 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
         body: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) =>
               SingleChildScrollView(
-                padding: const EdgeInsets.all(18),
+                padding: EdgeInsets.fromLTRB(
+                  18,
+                  18,
+                  18,
+                  32 + MediaQuery.viewPaddingOf(context).bottom,
+                ),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 760),
@@ -593,16 +598,12 @@ class _MistakeBoard extends StatelessWidget {
     final String colour = white ? 'white' : 'black';
     final String name = names[token.toLowerCase()]!;
     return Padding(
-      padding: const EdgeInsets.all(2),
-      child: Transform.scale(
-        scale: 1.1,
-        child: Image.asset(
-          'assets/pieces/premium_individual/obsidian-regal/'
-          '$colour/$name.webp',
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.high,
-          semanticLabel: '${white ? 'White' : 'Black'} $name',
-        ),
+      padding: const EdgeInsets.all(4),
+      child: Image.asset(
+        'assets/pieces/staunton_${colour}_$name.png',
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
+        semanticLabel: '${white ? 'White' : 'Black'} $name',
       ),
     );
   }
