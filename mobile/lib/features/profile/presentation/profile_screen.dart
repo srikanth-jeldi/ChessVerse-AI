@@ -19,6 +19,7 @@ class ProfileScreen extends StatefulWidget {
     this.onProfilePhotoChanged,
     this.onSecureProgress,
     this.onLinkedAccounts,
+    this.onAcademy,
     this.onShop,
     this.onMissions,
     this.onLanguage,
@@ -32,9 +33,10 @@ class ProfileScreen extends StatefulWidget {
   final bool isGuest;
   final Future<void> Function(String displayName)? onDisplayNameChanged;
   final Future<String?> Function(Uint8List bytes, String filename)?
-      onProfilePhotoChanged;
+  onProfilePhotoChanged;
   final Future<void> Function()? onSecureProgress;
   final Future<void> Function()? onLinkedAccounts;
+  final VoidCallback? onAcademy;
   final VoidCallback? onShop;
   final VoidCallback? onMissions;
   final VoidCallback? onLanguage;
@@ -101,6 +103,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     widget.onMissions?.call();
                   case 'shop':
                     widget.onShop?.call();
+                  case 'academy':
+                    widget.onAcademy?.call();
                 }
               },
               itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -128,6 +132,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: ListTile(
                       leading: Icon(Icons.storefront_rounded),
                       title: Text('Boards & piece shop'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                if (widget.onAcademy != null)
+                  const PopupMenuItem<String>(
+                    value: 'academy',
+                    child: ListTile(
+                      leading: Icon(Icons.groups_rounded),
+                      title: Text('My Academy'),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
@@ -246,8 +259,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   widget.isGuest
                       ? 'Guest progress is safe on this device. Secure it with Email, Google or Facebook to restore it after reinstalling or changing devices.'
                       : '${accountEmail ?? 'Email not shared'}\nYour identity and training progress are ready across ChessVerseAI.',
-                  style:
-                      const TextStyle(color: Color(0xFFA9BBC4), height: 1.45),
+                  style: const TextStyle(
+                    color: Color(0xFFA9BBC4),
+                    height: 1.45,
+                  ),
                 ),
                 if (!widget.isGuest &&
                     widget.onProfilePhotoChanged != null) ...<Widget>[
@@ -261,17 +276,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.add_a_photo_rounded),
-                    label: Text(_uploadingPhoto
-                        ? 'UPLOADING PHOTO…'
-                        : 'CHANGE PROFILE PHOTO'),
+                    label: Text(
+                      _uploadingPhoto
+                          ? 'UPLOADING PHOTO…'
+                          : 'CHANGE PROFILE PHOTO',
+                    ),
                   ),
                 ],
-                if (!widget.isGuest && widget.onLinkedAccounts != null) ...<Widget>[
+                if (!widget.isGuest &&
+                    widget.onLinkedAccounts != null) ...<Widget>[
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: () => widget.onLinkedAccounts!.call(),
                     icon: const Icon(Icons.link_rounded),
                     label: const Text('SECURITY & LINKED ACCOUNTS'),
+                  ),
+                ],
+                if (widget.onAcademy != null) ...<Widget>[
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    key: const ValueKey<String>('open-my-academy'),
+                    onPressed: widget.onAcademy,
+                    icon: const Icon(Icons.groups_rounded),
+                    label: const Text('MY ACADEMY'),
                   ),
                 ],
                 if (widget.isGuest &&
@@ -298,94 +325,94 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return email;
   }
 
-  Future<void> _showRewards(RewardSnapshot rewards) =>
-      showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (BuildContext context) => DraggableScrollableSheet(
-          initialChildSize: 0.76,
-          minChildSize: 0.55,
-          maxChildSize: 0.92,
-          expand: false,
-          builder: (BuildContext context, ScrollController controller) =>
-              Container(
-            decoration: const BoxDecoration(
-              color: Color(0xF2071827),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-              border: Border(top: BorderSide(color: Color(0x8062E4D1))),
-            ),
-            child: ListView(
-              controller: controller,
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-              children: <Widget>[
-                Center(
-                  child: Container(
-                    width: 44,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF526778),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                const Text(
-                  'REWARDS & BADGES',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '${rewards.coins} coins  •  ${rewards.xp} XP  •  Level ${rewards.level}',
-                  style: const TextStyle(
-                    color: AppColors.accentGold,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                const _RewardInfoTile(
-                  icon: Icons.sports_esports_rounded,
-                  title: 'Finish a match',
-                  subtitle: '+8 coins and +25 XP',
-                ),
-                const _RewardInfoTile(
-                  icon: Icons.emoji_events_rounded,
-                  title: 'Win a match',
-                  subtitle: '+18 bonus coins and +45 bonus XP',
-                ),
-                const _RewardInfoTile(
-                  icon: Icons.extension_rounded,
-                  title: 'Solve a puzzle',
-                  subtitle: '+12 coins and +35 XP',
-                ),
-                const _RewardInfoTile(
-                  icon: Icons.today_rounded,
-                  title: 'Complete the daily challenge',
-                  subtitle: '+35 coins and +80 XP; keep your streak alive',
-                ),
-                const SizedBox(height: 18),
-                const Text(
-                  'BADGE COLLECTION',
-                  style: TextStyle(
-                    color: AppColors.accentGold,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ...rewards.badges.map(
-                  (RewardBadge badge) => _BadgeProgressTile(badge: badge),
-                ),
-              ],
-            ),
-          ),
+  Future<void> _showRewards(
+    RewardSnapshot rewards,
+  ) => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (BuildContext context) => DraggableScrollableSheet(
+      initialChildSize: 0.76,
+      minChildSize: 0.55,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (BuildContext context, ScrollController controller) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xF2071827),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(top: BorderSide(color: Color(0x8062E4D1))),
         ),
-      );
+        child: ListView(
+          controller: controller,
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+          children: <Widget>[
+            Center(
+              child: Container(
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF526778),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'REWARDS & BADGES',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${rewards.coins} coins  •  ${rewards.xp} XP  •  Level ${rewards.level}',
+              style: const TextStyle(
+                color: AppColors.accentGold,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 18),
+            const _RewardInfoTile(
+              icon: Icons.sports_esports_rounded,
+              title: 'Finish a match',
+              subtitle: '+8 coins and +25 XP',
+            ),
+            const _RewardInfoTile(
+              icon: Icons.emoji_events_rounded,
+              title: 'Win a match',
+              subtitle: '+18 bonus coins and +45 bonus XP',
+            ),
+            const _RewardInfoTile(
+              icon: Icons.extension_rounded,
+              title: 'Solve a puzzle',
+              subtitle: '+12 coins and +35 XP',
+            ),
+            const _RewardInfoTile(
+              icon: Icons.today_rounded,
+              title: 'Complete the daily challenge',
+              subtitle: '+35 coins and +80 XP; keep your streak alive',
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'BADGE COLLECTION',
+              style: TextStyle(
+                color: AppColors.accentGold,
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...rewards.badges.map(
+              (RewardBadge badge) => _BadgeProgressTile(badge: badge),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 
   Future<void> _changeProfilePhoto() async {
     final file = await FilePicker.pickFile(
@@ -415,9 +442,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     } on Object catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) setState(() => _uploadingPhoto = false);
     }
@@ -426,19 +452,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _editProfile() async {
     final _EditableProfile? value =
         await showModalBottomSheet<_EditableProfile>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) => _ProfileEditorSheet(
-        initialDisplayName: _displayName,
-        username: widget.username?.trim() ?? '',
-        initialCountry: LocalGameArchive.profileCountry,
-        initialLevel: LocalGameArchive.profileLevel,
-        initialAvatar: LocalGameArchive.profileAvatar,
-        accountPhotoUrl: _profilePhotoUrl,
-        initialUseAccountPhoto: _useAccountPhoto,
-      ),
-    );
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (BuildContext context) => _ProfileEditorSheet(
+            initialDisplayName: _displayName,
+            username: widget.username?.trim() ?? '',
+            initialCountry: LocalGameArchive.profileCountry,
+            initialLevel: LocalGameArchive.profileLevel,
+            initialAvatar: LocalGameArchive.profileAvatar,
+            accountPhotoUrl: _profilePhotoUrl,
+            initialUseAccountPhoto: _useAccountPhoto,
+          ),
+        );
     if (value == null || !mounted) return;
     try {
       await widget.onDisplayNameChanged?.call(value.displayName);
@@ -454,23 +480,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _useAccountPhoto = value.useAccountPhoto;
       });
       unawaited(_savePhotoPreference(value.useAccountPhoto));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Player profile saved')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Player profile saved')));
     } on Object catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
   Future<void> _savePhotoPreference(bool value) async {
     try {
-      await const AppPreferences().writeBool(
-        _useAccountPhotoPreference,
-        value,
-      );
+      await const AppPreferences().writeBool(_useAccountPhotoPreference, value);
     } on Object {
       // Profile edits remain usable if secure storage is temporarily
       // unavailable. The selected account photo is still active this session.
@@ -491,33 +512,36 @@ class _RewardInfoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(13),
-        decoration: BoxDecoration(
-          color: const Color(0xB30B2032),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF294457)),
-        ),
-        child: Row(
-          children: <Widget>[
-            Icon(icon, color: const Color(0xFF62E4D1)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(title,
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 2),
-                  Text(subtitle,
-                      style: const TextStyle(color: Color(0xFFA9BBC4))),
-                ],
+    margin: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.all(13),
+    decoration: BoxDecoration(
+      color: const Color(0xB30B2032),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFF294457)),
+    ),
+    child: Row(
+      children: <Widget>[
+        Icon(icon, color: const Color(0xFF62E4D1)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(subtitle, style: const TextStyle(color: Color(0xFFA9BBC4))),
+            ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _BadgeProgressTile extends StatelessWidget {
@@ -527,51 +551,52 @@ class _BadgeProgressTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-        leading: CircleAvatar(
-          backgroundColor: badge.unlocked
-              ? const Color(0x3362E4D1)
-              : const Color(0x33263645),
-          child: Icon(
-            badge.unlocked
-                ? Icons.workspace_premium_rounded
-                : Icons.lock_rounded,
-            color: badge.unlocked
-                ? const Color(0xFF62E4D1)
-                : const Color(0xFF718291),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+    leading: CircleAvatar(
+      backgroundColor: badge.unlocked
+          ? const Color(0x3362E4D1)
+          : const Color(0x33263645),
+      child: Icon(
+        badge.unlocked ? Icons.workspace_premium_rounded : Icons.lock_rounded,
+        color: badge.unlocked
+            ? const Color(0xFF62E4D1)
+            : const Color(0xFF718291),
+      ),
+    ),
+    title: Text(
+      badge.title,
+      style: TextStyle(
+        color: badge.unlocked ? Colors.white : const Color(0xFF91A1AE),
+        fontWeight: FontWeight.w800,
+      ),
+    ),
+    subtitle: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          badge.description,
+          style: const TextStyle(color: Color(0xFFA9BBC4)),
+        ),
+        if (!badge.unlocked) ...<Widget>[
+          const SizedBox(height: 7),
+          LinearProgressIndicator(
+            value: badge.completion,
+            minHeight: 5,
+            color: const Color(0xFF62E4D1),
+            backgroundColor: const Color(0xFF263645),
           ),
-        ),
-        title: Text(
-          badge.title,
-          style: TextStyle(
-            color: badge.unlocked ? Colors.white : const Color(0xFF91A1AE),
-            fontWeight: FontWeight.w800,
+          const SizedBox(height: 3),
+          Text(
+            '${badge.progress.clamp(0, badge.target)}/${badge.target}',
+            style: const TextStyle(color: Color(0xFF8198A5), fontSize: 11),
           ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(badge.description,
-                style: const TextStyle(color: Color(0xFFA9BBC4))),
-            if (!badge.unlocked) ...<Widget>[
-              const SizedBox(height: 7),
-              LinearProgressIndicator(
-                value: badge.completion,
-                minHeight: 5,
-                color: const Color(0xFF62E4D1),
-                backgroundColor: const Color(0xFF263645),
-              ),
-              const SizedBox(height: 3),
-              Text('${badge.progress.clamp(0, badge.target)}/${badge.target}',
-                  style:
-                      const TextStyle(color: Color(0xFF8198A5), fontSize: 11)),
-            ],
-          ],
-        ),
-        trailing: badge.unlocked
-            ? const Icon(Icons.check_circle_rounded, color: Color(0xFF62E4D1))
-            : null,
-      );
+        ],
+      ],
+    ),
+    trailing: badge.unlocked
+        ? const Icon(Icons.check_circle_rounded, color: Color(0xFF62E4D1))
+        : null,
+  );
 }
 
 class _ProfileHero extends StatelessWidget {
@@ -616,7 +641,10 @@ class _ProfileHero extends StatelessWidget {
         border: Border.all(color: const Color(0xFF9A7133)),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-              color: Color(0x55000000), blurRadius: 30, offset: Offset(0, 16)),
+            color: Color(0x55000000),
+            blurRadius: 30,
+            offset: Offset(0, 16),
+          ),
         ],
       ),
       child: Column(
@@ -674,8 +702,9 @@ class _ProfileHero extends StatelessWidget {
           Row(
             children: <Widget>[
               _HeroMetric(
-                  label: 'STATUS',
-                  value: isGuest ? 'GUEST ONLINE' : 'VERIFIED'),
+                label: 'STATUS',
+                value: isGuest ? 'GUEST ONLINE' : 'VERIFIED',
+              ),
               const _Divider(),
               _HeroMetric(label: 'EST. STRENGTH', value: '${_elo(level)} ELO'),
               const _Divider(),
@@ -924,7 +953,8 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
         : _countries.first;
     _level = widget.initialLevel;
     _avatar = widget.initialAvatar;
-    _useAccountPhoto = widget.initialUseAccountPhoto &&
+    _useAccountPhoto =
+        widget.initialUseAccountPhoto &&
         widget.accountPhotoUrl?.trim().isNotEmpty == true;
   }
 
@@ -981,22 +1011,26 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
                 height: 74,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount:
-                      widget.accountPhotoUrl?.trim().isNotEmpty == true ? 7 : 6,
+                  itemCount: widget.accountPhotoUrl?.trim().isNotEmpty == true
+                      ? 7
+                      : 6,
                   separatorBuilder: (_, _) => const SizedBox(width: 10),
                   itemBuilder: (BuildContext context, int itemIndex) {
                     final bool hasAccountPhoto =
                         widget.accountPhotoUrl?.trim().isNotEmpty == true;
                     final bool accountPhoto = hasAccountPhoto && itemIndex == 0;
-                    final int index =
-                        hasAccountPhoto ? itemIndex - 1 : itemIndex;
+                    final int index = hasAccountPhoto
+                        ? itemIndex - 1
+                        : itemIndex;
                     final bool selected = accountPhoto
                         ? _useAccountPhoto
                         : !_useAccountPhoto && _avatar == index;
                     return InkWell(
-                      key: ValueKey<String>(accountPhoto
-                          ? 'profile-account-photo'
-                          : 'profile-avatar-$index'),
+                      key: ValueKey<String>(
+                        accountPhoto
+                            ? 'profile-account-photo'
+                            : 'profile-avatar-$index',
+                      ),
                       borderRadius: BorderRadius.circular(99),
                       onTap: () => setState(() {
                         _useAccountPhoto = accountPhoto;
@@ -1233,7 +1267,10 @@ class _Avatar extends StatelessWidget {
           ),
           boxShadow: const <BoxShadow>[
             BoxShadow(
-                color: Color(0x66000000), blurRadius: 12, offset: Offset(0, 7)),
+              color: Color(0x66000000),
+              blurRadius: 12,
+              offset: Offset(0, 7),
+            ),
           ],
         ),
         child: Icon(icons[index], color: Colors.white, size: size * 0.5),
@@ -1252,8 +1289,10 @@ class _HeroMetric extends StatelessWidget {
     return Expanded(
       child: Column(
         children: <Widget>[
-          Text(label,
-              style: const TextStyle(color: Color(0xFF78929E), fontSize: 9)),
+          Text(
+            label,
+            style: const TextStyle(color: Color(0xFF78929E), fontSize: 9),
+          ),
           const SizedBox(height: 3),
           Text(
             value,
@@ -1340,21 +1379,21 @@ class _Pill extends StatelessWidget {
   final String label;
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-        decoration: BoxDecoration(
-          color: const Color(0xFF07131E),
-          borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: const Color(0xFF34505B)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(icon, size: 15, color: AppColors.accentGold),
-            const SizedBox(width: 5),
-            Text(label, style: const TextStyle(fontSize: 11)),
-          ],
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+    decoration: BoxDecoration(
+      color: const Color(0xFF07131E),
+      borderRadius: BorderRadius.circular(99),
+      border: Border.all(color: const Color(0xFF34505B)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Icon(icon, size: 15, color: AppColors.accentGold),
+        const SizedBox(width: 5),
+        Text(label, style: const TextStyle(fontSize: 11)),
+      ],
+    ),
+  );
 }
 
 class _SectionLabel extends StatelessWidget {
@@ -1362,13 +1401,13 @@ class _SectionLabel extends StatelessWidget {
   final String text;
   @override
   Widget build(BuildContext context) => Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.accentGold,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 1.2,
-        ),
-      );
+    text,
+    style: const TextStyle(
+      color: AppColors.accentGold,
+      fontWeight: FontWeight.w900,
+      letterSpacing: 1.2,
+    ),
+  );
 }
 
 class _Stat extends StatelessWidget {
@@ -1377,62 +1416,67 @@ class _Stat extends StatelessWidget {
   final String value;
   final IconData icon;
   String get asset => switch (label) {
-        'Games' => 'assets/backgrounds/home-online-hero-v1.webp',
-        'Wins' => 'assets/backgrounds/home-rankings-hero-v1.webp',
-        'Win rate' => 'assets/backgrounds/home-analysis-hero-v1.webp',
-        _ => 'assets/backgrounds/home-puzzles-hero-v1.webp',
-      };
+    'Games' => 'assets/backgrounds/home-online-hero-v1.webp',
+    'Wins' => 'assets/backgrounds/home-rankings-hero-v1.webp',
+    'Win rate' => 'assets/backgrounds/home-analysis-hero-v1.webp',
+    _ => 'assets/backgrounds/home-puzzles-hero-v1.webp',
+  };
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xE60C1D2B),
-          image: DecorationImage(
-            image: AssetImage(asset),
-            fit: BoxFit.cover,
-            alignment: Alignment.center,
-            opacity: .3,
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFF3B6170)),
-          boxShadow: const <BoxShadow>[
-            BoxShadow(color: Color(0x33000000), blurRadius: 16),
-          ],
-        ),
-        child: Row(
-          children: <Widget>[
-            Icon(icon, color: const Color(0xFF63D2B8)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(value,
-                        style: const TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.w900)),
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: const Color(0xE60C1D2B),
+      image: DecorationImage(
+        image: AssetImage(asset),
+        fit: BoxFit.cover,
+        alignment: Alignment.center,
+        opacity: .3,
+      ),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: const Color(0xFF3B6170)),
+      boxShadow: const <BoxShadow>[
+        BoxShadow(color: Color(0x33000000), blurRadius: 16),
+      ],
+    ),
+    child: Row(
+      children: <Widget>[
+        Icon(icon, color: const Color(0xFF63D2B8)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
                   ),
-                  Text(label,
-                      style: const TextStyle(
-                          color: Color(0xFF8FA5B1), fontSize: 11)),
-                ],
+                ),
               ),
-            ),
-          ],
+              Text(
+                label,
+                style: const TextStyle(color: Color(0xFF8FA5B1), fontSize: 11),
+              ),
+            ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 String _levelTitle(int level) => const <String>[
-      'New to chess',
-      'Casual player',
-      'Club challenger',
-      'Advanced tactician',
-      'Master arena',
-    ][level.clamp(0, 4)];
+  'New to chess',
+  'Casual player',
+  'Club challenger',
+  'Advanced tactician',
+  'Master arena',
+][level.clamp(0, 4)];
 
 int _elo(int level) =>
     const <int>[400, 800, 1200, 1600, 2000][level.clamp(0, 4)];

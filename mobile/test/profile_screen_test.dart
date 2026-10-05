@@ -5,6 +5,36 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('academy access lives inside the player profile', (
+    WidgetTester tester,
+  ) async {
+    bool opened = false;
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.darkTheme,
+        home: ProfileScreen(
+          playerName: 'Student',
+          isGuest: false,
+          onAcademy: () => opened = true,
+        ),
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<String>('open-my-academy')),
+      300,
+    );
+    await tester.tap(find.byKey(const ValueKey<String>('open-my-academy')));
+
+    expect(opened, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('rich player profile opens and saves editor', (
     WidgetTester tester,
   ) async {
