@@ -18,7 +18,7 @@ concurrency:
 jobs:
   release:
     name: Test and build signed AAB
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     environment: production
     defaults:
       run:
