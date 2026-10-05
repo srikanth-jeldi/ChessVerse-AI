@@ -25,11 +25,15 @@ void main() {
       ),
     );
 
-    await tester.scrollUntilVisible(
+    expect(
       find.byKey(const ValueKey<String>('open-my-academy')),
-      300,
+      findsOneWidget,
     );
-    await tester.tap(find.byKey(const ValueKey<String>('open-my-academy')));
+    await tester.tap(
+      find.byKey(const ValueKey<String>('profile-actions-menu')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('My Academy'));
 
     expect(opened, isTrue);
     expect(tester.takeException(), isNull);
