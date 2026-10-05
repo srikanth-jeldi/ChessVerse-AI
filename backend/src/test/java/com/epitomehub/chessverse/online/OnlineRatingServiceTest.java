@@ -43,7 +43,7 @@ class OnlineRatingServiceTest {
         assertEquals(1184, black.rating);
         assertEquals(1, white.wins);
         assertEquals(1, black.losses);
-        assertEquals(1000, white.careerCoinsWon);
+        assertEquals(500, white.careerCoinsWon);
         assertEquals(0, black.careerCoinsWon);
         assertEquals(1200, match.whiteRatingBefore);
         assertEquals(1216, match.whiteRatingAfter);
@@ -79,6 +79,32 @@ class OnlineRatingServiceTest {
         assertEquals(1, black.draws);
         assertEquals(0, white.careerCoinsWon);
         assertEquals(0, black.careerCoinsWon);
+    }
+
+    @Test
+    void countsNetEntryCoinsForEveryWin() {
+        OnlinePlayerRatingRepository repository = mock(OnlinePlayerRatingRepository.class);
+        OnlineRatingService service = new OnlineRatingService(repository, mock(JdbcTemplate.class));
+        UUID whiteId = UUID.randomUUID();
+        UUID blackId = UUID.randomUUID();
+        OnlinePlayerRating white = new OnlinePlayerRating(whiteId, "White");
+        OnlinePlayerRating black = new OnlinePlayerRating(blackId, "Black");
+        when(repository.lockByPlayerId(whiteId)).thenReturn(Optional.of(white));
+        when(repository.lockByPlayerId(blackId)).thenReturn(Optional.of(black));
+
+        for (int game = 0; game < 4; game++) {
+            OnlineMatch match =
+                    new OnlineMatch(UUID.randomUUID(), "CV" + game, whiteId, "White", null, false);
+            match.blackPlayerId = blackId;
+            match.blackPlayerName = "Black";
+            match.status = OnlineMatchStatus.FINISHED;
+            match.result = "1-0";
+            match.entryCoins = 100;
+            service.settle(match);
+        }
+
+        assertEquals(4, white.wins);
+        assertEquals(400, white.careerCoinsWon);
     }
 
     @Test

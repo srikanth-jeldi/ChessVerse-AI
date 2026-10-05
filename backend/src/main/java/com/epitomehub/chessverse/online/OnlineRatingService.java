@@ -53,9 +53,12 @@ public class OnlineRatingService {
         apply(white, whiteScore, whiteDelta);
         apply(black, 1.0 - whiteScore, blackDelta);
         if (match.entryCoins > 0) {
-            long prize = Math.multiplyExact((long) match.entryCoins, 2L);
-            if (whiteScore == 1.0) white.careerCoinsWon += prize;
-            else if (whiteScore == 0.0) black.careerCoinsWon += prize;
+            // Both players fund the pool, so the winner receives 2x the entry fee
+            // but only earns one entry fee as net winnings. The leaderboard tracks
+            // that net amount: four 100-coin wins are 400 coins won.
+            long netWinnings = match.entryCoins;
+            if (whiteScore == 1.0) white.careerCoinsWon += netWinnings;
+            else if (whiteScore == 0.0) black.careerCoinsWon += netWinnings;
         }
         ratings.saveAll(List.of(white, black));
 
@@ -104,7 +107,7 @@ public class OnlineRatingService {
                     (long) pageNumber * pageSize + index + 1L,
                     row.playerId, row.displayName, row.country, row.rating,
                     row.gamesPlayed, row.wins, row.draws, row.losses,
-                    row.careerCoinsWon,
+                    careerCoinsWon(row),
                     row.playerId.equals(player.id()),
                     profilePhotoUrl(row.playerId)));
         }
@@ -144,8 +147,26 @@ public class OnlineRatingService {
         return new LeaderboardDtos.PlayerRatingDto(
                 rating.playerId, rating.displayName, rating.country, rating.rating,
                 rating.peakRating, rating.gamesPlayed, rating.wins, rating.draws, rating.losses,
-                rating.careerCoinsWon,
+                careerCoinsWon(rating),
                 globalRank, countryRank, profilePhotoUrl(rating.playerId));
+    }
+
+    private long careerCoinsWon(OnlinePlayerRating rating) {
+        try {
+            Long winnings = jdbc.queryForObject("""
+                    select coalesce(sum(entry_coins), 0)
+                    from online_match
+                    where status = 'FINISHED'
+                      and entry_coins > 0
+                      and ((result = '1-0' and white_player_id = ?)
+                        or (result = '0-1' and black_player_id = ?))
+                    """, Long.class, rating.playerId, rating.playerId);
+            return winnings == null ? 0 : winnings;
+        } catch (RuntimeException ignored) {
+            // Keep profile/leaderboard availability during a transient database
+            // read problem and for lightweight unit-test database substitutes.
+            return rating.careerCoinsWon;
+        }
     }
 
     private String profilePhotoUrl(UUID playerId) {

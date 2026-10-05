@@ -795,7 +795,7 @@ class _LeaderboardTile extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${entry.wins}W ${entry.draws}D ${entry.losses}L  ·  🪙 ${entry.careerCoinsWon} won',
+                  '${entry.wins}W ${entry.draws}D ${entry.losses}L  ·  🪙 ${entry.careerCoinsWon} coins won',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
