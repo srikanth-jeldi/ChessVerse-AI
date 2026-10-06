@@ -3707,7 +3707,7 @@ class _CoachPositionBoardState extends State<_CoachPositionBoard> {
                                 child: Transform.scale(
                                   scale: 1.12,
                                   child: Image.asset(
-                                    _coachPieceAsset(pieces[square]!),
+                                    coachReviewPieceAsset(pieces[square]!),
                                     fit: BoxFit.contain,
                                     filterQuality: FilterQuality.high,
                                     semanticLabel: _coachPieceLabel(
@@ -3752,20 +3752,6 @@ class _CoachPositionBoardState extends State<_CoachPositionBoard> {
     return result;
   }
 
-  static String _coachPieceAsset(String token) {
-    const Map<String, String> names = <String, String>{
-      'k': 'king',
-      'q': 'queen',
-      'r': 'rook',
-      'b': 'bishop',
-      'n': 'knight',
-      'p': 'pawn',
-    };
-    final String colour = token == token.toUpperCase() ? 'white' : 'black';
-    return 'assets/pieces/premium_individual/obsidian-regal/'
-        '$colour/${names[token.toLowerCase()]}.webp';
-  }
-
   static String _coachPieceLabel(String token) {
     const Map<String, String> names = <String, String>{
       'k': 'king',
@@ -3778,6 +3764,22 @@ class _CoachPositionBoardState extends State<_CoachPositionBoard> {
     final String colour = token == token.toUpperCase() ? 'White' : 'Black';
     return '$colour ${names[token.toLowerCase()]}';
   }
+}
+
+/// AI review positions always use the regular readable 3D set. Premium
+/// collection equipment is reserved for gameplay after the user equips it.
+String coachReviewPieceAsset(String token) {
+  const Map<String, String> names = <String, String>{
+    'k': 'king',
+    'q': 'queen',
+    'r': 'rook',
+    'b': 'bishop',
+    'n': 'knight',
+    'p': 'pawn',
+  };
+  final String colour = token == token.toUpperCase() ? 'white' : 'black';
+  return 'assets/pieces/premium_individual/mobile-readable/'
+      '$colour/${names[token.toLowerCase()]}.png';
 }
 
 class _CoachArrowPainter extends CustomPainter {

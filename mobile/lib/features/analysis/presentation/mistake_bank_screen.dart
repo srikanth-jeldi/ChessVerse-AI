@@ -61,8 +61,8 @@ class MistakeBankEntryCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    const Text(
-                      'Mistake Bank',
+                    Text(
+                      CoachLocalizations(language).text('trainMistakes'),
                       style: TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 17,
@@ -330,7 +330,9 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      _allItems.isEmpty ? t('historyEmpty') : 'All reviews are up to date. Come back when your next review is due.',
+                      _allItems.isEmpty
+                          ? t('historyEmpty')
+                          : coachExtraText('noMistakes', _language),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -354,7 +356,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
         backgroundColor: AppColors.background,
         appBar: AppBar(
           backgroundColor: const Color(0xFF071827),
-          title: const Text('Mistake Bank'),
+          title: Text(CoachLocalizations(_language).text('trainMistakes')),
           actions: <Widget>[_coinBadge(), const SizedBox(width: 8)],
         ),
         body: SafeArea(
@@ -378,12 +380,23 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
-                          const Text(
-                            'Spaced review · 1, 3, 7, 14 and 30 days. A mistake brings the next review back to tomorrow.',
-                          ),
+                          Text('${t('history')} · 1, 3, 7, 14, 30'),
                           if (_completed && _reviews[item.id] != null)
-                            Text(
-                              'Next review: ${_reviews[item.id]!.nextReview.toLocal().toString().split(' ').first}',
+                            Row(
+                              children: <Widget>[
+                                const Icon(
+                                  Icons.event_repeat_rounded,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _reviews[item.id]!.nextReview
+                                      .toLocal()
+                                      .toString()
+                                      .split(' ')
+                                      .first,
+                                ),
+                              ],
                             ),
                           _MistakeProgress(
                             current: _index + 1,
@@ -417,8 +430,15 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 10),
-                                const Text(
-                                  'Personal Game Challenge',
+                                Text(
+                                  coachExtraText(
+                                    'mistakePuzzle',
+                                    _language,
+                                    <String, String>{
+                                      'index': '${_index + 1}',
+                                      'total': '${_items.length}',
+                                    },
+                                  ),
                                   style: TextStyle(
                                     color: Color(0xFF59E4C8),
                                     fontSize: 16,
@@ -427,7 +447,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  '${item.review.classification} · ${item.review.centipawnLoss} cp',
+                                  '${CoachLocalizations(_language).source(item.review.classification)} · ${item.review.centipawnLoss} cp',
                                   style: const TextStyle(
                                     color: AppColors.accentGold,
                                     fontSize: 18,
@@ -435,7 +455,10 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 14),
-                                _MistakeIntelligenceCard(insight: insight),
+                                _MistakeIntelligenceCard(
+                                  insight: insight,
+                                  language: _language,
+                                ),
                                 const SizedBox(height: 16),
                                 Text(
                                   _completed
@@ -484,7 +507,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
                                         icon: const Icon(
                                           Icons.lightbulb_outline_rounded,
                                         ),
-                                        label: Text('Hint ${_hintLevel + 1}/3'),
+                                        label: Text('${_hintLevel + 1}/3'),
                                       ),
                                     ),
                                   ],
@@ -516,7 +539,9 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
                                     icon: const Icon(
                                       Icons.arrow_forward_rounded,
                                     ),
-                                    label: const Text('Next Challenge'),
+                                    label: Text(
+                                      coachExtraText('nextPuzzle', _language),
+                                    ),
                                   ),
                                 ],
                               ],
@@ -541,9 +566,34 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
 }
 
 class _MistakeIntelligenceCard extends StatelessWidget {
-  const _MistakeIntelligenceCard({required this.insight});
+  const _MistakeIntelligenceCard({
+    required this.insight,
+    required this.language,
+  });
 
   final MistakePatternInsight insight;
+  final String language;
+
+  String t(String key, [Map<String, String> values = const {}]) =>
+      analysisDashboardText(key, language, values);
+
+  String get _weaknessKey => switch (insight.biggestWeaknessKey) {
+    'opening' => 'opening',
+    'kingSafety' => 'kingSafety',
+    'hangingPieces' => 'hangingPieces',
+    'missedCaptures' => 'missedCaptures',
+    'timeManagement' => 'timeManagement',
+    'endgame' => 'endgame',
+    'tactics' => 'tactics',
+    _ => 'calculation',
+  };
+
+  String get _trainingReasonKey => switch (insight.trainingTheme) {
+    'opening' => 'focusDefault',
+    'kingSafety' => 'focusLoss',
+    'endgame' => 'focusLong',
+    _ => 'slowDetail',
+  };
 
   @override
   Widget build(BuildContext context) => Container(
@@ -556,8 +606,8 @@ class _MistakeIntelligenceCard extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        const Text(
-          'ChessVerseAI understands your chess.',
+        Text(
+          t('focus'),
           style: TextStyle(
             color: Color(0xFF59E4C8),
             fontWeight: FontWeight.w900,
@@ -565,18 +615,19 @@ class _MistakeIntelligenceCard extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Text(
-          insight.similarPreviousGames == 0
-              ? 'This is a new pattern in your reviewed games.'
-              : 'You made this type of mistake in ${insight.similarPreviousGames} previous ${insight.similarPreviousGames == 1 ? 'game' : 'games'} (${insight.similarOccurrences} reviewed positions).',
+          t('reviewedIntro', <String, String>{
+            'games': '${insight.similarPreviousGames}',
+            'moves': '${insight.similarOccurrences}',
+          }),
         ),
         const SizedBox(height: 8),
         Text(
-          'Biggest weakness: ${insight.biggestWeakness} · ${insight.biggestWeaknessOccurrences} occurrences',
+          '${t('nextFocus')}: ${t(_weaknessKey)} · ${insight.biggestWeaknessOccurrences}',
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 10),
         Text(
-          'Personalized training: ${insight.trainingTitle}',
+          '${t('targeted')}: ${t(_weaknessKey)}',
           style: const TextStyle(
             color: AppColors.accentGold,
             fontWeight: FontWeight.w900,
@@ -584,7 +635,7 @@ class _MistakeIntelligenceCard extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          insight.trainingReason,
+          t(_trainingReasonKey),
           style: const TextStyle(color: AppColors.textSecondary, height: 1.35),
         ),
       ],

@@ -28,16 +28,20 @@ class MistakePatternInsight {
   const MistakePatternInsight({
     required this.similarPreviousGames,
     required this.similarOccurrences,
+    required this.biggestWeaknessKey,
     required this.biggestWeakness,
     required this.biggestWeaknessOccurrences,
+    required this.trainingTheme,
     required this.trainingTitle,
     required this.trainingReason,
   });
 
   final int similarPreviousGames;
   final int similarOccurrences;
+  final String biggestWeaknessKey;
   final String biggestWeakness;
   final int biggestWeaknessOccurrences;
+  final String trainingTheme;
   final String trainingTitle;
   final String trainingReason;
 }
@@ -121,8 +125,10 @@ abstract final class MistakeBank {
     return MistakePatternInsight(
       similarPreviousGames: previousGames,
       similarOccurrences: similar.length,
+      biggestWeaknessKey: biggest.key,
       biggestWeakness: _themeLabel(biggest.key),
       biggestWeaknessOccurrences: biggest.value.length,
+      trainingTheme: currentTheme,
       trainingTitle: training.title,
       trainingReason: training.reason,
     );
