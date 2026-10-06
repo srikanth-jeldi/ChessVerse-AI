@@ -103,6 +103,11 @@ jobs:
           git fetch --quiet origin main
           git cat-file -e "${deploy_sha}^{commit}"
           git checkout --quiet main
+          if [[ -n "$(git status --porcelain)" ]]; then
+            snapshot="pre-deploy-${deploy_sha:0:12}-$(date -u +%Y%m%dT%H%M%SZ)"
+            git stash push --include-untracked --message "$snapshot"
+            echo "Saved recoverable VPS working-tree snapshot: $snapshot"
+          fi
           git merge --ff-only "$deploy_sha"
 
           cd "$deploy_dir"
