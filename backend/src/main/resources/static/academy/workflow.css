@@ -45,3 +45,28 @@
 dialog.form-drawer { inset:0 0 0 auto; margin:0; height:100dvh; max-height:100dvh; max-width:510px; border-radius:16px 0 0 16px; padding:35px 28px; }
 @media(max-width:1350px) { .coach-overview { grid-template-columns:1fr 1fr; }.coach-overview > :last-child { grid-column:1/-1; }.coach-overview .coaching-action { display:inline-flex; width:32%; vertical-align:top; padding:12px; border-bottom:0; }.batch-overview { grid-template-columns:1fr; } }
 @media(max-width:800px) { .coach-overview { grid-template-columns:1fr; }.coach-overview > :last-child { grid-column:auto; }.coach-overview .coaching-action { display:flex; width:100%; padding:15px 0; }.profile-next { align-items:flex-start; flex-direction:column; }.workspace-stamp { align-items:flex-start; }.workspace-stamp > span { line-height:1.6; }.profile-sections { gap:20px; }.training-filters button { padding:10px 12px; }.assignment { flex-wrap:wrap; }.assignment .details { flex-basis:100%; } }
+/* Keep workspace branding and the organization switcher readable at every width. */
+.sidebar .brand { margin-left:0; margin-right:0; gap:9px; font-size:19px; letter-spacing:-.7px; }
+.sidebar .brand > div { flex:1; min-width:0; overflow-wrap:normal; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sidebar .brand small { font-size:10px; letter-spacing:1px; text-align:left; white-space:nowrap; }
+.sidebar .brand-logo { width:40px; height:40px; flex:0 0 40px; }
+.topbar .searchbox { flex:0 1 370px; min-width:120px; }
+.topbar .org-select { flex:0 1 240px; width:240px; min-width:160px; max-width:240px; min-height:46px; padding:12px 36px 12px 17px; font-size:14px; text-overflow:ellipsis; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-color:#172438; background-repeat:no-repeat; background-position:right 13px center; }
+.topbar .org-select option { background:#172438; color:white; }
+.topbar .org-select:focus-visible { outline:3px solid #8bb7ff; outline-offset:3px; }
+@media(max-width:1000px) and (min-width:701px) { .topbar { gap:12px; }.topbar .org-select { min-width:145px; flex-basis:190px; }.topbar .searchbox { min-width:80px; }.topbar .searchbox kbd { display:none; } }
+@media(max-width:700px) { .topbar .org-select { margin-left:0; width:auto; min-width:0; max-width:240px; flex:1 1 auto; font-size:13px; padding-left:12px; }.topbar .user { min-width:0; flex:0 0 auto; }.topbar .user > div:not(.avatar) { display:none; } }
+/* Assignment inputs follow the selected recipient and practice type. */
+#assignment-form [hidden] { display:none !important; }
+#assignment-form details { margin:18px 0; padding:14px; background:#eef4ff; border:1px solid #d5e2fa; border-radius:12px; }
+#assignment-form summary { cursor:pointer; color:#2856a4; font-weight:600; }
+#assignment-form details[open] summary { margin-bottom:16px; }
+/* Inline colour selection avoids the browser's cramped mobile colour dialog. */
+.brand-color-field { min-width:0; }
+#branding-form .brand-color-field > label { margin-bottom:8px; }
+.brand-color-palette { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+#branding-form .brand-color-swatch { flex:0 0 36px; width:36px; height:36px; min-height:36px; padding:0; border-radius:10px; background:var(--swatch); border:3px solid white; box-shadow:0 0 0 1px #c3d1e7; }
+#branding-form .brand-color-swatch[aria-pressed=true] { box-shadow:0 0 0 3px #172438; }
+#branding-form .brand-color-swatch:focus-visible { outline:3px solid #1765f7; outline-offset:3px; }
+#branding-form input { max-width:100%; min-width:0; }
+@media(max-width:700px) { #branding-form .form-grid { grid-template-columns:minmax(0,1fr); }.page-heading h1 { overflow-wrap:break-word; }.branding-preview { min-width:0; overflow-wrap:anywhere; } }

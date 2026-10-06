@@ -57,7 +57,7 @@ class AcademyControllerTest {
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V63__academy_self_service.sql")).execute(ds);
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V64__academy_invitations.sql")).execute(ds);
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V65__academy_operations.sql")).execute(ds);
-        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V54__puzzle_sprint_history.sql"),new ClassPathResource("db/migration/V73__academy_activity_sharing.sql"),new ClassPathResource("db/migration/V74__academy_student_training.sql")).execute(ds);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V54__puzzle_sprint_history.sql"),new ClassPathResource("db/migration/V73__academy_activity_sharing.sql"),new ClassPathResource("db/migration/V74__academy_student_training.sql"),new ClassPathResource("db/migration/V78__academy_mistake_bank.sql")).execute(ds);
         orgA=org("Academy A"); orgB=org("School B");
         adminA=account("admin-a");adminB=account("admin-b");coachAccount=account("coach");parentAccount=account("parent");studentAccount=account("student");
         member(orgA,adminA,"ORGANIZATION_ADMIN");member(orgB,adminB,"ORGANIZATION_ADMIN");
@@ -186,6 +186,42 @@ class AcademyControllerTest {
         assertThrows(DataIntegrityViolationException.class,()->db.update("UPDATE academy_student SET coach_id=? WHERE id=?",foreignCoach,studentA));
         assertThrows(DataIntegrityViolationException.class,()->db.update("UPDATE academy_student SET batch_id=? WHERE id=?",batch,studentA));
     }
+    @Test void mistakeBankNeedsSeparateConsentAndRespectsStudentCoachAndTenantScopes() {
+        var now=java.time.Instant.now();
+        var item=new AcademyController.MistakeItem("game-1","8/8/8/8/8/4k3/8/4K3 w - - 0 1","e1d1","e1f1","blunder",200,2,1,1,now.plusSeconds(86400),now);
+        var input=new AcademyController.MistakeSync(List.of(item));
+        denied(HttpStatus.FORBIDDEN,()->controller.syncMistakes("student",orgA,input));
+        controller.activitySharing("student",orgA,new AcademyController.ActivitySharingInput(true));
+        denied(HttpStatus.FORBIDDEN,()->controller.syncMistakes("student",orgA,input));
+        denied(HttpStatus.FORBIDDEN,()->controller.mistakeSharing("coach",orgA,new AcademyController.ActivitySharingInput(true)));
+        controller.mistakeSharing("student",orgA,new AcademyController.ActivitySharingInput(true));
+        controller.syncMistakes("student",orgA,input);controller.syncMistakes("student",orgA,input);
+        assertEquals(1,list(controller.appActivity("coach",orgA),"mistakeBank").size());
+        assertEquals(1,list(controller.appActivity("parent",orgA),"mistakeBank").size());
+        denied(HttpStatus.FORBIDDEN,()->controller.syncMistakes("student",orgB,input));
+        db.update("UPDATE academy_student SET coach_id=NULL WHERE id=?",studentA);
+        assertTrue(list(controller.appActivity("coach",orgA),"mistakeBank").isEmpty());
+        assertEquals(1,list(controller.appActivity("admin-a",orgA),"mistakeBank").size());
+        controller.mistakeSharing("student",orgA,new AcademyController.ActivitySharingInput(false));
+        assertTrue(list(controller.appActivity("admin-a",orgA),"mistakeBank").isEmpty());
+        assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM academy_mistake_bank",Integer.class));
+        controller.mistakeSharing("student",orgA,new AcademyController.ActivitySharingInput(true));controller.syncMistakes("student",orgA,input);
+        controller.activitySharing("student",orgA,new AcademyController.ActivitySharingInput(false));
+        assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM academy_mistake_bank",Integer.class));
+    }
+    @Test void trialCapsAllStudentRecordsAndRollsBackOversizedImports() {
+        db.update("UPDATE academy_organization SET plan='Free trial',seats=15 WHERE id=?",orgA);
+        for(int n=2;n<14;n++)controller.addStudent("admin-a",orgA,input("Trial"+n,null,null));
+        denied(HttpStatus.CONFLICT,()->controller.importStudents("admin-a",orgA,new AcademyController.ImportInput(List.of(input("Batch1",null,null),input("Batch2",null,null)))));
+        assertEquals(14,db.queryForObject("SELECT COUNT(*) FROM academy_student WHERE organization_id=?",Integer.class,orgA));
+        controller.addStudent("admin-a",orgA,input("Fifteenth",null,null));
+        db.update("UPDATE academy_student SET active=FALSE WHERE organization_id=?",orgA);
+        denied(HttpStatus.CONFLICT,()->controller.addStudent("admin-a",orgA,new AcademyController.StudentInput("Inactive","inactive@example.com",null,null,null,false)));
+        controller.editStudent("admin-a",orgA,otherStudent,input("Updated",null,null));
+        assertEquals(15,db.queryForObject("SELECT COUNT(*) FROM academy_student WHERE organization_id=?",Integer.class,orgA));
+        db.update("UPDATE academy_organization SET plan='Growth Academy',seats=60 WHERE id=?",orgA);
+        assertDoesNotThrow(()->controller.addStudent("admin-a",orgA,input("PaidStudent",null,null)));
+    }
     @Test void seatLimitAndAtomicImportAreEnforced() {
         db.update("UPDATE academy_organization SET seats=3 WHERE id=?",orgA);
         denied(HttpStatus.CONFLICT,()->controller.importStudents("admin-a",orgA,new AcademyController.ImportInput(List.of(input("New1",null,null),input("New2",null,null)))));
@@ -258,5 +294,23 @@ class AcademyControllerTest {
         assertEquals("APPLIED",db.queryForObject("SELECT status FROM academy_subscription_request WHERE id=?",String.class,request));
         assertEquals(30,db.queryForObject("SELECT seats FROM academy_organization WHERE id=?",Integer.class,orgA));
         denied(HttpStatus.CONFLICT,()->controller.reviewSubscription("platform-review",request,"approve"));
+    }
+
+    @Test void coachCreatesOwnBatchAndMovesOnlyAssignedStudents() {
+        UUID batch=(UUID)controller.addBatch("coach",orgA,new AcademyController.BatchInput("Training","BEGINNER","Monday",null)).get("id");
+        assertEquals(coachMember,db.queryForObject("SELECT coach_id FROM academy_batch WHERE id=?",UUID.class,batch));
+        controller.editBatch("coach",orgA,batch,new AcademyController.BatchInput("Updated","INTERMEDIATE","Tuesday",null));
+        controller.moveStudentBatch("coach",orgA,studentA,new AcademyController.StudentBatchInput(batch));
+        assertEquals(batch,db.queryForObject("SELECT batch_id FROM academy_student WHERE id=?",UUID.class,studentA));
+        denied(HttpStatus.NOT_FOUND,()->controller.moveStudentBatch("coach",orgA,otherStudent,new AcademyController.StudentBatchInput(batch)));
+        denied(HttpStatus.FORBIDDEN,()->controller.addBatch("student",orgA,new AcademyController.BatchInput("No","BEGINNER","Mon",null)));
+    }
+    @Test void coachCannotEditOrMoveStudentsToAnotherCoachsBatch() {
+        UUID otherCoach=member(orgA,account("coach2"),"COACH");
+        UUID batch=(UUID)controller.addBatch("admin-a",orgA,new AcademyController.BatchInput("Other","BEGINNER","Mon",otherCoach)).get("id");
+        denied(HttpStatus.FORBIDDEN,()->controller.editBatch("coach",orgA,batch,new AcademyController.BatchInput("Hacked","BEGINNER","Tue",coachMember)));
+        denied(HttpStatus.FORBIDDEN,()->controller.moveStudentBatch("coach",orgA,studentA,new AcademyController.StudentBatchInput(batch)));
+        denied(HttpStatus.FORBIDDEN,()->controller.addBatch("coach",orgB,new AcademyController.BatchInput("Foreign","BEGINNER","Mon",null)));
+        assertEquals(otherCoach,db.queryForObject("SELECT coach_id FROM academy_batch WHERE id=?",UUID.class,batch));
     }
 }

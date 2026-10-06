@@ -24,6 +24,24 @@ class MistakeBankItem {
   }.where((String move) => move.trim().isNotEmpty).take(3).toList();
 }
 
+class MistakePatternInsight {
+  const MistakePatternInsight({
+    required this.similarPreviousGames,
+    required this.similarOccurrences,
+    required this.biggestWeakness,
+    required this.biggestWeaknessOccurrences,
+    required this.trainingTitle,
+    required this.trainingReason,
+  });
+
+  final int similarPreviousGames;
+  final int similarOccurrences;
+  final String biggestWeakness;
+  final int biggestWeaknessOccurrences;
+  final String trainingTitle;
+  final String trainingReason;
+}
+
 abstract final class MistakeBank {
   static const int maxItems = 100;
 
@@ -48,6 +66,124 @@ abstract final class MistakeBank {
     final List<MistakeBankItem> source = recent.isNotEmpty
         ? recent
         : _collect(games);
+    return _rank(source, limit);
+  }
+
+  static List<MistakeBankItem> all(Iterable<SavedGameRecord> games) =>
+      _rank(_collect(games), null);
+
+  static MistakePatternInsight insightFor(
+    Iterable<MistakeBankItem> items,
+    MistakeBankItem current,
+  ) {
+    final List<MistakeBankItem> bank = items.toList();
+    if (bank.isEmpty) bank.add(current);
+    final String currentTheme = _theme(current);
+    final List<MistakeBankItem> similar = bank
+        .where((MistakeBankItem item) => _theme(item) == currentTheme)
+        .toList(growable: false);
+    final int currentGame = current.game.playedAt
+        .toUtc()
+        .millisecondsSinceEpoch;
+    final int previousGames = similar
+        .map(
+          (MistakeBankItem item) =>
+              item.game.playedAt.toUtc().millisecondsSinceEpoch,
+        )
+        .where((int game) => game != currentGame)
+        .toSet()
+        .length;
+
+    final Map<String, List<MistakeBankItem>> byTheme =
+        <String, List<MistakeBankItem>>{};
+    for (final MistakeBankItem item in bank) {
+      byTheme.putIfAbsent(_theme(item), () => <MistakeBankItem>[]).add(item);
+    }
+    final MapEntry<String, List<MistakeBankItem>> biggest = byTheme.entries
+        .reduce((
+          MapEntry<String, List<MistakeBankItem>> a,
+          MapEntry<String, List<MistakeBankItem>> b,
+        ) {
+          if (b.value.length != a.value.length) {
+            return b.value.length > a.value.length ? b : a;
+          }
+          final int aLoss = a.value.fold<int>(
+            0,
+            (int sum, MistakeBankItem item) => sum + item.review.centipawnLoss,
+          );
+          final int bLoss = b.value.fold<int>(
+            0,
+            (int sum, MistakeBankItem item) => sum + item.review.centipawnLoss,
+          );
+          return bLoss > aLoss ? b : a;
+        });
+    final ({String title, String reason}) training = _trainingFor(currentTheme);
+    return MistakePatternInsight(
+      similarPreviousGames: previousGames,
+      similarOccurrences: similar.length,
+      biggestWeakness: _themeLabel(biggest.key),
+      biggestWeaknessOccurrences: biggest.value.length,
+      trainingTitle: training.title,
+      trainingReason: training.reason,
+    );
+  }
+
+  static String _theme(MistakeBankItem item) {
+    final String theme = item.review.coachingTheme.trim();
+    return theme.isEmpty ? 'calculation' : theme;
+  }
+
+  static String _themeLabel(String theme) => switch (theme) {
+    'opening' => 'Opening decisions',
+    'kingSafety' => 'King safety',
+    'hangingPieces' => 'Piece safety',
+    'missedCaptures' => 'Missed captures',
+    'timeManagement' => 'Time management',
+    'endgame' => 'Endgame technique',
+    'tactics' => 'Tactical vision',
+    _ => 'Calculation',
+  };
+
+  static ({String title, String reason}) _trainingFor(
+    String theme,
+  ) => switch (theme) {
+    'opening' => (
+      title: 'Develop, control the centre, castle',
+      reason: 'Train a three-question opening scan before choosing a move.',
+    ),
+    'kingSafety' => (
+      title: 'King-safety decision training',
+      reason:
+          'Practise spotting checks and castling before starting an attack.',
+    ),
+    'hangingPieces' => (
+      title: 'Piece-safety scan',
+      reason: 'Before every move, verify every attacked and undefended piece.',
+    ),
+    'missedCaptures' => (
+      title: 'Checks, captures and threats',
+      reason: 'Build a forcing-move scan so winning captures are not missed.',
+    ),
+    'timeManagement' => (
+      title: 'Candidate-move routine',
+      reason:
+          'Compare two candidates quickly, then commit before time pressure.',
+    ),
+    'endgame' => (
+      title: 'Endgame conversion practice',
+      reason: 'Activate the king and calculate pawn races from real positions.',
+    ),
+    'tactics' => (
+      title: 'Personal tactical pattern set',
+      reason: 'Replay forks, pins and forcing lines taken from your own games.',
+    ),
+    _ => (
+      title: 'Two-line calculation drill',
+      reason: 'Calculate the opponent reply before committing to your candidate move.',
+    ),
+  };
+
+  static List<MistakeBankItem> _rank(List<MistakeBankItem> source, int? limit) {
     // Keep the bank bounded. Prefer the newest reviewed positions when the
     // seven-day window (or its all-time fallback) contains more than the
     // training capacity, then rank that retained set by severity.

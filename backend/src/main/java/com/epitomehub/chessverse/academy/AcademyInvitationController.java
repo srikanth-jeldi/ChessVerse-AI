@@ -143,6 +143,7 @@ public class AcademyInvitationController {
         require(count("SELECT COUNT(*) FROM academy_member WHERE organization_id=? AND account_id=?", org, account) == 0,
                 HttpStatus.CONFLICT, "This account is already an academy member.");
         String role = invitation.get("role").toString();
+        if("COACH".equals(role)) AcademyCoachLimits.adding(db,org,account);
         UUID member = UUID.randomUUID();
         db.update("INSERT INTO academy_member(id,organization_id,account_id,name,role) VALUES(?,?,?,?,?)",
                 member, org, account, player.get("display_name"), role);

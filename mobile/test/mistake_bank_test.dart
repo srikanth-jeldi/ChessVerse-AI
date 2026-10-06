@@ -19,6 +19,7 @@ void main() {
     required int ply,
     required String classification,
     required int loss,
+    String coachingTheme = '',
     String fen = '8/8/8/8/8/8/4K3/7k w - - 0 1',
   }) => SavedMoveReview(
     ply: ply,
@@ -28,6 +29,7 @@ void main() {
     classification: classification,
     centipawnLoss: loss,
     opponentThreat: '',
+    coachingTheme: coachingTheme,
     explanation: 'Improve the move.',
     principalVariation: const <String>['e2e4', 'h1h2'],
   );
@@ -100,5 +102,47 @@ void main() {
       items.any((MistakeBankItem item) => item.review.centipawnLoss == 100),
       isTrue,
     );
+  });
+
+  test('builds a personalized pattern insight from previous games', () {
+    final DateTime now = DateTime.utc(2026, 10, 6);
+    final List<SavedGameRecord> games = <SavedGameRecord>[
+      game(now, <SavedMoveReview>[
+        review(
+          ply: 1,
+          classification: 'Blunder',
+          loss: 180,
+          coachingTheme: 'kingSafety',
+        ),
+      ]),
+      game(now.subtract(const Duration(days: 1)), <SavedMoveReview>[
+        review(
+          ply: 2,
+          classification: 'Mistake',
+          loss: 120,
+          coachingTheme: 'kingSafety',
+        ),
+      ]),
+      game(now.subtract(const Duration(days: 2)), <SavedMoveReview>[
+        review(
+          ply: 3,
+          classification: 'Mistake',
+          loss: 90,
+          coachingTheme: 'tactics',
+        ),
+      ]),
+    ];
+    final List<MistakeBankItem> items = MistakeBank.all(games);
+
+    final MistakePatternInsight insight = MistakeBank.insightFor(
+      items,
+      items.first,
+    );
+
+    expect(insight.similarPreviousGames, 1);
+    expect(insight.similarOccurrences, 2);
+    expect(insight.biggestWeakness, 'King safety');
+    expect(insight.biggestWeaknessOccurrences, 2);
+    expect(insight.trainingTitle, contains('King-safety'));
   });
 }

@@ -81,11 +81,11 @@ profile = function approvedStudentProfile() {
 
 batchesPage = function approvedBatches() {
   const d = state.data, list = d.batches.filter(b => (b.name + ' ' + b.schedule).toLowerCase().includes(state.search.toLowerCase()));
-  return workspaceStamp() + heading('Batches & Classes', 'Manage your chess batches, class schedules and learning outcomes.', admin() ? btn('Create new batch', 'batch-form', 'plus') : '') +
+  return workspaceStamp() + heading('Batches & Classes', 'Manage your chess batches, class schedules and learning outcomes.', trainer() ? btn('Create new batch', 'batch-form', 'plus') : '') +
     `<div class="stats">${stat('Total batches', d.batches.length, 'Across your organization', 'users')}${stat('Active students', d.students.filter(s => s.active).length, 'Enabled student accounts', 'coach')}${stat('Coaches assigned', new Set(d.batches.map(b => b.coach_id).filter(Boolean)).size, 'Allocated to batches', 'users')}${stat('Recorded sessions', observations().length, 'Selected period', 'calendar')}${stat('Shared games', d.games.length, 'Available for review', 'game')}</div>
     <div class="batch-overview">${card(`All Batches (${list.length})`, table(['Batch', 'Coach', 'Students', 'Schedule', 'Level', ''], list.map(b => [
       `<strong>${esc(b.name)}</strong>`, `<span class="person">${avatar(coachName(b.coach_id))}${esc(coachName(b.coach_id))}</span>`, d.students.filter(s => s.batch_id === b.id).length,
-      `<span class="schedule-text">${esc(b.schedule)}</span>`, badge(b.level), admin() ? btn('Manage', 'batch-form', '', 'soft', b.id) : ''
+      `<span class="schedule-text">${esc(b.schedule)}</span>`, badge(b.level), (admin() || b.coach_id === d.memberId) ? btn('Manage', 'batch-form', '', 'soft', b.id) : ''
     ])))}${card('Class Schedule', classes())}</div><div class="analytics-row">${card('Batch Performance', batchComparison(), badge('Recorded accuracy'))}${card('Practice Consistency', practiceHeatmap(), badge('14 weeks'))}</div>`;
 };
 
@@ -102,9 +102,44 @@ openForm = async function approvedForm(action, id) {
   await approvedOpenForm(action, id);
   const dialog = $('#modal');
   dialog.classList.toggle('form-drawer', ['batch-form', 'assignment-form'].includes(action));
+  if (action === 'assignment-form') {
+    const form = dialog.querySelector('form');
+    const controls = form.elements;
+    const sync = () => {
+      for (const [name, active] of [['studentId', controls.targetType.value === 'student'], ['batchId', controls.targetType.value === 'batch']]) {
+        controls[name].closest('label').hidden = !active;
+        controls[name].disabled = !active;
+        controls[name].required = active;
+        controls[name].options[0].text = active ? 'Select ' + (name === 'studentId' ? 'a student' : 'a batch') : 'Unassigned';
+      }
+      for (const [selector, active] of [['.assignment-extra', controls.kind.value === 'PUZZLES'], ['.assignment-position', controls.kind.value === 'POSITIONS']]) {
+        const section = form.querySelector(selector);
+        section.hidden = !active;
+        section.querySelectorAll('input,select').forEach(input => input.disabled = !active);
+      }
+      const position = controls.kind.value === 'POSITIONS';
+      controls.positionFen.required = position && !!controls.bestMove.value.trim();
+      controls.bestMove.required = position && !!controls.positionFen.value.trim();
+      form.querySelector('.error').textContent = '';
+    };
+    form.addEventListener('change', sync);
+    form.addEventListener('input', sync);
+    form.addEventListener('invalid', event => {
+      const section = event.target.closest('details');
+      if (section) section.open = true;
+    }, true);
+    sync();
+  }
 };
 
 document.addEventListener('click', async event => {
+  const swatch = event.target.closest?.('[data-brand-color]');
+  if (swatch) {
+    const form = swatch.closest('form');
+    form.elements.color.value = swatch.dataset.brandColor;
+    form.elements.color.dispatchEvent(new Event('input', { bubbles:true }));
+    return;
+  }
   const target = event.target.closest?.('[data-workflow]');
   if (!target || !state.data) return;
   try {
@@ -136,6 +171,15 @@ document.addEventListener('click', async event => {
     }
   } catch (error) { toast(error.message); }
   finally { target.disabled = false; }
+});
+
+document.addEventListener('input', event => {
+  if (event.target.id !== 'brand-color') return;
+  const input = event.target;
+  input.setCustomValidity(/^#[0-9a-f]{6}$/i.test(input.value) ? '' : 'Enter a colour as # followed by 6 letters or numbers (0–9, A–F), e.g. #1765F7.');
+  input.closest('form').querySelectorAll('[data-brand-color]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.brandColor === input.value.toLowerCase()));
+  });
 });
 
 document.addEventListener('keydown', event => {

@@ -1,3 +1,8 @@
+import 'dart:async';
+
+import '../domain/mistake_bank_sync.dart';
+import '../domain/mistake_review.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/analysis_dashboard_localizations.dart';
@@ -27,7 +32,7 @@ class MistakeBankEntryCard extends StatelessWidget {
         final String language = AppLanguageController.resolveCode(
           selectedLanguage ?? AppLanguageController.systemCode,
         );
-        final int count = MistakeBank.weekly(LocalGameArchive.games).length;
+        final int count = MistakeBank.all(LocalGameArchive.games).length;
         final String subtitle = count > 0
             ? '$count · ${CoachLocalizations(language).text('trainMistakes')}'
             : coachExtraText('completeGame', language);
@@ -109,7 +114,10 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   static const AcademyProgressStore _progressStore = AcademyProgressStore();
   late final List<MistakeBankItem> _allItems;
   List<MistakeBankItem> _items = <MistakeBankItem>[];
-  Set<String> _solved = <String>{};
+  Map<String, MistakeReview> _reviews = {};
+  bool _savingReview = false;
+  bool _hadMistake = false;
+  bool _loadingReviews = true;
   int _index = 0;
   String? _currentFen;
   String? _selectedSquare;
@@ -127,7 +135,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   @override
   void initState() {
     super.initState();
-    _allItems = MistakeBank.weekly(LocalGameArchive.games);
+    _allItems = MistakeBank.all(LocalGameArchive.games);
     _items = _allItems.take(5).toList(growable: false);
     if (_items.isNotEmpty) _currentFen = _items.first.review.fenBefore;
     AppLanguageController.effectiveLanguageChanges.addListener(_onLanguage);
@@ -139,12 +147,13 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
 
   Future<void> _loadSolved() async {
     try {
-      final Set<String> value = await _progressStore.readSolvedMistakes();
+      final value = await _progressStore.readMistakeReviews();
       if (mounted) {
         setState(() {
-          _solved = value;
+          _reviews = value;
+          final now = DateTime.now().toUtc();
           _items = _allItems
-              .where((MistakeBankItem item) => !_solved.contains(item.id))
+              .where((item) => value[item.id]?.due(now) ?? true)
               .take(5)
               .toList(growable: false);
           _index = 0;
@@ -152,8 +161,11 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
         });
       }
     } on Object {
-      // Practice remains available if secure storage is unavailable.
+      // Offline practice is still available when storage cannot be read.
+    } finally {
+      if (mounted) setState(() => _loadingReviews = false);
     }
+    unawaited(syncAcademyMistakeBank());
   }
 
   void _onLanguage() {
@@ -184,7 +196,12 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   }
 
   Future<void> _playSquare(String square) async {
-    if (_completed || _lineIndex >= _challengeLine.length) return;
+    if (_completed ||
+        _savingReview ||
+        _loadingReviews ||
+        _lineIndex >= _challengeLine.length) {
+      return;
+    }
     if (_selectedSquare == null) {
       setState(() {
         _selectedSquare = square;
@@ -199,6 +216,10 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
         _wrongTarget = square;
         _selectedSquare = null;
       });
+      if (!_hadMistake) {
+        _hadMistake = true;
+        await _saveReview(false);
+      }
       return;
     }
     final List<String> positions = replayUciLine(_currentFen!, <String>[
@@ -230,13 +251,27 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   }
 
   Future<void> _completeChallenge() async {
-    final MistakeBankItem item = _items[_index];
-    try {
-      _solved = await _progressStore.markMistakeSolved(item.id);
-    } on Object {
-      _solved.add(item.id);
-    }
+    await _saveReview(true);
     if (mounted) setState(() => _completed = true);
+  }
+
+  Future<void> _saveReview(bool correct) async {
+    _savingReview = true;
+    final id = _items[_index].id;
+    try {
+      _reviews[id] = await _progressStore.recordMistakeReview(id, correct);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Review progress could not be saved. Please retry.'),
+          ),
+        );
+      }
+    } finally {
+      _savingReview = false;
+    }
+    unawaited(syncAcademyMistakeBank());
   }
 
   void _retry() => setState(() {
@@ -246,9 +281,11 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
     _lineIndex = 0;
     _hintLevel = 0;
     _completed = false;
+    _hadMistake = false;
   });
 
   void _next() {
+    if (_savingReview) return;
     if (_index >= _items.length - 1) {
       Navigator.pop(context);
       return;
@@ -261,11 +298,15 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
       _lineIndex = 0;
       _hintLevel = 0;
       _completed = false;
+      _hadMistake = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_loadingReviews) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     if (_items.isEmpty) {
       return DesktopNavigationShell(
         selected: 'Learn',
@@ -288,7 +329,10 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
                       color: Color(0xFF63D2B8),
                     ),
                     const SizedBox(height: 16),
-                    Text(t('historyEmpty'), textAlign: TextAlign.center),
+                    Text(
+                      _allItems.isEmpty ? t('historyEmpty') : 'All reviews are up to date. Come back when your next review is due.',
+                      textAlign: TextAlign.center,
+                    ),
                   ],
                 ),
               ),
@@ -298,6 +342,10 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
       );
     }
     final MistakeBankItem item = _items[_index];
+    final MistakePatternInsight insight = MistakeBank.insightFor(
+      _allItems,
+      item,
+    );
     final String expected =
         _challengeLine[_lineIndex.clamp(0, _challengeLine.length - 1)];
     return DesktopNavigationShell(
@@ -309,154 +357,177 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
           title: const Text('Mistake Bank'),
           actions: <Widget>[_coinBadge(), const SizedBox(width: 8)],
         ),
-        body: LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints constraints) =>
-              SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  18,
-                  18,
-                  18,
-                  32 + MediaQuery.viewPaddingOf(context).bottom,
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 760),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        _MistakeProgress(
-                          current: _index + 1,
-                          total: _items.length,
-                          solved: _solved.length,
-                        ),
-                        const SizedBox(height: 16),
-                        _MistakeBoard(
-                          fen: _currentFen ?? item.review.fenBefore,
-                          selectedSquare: _selectedSquare,
-                          wrongTarget: _wrongTarget,
-                          hintFrom: _hintLevel >= 1
-                              ? expected.substring(0, 2)
-                              : null,
-                          hintTo: _hintLevel >= 2
-                              ? expected.substring(2, 4)
-                              : null,
-                          onSquare: _playSquare,
-                        ),
-                        const SizedBox(height: 16),
-                        ChessVerseCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              Text(
-                                '${item.game.summary} · ${t('gameLabel', <String, String>{'count': '${_index + 1}'})}',
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              const Text(
-                                'Personal Game Challenge',
-                                style: TextStyle(
-                                  color: Color(0xFF59E4C8),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                '${item.review.classification} · ${item.review.centipawnLoss} cp',
-                                style: const TextStyle(
-                                  color: AppColors.accentGold,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                _completed
-                                    ? '${CoachLocalizations(_language).text('bestFound')} · ${item.review.centipawnLoss} cp'
-                                    : CoachLocalizations(_language).text(
-                                        'findContinuation',
-                                        <String, String>{
-                                          'side':
-                                              item.review.fenBefore.split(
-                                                    ' ',
-                                                  )[1] ==
-                                                  'w'
-                                              ? CoachLocalizations(_language)
-                                                    .text('white')
-                                              : CoachLocalizations(_language)
-                                                    .text('black'),
-                                        },
-                                      ),
-                                style: const TextStyle(height: 1.4),
-                              ),
-                              const SizedBox(height: 14),
-                              Row(
-                                children: <Widget>[
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      onPressed: _retry,
-                                      icon: const Icon(Icons.replay_rounded),
-                                      label: Text(
-                                        CoachLocalizations(_language)
-                                            .text('retry'),
-                                      ),
-                                    ),
+        body: SafeArea(
+          top: false,
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) =>
+                SingleChildScrollView(
+                  primary: true,
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  padding: EdgeInsets.fromLTRB(
+                    18,
+                    18,
+                    18,
+                    72 + MediaQuery.viewPaddingOf(context).bottom,
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 760),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          const Text(
+                            'Spaced review · 1, 3, 7, 14 and 30 days. A mistake brings the next review back to tomorrow.',
+                          ),
+                          if (_completed && _reviews[item.id] != null)
+                            Text(
+                              'Next review: ${_reviews[item.id]!.nextReview.toLocal().toString().split(' ').first}',
+                            ),
+                          _MistakeProgress(
+                            current: _index + 1,
+                            total: _items.length,
+                            solved: _reviews.values
+                                .where((r) => r.successes > 0)
+                                .length,
+                          ),
+                          const SizedBox(height: 16),
+                          _MistakeBoard(
+                            fen: _currentFen ?? item.review.fenBefore,
+                            selectedSquare: _selectedSquare,
+                            wrongTarget: _wrongTarget,
+                            hintFrom: _hintLevel >= 1
+                                ? expected.substring(0, 2)
+                                : null,
+                            hintTo: _hintLevel >= 2
+                                ? expected.substring(2, 4)
+                                : null,
+                            onSquare: _playSquare,
+                          ),
+                          const SizedBox(height: 16),
+                          ChessVerseCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: <Widget>[
+                                Text(
+                                  '${item.game.summary} · ${t('gameLabel', <String, String>{'count': '${_index + 1}'})}',
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
                                   ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      onPressed: _completed
-                                          ? null
-                                          : () => setState(
-                                              () => _hintLevel =
-                                                  (_hintLevel + 1).clamp(0, 2),
-                                            ),
-                                      icon: const Icon(
-                                        Icons.lightbulb_outline_rounded,
-                                      ),
-                                      label: Text('Hint ${_hintLevel + 1}/3'),
-                                    ),
+                                ),
+                                const SizedBox(height: 10),
+                                const Text(
+                                  'Personal Game Challenge',
+                                  style: TextStyle(
+                                    color: Color(0xFF59E4C8),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
                                   ),
-                                ],
-                              ),
-                              if (_completed) ...<Widget>[
+                                ),
                                 const SizedBox(height: 8),
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF63D2B8)
-                                        .withValues(alpha: .11),
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(
-                                      color: const Color(0xFF63D2B8),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    localizeReviewNarrative(
-                                      item.review.explanation,
-                                      _language,
-                                    ),
-                                    style: const TextStyle(height: 1.45),
+                                Text(
+                                  '${item.review.classification} · ${item.review.centipawnLoss} cp',
+                                  style: const TextStyle(
+                                    color: AppColors.accentGold,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
                                   ),
                                 ),
                                 const SizedBox(height: 14),
-                                FilledButton.icon(
-                                  key: const ValueKey<String>('mistake-next'),
-                                  onPressed: _next,
-                                  icon: const Icon(Icons.arrow_forward_rounded),
-                                  label: const Text('Next Challenge'),
+                                _MistakeIntelligenceCard(insight: insight),
+                                const SizedBox(height: 16),
+                                Text(
+                                  _completed
+                                      ? '${CoachLocalizations(_language).text('bestFound')} · ${item.review.centipawnLoss} cp'
+                                      : CoachLocalizations(_language).text(
+                                          'findContinuation',
+                                          <String, String>{
+                                            'side':
+                                                item.review.fenBefore.split(
+                                                      ' ',
+                                                    )[1] ==
+                                                    'w'
+                                                ? CoachLocalizations(_language)
+                                                      .text('white')
+                                                : CoachLocalizations(_language)
+                                                      .text('black'),
+                                          },
+                                        ),
+                                  style: const TextStyle(height: 1.4),
                                 ),
+                                const SizedBox(height: 14),
+                                Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: _retry,
+                                        icon: const Icon(Icons.replay_rounded),
+                                        label: Text(
+                                          CoachLocalizations(_language)
+                                              .text('retry'),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: _completed
+                                            ? null
+                                            : () => setState(
+                                                () => _hintLevel =
+                                                    (_hintLevel + 1).clamp(
+                                                      0,
+                                                      2,
+                                                    ),
+                                              ),
+                                        icon: const Icon(
+                                          Icons.lightbulb_outline_rounded,
+                                        ),
+                                        label: Text('Hint ${_hintLevel + 1}/3'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (_completed) ...<Widget>[
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF63D2B8)
+                                          .withValues(alpha: .11),
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: const Color(0xFF63D2B8),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      localizeReviewNarrative(
+                                        item.review.explanation,
+                                        _language,
+                                      ),
+                                      style: const TextStyle(height: 1.45),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  FilledButton.icon(
+                                    key: const ValueKey<String>('mistake-next'),
+                                    onPressed: _next,
+                                    icon: const Icon(
+                                      Icons.arrow_forward_rounded,
+                                    ),
+                                    label: const Text('Next Challenge'),
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
+          ),
         ),
       ),
     );
@@ -466,6 +537,58 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
     valueListenable: DesktopNavigationBridge.coinBalance,
     builder: (BuildContext context, int? coins, Widget? child) =>
         CoinBalanceBadge(balance: coins ?? 0, compact: true),
+  );
+}
+
+class _MistakeIntelligenceCard extends StatelessWidget {
+  const _MistakeIntelligenceCard({required this.insight});
+
+  final MistakePatternInsight insight;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: const Color(0xFF59E4C8).withValues(alpha: .08),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: const Color(0xFF59E4C8).withValues(alpha: .55)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const Text(
+          'ChessVerseAI understands your chess.',
+          style: TextStyle(
+            color: Color(0xFF59E4C8),
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          insight.similarPreviousGames == 0
+              ? 'This is a new pattern in your reviewed games.'
+              : 'You made this type of mistake in ${insight.similarPreviousGames} previous ${insight.similarPreviousGames == 1 ? 'game' : 'games'} (${insight.similarOccurrences} reviewed positions).',
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Biggest weakness: ${insight.biggestWeakness} · ${insight.biggestWeaknessOccurrences} occurrences',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Personalized training: ${insight.trainingTitle}',
+          style: const TextStyle(
+            color: AppColors.accentGold,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          insight.trainingReason,
+          style: const TextStyle(color: AppColors.textSecondary, height: 1.35),
+        ),
+      ],
+    ),
   );
 }
 
@@ -547,6 +670,7 @@ class _MistakeBoard extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(24),
             child: GridView.builder(
+              primary: false,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: 64,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -600,7 +724,9 @@ class _MistakeBoard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(4),
       child: Image.asset(
-        'assets/pieces/staunton_${colour}_$name.png',
+        // Mistake training always uses the regular, readable 3D set. Premium
+        // collection equipment must not leak into this analysis board.
+        'assets/pieces/premium_individual/mobile-readable/$colour/$name.png',
         fit: BoxFit.contain,
         filterQuality: FilterQuality.high,
         semanticLabel: '${white ? 'White' : 'Black'} $name',

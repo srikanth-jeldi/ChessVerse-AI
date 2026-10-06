@@ -159,19 +159,19 @@ public class AcademyController {
     public Map<String,Object> appActivity(@RequestHeader("Authorization") String bearer,@PathVariable UUID org) {
         Access a=access(bearer,org);
         var visible=students(org,a).stream().filter(s->Boolean.TRUE.equals(s.get("active"))).map(s->uuid(s.get("id"))).toList();
-        if(visible.isEmpty()) return Map.of("events",List.of(),"sharing",List.of(),"weaknesses",List.of(),"checkedAt",java.time.Instant.now().toString());
+        if(visible.isEmpty()) return Map.of("events",List.of(),"sharing",List.of(),"weaknesses",List.of(),"mistakeBank",List.of(),"checkedAt",java.time.Instant.now().toString());
         String placeholders=String.join(",",Collections.nCopies(visible.size(),"?"));
         List<Object> args=new ArrayList<>();args.add(org);args.addAll(visible);
         var query=activityQuery(org,visible);
         var events=rows(query.sql+" LIMIT 100",query.args.toArray());
-        var sharing=rows("SELECT c.student_id,c.enabled,c.enabled_at FROM academy_activity_sharing c JOIN academy_student s ON s.organization_id=c.organization_id AND s.id=c.student_id AND s.account_id=c.account_id WHERE c.organization_id=? AND c.student_id IN ("+placeholders+")",args.toArray());
+        var sharing=rows("SELECT c.student_id,c.enabled,c.enabled_at,c.mistake_bank_enabled FROM academy_activity_sharing c JOIN academy_student s ON s.organization_id=c.organization_id AND s.id=c.student_id AND s.account_id=c.account_id WHERE c.organization_id=? AND c.student_id IN ("+placeholders+")",args.toArray());
         String eligible=" FROM academy_activity_sharing c JOIN academy_student s ON s.organization_id=c.organization_id AND s.id=c.student_id AND s.account_id=c.account_id JOIN academy_member m ON m.organization_id=s.organization_id AND m.account_id=s.account_id AND m.role='STUDENT' AND m.active=TRUE ";
         String scope=" c.organization_id=? AND s.id IN ("+placeholders+") AND s.active=TRUE AND c.enabled=TRUE ";
         List<Object> weaknessArgs=new ArrayList<>(args);weaknessArgs.add(java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(30L*86400)));
         var weaknesses=rows("SELECT s.id AS student_id,w.category,COUNT(*) AS mistakes,SUM(CASE WHEN w.classification='Blunder' THEN 1 ELSE 0 END) AS blunders"+eligible+"JOIN player_weakness_event w ON w.player_id=s.account_id WHERE "+scope+" AND w.occurred_at>=c.enabled_at AND w.occurred_at>=? GROUP BY s.id,w.category ORDER BY mistakes DESC LIMIT 100",weaknessArgs.toArray());
         LocalDate today=LocalDate.now(java.time.ZoneOffset.UTC);
         var assignmentResults=rows("SELECT r.*,a.title,a.kind FROM academy_assignment_result r JOIN academy_assignment a ON a.organization_id=r.organization_id AND a.id=r.assignment_id WHERE r.organization_id=? AND r.student_id IN ("+placeholders+") ORDER BY r.created_at DESC LIMIT 100",args.toArray());
-        return Map.of("events",events,"sharing",sharing,"weaknesses",weaknesses,"daily",activityDaily(org,visible,today.minusDays(29),today),"assignmentResults",assignmentResults,"checkedAt",java.time.Instant.now().toString());
+        return Map.of("events",events,"sharing",sharing,"weaknesses",weaknesses,"daily",activityDaily(org,visible,today.minusDays(29),today),"assignmentResults",assignmentResults,"mistakeBank",sharedMistakes(org,a),"checkedAt",java.time.Instant.now().toString());
     }
     private List<Map<String,Object>> activityDaily(UUID org,List<UUID> ids,LocalDate from,LocalDate to) {
         if(ids.isEmpty())return List.of();
@@ -194,6 +194,52 @@ public class AcademyController {
         List<Object> both=new ArrayList<>(args);both.addAll(args);both.addAll(args);both.addAll(args);both.addAll(args);
         return new ActivityQuery("SELECT * FROM ("+games+" UNION ALL "+puzzles+" UNION ALL "+retries+" UNION ALL "+online+" UNION ALL "+normal+") activity ORDER BY occurred_at DESC,source_id DESC",both);
     }
+    public record MistakeItem(@NotBlank @Size(max=100) String id,
+        @NotBlank @Size(max=120) String fen, @NotNull @Pattern(regexp="[a-h][1-8][a-h][1-8][qrbn]?") String bestMove,
+        @NotNull @Pattern(regexp="[a-h][1-8][a-h][1-8][qrbn]?") String playedMove,
+        @NotNull @Pattern(regexp="(?i)inaccuracy|mistake|blunder") String classification,
+        @Min(0) @Max(100000) int centipawnLoss, @Min(0) @Max(1000000) int attempts,
+        @Min(0) @Max(1000000) int successes, @Min(0) @Max(5) int stage,
+        @NotNull java.time.Instant nextReview, @NotNull java.time.Instant updatedAt) {}
+    public record MistakeSync(@NotNull @Size(max=100) List<@NotNull @Valid MistakeItem> items) {}
+    @PutMapping("/{org}/mistake-bank/sharing")
+    public void mistakeSharing(@RequestHeader("Authorization") String bearer,@PathVariable UUID org,@RequestBody ActivitySharingInput input) {
+        Access a=access(bearer,org);require(a.role.equals("STUDENT"),HttpStatus.FORBIDDEN,"Student access required");lock(org);
+        var linked=students(org,a);require(linked.size()==1,HttpStatus.CONFLICT,"Link one active student profile first");
+        UUID id=uuid(linked.getFirst().get("id"));
+        require(count("SELECT COUNT(*) FROM academy_activity_sharing WHERE organization_id=? AND student_id=? AND account_id=? AND enabled=TRUE",org,id,a.account)==1,HttpStatus.CONFLICT,"Enable activity sharing first");
+        db.update("UPDATE academy_activity_sharing SET mistake_bank_enabled=? WHERE organization_id=? AND student_id=?",input.enabled,org,id);
+        if(!input.enabled)db.update("DELETE FROM academy_mistake_bank WHERE organization_id=? AND student_id=?",org,id);
+    }
+    @PostMapping("/{org}/mistake-bank/sync")
+    public Map<String,Object> syncMistakes(@RequestHeader("Authorization") String bearer,@PathVariable UUID org,@Valid @RequestBody MistakeSync input) {
+        Access a=access(bearer,org);require(a.role.equals("STUDENT"),HttpStatus.FORBIDDEN,"Student access required");lock(org);
+        var linked=students(org,a);require(linked.size()==1,HttpStatus.CONFLICT,"Link one active student profile first");UUID id=uuid(linked.getFirst().get("id"));
+        require(count("SELECT COUNT(*) FROM academy_activity_sharing WHERE organization_id=? AND student_id=? AND account_id=? AND enabled=TRUE AND mistake_bank_enabled=TRUE",org,id,a.account)==1,HttpStatus.FORBIDDEN,"Mistake position sharing is not enabled");
+        require(input.items.stream().map(MistakeItem::id).distinct().count()==input.items.size(),HttpStatus.BAD_REQUEST,"Duplicate mistake identifiers");
+        for(var item:input.items){
+            require(item.successes<=item.attempts,HttpStatus.BAD_REQUEST,"Successes cannot exceed attempts");
+            require(!item.updatedAt.isAfter(java.time.Instant.now().plusSeconds(300)),HttpStatus.BAD_REQUEST,"Invalid review timestamp");
+            require(item.fen.matches("[prnbqkPRNBQK1-8/]+ [wb] [-KQkq]+ (-|[a-h][36]) [0-9]+ [0-9]+"),HttpStatus.BAD_REQUEST,"Invalid position FEN");
+        }
+        // Replace a bounded snapshot atomically; empty banks remove stale shared positions.
+        db.update("DELETE FROM academy_mistake_bank WHERE organization_id=? AND student_id=?",org,id);
+        for(var item:input.items)db.update("INSERT INTO academy_mistake_bank(organization_id,student_id,mistake_id,account_id,snapshot) VALUES(?,?,?,?,?)",org,id,item.id,a.account,json.writeValueAsString(item));
+        return Map.of("synced",input.items.size());
+    }
+    @GetMapping("/{org}/students/{id}/mistake-bank")
+    public List<Map<String,Object>> studentMistakes(@RequestHeader("Authorization") String bearer,@PathVariable UUID org,@PathVariable UUID id) {
+        Access a=access(bearer,org);student(org,id,a);return sharedMistakes(org,a,id);
+    }
+    private List<Map<String,Object>> sharedMistakes(UUID org,Access a) {return sharedMistakes(org,a,null);}
+    private List<Map<String,Object>> sharedMistakes(UUID org,Access a,UUID target) {
+        var ids=students(org,a).stream().filter(s->Boolean.TRUE.equals(s.get("active"))&&(target==null||target.equals(uuid(s.get("id"))))).map(s->uuid(s.get("id"))).toList();
+        if(ids.isEmpty())return List.of();
+        var args=new ArrayList<Object>();args.add(org);args.addAll(ids);
+        var records=rows("SELECT b.student_id,b.snapshot,b.updated_at FROM academy_mistake_bank b JOIN academy_student s ON s.organization_id=b.organization_id AND s.id=b.student_id AND s.account_id=b.account_id JOIN academy_activity_sharing c ON c.organization_id=b.organization_id AND c.student_id=b.student_id AND c.account_id=b.account_id JOIN academy_member m ON m.organization_id=b.organization_id AND m.account_id=b.account_id AND m.role='STUDENT' AND m.active=TRUE WHERE b.organization_id=? AND s.active=TRUE AND c.enabled=TRUE AND c.mistake_bank_enabled=TRUE AND b.student_id IN ("+String.join(",",Collections.nCopies(ids.size(),"?"))+") ORDER BY b.updated_at DESC,b.mistake_id LIMIT 300",args.toArray());
+        for(var row:records)row.put("position",json.readTree(row.remove("snapshot").toString()));
+        return records;
+    }
     public record ActivitySharingInput(boolean enabled) {}
     @PutMapping("/{org}/app-activity/sharing")
     public void activitySharing(@RequestHeader("Authorization") String bearer,@PathVariable UUID org,@RequestBody ActivitySharingInput input) {
@@ -204,6 +250,10 @@ public class AcademyController {
         UUID id=uuid(own.getFirst().get("id"));
         db.queryForObject("SELECT id FROM academy_student WHERE organization_id=? AND id=? FOR UPDATE",UUID.class,org,id);
         var existing=rows("SELECT * FROM academy_activity_sharing WHERE organization_id=? AND student_id=?",org,id);
+        if(!input.enabled || (!existing.isEmpty() && !Objects.equals(existing.getFirst().get("account_id"),a.account))){
+            db.update("UPDATE academy_activity_sharing SET mistake_bank_enabled=FALSE WHERE organization_id=? AND student_id=?",org,id);
+            db.update("DELETE FROM academy_mistake_bank WHERE organization_id=? AND student_id=?",org,id);
+        }
         if(existing.isEmpty()) db.update("INSERT INTO academy_activity_sharing(organization_id,student_id,account_id,enabled) VALUES(?,?,?,?)",org,id,a.account,input.enabled);
         else if(!Objects.equals(existing.getFirst().get("enabled"),input.enabled)||!Objects.equals(existing.getFirst().get("account_id"),a.account))
             db.update("UPDATE academy_activity_sharing SET account_id=?,enabled=?,enabled_at=CURRENT_TIMESTAMP WHERE organization_id=? AND student_id=?",a.account,input.enabled,org,id);
@@ -217,6 +267,10 @@ public class AcademyController {
         Access a=admin(bearer,org); lock(org); student(org,id,a); return saveStudent(org,id,input,true);
     }
     private Map<String,Object> saveStudent(UUID org, UUID id, StudentInput i, boolean edit) {
+        if(!edit && "Free trial".equals(organization(org).get("plan"))) {
+            require(count("SELECT COUNT(*) FROM academy_student WHERE organization_id=?",org)<15,HttpStatus.CONFLICT,
+                "Your free trial includes 15 student records, including inactive students. Choose a paid plan to add more. Growth supports 60 students and 5 coaches.");
+        }
         coach(org,i.coachId);
         if(i.batchId!=null) require(count("SELECT COUNT(*) FROM academy_batch WHERE organization_id=? AND id=?",org,i.batchId)==1,HttpStatus.BAD_REQUEST,"Batch belongs to another organization or does not exist");
         if(i.accountId!=null) {
@@ -237,15 +291,23 @@ public class AcademyController {
         input.students.forEach(i -> saveStudent(org,UUID.randomUUID(),i,false));
         return Map.of("imported",input.students.size());
     }
+    public record StudentBatchInput(UUID batchId) {}
+    @PutMapping("/{org}/students/{id}/batch")
+    public void moveStudentBatch(@RequestHeader("Authorization") String bearer,@PathVariable UUID org,@PathVariable UUID id,@RequestBody StudentBatchInput i) {
+        Access a=trainer(bearer,org);lock(org);student(org,id,a);
+        if(i.batchId!=null)require(count("SELECT COUNT(*) FROM academy_batch WHERE organization_id=? AND id=?"+(a.admin()?"":" AND coach_id=?"),a.admin()?new Object[]{org,i.batchId}:new Object[]{org,i.batchId,a.member})==1,HttpStatus.FORBIDDEN,"Choose a batch assigned to you in this academy");
+        db.update("UPDATE academy_student SET batch_id=? WHERE organization_id=? AND id=?",i.batchId,org,id);
+    }
     @PostMapping("/{org}/batches")
     public Map<String,Object> addBatch(@RequestHeader("Authorization") String bearer,@PathVariable UUID org,@Valid @RequestBody BatchInput i) {
-        admin(bearer,org); coach(org,i.coachId); UUID id=UUID.randomUUID();
-        db.update("INSERT INTO academy_batch(id,organization_id,name,level,schedule,coach_id) VALUES(?,?,?,?,?,?)",id,org,i.name,i.level,i.schedule,i.coachId); return Map.of("id",id);
+        Access a=trainer(bearer,org);lock(org);UUID assigned=a.admin()?i.coachId:a.member;coach(org,assigned);UUID id=UUID.randomUUID();
+        db.update("INSERT INTO academy_batch(id,organization_id,name,level,schedule,coach_id) VALUES(?,?,?,?,?,?)",id,org,i.name,i.level,i.schedule,assigned);return Map.of("id",id);
     }
     @PutMapping("/{org}/batches/{id}")
     public void editBatch(@RequestHeader("Authorization") String bearer,@PathVariable UUID org,@PathVariable UUID id,@Valid @RequestBody BatchInput i) {
-        admin(bearer,org); coach(org,i.coachId);
-        require(db.update("UPDATE academy_batch SET name=?,level=?,schedule=?,coach_id=? WHERE organization_id=? AND id=?",i.name,i.level,i.schedule,i.coachId,org,id)==1,HttpStatus.NOT_FOUND,"Batch not found");
+        Access a=trainer(bearer,org);lock(org);UUID assigned=a.admin()?i.coachId:a.member;coach(org,assigned);
+        if(!a.admin())require(count("SELECT COUNT(*) FROM academy_batch WHERE organization_id=? AND id=? AND coach_id=?",org,id,a.member)==1,HttpStatus.FORBIDDEN,"You can edit only your assigned batches");
+        require(db.update("UPDATE academy_batch SET name=?,level=?,schedule=?,coach_id=? WHERE organization_id=? AND id=?",i.name,i.level,i.schedule,assigned,org,id)==1,HttpStatus.NOT_FOUND,"Batch not found");
     }
     @PostMapping("/{org}/members")
     public void member(@RequestHeader("Authorization") String bearer,@PathVariable UUID org,@Valid @RequestBody MemberInput i) {
@@ -254,6 +316,7 @@ public class AcademyController {
         require(accounts.size()==1,HttpStatus.BAD_REQUEST,"Ask this person to register and verify their ChessVerse account first");
         UUID accountId=uuid(accounts.getFirst().get("id"));
         require(!a.account.equals(accountId) || (i.role.equals("ORGANIZATION_ADMIN") && i.active),HttpStatus.CONFLICT,"You cannot remove your own administrator access");
+        if(i.active && "COACH".equals(i.role)) AcademyCoachLimits.adding(db,org,accountId);
         var old=rows("SELECT * FROM academy_member WHERE organization_id=? AND account_id=?",org,accountId);
         if(!old.isEmpty()) {
             UUID id=uuid(old.getFirst().get("id"));

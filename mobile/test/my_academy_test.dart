@@ -9,6 +9,26 @@ import 'package:chessverse_ai/features/academy/data/academy_api.dart';
 import 'package:chessverse_ai/features/academy/presentation/my_academy_screen.dart';
 
 void main() {
+  for(final joined in [false,true]) {
+    testWidgets('Mistake Bank sharing is visible only for joined active students: $joined',(tester) async {
+      final client=MockClient((request) async {
+        final path=request.url.path;
+        final Object body=path.endsWith('/me')?{'organizations':joined?[{'id':'org-a','name':'Test Academy','role':'STUDENT'}]:[]}:
+          path.endsWith('/workspace')?{'students':[{'id':'s1','account_id':'student','name':'Student','active':true}],'members':[],'batches':[],'assignments':[],'reports':[]}:
+          path.endsWith('/app-activity')?{'sharing':[]}:[];
+        return http.Response(jsonEncode(body),200,headers:{'content-type':'application/json'});
+      });
+      await tester.pumpWidget(MaterialApp(home:MyAcademyScreen(token:'student-token',api:AcademyApi('student-token',client:client),onPuzzle:(_) async {},onPosition:(_,_,_) async {})));
+      await tester.pumpAndSettle();
+      final toggle=find.text('Share Mistake Bank positions and review progress');
+      if(joined){
+        await tester.scrollUntilVisible(toggle,200,scrollable:find.byType(Scrollable).first);
+        expect(toggle,findsOneWidget);
+        final widget=tester.widget<SwitchListTile>(find.ancestor(of:toggle,matching:find.byType(SwitchListTile)));
+        expect(widget.value,false);expect(widget.onChanged,isNull);
+      }else{expect(toggle,findsNothing);}
+    });
+  }
   test('practice capture counts only matching assignment and avoids repeat completions', () {
     final capture = AcademyPracticeCapture(puzzleId: 'easy-1');
     capture.puzzleCompleted('easy-2');

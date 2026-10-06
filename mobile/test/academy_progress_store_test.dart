@@ -5,6 +5,15 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('mistake schedule survives storage and stays isolated by account',() async {
+    final expiry=DateTime.now().toUtc().add(const Duration(days:1));
+    FlutterSecureStorage.setMockInitialValues({'auth.displayName':'Account A','auth.token':'a','auth.expiresAt':expiry.toIso8601String(),'auth.username':'a','auth.email':'a@example.com','auth.isGuest':'false','auth.rememberMe':'true'});
+    const store=AcademyProgressStore();const storage=FlutterSecureStorage();final now=DateTime.utc(2026,10,5);
+    await store.recordMistakeReview('position-1',true,now:now);
+    expect((await store.readMistakeReviews())['position-1']!.nextReview,now.add(const Duration(days:1)));
+    await storage.write(key:'auth.token',value:'b');await storage.write(key:'auth.username',value:'b');await storage.write(key:'auth.email',value:'b@example.com');
+    expect(await store.readMistakeReviews(),isEmpty);
+  });
   test('academy completion is isolated between signed-in accounts', () async {
     final DateTime expiry = DateTime.now().toUtc().add(const Duration(days: 1));
     FlutterSecureStorage.setMockInitialValues(<String, String>{

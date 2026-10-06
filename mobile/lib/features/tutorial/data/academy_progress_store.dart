@@ -1,3 +1,5 @@
+import 'dart:convert';
+import '../../analysis/domain/mistake_review.dart';
 import '../../../core/app_preferences.dart';
 import '../../../core/local_game_archive.dart';
 import '../../auth/data/auth_session_store.dart';
@@ -180,6 +182,26 @@ class AcademyProgressStore {
     );
     await _recordPractice('master-game-$gameId', DateTime.now().toUtc());
     return completed;
+  }
+
+  Future<Map<String, MistakeReview>> readMistakeReviews() async => _readMistakeReviewsAt(await _storageKey());
+  Future<Map<String, MistakeReview>> _readMistakeReviewsAt(String key) async {
+    final raw = await preferences.readString('$key.mistakeBank.reviews', fallback: '{}');
+    try {
+      final values = jsonDecode(raw) as Map<String, dynamic>;
+      return values.map((key, value) => MapEntry(key, MistakeReview.fromJson(Map<String, dynamic>.from(value as Map))));
+    } catch (_) { return {}; }
+  }
+  Future<MistakeReview> recordMistakeReview(String id, bool correct, {DateTime? now}) async {
+    final instant = (now ?? DateTime.now()).toUtc();
+    final key = await _storageKey();
+    final reviews = await _readMistakeReviewsAt(key);
+    final updated = (reviews[id] ?? MistakeReview(nextReview: instant, updatedAt: instant)).record(correct, instant);
+    reviews[id] = updated;
+    final keys = reviews.keys.toList()..sort((a,b) => reviews[b]!.updatedAt.compareTo(reviews[a]!.updatedAt));
+    await preferences.writeString('$key.mistakeBank.reviews', jsonEncode({for(final key in keys.take(100)) key: reviews[key]!.toJson()}));
+    if(await _storageKey()==key)await _recordPractice('mistake-bank-$id', instant);
+    return updated;
   }
 
   Future<Set<String>> readSolvedMistakes() async =>

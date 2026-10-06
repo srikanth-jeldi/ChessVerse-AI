@@ -1066,6 +1066,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _onlineResultPresentationTimer?.cancel();
     _quickChatTimer?.cancel();
     final AudioPlayer? warningPlayer = _warningPlayer;
+    _warningPlayer = null;
     if (warningPlayer != null) {
       unawaited(warningPlayer.dispose());
     }
@@ -5900,12 +5901,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   };
 
   Future<void> _playCheckWarning() async {
-    if (!ChessSoundService.instance.enabled) {
+    if (!mounted || !ChessSoundService.instance.enabled) {
       return;
     }
     try {
       final AudioPlayer player = _warningPlayer ??= AudioPlayer();
       await player.stop();
+      if (!mounted || !identical(player, _warningPlayer)) return;
       await player.play(AssetSource('audio/check-warning.wav'), volume: 0.72);
     } catch (_) {
       // A muted device or browser policy should never interrupt the game.

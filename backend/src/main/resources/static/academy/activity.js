@@ -22,11 +22,22 @@ function appPracticeChart(daily,checkedAt) {
     buckets.map((b,i)=>series.map(([key,color],j)=>`<rect x="${38+i*19+j*5}" y="${170-b[key]/maximum*150}" width="4" height="${b[key]/maximum*150}" fill="${color}"><title>${b.day}: ${b[key]} ${key}</title></rect>`).join('')+(i%7===0?`<text x="${38+i*19}" y="194">${b.day.slice(5)}</text>`:'')).join('')+'</svg><p class="small muted">UTC dates · zeros mean no received/shared events, not proof of inactivity. Normal puzzle completions exclude sprint and assignment sessions.</p>';
 }
 
+function mistakePositionBoard(fen){
+ const ranks=String(fen||'').split(' ')[0].split('/'),pieces={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'};
+ if(ranks.length!==8)return '';
+ let cells='';for(let r=0;r<8;r++){let file=0;for(const c of ranks[r]){const count=/[1-8]/.test(c)?Number(c):1;for(let n=0;n<count;n++){if(file>=8)return '';cells+=`<span style="display:flex;align-items:center;justify-content:center;background:${(r+file)%2?'#b5c9df':'#f1f5fa'};color:#101827">${pieces[c]||''}</span>`;file++;}}if(file!==8)return '';}
+ return `<div role="img" aria-label="Shared mistake position, White at bottom" style="display:grid;grid-template-columns:repeat(8,22px);grid-auto-rows:22px;font-size:21px;width:176px">${cells}</div>`;
+}
+function mistakeBankPanel(records){
+ if(!records.length)return '<h3>Mistake Bank</h3><p>No shared mistake positions yet. Joined students can enable Mistake Bank sharing in My Academy, then open Mistake Bank in the updated app.</p>';
+ const now=Date.now(),due=records.filter(r=>Date.parse(r.position.nextReview)<=now).length;
+ return `<h3>Mistake Bank · spaced review</h3><p>${records.length} shared positions · ${due} due for review. Latest snapshot, up to 300 visible positions; app-reported analysis and practice, separate from coach observations.</p>`+table(['Student','Position','Analysis','Practice','Next review'],records.map(r=>{const p=r.position;return [esc(studentName(r.student_id)),mistakePositionBoard(p.fen)+`<details><summary>FEN</summary><code style="overflow-wrap:anywhere">${esc(p.fen)}</code></details>`,`${esc(p.classification)} · ${num(p.centipawnLoss)} cp loss<br>Played: ${esc(p.playedMove)}<br>Best: ${esc(p.bestMove)}`,`${num(p.successes)} successful / ${num(p.attempts)} attempts<br>Review stage ${num(p.stage)} / 5`,esc(new Date(p.nextReview).toLocaleString())];}));
+}
 // Independent refresh: never replaces an open form or moves keyboard focus.
 (() => {
   const previousDashboard = dashboard, previousProfile = profile, previousPage=page;
   let cached = null, cacheKey = '', busy = false;
-  const key = () => state.token + ':' + state.org;
+  const key = () => state.token + ':' + state.org + ':' + state.page + ':' + (state.student||'');
   function panel() {
     if (state.demo) return '';
     return '<section class="card" id="app-activity"><h2>App activity</h2><p>Checking shared activity…</p></section>';
@@ -49,13 +60,16 @@ function appPracticeChart(daily,checkedAt) {
       (error ? `<p role="status">${esc(error)} Activity could not be refreshed.</p>` : '') +
       (data ? `<p class="small muted">Last checked ${esc(new Date(data.checkedAt).toLocaleTimeString())} · Latest 100 events · Practice results are app-reported</p>` + appPracticeChart(daily,data.checkedAt) + (events.length ? table(['Student','Activity','When'], events.map(e => [esc(studentName(e.student_id)),e.kind === 'GAME_SAVED' ? 'Game saved in app' : e.kind === 'ONLINE_GAME' ? 'Online game finished' : e.kind==='PUZZLE_COMPLETED'?'Normal puzzle completed': e.kind === 'POSITION_RETRY' ? `Position Retry: ${e.solved ? 'Correct' : 'Needs practice'}` : `Puzzle sprint: ${num(e.solved)}/${num(e.attempted)} solved · ${num(e.seconds)} seconds`,esc(new Date(e.occurred_at).toLocaleString())])) : empty('No shared app activity yet. Students can enable sharing from My Academy in the student app or web.')) : '<p>Checking shared activity…</p>');
     if (weaknesses.length) host.innerHTML += '<h3>Analyzed weaknesses · last 30 days</h3><p class="small muted">Server-recorded analysis after sharing was enabled. Up to 100 student/category groups; separate from coach observations.</p>' + table(['Student','Category','Mistakes','Blunders'],weaknesses.map(w=>[esc(studentName(w.student_id)),esc(w.category),num(w.mistakes),num(w.blunders)]));
+    host.innerHTML+=mistakeBankPanel((data?.mistakeBank||[]).filter(r=>state.page!=='profile'||r.student_id===state.student));
     if(results.length)host.innerHTML+='<h3>Recent academy assignment results</h3><p class="small muted">Student/app-reported · latest 100 submissions</p>'+table(['Student','Assignment','Attempts','Result','Notes'],results.map(r=>[esc(studentName(r.student_id)),esc(r.title),num(r.attempts),r.solved?'Completed':'Needs practice',esc(r.notes)]));
   }
   async function refresh() {
     if (busy || document.hidden || state.demo || !state.token || !state.org || !state.data || !document.getElementById('app-activity')) return;
     const requestedKey = key(); busy = true;
     try {
-      const result = await api(`/${state.org}/app-activity`);
+      const org=state.org,student=state.page==='profile'?state.student:null;
+      const result = await api(`/${org}/app-activity`);
+      if(student)result.mistakeBank=await api(`/${org}/students/${student}/mistake-bank`);
       if (requestedKey !== key()) return;
       cached = result; cacheKey = requestedKey; paint();
     } catch (error) { if (requestedKey === key()) { cached = null; paint(error.message); } }

@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
@@ -13,8 +14,9 @@ abstract final class AppDiagnostics {
   static Future<void> initialize() async {
     if (!kIsWeb) {
       try {
-        await FirebaseCrashlytics.instance
-            .setCrashlyticsCollectionEnabled(!kDebugMode);
+        await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
+          !kDebugMode,
+        );
         _crashlyticsReady = true;
       } on Object {
         _crashlyticsReady = false;
@@ -25,20 +27,24 @@ abstract final class AppDiagnostics {
         FlutterError.onError;
     FlutterError.onError = (FlutterErrorDetails details) {
       previousFlutterHandler?.call(details);
-      unawaited(recordError(
-        details.exception,
-        details.stack,
-        reason: 'Flutter framework error',
-        fatal: true,
-      ));
+      unawaited(
+        recordError(
+          details.exception,
+          details.stack,
+          reason: 'Flutter framework error',
+          fatal: !isExpectedTransient(details.exception),
+        ),
+      );
     };
     PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
-      unawaited(recordError(
-        error,
-        stack,
-        reason: 'Uncaught platform error',
-        fatal: true,
-      ));
+      unawaited(
+        recordError(
+          error,
+          stack,
+          reason: 'Uncaught platform error',
+          fatal: !isExpectedTransient(error),
+        ),
+      );
       return true;
     };
     log('diagnostics_initialized');
@@ -48,7 +54,8 @@ abstract final class AppDiagnostics {
     final String fields = data.entries
         .map((entry) => '${entry.key}=${redact('${entry.value}')}')
         .join(' ');
-    final String line = '${DateTime.now().toUtc().toIso8601String()} '
+    final String line =
+        '${DateTime.now().toUtc().toIso8601String()} '
         '${redact(event)}${fields.isEmpty ? '' : ' $fields'}';
     _entries.add(line);
     if (_entries.length > _maximumEntries) {
@@ -97,14 +104,34 @@ abstract final class AppDiagnostics {
       '[REDACTED_TOKEN]',
     );
     safe = safe.replaceAllMapped(
-      RegExp(r'\b([A-Z0-9._%+-]{1,64})@([A-Z0-9.-]+\.[A-Z]{2,})\b',
-          caseSensitive: false),
+      RegExp(
+        r'\b([A-Z0-9._%+-]{1,64})@([A-Z0-9.-]+\.[A-Z]{2,})\b',
+        caseSensitive: false,
+      ),
       (Match match) {
         final String local = match.group(1)!;
         return '${local.substring(0, 1)}***@${match.group(2)}';
       },
     );
     return safe;
+  }
+
+  /// Connectivity loss, a closed media player, and an expired live socket are
+  /// recoverable runtime conditions. Keep their diagnostics, but do not count
+  /// them as app crashes in Crashlytics.
+  static bool isExpectedTransient(Object error) {
+    final String message = error.toString().toLowerCase();
+    return <String>[
+      'socketexception',
+      'websocketchannelexception',
+      'failed host lookup',
+      'connection closed while receiving data',
+      'future not completed',
+      'timeoutexception',
+      'onlinematchexception',
+      'player has not yet been created',
+      'player has already been disposed',
+    ].any(message.contains);
   }
 
   static Future<String> buildReport() async {

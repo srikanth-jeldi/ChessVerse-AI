@@ -392,6 +392,9 @@ class LocalGameArchive {
   /// The cloud remains the durable source for signed-in/guest progress. When
   /// the authenticated identity changes we discard the old device cache
   /// before the new identity is merged from the server.
+  static Future<bool> hasActiveIdentity(String identity) async =>
+      await _storage.read(key: _activeIdentityKey) == identity.trim().toLowerCase();
+
   static Future<void> activateIdentity(String identity) async {
     final String normalized = identity.trim().toLowerCase();
     final String? active = await _storage.read(key: _activeIdentityKey);

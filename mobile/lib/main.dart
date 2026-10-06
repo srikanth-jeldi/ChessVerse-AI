@@ -12,6 +12,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'core/analytics/app_analytics.dart';
 import 'core/academy_activity.dart';
+import 'features/analysis/domain/mistake_bank_sync.dart';
 import 'features/academy/presentation/my_academy_screen.dart';
 import 'core/ai_bot_preset_store.dart';
 import 'core/app_language.dart';
@@ -150,6 +151,7 @@ Future<void> _initializeAfterFirstFrame() async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  startAcademyMistakeSync();
   if (kIsWeb) {
     try {
       await ensureFacebookSdkReady().timeout(const Duration(seconds: 8));

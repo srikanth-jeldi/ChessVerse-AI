@@ -1,3 +1,4 @@
+import '../../analysis/domain/mistake_bank_sync.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -442,6 +443,20 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                                 student?['batch_id'],
                                 'Batch not assigned',
                               ),
+                            ),
+                            if(student != null && student['active']==true) SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Share Mistake Bank positions and review progress'),
+                              subtitle: const Text('Optional: shares up to 100 saved mistake positions, moves, and retry schedules with authorized academy staff and linked parents. Includes existing saved positions. Turn off to remove the shared bank.'),
+                              value: shared && (activity?['sharing'] as List? ?? []).any((s)=>s['mistake_bank_enabled']==true),
+                              onChanged: busy || !shared ? null : (value) async {
+                                setState(()=>busy=true);
+                                try {
+                                  await api.request('/$org/mistake-bank/sharing',method:'PUT',body:{'enabled':value});
+                                  if(value)await syncAcademyMistakeBank();
+                                  await load();
+                                } catch(e){message(e.toString());if(mounted)setState(()=>busy=false);}
+                              },
                             ),
                             SwitchListTile(
                               contentPadding: EdgeInsets.zero,

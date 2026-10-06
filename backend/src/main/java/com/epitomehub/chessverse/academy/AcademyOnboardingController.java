@@ -33,7 +33,10 @@ public class AcademyOnboardingController {
         @NotNull @Pattern(regexp="ACADEMY|SCHOOL") String kind,
         @NotNull @Pattern(regexp="[A-Z]{2}") String country) {}
     public record Plan(@NotNull @Pattern(regexp="STARTER|GROWTH|SCHOOL") String planCode,
-        @Size(max=30) @Pattern(regexp="[A-Za-z0-9_-]*") String coupon, @Min(1) Long expectedTotal) {
+        @Size(max=30) @Pattern(regexp="[A-Za-z0-9_-]*") String coupon, @Min(1) Long expectedTotal,
+        @Pattern(regexp="MONTHLY|YEARLY") String billingCycle) {
+        public Plan(String planCode,String coupon,Long expectedTotal) {this(planCode,coupon,expectedTotal,"MONTHLY");}
+        public int months() {return "YEARLY".equals(billingCycle)?12:1;}
         public Plan(String planCode,String coupon) {this(planCode,coupon,null);}
     }
     public record Verification(@NotNull UUID checkoutId,
@@ -76,7 +79,7 @@ public class AcademyOnboardingController {
         String currency=country.equals("IN")?"INR":"USD";
         boolean taxReady=Boolean.TRUE.equals(db.queryForObject("SELECT approved FROM academy_billing_config WHERE id=1",Boolean.class));
         return Map.of("currency",currency,"checkoutAvailable",gateway.available()&&taxReady&&country.equals("IN"),"plans",
-            rows("SELECT plan_code,name,seats,amount_minor,currency,enabled FROM academy_plan_price WHERE currency=? ORDER BY CASE plan_code WHEN 'STARTER' THEN 1 WHEN 'GROWTH' THEN 2 ELSE 3 END",currency));
+            rows("SELECT plan_code,name,seats,amount_minor,annual_amount_minor,currency,enabled FROM academy_plan_price WHERE currency=? ORDER BY CASE plan_code WHEN 'STARTER' THEN 1 WHEN 'GROWTH' THEN 2 ELSE 3 END",currency));
     }
     @GetMapping("/countries") public Object countries() {
         return Arrays.stream(Locale.getISOCountries()).map(c->Map.of("code",c,"name",new Locale.Builder().setRegion(c).build().getDisplayCountry(Locale.ENGLISH))).sorted(Comparator.comparing(c->c.get("name"))).toList();
@@ -85,7 +88,7 @@ public class AcademyOnboardingController {
         UUID account=account(bearer);var result=rows("SELECT * FROM academy_enrollment WHERE account_id=?",account);
         if(result.isEmpty())return Map.of("registered",false);
         var e=result.getFirst();
-        return Map.of("registered",true,"enrollment",e,"orders",rows("SELECT id,plan_name,amount_minor,currency,status,created_at FROM academy_checkout WHERE enrollment_id=? ORDER BY created_at DESC",e.get("id")));
+        return Map.of("registered",true,"enrollment",e,"checkoutBlockedReason",checkoutBlockedReason(e),"orders",rows("SELECT id,plan_name,billing_months,amount_minor,currency,status,created_at FROM academy_checkout WHERE enrollment_id=? ORDER BY created_at DESC",e.get("id")));
     }
     @PostMapping public Object enroll(@RequestHeader("Authorization") String bearer,@Valid @RequestBody Enrollment input) {
         UUID account=account(bearer);
@@ -96,56 +99,93 @@ public class AcademyOnboardingController {
         db.update("INSERT INTO academy_enrollment(id,account_id,name,kind,country) VALUES(?,?,?,?,?)",enrollment,account,input.name.trim(),input.kind,input.country);
         return enrollment(account);
     }
+    @PostMapping("/trial") public Object trial(@RequestHeader("Authorization") String bearer) {
+        UUID owner=account(bearer);var e=enrollment(owner);
+        if(e.get("organization_id")!=null)return Map.of("organizationId",e.get("organization_id"));
+        check(e.get("trial_started_on")==null,HttpStatus.CONFLICT,"Your free trial has already been used.");
+        check(db.queryForObject("SELECT COUNT(*) FROM academy_checkout WHERE enrollment_id=?",Integer.class,e.get("id"))==0,HttpStatus.CONFLICT,"An existing checkout needs to be completed before changing access.");
+        UUID org=UUID.randomUUID();
+        db.update("INSERT INTO academy_organization(id,name,kind,plan,seats,status,renewal_date) VALUES(?,?,?,'Free trial',15,'ACTIVE',?)",org,e.get("name"),e.get("kind"),LocalDate.now().plusDays(7));
+        String name=db.queryForObject("SELECT display_name FROM player_account WHERE id=?",String.class,owner);
+        db.update("INSERT INTO academy_member(id,organization_id,account_id,name,role) VALUES(?,?,?,?,'ORGANIZATION_ADMIN')",UUID.randomUUID(),org,owner,name);
+        db.update("UPDATE academy_enrollment SET organization_id=?,trial_started_on=? WHERE id=?",org,LocalDate.now(),e.get("id"));
+        return Map.of("organizationId",org,"trialEndsOn",LocalDate.now().plusDays(7));
+    }
     @PostMapping("/orders") public Object order(@RequestHeader("Authorization") String bearer,@Valid @RequestBody Plan input) {
         var e=enrollment(account(bearer));
         check(gateway.available(),HttpStatus.SERVICE_UNAVAILABLE,"Online checkout is not yet enabled. Contact EpitomeHub for pricing.");
-        if(e.get("organization_id")!=null) {
-            var org=rows("SELECT status,renewal_date FROM academy_organization WHERE id=?",e.get("organization_id")).getFirst();
-            check(!"SUSPENDED".equals(org.get("status")),HttpStatus.FORBIDDEN,"Contact support about this suspended academy.");
-            check(org.get("renewal_date")!=null&&!LocalDate.parse(org.get("renewal_date").toString()).isAfter(LocalDate.now()),HttpStatus.CONFLICT,"Your academy plan is already active.");
-        }
+        checkCheckoutAccess(e);
         // Resume a pending checkout instead of producing duplicate payable orders.
         var pending=rows("SELECT * FROM academy_checkout WHERE enrollment_id=? AND status='PENDING' AND failed_at IS NULL ORDER BY created_at DESC",e.get("id"));
         if(!pending.isEmpty()){samePending(pending.getFirst(),input);check(Objects.equals(input.expectedTotal,((Number)pending.getFirst().get("amount_minor")).longValue()),HttpStatus.CONFLICT,"Review the payment total again.");return checkoutView(pending.getFirst());}
         String currency="IN".equals(e.get("country"))?"INR":"USD";
         var prices=rows("SELECT * FROM academy_plan_price WHERE plan_code=? AND currency=? AND enabled=TRUE AND seats IS NOT NULL AND amount_minor IS NOT NULL",input.planCode,currency);
         check(!prices.isEmpty(),HttpStatus.CONFLICT,"Pricing is not yet available for this plan.");
-        var p=prices.getFirst();
+        var p=periodPrice(prices.getFirst(),input);
         var quote=quote(e,p,input);
-        var billing=AcademyBilling.snapshot(db,json,e,((Number)quote.get("subtotal")).longValue(),((Number)quote.get("discount")).longValue());
+        var billing=billingSnapshot(e,quote,input);
         check(Objects.equals(input.expectedTotal,billing.get("total")),HttpStatus.CONFLICT,"The price or tax changed. Review your total again before paying.");
         if(e.get("organization_id")!=null) check(db.queryForObject("SELECT COUNT(*) FROM academy_student WHERE organization_id=? AND active=TRUE",Integer.class,e.get("organization_id"))<=((Number)p.get("seats")).intValue(),HttpStatus.CONFLICT,"Choose a plan that covers your active students.");
+        if(e.get("organization_id")!=null) check(db.queryForObject("SELECT COUNT(*) FROM academy_member WHERE organization_id=? AND role='COACH' AND active=TRUE",Integer.class,e.get("organization_id"))<=AcademyCoachLimits.limit(p.get("name").toString()),HttpStatus.CONFLICT,"Choose a plan that covers your active coaches.");
         UUID order=UUID.randomUUID();
         var provider=gateway.createOrder(order.toString(),((Number)billing.get("total")).longValue(),currency);
-        db.update("INSERT INTO academy_checkout(id,enrollment_id,provider_order,plan_code,plan_name,seats,amount_minor,currency,coupon_code,subtotal_minor,discount_minor,billing_snapshot,tax_minor) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",order,e.get("id"),provider.id(),input.planCode,p.get("name"),p.get("seats"),billing.get("total"),currency,quote.get("coupon"),p.get("amount_minor"),quote.get("discount"),json.writeValueAsString(billing),billing.get("tax"));
+        db.update("INSERT INTO academy_checkout(id,enrollment_id,provider_order,plan_code,plan_name,seats,amount_minor,currency,coupon_code,subtotal_minor,discount_minor,billing_snapshot,tax_minor,billing_months) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",order,e.get("id"),provider.id(),input.planCode,p.get("name"),p.get("seats"),billing.get("total"),currency,quote.get("coupon"),p.get("amount_minor"),quote.get("discount"),json.writeValueAsString(billing),billing.get("tax"),input.months());
         return checkoutView(rows("SELECT * FROM academy_checkout WHERE id=?",order).getFirst());
     }
+    private String checkoutBlockedReason(Map<String,Object> e) {
+        if(e.get("organization_id")==null)return "";
+        var org=rows("SELECT status,renewal_date,plan FROM academy_organization WHERE id=?",e.get("organization_id")).getFirst();
+        if("SUSPENDED".equals(org.get("status")))return "Contact support about this suspended academy.";
+        if(!"Free trial".equals(org.get("plan"))&&(org.get("renewal_date")==null||LocalDate.parse(org.get("renewal_date").toString()).isAfter(LocalDate.now())))
+            return "Your academy already has an active paid plan"+(org.get("renewal_date")==null?"":" until "+org.get("renewal_date"))+". No payment is needed now. Renew when it expires; contact support to change plans earlier.";
+        return "";
+    }
+    private void checkCheckoutAccess(Map<String,Object> e) {
+        String reason=checkoutBlockedReason(e);
+        check(reason.isEmpty(),HttpStatus.CONFLICT,reason);
+    }
     private Object checkoutView(Map<String,Object> o) {
-        return Map.of("id",o.get("id"),"orderId",o.get("provider_order"),"keyId",gateway.publicKey(),"amount",o.get("amount_minor"),"currency",o.get("currency"),"plan",o.get("plan_name"));
+        return Map.of("id",o.get("id"),"orderId",o.get("provider_order"),"keyId",gateway.publicKey(),"amount",o.get("amount_minor"),"currency",o.get("currency"),"plan",o.get("plan_name"),"billingMonths",o.get("billing_months"));
     }
     @PostMapping("/quote") public Object quote(@RequestHeader("Authorization") String bearer,@Valid @RequestBody Plan input) {
-        var e=enrollment(account(bearer));String currency="IN".equals(e.get("country"))?"INR":"USD";
+        var e=enrollment(account(bearer));checkCheckoutAccess(e);String currency="IN".equals(e.get("country"))?"INR":"USD";
         var pending=rows("SELECT * FROM academy_checkout WHERE enrollment_id=? AND status='PENDING' AND failed_at IS NULL",e.get("id"));
         if(!pending.isEmpty()) {var o=pending.getFirst();samePending(o,input);return json.readTree(o.get("billing_snapshot").toString());}
         var prices=rows("SELECT * FROM academy_plan_price WHERE plan_code=? AND currency=? AND enabled=TRUE AND seats IS NOT NULL AND amount_minor IS NOT NULL",input.planCode,currency);
         check(!prices.isEmpty(),HttpStatus.CONFLICT,"This plan is awaiting pricing confirmation.");
-        var result=quote(e,prices.getFirst(),input);return AcademyBilling.snapshot(db,json,e,((Number)result.get("subtotal")).longValue(),((Number)result.get("discount")).longValue());
+        var result=quote(e,periodPrice(prices.getFirst(),input),input);return billingSnapshot(e,result,input);
+    }
+    private Map<String,Object> periodPrice(Map<String,Object> price,Plan input) {
+        var result=new LinkedHashMap<String,Object>(price);
+        if(input.months()==12) {
+            check(price.get("annual_amount_minor")!=null,HttpStatus.CONFLICT,"Yearly pricing is not available for this billing country.");
+            result.put("amount_minor",price.get("annual_amount_minor"));
+        }
+        return result;
+    }
+    private Map<String,Object> billingSnapshot(Map<String,Object> enrollment,Map<String,Object> quote,Plan input) {
+        var snapshot=AcademyBilling.snapshot(db,json,enrollment,((Number)quote.get("subtotal")).longValue(),((Number)quote.get("discount")).longValue());
+        snapshot.put("billingMonths",input.months());
+        return snapshot;
     }
     private void samePending(Map<String,Object> o,Plan input) {
         String code=input.coupon==null||input.coupon.isBlank()?null:input.coupon.toUpperCase(Locale.ROOT);
-        check(o.get("plan_code").equals(input.planCode)&&Objects.equals(o.get("coupon_code"),code),HttpStatus.CONFLICT,"A checkout already exists for "+o.get("plan_name")+". Resume the same plan and coupon, or contact support before changing it.");
+        check(o.get("plan_code").equals(input.planCode)&&((Number)o.get("billing_months")).intValue()==input.months()&&Objects.equals(o.get("coupon_code"),code),HttpStatus.CONFLICT,"A checkout already exists for "+o.get("plan_name")+". Resume the same plan, billing period and coupon, or contact support before changing it.");
     }
     private Map<String,Object> quote(Map<String,Object> enrollment,Map<String,Object> price,Plan input) {
         long subtotal=((Number)price.get("amount_minor")).longValue(),discount=0;
         String code=input.coupon==null||input.coupon.isBlank()?null:input.coupon.toUpperCase(Locale.ROOT);
         if(code!=null) {
-            check(db.queryForObject("SELECT COUNT(*) FROM academy_checkout WHERE enrollment_id=? AND status='PAID'",Integer.class,enrollment.get("id"))==0,HttpStatus.CONFLICT,"Launch coupons apply to the first month only.");
             var coupons=rows("SELECT * FROM academy_coupon WHERE code=? FOR UPDATE",code);
             check(!coupons.isEmpty(),HttpStatus.BAD_REQUEST,"Coupon is invalid or unavailable.");var c=coupons.getFirst();
+            if(Boolean.TRUE.equals(c.get("first_payment_only")))check(db.queryForObject("SELECT COUNT(*) FROM academy_checkout WHERE enrollment_id=? AND status='PAID'",Integer.class,enrollment.get("id"))==0,HttpStatus.CONFLICT,"This coupon applies to your first payment only.");
             check(Boolean.TRUE.equals(c.get("enabled"))&&!LocalDate.parse(c.get("expires_on").toString()).isBefore(LocalDate.now())&&(c.get("plan_code")==null||c.get("plan_code").equals(input.planCode)),HttpStatus.BAD_REQUEST,"Coupon is expired or does not apply to this plan.");
             check(db.queryForObject("SELECT COUNT(*) FROM academy_checkout WHERE coupon_code=?",Integer.class,code)<((Number)c.get("max_orders")).intValue(),HttpStatus.CONFLICT,"Coupon redemption limit reached.");
-            check(db.queryForObject("SELECT COUNT(*) FROM academy_checkout WHERE enrollment_id=? AND coupon_code=?",Integer.class,enrollment.get("id"),code)==0,HttpStatus.CONFLICT,"This academy has already used this coupon.");
-            discount=subtotal*((Number)c.get("percent_off")).intValue()/100;
+            check(db.queryForObject("SELECT COUNT(*) FROM academy_checkout WHERE enrollment_id=? AND coupon_code=? AND (status='PAID' OR failed_at IS NULL)",Integer.class,enrollment.get("id"),code)==0,HttpStatus.CONFLICT,"This academy has already used this coupon.");
+            if(c.get("fixed_amount_minor")!=null){
+                check(Objects.equals(c.get("currency"),price.get("currency")),HttpStatus.BAD_REQUEST,"This coupon is available for INR plans only.");
+                discount=Math.min(subtotal-1,((Number)c.get("fixed_amount_minor")).longValue());
+            }else discount=subtotal*((Number)c.get("percent_off")).intValue()/100;
         }
         Map<String,Object> result=new LinkedHashMap<>();result.put("subtotal",subtotal);result.put("discount",discount);result.put("total",subtotal-discount);result.put("coupon",code);return result;
     }
@@ -187,16 +227,16 @@ public class AcademyOnboardingController {
         var e=rows("SELECT * FROM academy_enrollment WHERE id=? FOR UPDATE",o.get("enrollment_id")).getFirst();
         UUID org=e.get("organization_id")==null?UUID.randomUUID():id(e.get("organization_id"));
         if(e.get("organization_id")==null) {
-            db.update("INSERT INTO academy_organization(id,name,kind,plan,seats,status,renewal_date) VALUES(?,?,?,?,?,'ACTIVE',?)",org,e.get("name"),e.get("kind"),o.get("plan_name"),o.get("seats"),LocalDate.now().plusMonths(1));
+            db.update("INSERT INTO academy_organization(id,name,kind,plan,seats,status,renewal_date) VALUES(?,?,?,?,?,'ACTIVE',?)",org,e.get("name"),e.get("kind"),o.get("plan_name"),o.get("seats"),LocalDate.now().plusMonths(((Number)o.get("billing_months")).intValue()));
             String name=db.queryForObject("SELECT display_name FROM player_account WHERE id=?",String.class,e.get("account_id"));
             db.update("INSERT INTO academy_member(id,organization_id,account_id,name,role) VALUES(?,?,?,?,'ORGANIZATION_ADMIN')",UUID.randomUUID(),org,e.get("account_id"),name);
             db.update("UPDATE academy_enrollment SET organization_id=? WHERE id=?",org,e.get("id"));
         } else {
             db.queryForObject("SELECT id FROM academy_organization WHERE id=? FOR UPDATE",UUID.class,org);
             check(!"SUSPENDED".equals(db.queryForObject("SELECT status FROM academy_organization WHERE id=?",String.class,org)),HttpStatus.CONFLICT,"Payment received; contact support about suspended academy activation.");
-            db.update("UPDATE academy_organization SET plan=?,seats=?,renewal_date=?,status='ACTIVE' WHERE id=?",o.get("plan_name"),o.get("seats"),LocalDate.now().plusMonths(1),org);
+            db.update("UPDATE academy_organization SET plan=?,seats=?,renewal_date=?,status='ACTIVE' WHERE id=?",o.get("plan_name"),o.get("seats"),LocalDate.now().plusMonths(((Number)o.get("billing_months")).intValue()),org);
         }
-        db.update("INSERT INTO academy_invoice(id,organization_id,label,amount_minor,currency,status,issued_on) VALUES(?,?,?,?,?,'PAID',?)",checkout,org,"Academy license · "+o.get("plan_name"),o.get("amount_minor"),o.get("currency"),LocalDate.now());
+        db.update("INSERT INTO academy_invoice(id,organization_id,label,amount_minor,currency,status,issued_on) VALUES(?,?,?,?,?,'PAID',?)",checkout,org,"Academy license · "+o.get("plan_name")+" · "+o.get("billing_months")+" month(s)",o.get("amount_minor"),o.get("currency"),LocalDate.now());
         long sequence=db.queryForObject("SELECT next_number FROM academy_invoice_counter WHERE id=1 FOR UPDATE",Long.class);
         check(sequence<1000000000,HttpStatus.CONFLICT,"Invoice sequence exhausted; contact support.");
         db.update("UPDATE academy_invoice_counter SET next_number=next_number+1 WHERE id=1");
@@ -209,6 +249,6 @@ public class AcademyOnboardingController {
     @GetMapping("/invoices/{checkout}") public Object invoice(@RequestHeader("Authorization") String bearer,@PathVariable UUID checkout) {
         var o=owned(bearer,checkout);check("PAID".equals(o.get("status")),HttpStatus.NOT_FOUND,"Paid invoice not available.");
         var d=rows("SELECT d.*,i.issued_on FROM academy_invoice_document d JOIN academy_invoice i ON i.id=d.invoice_id WHERE invoice_id=?",checkout).getFirst();
-        return Map.of("number",d.get("invoice_number"),"date",d.get("issued_on"),"plan",o.get("plan_name"),"paymentId",o.get("payment_id"),"billing",json.readTree(d.get("snapshot").toString()));
+        return Map.of("number",d.get("invoice_number"),"date",d.get("issued_on"),"plan",o.get("plan_name"),"billingMonths",o.get("billing_months"),"paymentId",o.get("payment_id"),"billing",json.readTree(d.get("snapshot").toString()));
     }
 }
