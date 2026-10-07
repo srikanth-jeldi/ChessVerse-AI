@@ -66,6 +66,15 @@ void main() {
 
     expect(find.text('Challenge missed'), findsOneWidget);
     expect(find.text('Try again'), findsWidgets);
+    expect(find.text('AI Review My Game'), findsNothing);
+    expect(
+      find.byKey(const ValueKey<String>('share-game-result')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('export-game-data')),
+      findsNothing,
+    );
     expect(find.text('Draw'), findsNothing);
     final OutlinedButton hint = tester.widget<OutlinedButton>(
       find.widgetWithText(OutlinedButton, 'Piece hint'),

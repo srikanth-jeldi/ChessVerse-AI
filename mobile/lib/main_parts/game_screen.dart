@@ -1805,54 +1805,65 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                               setState(() => _resultVisible = false);
                               unawaited(_maybeRequestStoreReview());
                             },
-                            onReview: () {
-                              setState(() => _resultVisible = false);
-                              WidgetsBinding.instance.addPostFrameCallback(
-                                (_) => _showAiReview(),
-                              );
-                            },
-                            onShare: () async {
-                              final String result = <String>[
-                                'ChessVerseAI • ${_resultDisplayTitle()}',
-                                if (_gameMode != GameMode.puzzle &&
-                                    _gameMode != GameMode.daily)
-                                  _resultScoreLabel(),
-                                _gameResultDetail ?? 'Game complete',
-                                if (_playerAccuracy != null)
-                                  'AI accuracy: $_playerAccuracy%',
-                                if (_turningPoint != null)
-                                  'Turning point: $_turningPoint',
-                                'Play and improve at chessverseai.com',
-                              ].join('\n');
-                              await Clipboard.setData(
-                                ClipboardData(text: result),
-                              );
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Shareable result copied.'),
-                                  ),
-                                );
-                              }
-                            },
-                            onExport: () async {
-                              final SavedGameRecord game = SavedGameRecord(
-                                mode: _gameMode.name,
-                                result: _gameResultTitle ?? '*',
-                                detail: _gameResultDetail ?? 'Game complete',
-                                moves: List<String>.from(_moves.reversed),
-                                playedAt: DateTime.now(),
-                                whitePlayer: _whitePlayerName,
-                                blackPlayer: _blackPlayerName,
-                                initialFen: _initialGameFen,
-                              );
-                              return (
-                                pgn: const PgnArchiveService().exportGames(
-                                  <SavedGameRecord>[game],
-                                ),
-                                fen: _toFen(),
-                              );
-                            },
+                            onReview: _isTacticsMode
+                                ? null
+                                : () {
+                                    setState(() => _resultVisible = false);
+                                    WidgetsBinding.instance
+                                        .addPostFrameCallback(
+                                          (_) => _showAiReview(),
+                                        );
+                                  },
+                            onShare: _isTacticsMode
+                                ? null
+                                : () async {
+                                    final String result = <String>[
+                                      'ChessVerseAI • ${_resultDisplayTitle()}',
+                                      if (_gameMode != GameMode.puzzle &&
+                                          _gameMode != GameMode.daily)
+                                        _resultScoreLabel(),
+                                      _gameResultDetail ?? 'Game complete',
+                                      if (_playerAccuracy != null)
+                                        'AI accuracy: $_playerAccuracy%',
+                                      if (_turningPoint != null)
+                                        'Turning point: $_turningPoint',
+                                      'Play and improve at chessverseai.com',
+                                    ].join('\n');
+                                    await Clipboard.setData(
+                                      ClipboardData(text: result),
+                                    );
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Shareable result copied.',
+                                              ),
+                                            ),
+                                          );
+                                    }
+                                  },
+                            onExport: _isTacticsMode
+                                ? null
+                                : () async {
+                                    final SavedGameRecord
+                                    game = SavedGameRecord(
+                                      mode: _gameMode.name,
+                                      result: _gameResultTitle ?? '*',
+                                      detail:
+                                          _gameResultDetail ?? 'Game complete',
+                                      moves: List<String>.from(_moves.reversed),
+                                      playedAt: DateTime.now(),
+                                      whitePlayer: _whitePlayerName,
+                                      blackPlayer: _blackPlayerName,
+                                      initialFen: _initialGameFen,
+                                    );
+                                    return (
+                                      pgn: const PgnArchiveService()
+                                          .exportGames(<SavedGameRecord>[game]),
+                                      fen: _toFen(),
+                                    );
+                                  },
                           ),
                         ),
                       if (_signedIn &&
@@ -2411,10 +2422,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     await const AcademyProgressStore().clearCurrentIdentity();
     await LocalGameArchive.clearDeviceUserData();
     await _sessionStore.clear();
-    await const AppPreferences().writeString(
-      'pieceFinish',
-      'classic-staunton',
-    );
+    await const AppPreferences().writeString('pieceFinish', 'classic-staunton');
     await const AppPreferences().writeString('pieceStyle', 'Premium 3D');
     ChessPieceAppearanceController.current.value = const ChessPieceAppearance();
     if (!mounted) return;

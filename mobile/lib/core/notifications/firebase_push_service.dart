@@ -52,6 +52,19 @@ Future<void> _showPushMessage(RemoteMessage message) async {
     stableId.hashCode,
     title,
     body,
+    actionType: message.data['actionType'],
+    actionId: message.data['actionId'],
+  );
+}
+
+void _openPushMessage(RemoteMessage message) {
+  final String actionType = (message.data['actionType'] ?? '').trim();
+  if (actionType.isEmpty) return;
+  DailyReminderService.instance.openAction(
+    NotificationOpenRequest(
+      actionType: actionType.toUpperCase(),
+      actionId: message.data['actionId'],
+    ),
   );
 }
 
@@ -68,7 +81,10 @@ Future<void> _showPushMessage(RemoteMessage message) async {
   final String action = actionType.toUpperCase();
   if (action == 'DAILY_PUZZLE') {
     if (language == 'te') {
-      return ('రోజువారీ పజిల్', 'ఈరోజు చెస్ ఛాలెంజ్ సిద్ధంగా ఉంది. పూర్తి చేసి నీ స్ట్రీక్‌ను పెంచుకో!');
+      return (
+        'రోజువారీ పజిల్',
+        'ఈరోజు చెస్ ఛాలెంజ్ సిద్ధంగా ఉంది. పూర్తి చేసి నీ స్ట్రీక్‌ను పెంచుకో!',
+      );
     }
     return (
       localizeLiveCoach('DAILY PUZZLE', language),
@@ -77,7 +93,10 @@ Future<void> _showPushMessage(RemoteMessage message) async {
   }
   if (action == 'DAILY_GAME_REMINDER') {
     if (language == 'te') {
-      return ('నీ బోర్డ్ ఎదురుచూస్తోంది', 'ఈరోజు ఒక క్విక్ గేమ్ ఆడి నీ మొదటి స్ట్రీక్‌ను ప్రారంభించు!');
+      return (
+        'నీ బోర్డ్ ఎదురుచూస్తోంది',
+        'ఈరోజు ఒక క్విక్ గేమ్ ఆడి నీ మొదటి స్ట్రీక్‌ను ప్రారంభించు!',
+      );
     }
     return (
       localizeLiveCoach('ONLINE BATTLE', language),
@@ -135,12 +154,30 @@ Future<void> _showPushMessage(RemoteMessage message) async {
 (String, String) _teluguStreakReminder(int day) {
   const List<(String, String)> copy = <(String, String)>[
     ('', ''),
-    ('🔥 నీ మొదటి స్ట్రీక్ ప్రమాదంలో ఉంది బ్రో!', 'నువ్వు నిన్న సూపర్ గేమ్ ఆడావు. ఈరోజు కూడా ఒక ఆట ఆడి నీ డే-2 స్ట్రీక్‌ని అందుకో!'),
-    ('⚡ జోరు మీదున్నావ్ బ్రో!', '2 రోజుల స్ట్రీక్ పూర్తయింది. ఈరోజు నీ AI కోచ్‌తో ఆడి 3వ రోజుకి చేరుకో!'),
-    ('🧠 నువ్వు సీరియస్ ప్లేయర్‌వి బ్రో!', 'నీ 3 రోజుల స్ట్రీక్ కంటిన్యూ చేయడానికి ఇదో మంచి ఛాన్స్. ఇప్పుడే బోర్డ్ ఓపెన్ చెయ్!'),
-    ('🏆 హాఫ్-వే మార్క్ దాటేశావ్!', '4 రోజుల స్ట్రీక్ అంటే మామూలు విషయం కాదు. గ్రాండ్ మాస్టర్ లాగా కన్సిస్టెన్సీ మెయింటైన్ చెయ్!'),
-    ('🚀 ఇంకా రెండు రోజులే బ్రో!', 'నీ 5-Day Streak ని కోల్పోవద్దు. ఈరోజు ఒక క్విక్ మ్యాచ్ ఆడి రికార్డ్ వైపు అడుగులేయ్!'),
-    ('👑 వారం పూర్తి కావడానికి ఒక్క అడుగు!', 'రేపటితో నీ వారం రోజుల స్ట్రీక్ పూర్తవుతుంది. ఈరోజు మ్యాచ్ అస్సలు మిస్ అవ్వద్దు బ్రో!'),
+    (
+      '🔥 నీ మొదటి స్ట్రీక్ ప్రమాదంలో ఉంది బ్రో!',
+      'నువ్వు నిన్న సూపర్ గేమ్ ఆడావు. ఈరోజు కూడా ఒక ఆట ఆడి నీ డే-2 స్ట్రీక్‌ని అందుకో!',
+    ),
+    (
+      '⚡ జోరు మీదున్నావ్ బ్రో!',
+      '2 రోజుల స్ట్రీక్ పూర్తయింది. ఈరోజు నీ AI కోచ్‌తో ఆడి 3వ రోజుకి చేరుకో!',
+    ),
+    (
+      '🧠 నువ్వు సీరియస్ ప్లేయర్‌వి బ్రో!',
+      'నీ 3 రోజుల స్ట్రీక్ కంటిన్యూ చేయడానికి ఇదో మంచి ఛాన్స్. ఇప్పుడే బోర్డ్ ఓపెన్ చెయ్!',
+    ),
+    (
+      '🏆 హాఫ్-వే మార్క్ దాటేశావ్!',
+      '4 రోజుల స్ట్రీక్ అంటే మామూలు విషయం కాదు. గ్రాండ్ మాస్టర్ లాగా కన్సిస్టెన్సీ మెయింటైన్ చెయ్!',
+    ),
+    (
+      '🚀 ఇంకా రెండు రోజులే బ్రో!',
+      'నీ 5-Day Streak ని కోల్పోవద్దు. ఈరోజు ఒక క్విక్ మ్యాచ్ ఆడి రికార్డ్ వైపు అడుగులేయ్!',
+    ),
+    (
+      '👑 వారం పూర్తి కావడానికి ఒక్క అడుగు!',
+      'రేపటితో నీ వారం రోజుల స్ట్రీక్ పూర్తవుతుంది. ఈరోజు మ్యాచ్ అస్సలు మిస్ అవ్వద్దు బ్రో!',
+    ),
   ];
   return copy[day.clamp(1, 6)];
 }
@@ -151,6 +188,7 @@ class FirebasePushService {
 
   StreamSubscription<String>? _tokenRefresh;
   StreamSubscription<RemoteMessage>? _foregroundMessages;
+  StreamSubscription<RemoteMessage>? _openedMessages;
   String? _authToken;
 
   Future<void> initialize() async {
@@ -163,6 +201,12 @@ class FirebasePushService {
       _foregroundMessages ??= FirebaseMessaging.onMessage.listen((message) {
         unawaited(_showPushMessage(message));
       });
+      _openedMessages ??= FirebaseMessaging.onMessageOpenedApp.listen(
+        _openPushMessage,
+      );
+      final RemoteMessage? initialMessage = await FirebaseMessaging.instance
+          .getInitialMessage();
+      if (initialMessage != null) _openPushMessage(initialMessage);
     } on Object {
       // Missing platform configuration must never block app startup.
     }

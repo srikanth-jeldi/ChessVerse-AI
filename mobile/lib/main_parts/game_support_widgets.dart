@@ -943,9 +943,9 @@ class GameResultOverlay extends StatelessWidget {
     this.newGameLabel,
     this.onRematch,
     required this.onDismiss,
-    required this.onReview,
-    required this.onShare,
-    required this.onExport,
+    this.onReview,
+    this.onShare,
+    this.onExport,
     super.key,
   });
 
@@ -962,9 +962,9 @@ class GameResultOverlay extends StatelessWidget {
   final String? newGameLabel;
   final VoidCallback? onRematch;
   final VoidCallback onDismiss;
-  final VoidCallback onReview;
-  final Future<void> Function() onShare;
-  final Future<({String pgn, String fen})> Function() onExport;
+  final VoidCallback? onReview;
+  final Future<void> Function()? onShare;
+  final Future<({String pgn, String fen})> Function()? onExport;
 
   @override
   Widget build(BuildContext context) {
@@ -1137,15 +1137,18 @@ class GameResultOverlay extends StatelessWidget {
                         SizedBox(height: shortLandscape ? 10 : 24),
                         Row(
                           children: <Widget>[
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: onReview,
-                                icon: const Icon(Icons.analytics_outlined),
-                                label: const Text('AI Review My Game'),
+                            if (onReview != null) ...<Widget>[
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: onReview,
+                                  icon: const Icon(Icons.analytics_outlined),
+                                  label: const Text('AI Review My Game'),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
+                              const SizedBox(width: 10),
+                            ],
                             Expanded(
+                              flex: onReview == null ? 2 : 1,
                               child: (onRematch == null)
                                   ? FilledButton.icon(
                                       onPressed: dailyComplete
@@ -1183,26 +1186,30 @@ class GameResultOverlay extends StatelessWidget {
                             ),
                           ),
                         ],
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            key: const ValueKey<String>('share-game-result'),
-                            onPressed: onShare,
-                            icon: const Icon(Icons.ios_share_rounded),
-                            label: const Text('COPY SHAREABLE RESULT'),
+                        if (onShare != null) ...<Widget>[
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              key: const ValueKey<String>('share-game-result'),
+                              onPressed: onShare,
+                              icon: const Icon(Icons.ios_share_rounded),
+                              label: const Text('COPY SHAREABLE RESULT'),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            key: const ValueKey<String>('export-game-data'),
-                            onPressed: () => _showGameExport(context),
-                            icon: const Icon(Icons.file_upload_outlined),
-                            label: const Text('EXPORT PGN / FEN'),
+                        ],
+                        if (onExport != null) ...<Widget>[
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              key: const ValueKey<String>('export-game-data'),
+                              onPressed: () => _showGameExport(context),
+                              icon: const Icon(Icons.file_upload_outlined),
+                              label: const Text('EXPORT PGN / FEN'),
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -1234,7 +1241,7 @@ class GameResultOverlay extends StatelessWidget {
   }
 
   Future<void> _showGameExport(BuildContext context) async {
-    final ({String pgn, String fen}) data = await onExport();
+    final ({String pgn, String fen}) data = await onExport!();
     if (!context.mounted) return;
     await showDialog<void>(
       context: context,

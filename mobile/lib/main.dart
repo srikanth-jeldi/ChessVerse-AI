@@ -384,6 +384,9 @@ class _SplashGateState extends State<SplashGate> {
     DailyReminderService.instance.weeklyReportOpenRequests.addListener(
       _openWeeklyReportFromReminder,
     );
+    DailyReminderService.instance.actionOpenRequests.addListener(
+      _openNotificationAction,
+    );
     unawaited(DailyReminderService.instance.initialize());
     if (kIsWeb) {
       unawaited(_restoreSession(forceFreshLogin: _forceFreshWebLogin));
@@ -549,6 +552,7 @@ class _SplashGateState extends State<SplashGate> {
     _openPlayFromReminder();
     _openTournamentsFromReminder();
     _openWeeklyReportFromReminder();
+    _openNotificationAction();
     // Do not make active-match recovery wait for profile/progress sync. A
     // killed mobile process has a short server grace window and must reopen
     // its authoritative match as soon as the authenticated home route exists.
@@ -766,10 +770,9 @@ class _SplashGateState extends State<SplashGate> {
           value.id.hashCode & 0x7fffffff,
           value.title,
           notificationMessagePreview(value.body),
+          actionType: value.actionType,
+          actionId: value.actionId,
         );
-        if (value.actionType == 'MATCH' && value.actionId != null) {
-          unawaited(_openAcceptedChallenge(token, value.actionId!));
-        }
       }
     } on NotificationException {
       // The persistent inbox will catch up after connectivity is restored.
@@ -846,6 +849,9 @@ class _SplashGateState extends State<SplashGate> {
     DailyReminderService.instance.weeklyReportOpenRequests.removeListener(
       _openWeeklyReportFromReminder,
     );
+    DailyReminderService.instance.actionOpenRequests.removeListener(
+      _openNotificationAction,
+    );
     _timer?.cancel();
     _presenceTimer?.cancel();
     _stopNotificationPolling();
@@ -914,6 +920,57 @@ class _SplashGateState extends State<SplashGate> {
     }
     DailyReminderService.instance.takePendingWeeklyReportOpen();
     _push(context, const AnalysisScreen());
+  }
+
+  void _openNotificationAction() {
+    if (!mounted || _stage != _RootStage.home) return;
+    final NotificationOpenRequest? request = DailyReminderService.instance
+        .takePendingActionOpen();
+    if (request == null) return;
+    unawaited(_routeNotificationAction(request));
+  }
+
+  Future<void> _routeNotificationAction(NotificationOpenRequest request) async {
+    if (!mounted || _stage != _RootStage.home) return;
+    final String action = request.actionType.toUpperCase();
+    if (action == 'DAILY_PUZZLE') {
+      await _openGame(context, GameMode.daily);
+      return;
+    }
+    if (action == 'MATCH' && request.actionId != null) {
+      final StoredAuthSession? session = await const AuthSessionStore().read();
+      if (session != null) {
+        await _openAcceptedChallenge(session.token, request.actionId!);
+      }
+      return;
+    }
+    if (action == 'ANALYSIS' || action == 'REVIEW') {
+      await _push(context, const AnalysisScreen());
+      return;
+    }
+    if (action == 'DAILY_GAME_REMINDER' ||
+        action == 'STREAK_MILESTONE' ||
+        action.startsWith('STREAK_REMINDER_DAY_')) {
+      setState(() => _primaryDestination = 1);
+      return;
+    }
+    final int? communitySection = switch (action) {
+      'CLUB' => 1,
+      'TOURNAMENT' || 'TOURNAMENTS' => 2,
+      'CHAT' => 3,
+      'CHALLENGE' ||
+      'COMMUNITY' ||
+      'FRIEND' ||
+      'FRIEND_REQUEST' ||
+      'FRIEND_ONLINE' => 0,
+      _ => null,
+    };
+    if (communitySection != null) {
+      setState(() {
+        _communitySection = communitySection;
+        _primaryDestination = 5;
+      });
+    }
   }
 
   @override
@@ -1352,20 +1409,9 @@ class _SplashGateState extends State<SplashGate> {
     final StoredAuthSession? session = await const AuthSessionStore().read();
     if (!mounted || session == null) return;
     final String action = (item.actionType ?? '').toUpperCase();
-    if (action == 'MATCH' && item.actionId != null) {
-      await _openAcceptedChallenge(session.token, item.actionId!);
-      return;
-    }
-    final int? communitySection = switch (action) {
-      'CLUB' => 1,
-      'TOURNAMENT' => 2,
-      'CHAT' => 3,
-      'CHALLENGE' || 'COMMUNITY' || 'FRIEND' => 0,
-      _ => null,
-    };
-    if (communitySection != null) {
-      setState(() => _primaryDestination = 5);
-    }
+    await _routeNotificationAction(
+      NotificationOpenRequest(actionType: action, actionId: item.actionId),
+    );
   }
 
   Future<void> _openFriendPlayChooser(BuildContext context) async {

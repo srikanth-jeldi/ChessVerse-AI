@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -9,6 +11,37 @@ import '../app_language.dart';
 import '../app_preferences.dart';
 import '../live_coach_localizations.dart';
 import 'tournament_reminder_localizations.dart';
+
+@immutable
+class NotificationOpenRequest {
+  const NotificationOpenRequest({required this.actionType, this.actionId});
+
+  final String actionType;
+  final String? actionId;
+
+  String encode() => jsonEncode(<String, String>{
+    'actionType': actionType,
+    if (actionId != null && actionId!.isNotEmpty) 'actionId': actionId!,
+  });
+
+  static NotificationOpenRequest? decode(String? payload) {
+    if (payload == null || payload.isEmpty) return null;
+    try {
+      final Object? decoded = jsonDecode(payload);
+      if (decoded is! Map<String, dynamic>) return null;
+      final String actionType = (decoded['actionType'] as String? ?? '')
+          .trim()
+          .toUpperCase();
+      if (actionType.isEmpty) return null;
+      return NotificationOpenRequest(
+        actionType: actionType,
+        actionId: (decoded['actionId'] as String?)?.trim(),
+      );
+    } on FormatException {
+      return null;
+    }
+  }
+}
 
 class DailyReminderService {
   DailyReminderService._();
@@ -33,6 +66,8 @@ class DailyReminderService {
   final ValueNotifier<int> playOpenRequests = ValueNotifier<int>(0);
   final ValueNotifier<int> tournamentOpenRequests = ValueNotifier<int>(0);
   final ValueNotifier<int> weeklyReportOpenRequests = ValueNotifier<int>(0);
+  final ValueNotifier<int> actionOpenRequests = ValueNotifier<int>(0);
+  NotificationOpenRequest? _pendingActionOpen;
 
   Future<void> initialize() async {
     if (_initialized || kIsWeb) return;
@@ -63,6 +98,13 @@ class DailyReminderService {
   }
 
   void _handleNotificationResponse(NotificationResponse response) {
+    final NotificationOpenRequest? request = NotificationOpenRequest.decode(
+      response.payload,
+    );
+    if (request != null) {
+      openAction(request);
+      return;
+    }
     if (response.payload == 'open_play') {
       _pendingPlayOpen = true;
       playOpenRequests.value += 1;
@@ -73,6 +115,17 @@ class DailyReminderService {
       _pendingWeeklyReportOpen = true;
       weeklyReportOpenRequests.value += 1;
     }
+  }
+
+  void openAction(NotificationOpenRequest request) {
+    _pendingActionOpen = request;
+    actionOpenRequests.value += 1;
+  }
+
+  NotificationOpenRequest? takePendingActionOpen() {
+    final NotificationOpenRequest? request = _pendingActionOpen;
+    _pendingActionOpen = null;
+    return request;
   }
 
   bool get hasPendingPlayOpen => _pendingPlayOpen;
@@ -271,7 +324,8 @@ class DailyReminderService {
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      payload: 'open_play',
+      payload: const NotificationOpenRequest(actionType: 'DAILY_PUZZLE')
+          .encode(),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
@@ -364,7 +418,13 @@ class DailyReminderService {
     return 100000 + (hash % 800000) * 3;
   }
 
-  Future<void> showRealtime(int id, String title, String body) async {
+  Future<void> showRealtime(
+    int id,
+    String title,
+    String body, {
+    String? actionType,
+    String? actionId,
+  }) async {
     if (kIsWeb) return;
     await initialize();
     await _plugin.show(
@@ -382,6 +442,12 @@ class DailyReminderService {
         ),
         iOS: DarwinNotificationDetails(),
       ),
+      payload: actionType == null || actionType.trim().isEmpty
+          ? null
+          : NotificationOpenRequest(
+              actionType: actionType.trim().toUpperCase(),
+              actionId: actionId,
+            ).encode(),
     );
   }
 

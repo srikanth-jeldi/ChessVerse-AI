@@ -48,9 +48,13 @@ jobs:
           STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          ADMOB_ANDROID_APP_ID: ${{ secrets.ADMOB_ANDROID_APP_ID }}
+          ADMOB_ANDROID_REWARDED_ID: ${{ secrets.ADMOB_ANDROID_REWARDED_ID }}
+          ADMOB_ANDROID_INTERSTITIAL_ID: ${{ secrets.ADMOB_ANDROID_INTERSTITIAL_ID }}
         run: |
           set -Eeuo pipefail
-          for value in KEYSTORE_BASE64 STORE_PASSWORD KEY_PASSWORD KEY_ALIAS; do
+          for value in KEYSTORE_BASE64 STORE_PASSWORD KEY_PASSWORD KEY_ALIAS \
+            ADMOB_ANDROID_APP_ID ADMOB_ANDROID_REWARDED_ID ADMOB_ANDROID_INTERSTITIAL_ID; do
             test -n "${!value}" || { echo "Missing production secret: ${value}" >&2; exit 1; }
           done
 
@@ -87,6 +91,8 @@ jobs:
         run: flutter test --exclude-tags golden
 
       - name: Build signed production bundle
+        env:
+          ADMOB_ANDROID_APP_ID: ${{ secrets.ADMOB_ANDROID_APP_ID }}
         run: >-
           flutter build appbundle --release
           --target-platform android-arm,android-arm64
@@ -98,6 +104,8 @@ jobs:
           --dart-define=PRIVACY_POLICY_URL=https://chessverseai.com/privacy
           --dart-define=TERMS_URL=https://chessverseai.com/terms
           --dart-define=DATA_DELETION_URL=https://chessverseai.com/data-deletion
+          --dart-define=ADMOB_ANDROID_REWARDED_ID=${{ secrets.ADMOB_ANDROID_REWARDED_ID }}
+          --dart-define=ADMOB_ANDROID_INTERSTITIAL_ID=${{ secrets.ADMOB_ANDROID_INTERSTITIAL_ID }}
 
       - name: Remove upload-only native metadata and re-sign
         shell: bash

@@ -118,6 +118,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   bool _savingReview = false;
   bool _hadMistake = false;
   bool _loadingReviews = true;
+  bool _languageReady = false;
   int _index = 0;
   String? _currentFen;
   String? _selectedSquare;
@@ -140,7 +141,12 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
     if (_items.isNotEmpty) _currentFen = _items.first.review.fenBefore;
     AppLanguageController.effectiveLanguageChanges.addListener(_onLanguage);
     AppLanguageController.effectiveCode().then((String code) {
-      if (mounted) setState(() => _language = code);
+      if (mounted) {
+        setState(() {
+          _language = code;
+          _languageReady = true;
+        });
+      }
     });
     _loadSolved();
   }
@@ -304,7 +310,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loadingReviews) {
+    if (_loadingReviews || !_languageReady) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (_items.isEmpty) {
@@ -356,7 +362,11 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
         backgroundColor: AppColors.background,
         appBar: AppBar(
           backgroundColor: const Color(0xFF071827),
-          title: Text(CoachLocalizations(_language).text('trainMistakes')),
+          title: Text(
+            t('mistakeReplay'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           actions: <Widget>[_coinBadge(), const SizedBox(width: 8)],
         ),
         body: SafeArea(
