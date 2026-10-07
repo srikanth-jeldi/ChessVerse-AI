@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('production Android bundles support ARM32, ARM64, and x86_64', () {
+  test('production Play bundle targets mobile ARM devices', () {
     final gradle = File('android/app/build.gradle.kts').readAsStringSync();
     expect(gradle, contains('"armeabi-v7a"'));
     expect(gradle, contains('"arm64-v8a"'));
@@ -14,7 +14,11 @@ void main() {
     ).readAsStringSync();
     expect(
       workflow,
-      contains('--target-platform android-arm,android-arm64,android-x64'),
+      contains('--target-platform android-arm,android-arm64'),
+    );
+    expect(
+      workflow,
+      isNot(contains('--target-platform android-arm,android-arm64,android-x64')),
     );
   });
 
