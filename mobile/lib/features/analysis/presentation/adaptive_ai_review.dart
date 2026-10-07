@@ -3778,8 +3778,7 @@ String coachReviewPieceAsset(String token) {
     'p': 'pawn',
   };
   final String colour = token == token.toUpperCase() ? 'white' : 'black';
-  return 'assets/pieces/premium_individual/mobile-readable/'
-      '$colour/${names[token.toLowerCase()]}.png';
+  return 'assets/pieces/staunton_${colour}_${names[token.toLowerCase()]}.png';
 }
 
 class _CoachArrowPainter extends CustomPainter {

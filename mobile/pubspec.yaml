@@ -112,8 +112,6 @@ flutter:
     - assets/pieces/premium_individual/sapphire-elite/black/
     - assets/pieces/premium_individual/emerald-sovereign/white/
     - assets/pieces/premium_individual/emerald-sovereign/black/
-    - assets/pieces/premium_individual/mobile-readable/white/
-    - assets/pieces/premium_individual/mobile-readable/black/
     - assets/pieces/premium_individual/mobile-readable/crimson-crown-3d/white/
     - assets/pieces/premium_individual/mobile-readable/crimson-crown-3d/black/
     - assets/pieces/premium_individual/mobile-readable/inferno-gold/white/

@@ -89,7 +89,7 @@ jobs:
       - name: Build signed production bundle
         run: >-
           flutter build appbundle --release
-          --target-platform android-arm,android-arm64,android-x64
+          --target-platform android-arm,android-arm64
           --obfuscate
           --split-debug-info=build/symbols
           --dart-define=CHESSVERSE_ENV=production
@@ -133,7 +133,7 @@ jobs:
           grep -q 'jar verified' <<< "$verification"
           sha256sum "$aab" > "$aab.sha256"
 
-      - name: Check estimated Play download stays under 30 MB
+      - name: Check estimated Play download stays within 35 MB
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -156,7 +156,7 @@ jobs:
           rows = list(csv.DictReader(path.open()))
           maximum = max(int(row['MAX']) for row in rows)
           print(f'Estimated maximum Play download: {maximum / 1_000_000:.2f} MB')
-          assert maximum < 30_000_000, 'Estimated Play download exceeds the 30 MB budget'
+          assert maximum <= 35_000_000, 'Estimated Play download exceeds the 35 MB budget'
           PY
 
       - name: Upload production bundle

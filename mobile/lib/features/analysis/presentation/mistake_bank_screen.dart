@@ -777,7 +777,7 @@ class _MistakeBoard extends StatelessWidget {
       child: Image.asset(
         // Mistake training always uses the regular, readable 3D set. Premium
         // collection equipment must not leak into this analysis board.
-        'assets/pieces/premium_individual/mobile-readable/$colour/$name.png',
+        'assets/pieces/staunton_${colour}_$name.png',
         fit: BoxFit.contain,
         filterQuality: FilterQuality.high,
         semanticLabel: '${white ? 'White' : 'Black'} $name',

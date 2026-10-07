@@ -5,11 +5,11 @@ void main() {
   test('AI review board always uses the regular readable 3D pieces', () {
     expect(
       coachReviewPieceAsset('K'),
-      'assets/pieces/premium_individual/mobile-readable/white/king.png',
+      'assets/pieces/staunton_white_king.png',
     );
     expect(
       coachReviewPieceAsset('n'),
-      'assets/pieces/premium_individual/mobile-readable/black/knight.png',
+      'assets/pieces/staunton_black_knight.png',
     );
     expect(coachReviewPieceAsset('Q'), isNot(contains('obsidian-regal')));
   });
