@@ -1788,27 +1788,37 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             coinsEarned: _gameMode == GameMode.online
                                 ? _onlineMatch?.coinsEarned
                                 : null,
-                            onNewGame: _gameMode == GameMode.online
-                                ? _startFreshOnlineGame
-                                : _gameMode == GameMode.puzzle
-                                ? _puzzleAttemptWasMissed
-                                      ? _reset
-                                      : _startNextPuzzle
-                                : _reset,
+                            onNewGame: () async {
+                              await _showPostMatchAdIfEligible();
+                              if (_gameMode == GameMode.online) {
+                                await _startFreshOnlineGame();
+                              } else if (_gameMode == GameMode.puzzle &&
+                                  !_puzzleAttemptWasMissed) {
+                                _startNextPuzzle();
+                              } else {
+                                _reset();
+                              }
+                            },
                             newGameLabel: _gameMode == GameMode.puzzle
                                 ? 'Next puzzle'
                                 : null,
                             onRematch: _gameMode == GameMode.online
-                                ? _requestOnlineRematch
+                                ? () async {
+                                    await _showPostMatchAdIfEligible();
+                                    await _requestOnlineRematch();
+                                  }
                                 : null,
-                            onDismiss: () {
+                            onDismiss: () async {
                               setState(() => _resultVisible = false);
-                              unawaited(_maybeRequestStoreReview());
+                              await _showPostMatchAdIfEligible();
+                              await _maybeRequestStoreReview();
                             },
                             onReview: _isTacticsMode
                                 ? null
-                                : () {
+                                : () async {
                                     setState(() => _resultVisible = false);
+                                    await _showPostMatchAdIfEligible();
+                                    if (!mounted) return;
                                     WidgetsBinding.instance
                                         .addPostFrameCallback(
                                           (_) => _showAiReview(),
@@ -4267,15 +4277,23 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _maybeRequestStoreReview() {
+    if (_isTacticsMode || _gameMode == GameMode.local) {
+      return Future<void>.value();
+    }
     final String outcome = playerOutcomeForResult(
       _gameResultTitle ?? '',
       humanPlaysWhite: _humanPlaysWhite,
       tracksPlayer: _gameMode != GameMode.local,
     );
-    return _storeReview.maybeRequestReview(
-      completedGames: LocalGameArchive.games.length,
-      positiveOutcome: outcome == 'win',
-    );
+    return _storeReview.maybeRequestReview(playerWon: outcome == 'win');
+  }
+
+  Future<void> _showPostMatchAdIfEligible() {
+    if (_gameMode != GameMode.computer && _gameMode != GameMode.online) {
+      return Future<void>.value();
+    }
+    final String matchId = _onlineMatch?.id ?? 'computer:$_draftId';
+    return PostMatchAdService.instance.showAfterMatch(matchId);
   }
 
   bool get _isHumanTurnForIdleHint {
@@ -5323,10 +5341,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _startFreshOnlineGame() async {
-    final OnlineMatchDto? completed = _onlineMatch;
-    if (completed?.status == 'FINISHED') {
-      await PostMatchAdService.instance.showAfterMatch(completed!.id);
-    }
     _onlinePollTimer?.cancel();
     _onlineSocketReconnectTimer?.cancel();
     _onlineHeartbeatTimer?.cancel();
@@ -5552,7 +5566,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final OnlineMatchDto? match = _onlineMatch;
     final String? token = _authToken;
     if (match == null || token == null || match.status != 'FINISHED') return;
-    await PostMatchAdService.instance.showAfterMatch(match.id);
     setState(() {
       _resultVisible = false;
       _coachNote = 'Rematch requested. Waiting for your opponent...';

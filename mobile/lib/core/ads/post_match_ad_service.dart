@@ -23,7 +23,6 @@ class PostMatchAdService {
 
   InterstitialAd? _ad;
   bool _loading = false;
-  int _completedMatches = 0;
   int _shownToday = 0;
   DateTime _day = DateTime.now().toUtc();
   DateTime? _lastShownAt;
@@ -59,12 +58,11 @@ class PostMatchAdService {
   Future<void> showAfterMatch(String matchId) async {
     if (!supported || !_handledMatches.add(matchId)) return;
     _resetDailyCounter();
-    _completedMatches++;
     final DateTime now = DateTime.now().toUtc();
     final bool cooledDown =
         _lastShownAt == null ||
         now.difference(_lastShownAt!) >= const Duration(minutes: 3);
-    if (_completedMatches.isOdd || _shownToday >= 6 || !cooledDown) {
+    if (_shownToday >= 6 || !cooledDown) {
       unawaited(load());
       return;
     }

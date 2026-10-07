@@ -2,12 +2,11 @@ import 'package:chessverse_ai/core/store_review_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('requests only after a positive third Android game', () {
+  test('requests after two consecutive Android wins', () {
     expect(
       isStoreReviewEligible(
         isAndroid: true,
-        positiveOutcome: true,
-        completedGames: 3,
+        consecutiveWins: 2,
         alreadyRequested: false,
       ),
       isTrue,
@@ -18,8 +17,7 @@ void main() {
     expect(
       isStoreReviewEligible(
         isAndroid: true,
-        positiveOutcome: true,
-        completedGames: 2,
+        consecutiveWins: 1,
         alreadyRequested: false,
       ),
       isFalse,
@@ -27,8 +25,7 @@ void main() {
     expect(
       isStoreReviewEligible(
         isAndroid: true,
-        positiveOutcome: false,
-        completedGames: 10,
+        consecutiveWins: 0,
         alreadyRequested: false,
       ),
       isFalse,
@@ -36,8 +33,7 @@ void main() {
     expect(
       isStoreReviewEligible(
         isAndroid: true,
-        positiveOutcome: true,
-        completedGames: 10,
+        consecutiveWins: 10,
         alreadyRequested: true,
       ),
       isFalse,
@@ -45,8 +41,7 @@ void main() {
     expect(
       isStoreReviewEligible(
         isAndroid: false,
-        positiveOutcome: true,
-        completedGames: 10,
+        consecutiveWins: 10,
         alreadyRequested: false,
       ),
       isFalse,

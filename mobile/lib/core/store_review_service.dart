@@ -5,27 +5,21 @@ import 'app_preferences.dart';
 
 bool isStoreReviewEligible({
   required bool isAndroid,
-  required bool positiveOutcome,
-  required int completedGames,
+  required int consecutiveWins,
   required bool alreadyRequested,
 }) {
-  return isAndroid &&
-      positiveOutcome &&
-      completedGames >= 3 &&
-      !alreadyRequested;
+  return isAndroid && consecutiveWins >= 2 && !alreadyRequested;
 }
 
 class StoreReviewService {
   const StoreReviewService();
 
   static const String _requestedKey = 'playStoreReviewRequested';
+  static const String _consecutiveWinsKey = 'playStoreReviewConsecutiveWins';
   static const AppPreferences _preferences = AppPreferences();
   static bool _requestInProgress = false;
 
-  Future<void> maybeRequestReview({
-    required int completedGames,
-    required bool positiveOutcome,
-  }) async {
+  Future<void> maybeRequestReview({required bool playerWon}) async {
     if (_requestInProgress ||
         kIsWeb ||
         defaultTargetPlatform != TargetPlatform.android) {
@@ -38,10 +32,16 @@ class StoreReviewService {
         _requestedKey,
         fallback: false,
       );
+      final int previousWins =
+          int.tryParse(
+            await _preferences.readString(_consecutiveWinsKey, fallback: '0'),
+          ) ??
+          0;
+      final int consecutiveWins = playerWon ? previousWins + 1 : 0;
+      await _preferences.writeString(_consecutiveWinsKey, '$consecutiveWins');
       if (!isStoreReviewEligible(
         isAndroid: true,
-        positiveOutcome: positiveOutcome,
-        completedGames: completedGames,
+        consecutiveWins: consecutiveWins,
         alreadyRequested: alreadyRequested,
       )) {
         return;
