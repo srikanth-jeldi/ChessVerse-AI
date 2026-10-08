@@ -14,14 +14,11 @@ import java.util.Map;
 import com.google.crypto.tink.apps.rewardedads.RewardedAdsVerifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
 @Component
 class AdMobRewardVerifier {
-    private static final Logger LOG = LoggerFactory.getLogger(AdMobRewardVerifier.class);
     private static final String CALLBACK_URL =
             "https://api.chessverseai.com/api/v1/economy/rewarded-ad/callback?";
     private final boolean enabled;
@@ -63,7 +60,6 @@ class AdMobRewardVerifier {
         } catch (ResponseStatusException exception) {
             throw exception;
         } catch (GeneralSecurityException exception) {
-            LOG.warn("AdMob SSV verification rejected ({}): {}", exception.getMessage(), rawQuery);
             if (exception.getMessage() != null
                     && exception.getMessage().startsWith("cannot find verifying key")) {
                 throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED,

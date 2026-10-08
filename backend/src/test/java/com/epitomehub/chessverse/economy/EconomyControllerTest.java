@@ -112,6 +112,8 @@ class EconomyControllerTest {
         org.junit.jupiter.api.Assertions.assertTrue(controller.matchesExpectedAdUnit(
                 "ca-app-pub-9061518700917881/3857200476"));
         org.junit.jupiter.api.Assertions.assertFalse(controller.matchesExpectedAdUnit("7417916394"));
+        org.junit.jupiter.api.Assertions.assertTrue(controller.isVerificationTestAdUnit("1234567890"));
+        org.junit.jupiter.api.Assertions.assertFalse(controller.isVerificationTestAdUnit("3857200476"));
     }
 
     @Test
