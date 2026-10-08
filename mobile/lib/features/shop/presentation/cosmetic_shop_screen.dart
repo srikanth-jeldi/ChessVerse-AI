@@ -449,7 +449,8 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
               label: Text(
                 RewardedCoinService.instance.supported
                     ? (_rewards?.rewardedAdsRemaining ?? 0) > 0
-                          ? 'WATCH VIDEO • +150 COINS'
+                          ? 'WATCH VIDEO • +${_rewards?.coinsPerAd ?? 50} COINS '
+                                '(${_rewards?.rewardedAdsRemaining ?? 0} LEFT)'
                           : 'NEXT VIDEO • ${_rewardedAdCountdown()}'
                     : 'FREE COINS • MOBILE APP',
               ),
@@ -508,7 +509,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   Future<void> _watchAd(ShopDto shop) async {
     if (!RewardedCoinService.instance.supported) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
             'Rewarded videos are available in the Android and iOS app.',
           ),
@@ -517,6 +518,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       return;
     }
     final int coinsBefore = _rewards?.coins ?? shop.wallet.coins;
+    final int rewardAmount = _rewards?.coinsPerAd ?? 50;
     setState(() => _busy = true);
     try {
       final bool earned = await RewardedCoinService.instance.show(
@@ -532,17 +534,20 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Video completed • verifying your +150 coins…'),
+        SnackBar(
+          content: Text(
+            'Video completed • verifying your +$rewardAmount coins…',
+          ),
         ),
       );
       final EconomyRewardStatus? credited = await _waitForRewardCredit(
         coinsBefore,
+        rewardAmount,
       );
       if (!mounted) return;
       if (credited != null) {
         setState(() => _rewards = credited);
-        _showRewardAnimation(credited.coins);
+        _showRewardAnimation(rewardAmount, credited.coins);
         await _load();
         if (!mounted) return;
       } else {
@@ -559,7 +564,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     }
   }
 
-  void _showRewardAnimation(int newBalance) {
+  void _showRewardAnimation(int rewardAmount, int newBalance) {
     final OverlayState overlay = Overlay.of(context);
     late final OverlayEntry entry;
     entry = OverlayEntry(
@@ -603,9 +608,9 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                       size: 64,
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      '+150 COINS',
-                      style: TextStyle(
+                    Text(
+                      '+$rewardAmount COINS',
+                      style: const TextStyle(
                         color: Color(0xFFFFD66B),
                         fontSize: 27,
                         fontWeight: FontWeight.w900,
@@ -652,14 +657,17 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     return formatFreeCoinCountdown(remaining);
   }
 
-  Future<EconomyRewardStatus?> _waitForRewardCredit(int coinsBefore) async {
+  Future<EconomyRewardStatus?> _waitForRewardCredit(
+    int coinsBefore,
+    int rewardAmount,
+  ) async {
     for (int attempt = 0; attempt < 15; attempt++) {
       await Future<void>.delayed(const Duration(seconds: 2));
       try {
         final EconomyRewardStatus status = await _rewardsApi.status(
           widget.token,
         );
-        if (status.coins >= coinsBefore + 150) return status;
+        if (status.coins >= coinsBefore + rewardAmount) return status;
       } catch (_) {
         // SSV is asynchronous; keep polling during the bounded verification window.
       }

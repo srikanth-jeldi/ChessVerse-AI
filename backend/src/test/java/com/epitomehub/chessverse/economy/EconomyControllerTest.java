@@ -75,21 +75,23 @@ class EconomyControllerTest {
     }
 
     @Test
-    void rewardedAdsGrant150CoinsAndRequireTwoHoursBetweenAds() throws Exception {
+    void rewardedAdsGrant50CoinsAndAllowThreeSeparateViewsInTwoHours() throws Exception {
         String token = guest(UUID.randomUUID().toString());
         UUID playerId = UUID.fromString(json.readTree(mockMvc.perform(get("/api/auth/me")
                 .header("Authorization", "Bearer " + token)).andReturn().getResponse()
                 .getContentAsString()).path("id").asText());
 
         org.junit.jupiter.api.Assertions.assertTrue(economy.grantRewardedAd(playerId, "reward-1"));
-        org.junit.jupiter.api.Assertions.assertFalse(economy.grantRewardedAd(playerId, "reward-2"));
+        org.junit.jupiter.api.Assertions.assertTrue(economy.grantRewardedAd(playerId, "reward-2"));
+        org.junit.jupiter.api.Assertions.assertTrue(economy.grantRewardedAd(playerId, "reward-3"));
+        org.junit.jupiter.api.Assertions.assertFalse(economy.grantRewardedAd(playerId, "reward-4"));
 
         mockMvc.perform(get("/api/v1/economy/rewards")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.wallet.coins").value(850))
-                .andExpect(jsonPath("$.coinsPerAd").value(150))
-                .andExpect(jsonPath("$.rewardedAdsUsed").value(1))
+                .andExpect(jsonPath("$.coinsPerAd").value(50))
+                .andExpect(jsonPath("$.rewardedAdsUsed").value(3))
                 .andExpect(jsonPath("$.rewardedAdsRemaining").value(0))
                 .andExpect(jsonPath("$.nextRewardedAdAt").isNotEmpty());
 
@@ -97,9 +99,9 @@ class EconomyControllerTest {
                 update economy_transaction set created_at=dateadd('HOUR', -3, current_timestamp)
                 where player_id=? and reference_key='admob:reward-1'
                 """, playerId);
-        org.junit.jupiter.api.Assertions.assertTrue(economy.grantRewardedAd(playerId, "reward-2"));
+        org.junit.jupiter.api.Assertions.assertTrue(economy.grantRewardedAd(playerId, "reward-4"));
         mockMvc.perform(get("/api/v1/economy/wallet").header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.coins").value(1000));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.coins").value(900));
     }
 
     @Test
