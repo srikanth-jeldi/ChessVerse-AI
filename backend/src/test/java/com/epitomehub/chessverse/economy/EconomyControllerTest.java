@@ -105,6 +105,16 @@ class EconomyControllerTest {
     }
 
     @Test
+    void admobCallbackAcceptsTheDocumentedNumericAdUnitId() {
+        AdMobRewardController controller = new AdMobRewardController(
+                null, economy, "ca-app-pub-9061518700917881/3857200476");
+        org.junit.jupiter.api.Assertions.assertTrue(controller.matchesExpectedAdUnit("3857200476"));
+        org.junit.jupiter.api.Assertions.assertTrue(controller.matchesExpectedAdUnit(
+                "ca-app-pub-9061518700917881/3857200476"));
+        org.junit.jupiter.api.Assertions.assertFalse(controller.matchesExpectedAdUnit("7417916394"));
+    }
+
+    @Test
     void purchaseIsPermanentButOnlyExplicitEquipChangesTheLoadout() throws Exception {
         String token = guest(UUID.randomUUID().toString());
         String authorization = "Bearer " + token;

@@ -18,9 +18,17 @@ class AdMobRewardController {
             @Value("${chessverse.economy.admob.rewarded-ad-unit-id:}")String expectedAdUnit){this.verifier=verifier;this.economy=economy;this.expectedAdUnit=expectedAdUnit;}
     @GetMapping("/callback") void callback(HttpServletRequest request){
         Map<String,String> value=verifier.verify(request.getQueryString());
-        if(expectedAdUnit.isBlank()||!expectedAdUnit.equals(value.get("ad_unit"))||!"chessverse_coins_v1".equals(value.get("custom_data")))throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Unexpected reward source.");
+        if (!matchesExpectedAdUnit(value.get("ad_unit"))
+                || !"chessverse_coins_v1".equals(value.get("custom_data"))) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unexpected reward source.");
+        }
         String transaction=value.get("transaction_id");String user=value.get("user_id");
         if(transaction==null||transaction.length()>120||user==null)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Incomplete reward callback.");
         try{economy.grantRewardedAd(UUID.fromString(user),transaction);}catch(IllegalArgumentException exception){throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid reward player.");}
+    }
+
+    boolean matchesExpectedAdUnit(String callbackAdUnit) {
+        if (expectedAdUnit.isBlank() || callbackAdUnit == null || callbackAdUnit.isBlank()) return false;
+        return expectedAdUnit.equals(callbackAdUnit) || expectedAdUnit.endsWith("/" + callbackAdUnit);
     }
 }
