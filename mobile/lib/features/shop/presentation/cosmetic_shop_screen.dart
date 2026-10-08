@@ -96,7 +96,11 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     super.initState();
     _load();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && _rewards?.nextDailyAt != null) setState(() {});
+      if (mounted &&
+          (_rewards?.nextDailyAt != null ||
+              _rewards?.nextRewardedAdAt != null)) {
+        setState(() {});
+      }
     });
   }
 
@@ -438,13 +442,15 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: _busy || (_rewards?.rewardedAdsRemaining ?? 3) <= 0
+              onPressed: _busy || (_rewards?.rewardedAdsRemaining ?? 0) <= 0
                   ? null
                   : () => _watchAd(s),
               icon: const Icon(Icons.play_circle_fill_rounded),
               label: Text(
                 RewardedCoinService.instance.supported
-                    ? 'WATCH VIDEO • +150 (${_rewards?.rewardedAdsRemaining ?? 3} LEFT)'
+                    ? (_rewards?.rewardedAdsRemaining ?? 0) > 0
+                          ? 'WATCH VIDEO • +150 COINS'
+                          : 'NEXT VIDEO • ${_rewardedAdCountdown()}'
                     : 'FREE COINS • MOBILE APP',
               ),
               style: OutlinedButton.styleFrom(
@@ -536,11 +542,9 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       if (!mounted) return;
       if (credited != null) {
         setState(() => _rewards = credited);
+        _showRewardAnimation(credited.coins);
         await _load();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Reward received • +150 coins')),
-        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -553,6 +557,99 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  void _showRewardAnimation(int newBalance) {
+    final OverlayState overlay = Overlay.of(context);
+    late final OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (context) => IgnorePointer(
+        child: Center(
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 650),
+            curve: Curves.easeOutBack,
+            builder: (context, progress, child) => Opacity(
+              opacity: progress.clamp(0, 1),
+              child: Transform.translate(
+                offset: Offset(0, 42 * (1 - progress)),
+                child: Transform.scale(
+                  scale: 0.7 + (0.3 * progress),
+                  child: child,
+                ),
+              ),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 20,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xF20A2133),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFFF4C75B), width: 2),
+                  boxShadow: const <BoxShadow>[
+                    BoxShadow(color: Color(0x99F4C75B), blurRadius: 28),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.monetization_on_rounded,
+                      color: Color(0xFFFFCB45),
+                      size: 64,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '+150 COINS',
+                      style: TextStyle(
+                        color: Color(0xFFFFD66B),
+                        fontSize: 27,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'BALANCE  $newBalance',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    overlay.insert(entry);
+    Future<void>.delayed(const Duration(milliseconds: 1800), () {
+      if (entry.mounted) entry.remove();
+    });
+  }
+
+  String _rewardedAdCountdown() {
+    final DateTime? next = _rewards?.nextRewardedAdAt;
+    if (next == null) return '--:--:--';
+    final Duration remaining = next.toUtc().difference(DateTime.now().toUtc());
+    if (remaining <= Duration.zero) {
+      if (!_rewardRefreshPending) {
+        _rewardRefreshPending = true;
+        scheduleMicrotask(() async {
+          await _load();
+          _rewardRefreshPending = false;
+        });
+      }
+      return 'READY';
+    }
+    return formatFreeCoinCountdown(remaining);
   }
 
   Future<EconomyRewardStatus?> _waitForRewardCredit(int coinsBefore) async {

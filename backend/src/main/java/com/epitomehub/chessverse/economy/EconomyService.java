@@ -20,7 +20,6 @@ public class EconomyService {
     static final long SIGNUP_DIAMONDS = 10;
     static final long DAILY_COINS = 100;
     static final long REWARDED_AD_COINS = 150;
-    static final int REWARDED_AD_WINDOW_LIMIT = 3;
     static final long REWARDED_AD_WINDOW_HOURS = 2;
     static final long FREE_COIN_COOLDOWN_HOURS = 8;
     private final JdbcTemplate jdbc;
@@ -152,12 +151,11 @@ public class EconomyService {
         // grant more than the configured allowance.
         jdbc.queryForObject("select player_id from player_wallet where player_id=? for update",
                 UUID.class, playerId);
-        Instant windowStart = Instant.now().minus(REWARDED_AD_WINDOW_HOURS, ChronoUnit.HOURS);
-        Integer used = jdbc.queryForObject("""
-                select count(*) from economy_transaction
-                where player_id=? and transaction_type='REWARDED_AD' and created_at>=?
-                """, Integer.class, playerId, Timestamp.from(windowStart));
-        if (used != null && used >= REWARDED_AD_WINDOW_LIMIT) return false;
+        Instant lastRewardedAt = lastRewardedAd(playerId);
+        if (lastRewardedAt != null && lastRewardedAt
+                .plus(REWARDED_AD_WINDOW_HOURS, ChronoUnit.HOURS).isAfter(Instant.now())) {
+            return false;
+        }
         return grantCoins(playerId, REWARDED_AD_COINS, "REWARDED_AD", "admob:" + transactionId,
                 "Rewarded video");
     }
@@ -182,21 +180,24 @@ public class EconomyService {
         ensureWallet(player.id());
         Instant last = lastDailyClaim(player.id());
         Instant next = last == null ? Instant.now() : last.plus(FREE_COIN_COOLDOWN_HOURS, ChronoUnit.HOURS);
-        Instant windowStart = Instant.now().minus(REWARDED_AD_WINDOW_HOURS, ChronoUnit.HOURS);
-        List<Instant> rewarded = jdbc.query("""
-                select created_at from economy_transaction
-                where player_id=? and transaction_type='REWARDED_AD' and created_at>=?
-                order by created_at asc
-                """, (rs, row) -> rs.getTimestamp("created_at").toInstant(),
-                player.id(), Timestamp.from(windowStart));
-        int count = rewarded.size();
-        Instant nextRewardedAt = count >= REWARDED_AD_WINDOW_LIMIT
-                ? rewarded.getFirst().plus(REWARDED_AD_WINDOW_HOURS, ChronoUnit.HOURS)
-                : null;
+        Instant lastRewardedAt = lastRewardedAd(player.id());
+        Instant nextRewardedAt = lastRewardedAt == null
+                ? null
+                : lastRewardedAt.plus(REWARDED_AD_WINDOW_HOURS, ChronoUnit.HOURS);
+        boolean rewardedAvailable = nextRewardedAt == null || !nextRewardedAt.isAfter(Instant.now());
         return new EconomyDtos.RewardStatusDto(readWallet(player.id()),
-                last == null || !next.isAfter(Instant.now()), next, count,
-                Math.max(0, REWARDED_AD_WINDOW_LIMIT - count), nextRewardedAt,
+                last == null || !next.isAfter(Instant.now()), next, rewardedAvailable ? 0 : 1,
+                rewardedAvailable ? 1 : 0, rewardedAvailable ? null : nextRewardedAt,
                 (int) DAILY_COINS, (int) REWARDED_AD_COINS);
+    }
+
+    private Instant lastRewardedAd(UUID playerId) {
+        List<Instant> values = jdbc.query("""
+                select created_at from economy_transaction
+                where player_id=? and transaction_type='REWARDED_AD'
+                order by created_at desc limit 1
+                """, (rs, row) -> rs.getTimestamp("created_at").toInstant(), playerId);
+        return values.isEmpty() ? null : values.getFirst();
     }
 
     private Instant lastDailyClaim(UUID playerId) {
