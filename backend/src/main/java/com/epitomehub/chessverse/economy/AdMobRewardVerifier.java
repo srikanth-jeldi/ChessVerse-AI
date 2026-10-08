@@ -6,6 +6,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
@@ -58,8 +59,20 @@ class AdMobRewardVerifier {
             return parameters(rawQuery.substring(0, signature));
         } catch (ResponseStatusException exception) {
             throw exception;
-        } catch (Exception exception) {
+        } catch (GeneralSecurityException exception) {
+            if (exception.getMessage() != null
+                    && exception.getMessage().startsWith("cannot find verifying key")) {
+                throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED,
+                        "AdMob signing key is not available.");
+            }
             throw invalid();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "AdMob verification was interrupted.");
+        } catch (Exception exception) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "AdMob verification is temporarily unavailable.");
         }
     }
     private Map<String,String> parameters(String signed){Map<String,String> values=new HashMap<>();for(String pair:signed.split("&")){int split=pair.indexOf('=');if(split>0)values.put(decode(pair.substring(0,split)),decode(pair.substring(split+1)));}return values;}
