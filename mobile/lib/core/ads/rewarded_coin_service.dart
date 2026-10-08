@@ -11,6 +11,7 @@ class RewardedCoinService {
   static final RewardedCoinService instance = RewardedCoinService._();
   RewardedAd? _ad;
   bool _loading = false;
+  bool _showing = false;
   static const String _androidTest = 'ca-app-pub-3940256099942544/5224354917';
   static const String _iosTest = 'ca-app-pub-3940256099942544/1712485313';
 
@@ -30,7 +31,7 @@ class RewardedCoinService {
               : AppConfig.admobIosRewardedId.isNotEmpty));
 
   Future<void> load() async {
-    if (!supported || _loading || _ad != null) return;
+    if (!supported || _loading || _showing || _ad != null) return;
     _loading = true;
     if (!await AdSdkInitializer.ensureReady()) {
       _loading = false;
@@ -52,14 +53,16 @@ class RewardedCoinService {
   }
 
   Future<bool> show({required String playerId}) async {
-    if (!supported) return false;
+    if (!supported || _showing) return false;
     if (_ad == null) {
       await load();
       return false;
     }
+    _showing = true;
     final completer = Completer<bool>();
     final ad = _ad!;
     _ad = null;
+    bool earned = false;
     ad.setServerSideOptions(
       ServerSideVerificationOptions(
         userId: playerId,
@@ -69,18 +72,20 @@ class RewardedCoinService {
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (value) {
         value.dispose();
-        if (!completer.isCompleted) completer.complete(false);
+        _showing = false;
+        if (!completer.isCompleted) completer.complete(earned);
         unawaited(load());
       },
       onAdFailedToShowFullScreenContent: (value, _) {
         value.dispose();
+        _showing = false;
         if (!completer.isCompleted) completer.complete(false);
         unawaited(load());
       },
     );
     ad.show(
       onUserEarnedReward: (_, reward) {
-        if (!completer.isCompleted) completer.complete(true);
+        earned = true;
       },
     );
     return completer.future;

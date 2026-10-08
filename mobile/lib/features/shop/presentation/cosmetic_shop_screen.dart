@@ -510,23 +510,64 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       );
       return;
     }
-    final bool earned = await RewardedCoinService.instance.show(
-      playerId: shop.playerId,
-    );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          earned
-              ? 'Video completed. Secure reward verification is processing.'
-              : 'Video is still loading. Please try again shortly.',
+    final int coinsBefore = _rewards?.coins ?? shop.wallet.coins;
+    setState(() => _busy = true);
+    try {
+      final bool earned = await RewardedCoinService.instance.show(
+        playerId: shop.playerId,
+      );
+      if (!mounted) return;
+      if (!earned) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Video is still loading. Please try again shortly.'),
+          ),
+        );
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Video completed • verifying your +150 coins…'),
         ),
-      ),
-    );
-    if (earned) {
-      await Future<void>.delayed(const Duration(seconds: 2));
-      await _load();
+      );
+      final EconomyRewardStatus? credited = await _waitForRewardCredit(
+        coinsBefore,
+      );
+      if (!mounted) return;
+      if (credited != null) {
+        setState(() => _rewards = credited);
+        await _load();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reward received • +150 coins')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Video completed. Reward verification is delayed; please refresh before watching another ad.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<EconomyRewardStatus?> _waitForRewardCredit(int coinsBefore) async {
+    for (int attempt = 0; attempt < 15; attempt++) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      try {
+        final EconomyRewardStatus status = await _rewardsApi.status(
+          widget.token,
+        );
+        if (status.coins >= coinsBefore + 150) return status;
+      } catch (_) {
+        // SSV is asynchronous; keep polling during the bounded verification window.
+      }
+    }
+    return null;
   }
 
   Widget _balance(IconData icon, String value, String label, Color color) =>

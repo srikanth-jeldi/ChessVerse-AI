@@ -10,6 +10,7 @@ class EconomyRewardStatus {
     required this.dailyAvailable,
     required this.nextDailyAt,
     required this.rewardedAdsRemaining,
+    required this.nextRewardedAdAt,
     required this.dailyCoins,
     required this.coinsPerAd,
   });
@@ -18,6 +19,7 @@ class EconomyRewardStatus {
   final bool dailyAvailable;
   final DateTime? nextDailyAt;
   final int rewardedAdsRemaining;
+  final DateTime? nextRewardedAdAt;
   final int dailyCoins;
   final int coinsPerAd;
 
@@ -30,6 +32,9 @@ class EconomyRewardStatus {
       nextDailyAt: DateTime.tryParse(json['nextDailyAt'] as String? ?? ''),
       rewardedAdsRemaining:
           (json['rewardedAdsRemaining'] as num?)?.toInt() ?? 0,
+      nextRewardedAdAt: DateTime.tryParse(
+        json['nextRewardedAdAt'] as String? ?? '',
+      ),
       dailyCoins: (json['dailyCoins'] as num?)?.toInt() ?? 100,
       coinsPerAd: (json['coinsPerAd'] as num?)?.toInt() ?? 150,
     );
@@ -46,7 +51,10 @@ class EconomyRewardsApi {
       _request(token, 'POST', '/api/v1/economy/daily-reward');
 
   Future<EconomyRewardStatus> _request(
-      String token, String method, String path) async {
+    String token,
+    String method,
+    String path,
+  ) async {
     final Uri uri = Uri.parse('${AppConfig.apiBaseUrl}$path');
     final Map<String, String> headers = <String, String>{
       'Authorization': 'Bearer $token',
@@ -55,13 +63,16 @@ class EconomyRewardsApi {
     final http.Response response = method == 'POST'
         ? await http.post(uri, headers: headers)
         : await http.get(uri, headers: headers);
-    final Object? decoded =
-        response.body.isEmpty ? null : jsonDecode(response.body);
-    final Map<String, dynamic> json =
-        decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    final Object? decoded = response.body.isEmpty
+        ? null
+        : jsonDecode(response.body);
+    final Map<String, dynamic> json = decoded is Map<String, dynamic>
+        ? decoded
+        : <String, dynamic>{};
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
-          json['message'] as String? ?? 'Reward service unavailable.');
+        json['message'] as String? ?? 'Reward service unavailable.',
+      );
     }
     return EconomyRewardStatus.fromJson(json);
   }

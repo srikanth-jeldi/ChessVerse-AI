@@ -17,6 +17,7 @@ final class EconomyDtos {
 
     record RewardStatusDto(WalletDto wallet, boolean dailyAvailable,
                            Instant nextDailyAt, int rewardedAdsUsed,
-                           int rewardedAdsRemaining, int dailyCoins,
+                           int rewardedAdsRemaining, Instant nextRewardedAdAt,
+                           int dailyCoins,
                            int coinsPerAd) {}
 }
