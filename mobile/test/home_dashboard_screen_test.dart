@@ -14,6 +14,8 @@ void main() {
     int? coinBalance,
     TournamentDto? nextTournament,
     VoidCallback? onSavedGames,
+    VoidCallback? onImportGame,
+    VoidCallback? onLocalGame,
   }) {
     return MaterialApp(
       theme: AppTheme.darkTheme,
@@ -24,7 +26,8 @@ void main() {
         nextTournament: nextTournament,
         onPlayVsAi: onComputer,
         onDailyChallenge: () {},
-        onLocalGame: () {},
+        onLocalGame: onLocalGame ?? () {},
+        onImportGame: onImportGame ?? () {},
         onOnlineGame: onOnline,
         onAnalysis: () {},
         onPuzzles: () {},
@@ -36,6 +39,36 @@ void main() {
       ),
     );
   }
+
+  testWidgets('home exposes import and offline pass and play shortcuts', (
+    WidgetTester tester,
+  ) async {
+    int imports = 0;
+    int localGames = 0;
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      app(
+        onOnline: () {},
+        onComputer: () {},
+        onImportGame: () => imports++,
+        onLocalGame: () => localGames++,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const ValueKey('import-game')));
+    await tester.tap(find.byKey(const ValueKey('import-game')));
+    await tester.ensureVisible(find.byKey(const ValueKey('pass-and-play')));
+    await tester.tap(find.byKey(const ValueKey('pass-and-play')));
+
+    expect(imports, 1);
+    expect(localGames, 1);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('home waits for a game selection before launching', (
     WidgetTester tester,

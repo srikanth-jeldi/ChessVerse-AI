@@ -34,10 +34,12 @@ class MatchHistoryScreen extends StatefulWidget {
     this.onResume,
     this.onPlayAgain,
     this.onDestinationSelected,
+    this.openImportOnStart = false,
   });
   final Future<void> Function(ComputerGameDraft)? onResume;
   final Future<void> Function()? onPlayAgain;
   final ValueChanged<int>? onDestinationSelected;
+  final bool openImportOnStart;
 
   @override
   State<MatchHistoryScreen> createState() => _MatchHistoryScreenState();
@@ -57,6 +59,17 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   String _filter = 'All';
   final Set<String> _selectedGameIds = <String>{};
   bool _selectionMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.openImportOnStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _chooseImportFormat();
+      });
+    }
+  }
+
   late Future<List<ComputerGameDraft>> _drafts = _loadDrafts();
   Future<List<ComputerGameDraft>> _loadDrafts() async {
     final owner = await ComputerGameStore.activeOwner();

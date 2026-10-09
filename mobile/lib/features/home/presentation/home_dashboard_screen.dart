@@ -27,6 +27,7 @@ class HomeDashboardScreen extends StatelessWidget {
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onLocalGame,
+    this.onImportGame = _noOnlineAction,
     this.onOnlineGame = _noOnlineAction,
     this.onFriendsGame = _noOnlineAction,
     required this.onAnalysis,
@@ -53,6 +54,7 @@ class HomeDashboardScreen extends StatelessWidget {
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
+  final VoidCallback onImportGame;
   final VoidCallback onOnlineGame;
   final VoidCallback onFriendsGame;
   final VoidCallback onAnalysis;
@@ -87,6 +89,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 onPlayVsAi: onPlayVsAi,
                 onDailyChallenge: onDailyChallenge,
                 onLocalGame: onLocalGame,
+                onImportGame: onImportGame,
                 onOnlineGame: onOnlineGame,
                 onFriendsGame: onFriendsGame,
                 onAnalysis: onAnalysis,
@@ -113,6 +116,7 @@ class HomeDashboardScreen extends StatelessWidget {
               onPlayVsAi: onPlayVsAi,
               onDailyChallenge: onDailyChallenge,
               onLocalGame: onLocalGame,
+              onImportGame: onImportGame,
               onOnlineGame: onOnlineGame,
               onFriendsGame: onFriendsGame,
               onAnalysis: onAnalysis,
@@ -146,6 +150,7 @@ class _MobileHome extends StatefulWidget {
     required this.onPlayVsAi,
     required this.onDailyChallenge,
     required this.onLocalGame,
+    required this.onImportGame,
     required this.onOnlineGame,
     required this.onFriendsGame,
     required this.onAnalysis,
@@ -171,6 +176,7 @@ class _MobileHome extends StatefulWidget {
   final VoidCallback onPlayVsAi;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
+  final VoidCallback onImportGame;
   final VoidCallback onOnlineGame;
   final VoidCallback onFriendsGame;
   final VoidCallback onAnalysis;
@@ -344,6 +350,36 @@ class _MobileHomeState extends State<_MobileHome> {
                       ],
                     ),
                     const SizedBox(height: 12),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: _ActionCard(
+                            keyName: 'import-game',
+                            icon: Icons.upload_file_rounded,
+                            title: 'Import Game',
+                            subtitle: 'Chess.com / Lichess PGN or FEN',
+                            color: const Color(0xFF174A61),
+                            asset:
+                                'assets/backgrounds/home-analysis-hero-v1.webp',
+                            onTap: widget.onImportGame,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _ActionCard(
+                            keyName: 'pass-and-play',
+                            icon: Icons.people_alt_rounded,
+                            title: 'Pass & Play',
+                            subtitle: 'Two players • works offline',
+                            color: const Color(0xFF5A4022),
+                            asset:
+                                'assets/backgrounds/home-friends-hero-v1.webp',
+                            onTap: widget.onLocalGame,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                     GridView.count(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -445,6 +481,7 @@ class _WideHome extends StatefulWidget {
     required this.onOnlineGame,
     required this.onFriendsGame,
     required this.onLocalGame,
+    required this.onImportGame,
     required this.onAnalysis,
     required this.onPuzzles,
     required this.onSavedGames,
@@ -470,6 +507,7 @@ class _WideHome extends StatefulWidget {
   final VoidCallback onOnlineGame;
   final VoidCallback onFriendsGame;
   final VoidCallback onLocalGame;
+  final VoidCallback onImportGame;
   final VoidCallback onAnalysis;
   final VoidCallback onPuzzles;
   final VoidCallback onSavedGames;
@@ -626,6 +664,35 @@ class _WideHomeState extends State<_WideHome> {
                               buttonLabel: 'Open Settings',
                               asset: 'assets/backgrounds/home-settings-hero-v1.webp',
                               onTap: widget.onSettings,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: _ActionCard(
+                                keyName: 'import-game',
+                                icon: Icons.upload_file_rounded,
+                                title: 'Import Chess.com / Lichess Game',
+                                subtitle:
+                                    'Open a PGN or FEN for free AI review',
+                                color: const Color(0xFF174A61),
+                                asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
+                                onTap: widget.onImportGame,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: _ActionCard(
+                                keyName: 'pass-and-play',
+                                icon: Icons.people_alt_rounded,
+                                title: 'Pass & Play Offline',
+                                subtitle: 'Play a friend on one device — no internet needed',
+                                color: const Color(0xFF5A4022),
+                                asset: 'assets/backgrounds/home-friends-hero-v1.webp',
+                                onTap: widget.onLocalGame,
+                              ),
                             ),
                           ],
                         ),

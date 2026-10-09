@@ -1047,6 +1047,17 @@ class _SplashGateState extends State<SplashGate> {
         onPlayVsAi: () => _chooseSideAndOpen(context, GameMode.computer),
         onDailyChallenge: () => _openGame(context, GameMode.daily),
         onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
+        onImportGame: () => _push(
+          context,
+          MatchHistoryScreen(
+            openImportOnStart: true,
+            onDestinationSelected: (index) =>
+                _closeSettingsAndSelect(context, index),
+            onResume: (draft) =>
+                _openGame(context, GameMode.computer, resumeDraft: draft),
+            onPlayAgain: () => _chooseSideAndOpen(context, GameMode.computer),
+          ),
+        ),
         onOnlineGame: () => _openOnlineGame(context),
         onFriendsGame: () => _openFriendPlayChooser(context),
         onAnalysis: () => _push(context, const AnalysisScreen()),
