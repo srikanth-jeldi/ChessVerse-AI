@@ -66,7 +66,7 @@ class CommunityService {
                     where visible.club_id=t.club_id and visible.player_id=?)
                 group by t.id order by t.starts_at
                 """, (rs,row) -> new CommunityDtos.TournamentDto(uuid(rs,"id"),rs.getString("name"),
-                rs.getString("description"),rs.getInt("time_control_minutes"),rs.getInt("players"),
+                rs.getString("description"),Math.min(rs.getInt("time_control_minutes"),5),rs.getInt("players"),
                 rs.getInt("capacity"),rs.getTimestamp("starts_at").toInstant(),rs.getTimestamp("ends_at").toInstant(),
                 rs.getString("status"),rs.getBoolean("joined"),rs.getInt("entry_coins"),
                 rs.getLong("prize_pool"),rs.getInt("cadence_days"),rs.getInt("minimum_players"),

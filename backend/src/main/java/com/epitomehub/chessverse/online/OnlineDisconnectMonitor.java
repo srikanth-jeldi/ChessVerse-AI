@@ -22,6 +22,9 @@ class OnlineDisconnectMonitor {
         for (UUID matchId : matches.finishExpiredDisconnects()) {
             socket.publish(matchId);
         }
+        for (UUID matchId : matches.finishExpiredTournamentRounds()) {
+            socket.publish(matchId);
+        }
         for (UUID matchId : matches.cancelExpiredWaitingMatches()) {
             socket.publish(matchId);
         }

@@ -315,6 +315,53 @@ class OnlineMatchServiceTest {
     }
 
     @Test
+    void presentTournamentPlayerReceivesWalkoverAfterAttendanceWindow() {
+        OnlineMatch match = activeMatch();
+        match.tournamentName = "Hyderabad Royal Cup";
+        match.whiteDisconnectedAt = null;
+        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(301);
+        when(repository.lockExpiredDisconnects(any())).thenReturn(java.util.List.of(match));
+
+        service.finishExpiredDisconnects();
+
+        assertEquals(OnlineMatchStatus.FINISHED, match.status);
+        assertEquals("1-0", match.result);
+        assertEquals("OPPONENT_LEFT", match.resultReason);
+    }
+
+    @Test
+    void tournamentRoundDeadlineAdvancesPlayerWithMoreClock() {
+        OnlineMatch match = activeMatch();
+        match.tournamentName = "Hyderabad Royal Cup";
+        match.startedAt = java.time.Instant.now().minusSeconds(901);
+        match.turnStartedAt = java.time.Instant.now();
+        match.whiteTimeMs = 120_000;
+        match.blackTimeMs = 180_000;
+        when(repository.lockExpiredTournamentRounds(any())).thenReturn(java.util.List.of(match));
+
+        service.finishExpiredTournamentRounds();
+
+        assertEquals(OnlineMatchStatus.FINISHED, match.status);
+        assertEquals("0-1", match.result);
+        assertEquals("TOURNAMENT_ROUND_DEADLINE", match.resultReason);
+    }
+
+    @Test
+    void bothAbsentTournamentPlayersAreDoubleForfeited() {
+        OnlineMatch match = activeMatch();
+        match.tournamentName = "Hyderabad Royal Cup";
+        match.whiteDisconnectedAt = java.time.Instant.now().minusSeconds(301);
+        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(301);
+        when(repository.lockExpiredDisconnects(any())).thenReturn(java.util.List.of(match));
+
+        service.finishExpiredDisconnects();
+
+        assertEquals(OnlineMatchStatus.FINISHED, match.status);
+        assertEquals("1/2-1/2", match.result);
+        assertEquals("TOURNAMENT_DOUBLE_FORFEIT", match.resultReason);
+    }
+
+    @Test
     void queueReservesSelectedEntryBeforeSearching() {
         when(repository.findCurrentForPlayer(white.id())).thenReturn(Optional.empty());
         when(repository.lockOldestRandomOpponent(

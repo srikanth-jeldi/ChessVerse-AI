@@ -26,6 +26,8 @@ public class OnlineMatchService {
     // minute to reconnect before awarding the game to the opponent.
     // 30-second reconnect window plus a final 15-second network allowance.
     static final Duration DISCONNECT_GRACE = Duration.ofSeconds(45);
+    static final Duration TOURNAMENT_ATTENDANCE_GRACE = Duration.ofMinutes(5);
+    static final Duration TOURNAMENT_ROUND_LIMIT = Duration.ofMinutes(15);
 
     private final OnlineMatchRepository matches;
     private final OnlineRatingService ratings;
@@ -450,12 +452,20 @@ public class OnlineMatchService {
         for (OnlineMatch match : expired) {
             reconcileClock(match, now);
             if (match.status != OnlineMatchStatus.ACTIVE) continue;
+            Duration grace = match.tournamentName == null
+                    ? DISCONNECT_GRACE : TOURNAMENT_ATTENDANCE_GRACE;
             boolean whiteExpired = match.whiteDisconnectedAt != null
-                    && !match.whiteDisconnectedAt.plus(DISCONNECT_GRACE).isAfter(now);
+                    && !match.whiteDisconnectedAt.plus(grace).isAfter(now);
             boolean blackExpired = match.blackDisconnectedAt != null
-                    && !match.blackDisconnectedAt.plus(DISCONNECT_GRACE).isAfter(now);
+                    && !match.blackDisconnectedAt.plus(grace).isAfter(now);
             if (whiteExpired && blackExpired) {
-                finish(match, "1/2-1/2", "BOTH_DISCONNECTED");
+                if (match.tournamentName != null) {
+                    // Neither player attended: both are eliminated and this
+                    // pairing contributes no winner to the next round.
+                    finish(match, "1/2-1/2", "TOURNAMENT_DOUBLE_FORFEIT");
+                } else {
+                    finish(match, "1/2-1/2", "BOTH_DISCONNECTED");
+                }
             } else if (whiteExpired) {
                 finish(match, "0-1", "OPPONENT_LEFT");
             } else if (blackExpired) {
@@ -464,6 +474,51 @@ public class OnlineMatchService {
             matches.save(match);
         }
         return expired.stream().map(match -> match.id).toList();
+    }
+
+    @Transactional
+    public List<UUID> finishExpiredTournamentRounds() {
+        Instant now = Instant.now();
+        List<OnlineMatch> expired = matches.lockExpiredTournamentRounds(
+                now.minus(TOURNAMENT_ROUND_LIMIT));
+        for (OnlineMatch match : expired) {
+            reconcileClock(match, now);
+            if (match.status != OnlineMatchStatus.ACTIVE) continue;
+            // Tournament rounds must progress predictably. At the hard
+            // deadline the player who preserved more clock advances; an exact
+            // tie goes to the earlier-seeded white entrant.
+            String result;
+            int material = materialBalance(match.fen);
+            if (match.whiteTimeMs == match.blackTimeMs && material == 0) {
+                result = "1/2-1/2";
+                finish(match, result, "TOURNAMENT_TIEBREAK_REQUIRED");
+            } else {
+                result = match.whiteTimeMs == match.blackTimeMs
+                        ? (material > 0 ? "1-0" : "0-1")
+                        : (match.blackTimeMs > match.whiteTimeMs ? "0-1" : "1-0");
+                finish(match, result, "TOURNAMENT_ROUND_DEADLINE");
+            }
+            matches.save(match);
+        }
+        return expired.stream().map(match -> match.id).toList();
+    }
+
+    private int materialBalance(String fen) {
+        if (fen == null || fen.isBlank()) return 0;
+        String board = fen.split(" ")[0];
+        int score = 0;
+        for (int index = 0; index < board.length(); index++) {
+            char piece = board.charAt(index);
+            int value = switch (Character.toLowerCase(piece)) {
+                case 'q' -> 9;
+                case 'r' -> 5;
+                case 'b', 'n' -> 3;
+                case 'p' -> 1;
+                default -> 0;
+            };
+            score += Character.isUpperCase(piece) ? value : -value;
+        }
+        return score;
     }
 
     private com.github.bhlangonijr.chesslib.Piece promotion(char code, Side side) {
@@ -640,6 +695,10 @@ public class OnlineMatchService {
 
     private void rewardPlayers(OnlineMatch match) {
         if (economy == null || match.blackPlayerId == null) return;
+        // Tournament entry pools and placement bonuses are awarded once by
+        // TournamentService. Avoid paying normal match bonuses (especially to
+        // absent players) on every knockout round.
+        if (match.tournamentName != null) return;
         String prefix = "match:" + match.id + ":";
         if (match.entryCoins > 0 && !match.coinPoolSettled) {
             // Very short/abandoned matches cannot transfer the pool. Refund

@@ -86,4 +86,13 @@ interface OnlineMatchRepository extends JpaRepository<OnlineMatch, UUID> {
               and (match.whiteDisconnectedAt <= :cutoff or match.blackDisconnectedAt <= :cutoff)
             """)
     List<OnlineMatch> lockExpiredDisconnects(@Param("cutoff") Instant cutoff);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select match from OnlineMatch match
+            where match.status = 'ACTIVE'
+              and match.tournamentName is not null
+              and match.startedAt <= :cutoff
+            """)
+    List<OnlineMatch> lockExpiredTournamentRounds(@Param("cutoff") Instant cutoff);
 }
