@@ -4300,17 +4300,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (_gameMode != GameMode.computer && _gameMode != GameMode.online) {
       return;
     }
-    final String? token = _authToken ?? (await _sessionStore.read())?.token;
-    if (token != null && token.isNotEmpty) {
-      try {
-        final PremiumStatusDto premium = await const PremiumSubscriptionApi()
-            .status(token);
-        if (premium.premium) return;
-      } catch (_) {
-        // Subscription lookup must never block the result screen. When the
-        // server cannot confirm Premium, normal ad eligibility still applies.
-      }
-    }
     final String matchId = _onlineMatch?.id ?? 'computer:$_draftId';
     await PostMatchAdService.instance.showAfterMatch(matchId);
   }

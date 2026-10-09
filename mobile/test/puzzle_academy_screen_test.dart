@@ -92,7 +92,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     final Finder rush = find.byKey(const ValueKey<String>('sprint-rush'));
-    await tester.ensureVisible(rush);
+    await tester.scrollUntilVisible(rush, 240);
+    await tester.pumpAndSettle();
     await tester.tap(rush);
     await tester.pumpAndSettle();
     expect(find.text('PUZZLE RUSH'), findsWidgets);
@@ -100,6 +101,36 @@ void main() {
     await tester.pumpAndSettle();
     expect(launched, isNotNull);
     expect(find.text('1'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('puzzle rush CTA remains reachable on a short phone', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 620);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(theme: AppTheme.darkTheme, home: const PuzzleAcademyScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    final Finder rush = find.byKey(const ValueKey<String>('sprint-rush'));
+    await tester.scrollUntilVisible(rush, 240);
+    await tester.pumpAndSettle();
+    await tester.tap(rush);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey<String>('puzzle-sprint-scroll-view')),
+      findsOneWidget,
+    );
+    final Finder play = find.byKey(const ValueKey<String>('sprint-play-next'));
+    await tester.ensureVisible(play);
+    await tester.pumpAndSettle();
+    expect(play, findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

@@ -735,9 +735,12 @@ class _PuzzleSprintSheetState extends State<_PuzzleSprintSheet> {
       puzzle.id,
     );
     setState(() => _launching = true);
-    AcademyPracticeCapture.inSprint=true;
-    try { await widget.onStartPuzzle(puzzle.id); }
-    finally { AcademyPracticeCapture.inSprint=false; }
+    AcademyPracticeCapture.inSprint = true;
+    try {
+      await widget.onStartPuzzle(puzzle.id);
+    } finally {
+      AcademyPracticeCapture.inSprint = false;
+    }
     if (!mounted) return;
     final bool solvedAfter = LocalGameArchive.completedPuzzleIds.contains(
       puzzle.id,
@@ -762,8 +765,14 @@ class _PuzzleSprintSheetState extends State<_PuzzleSprintSheet> {
       PuzzleSprintMode.survival => 'PUZZLE SURVIVAL',
       PuzzleSprintMode.mateInOne => 'MATE-IN-1 SPEED RUN',
     };
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+    return SingleChildScrollView(
+      key: const ValueKey<String>('puzzle-sprint-scroll-view'),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        18,
+        20,
+        28 + MediaQuery.viewPaddingOf(context).bottom,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[

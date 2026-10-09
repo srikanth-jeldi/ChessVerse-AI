@@ -16,6 +16,10 @@ import tools.jackson.databind.ObjectMapper;
 /** Self-service enrollment does not grant tenant access until captured payment is verified. */
 @RestController @RequestMapping("/api/v1/academy/onboarding") @Transactional
 public class AcademyOnboardingController {
+    private static final Set<String> EURO_COUNTRIES = Set.of(
+        "AT","BE","HR","CY","EE","FI","FR","DE","GR","IE","IT",
+        "LV","LT","LU","MT","NL","PT","SK","SI","ES"
+    );
     private final JdbcTemplate db;
     private final PlayerAuthenticationService auth;
     private final AcademyPaymentGateway gateway;
@@ -76,7 +80,7 @@ public class AcademyOnboardingController {
     }
     @GetMapping("/plans") public Object plans(@RequestParam String country) {
         check(Set.of(Locale.getISOCountries()).contains(country),HttpStatus.BAD_REQUEST,"Select a valid billing country.");
-        String currency=country.equals("IN")?"INR":"USD";
+        String currency=currencyFor(country);
         boolean taxReady=Boolean.TRUE.equals(db.queryForObject("SELECT approved FROM academy_billing_config WHERE id=1",Boolean.class));
         return Map.of("currency",currency,"checkoutAvailable",gateway.available()&&taxReady&&country.equals("IN"),"plans",
             rows("SELECT plan_code,name,seats,amount_minor,annual_amount_minor,currency,enabled FROM academy_plan_price WHERE currency=? ORDER BY CASE plan_code WHEN 'STARTER' THEN 1 WHEN 'GROWTH' THEN 2 ELSE 3 END",currency));
@@ -118,7 +122,7 @@ public class AcademyOnboardingController {
         // Resume a pending checkout instead of producing duplicate payable orders.
         var pending=rows("SELECT * FROM academy_checkout WHERE enrollment_id=? AND status='PENDING' AND failed_at IS NULL ORDER BY created_at DESC",e.get("id"));
         if(!pending.isEmpty()){samePending(pending.getFirst(),input);check(Objects.equals(input.expectedTotal,((Number)pending.getFirst().get("amount_minor")).longValue()),HttpStatus.CONFLICT,"Review the payment total again.");return checkoutView(pending.getFirst());}
-        String currency="IN".equals(e.get("country"))?"INR":"USD";
+        String currency=currencyFor(e.get("country").toString());
         var prices=rows("SELECT * FROM academy_plan_price WHERE plan_code=? AND currency=? AND enabled=TRUE AND seats IS NOT NULL AND amount_minor IS NOT NULL",input.planCode,currency);
         check(!prices.isEmpty(),HttpStatus.CONFLICT,"Pricing is not yet available for this plan.");
         var p=periodPrice(prices.getFirst(),input);
@@ -127,11 +131,11 @@ public class AcademyOnboardingController {
         check(Objects.equals(input.expectedTotal,billing.get("total")),HttpStatus.CONFLICT,"The price or tax changed. Review your total again before paying.");
         if(e.get("organization_id")!=null) check(db.queryForObject("SELECT COUNT(*) FROM academy_student WHERE organization_id=? AND active=TRUE",Integer.class,e.get("organization_id"))<=((Number)p.get("seats")).intValue(),HttpStatus.CONFLICT,"Choose a plan that covers your active students.");
         if(e.get("organization_id")!=null) check(db.queryForObject("SELECT COUNT(*) FROM academy_member WHERE organization_id=? AND role='COACH' AND active=TRUE",Integer.class,e.get("organization_id"))<=AcademyCoachLimits.limit(p.get("name").toString()),HttpStatus.CONFLICT,"Choose a plan that covers your active coaches.");
-        boolean usd="USD".equals(currency);
+        boolean international=!"INR".equals(currency);
         // A stable reference survives provider success followed by a local rollback or timeout.
-        UUID order=usd?UUID.nameUUIDFromBytes((e.get("id")+":"+db.queryForObject("SELECT COUNT(*) FROM academy_checkout WHERE enrollment_id=?",Long.class,e.get("id"))).getBytes(java.nio.charset.StandardCharsets.UTF_8)):UUID.randomUUID();
+        UUID order=international?UUID.nameUUIDFromBytes((e.get("id")+":"+db.queryForObject("SELECT COUNT(*) FROM academy_checkout WHERE enrollment_id=?",Long.class,e.get("id"))).getBytes(java.nio.charset.StandardCharsets.UTF_8)):UUID.randomUUID();
         String providerId,linkUrl=null;
-        if(usd){var link=gateway.createUsdLink(order.toString(),((Number)billing.get("total")).longValue(),p.get("name")+" - "+input.months()+" month(s)");providerId=link.id();linkUrl=link.url();}
+        if(international){var link=gateway.createUsdLink(order.toString(),((Number)billing.get("total")).longValue(),p.get("name")+" - "+input.months()+" month(s)");providerId=link.id();linkUrl=link.url();}
         else providerId=gateway.createOrder(order.toString(),((Number)billing.get("total")).longValue(),currency).id();
         db.update("INSERT INTO academy_checkout(id,enrollment_id,provider_order,plan_code,plan_name,seats,amount_minor,currency,coupon_code,subtotal_minor,discount_minor,billing_snapshot,tax_minor,billing_months) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",order,e.get("id"),providerId,input.planCode,p.get("name"),p.get("seats"),billing.get("total"),currency,quote.get("coupon"),p.get("amount_minor"),quote.get("discount"),json.writeValueAsString(billing),billing.get("tax"),input.months());
         if(linkUrl!=null)db.update("UPDATE academy_checkout SET payment_link_url=? WHERE id=?",linkUrl,order);
@@ -157,7 +161,7 @@ public class AcademyOnboardingController {
         return Map.of("id",o.get("id"),"orderId",o.get("provider_order"),"keyId",gateway.publicKey(),"amount",o.get("amount_minor"),"currency",o.get("currency"),"plan",o.get("plan_name"),"billingMonths",o.get("billing_months"));
     }
     @PostMapping("/quote") public Object quote(@RequestHeader("Authorization") String bearer,@Valid @RequestBody Plan input) {
-        var e=enrollment(account(bearer));checkCheckoutAccess(e);String currency="IN".equals(e.get("country"))?"INR":"USD";
+        var e=enrollment(account(bearer));checkCheckoutAccess(e);String currency=currencyFor(e.get("country").toString());
         var pending=rows("SELECT * FROM academy_checkout WHERE enrollment_id=? AND status='PENDING' AND failed_at IS NULL",e.get("id"));
         if(!pending.isEmpty()) {var o=pending.getFirst();samePending(o,input);return json.readTree(o.get("billing_snapshot").toString());}
         var prices=rows("SELECT * FROM academy_plan_price WHERE plan_code=? AND currency=? AND enabled=TRUE AND seats IS NOT NULL AND amount_minor IS NOT NULL",input.planCode,currency);
@@ -171,6 +175,13 @@ public class AcademyOnboardingController {
             result.put("amount_minor",price.get("annual_amount_minor"));
         }
         return result;
+    }
+    static String currencyFor(String country) {
+        String normalized=country==null?"":country.trim().toUpperCase(Locale.ROOT);
+        if("IN".equals(normalized))return "INR";
+        if("GB".equals(normalized))return "GBP";
+        if(EURO_COUNTRIES.contains(normalized))return "EUR";
+        return "USD";
     }
     private Map<String,Object> billingSnapshot(Map<String,Object> enrollment,Map<String,Object> quote,Plan input) {
         var snapshot=AcademyBilling.snapshot(db,json,enrollment,((Number)quote.get("subtotal")).longValue(),((Number)quote.get("discount")).longValue());

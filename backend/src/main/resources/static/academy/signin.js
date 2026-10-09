@@ -12,7 +12,7 @@ function academySignInView() {
     <label class="signin-field"><span class="sr-only">Password</span>${icon('shield')}<input id="academy-password" name="password" type="password" placeholder="Password" required maxlength="72" autocomplete="current-password"><button type="button" class="password-toggle" data-signin="password" aria-label="Show password" aria-pressed="false"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></label>
     <div class="signin-options"><label><input id="remember-identity" type="checkbox"> Remember email</label><button type="button" data-signin="forgot">Forgot password?</button></div>
     <div class="error" role="alert"></div><button class="signin-submit" type="submit">Sign in to workspace ${icon('arrow')}</button></form>
-    <div class="signin-divider"><span>OR</span></div><button class="signin-demo" type="button" data-action="demo">${icon('home')} Explore demo academy</button><p class="signin-demo-note">The demo uses synthetic data and resets when you reload.</p></div>
+    <div class="signin-divider"><span>OR</span></div><div class="social-signin" aria-label="Social sign in"><div id="academy-google-signin"></div><button class="signin-social facebook" type="button" data-signin="facebook" hidden>Continue with Facebook</button></div><button class="signin-demo" type="button" data-action="demo">${icon('home')} Explore demo academy</button><p class="signin-demo-note">Google and Facebook use the same ChessVerseAI account when the verified email matches.</p></div>
     <footer class="signin-footer">Powered by EpitomeHub<nav class="academy-public-links" aria-label="Academy information"><a href="/academy/pricing">Plans</a><a href="/academy/about">About</a><a href="/academy/contact">Contact</a><a href="/academy/terms">Terms</a><a href="/academy/privacy">Privacy</a><a href="/academy/refunds">Refunds</a></nav><span>More than a game.<br>A brighter future.</span></footer></section></div>`;
 }
 
@@ -26,7 +26,13 @@ login = function academySignIn() {
       $('#remember-identity').checked = true;
     }
   } catch { /* Storage may be disabled; authentication still works. */ }
+  initializeAcademySocialLogin();
 };
+
+let academyOAuthConfig;
+async function completeAcademyOAuth(provider,payload){const response=await fetch('/api/auth/'+provider,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json();if(!response.ok)throw new Error(result.message||provider+' sign-in failed.');state.token=result.token;await start();}
+function loadSocialScript(id,src,onload){if(document.querySelector('#'+id)){onload?.();return;}const script=document.createElement('script');script.id=id;script.async=true;script.defer=true;script.crossOrigin='anonymous';script.src=src;script.onload=onload;document.head.append(script);}
+async function initializeAcademySocialLogin(){try{academyOAuthConfig=await fetch('/api/auth/oauth-config').then(r=>r.json());if(academyOAuthConfig.googleEnabled)loadSocialScript('google-gsi','https://accounts.google.com/gsi/client',()=>{google.accounts.id.initialize({client_id:academyOAuthConfig.googleClientId,callback:async r=>{try{await completeAcademyOAuth('google',{idToken:r.credential});}catch(e){toast(e.message);}}});google.accounts.id.renderButton(document.querySelector('#academy-google-signin'),{theme:'outline',size:'large',width:360,text:'continue_with'});});const facebook=document.querySelector('[data-signin="facebook"]');if(academyOAuthConfig.facebookEnabled){facebook.hidden=false;window.fbAsyncInit=()=>FB.init({appId:academyOAuthConfig.facebookAppId,cookie:true,xfbml:false,version:'v26.0'});loadSocialScript('facebook-jssdk','https://connect.facebook.net/en_US/sdk.js');}}catch{/* Password sign-in remains available. */}}
 
 function passwordRecoveryView(email = '') {
   return `<button type="button" class="close" data-action="close" aria-label="Close">×</button><h2>Reset your password</h2><p class="intro">Enter your registered ChessVerseAI email to request a six-digit reset code.</p><form id="academy-recovery"><label>Email<input type="email" name="email" value="${esc(email)}" required autocomplete="email"></label><div class="error" role="alert"></div><button type="submit" class="button">Send reset code</button></form>`;
@@ -43,6 +49,7 @@ document.addEventListener('click', event => {
     control.setAttribute('aria-pressed', String(show));
     return;
   }
+  if(control.dataset.signin==='facebook'){if(!window.FB){toast('Facebook sign-in is still loading. Please try again.');return;}FB.login(async response=>{if(!response.authResponse)return;try{await completeAcademyOAuth('facebook',{accessToken:response.authResponse.accessToken});}catch(e){toast(e.message);}},{scope:'public_profile,email'});return;}
   dialog.classList.remove('form-drawer');
   if (control.dataset.signin === 'forgot') dialog.innerHTML = passwordRecoveryView();
   else dialog.innerHTML = `<button type="button" class="close" data-action="close" aria-label="Close">×</button><h2>Bring your academy to ChessVerseAI</h2><p class="intro">Already part of an academy? Ask your administrator to add your verified ChessVerseAI email.</p><p class="small">For a new academy or school, contact EpitomeHub with your academy name and the email you use for ChessVerseAI.</p><a class="button" href="mailto:contactus@epitomehub.com?subject=ChessVerseAI%20Academy%20Access">Contact EpitomeHub ${icon('arrow')}</a>`;

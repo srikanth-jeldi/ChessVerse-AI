@@ -52,14 +52,10 @@ class _PurchaseCenterScreenState extends State<PurchaseCenterScreen> {
 
   Future<void> _load() async {
     try {
-      final values = await Future.wait<Object>(<Future<Object>>[
-        _api.center(widget.token),
-        _premiumApi.status(widget.token),
-      ]);
+      final PurchaseCenterDto center = await _api.center(widget.token);
       if (mounted) {
         setState(() {
-          _center = values[0] as PurchaseCenterDto;
-          _premium = values[1] as PremiumStatusDto;
+          _center = center;
           _loading = false;
           _error = null;
         });
@@ -392,8 +388,6 @@ class _PurchaseCenterScreenState extends State<PurchaseCenterScreen> {
         children: [
           _hero(),
           const SizedBox(height: 18),
-          _premiumCard(),
-          const SizedBox(height: 24),
           Text(
             'COIN PACKS',
             style: Theme.of(context).textTheme.titleLarge
@@ -424,6 +418,9 @@ class _PurchaseCenterScreenState extends State<PurchaseCenterScreen> {
     },
   );
 
+  // Kept dormant for a possible future Academy-linked entitlement migration;
+  // the personal ChessVerseAI app currently exposes no Premium subscription.
+  // ignore: unused_element
   Widget _premiumCard() {
     final premium = _premium;
     if (premium == null) return const SizedBox.shrink();
