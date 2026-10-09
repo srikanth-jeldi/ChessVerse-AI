@@ -9,6 +9,7 @@ import com.github.bhlangonijr.chesslib.move.Move;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -26,7 +27,10 @@ public class OnlineMatchService {
     // minute to reconnect before awarding the game to the opponent.
     // 30-second reconnect window plus a final 15-second network allowance.
     static final Duration DISCONNECT_GRACE = Duration.ofSeconds(45);
-    static final Duration TOURNAMENT_ATTENDANCE_GRACE = Duration.ofMinutes(5);
+    // Keep tournament attendance and the client-visible reconnect countdown in
+    // lockstep. A five-minute server window with a 45-second UI countdown left
+    // players staring at 00:00 while the match was still active.
+    static final Duration TOURNAMENT_ATTENDANCE_GRACE = Duration.ofSeconds(45);
     static final Duration TOURNAMENT_ROUND_LIMIT = Duration.ofMinutes(15);
 
     private final OnlineMatchRepository matches;
@@ -168,6 +172,7 @@ public class OnlineMatchService {
         OnlineMatch match = requireParticipant(player.id(), matchId);
         Instant now = Instant.now();
         reconcileClock(match, now);
+        reconcileExpiredDisconnect(match, now);
         if (match.status == OnlineMatchStatus.WAITING && match.randomQueue) {
             // Polling is the random-queue heartbeat. A browser/app that leaves
             // this screen stops refreshing and cannot be paired after lease
@@ -449,31 +454,42 @@ public class OnlineMatchService {
     public List<UUID> finishExpiredDisconnects() {
         Instant now = Instant.now();
         List<OnlineMatch> expired = matches.lockExpiredDisconnects(now.minus(DISCONNECT_GRACE));
+        List<UUID> finished = new ArrayList<>();
         for (OnlineMatch match : expired) {
             reconcileClock(match, now);
-            if (match.status != OnlineMatchStatus.ACTIVE) continue;
-            Duration grace = match.tournamentName == null
-                    ? DISCONNECT_GRACE : TOURNAMENT_ATTENDANCE_GRACE;
-            boolean whiteExpired = match.whiteDisconnectedAt != null
-                    && !match.whiteDisconnectedAt.plus(grace).isAfter(now);
-            boolean blackExpired = match.blackDisconnectedAt != null
-                    && !match.blackDisconnectedAt.plus(grace).isAfter(now);
-            if (whiteExpired && blackExpired) {
-                if (match.tournamentName != null) {
-                    // Neither player attended: both are eliminated and this
-                    // pairing contributes no winner to the next round.
-                    finish(match, "1/2-1/2", "TOURNAMENT_DOUBLE_FORFEIT");
-                } else {
-                    finish(match, "1/2-1/2", "BOTH_DISCONNECTED");
-                }
-            } else if (whiteExpired) {
-                finish(match, "0-1", "OPPONENT_LEFT");
-            } else if (blackExpired) {
-                finish(match, "1-0", "OPPONENT_LEFT");
-            }
+            if (!reconcileExpiredDisconnect(match, now)) continue;
             matches.save(match);
+            finished.add(match.id);
         }
-        return expired.stream().map(match -> match.id).toList();
+        return finished;
+    }
+
+    static Duration disconnectGrace(OnlineMatch match) {
+        return match.tournamentName == null ? DISCONNECT_GRACE : TOURNAMENT_ATTENDANCE_GRACE;
+    }
+
+    private boolean reconcileExpiredDisconnect(OnlineMatch match, Instant now) {
+        if (match.status != OnlineMatchStatus.ACTIVE) return false;
+        Duration grace = disconnectGrace(match);
+        boolean whiteExpired = match.whiteDisconnectedAt != null
+                && !match.whiteDisconnectedAt.plus(grace).isAfter(now);
+        boolean blackExpired = match.blackDisconnectedAt != null
+                && !match.blackDisconnectedAt.plus(grace).isAfter(now);
+        if (!whiteExpired && !blackExpired) return false;
+        if (whiteExpired && blackExpired) {
+            if (match.tournamentName != null) {
+                // Neither player attended: both are eliminated and this
+                // pairing contributes no winner to the next round.
+                finish(match, "1/2-1/2", "TOURNAMENT_DOUBLE_FORFEIT");
+            } else {
+                finish(match, "1/2-1/2", "BOTH_DISCONNECTED");
+            }
+        } else if (whiteExpired) {
+            finish(match, "0-1", "OPPONENT_LEFT");
+        } else {
+            finish(match, "1-0", "OPPONENT_LEFT");
+        }
+        return true;
     }
 
     @Transactional

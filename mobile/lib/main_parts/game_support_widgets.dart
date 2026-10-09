@@ -661,13 +661,16 @@ class OnlineReconnectCountdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool finalising = secondsRemaining <= 0;
     final String countdown =
         '00:${secondsRemaining.clamp(0, 60).toString().padLeft(2, '0')}';
     return IgnorePointer(
       child: Center(
         child: Semantics(
           liveRegion: true,
-          label: 'Waiting for opponent. $secondsRemaining seconds remaining.',
+          label: finalising
+              ? 'Opponent reconnect window ended. Finalising result.'
+              : 'Waiting for opponent. $secondsRemaining seconds remaining.',
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: const Color(0xF20A1D2C),
@@ -691,9 +694,9 @@ class OnlineReconnectCountdown extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 11),
-                  const Text(
-                    'WAITING FOR OPPONENT',
-                    style: TextStyle(
+                  Text(
+                    finalising ? 'FINALISING RESULT' : 'WAITING FOR OPPONENT',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
                       fontWeight: FontWeight.w900,

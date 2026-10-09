@@ -319,7 +319,7 @@ class OnlineMatchServiceTest {
         OnlineMatch match = activeMatch();
         match.tournamentName = "Hyderabad Royal Cup";
         match.whiteDisconnectedAt = null;
-        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(301);
+        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(46);
         when(repository.lockExpiredDisconnects(any())).thenReturn(java.util.List.of(match));
 
         service.finishExpiredDisconnects();
@@ -327,6 +327,20 @@ class OnlineMatchServiceTest {
         assertEquals(OnlineMatchStatus.FINISHED, match.status);
         assertEquals("1-0", match.result);
         assertEquals("OPPONENT_LEFT", match.resultReason);
+    }
+
+    @Test
+    void pollingTournamentMatchAtZeroImmediatelyAwardsWalkover() {
+        OnlineMatch match = activeMatch();
+        match.tournamentName = "Hyderabad Royal Cup";
+        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(46);
+        when(repository.lockById(match.id)).thenReturn(Optional.of(match));
+
+        OnlineDtos.MatchDto result = service.get(white, match.id);
+
+        assertEquals(OnlineMatchStatus.FINISHED, result.status());
+        assertEquals("1-0", result.result());
+        assertEquals("OPPONENT_LEFT", result.resultReason());
     }
 
     @Test
@@ -350,8 +364,8 @@ class OnlineMatchServiceTest {
     void bothAbsentTournamentPlayersAreDoubleForfeited() {
         OnlineMatch match = activeMatch();
         match.tournamentName = "Hyderabad Royal Cup";
-        match.whiteDisconnectedAt = java.time.Instant.now().minusSeconds(301);
-        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(301);
+        match.whiteDisconnectedAt = java.time.Instant.now().minusSeconds(46);
+        match.blackDisconnectedAt = java.time.Instant.now().minusSeconds(46);
         when(repository.lockExpiredDisconnects(any())).thenReturn(java.util.List.of(match));
 
         service.finishExpiredDisconnects();

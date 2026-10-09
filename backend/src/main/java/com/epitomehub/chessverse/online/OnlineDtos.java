@@ -191,7 +191,7 @@ final class OnlineDtos {
             Instant disconnectedAt = match.whiteDisconnectedAt != null
                     ? match.whiteDisconnectedAt : match.blackDisconnectedAt;
             return disconnectedAt == null
-                    ? null : disconnectedAt.plus(OnlineMatchService.DISCONNECT_GRACE);
+                    ? null : disconnectedAt.plus(OnlineMatchService.disconnectGrace(match));
         }
     }
 }
