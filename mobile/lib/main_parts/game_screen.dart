@@ -428,14 +428,22 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   bool _draftConflict = false;
   bool _draftSaveWarningShown = false;
   Future<void>? _draftWrite;
+  Timer? _draftAutosaveTimer;
   bool _lastSaveOkay = true;
   bool _allowComputerExit = false;
   bool _leavingComputerGame = false;
 
-  @override
-  void setState(VoidCallback fn) {
-    super.setState(fn);
-    if (_draftOwner != null) scheduleMicrotask(() => _persistComputerDraft());
+  void _scheduleComputerDraftSave() {
+    if (_draftOwner == null ||
+        _gameMode != GameMode.computer ||
+        !_signedIn ||
+        _draftConflict) {
+      return;
+    }
+    _draftAutosaveTimer?.cancel();
+    _draftAutosaveTimer = Timer(const Duration(milliseconds: 500), () {
+      unawaited(_persistComputerDraft());
+    });
   }
 
   Map<String, dynamic> _encodePosition(GameSnapshot snapshot) => {
@@ -1049,6 +1057,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _draftAutosaveTimer?.cancel();
     unawaited(_persistComputerDraft(force: true));
     AppLanguageController.effectiveLanguageChanges.removeListener(
       _onCoachLanguageChanged,
@@ -3194,11 +3203,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     });
 
     if (promotionSquare != null && promotionWhite != null) {
-      _showPromotionPicker(
-        promotionSquare!,
-        promotionWhite!,
-      ).then((_) => _scheduleAiMove());
+      _showPromotionPicker(promotionSquare!, promotionWhite!).then((_) {
+        _scheduleComputerDraftSave();
+        _scheduleAiMove();
+      });
     } else if (moveCommitted) {
+      _scheduleComputerDraftSave();
       if (engineReviewFen != null && engineReviewMove != null) {
         unawaited(
           _reviewPlayerMoveWithEngine(
@@ -3755,6 +3765,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       );
       _aiThinking = false;
     });
+    _scheduleComputerDraftSave();
     _restartTurnReminder();
   }
 
@@ -5204,13 +5215,31 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         previous.whitePlayerName == match.whitePlayerName &&
         previous.blackPlayerName == match.blackPlayerName;
     if (sameBoard) {
-      setState(() {
-        _onlineMatch = match;
-        _whiteSeconds = (match.whiteTimeMs / 1000).ceil();
-        _blackSeconds = (match.blackTimeMs / 1000).ceil();
-        _coachNote = _onlineStatusText(match);
-      });
-      _applyOnlineLifecycle(match);
+      final int serverWhiteSeconds = (match.whiteTimeMs / 1000).ceil();
+      final int serverBlackSeconds = (match.blackTimeMs / 1000).ceil();
+      final bool clockNeedsSync =
+          (serverWhiteSeconds - _whiteSeconds).abs() > 2 ||
+          (serverBlackSeconds - _blackSeconds).abs() > 2;
+      final bool lifecycleChanged =
+          previous.status != match.status ||
+          previous.result != match.result ||
+          previous.resultReason != match.resultReason ||
+          previous.drawOfferedByColor != match.drawOfferedByColor ||
+          previous.rematchMatchId != match.rematchMatchId ||
+          previous.rematchRequestedByYou != match.rematchRequestedByYou;
+      _onlineMatch = match;
+      if (clockNeedsSync || lifecycleChanged) {
+        setState(() {
+          if (clockNeedsSync) {
+            _whiteSeconds = serverWhiteSeconds;
+            _blackSeconds = serverBlackSeconds;
+          }
+          _coachNote = _onlineStatusText(match);
+        });
+      }
+      if (lifecycleChanged) {
+        _applyOnlineLifecycle(match);
+      }
       if (shouldRestartIdleHint) {
         _scheduleIdleMoveHint(clearVisibleHint: true);
       }
