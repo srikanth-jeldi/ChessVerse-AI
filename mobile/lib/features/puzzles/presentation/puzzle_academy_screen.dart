@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/ads/banner_ad_slot.dart';
 import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/academy_activity.dart';
@@ -208,6 +209,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
         : '${PlayerLearningProfile.labelFor(learningProfile.primaryWeakness)} focus • 60% targeted';
     return Scaffold(
       backgroundColor: Colors.transparent,
+      bottomNavigationBar: const BannerAdSlot(),
       body: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints viewport) {
           // Width alone is not enough here: a phone rotated to landscape can

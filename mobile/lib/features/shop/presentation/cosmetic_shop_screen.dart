@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/ads/banner_ad_slot.dart';
 import '../../../core/app_preferences.dart';
 import '../../../core/ads/rewarded_coin_service.dart';
 import '../../../core/chess_piece_appearance.dart';
@@ -203,6 +204,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   Widget build(BuildContext context) {
     final Widget page = Scaffold(
       backgroundColor: const Color(0xFF061524),
+      bottomNavigationBar: const BannerAdSlot(),
       appBar: AppBar(
         backgroundColor: const Color(0xFF071B2D),
         title: const Text(

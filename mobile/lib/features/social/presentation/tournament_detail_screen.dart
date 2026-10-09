@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/ads/banner_ad_slot.dart';
 import '../data/community_api.dart';
 import '../../shop/presentation/cosmetic_shop_screen.dart';
 import '../data/social_api.dart';
@@ -164,6 +165,7 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
     final value = detail;
     return Scaffold(
       backgroundColor: const Color(0xFF030A12),
+      bottomNavigationBar: const BannerAdSlot(),
       appBar: AppBar(
         backgroundColor: const Color(0xFF071421),
         title: Text(value?.name ?? 'World Chess Circuit'),

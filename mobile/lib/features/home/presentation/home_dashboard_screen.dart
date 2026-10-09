@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/ads/banner_ad_slot.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/theme/app_colors.dart';
@@ -74,6 +75,7 @@ class HomeDashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
+      bottomNavigationBar: const BannerAdSlot(),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {

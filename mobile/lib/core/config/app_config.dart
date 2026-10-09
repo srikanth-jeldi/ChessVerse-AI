@@ -88,8 +88,16 @@ abstract final class AppConfig {
     'ADMOB_ANDROID_REWARDED_ID',
     defaultValue: '',
   );
+  static const String admobAndroidBannerId = String.fromEnvironment(
+    'ADMOB_ANDROID_BANNER_ID',
+    defaultValue: '',
+  );
   static const String admobIosRewardedId = String.fromEnvironment(
     'ADMOB_IOS_REWARDED_ID',
+    defaultValue: '',
+  );
+  static const String admobIosBannerId = String.fromEnvironment(
+    'ADMOB_IOS_BANNER_ID',
     defaultValue: '',
   );
 

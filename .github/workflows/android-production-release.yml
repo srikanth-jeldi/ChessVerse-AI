@@ -51,10 +51,12 @@ jobs:
           ADMOB_ANDROID_APP_ID: ${{ secrets.ADMOB_ANDROID_APP_ID }}
           ADMOB_ANDROID_REWARDED_ID: ${{ secrets.ADMOB_ANDROID_REWARDED_ID }}
           ADMOB_ANDROID_INTERSTITIAL_ID: ${{ secrets.ADMOB_ANDROID_INTERSTITIAL_ID }}
+          ADMOB_ANDROID_BANNER_ID: ${{ secrets.ADMOB_ANDROID_BANNER_ID }}
         run: |
           set -Eeuo pipefail
           for value in KEYSTORE_BASE64 STORE_PASSWORD KEY_PASSWORD KEY_ALIAS \
-            ADMOB_ANDROID_APP_ID ADMOB_ANDROID_REWARDED_ID ADMOB_ANDROID_INTERSTITIAL_ID; do
+            ADMOB_ANDROID_APP_ID ADMOB_ANDROID_REWARDED_ID \
+            ADMOB_ANDROID_INTERSTITIAL_ID ADMOB_ANDROID_BANNER_ID; do
             test -n "${!value}" || { echo "Missing production secret: ${value}" >&2; exit 1; }
           done
 
@@ -106,6 +108,7 @@ jobs:
           --dart-define=DATA_DELETION_URL=https://chessverseai.com/data-deletion
           --dart-define=ADMOB_ANDROID_REWARDED_ID=${{ secrets.ADMOB_ANDROID_REWARDED_ID }}
           --dart-define=ADMOB_ANDROID_INTERSTITIAL_ID=${{ secrets.ADMOB_ANDROID_INTERSTITIAL_ID }}
+          --dart-define=ADMOB_ANDROID_BANNER_ID=${{ secrets.ADMOB_ANDROID_BANNER_ID }}
 
       - name: Remove upload-only native metadata and re-sign
         shell: bash
