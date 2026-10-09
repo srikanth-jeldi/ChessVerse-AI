@@ -563,6 +563,47 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('online winner result detail uses player-first score', (
+    WidgetTester tester,
+  ) async {
+    const OnlineMatchDto match = OnlineMatchDto(
+      id: '44444444-4444-4444-4444-444444444444',
+      roomCode: 'CVLEFT',
+      status: 'FINISHED',
+      yourColor: 'BLACK',
+      activeColor: 'WHITE',
+      whitePlayerName: 'Opponent',
+      blackPlayerName: 'Srikanth',
+      fen: '',
+      result: '0-1',
+      resultReason: 'OPPONENT_LEFT',
+      moves: <OnlineMoveDto>[],
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(
+          initiallySignedIn: true,
+          useRemoteEngine: false,
+          initialGameMode: GameMode.online,
+          initialOnlineMatch: match,
+          initialAuthToken: 'test-token',
+          onlineApi: _FinishedOnlineApi(match),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 3200));
+    await tester.pump();
+
+    expect(find.text('1 - 0'), findsOneWidget);
+    expect(
+      find.textContaining('1 - 0 • Opponent left the match'),
+      findsWidgets,
+    );
+    expect(find.textContaining('0-1 • Opponent left the match'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('black player can move after starting a new game', (
     WidgetTester tester,
   ) async {

@@ -25,6 +25,7 @@ class CommunityController {
     }
     @PutMapping("/tournaments/{id}") CommunityDtos.HubDto tournament(@RequestHeader("Authorization")String auth,@PathVariable UUID id,@RequestParam boolean join){return community.joinTournament(player(auth),id,join);}
     @GetMapping("/tournaments/{id}") TournamentDtos.DetailDto tournamentDetail(@RequestHeader("Authorization")String auth,@PathVariable UUID id){return tournaments.detail(player(auth),id);}
+    @GetMapping("/tournament-achievements") List<TournamentDtos.AchievementDto> tournamentAchievements(@RequestHeader("Authorization")String auth){return tournaments.achievements(player(auth));}
     @GetMapping("/messages/{friendId}") List<CommunityDtos.MessageDto> messages(@RequestHeader("Authorization")String auth,@PathVariable UUID friendId){return community.messages(player(auth),friendId);}
     @PostMapping("/messages") CommunityDtos.MessageDto message(@RequestHeader("Authorization")String auth,@Valid @RequestBody CommunityDtos.MessageRequest request){return community.send(player(auth),request.recipientId(),request.body(),request.encrypted());}
     @GetMapping("/e2ee/identity") CommunityDtos.E2eeIdentityDto e2eeIdentity(@RequestHeader("Authorization") String auth) { return community.e2eeIdentity(player(auth)); }

@@ -51,6 +51,7 @@ class TournamentDto {
     this.clubId,
     this.startsAt,
     this.endsAt,
+    this.champion,
   });
   final String id, name, description, status;
   final int minutes,
@@ -67,6 +68,7 @@ class TournamentDto {
   final bool joined;
   final DateTime? startsAt, endsAt;
   final String? clubId;
+  final TournamentPlayerDto? champion;
   factory TournamentDto.fromJson(Map<String, dynamic> j) => TournamentDto(
     id: j['id'] as String? ?? '',
     name: j['name'] as String? ?? 'Tournament',
@@ -87,6 +89,9 @@ class TournamentDto {
     clubId: j['clubId'] as String?,
     startsAt: DateTime.tryParse(j['startsAt'] as String? ?? '')?.toLocal(),
     endsAt: DateTime.tryParse(j['endsAt'] as String? ?? '')?.toLocal(),
+    champion: j['champion'] is Map<String, dynamic>
+        ? TournamentPlayerDto.fromJson(j['champion'] as Map<String, dynamic>)
+        : null,
   );
 }
 
@@ -226,6 +231,27 @@ class TournamentRoundDto {
             .whereType<Map<String, dynamic>>()
             .map(TournamentPairingDto.fromJson)
             .toList(),
+      );
+}
+
+class TournamentAchievementDto {
+  const TournamentAchievementDto({
+    required this.tournamentId,
+    required this.tournamentName,
+    required this.badgeCode,
+    required this.placement,
+    required this.awardedAt,
+  });
+  final String tournamentId, tournamentName, badgeCode, placement;
+  final DateTime? awardedAt;
+  factory TournamentAchievementDto.fromJson(Map<String, dynamic> j) =>
+      TournamentAchievementDto(
+        tournamentId: j['tournamentId'] as String? ?? '',
+        tournamentName: j['tournamentName'] as String? ?? 'Tournament',
+        badgeCode: j['badgeCode'] as String? ?? '',
+        placement: j['placement'] as String? ?? '',
+        awardedAt: DateTime.tryParse(j['awardedAt'] as String? ?? '')
+            ?.toLocal(),
       );
 }
 
@@ -409,6 +435,17 @@ class CommunityApi {
       TournamentDetailDto.fromJson(
         await _request(token, 'GET', '/api/v1/community/tournaments/$id'),
       );
+  Future<List<TournamentAchievementDto>> tournamentAchievements(
+    String token,
+  ) async =>
+      (await _requestList(
+            token,
+            'GET',
+            '/api/v1/community/tournament-achievements',
+          ))
+          .whereType<Map<String, dynamic>>()
+          .map(TournamentAchievementDto.fromJson)
+          .toList();
   Future<List<MessageDto>> messages(String token, String friendId) async =>
       (await _requestList(
         token,

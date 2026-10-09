@@ -37,6 +37,15 @@ void main() {
           'ACTIVE',
           true,
         ),
+        TournamentPairingDto(
+          2,
+          TournamentPlayerDto('p4', 'Srikanth', null),
+          null,
+          null,
+          TournamentPlayerDto('p4', 'Srikanth', null),
+          'BYE',
+          true,
+        ),
       ]),
     ],
   );
@@ -90,6 +99,8 @@ void main() {
       expect(find.text('OPENING ROUND'), findsOneWidget);
       expect(find.text('QUARTERFINAL'), findsOneWidget);
       expect(find.text('Arjun'), findsNWidgets(2));
+      expect(find.text('BYE · Advances automatically'), findsOneWidget);
+      expect(find.text('TBD'), findsNothing);
       expect(tester.takeException(), isNull);
       expect(toggles, 0);
     });

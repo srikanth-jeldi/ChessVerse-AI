@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../auth/data/auth_session_store.dart';
+import '../../social/data/community_api.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({
@@ -51,6 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late String? _profilePhotoUrl;
   bool _useAccountPhoto = true;
   bool _uploadingPhoto = false;
+  List<TournamentAchievementDto> _tournamentAchievements = const [];
 
   @override
   void initState() {
@@ -60,6 +63,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         : widget.playerName.trim();
     _profilePhotoUrl = widget.profilePhotoUrl;
     _loadPhotoPreference();
+    if (!widget.isGuest) unawaited(_loadTournamentAchievements());
+  }
+
+  Future<void> _loadTournamentAchievements() async {
+    try {
+      final session = await const AuthSessionStore().read();
+      if (session == null) return;
+      final achievements = await const CommunityApi().tournamentAchievements(
+        session.token,
+      );
+      if (mounted) setState(() => _tournamentAchievements = achievements);
+    } on Object {
+      // Profile remains usable while the network or tournament service is down.
+    }
   }
 
   Future<void> _loadPhotoPreference() async {
@@ -228,6 +245,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 18),
+          if (_tournamentAchievements.isNotEmpty) ...<Widget>[
+            _TournamentTrophies(achievements: _tournamentAchievements),
+            const SizedBox(height: 18),
+          ],
           const _SectionLabel('DEVICE ACTIVITY'),
           const SizedBox(height: 10),
           GridView.count(
@@ -540,6 +561,63 @@ class _RewardInfoTile extends StatelessWidget {
           ),
         ),
       ],
+    ),
+  );
+}
+
+class _TournamentTrophies extends StatelessWidget {
+  const _TournamentTrophies({required this.achievements});
+  final List<TournamentAchievementDto> achievements;
+
+  @override
+  Widget build(BuildContext context) => _SectionCard(
+    title: 'TOURNAMENT TROPHIES',
+    icon: Icons.emoji_events_rounded,
+    asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
+    child: Column(
+      children: achievements.map((achievement) {
+        final champion = achievement.placement == 'CHAMPION';
+        return ListTile(
+          key: ValueKey<String>(
+            'tournament-trophy-${achievement.tournamentId}',
+          ),
+          contentPadding: EdgeInsets.zero,
+          leading: CircleAvatar(
+            backgroundColor: champion
+                ? const Color(0xFF6A4A0C)
+                : const Color(0xFF29465B),
+            child: Icon(
+              champion
+                  ? Icons.emoji_events_rounded
+                  : Icons.workspace_premium_rounded,
+              color: champion
+                  ? const Color(0xFFFFD66F)
+                  : const Color(0xFFC8D4DE),
+            ),
+          ),
+          title: Text(
+            achievement.tournamentName,
+            style: const TextStyle(fontWeight: FontWeight.w900),
+          ),
+          subtitle: Text(
+            champion ? 'Champion' : 'Runner-up',
+            style: TextStyle(
+              color: champion
+                  ? const Color(0xFFFFD66F)
+                  : const Color(0xFFB7C6D1),
+            ),
+          ),
+          trailing: Text(
+            achievement.badgeCode.replaceAll('_', ' '),
+            textAlign: TextAlign.end,
+            style: const TextStyle(
+              color: Color(0xFF62E4D1),
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        );
+      }).toList(),
     ),
   );
 }

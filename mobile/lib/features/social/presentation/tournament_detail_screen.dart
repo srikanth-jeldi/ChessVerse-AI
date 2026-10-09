@@ -1449,6 +1449,9 @@ class _PairingCard extends StatelessWidget {
           _PlayerRow(
             player: pairing.black,
             winner: pairing.winner?.id == pairing.black?.id,
+            emptyLabel: pairing.status == 'BYE'
+                ? 'BYE · Advances automatically'
+                : 'Awaiting opponent',
           ),
         ],
       ),
@@ -1457,9 +1460,14 @@ class _PairingCard extends StatelessWidget {
 }
 
 class _PlayerRow extends StatelessWidget {
-  const _PlayerRow({required this.player, required this.winner});
+  const _PlayerRow({
+    required this.player,
+    required this.winner,
+    this.emptyLabel = 'Awaiting opponent',
+  });
   final TournamentPlayerDto? player;
   final bool winner;
+  final String emptyLabel;
   @override
   Widget build(BuildContext context) => Row(
     children: <Widget>[
@@ -1482,7 +1490,7 @@ class _PlayerRow extends StatelessWidget {
       const SizedBox(width: 8),
       Expanded(
         child: Text(
-          player?.name ?? 'TBD',
+          player?.name ?? emptyLabel,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: winner ? const Color(0xFFFFD66F) : Colors.white,

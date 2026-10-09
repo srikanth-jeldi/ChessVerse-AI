@@ -250,6 +250,19 @@ class TournamentService {
                 "tournament:"+tournamentId+":runner-up-bonus","Tournament runner-up bonus");
     }
 
+    List<TournamentDtos.AchievementDto> achievements(AuthenticatedPlayer player) {
+        return jdbc.query("""
+                select b.tournament_id,t.name,b.badge_code,b.placement,b.awarded_at
+                from player_tournament_badge b
+                join chess_tournament t on t.id=b.tournament_id
+                where b.player_id=? and b.placement in ('CHAMPION','RUNNER_UP')
+                order by b.awarded_at desc
+                """,(rs,row)->new TournamentDtos.AchievementDto(
+                rs.getObject("tournament_id",UUID.class),rs.getString("name"),
+                rs.getString("badge_code"),rs.getString("placement"),
+                rs.getTimestamp("awarded_at").toInstant()),player.id());
+    }
+
     private void awardParticipationOnly(UUID tournamentId) {
         Object[] reward=jdbc.queryForObject("select badge_code,participation_bonus from chess_tournament where id=?",
                 (rs,row)->new Object[]{rs.getString(1),rs.getInt(2)},tournamentId);

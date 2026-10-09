@@ -10,6 +10,8 @@ final class TournamentDtos {
     record PairingDto(UUID id, int board, PlayerDto white, PlayerDto black,
             UUID matchId, PlayerDto winner, String status, boolean mine) {}
     record RoundDto(int number, String status, List<PairingDto> pairings) {}
+    record AchievementDto(UUID tournamentId, String tournamentName, String badgeCode,
+            String placement, Instant awardedAt) {}
     record DetailDto(UUID id, String name, String description, int timeControlMinutes,
             int players, int capacity, Instant startsAt, Instant endsAt, String status,
             boolean joined, int entryCoins, long prizePool, int currentRound,

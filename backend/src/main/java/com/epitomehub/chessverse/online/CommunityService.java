@@ -71,7 +71,8 @@ class CommunityService {
                 rs.getString("status"),rs.getBoolean("joined"),rs.getInt("entry_coins"),
                 rs.getLong("prize_pool"),rs.getInt("cadence_days"),rs.getInt("minimum_players"),
                 rs.getString("badge_code"),rs.getInt("champion_bonus"),rs.getInt("runner_up_bonus"),
-                rs.getInt("participation_bonus"),uuidOrNull(rs,"club_id")), player.id(),player.id());
+                rs.getInt("participation_bonus"),uuidOrNull(rs,"club_id"),
+                tournamentPlayer(uuidOrNull(rs,"champion_id"))), player.id(),player.id());
         List<CommunityDtos.ConversationDto> conversations = jdbc.query("""
                 select p.id,p.display_name,p.photo_url,
                 (select d.id from direct_message d
@@ -455,6 +456,11 @@ class CommunityService {
     private void requireExists(String table, UUID id, String label) {
         Integer found=jdbc.queryForObject("select count(*) from "+table+" where id=?",Integer.class,id);
         if(found==null||found==0) throw new OnlineMatchException(HttpStatus.NOT_FOUND,label+" was not found.");
+    }
+    private TournamentDtos.PlayerDto tournamentPlayer(UUID id) {
+        if (id == null) return null;
+        return jdbc.query("select display_name,photo_url from player_account where id=?",
+                rs -> rs.next() ? new TournamentDtos.PlayerDto(id,rs.getString(1),rs.getString(2)) : null,id);
     }
     private static UUID uuid(ResultSet rs,String name) throws SQLException { return rs.getObject(name,UUID.class); }
     private static UUID uuidOrNull(ResultSet rs,String name) throws SQLException { return rs.getObject(name,UUID.class); }

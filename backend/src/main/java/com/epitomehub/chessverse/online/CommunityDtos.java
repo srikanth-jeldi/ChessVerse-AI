@@ -18,7 +18,7 @@ final class CommunityDtos {
                          String status, boolean joined, int entryCoins, long prizePool,
                          int cadenceDays, int minimumPlayers, String badgeCode,
                          int championBonus, int runnerUpBonus, int participationBonus,
-                         UUID clubId) {}
+                         UUID clubId, TournamentDtos.PlayerDto champion) {}
     record ConversationDto(UUID playerId, String displayName, String photoUrl,
                            boolean online, String lastMessage, Instant sentAt, int unread) {}
     record MessageDto(UUID id, UUID senderId, UUID recipientId, String body,

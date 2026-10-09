@@ -5759,7 +5759,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         : userWon
         ? ' • Prize +${match.coinsEarned} coins'
         : ' • Entry -${match.entryCoins} coins';
-    return '${match.result ?? ''} • $reason$ratingText$coinText';
+    // The server result is stored in chess colour order (White-Black), while
+    // this dialog is explicitly written from the signed-in player's view.
+    // Keep both score lines in the same player-first perspective.
+    return '${match.perspectiveScoreLabel} • $reason$ratingText$coinText';
   }
 
   Future<void> _showPromotionPicker(String square, bool white) async {
