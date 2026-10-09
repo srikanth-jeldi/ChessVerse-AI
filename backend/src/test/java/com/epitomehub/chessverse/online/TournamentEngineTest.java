@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,8 +48,14 @@ class TournamentEngineTest {
         jdbc.execute("alter table chess_tournament add column if not exists created_by uuid");
         jdbc.execute("create table if not exists direct_message(id uuid primary key,sender_id uuid,recipient_id uuid,body text,sent_at timestamp with time zone,read_at timestamp with time zone,delivered_at timestamp with time zone,attachment_name varchar(255),attachment_type varchar(120),attachment_size bigint,attachment_path varchar(255),encrypted boolean not null default false)");
         jdbc.execute("create table if not exists fair_play_signal(id uuid primary key,player_id uuid,match_id uuid,signal_type varchar(40),severity int,evidence varchar(500),created_at timestamp with time zone)");
+        UUID testTournament=UUID.fromString("22000000-0000-0000-0000-000000000001");
+        jdbc.update("delete from chess_tournament_pairing where round_id in (select id from chess_tournament_round where tournament_id=?)",testTournament);
+        jdbc.update("delete from chess_tournament_round where tournament_id=?",testTournament);
+        jdbc.update("delete from player_tournament_badge where tournament_id=?",testTournament);
+        jdbc.update("delete from chess_tournament_entry where tournament_id=?",testTournament);
+        jdbc.update("delete from chess_tournament where id=?",testTournament);
         jdbc.update("merge into chess_tournament(id,name,description,time_control_minutes,capacity,starts_at,ends_at,status,current_round,entry_coins,badge_code,champion_bonus,runner_up_bonus,participation_bonus) key(id) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                UUID.fromString("22000000-0000-0000-0000-000000000001"),"Test Cup","Knockout",10,16,
+                testTournament,"Test Cup","Knockout",10,16,
                 Timestamp.from(Instant.now().plusSeconds(3600)),Timestamp.from(Instant.now().plusSeconds(7200)),"OPEN",0,100,
                 "TEST_CUP_BADGE",50,25,10);
     }
@@ -132,6 +139,82 @@ class TournamentEngineTest {
                 where player_id=? and type='TOURNAMENT_CANCELLED' and action_type='TOURNAMENT'
                   and action_id=? and body like '%100 entry coins were refunded%'
                 """,Integer.class,playerId,tournament));
+    }
+
+    @Test
+    void oddPlayerByeAdvancesIntoARealFinalWithoutTbdOpponent() throws Exception {
+        UUID tournament=UUID.fromString("22000000-0000-0000-0000-000000000001");
+        List<String> tokens=List.of(
+                guest("71000000-0000-4000-8000-000000000201"),
+                guest("71000000-0000-4000-8000-000000000202"),
+                guest("71000000-0000-4000-8000-000000000203"));
+        for(String token:tokens) mockMvc.perform(put("/api/v1/community/tournaments/"+tournament+"?join=true")
+                .header("Authorization","Bearer "+token)).andExpect(status().isOk());
+        jdbc.update("update chess_tournament set starts_at=? where id=?",
+                Timestamp.from(Instant.now().minusSeconds(1)),tournament);
+        mockMvc.perform(get("/api/v1/community/tournaments/"+tournament)
+                .header("Authorization","Bearer "+tokens.getFirst())).andExpect(status().isOk());
+
+        assertEquals(1,jdbc.queryForObject("""
+                select count(*) from chess_tournament_pairing p
+                join chess_tournament_round r on r.id=p.round_id
+                where r.tournament_id=? and r.round_number=1 and p.status='BYE'
+                """,Integer.class,tournament));
+        UUID openingMatch=jdbc.queryForObject("""
+                select p.online_match_id from chess_tournament_pairing p
+                join chess_tournament_round r on r.id=p.round_id
+                where r.tournament_id=? and r.round_number=1 and p.status='ACTIVE'
+                """,UUID.class,tournament);
+        finish(openingMatch,"1-0","CHECKMATE");
+
+        assertEquals(0,jdbc.queryForObject("""
+                select count(*) from chess_tournament_pairing p
+                join chess_tournament_round r on r.id=p.round_id
+                where r.tournament_id=? and r.round_number=2
+                  and (p.white_player_id is null or p.black_player_id is null)
+                """,Integer.class,tournament));
+        UUID finalMatch=jdbc.queryForObject("""
+                select p.online_match_id from chess_tournament_pairing p
+                join chess_tournament_round r on r.id=p.round_id
+                where r.tournament_id=? and r.round_number=2 and p.status='ACTIVE'
+                """,UUID.class,tournament);
+        finish(finalMatch,"0-1","CHECKMATE");
+        assertEquals("FINISHED",jdbc.queryForObject(
+                "select status from chess_tournament where id=?",String.class,tournament));
+        org.junit.jupiter.api.Assertions.assertNotNull(jdbc.queryForObject(
+                "select champion_id from chess_tournament where id=?",UUID.class,tournament));
+    }
+
+    @Test
+    void bothAbsentPlayersAreEliminatedWithoutAnEmptyChampion() throws Exception {
+        UUID tournament=UUID.fromString("22000000-0000-0000-0000-000000000001");
+        String first=guest("71000000-0000-4000-8000-000000000301");
+        String second=guest("71000000-0000-4000-8000-000000000302");
+        for(String token:List.of(first,second)) mockMvc.perform(
+                put("/api/v1/community/tournaments/"+tournament+"?join=true")
+                        .header("Authorization","Bearer "+token)).andExpect(status().isOk());
+        jdbc.update("update chess_tournament set starts_at=? where id=?",
+                Timestamp.from(Instant.now().minusSeconds(1)),tournament);
+        var response=mockMvc.perform(get("/api/v1/community/tournaments/"+tournament)
+                .header("Authorization","Bearer "+first)).andExpect(status().isOk()).andReturn();
+        UUID matchId=UUID.fromString(json.readTree(response.getResponse().getContentAsString())
+                .path("rounds").get(0).path("pairings").get(0).path("matchId").asText());
+        finish(matchId,"1/2-1/2","TOURNAMENT_DOUBLE_FORFEIT");
+
+        mockMvc.perform(get("/api/v1/community/tournaments/"+tournament)
+                        .header("Authorization","Bearer "+first))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("FINISHED"))
+                .andExpect(jsonPath("$.champion").doesNotExist());
+        assertEquals(0,jdbc.queryForObject(
+                "select count(*) from player_tournament_badge where tournament_id=? and placement='CHAMPION'",
+                Integer.class,tournament));
+    }
+
+    private void finish(UUID matchId,String result,String reason) {
+        OnlineMatch match=matches.findById(matchId).orElseThrow();
+        match.result=result;match.resultReason=reason;match.status=OnlineMatchStatus.FINISHED;
+        tournaments.recordResult(match);
     }
     private String guest(String installation) throws Exception {var r=mockMvc.perform(post("/api/auth/guest").contentType(MediaType.APPLICATION_JSON).content("{\"installationId\":\""+installation+"\"}")) .andExpect(status().isOk()).andReturn();return json.readTree(r.getResponse().getContentAsString()).path("token").asText();}
 }

@@ -60,6 +60,13 @@ Recording-for-facebook-BLURRED.mp4
 # Generated deliverables and local QA artifacts.
 artifacts/
 
+# Local build/review scratch directories and retained release bundles.
+.build-tmp/
+.codex-build/
+.tmp-video-review/
+mobile/.build-tmp/
+releases/
+
 # Mobile signing material must never be committed.
 mobile/android/key.properties
 mobile/android/keystore/
