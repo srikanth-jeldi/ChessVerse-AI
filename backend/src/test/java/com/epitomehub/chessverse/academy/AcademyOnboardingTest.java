@@ -33,7 +33,7 @@ class AcademyOnboardingTest {
  @Autowired DataSource ds;@Autowired JdbcTemplate db;@Autowired PlayerAuthenticationService auth;@Autowired AcademyPaymentGateway gateway;@Autowired AcademyBillingMailService mail;@Autowired AcademyOnboardingController api;
  UUID account;
  @BeforeEach void resetMail(){reset(mail);}
- @BeforeEach void setup(){reset(auth,gateway);db.execute("DROP ALL OBJECTS");db.execute("CREATE TABLE player_account(id UUID PRIMARY KEY,display_name VARCHAR(100),email VARCHAR(254),verified BOOLEAN DEFAULT TRUE)");new ResourceDatabasePopulator(new ClassPathResource("db/migration/V62__organization_portal.sql"),new ClassPathResource("db/migration/V63__academy_self_service.sql"),new ClassPathResource("db/migration/V64__academy_invitations.sql"),new ClassPathResource("db/migration/V65__academy_operations.sql"),new ClassPathResource("db/migration/V75__academy_trial_and_first_payment_offer.sql"),new ClassPathResource("db/migration/V76__academy_annual_pricing.sql"),new ClassPathResource("db/migration/V77__academy_trial_student_limit.sql"),new ClassPathResource("db/migration/V79__academy_usd_pricing.sql")).execute(ds);account=UUID.randomUUID();db.update("INSERT INTO player_account(id,display_name,email) VALUES(?,'Owner','owner@example.com')",account);when(auth.requireBearer("owner")).thenReturn(new AuthenticatedPlayer(account,"owner","Owner",null));when(gateway.available()).thenReturn(true);when(gateway.publicKey()).thenReturn("rzp_live_public");when(gateway.createOrder(anyString(),anyLong(),anyString())).thenReturn(new AcademyPaymentGateway.ProviderOrder("order_abc","rzp_live_public"));when(gateway.validPaymentSignature(anyString(),anyString(),anyString())).thenReturn(true);db.update("UPDATE academy_plan_price SET enabled=TRUE");db.update("UPDATE academy_billing_config SET approved=TRUE,sac='998319'");}
+ @BeforeEach void setup(){reset(auth,gateway);db.execute("DROP ALL OBJECTS");db.execute("CREATE TABLE player_account(id UUID PRIMARY KEY,display_name VARCHAR(100),email VARCHAR(254),verified BOOLEAN DEFAULT TRUE)");new ResourceDatabasePopulator(new ClassPathResource("db/migration/V62__organization_portal.sql"),new ClassPathResource("db/migration/V63__academy_self_service.sql"),new ClassPathResource("db/migration/V64__academy_invitations.sql"),new ClassPathResource("db/migration/V65__academy_operations.sql"),new ClassPathResource("db/migration/V75__academy_trial_and_first_payment_offer.sql"),new ClassPathResource("db/migration/V76__academy_annual_pricing.sql"),new ClassPathResource("db/migration/V77__academy_trial_student_limit.sql"),new ClassPathResource("db/migration/V79__academy_usd_pricing.sql"),new ClassPathResource("db/migration/V80__academy_payment_links.sql")).execute(ds);account=UUID.randomUUID();db.update("INSERT INTO player_account(id,display_name,email) VALUES(?,'Owner','owner@example.com')",account);when(auth.requireBearer("owner")).thenReturn(new AuthenticatedPlayer(account,"owner","Owner",null));when(gateway.available()).thenReturn(true);when(gateway.publicKey()).thenReturn("rzp_live_public");when(gateway.createOrder(anyString(),anyLong(),anyString())).thenReturn(new AcademyPaymentGateway.ProviderOrder("order_abc","rzp_live_public"));when(gateway.validPaymentSignature(anyString(),anyString(),anyString())).thenReturn(true);db.update("UPDATE academy_plan_price SET enabled=TRUE");db.update("UPDATE academy_billing_config SET approved=TRUE,sac='998319'");}
  void enroll(String country){api.enroll("owner",new AcademyOnboardingController.Enrollment("Kings","ACADEMY",country));api.billing("owner",new AcademyOnboardingController.BillingDetails("Kings","billing@example.com","Road 1","Hyderabad","Telangana","500072","36",""));}
  Map<?,?> order(){return (Map<?,?>)api.order("owner",new AcademyOnboardingController.Plan("STARTER","",176882L));}
  AcademyOnboardingController.Verification verified(Map<?,?> o){return new AcademyOnboardingController.Verification((UUID)o.get("id"),"pay_abc","a".repeat(64));}
@@ -120,5 +120,41 @@ class AcademyOnboardingTest {
   var reminder=operations().trialReminder("coach",org);assertEquals(5L,reminder.get("blunders"));assertEquals(3L,reminder.get("retrySolved"));assertEquals(false,reminder.get("canChoosePlan"));
   assertEquals(10L,operations().trialReminder("owner",org).get("blunders"));
   db.update("UPDATE academy_member SET role='STUDENT' WHERE id=?",coach);assertEquals(false,operations().trialReminder("coach",org).get("show"));
+ }
+
+ UUID pendingLink(){
+  enroll("IN");var o=order();UUID id=(UUID)o.get("id");
+  db.update("UPDATE academy_checkout SET provider_order='plink_fixture',payment_link_url='https://rzp.io/i/fixture',currency='USD',amount_minor=1900 WHERE id=?",id);
+  return id;
+ }
+ @Test void linkCannotUseOrderSignatureVerification(){UUID id=pendingLink();assertThrows(ResponseStatusException.class,()->api.verify("owner",new AcademyOnboardingController.Verification(id,"pay_link","a".repeat(64))));assertEquals("PENDING",db.queryForObject("SELECT status FROM academy_checkout",String.class));}
+ @Test void linkReconciliationUsesExactReferenceAndIsIdempotent(){
+  UUID id=pendingLink();assertEquals(false,((Map<?,?>)api.reconcile("owner",id)).get("active"));
+  when(gateway.findCapturedLinkPayment("plink_fixture",id.toString(),1900)).thenReturn("pay_link");
+  assertEquals(true,((Map<?,?>)api.reconcile("owner",id)).get("active"));api.reconcile("owner",id);
+  assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM academy_invoice",Integer.class));
+  verify(gateway,never()).findCapturedPayment(anyString(),anyLong(),anyString());
+ }
+ @Test void signedLinkWebhookRejectsWrongPaymentAndActivatesExactPayment(){
+  UUID id=pendingLink();when(gateway.validWebhookSignature(anyString(),eq("signed"))).thenReturn(true);
+  String raw="{\"event\":\"payment_link.paid\",\"payload\":{\"payment_link\":{\"entity\":{\"id\":\"plink_fixture\"}},\"payment\":{\"entity\":{\"id\":\"pay_link\"}}}}";
+  when(gateway.findCapturedLinkPayment("plink_fixture",id.toString(),1900)).thenReturn("pay_other");assertThrows(ResponseStatusException.class,()->api.webhook(raw,"signed"));
+  assertEquals("PENDING",db.queryForObject("SELECT status FROM academy_checkout",String.class));
+  when(gateway.findCapturedLinkPayment("plink_fixture",id.toString(),1900)).thenReturn("pay_link");api.webhook(raw,"signed");api.webhook(raw,"signed");
+  assertEquals(1,db.queryForObject("SELECT COUNT(*) FROM academy_invoice",Integer.class));
+ }
+ @Test void missingInternationalTaxApprovalCannotCreateAnyPayableLink(){enroll("US");assertThrows(ResponseStatusException.class,()->api.order("owner",new AcademyOnboardingController.Plan("STARTER","",1900L)));verify(gateway,never()).createUsdLink(anyString(),anyLong(),anyString());}
+ @Test void approvedBillingFixtureRoutesUsdToLinkAndResumesSameCheckout(){
+  // Test fixture only: production export-tax approval is still blocked by AcademyBilling.
+  enroll("US");
+  var billing=new HashMap<String,Object>();billing.put("total",1900L);billing.put("tax",0L);billing.put("currency","USD");
+  when(gateway.createUsdLink(anyString(),eq(1900L),anyString())).thenReturn(new AcademyPaymentGateway.ProviderLink("plink_fixture","https://rzp.io/i/fixture"));
+  try(var approved=org.mockito.Mockito.mockStatic(AcademyBilling.class)){
+   approved.when(()->AcademyBilling.snapshot(any(),any(),anyMap(),eq(1900L),eq(0L))).thenReturn(billing);
+   var input=new AcademyOnboardingController.Plan("STARTER","",1900L);
+   var first=(Map<?,?>)api.order("owner",input);assertEquals("https://rzp.io/i/fixture",first.get("paymentUrl"));assertEquals("USD",first.get("currency"));
+   assertEquals(first,api.order("owner",input));verify(gateway,times(1)).createUsdLink(eq(first.get("id").toString()),eq(1900L),anyString());
+   verify(gateway,never()).createOrder(anyString(),anyLong(),anyString());
+  }
  }
 }

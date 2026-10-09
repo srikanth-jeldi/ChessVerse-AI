@@ -46,6 +46,79 @@ class AcademyPaymentGateway {
 
     String publicKey() { return keyId; }
 
+    // Reuse a provider reference after an ambiguous timeout instead of creating another payable link.
+    ProviderLink createUsdLink(String reference, long amount, String description) {
+        if (!reference.matches("[a-f0-9-]{36}") || amount <= 0) throw unavailable();
+        JsonNode existing = linkRequest("GET", "payment_links?reference_id=" + reference, null);
+        if (!existing.path("payment_links").isArray()) throw unavailable();
+        for (JsonNode link : existing.path("payment_links")) {
+            if (reference.equals(link.path("reference_id").asText())) return checkedLink(link, reference, amount);
+        }
+        var body = Map.of("amount", amount, "currency", "USD", "accept_partial", false,
+                "reference_id", reference, "description", description,
+                "notify", Map.of("sms", false, "email", false), "reminder_enable", false,
+                "callback_url", "https://academy.chessverseai.com/academy?payment_link_return=1",
+                "callback_method", "get");
+        return checkedLink(linkRequest("POST", "payment_links", body), reference, amount);
+    }
+
+    private ProviderLink checkedLink(JsonNode link, String reference, long amount) {
+        if (!link.path("id").asText().matches("plink_[A-Za-z0-9]+")
+                || !reference.equals(link.path("reference_id").asText())
+                || amount != link.path("amount").asLong(-1)
+                || !"USD".equals(link.path("currency").asText())
+                || link.path("accept_partial").asBoolean(true)
+                || !java.util.Set.of("created", "paid").contains(link.path("status").asText())
+                || !safePaymentLink(link.path("short_url").asText())) throw unavailable();
+        return new ProviderLink(link.path("id").asText(), link.path("short_url").asText());
+    }
+
+    static boolean safePaymentLink(String url) {
+        try {
+            URI uri = URI.create(url);
+            return "https".equals(uri.getScheme()) && java.util.Set.of("rzp.io", "rzp.me").contains(uri.getHost())
+                    && uri.getUserInfo() == null && uri.getPort() == -1 && uri.getFragment() == null;
+        } catch (RuntimeException invalid) { return false; }
+    }
+
+    String findCapturedLinkPayment(String linkId, String reference, long amount) {
+        if (!linkId.matches("plink_[A-Za-z0-9]+")) throw unavailable();
+        JsonNode link = linkRequest("GET", "payment_links/" + linkId, null);
+        if (!linkId.equals(link.path("id").asText()) || !reference.equals(link.path("reference_id").asText())
+                || amount != link.path("amount").asLong(-1) || !"USD".equals(link.path("currency").asText())
+                || link.path("accept_partial").asBoolean(true)) throw unavailable();
+        if (!"paid".equals(link.path("status").asText()) || amount != link.path("amount_paid").asLong(-1)) return null;
+        String order = link.path("order_id").asText();
+        if (!order.matches("order_[A-Za-z0-9]+")) throw unavailable();
+        for (JsonNode payment : link.path("payments")) {
+            String id = payment.path("payment_id").asText();
+            if (id.matches("pay_[A-Za-z0-9]+") && "captured".equals(payment.path("status").asText())
+                    && amount == payment.path("amount").asLong(-1)) {
+                verifyCapturedPayment(id, order, amount, "USD");
+                return id;
+            }
+        }
+        return null;
+    }
+
+    // Package visibility allows transport tests to stub provider responses without real charges.
+    JsonNode linkRequest(String method, String path, Map<String, Object> body) {
+        if (!available()) throw unavailable();
+        try {
+            var builder = HttpRequest.newBuilder(URI.create("https://api.razorpay.com/v1/" + path))
+                    .timeout(Duration.ofSeconds(12)).header("Authorization", authorization());
+            if (body == null) builder.GET();
+            else builder.header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)));
+            var response = client().send(builder.build(), HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) throw unavailable();
+            return json.readTree(response.body());
+        } catch (ResponseStatusException expected) { throw expected; }
+        catch (Exception failure) {
+            if (failure instanceof InterruptedException) Thread.currentThread().interrupt();
+            throw unavailable();
+        }
+    }
+
     ProviderOrder createOrder(String receipt, long amountMinor, String currency) {
         if (!available()) throw unavailable();
         try {
@@ -184,5 +257,6 @@ class AcademyPaymentGateway {
     }
 
     record ProviderOrder(String id, String publicKeyId) {}
+    record ProviderLink(String id, String url) {}
     record VerifiedPayment(String id) {}
 }

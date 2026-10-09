@@ -127,9 +127,14 @@ public class AcademyOnboardingController {
         check(Objects.equals(input.expectedTotal,billing.get("total")),HttpStatus.CONFLICT,"The price or tax changed. Review your total again before paying.");
         if(e.get("organization_id")!=null) check(db.queryForObject("SELECT COUNT(*) FROM academy_student WHERE organization_id=? AND active=TRUE",Integer.class,e.get("organization_id"))<=((Number)p.get("seats")).intValue(),HttpStatus.CONFLICT,"Choose a plan that covers your active students.");
         if(e.get("organization_id")!=null) check(db.queryForObject("SELECT COUNT(*) FROM academy_member WHERE organization_id=? AND role='COACH' AND active=TRUE",Integer.class,e.get("organization_id"))<=AcademyCoachLimits.limit(p.get("name").toString()),HttpStatus.CONFLICT,"Choose a plan that covers your active coaches.");
-        UUID order=UUID.randomUUID();
-        var provider=gateway.createOrder(order.toString(),((Number)billing.get("total")).longValue(),currency);
-        db.update("INSERT INTO academy_checkout(id,enrollment_id,provider_order,plan_code,plan_name,seats,amount_minor,currency,coupon_code,subtotal_minor,discount_minor,billing_snapshot,tax_minor,billing_months) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",order,e.get("id"),provider.id(),input.planCode,p.get("name"),p.get("seats"),billing.get("total"),currency,quote.get("coupon"),p.get("amount_minor"),quote.get("discount"),json.writeValueAsString(billing),billing.get("tax"),input.months());
+        boolean usd="USD".equals(currency);
+        // A stable reference survives provider success followed by a local rollback or timeout.
+        UUID order=usd?UUID.nameUUIDFromBytes((e.get("id")+":"+db.queryForObject("SELECT COUNT(*) FROM academy_checkout WHERE enrollment_id=?",Long.class,e.get("id"))).getBytes(java.nio.charset.StandardCharsets.UTF_8)):UUID.randomUUID();
+        String providerId,linkUrl=null;
+        if(usd){var link=gateway.createUsdLink(order.toString(),((Number)billing.get("total")).longValue(),p.get("name")+" - "+input.months()+" month(s)");providerId=link.id();linkUrl=link.url();}
+        else providerId=gateway.createOrder(order.toString(),((Number)billing.get("total")).longValue(),currency).id();
+        db.update("INSERT INTO academy_checkout(id,enrollment_id,provider_order,plan_code,plan_name,seats,amount_minor,currency,coupon_code,subtotal_minor,discount_minor,billing_snapshot,tax_minor,billing_months) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",order,e.get("id"),providerId,input.planCode,p.get("name"),p.get("seats"),billing.get("total"),currency,quote.get("coupon"),p.get("amount_minor"),quote.get("discount"),json.writeValueAsString(billing),billing.get("tax"),input.months());
+        if(linkUrl!=null)db.update("UPDATE academy_checkout SET payment_link_url=? WHERE id=?",linkUrl,order);
         return checkoutView(rows("SELECT * FROM academy_checkout WHERE id=?",order).getFirst());
     }
     private String checkoutBlockedReason(Map<String,Object> e) {
@@ -145,6 +150,10 @@ public class AcademyOnboardingController {
         check(reason.isEmpty(),HttpStatus.CONFLICT,reason);
     }
     private Object checkoutView(Map<String,Object> o) {
+        if(o.get("payment_link_url")!=null){
+            check(AcademyPaymentGateway.safePaymentLink(o.get("payment_link_url").toString()),HttpStatus.CONFLICT,"Payment link is unavailable. Contact support.");
+            return Map.of("id",o.get("id"),"paymentUrl",o.get("payment_link_url"),"currency",o.get("currency"),"amount",o.get("amount_minor"),"plan",o.get("plan_name"),"billingMonths",o.get("billing_months"));
+        }
         return Map.of("id",o.get("id"),"orderId",o.get("provider_order"),"keyId",gateway.publicKey(),"amount",o.get("amount_minor"),"currency",o.get("currency"),"plan",o.get("plan_name"),"billingMonths",o.get("billing_months"));
     }
     @PostMapping("/quote") public Object quote(@RequestHeader("Authorization") String bearer,@Valid @RequestBody Plan input) {
@@ -196,19 +205,26 @@ public class AcademyOnboardingController {
     }
     @PostMapping("/verify") public Object verify(@RequestHeader("Authorization") String bearer,@Valid @RequestBody Verification v) {
         var o=owned(bearer,v.checkoutId);
+        check(o.get("payment_link_url")==null,HttpStatus.BAD_REQUEST,"Use Check payment status for Payment Links.");
         check(gateway.validPaymentSignature(o.get("provider_order").toString(),v.paymentId,v.signature),HttpStatus.BAD_REQUEST,"Payment signature could not be verified.");
         return activate(v.checkoutId,v.paymentId);
     }
     @PostMapping("/orders/{checkout}/reconcile") public Object reconcile(@RequestHeader("Authorization") String bearer,@PathVariable UUID checkout) {
         var o=owned(bearer,checkout);
         if("PAID".equals(o.get("status")))return Map.of("active",true);
-        String payment=gateway.findCapturedPayment(o.get("provider_order").toString(),((Number)o.get("amount_minor")).longValue(),o.get("currency").toString());
+        String payment=o.get("payment_link_url")!=null?gateway.findCapturedLinkPayment(o.get("provider_order").toString(),checkout.toString(),((Number)o.get("amount_minor")).longValue()):gateway.findCapturedPayment(o.get("provider_order").toString(),((Number)o.get("amount_minor")).longValue(),o.get("currency").toString());
         return payment==null?Map.of("active",false):activate(checkout,payment);
     }
     @PostMapping("/webhook") public Object webhook(@RequestBody String raw,@RequestHeader(value="X-Razorpay-Signature",required=false) String signature) {
         check(gateway.validWebhookSignature(raw,signature),HttpStatus.BAD_REQUEST,"Invalid webhook signature.");
         var payload=json.readTree(raw);
         var payment=payload.path("payload").path("payment").path("entity");
+        if("payment_link.paid".equals(payload.path("event").asText())){
+            var link=payload.path("payload").path("payment_link").path("entity");
+            var found=rows("SELECT id FROM academy_checkout WHERE provider_order=? AND payment_link_url IS NOT NULL",link.path("id").asText());
+            if(!found.isEmpty())activate(id(found.getFirst().get("id")),payment.path("id").asText());
+            return Map.of("received",true);
+        }
         var orders=rows("SELECT id FROM academy_checkout WHERE provider_order=?",payment.path("order_id").asText());
         if("payment.failed".equals(payload.path("event").asText())&&!orders.isEmpty()){
             String reason=payment.path("error_description").asText("Payment failed");reason=reason.substring(0,Math.min(200,reason.length()));UUID checkout=id(orders.getFirst().get("id"));
@@ -223,7 +239,10 @@ public class AcademyOnboardingController {
         var o=rows("SELECT * FROM academy_checkout WHERE id=? FOR UPDATE",checkout).getFirst();
         if("PAID".equals(o.get("status")))return Map.of("active",true);
         check(payment.matches("pay_[A-Za-z0-9]+"),HttpStatus.BAD_REQUEST,"Invalid payment identifier.");
-        gateway.verifyCapturedPayment(payment,o.get("provider_order").toString(),((Number)o.get("amount_minor")).longValue(),o.get("currency").toString());
+        if(o.get("payment_link_url")!=null){
+            String captured=gateway.findCapturedLinkPayment(o.get("provider_order").toString(),checkout.toString(),((Number)o.get("amount_minor")).longValue());
+            check(payment.equals(captured),HttpStatus.CONFLICT,"Payment is not captured for this exact link. Academy was not activated.");
+        }else gateway.verifyCapturedPayment(payment,o.get("provider_order").toString(),((Number)o.get("amount_minor")).longValue(),o.get("currency").toString());
         var e=rows("SELECT * FROM academy_enrollment WHERE id=? FOR UPDATE",o.get("enrollment_id")).getFirst();
         UUID org=e.get("organization_id")==null?UUID.randomUUID():id(e.get("organization_id"));
         if(e.get("organization_id")==null) {
