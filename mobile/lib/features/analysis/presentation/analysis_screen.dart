@@ -1337,26 +1337,46 @@ class _PremiumGameCard extends StatelessWidget {
           final Widget details = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      game.summary,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+              if (compact) ...<Widget>[
+                Text(
+                  game.summary,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
                   ),
-                  _StatusPill(
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: _StatusPill(
                     game.moveReviews.isEmpty
                         ? _d(context, 'latestEmpty')
                         : _d(context, 'latestReport'),
                   ),
-                ],
-              ),
+                ),
+              ] else
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        game.summary,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    _StatusPill(
+                      game.moveReviews.isEmpty
+                          ? _d(context, 'latestEmpty')
+                          : _d(context, 'latestReport'),
+                    ),
+                  ],
+                ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 14,
@@ -1556,9 +1576,13 @@ class _OutlineTag extends StatelessWidget {
       children: <Widget>[
         Icon(icon, size: 16, color: const Color(0xFFFFCC58)),
         const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+          ),
         ),
       ],
     ),

@@ -41,10 +41,11 @@ android {
         versionName = flutter.versionName
         manifestPlaceholders["admobApplicationId"] = admobAndroidAppId.get()
         ndk {
-            // Keep every ABI served by Play aligned with a matching Flutter
-            // engine. Some 64-bit-capable phones still run a 32-bit Android
-            // userspace, while ChromeOS/emulators can run x86_64.
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+            // Keep Play's declared ABIs identical to the Flutter engines built
+            // by android-production-release.yml. Advertising x86_64 while the
+            // bundle only contains ARM engines lets Play install an unusable
+            // split and crashes at startup with EM_AARCH64/EM_X86_64.
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
         }
     }
 

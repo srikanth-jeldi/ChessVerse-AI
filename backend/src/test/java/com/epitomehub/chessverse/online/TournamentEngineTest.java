@@ -96,5 +96,42 @@ class TournamentEngineTest {
         assertEquals(1, jdbc.queryForObject("select count(*) from player_tournament_badge where player_id=? and placement='CHAMPION'",Integer.class,replay.whitePlayerId));
         assertEquals(1, jdbc.queryForObject("select count(*) from player_tournament_badge where player_id=? and placement='RUNNER_UP'",Integer.class,replay.blackPlayerId));
     }
+
+    @Test
+    void cancelsUnderfilledTournamentRefundsEntryAndNotifiesPlayer() throws Exception {
+        String token=guest("71000000-0000-4000-8000-000000000101");
+        UUID playerId=UUID.fromString(json.readTree(mockMvc.perform(get("/api/auth/me")
+                .header("Authorization","Bearer "+token)).andReturn().getResponse().getContentAsString())
+                .path("id").asText());
+        UUID tournament=UUID.fromString("22000000-0000-0000-0000-000000000101");
+        jdbc.update("insert into chess_tournament(id,name,description,time_control_minutes,capacity,starts_at,ends_at,status,current_round,entry_coins,minimum_players) values(?,?,?,?,?,?,?,?,?,?,?)",
+                tournament,"Solo Test Cup","Requires two players",5,16,
+                Timestamp.from(Instant.now().plusSeconds(3600)),Timestamp.from(Instant.now().plusSeconds(7200)),
+                "OPEN",0,100,2);
+
+        mockMvc.perform(put("/api/v1/community/tournaments/"+tournament+"?join=true")
+                        .header("Authorization","Bearer "+token))
+                .andExpect(status().isOk());
+        assertEquals(600L,jdbc.queryForObject(
+                "select coin_balance from player_wallet where player_id=?",Long.class,playerId));
+        jdbc.update("update chess_tournament set starts_at=? where id=?",
+                Timestamp.from(Instant.now().minusSeconds(1)),tournament);
+
+        mockMvc.perform(get("/api/v1/community/tournaments/"+tournament)
+                        .header("Authorization","Bearer "+token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        assertEquals(700L,jdbc.queryForObject(
+                "select coin_balance from player_wallet where player_id=?",Long.class,playerId));
+        assertEquals(0,jdbc.queryForObject(
+                "select count(*) from chess_tournament_entry where tournament_id=? and active=true",
+                Integer.class,tournament));
+        assertEquals(1,jdbc.queryForObject("""
+                select count(*) from player_notification
+                where player_id=? and type='TOURNAMENT_CANCELLED' and action_type='TOURNAMENT'
+                  and action_id=? and body like '%100 entry coins were refunded%'
+                """,Integer.class,playerId,tournament));
+    }
     private String guest(String installation) throws Exception {var r=mockMvc.perform(post("/api/auth/guest").contentType(MediaType.APPLICATION_JSON).content("{\"installationId\":\""+installation+"\"}")) .andExpect(status().isOk()).andReturn();return json.readTree(r.getResponse().getContentAsString()).path("token").asText();}
 }

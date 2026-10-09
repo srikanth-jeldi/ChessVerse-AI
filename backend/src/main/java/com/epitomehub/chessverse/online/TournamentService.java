@@ -272,6 +272,8 @@ class TournamentService {
     }
 
     private void refundCancelledEntries(UUID tournamentId) {
+        String tournamentName = jdbc.queryForObject(
+                "select name from chess_tournament where id=?", String.class, tournamentId);
         List<Object[]> entries = jdbc.query("select player_id,reserved_coins,reservation_id from chess_tournament_entry where tournament_id=? and active=true and refunded_at is null for update",
                 (rs,row)->new Object[]{rs.getObject(1,UUID.class),rs.getInt(2),rs.getObject(3,UUID.class)},tournamentId);
         Instant now = Instant.now();
@@ -279,6 +281,10 @@ class TournamentService {
             UUID playerId=(UUID)entry[0], reservationId=(UUID)entry[2]; int coins=(Integer)entry[1];
             if (coins > 0 && reservationId != null) economy.grantCoins(playerId,coins,"TOURNAMENT_CANCELLED_REFUND",
                     "tournament:"+tournamentId+":cancel-refund:"+reservationId,"Cancelled tournament entry returned");
+            notifications.create(playerId, "TOURNAMENT_CANCELLED",
+                    tournamentName + " cancelled",
+                    "Not enough players registered. Your " + coins + " entry coins were refunded.",
+                    "TOURNAMENT", tournamentId);
         }
         jdbc.update("update chess_tournament_entry set active=false,refunded_at=? where tournament_id=? and active=true",
                 Timestamp.from(now),tournamentId);
