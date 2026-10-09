@@ -1268,7 +1268,21 @@ void main() {
       find.byKey(const ValueKey<String>('square-e1')),
     );
     expect(checkedKing.checkedKing, isTrue);
-    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 10500));
+    expect(find.text('AI Review My Game'), findsOneWidget);
+
+    await tester.tap(find.text('AI Review My Game'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 800));
+    expect(find.byIcon(Icons.close_rounded), findsWidgets);
+    await tester.tap(find.byIcon(Icons.close_rounded).last);
+    await tester.pump();
+    expect(find.text('AI Review My Game'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(find.text('AI Review My Game'), findsNothing);
+    expect(find.byType(GameScreen), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

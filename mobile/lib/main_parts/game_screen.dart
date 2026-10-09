@@ -1129,13 +1129,21 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final bool dismissResultFirst =
+        _signedIn && _gameResultTitle != null && _resultVisible;
     return PopScope(
       canPop:
-          _gameMode != GameMode.computer ||
-          _allowComputerExit ||
-          _draftConflict,
+          !dismissResultFirst &&
+          (_gameMode != GameMode.computer ||
+              _allowComputerExit ||
+              _draftConflict),
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) unawaited(_pauseComputerAndLeave());
+        if (didPop) return;
+        if (dismissResultFirst) {
+          setState(() => _resultVisible = false);
+          return;
+        }
+        unawaited(_pauseComputerAndLeave());
       },
       child: _buildGameScreen(context),
     );
@@ -1825,13 +1833,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             onReview: _isTacticsMode
                                 ? null
                                 : () async {
-                                    setState(() => _resultVisible = false);
                                     await _showPostMatchAdIfEligible();
                                     if (!mounted) return;
-                                    WidgetsBinding.instance
-                                        .addPostFrameCallback(
-                                          (_) => _showAiReview(),
-                                        );
+                                    await _showAiReview();
                                   },
                             onShare: _isTacticsMode
                                 ? null
@@ -4482,7 +4486,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _showAiReview() {
+  Future<void> _showAiReview() async {
     final AiReviewReport report = AiReviewReport.fromMoves(
       _moves,
       result: _gameResultTitle,
@@ -4492,7 +4496,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       knownReviews: _moveReviews,
       initialFen: _initialGameFen,
     );
-    showAdaptiveAiReview(
+    await showAdaptiveAiReview(
       context,
       report: report,
       timeControl: _gameMode == GameMode.computer ? '10+0' : null,

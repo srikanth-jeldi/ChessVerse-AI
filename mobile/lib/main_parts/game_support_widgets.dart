@@ -900,24 +900,78 @@ class _VictoryFireworksPainter extends CustomPainter {
     final double bandCenter = winnerAtTop
         ? size.height * .24
         : size.height * .76;
-    final Paint paint = Paint()..style = PaintingStyle.fill;
+    final double scale = math.min(1.35, size.shortestSide / 390);
+    final Paint glow = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+    final Paint core = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    final Paint spark = Paint()..style = PaintingStyle.fill;
     for (int burst = 0; burst < 5; burst++) {
-      final double phase = (progress + burst * .19) % 1;
-      final double opacity = (1 - phase).clamp(0.0, 1.0);
+      final double phase = (progress + burst * .21) % 1;
       final Offset center = Offset(
-        size.width * (.14 + burst * .18),
-        bandCenter + math.sin(burst * 1.7) * size.height * .08,
+        size.width * (.12 + burst * .19),
+        bandCenter + math.sin(burst * 1.73) * size.height * .095,
       );
-      for (int ray = 0; ray < 12; ray++) {
-        final double angle = (math.pi * 2 * ray / 12) + burst * .35;
-        final double radius =
-            (18 + 88 * phase) * math.min(1.25, size.shortestSide / 420);
-        final Offset particle =
-            center + Offset(math.cos(angle) * radius, math.sin(angle) * radius);
-        paint.color = _colors[(burst + ray) % _colors.length].withValues(
-          alpha: opacity,
+
+      // A short rising fuse makes each burst read like a firework instead of
+      // floating confetti. It disappears as soon as the shell explodes.
+      if (phase < .18) {
+        final double rise = phase / .18;
+        final Offset rocket = Offset(
+          center.dx,
+          center.dy + (68 * (1 - rise) * scale),
         );
-        canvas.drawCircle(particle, 2.2 + 2.8 * opacity, paint);
+        final Color rocketColor = _colors[burst % _colors.length];
+        glow
+          ..color = rocketColor.withValues(alpha: .42)
+          ..strokeWidth = 4 * scale;
+        core
+          ..color = Colors.white.withValues(alpha: .9)
+          ..strokeWidth = 1.4 * scale;
+        canvas.drawLine(rocket, rocket + Offset(0, 15 * scale), glow);
+        canvas.drawLine(rocket, rocket + Offset(0, 11 * scale), core);
+        continue;
+      }
+
+      final double explosion = ((phase - .18) / .82).clamp(0.0, 1.0);
+      final double opacity = math.pow(1 - explosion, .72).toDouble();
+      final double radius = (16 + 96 * explosion) * scale;
+      for (int ray = 0; ray < 18; ray++) {
+        final double angle =
+            (math.pi * 2 * ray / 18) + burst * .31 + math.sin(ray * 2.1) * .04;
+        final double rayLength = radius * (.82 + (ray % 4) * .055);
+        final double gravity = 22 * explosion * explosion * scale;
+        final Offset direction = Offset(math.cos(angle), math.sin(angle));
+        final Offset tip = center + direction * rayLength + Offset(0, gravity);
+        final Offset tail =
+            center +
+            direction * math.max(5, rayLength - (16 + 24 * explosion) * scale) +
+            Offset(0, gravity * .72);
+        final Color color = _colors[(burst * 2 + ray) % _colors.length];
+        glow
+          ..color = color.withValues(alpha: opacity * .52)
+          ..strokeWidth = 4.2 * scale;
+        core
+          ..color = Color.lerp(
+            color,
+            Colors.white,
+            .42,
+          )!.withValues(alpha: opacity)
+          ..strokeWidth = (1.15 + opacity) * scale;
+        canvas.drawLine(tail, tip, glow);
+        canvas.drawLine(tail, tip, core);
+
+        spark.color = Colors.white.withValues(alpha: opacity * .92);
+        canvas.drawCircle(tip, (1.1 + opacity) * scale, spark);
+        if (ray.isEven) {
+          final Offset ember =
+              tip - direction * (8 * scale) + Offset(0, 8 * explosion * scale);
+          spark.color = color.withValues(alpha: opacity * .75);
+          canvas.drawCircle(ember, 1.25 * scale, spark);
+        }
       }
     }
   }
