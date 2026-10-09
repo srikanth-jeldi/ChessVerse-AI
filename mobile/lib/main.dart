@@ -62,6 +62,7 @@ import 'features/notifications/presentation/notification_center_screen.dart';
 import 'features/leaderboard/presentation/leaderboard_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/profile/presentation/linked_accounts_screen.dart';
+import 'features/purchases/data/premium_subscription_api.dart';
 import 'features/missions/presentation/missions_screen.dart';
 import 'features/shop/presentation/cosmetic_shop_screen.dart';
 import 'features/shop/data/economy_rewards_api.dart';
@@ -1020,7 +1021,12 @@ class _SplashGateState extends State<SplashGate> {
             _openPlayFromReminder();
             _openTournamentsFromReminder();
             _openWeeklyReportFromReminder();
-            unawaited(AppAnalytics.logAuthentication(guest: result.isGuest));
+            unawaited(
+              AppAnalytics.logAuthentication(
+                guest: result.isGuest,
+                token: result.token,
+              ),
+            );
             if (result.token != null) {
               _enableCloudSync(result.token!);
               unawaited(_syncCloudProgress(result.token!));
@@ -2051,7 +2057,13 @@ class _SplashGateState extends State<SplashGate> {
       }
     }
     unawaited(DailyReminderService.instance.recordPlayOpened());
-    unawaited(AppAnalytics.logGameStarted(mode: mode.name, guest: _isGuest));
+    unawaited(
+      AppAnalytics.logGameStarted(
+        mode: mode.name,
+        guest: _isGuest,
+        token: initialAuthToken,
+      ),
+    );
     return _push(
       context,
       GameScreen(

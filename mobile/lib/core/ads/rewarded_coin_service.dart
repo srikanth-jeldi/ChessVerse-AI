@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'ad_sdk_initializer.dart';
+import '../analytics/app_analytics.dart';
 import '../config/app_config.dart';
 
 class RewardedCoinService {
@@ -52,7 +53,7 @@ class RewardedCoinService {
     );
   }
 
-  Future<bool> show({required String playerId}) async {
+  Future<bool> show({required String playerId, required String token}) async {
     if (!supported || _showing) return false;
     if (_ad == null) {
       await load();
@@ -63,6 +64,13 @@ class RewardedCoinService {
     final ad = _ad!;
     _ad = null;
     bool earned = false;
+    unawaited(
+      AppAnalytics.logProductEvent(
+        token: token,
+        name: 'rewarded_ad_started',
+        context: 'coin_shop',
+      ),
+    );
     ad.setServerSideOptions(
       ServerSideVerificationOptions(
         userId: playerId,
@@ -73,12 +81,26 @@ class RewardedCoinService {
       onAdDismissedFullScreenContent: (value) {
         value.dispose();
         _showing = false;
+        unawaited(
+          AppAnalytics.logProductEvent(
+            token: token,
+            name: earned ? 'rewarded_ad_completed' : 'rewarded_ad_dismissed',
+            context: 'coin_shop',
+          ),
+        );
         if (!completer.isCompleted) completer.complete(earned);
         unawaited(load());
       },
       onAdFailedToShowFullScreenContent: (value, _) {
         value.dispose();
         _showing = false;
+        unawaited(
+          AppAnalytics.logProductEvent(
+            token: token,
+            name: 'rewarded_ad_dismissed',
+            context: 'show_failed',
+          ),
+        );
         if (!completer.isCompleted) completer.complete(false);
         unawaited(load());
       },

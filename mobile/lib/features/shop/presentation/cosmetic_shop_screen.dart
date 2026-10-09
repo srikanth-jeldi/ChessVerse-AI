@@ -523,6 +523,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     try {
       final bool earned = await RewardedCoinService.instance.show(
         playerId: shop.playerId,
+        token: widget.token,
       );
       if (!mounted) return;
       if (!earned) {

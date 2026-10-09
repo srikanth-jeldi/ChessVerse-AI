@@ -1,0 +1,21 @@
+.product-analytics {
+  margin-bottom: 26px;
+  padding-bottom: 26px;
+  border-bottom: 1px solid var(--line);
+}
+
+.product-analytics .page-heading {
+  margin-top: 0;
+}
+
+.product-stats {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+@media (max-width: 1100px) {
+  .product-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 680px) {
+  .product-stats { grid-template-columns: 1fr 1fr; }
+}
