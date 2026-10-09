@@ -1194,7 +1194,7 @@ class GameResultOverlay extends StatelessWidget {
                               key: const ValueKey<String>('share-game-result'),
                               onPressed: onShare,
                               icon: const Icon(Icons.ios_share_rounded),
-                              label: const Text('COPY SHAREABLE RESULT'),
+                              label: const Text('SHARE RESULT'),
                             ),
                           ),
                         ],
@@ -1243,101 +1243,30 @@ class GameResultOverlay extends StatelessWidget {
   Future<void> _showGameExport(BuildContext context) async {
     final ({String pgn, String fen}) data = await onExport!();
     if (!context.mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Row(
-          children: <Widget>[
-            Icon(Icons.ios_share_rounded, color: Color(0xFFD6A84F)),
-            SizedBox(width: 10),
-            Expanded(child: Text('Game export')),
-          ],
-        ),
-        content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                _GameExportBlock(label: 'PGN • COMPLETE GAME', value: data.pgn),
-                const SizedBox(height: 14),
-                _GameExportBlock(
-                  label: 'FEN • FINAL POSITION',
-                  value: data.fen,
-                ),
-              ],
-            ),
+    final String stamp = DateTime.now()
+        .toUtc()
+        .toIso8601String()
+        .replaceAll(RegExp(r'[:.]'), '-')
+        .replaceAll('Z', '');
+    await SharePlus.instance.share(
+      ShareParams(
+        subject: 'ChessVerseAI game export',
+        text: 'ChessVerseAI game files: complete PGN and final-position FEN.',
+        files: <XFile>[
+          XFile.fromData(
+            Uint8List.fromList(utf8.encode('${data.pgn}\n')),
+            mimeType: 'application/x-chess-pgn',
+            name: 'chessverseai-$stamp.pgn',
           ),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Close'),
+          XFile.fromData(
+            Uint8List.fromList(utf8.encode('${data.fen}\n')),
+            mimeType: 'text/plain',
+            name: 'chessverseai-$stamp.fen',
           ),
         ],
       ),
     );
   }
-}
-
-class _GameExportBlock extends StatelessWidget {
-  const _GameExportBlock({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: const Color(0xFF102236),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: const Color(0x5559E4C8)),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    color: Color(0xFF59E4C8),
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              IconButton(
-                tooltip: 'Copy',
-                onPressed: () async {
-                  await Clipboard.setData(ClipboardData(text: value));
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${label.split(' • ').first} copied.'),
-                      ),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.copy_rounded),
-              ),
-            ],
-          ),
-          SelectableText(
-            value,
-            style: const TextStyle(
-              color: Color(0xFFDCE6EE),
-              fontFamily: 'monospace',
-              fontSize: 12,
-              height: 1.35,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 }
 
 class CoachInsight extends StatelessWidget {

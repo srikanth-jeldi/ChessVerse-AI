@@ -1839,19 +1839,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                         'Turning point: $_turningPoint',
                                       'Play and improve at chessverseai.com',
                                     ].join('\n');
-                                    await Clipboard.setData(
-                                      ClipboardData(text: result),
+                                    await SharePlus.instance.share(
+                                      ShareParams(
+                                        text: result,
+                                        subject: 'My ChessVerseAI game',
+                                      ),
                                     );
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                'Shareable result copied.',
-                                              ),
-                                            ),
-                                          );
-                                    }
                                   },
                             onExport: _isTacticsMode
                                 ? null

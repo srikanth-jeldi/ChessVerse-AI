@@ -80,16 +80,17 @@ void main() {
     expect(find.text('1-0'), findsNothing);
   });
 
-  testWidgets('finished game exposes PGN and FEN export', (tester) async {
+  testWidgets('finished game exposes native PGN and FEN export action', (
+    tester,
+  ) async {
     await tester.pumpWidget(_result(title: 'You win', coinsEarned: 200));
     await tester.pump(const Duration(seconds: 1));
 
-    await tester.tap(find.byKey(const ValueKey<String>('export-game-data')));
-    await tester.pump(const Duration(milliseconds: 300));
-
-    expect(find.text('Game export'), findsOneWidget);
-    expect(find.text('PGN • COMPLETE GAME'), findsOneWidget);
-    expect(find.text('FEN • FINAL POSITION'), findsOneWidget);
-    expect(find.textContaining('[Event "ChessVerseAI Game"]'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('export-game-data')),
+      findsOneWidget,
+    );
+    expect(find.text('EXPORT PGN / FEN'), findsOneWidget);
+    expect(find.text('SHARE RESULT'), findsOneWidget);
   });
 }

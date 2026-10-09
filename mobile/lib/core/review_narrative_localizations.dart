@@ -237,6 +237,11 @@ bool supportsReviewNarrative(String value) {
 String localizeReviewNarrative(String value, String code) {
   final language = AppLanguageController.resolveCode(code);
   if (language == 'en') return value;
+  if (RegExp(
+    r'^This move missed a forced checkmate\.(?: [a-h][1-8][a-h][1-8][qrbn]? kept| It began) the mating sequence\.$',
+  ).hasMatch(value)) {
+    return _missedMateTranslations[language] ?? value;
+  }
   String text(String key, Map<String, String> values) {
     var result =
         reviewNarrativeTranslations[language]![reviewNarrativeKeys.indexOf(
@@ -287,6 +292,48 @@ String localizeReviewNarrative(String value, String code) {
   }
   return value;
 }
+
+/// Stockfish emits this sentence dynamically, so it cannot use the ordinary
+/// exact-template table. Keep it localized for every language offered by the
+/// app instead of leaking English into Mistake Bank completion cards.
+const _missedMateTranslations = <String, String>{
+  'te': 'ఈ ఎత్తుతో తప్పనిసరి చెక్‌మేట్ అవకాశం చేజారింది. మేట్ క్రమాన్ని మళ్లీ పరిశీలించండి.',
+  'hi': 'इस चाल से अनिवार्य मात चूक गई। मात के क्रम को फिर से देखें।',
+  'ta': 'இந்த நகர்வில் கட்டாய செக்மேட் தவறியது. மேட் தொடரை மீண்டும் பாருங்கள்.',
+  'kn': 'ಈ ನಡೆಯಿಂದ ಕಡ್ಡಾಯ ಚೆಕ್‌ಮೇಟ್ ತಪ್ಪಿತು. ಮೇಟ್ ಕ್ರಮವನ್ನು ಮತ್ತೆ ಪರಿಶೀಲಿಸಿ.',
+  'ml': 'ഈ നീക്കത്തിൽ നിർബന്ധിത ചെക്ക്മേറ്റ് നഷ്ടപ്പെട്ടു. മേറ്റ് ക്രമം വീണ്ടും പരിശോധിക്കുക.',
+  'mr': 'या चालीत सक्तीचा चेकमेट हुकला. मेटचा क्रम पुन्हा पाहा.',
+  'bn': 'এই চালে নিশ্চিত চেকমেটের সুযোগ হারিয়েছে। মেটের ধারাটি আবার দেখুন।',
+  'gu': 'આ ચાલથી ફરજિયાત ચેકમેટ ચૂકી ગયું. મેટનો ક્રમ ફરી જુઓ.',
+  'pa': 'ਇਸ ਚਾਲ ਨਾਲ ਲਾਜ਼ਮੀ ਚੈਕਮੇਟ ਖੁੰਝ ਗਿਆ। ਮੇਟ ਦੀ ਲੜੀ ਮੁੜ ਵੇਖੋ।',
+  'ur': 'اس چال سے لازمی چیک میٹ رہ گیا۔ میٹ کے سلسلے کو دوبارہ دیکھیں۔',
+  'ar': 'أضاعت هذه النقلة كش مات إجبارياً. راجع تسلسل المات.',
+  'fa': 'این حرکت مات اجباری را از دست داد. دنبالهٔ مات را دوباره بررسی کنید.',
+  'es': 'Esta jugada perdió un mate forzado. Revisa la secuencia de mate.',
+  'fr': 'Ce coup a manqué un mat forcé. Revoyez la séquence de mat.',
+  'de':
+      'Dieser Zug verpasste ein erzwungenes Matt. Prüfe die Mattfolge erneut.',
+  'it':
+      'Questa mossa ha mancato un matto forzato. Rivedi la sequenza di matto.',
+  'pt': 'Este lance perdeu um mate forçado. Reveja a sequência de mate.',
+  'ru': 'Этот ход упустил форсированный мат. Пересмотрите матовую последовательность.',
+  'uk': 'Цей хід упустив форсований мат. Перегляньте матову послідовність.',
+  'tr': 'Bu hamle zorunlu matı kaçırdı. Mat dizisini yeniden inceleyin.',
+  'zh': '这步棋错过了强制将杀。请重新查看将杀顺序。',
+  'ja': 'この手は強制メイトを逃しました。メイト手順をもう一度確認しましょう。',
+  'ko': '이 수는 강제 체크메이트를 놓쳤습니다. 메이트 수순을 다시 확인하세요.',
+  'id': 'Langkah ini melewatkan skakmat paksa. Tinjau kembali urutan mat.',
+  'ms': 'Langkah ini terlepas skakmat paksa. Semak semula urutan mat.',
+  'th': 'ตานี้พลาดรุกฆาตแบบบังคับ โปรดทบทวนลำดับการรุกฆาต',
+  'vi': 'Nước này đã bỏ lỡ một thế chiếu hết bắt buộc. Hãy xem lại chuỗi chiếu hết.',
+  'pl': 'Ten ruch przegapił wymuszonego mata. Przejrzyj ponownie sekwencję matową.',
+  'nl': 'Deze zet miste een geforceerde mat. Bekijk de matreeks opnieuw.',
+  'sv': 'Draget missade en forcerad matt. Granska mattsekvensen igen.',
+  'el':
+      'Αυτή η κίνηση έχασε ένα αναγκαστικό ματ. Ελέγξτε ξανά τη σειρά του ματ.',
+  'he': 'המסע הזה החמיץ מט כפוי. בדקו שוב את רצף המט.',
+  'sw': 'Hatua hii ilikosa mtego wa lazima. Kagua tena mfululizo wa kumaliza mchezo.',
+};
 
 const _cloudExtras = <String, String>{
   'en': 'This matched Stockfish’s strongest continuation.|{move} was stronger by {count} centipawns.',

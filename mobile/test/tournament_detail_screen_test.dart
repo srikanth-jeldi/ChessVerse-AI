@@ -24,6 +24,7 @@ void main() {
           'match-1',
           TournamentPlayerDto('p1', 'Arjun', null),
           'FINISHED',
+          true,
         ),
       ]),
       TournamentRoundDto(2, 'ACTIVE', <TournamentPairingDto>[
@@ -34,31 +35,35 @@ void main() {
           'match-2',
           null,
           'ACTIVE',
+          true,
         ),
       ]),
     ],
   );
 
   for (final size in <Size>[const Size(390, 844), const Size(1100, 900)]) {
-    testWidgets('tournament detail adapts at ${size.width.toInt()}px',
-        (tester) async {
+    testWidgets('tournament detail adapts at ${size.width.toInt()}px', (
+      tester,
+    ) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
       var toggles = 0;
-      await tester.pumpWidget(MaterialApp(
-        theme: ThemeData.dark(),
-        home: Scaffold(
-          body: TournamentDetailContent(
-            detail: detail,
-            busy: false,
-            onToggle: () async => toggles++,
-            onRefresh: () async {},
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.dark(),
+          home: Scaffold(
+            body: TournamentDetailContent(
+              detail: detail,
+              busy: false,
+              onToggle: () async => toggles++,
+              onRefresh: () async {},
+            ),
           ),
         ),
-      ));
+      );
       await tester.pump();
 
       expect(find.text('HYDERABAD'), findsOneWidget);
@@ -66,15 +71,21 @@ void main() {
         find.bySemanticsLabel('HYDERABAD championship trophy'),
         findsWidgets,
       );
-      await tester.scrollUntilVisible(find.text('HOW TO PLAY'), 250,
-          scrollable: find.byType(Scrollable).first);
+      await tester.scrollUntilVisible(
+        find.text('HOW TO PLAY'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('HOW TO PLAY'), findsOneWidget);
       expect(find.text('OFFICIAL TOURNAMENT RULES'), findsOneWidget);
       expect(find.text('+100 CP'), findsOneWidget);
       expect(find.text('+250 CP'), findsOneWidget);
       expect(find.text('+1000 CP'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('TOURNAMENT BRACKET'), 300,
-          scrollable: find.byType(Scrollable).first);
+      await tester.scrollUntilVisible(
+        find.text('TOURNAMENT BRACKET'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('TOURNAMENT BRACKET'), findsOneWidget);
       expect(find.text('OPENING ROUND'), findsOneWidget);
       expect(find.text('QUARTERFINAL'), findsOneWidget);

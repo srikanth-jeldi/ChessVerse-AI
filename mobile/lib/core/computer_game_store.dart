@@ -1,12 +1,17 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+
 import 'config/app_config.dart';
 import '../features/auth/data/auth_session_store.dart';
 
 class ComputerGameDraft {
-  const ComputerGameDraft(
-      {required this.id, required this.updatedAt, required this.state});
+  const ComputerGameDraft({
+    required this.id,
+    required this.updatedAt,
+    required this.state,
+  });
   final String id;
   final DateTime updatedAt;
   final Map<String, dynamic> state;
@@ -16,10 +21,10 @@ class ComputerGameDraft {
   double get level => (state['level'] as num).toDouble();
   bool get humanWhite => state['humanWhite'] as bool;
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'updatedAt': updatedAt.toUtc().toIso8601String(),
-        'state': state
-      };
+    'id': id,
+    'updatedAt': updatedAt.toUtc().toIso8601String(),
+    'state': state,
+  };
   factory ComputerGameDraft.fromJson(Map<String, dynamic> json) {
     final state = Map<String, dynamic>.from(json['state'] as Map);
     if (state['version'] != 1 ||
@@ -37,11 +42,13 @@ class ComputerGameDraft {
       final pieces = data['pieces'];
       if (pieces is! Map ||
           pieces.length > 32 ||
-          pieces.entries.any((e) =>
-              e.key is! String ||
-              !RegExp(r'^[a-h][1-8]$').hasMatch(e.key as String) ||
-              e.value is! String ||
-              !RegExp(r'^[wb][KQRBNP]$').hasMatch(e.value as String)) ||
+          pieces.entries.any(
+            (e) =>
+                e.key is! String ||
+                !RegExp(r'^[a-h][1-8]$').hasMatch(e.key as String) ||
+                e.value is! String ||
+                !RegExp(r'^[wb][KQRBNP]$').hasMatch(e.value as String),
+          ) ||
           data['moves'] is! List ||
           (data['moves'] as List).any((m) => m is! String) ||
           data['whiteSeconds'] is! int ||
@@ -62,9 +69,10 @@ class ComputerGameDraft {
       validatePosition(row);
     }
     return ComputerGameDraft(
-        id: json['id'] as String,
-        updatedAt: DateTime.parse(json['updatedAt'] as String),
-        state: state);
+      id: json['id'] as String,
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      state: state,
+    );
   }
 }
 
@@ -83,6 +91,7 @@ class ComputerGameStore {
     _pending = Future.value();
     _versions.clear();
   }
+
   static Future<String> activeOwner() async =>
       (await const AuthSessionStore().read())?.token ?? '';
   static Future<T> _serial<T>(Future<T> Function() action) {
@@ -91,18 +100,21 @@ class ComputerGameStore {
     return result;
   }
 
-  static Future<Map<String, dynamic>> _request(String token,
-      [Map<String, dynamic>? body]) async {
+  static Future<Map<String, dynamic>> _request(
+    String token, [
+    Map<String, dynamic>? body,
+  ]) async {
     if (token.isEmpty) throw StateError('Sign in to sync My Games');
     final uri = Uri.parse('${AppConfig.apiBaseUrl}/api/v1/computer-game');
     final headers = {
       'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     };
-    final response = await (body == null
-            ? client.get(uri, headers: headers)
-            : client.put(uri, headers: headers, body: jsonEncode(body)))
-        .timeout(const Duration(seconds: 15));
+    final response =
+        await (body == null
+                ? client.get(uri, headers: headers)
+                : client.put(uri, headers: headers, body: jsonEncode(body)))
+            .timeout(const Duration(seconds: 15));
     if (response.statusCode == 409) throw ComputerGameConflict();
     if (response.statusCode != 200) {
       throw StateError('Saved game sync unavailable');
@@ -113,35 +125,54 @@ class ComputerGameStore {
   static Future<List<ComputerGameDraft>> load(String owner) =>
       _serial(() async {
         final data = await _request(owner);
+        _versions[owner] = (data['revision'] as num).toInt();
         return data['draft'] == null
             ? []
             : [
                 ComputerGameDraft.fromJson(
-                    Map<String, dynamic>.from(data['draft'] as Map))
+                  Map<String, dynamic>.from(data['draft'] as Map),
+                ),
               ];
       });
 
   /// Call after replacement confirmation, before opening the board. A revision
   /// bump transfers control; any stale device can no longer overwrite this slot.
-  static Future<void> prepare(String owner, ComputerGameDraft? draft,
-          {ComputerGameDraft? replacing}) =>
-      _serial(() async {
-        final data = await _request(owner);
-        if (jsonEncode(data['draft']) !=
-            jsonEncode((draft ?? replacing)?.toJson())) {
-          throw ComputerGameConflict();
-        }
-        final result = await _request(
-            owner, {'revision': data['revision'], 'draft': draft?.toJson()});
-        _versions[owner] = (result['revision'] as num).toInt();
-        revision.value++;
-      });
+  static Future<void> prepare(
+    String owner,
+    ComputerGameDraft? draft, {
+    ComputerGameDraft? replacing,
+  }) => _serial(() async {
+    final data = await _request(owner);
+    if (jsonEncode(data['draft']) !=
+        jsonEncode((draft ?? replacing)?.toJson())) {
+      throw ComputerGameConflict();
+    }
+    final result = await _request(owner, {
+      'revision': data['revision'],
+      'draft': draft?.toJson(),
+    });
+    _versions[owner] = (result['revision'] as num).toInt();
+    revision.value++;
+  });
   static Future<void> save(String owner, ComputerGameDraft draft) =>
       _serial(() async {
-        final version = _versions[owner];
-        if (version == null) throw ComputerGameConflict();
-        final result = await _request(
-            owner, {'revision': version, 'draft': draft.toJson()});
+        var version = _versions[owner];
+        if (version == null) {
+          // Android may reclaim the process while this board is in the
+          // background. Recover the server revision when the same draft is
+          // still active instead of incorrectly reporting another-device use.
+          final current = await _request(owner);
+          final remote = current['draft'];
+          if (remote is! Map || remote['id'] != draft.id) {
+            throw ComputerGameConflict();
+          }
+          version = (current['revision'] as num).toInt();
+          _versions[owner] = version;
+        }
+        final result = await _request(owner, {
+          'revision': version,
+          'draft': draft.toJson(),
+        });
         _versions[owner] = (result['revision'] as num).toInt();
         revision.value++;
       });
@@ -151,14 +182,13 @@ class ComputerGameStore {
         if (version == null) return;
         final response = await client
             .post(
-                Uri.parse(
-                    '${AppConfig.apiBaseUrl}/api/v1/computer-game/finish'),
-                headers: {
-                  'Authorization': 'Bearer $owner',
-                  'Content-Type': 'application/json'
-                },
-                body:
-                    jsonEncode({'revision': version, 'draft': draft.toJson()}))
+              Uri.parse('${AppConfig.apiBaseUrl}/api/v1/computer-game/finish'),
+              headers: {
+                'Authorization': 'Bearer $owner',
+                'Content-Type': 'application/json',
+              },
+              body: jsonEncode({'revision': version, 'draft': draft.toJson()}),
+            )
             .timeout(const Duration(seconds: 15));
         if (response.statusCode == 409) throw ComputerGameConflict();
         if (response.statusCode != 200) {
