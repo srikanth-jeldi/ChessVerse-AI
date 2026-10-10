@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 
+import '../../../core/diagnostics/app_diagnostics.dart';
 import '../data/purchase_api.dart';
 import '../data/premium_subscription_api.dart';
 import '../data/razorpay_checkout.dart';
@@ -108,6 +110,7 @@ class _PurchaseCenterScreenState extends State<PurchaseCenterScreen> {
     }
     setState(() => _premiumBuying = true);
     try {
+      await _prepareGooglePlayCheckout('premium');
       final response = await _iap.queryProductDetails(const <String>{
         'chessverse_premium',
       });
@@ -130,6 +133,15 @@ class _PurchaseCenterScreenState extends State<PurchaseCenterScreen> {
         );
       }
       final product = products.first;
+      if (product.offerToken == null || product.offerToken!.isEmpty) {
+        throw const PremiumSubscriptionException(
+          'Google Play did not return a valid checkout offer. Please try again later.',
+        );
+      }
+      AppDiagnostics.log('billing_launch_requested', <String, Object?>{
+        'flow': 'premium',
+        'product': product.id,
+      });
       final launched = await _iap.buyNonConsumable(
         purchaseParam: GooglePlayPurchaseParam(
           productDetails: product,
@@ -144,6 +156,8 @@ class _PurchaseCenterScreenState extends State<PurchaseCenterScreen> {
     } catch (e) {
       _result(
         e is PremiumSubscriptionException
+            ? e.message
+            : e is PurchaseException
             ? e.message
             : 'Premium checkout could not start.',
         failed: true,
@@ -195,16 +209,17 @@ class _PurchaseCenterScreenState extends State<PurchaseCenterScreen> {
         _result('${order.coins} coins added securely.');
         return;
       }
-      final available = await _iap.isAvailable();
-      if (!available) {
-        throw const PurchaseException('The device store is unavailable.');
-      }
+      await _prepareGooglePlayCheckout('coins');
       final response = await _iap.queryProductDetails({pack.sku});
       if (response.error != null || response.productDetails.isEmpty) {
         throw const PurchaseException(
           'This coin pack is not active in the store yet.',
         );
       }
+      AppDiagnostics.log('billing_launch_requested', <String, Object?>{
+        'flow': 'coins',
+        'product': pack.sku,
+      });
       final launched = await _iap.buyConsumable(
         purchaseParam: PurchaseParam(
           productDetails: response.productDetails.first,
@@ -223,6 +238,39 @@ class _PurchaseCenterScreenState extends State<PurchaseCenterScreen> {
               : 'Purchase could not start.';
         });
       }
+    }
+  }
+
+  Future<void> _prepareGooglePlayCheckout(String flow) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+
+    final AndroidDeviceInfo device = await DeviceInfoPlugin().androidInfo;
+    final String manufacturer = device.manufacturer.trim().toLowerCase();
+    final bool affectedOnePlus =
+        device.version.sdkInt == 30 && manufacturer.contains('oneplus');
+    if (affectedOnePlus) {
+      AppDiagnostics.log('billing_launch_blocked', <String, Object?>{
+        'flow': flow,
+        'reason': 'oneplus_android_11_proxy_activity',
+        'model': device.model,
+      });
+      throw const PurchaseException(
+        'Google Play checkout is unstable on OnePlus Android 11. Update Android and the Google Play Store, then try again.',
+      );
+    }
+
+    final bool available = await _iap.isAvailable().timeout(
+      const Duration(seconds: 12),
+      onTimeout: () => false,
+    );
+    if (!available) {
+      AppDiagnostics.log('billing_launch_blocked', <String, Object?>{
+        'flow': flow,
+        'reason': 'store_unavailable',
+      });
+      throw const PurchaseException(
+        'Google Play is unavailable. Update or reopen the Play Store and try again.',
+      );
     }
   }
 

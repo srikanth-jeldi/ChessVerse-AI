@@ -68,6 +68,10 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <!-- Android 11 package visibility for Google Play Billing. -->
+        <intent>
+            <action android:name="com.android.vending.billing.InAppBillingService.BIND"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE"/>
         </intent>
