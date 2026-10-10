@@ -436,10 +436,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   );
 
   Future<void> _changeProfilePhoto() async {
-    final file = await FilePicker.pickFile(
-      type: FileType.custom,
-      allowedExtensions: const <String>['jpg', 'jpeg', 'png', 'webp'],
-    );
+    final file = await FilePicker.pickFile(type: FileType.image);
     final bytes = await file?.readAsBytes();
     if (file == null || bytes == null || !mounted) return;
     if (bytes.length > 5 * 1024 * 1024) {
@@ -654,6 +651,17 @@ class _BadgeProgressTile extends StatelessWidget {
         Text(
           badge.description,
           style: const TextStyle(color: Color(0xFFA9BBC4)),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          badge.unlocked
+              ? '+${badge.rewardCoins} coins awarded'
+              : 'Reward: +${badge.rewardCoins} coins',
+          style: const TextStyle(
+            color: AppColors.accentGold,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+          ),
         ),
         if (!badge.unlocked) ...<Widget>[
           const SizedBox(height: 7),

@@ -75,6 +75,32 @@ class EconomyControllerTest {
     }
 
     @Test
+    void badgeRewardIsAllowlistedAndCanOnlyBeClaimedOnce() throws Exception {
+        String authorization = "Bearer " + guest(UUID.randomUUID().toString());
+        String request = "{\"code\":\"FIRST_MOVE\"}";
+
+        mockMvc.perform(post("/api/v1/economy/badge-reward")
+                        .header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.granted").value(true))
+                .andExpect(jsonPath("$.coinsGranted").value(10))
+                .andExpect(jsonPath("$.wallet.coins").value(710));
+        mockMvc.perform(post("/api/v1/economy/badge-reward")
+                        .header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.granted").value(false))
+                .andExpect(jsonPath("$.coinsGranted").value(0))
+                .andExpect(jsonPath("$.wallet.coins").value(710));
+        mockMvc.perform(post("/api/v1/economy/badge-reward")
+                        .header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"NOT_A_REAL_BADGE\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void rewardedAdsGrant50CoinsAndAllowThreeSeparateViewsInTwoHours() throws Exception {
         String token = guest(UUID.randomUUID().toString());
         UUID playerId = UUID.fromString(json.readTree(mockMvc.perform(get("/api/auth/me")

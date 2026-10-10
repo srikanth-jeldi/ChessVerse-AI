@@ -20,4 +20,9 @@ final class EconomyDtos {
                            int rewardedAdsRemaining, Instant nextRewardedAdAt,
                            int dailyCoins,
                            int coinsPerAd) {}
+
+    record BadgeRewardRequest(String code) {}
+
+    record BadgeRewardDto(String code, boolean granted, int coinsGranted,
+                          WalletDto wallet) {}
 }

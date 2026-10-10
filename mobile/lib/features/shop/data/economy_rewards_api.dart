@@ -41,6 +41,31 @@ class EconomyRewardStatus {
   }
 }
 
+class BadgeRewardResult {
+  const BadgeRewardResult({
+    required this.code,
+    required this.granted,
+    required this.coinsGranted,
+    required this.balance,
+  });
+
+  final String code;
+  final bool granted;
+  final int coinsGranted;
+  final int balance;
+
+  factory BadgeRewardResult.fromJson(Map<String, dynamic> json) {
+    final wallet =
+        json['wallet'] as Map<String, dynamic>? ?? <String, dynamic>{};
+    return BadgeRewardResult(
+      code: json['code'] as String? ?? '',
+      granted: json['granted'] as bool? ?? false,
+      coinsGranted: (json['coinsGranted'] as num?)?.toInt() ?? 0,
+      balance: (wallet['coins'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
 class EconomyRewardsApi {
   const EconomyRewardsApi();
 
@@ -49,6 +74,27 @@ class EconomyRewardsApi {
 
   Future<EconomyRewardStatus> claimDaily(String token) =>
       _request(token, 'POST', '/api/v1/economy/daily-reward');
+
+  Future<BadgeRewardResult> claimBadge(String token, String code) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/api/v1/economy/badge-reward'),
+      headers: <String, String>{
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(<String, String>{'code': code}),
+    );
+    final decoded = response.body.isEmpty ? null : jsonDecode(response.body);
+    final json = decoded is Map<String, dynamic>
+        ? decoded
+        : <String, dynamic>{};
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        json['message'] as String? ?? 'Badge reward unavailable.',
+      );
+    }
+    return BadgeRewardResult.fromJson(json);
+  }
 
   Future<EconomyRewardStatus> _request(
     String token,

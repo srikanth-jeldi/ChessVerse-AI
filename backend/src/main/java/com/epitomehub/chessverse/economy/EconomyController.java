@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
 @RequestMapping("/api/v1/economy")
@@ -39,6 +40,13 @@ class EconomyController {
     @PostMapping("/daily-reward")
     EconomyDtos.RewardStatusDto claimDaily(@RequestHeader("Authorization") String authorization) {
         return economy.claimDaily(player(authorization));
+    }
+
+    @PostMapping("/badge-reward")
+    EconomyDtos.BadgeRewardDto claimBadgeReward(
+            @RequestHeader("Authorization") String authorization,
+            @RequestBody EconomyDtos.BadgeRewardRequest request) {
+        return economy.claimBadgeReward(player(authorization), request.code());
     }
 
     private AuthenticatedPlayer player(String authorization) {

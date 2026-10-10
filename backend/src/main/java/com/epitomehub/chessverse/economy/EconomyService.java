@@ -199,6 +199,21 @@ public class EconomyService {
                 (int) DAILY_COINS, (int) REWARDED_AD_COINS);
     }
 
+    @Transactional
+    EconomyDtos.BadgeRewardDto claimBadgeReward(AuthenticatedPlayer player, String requestedCode) {
+        String code = requestedCode == null ? "" : requestedCode.trim().toUpperCase();
+        int coins = switch (code) {
+            case "FIRST_MOVE", "TACTICAL_SPARK", "STUDY_STREAK", "GAME_DETECTIVE" -> 10;
+            case "WINNER_MINDSET", "DEEP_ANALYST", "PUZZLE_HUNTER" -> 25;
+            case "ARENA_REGULAR", "WINNING_HABIT", "CENTURY_CLUB" -> 50;
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown badge reward.");
+        };
+        boolean granted = grantCoins(player.id(), coins, "BADGE_REWARD", "badge:" + code,
+                "Achievement badge: " + code.replace('_', ' '));
+        return new EconomyDtos.BadgeRewardDto(code, granted, granted ? coins : 0,
+                readWallet(player.id()));
+    }
+
     private Instant lastDailyClaim(UUID playerId) {
         List<Instant> values = jdbc.query("""
                 select created_at from economy_transaction

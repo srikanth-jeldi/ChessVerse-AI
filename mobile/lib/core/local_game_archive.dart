@@ -207,20 +207,24 @@ int dailyStreakBonusCoins(int streak) => (streak.clamp(0, 3650) ~/ 7) * 100;
 
 class RewardBadge {
   const RewardBadge({
+    required this.code,
     required this.title,
     required this.description,
     required this.icon,
     required this.unlocked,
     required this.progress,
     required this.target,
+    required this.rewardCoins,
   });
 
+  final String code;
   final String title;
   final String description;
   final String icon;
   final bool unlocked;
   final int progress;
   final int target;
+  final int rewardCoins;
 
   double get completion => (progress / target).clamp(0, 1).toDouble();
 }
@@ -393,7 +397,8 @@ class LocalGameArchive {
   /// the authenticated identity changes we discard the old device cache
   /// before the new identity is merged from the server.
   static Future<bool> hasActiveIdentity(String identity) async =>
-      await _storage.read(key: _activeIdentityKey) == identity.trim().toLowerCase();
+      await _storage.read(key: _activeIdentityKey) ==
+      identity.trim().toLowerCase();
 
   static Future<void> activateIdentity(String identity) async {
     final String normalized = identity.trim().toLowerCase();
@@ -969,84 +974,104 @@ class LocalGameArchive {
       streak: localStats.dailyStreak,
       badges: <RewardBadge>[
         RewardBadge(
+          code: 'FIRST_MOVE',
           title: 'First Move',
           description: 'Finish your first ChessVerseAI match.',
           icon: '♟',
           unlocked: localStats.gamesPlayed >= 1,
           progress: localStats.gamesPlayed,
           target: 1,
+          rewardCoins: 10,
         ),
         RewardBadge(
+          code: 'TACTICAL_SPARK',
           title: 'Tactical Spark',
           description: 'Solve a daily checkmate.',
           icon: '🔥',
           unlocked: localStats.dailySolved >= 1,
           progress: localStats.dailySolved,
           target: 1,
+          rewardCoins: 10,
         ),
         RewardBadge(
+          code: 'WINNER_MINDSET',
           title: 'Winner Mindset',
           description: 'Win three local/AI games.',
           icon: '🏆',
           unlocked: localStats.wins >= 3,
           progress: localStats.wins,
           target: 3,
+          rewardCoins: 25,
         ),
         RewardBadge(
+          code: 'STUDY_STREAK',
           title: 'Study Streak',
           description: 'Build a 3-day ChessVerseAI streak.',
           icon: '⚡',
           unlocked: localStats.dailyStreak >= 3,
           progress: localStats.dailyStreak,
           target: 3,
+          rewardCoins: 10,
         ),
         RewardBadge(
+          code: 'GAME_DETECTIVE',
           title: 'Game Detective',
           description: 'Complete your first engine-reviewed game.',
           icon: '🔎',
           unlocked: reviewedGames >= 1,
           progress: reviewedGames,
           target: 1,
+          rewardCoins: 10,
         ),
         RewardBadge(
+          code: 'DEEP_ANALYST',
           title: 'Deep Analyst',
           description: 'Review five games with ChessVerseAI.',
           icon: '🧠',
           unlocked: reviewedGames >= 5,
           progress: reviewedGames,
           target: 5,
+          rewardCoins: 25,
         ),
         RewardBadge(
+          code: 'PUZZLE_HUNTER',
           title: 'Puzzle Hunter',
           description: 'Solve ten academy puzzles.',
           icon: '🧩',
           unlocked: localStats.puzzlesSolved >= 10,
           progress: localStats.puzzlesSolved,
           target: 10,
+          rewardCoins: 25,
         ),
         RewardBadge(
+          code: 'ARENA_REGULAR',
           title: 'Arena Regular',
           description: 'Finish twenty-five matches.',
           icon: '🎯',
           unlocked: localStats.gamesPlayed >= 25,
           progress: localStats.gamesPlayed,
           target: 25,
+          rewardCoins: 50,
         ),
         RewardBadge(
+          code: 'WINNING_HABIT',
           title: 'Winning Habit',
           description: 'Win ten tracked matches.',
           icon: '👑',
           unlocked: localStats.wins >= 10,
           progress: localStats.wins,
           target: 10,
+          rewardCoins: 50,
         ),
         RewardBadge(
+          code: 'CENTURY_CLUB',
           title: 'Century Club',
           description: 'Finish one hundred matches.',
           icon: '💯',
           unlocked: localStats.gamesPlayed >= 100,
           progress: localStats.gamesPlayed,
           target: 100,
+          rewardCoins: 50,
         ),
       ],
     );

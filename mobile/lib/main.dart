@@ -365,6 +365,8 @@ class _SplashGateState extends State<SplashGate> {
   bool _isGuest = true;
   bool _cloudSyncInFlight = false;
   bool _cloudSyncQueued = false;
+  bool _badgeRewardInFlight = false;
+  bool _badgeRewardQueued = false;
   int? _onlinePlayerCount;
   int? _coinBalance;
   TournamentDto? _nextTournament;
@@ -375,6 +377,7 @@ class _SplashGateState extends State<SplashGate> {
   void initState() {
     super.initState();
     DesktopNavigationBridge.request.addListener(_handleDesktopNavigation);
+    LocalGameArchive.activityRevision.addListener(_handleBadgeProgress);
     _forceFreshWebLogin = consumeFreshWebLaunch();
     DailyReminderService.instance.playOpenRequests.addListener(
       _openPlayFromReminder,
@@ -559,6 +562,7 @@ class _SplashGateState extends State<SplashGate> {
     // its authoritative match as soon as the authenticated home route exists.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_restoreActiveOnlineMatch(restoredSession.token));
+      unawaited(_claimUnlockedBadgeRewards());
     });
     unawaited(_syncCloudProgress(restoredSession.token));
     unawaited(_resumeCloudAnalysisJobs(restoredSession.token));
@@ -708,6 +712,140 @@ class _SplashGateState extends State<SplashGate> {
     }
   }
 
+  void _handleBadgeProgress() {
+    if (!mounted || _stage != _RootStage.home) return;
+    unawaited(_claimUnlockedBadgeRewards());
+  }
+
+  Future<void> _claimUnlockedBadgeRewards() async {
+    if (_badgeRewardInFlight) {
+      _badgeRewardQueued = true;
+      return;
+    }
+    final StoredAuthSession? session = await _sessionStore.read();
+    if (session == null || !mounted) return;
+    _badgeRewardInFlight = true;
+    try {
+      final unlocked = LocalGameArchive.rewards().badges
+          .where((badge) => badge.unlocked)
+          .toList(growable: false);
+      for (final RewardBadge badge in unlocked) {
+        final BadgeRewardResult result = await const EconomyRewardsApi()
+            .claimBadge(session.token, badge.code);
+        if (!mounted) return;
+        if (!result.granted) continue;
+        setState(() => _coinBalance = result.balance);
+        await _showBadgeCelebration(badge, result.coinsGranted);
+        if (!mounted) return;
+      }
+    } on Object {
+      // Offline progress remains available. The idempotent server claim is
+      // retried after the next activity or cloud-sync event.
+    } finally {
+      _badgeRewardInFlight = false;
+      if (_badgeRewardQueued) {
+        _badgeRewardQueued = false;
+        unawaited(_claimUnlockedBadgeRewards());
+      }
+    }
+  }
+
+  Future<void> _showBadgeCelebration(RewardBadge badge, int coins) {
+    return showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Badge achieved',
+      barrierColor: Colors.black87,
+      transitionDuration: const Duration(milliseconds: 450),
+      transitionBuilder: (context, animation, secondaryAnimation, child) =>
+          FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: CurvedAnimation(
+                parent: animation,
+                curve: Curves.elasticOut,
+              ),
+              child: child,
+            ),
+          ),
+      pageBuilder: (context, animation, secondaryAnimation) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            key: ValueKey<String>('badge-unlocked-${badge.code}'),
+            width: math.min(MediaQuery.sizeOf(context).width - 32, 390),
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 22),
+            decoration: BoxDecoration(
+              color: const Color(0xFF071827),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: const Color(0xFFF2C14E), width: 2),
+              boxShadow: const <BoxShadow>[
+                BoxShadow(color: Color(0x8062E4D1), blurRadius: 30),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                const Text('✨  🎉  ✨', style: TextStyle(fontSize: 28)),
+                const SizedBox(height: 12),
+                Text(badge.icon, style: const TextStyle(fontSize: 68)),
+                const SizedBox(height: 10),
+                const Text(
+                  'BADGE ACHIEVED!',
+                  style: TextStyle(
+                    color: Color(0xFFF2C14E),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.8,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  badge.title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 27,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  badge.description,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Color(0xFFB8C7D1)),
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 11,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0x332FD9C4),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Text(
+                    '+$coins COINS ADDED TO YOUR ACCOUNT',
+                    style: const TextStyle(
+                      color: Color(0xFF62E4D1),
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('AWESOME!'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _openRewardsCenter(BuildContext context) async {
     final StoredAuthSession? session = await const AuthSessionStore().read();
     if (!context.mounted || session == null) return;
@@ -841,6 +979,7 @@ class _SplashGateState extends State<SplashGate> {
   @override
   void dispose() {
     DesktopNavigationBridge.request.removeListener(_handleDesktopNavigation);
+    LocalGameArchive.activityRevision.removeListener(_handleBadgeProgress);
     DailyReminderService.instance.playOpenRequests.removeListener(
       _openPlayFromReminder,
     );
@@ -2377,6 +2516,7 @@ class _SplashGateState extends State<SplashGate> {
         LocalGameArchive.completedAcademyLessonIds,
       );
       await _refreshCoinBalance(token);
+      await _claimUnlockedBadgeRewards();
     } on CloudProgressException {
       // Local progress stays authoritative until the next successful sync.
     } finally {

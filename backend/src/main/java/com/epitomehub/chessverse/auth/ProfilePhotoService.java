@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,14 +38,14 @@ class ProfilePhotoService {
     AuthDtos.PlayerResponse upload(String authorization, MultipartFile file) {
         AuthenticatedPlayer authenticated = authentication.requireBearer(authorization);
         if (file == null || file.isEmpty() || file.getSize() > MAX_BYTES) {
-            throw new AuthException(HttpStatus.BAD_REQUEST, "Choose a JPG, PNG or WebP image up to 5 MB.");
+            throw new AuthException(HttpStatus.BAD_REQUEST, "Choose an image up to 5 MB.");
         }
         String extension = extension(file);
         PlayerAccount player = players.findById(authenticated.id())
                 .orElseThrow(() -> new AuthException(HttpStatus.NOT_FOUND, "Player was not found."));
         try {
             Files.createDirectories(root);
-            for (String old : new String[]{"jpg", "png", "webp"}) {
+            for (String old : new String[]{"jpg", "png", "webp", "gif", "bmp", "avif", "heic", "heif"}) {
                 Files.deleteIfExists(root.resolve(player.id + "." + old));
             }
             Path destination = root.resolve(player.id + "." + extension).normalize();
@@ -61,7 +62,7 @@ class ProfilePhotoService {
     }
 
     Resource load(UUID playerId) {
-        for (String extension : new String[]{"jpg", "png", "webp"}) {
+        for (String extension : new String[]{"jpg", "png", "webp", "gif", "bmp", "avif", "heic", "heif"}) {
             Path candidate = root.resolve(playerId + "." + extension);
             if (Files.isRegularFile(candidate)) {
                 try { return new UrlResource(candidate.toUri()); }
@@ -73,11 +74,31 @@ class ProfilePhotoService {
 
     private String extension(MultipartFile file) {
         String type = file.getContentType() == null ? "" : file.getContentType().toLowerCase(Locale.ROOT);
-        return switch (type) {
+        String fromMime = switch (type) {
             case "image/jpeg", "image/jpg" -> "jpg";
             case "image/png" -> "png";
             case "image/webp" -> "webp";
-            default -> throw new AuthException(HttpStatus.BAD_REQUEST, "Only JPG, PNG and WebP profile photos are supported.");
+            case "image/gif" -> "gif";
+            case "image/bmp", "image/x-ms-bmp" -> "bmp";
+            case "image/avif" -> "avif";
+            case "image/heic" -> "heic";
+            case "image/heif" -> "heif";
+            default -> null;
         };
+        if (fromMime != null) return fromMime;
+
+        // Some Android document providers expose a valid image as
+        // application/octet-stream. Fall back to the picker filename while
+        // retaining a strict allowlist of formats that Flutter can display.
+        String name = file.getOriginalFilename() == null
+                ? "" : file.getOriginalFilename().toLowerCase(Locale.ROOT);
+        int dot = name.lastIndexOf('.');
+        String fromName = dot < 0 ? "" : name.substring(dot + 1);
+        if ("jpeg".equals(fromName)) return "jpg";
+        if (List.of("jpg", "png", "webp", "gif", "bmp", "avif", "heic", "heif").contains(fromName)) {
+            return fromName;
+        }
+        throw new AuthException(HttpStatus.BAD_REQUEST,
+                "Use a JPG, PNG, WebP, GIF, BMP, AVIF, HEIC or HEIF profile image.");
     }
 }
