@@ -16,14 +16,23 @@ class MainActivity : FlutterActivity() {
     override fun getRenderMode(): RenderMode {
         // ColorOS 12 can block the UI thread while FlutterSurfaceView attaches
         // its SurfaceHolder, producing an ANR in FlutterJNI.nativeSurfaceCreated.
-        // Keep Flutter's faster default everywhere else and use TextureView only
-        // for the affected Oppo Android 12/12L family.
+        // The same driver-level stall has been observed on Itel Android 14
+        // devices. Keep Flutter's faster default everywhere else and use a
+        // TextureView only for the affected OEM / OS combinations.
         val isOppoAndroid12 =
             Build.VERSION.SDK_INT in Build.VERSION_CODES.S..Build.VERSION_CODES.S_V2 &&
                 (Build.MANUFACTURER.equals("OPPO", ignoreCase = true) ||
                     Build.BRAND.equals("OPPO", ignoreCase = true))
+        val isItelAndroid14 =
+            Build.VERSION.SDK_INT == Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+                (Build.MANUFACTURER.equals("ITEL", ignoreCase = true) ||
+                    Build.BRAND.equals("ITEL", ignoreCase = true))
 
-        return if (isOppoAndroid12) RenderMode.texture else super.getRenderMode()
+        return if (isOppoAndroid12 || isItelAndroid14) {
+            RenderMode.texture
+        } else {
+            super.getRenderMode()
+        }
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
