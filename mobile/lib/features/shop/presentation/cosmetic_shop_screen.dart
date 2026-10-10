@@ -92,10 +92,13 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   EconomyRewardStatus? _rewards;
   Timer? _countdownTimer;
   bool _rewardRefreshPending = false;
+  bool _preparingRewardAd = false;
+  bool _verifyingReward = false;
   @override
   void initState() {
     super.initState();
     _load();
+    unawaited(RewardedCoinService.instance.load());
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted &&
           (_rewards?.nextDailyAt != null ||
@@ -444,20 +447,28 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: _busy || (_rewards?.rewardedAdsRemaining ?? 0) <= 0
+              onPressed:
+                  _busy ||
+                      _preparingRewardAd ||
+                      _verifyingReward ||
+                      (_rewards?.rewardedAdsRemaining ?? 0) <= 0
                   ? null
                   : () => _watchAd(s),
-              icon: const Icon(Icons.play_circle_fill_rounded),
-              label: Text(
-                RewardedCoinService.instance.supported
-                    ? (_rewards?.rewardedAdsRemaining ?? 0) > 0
-                          ? 'WATCH VIDEO • +${_rewards?.coinsPerAd ?? 50} COINS '
-                                '(${_rewards?.rewardedAdsRemaining ?? 0} LEFT)'
-                          : 'NEXT VIDEO • ${_rewardedAdCountdown()}'
-                    : 'FREE COINS • MOBILE APP',
+              icon: Icon(
+                _preparingRewardAd || _verifyingReward
+                    ? Icons.hourglass_top_rounded
+                    : Icons.play_circle_fill_rounded,
               ),
+              label: _rewardVideoLabel(),
               style: OutlinedButton.styleFrom(
+                minimumSize: const Size(330, 58),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 8,
+                ),
                 foregroundColor: const Color(0xFF5DE9D3),
+                disabledForegroundColor: const Color(0xFF8FA3AA),
                 side: const BorderSide(color: Color(0x805DE9D3)),
               ),
             ),
@@ -521,21 +532,27 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     }
     final int coinsBefore = _rewards?.coins ?? shop.wallet.coins;
     final int rewardAmount = _rewards?.coinsPerAd ?? 50;
-    setState(() => _busy = true);
+    final int adsBefore = _rewards?.rewardedAdsRemaining ?? 0;
+    setState(() => _preparingRewardAd = true);
     try {
       final bool earned = await RewardedCoinService.instance.show(
         playerId: shop.playerId,
         token: widget.token,
       );
       if (!mounted) return;
+      setState(() => _preparingRewardAd = false);
       if (!earned) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Video is still loading. Please try again shortly.'),
+            content: Text(
+              'Video could not load. Check your connection and tap again.',
+            ),
           ),
         );
+        unawaited(RewardedCoinService.instance.load());
         return;
       }
+      setState(() => _verifyingReward = true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -546,14 +563,19 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       final EconomyRewardStatus? credited = await _waitForRewardCredit(
         coinsBefore,
         rewardAmount,
+        adsBefore,
       );
       if (!mounted) return;
       if (credited != null) {
-        setState(() => _rewards = credited);
+        setState(() {
+          _rewards = credited;
+          _verifyingReward = false;
+        });
         _showRewardAnimation(rewardAmount, credited.coins);
         await _load();
         if (!mounted) return;
       } else {
+        setState(() => _verifyingReward = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -563,8 +585,62 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _preparingRewardAd = false;
+          _verifyingReward = false;
+        });
+      }
     }
+  }
+
+  Widget _rewardVideoLabel() {
+    if (_preparingRewardAd) {
+      return const Text(
+        'PREPARING VIDEO…',
+        textAlign: TextAlign.center,
+        maxLines: 1,
+      );
+    }
+    if (_verifyingReward) {
+      return const Text(
+        'VERIFYING +50 COINS…',
+        textAlign: TextAlign.center,
+        maxLines: 1,
+      );
+    }
+    if (!RewardedCoinService.instance.supported) {
+      return const Text(
+        'FREE COINS • MOBILE APP',
+        textAlign: TextAlign.center,
+        maxLines: 1,
+      );
+    }
+    final int remaining = _rewards?.rewardedAdsRemaining ?? 0;
+    if (remaining <= 0) {
+      return Text(
+        'NEXT VIDEO • ${_rewardedAdCountdown()}',
+        textAlign: TextAlign.center,
+        maxLines: 1,
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        const Text(
+          'WATCH VIDEO',
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        Text(
+          '+${_rewards?.coinsPerAd ?? 50} COINS • $remaining LEFT',
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
   }
 
   void _showRewardAnimation(int rewardAmount, int newBalance) {
@@ -663,14 +739,18 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   Future<EconomyRewardStatus?> _waitForRewardCredit(
     int coinsBefore,
     int rewardAmount,
+    int adsBefore,
   ) async {
-    for (int attempt = 0; attempt < 15; attempt++) {
+    for (int attempt = 0; attempt < 30; attempt++) {
       await Future<void>.delayed(const Duration(seconds: 2));
       try {
         final EconomyRewardStatus status = await _rewardsApi.status(
           widget.token,
         );
-        if (status.coins >= coinsBefore + rewardAmount) return status;
+        if (status.coins >= coinsBefore + rewardAmount ||
+            status.rewardedAdsRemaining < adsBefore) {
+          return status;
+        }
       } catch (_) {
         // SSV is asynchronous; keep polling during the bounded verification window.
       }

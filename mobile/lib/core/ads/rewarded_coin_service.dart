@@ -13,6 +13,7 @@ class RewardedCoinService {
   RewardedAd? _ad;
   bool _loading = false;
   bool _showing = false;
+  Completer<bool>? _loadCompleter;
   static const String _androidTest = 'ca-app-pub-3940256099942544/5224354917';
   static const String _iosTest = 'ca-app-pub-3940256099942544/1712485313';
 
@@ -31,12 +32,26 @@ class RewardedCoinService {
               ? AppConfig.admobAndroidRewardedId.isNotEmpty
               : AppConfig.admobIosRewardedId.isNotEmpty));
 
-  Future<void> load() async {
-    if (!supported || _loading || _showing || _ad != null) return;
+  bool get isReady => _ad != null;
+  bool get isLoading => _loading;
+
+  Future<bool> load({Duration timeout = const Duration(seconds: 12)}) async {
+    if (!supported || _showing) return false;
+    if (_ad != null) return true;
+    if (_loading) {
+      return (_loadCompleter?.future ?? Future<bool>.value(false)).timeout(
+        timeout,
+        onTimeout: () => false,
+      );
+    }
     _loading = true;
+    final Completer<bool> loading = Completer<bool>();
+    _loadCompleter = loading;
     if (!await AdSdkInitializer.ensureReady()) {
       _loading = false;
-      return;
+      _loadCompleter = null;
+      if (!loading.isCompleted) loading.complete(false);
+      return false;
     }
     RewardedAd.load(
       adUnitId: _adUnitId,
@@ -45,19 +60,24 @@ class RewardedCoinService {
         onAdLoaded: (ad) {
           _ad = ad;
           _loading = false;
+          _loadCompleter = null;
+          if (!loading.isCompleted) loading.complete(true);
         },
         onAdFailedToLoad: (_) {
           _loading = false;
+          _loadCompleter = null;
+          if (!loading.isCompleted) loading.complete(false);
         },
       ),
     );
+    return loading.future.timeout(timeout, onTimeout: () => false);
   }
 
   Future<bool> show({required String playerId, required String token}) async {
     if (!supported || _showing) return false;
     if (_ad == null) {
-      await load();
-      return false;
+      final bool loaded = await load();
+      if (!loaded || _ad == null) return false;
     }
     _showing = true;
     final completer = Completer<bool>();
