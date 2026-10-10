@@ -184,26 +184,46 @@ class AuthApi {
     Uint8List bytes,
     String filename,
   ) async {
-    try {
-      final request =
-          http.MultipartRequest(
-              'POST',
-              Uri.parse('${AppConfig.apiBaseUrl}/api/auth/profile-photo'),
-            )
-            ..headers['Authorization'] = 'Bearer $token'
-            ..files.add(
-              http.MultipartFile.fromBytes('file', bytes, filename: filename),
-            );
-      final streamed = await request.send().timeout(
-        const Duration(seconds: 25),
-      );
-      return _decode(await http.Response.fromStream(streamed));
-    } on TimeoutException {
-      throw const AuthApiException('The photo upload took too long.');
-    } catch (error) {
-      if (error is AuthApiException) rethrow;
-      throw const AuthApiException(_connectionMessage);
+    Object? lastTransportError;
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        // MultipartRequest is single-use, so every retry must create a fresh
+        // request and file stream. This covers brief Android network handoffs
+        // without asking the user to pick the same photo again.
+        final request =
+            http.MultipartRequest(
+                'POST',
+                Uri.parse('${AppConfig.apiBaseUrl}/api/auth/profile-photo'),
+              )
+              ..headers['Authorization'] = 'Bearer $token'
+              ..files.add(
+                http.MultipartFile.fromBytes('file', bytes, filename: filename),
+              );
+        final streamed = await request.send().timeout(
+          const Duration(seconds: 40),
+        );
+        return _decode(await http.Response.fromStream(streamed));
+      } on AuthApiException {
+        // The server responded, so surface its validation/authentication
+        // message and never repeat a completed request.
+        rethrow;
+      } on TimeoutException catch (error) {
+        lastTransportError = error;
+      } on Object catch (error) {
+        lastTransportError = error;
+      }
+      if (attempt == 0) {
+        await Future<void>.delayed(const Duration(milliseconds: 700));
+      }
     }
+    if (lastTransportError is TimeoutException) {
+      throw const AuthApiException(
+        'The photo upload timed out. Check your connection and try again.',
+      );
+    }
+    throw const AuthApiException(
+      'Could not upload the profile photo. Check your connection and try again.',
+    );
   }
 
   Future<Map<String, dynamic>> upgradeGuestWithGoogle(
