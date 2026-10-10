@@ -90,9 +90,6 @@ dependencies {
     // Play library on the runtime classpath.
     implementation("com.google.android.play:hsdp:2.1.0")
 
-    // Stay on Billing 8 for Flutter plugin compatibility while taking the
-    // latest 8.x fixes for ProxyBillingActivity/PendingIntent handling.
-    implementation("com.android.billingclient:billing:8.3.0")
 }
 
 kotlin {
