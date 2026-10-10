@@ -1451,7 +1451,11 @@ class _SplashGateState extends State<SplashGate> {
           );
         }
         return Scaffold(
-          extendBody: true,
+          // Keep the primary destination viewport above the glass navigation.
+          // When this was true, every tab could scroll its final card behind
+          // the navigation bar, making the page look as if scrolling had
+          // stopped before the end.
+          extendBody: false,
           backgroundColor: Colors.transparent,
           body: content,
           bottomNavigationBar: _GlassBottomNavigation(
