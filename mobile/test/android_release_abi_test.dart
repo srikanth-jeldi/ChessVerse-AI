@@ -3,20 +3,17 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('production Play bundle targets mobile ARM devices', () {
+  test('production Play bundle ships complete native slices', () {
     final gradle = File('android/app/build.gradle.kts').readAsStringSync();
     expect(gradle, contains('"armeabi-v7a"'));
     expect(gradle, contains('"arm64-v8a"'));
-    expect(gradle, isNot(contains('"x86_64"')));
+    expect(gradle, contains('"x86_64"'));
 
     final workflow = File('../.github/workflows/android-production-release.yml')
         .readAsStringSync();
-    expect(workflow, contains('--target-platform android-arm,android-arm64'));
     expect(
       workflow,
-      isNot(
-        contains('--target-platform android-arm,android-arm64,android-x64'),
-      ),
+      contains('--target-platform android-arm,android-arm64,android-x64'),
     );
   });
 
