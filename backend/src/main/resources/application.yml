@@ -11,6 +11,12 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      # Keep this aligned with ProfilePhotoService.MAX_BYTES. The request needs
+      # a little extra room for multipart headers and boundaries.
+      max-file-size: 5MB
+      max-request-size: 6MB
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
