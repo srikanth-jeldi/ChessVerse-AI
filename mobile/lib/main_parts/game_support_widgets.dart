@@ -1298,6 +1298,37 @@ class GameResultOverlay extends StatelessWidget {
   }
 
   Future<void> _showGameExport(BuildContext context) async {
+    final _GameExportFormat? format = await showDialog<_GameExportFormat>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: const Text('Export game file'),
+        content: const Text('Choose the file format you want to share.'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          OutlinedButton.icon(
+            key: const ValueKey<String>('export-fen-file'),
+            onPressed: () => Navigator.of(
+              dialogContext,
+            ).pop(_GameExportFormat.fen),
+            icon: const Icon(Icons.grid_on_rounded),
+            label: const Text('FEN (.fen)'),
+          ),
+          FilledButton.icon(
+            key: const ValueKey<String>('export-pgn-file'),
+            onPressed: () => Navigator.of(
+              dialogContext,
+            ).pop(_GameExportFormat.pgn),
+            icon: const Icon(Icons.description_outlined),
+            label: const Text('PGN (.pgn)'),
+          ),
+        ],
+      ),
+    );
+    if (format == null || !context.mounted) return;
+
     final ({String pgn, String fen}) data = await onExport!();
     if (!context.mounted) return;
     final String stamp = DateTime.now()
@@ -1305,26 +1336,32 @@ class GameResultOverlay extends StatelessWidget {
         .toIso8601String()
         .replaceAll(RegExp(r'[:.]'), '-')
         .replaceAll('Z', '');
+    final bool isPgn = format == _GameExportFormat.pgn;
+    final String extension = isPgn ? 'pgn' : 'fen';
+    final String fileName = 'chessverseai-$stamp.$extension';
+    final String contents = isPgn ? data.pgn : data.fen;
     await SharePlus.instance.share(
       ShareParams(
-        subject: 'ChessVerseAI game export',
-        text: 'ChessVerseAI game files: complete PGN and final-position FEN.',
+        subject: isPgn
+            ? 'ChessVerseAI PGN game'
+            : 'ChessVerseAI FEN position',
         files: <XFile>[
           XFile.fromData(
-            Uint8List.fromList(utf8.encode('${data.pgn}\n')),
-            mimeType: 'application/x-chess-pgn',
-            name: 'chessverseai-$stamp.pgn',
-          ),
-          XFile.fromData(
-            Uint8List.fromList(utf8.encode('${data.fen}\n')),
-            mimeType: 'text/plain',
-            name: 'chessverseai-$stamp.fen',
+            Uint8List.fromList(utf8.encode('$contents\n')),
+            mimeType: isPgn ? 'application/x-chess-pgn' : 'text/plain',
+            name: fileName,
           ),
         ],
+        // Native share targets often ignore XFile.fromData's name. Supplying
+        // the override makes Android create a real .pgn or .fen attachment
+        // instead of degrading the export into a plain chat message.
+        fileNameOverrides: <String>[fileName],
       ),
     );
   }
 }
+
+enum _GameExportFormat { pgn, fen }
 
 class CoachInsight extends StatelessWidget {
   const CoachInsight({required this.note, required this.enabled, super.key});

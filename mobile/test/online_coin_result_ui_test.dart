@@ -92,5 +92,22 @@ void main() {
     );
     expect(find.text('EXPORT PGN / FEN'), findsOneWidget);
     expect(find.text('SHARE RESULT'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('export-game-data')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Export game file'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('export-pgn-file')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('export-fen-file')),
+      findsOneWidget,
+    );
+    expect(find.text('PGN (.pgn)'), findsOneWidget);
+    expect(find.text('FEN (.fen)'), findsOneWidget);
   });
 }
