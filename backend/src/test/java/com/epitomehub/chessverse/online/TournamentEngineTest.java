@@ -71,8 +71,8 @@ class TournamentEngineTest {
                         .header("Authorization","Bearer "+first)).andExpect(status().isOk());
         mockMvc.perform(put("/api/v1/community/tournaments/"+tournament+"?join=true")
                         .header("Authorization","Bearer "+second)).andExpect(status().isOk());
-        assertEquals(600L, jdbc.queryForObject("select coin_balance from player_wallet where player_id=?",Long.class,firstId));
-        assertEquals(600L, jdbc.queryForObject("select coin_balance from player_wallet where player_id=?",Long.class,secondId));
+        assertEquals(0L, jdbc.queryForObject("select coin_balance from player_wallet where player_id=?",Long.class,firstId));
+        assertEquals(0L, jdbc.queryForObject("select coin_balance from player_wallet where player_id=?",Long.class,secondId));
         jdbc.update("update chess_tournament set starts_at=?,status='OPEN',champion_id=null,current_round=0 where id=?",
                 Timestamp.from(Instant.now().minusSeconds(1)),tournament);
 
@@ -88,7 +88,7 @@ class TournamentEngineTest {
         tournaments.recordResult(match);
         UUID replayId=jdbc.queryForObject("select online_match_id from chess_tournament_pairing where round_id in (select id from chess_tournament_round where tournament_id=?)",UUID.class,tournament);
         org.junit.jupiter.api.Assertions.assertNotEquals(matchId,replayId);
-        assertEquals(600L, jdbc.queryForObject("select coin_balance from player_wallet where player_id=?",Long.class,firstId));
+        assertEquals(0L, jdbc.queryForObject("select coin_balance from player_wallet where player_id=?",Long.class,firstId));
         OnlineMatch replay=matches.findById(replayId).orElseThrow();
         replay.result="1-0"; replay.resultReason="CHECKMATE"; replay.status=OnlineMatchStatus.FINISHED;
         tournaments.recordResult(replay);
@@ -98,8 +98,8 @@ class TournamentEngineTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("FINISHED"))
                 .andExpect(jsonPath("$.champion.id").value(replay.whitePlayerId.toString()))
                 .andExpect(jsonPath("$.prizePool").value(200));
-        assertEquals(860L, jdbc.queryForObject("select coin_balance from player_wallet where player_id=?",Long.class,replay.whitePlayerId));
-        assertEquals(635L, jdbc.queryForObject("select coin_balance from player_wallet where player_id=?",Long.class,replay.blackPlayerId));
+        assertEquals(260L, jdbc.queryForObject("select coin_balance from player_wallet where player_id=?",Long.class,replay.whitePlayerId));
+        assertEquals(35L, jdbc.queryForObject("select coin_balance from player_wallet where player_id=?",Long.class,replay.blackPlayerId));
         assertEquals(1, jdbc.queryForObject("select count(*) from player_tournament_badge where player_id=? and placement='CHAMPION'",Integer.class,replay.whitePlayerId));
         assertEquals(1, jdbc.queryForObject("select count(*) from player_tournament_badge where player_id=? and placement='RUNNER_UP'",Integer.class,replay.blackPlayerId));
     }
@@ -119,7 +119,7 @@ class TournamentEngineTest {
         mockMvc.perform(put("/api/v1/community/tournaments/"+tournament+"?join=true")
                         .header("Authorization","Bearer "+token))
                 .andExpect(status().isOk());
-        assertEquals(600L,jdbc.queryForObject(
+        assertEquals(0L,jdbc.queryForObject(
                 "select coin_balance from player_wallet where player_id=?",Long.class,playerId));
         jdbc.update("update chess_tournament set starts_at=? where id=?",
                 Timestamp.from(Instant.now().minusSeconds(1)),tournament);
@@ -129,7 +129,7 @@ class TournamentEngineTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
 
-        assertEquals(700L,jdbc.queryForObject(
+        assertEquals(100L,jdbc.queryForObject(
                 "select coin_balance from player_wallet where player_id=?",Long.class,playerId));
         assertEquals(0,jdbc.queryForObject(
                 "select count(*) from chess_tournament_entry where tournament_id=? and active=true",
