@@ -53,7 +53,7 @@ class EconomyControllerTest {
 
         mockMvc.perform(get("/api/v1/economy/wallet").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.coins").value(700))
+                .andExpect(jsonPath("$.coins").value(100))
                 .andExpect(jsonPath("$.diamonds").value(10));
         mockMvc.perform(get("/api/v1/economy/wallet").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
@@ -71,7 +71,7 @@ class EconomyControllerTest {
         org.junit.jupiter.api.Assertions.assertTrue(economy.grantCoins(playerId, 100, "REWARDED_AD", "ad:tx-1", "Rewarded video"));
         org.junit.jupiter.api.Assertions.assertFalse(economy.grantCoins(playerId, 100, "REWARDED_AD", "ad:tx-1", "Rewarded video"));
         mockMvc.perform(get("/api/v1/economy/wallet").header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.coins").value(800));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.coins").value(200));
     }
 
     @Test
@@ -85,14 +85,14 @@ class EconomyControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.granted").value(true))
                 .andExpect(jsonPath("$.coinsGranted").value(10))
-                .andExpect(jsonPath("$.wallet.coins").value(710));
+                .andExpect(jsonPath("$.wallet.coins").value(110));
         mockMvc.perform(post("/api/v1/economy/badge-reward")
                         .header("Authorization", authorization)
                         .contentType(MediaType.APPLICATION_JSON).content(request))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.granted").value(false))
                 .andExpect(jsonPath("$.coinsGranted").value(0))
-                .andExpect(jsonPath("$.wallet.coins").value(710));
+                .andExpect(jsonPath("$.wallet.coins").value(110));
         mockMvc.perform(post("/api/v1/economy/badge-reward")
                         .header("Authorization", authorization)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -101,33 +101,32 @@ class EconomyControllerTest {
     }
 
     @Test
-    void rewardedAdsGrant50CoinsAndAllowThreeSeparateViewsInTwoHours() throws Exception {
+    void rewardedAdsGrant30CoinsWithDailyCapAndCooldown() throws Exception {
         String token = guest(UUID.randomUUID().toString());
         UUID playerId = UUID.fromString(json.readTree(mockMvc.perform(get("/api/auth/me")
                 .header("Authorization", "Bearer " + token)).andReturn().getResponse()
                 .getContentAsString()).path("id").asText());
 
         org.junit.jupiter.api.Assertions.assertTrue(economy.grantRewardedAd(playerId, "reward-1"));
-        org.junit.jupiter.api.Assertions.assertTrue(economy.grantRewardedAd(playerId, "reward-2"));
-        org.junit.jupiter.api.Assertions.assertTrue(economy.grantRewardedAd(playerId, "reward-3"));
-        org.junit.jupiter.api.Assertions.assertFalse(economy.grantRewardedAd(playerId, "reward-4"));
+        org.junit.jupiter.api.Assertions.assertFalse(economy.grantRewardedAd(playerId, "cooldown-blocked"));
+        for (int index = 2; index <= 15; index++) {
+            jdbc.update("""
+                    update economy_transaction set created_at=dateadd('SECOND', -61, current_timestamp)
+                    where player_id=? and transaction_type='REWARDED_AD'
+                    """, playerId);
+            org.junit.jupiter.api.Assertions.assertTrue(
+                    economy.grantRewardedAd(playerId, "reward-" + index));
+        }
+        org.junit.jupiter.api.Assertions.assertFalse(economy.grantRewardedAd(playerId, "reward-16"));
 
         mockMvc.perform(get("/api/v1/economy/rewards")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.wallet.coins").value(850))
-                .andExpect(jsonPath("$.coinsPerAd").value(50))
-                .andExpect(jsonPath("$.rewardedAdsUsed").value(3))
+                .andExpect(jsonPath("$.wallet.coins").value(550))
+                .andExpect(jsonPath("$.coinsPerAd").value(30))
+                .andExpect(jsonPath("$.rewardedAdsUsed").value(15))
                 .andExpect(jsonPath("$.rewardedAdsRemaining").value(0))
                 .andExpect(jsonPath("$.nextRewardedAdAt").isNotEmpty());
-
-        jdbc.update("""
-                update economy_transaction set created_at=dateadd('HOUR', -3, current_timestamp)
-                where player_id=? and reference_key='admob:reward-1'
-                """, playerId);
-        org.junit.jupiter.api.Assertions.assertTrue(economy.grantRewardedAd(playerId, "reward-4"));
-        mockMvc.perform(get("/api/v1/economy/wallet").header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.coins").value(900));
     }
 
     @Test
@@ -146,6 +145,11 @@ class EconomyControllerTest {
     void purchaseIsPermanentButOnlyExplicitEquipChangesTheLoadout() throws Exception {
         String token = guest(UUID.randomUUID().toString());
         String authorization = "Bearer " + token;
+        UUID playerId = UUID.fromString(json.readTree(mockMvc.perform(get("/api/auth/me")
+                .header("Authorization", authorization)).andReturn().getResponse()
+                .getContentAsString()).path("id").asText());
+        economy.grantCoins(playerId, 600, "TEST_SETUP", "setup:board:" + playerId,
+                "Test shop balance");
         String item = "41000000-0000-0000-0000-000000000099";
         mockMvc.perform(post("/api/v1/shop/items/" + item + "/purchase").header("Authorization", authorization))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.wallet.coins").value(400))
@@ -161,7 +165,13 @@ class EconomyControllerTest {
 
     @Test
     void coinBadgeIsPermanentAndEquipsToAccountFrameSlot() throws Exception {
-        String authorization = "Bearer " + guest(UUID.randomUUID().toString());
+        String token = guest(UUID.randomUUID().toString());
+        String authorization = "Bearer " + token;
+        UUID playerId = UUID.fromString(json.readTree(mockMvc.perform(get("/api/auth/me")
+                .header("Authorization", authorization)).andReturn().getResponse()
+                .getContentAsString()).path("id").asText());
+        economy.grantCoins(playerId, 600, "TEST_SETUP", "setup:badge:" + playerId,
+                "Test shop balance");
         String item = "44000000-0000-0000-0000-000000000099";
         mockMvc.perform(post("/api/v1/shop/items/" + item + "/purchase").header("Authorization", authorization))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.wallet.coins").value(500));
@@ -249,7 +259,7 @@ class EconomyControllerTest {
         purchases.fulfillVerified(playerId, orderId, "GOOGLE_PLAY", "test_coins", "raw-secret-token-123");
 
         mockMvc.perform(get("/api/v1/economy/wallet").header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.coins").value(1200));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.coins").value(600));
         String stored = jdbc.queryForObject("select provider_transaction_hash from purchase_order where id=?",
                 String.class, orderId);
         org.junit.jupiter.api.Assertions.assertNotEquals("raw-secret-token-123", stored);
@@ -270,7 +280,7 @@ class EconomyControllerTest {
                         .content("{\"purchaseToken\":\"untrusted-client-value\"}"))
                 .andExpect(status().isServiceUnavailable());
         mockMvc.perform(get("/api/v1/economy/wallet").header("Authorization", authorization))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.coins").value(700));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.coins").value(100));
     }
 
     @Test
@@ -280,6 +290,8 @@ class EconomyControllerTest {
                 .header("Authorization", "Bearer " + token)).andReturn().getResponse()
                 .getContentAsString()).path("id").asText());
         UUID orderId = UUID.randomUUID();
+        economy.grantCoins(playerId, 600, "TEST_SETUP", "setup:refund:" + playerId,
+                "Test refund balance");
         jdbc.update("""
                 insert into purchase_order(id,player_id,product_id,provider,status,idempotency_key,
                 price_minor,price_currency,grant_currency,grant_amount,provider_transaction_hash,

@@ -531,7 +531,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       return;
     }
     final int coinsBefore = _rewards?.coins ?? shop.wallet.coins;
-    final int rewardAmount = _rewards?.coinsPerAd ?? 50;
+    final int rewardAmount = _rewards?.coinsPerAd ?? 30;
     final int adsBefore = _rewards?.rewardedAdsRemaining ?? 0;
     setState(() => _preparingRewardAd = true);
     try {
@@ -604,7 +604,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     }
     if (_verifyingReward) {
       return const Text(
-        'VERIFYING +50 COINS…',
+        'VERIFYING +30 COINS…',
         textAlign: TextAlign.center,
         maxLines: 1,
       );
@@ -634,7 +634,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
         Text(
-          '+${_rewards?.coinsPerAd ?? 50} COINS • $remaining LEFT',
+          '+${_rewards?.coinsPerAd ?? 30} COINS • $remaining LEFT',
           textAlign: TextAlign.center,
           maxLines: 1,
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),

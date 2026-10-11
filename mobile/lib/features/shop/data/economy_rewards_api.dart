@@ -36,7 +36,7 @@ class EconomyRewardStatus {
         json['nextRewardedAdAt'] as String? ?? '',
       ),
       dailyCoins: (json['dailyCoins'] as num?)?.toInt() ?? 100,
-      coinsPerAd: (json['coinsPerAd'] as num?)?.toInt() ?? 50,
+      coinsPerAd: (json['coinsPerAd'] as num?)?.toInt() ?? 30,
     );
   }
 }
