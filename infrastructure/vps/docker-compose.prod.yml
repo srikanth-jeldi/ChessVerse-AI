@@ -1,6 +1,20 @@
 name: chessverse
 
 services:
+  storage-init:
+    image: alpine:3.21
+    restart: "no"
+    user: "0:0"
+    command:
+      - /bin/sh
+      - -c
+      - chown -R 10001:10001 /data/chat-attachments /data/profile-photos
+    volumes:
+      - attachments-data:/data/chat-attachments
+      - profile-photos-data:/data/profile-photos
+    networks:
+      - internal
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -76,6 +90,8 @@ services:
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70 -XX:+UseG1GC
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase-service-account.json
     depends_on:
+      storage-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
     expose:
