@@ -96,7 +96,10 @@ void main() {
     await tester.tap(
       find.byKey(const ValueKey<String>('export-game-data')),
     );
-    await tester.pumpAndSettle();
+    // The winner overlay has a continuous celebration animation, so waiting
+    // for every frame to settle would never complete. One dialog transition
+    // duration is enough to reveal the export choices deterministically.
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Export game file'), findsOneWidget);
     expect(
