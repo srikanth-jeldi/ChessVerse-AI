@@ -741,18 +741,26 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     int rewardAmount,
     int adsBefore,
   ) async {
-    for (int attempt = 0; attempt < 30; attempt++) {
+    final DateTime deadline = DateTime.now().add(const Duration(seconds: 60));
+    while (DateTime.now().isBefore(deadline)) {
       await Future<void>.delayed(const Duration(seconds: 2));
+      final Duration remaining = deadline.difference(DateTime.now());
+      if (remaining <= Duration.zero) break;
       try {
-        final EconomyRewardStatus status = await _rewardsApi.status(
-          widget.token,
-        );
+        final EconomyRewardStatus status = await _rewardsApi
+            .status(widget.token)
+            .timeout(
+              remaining < const Duration(seconds: 6)
+                  ? remaining
+                  : const Duration(seconds: 6),
+            );
         if (status.coins >= coinsBefore + rewardAmount ||
             status.rewardedAdsRemaining < adsBefore) {
           return status;
         }
       } catch (_) {
-        // SSV is asynchronous; keep polling during the bounded verification window.
+        // SSV is asynchronous. Retry only inside the fixed verification window
+        // so a slow or disconnected request can never leave the UI locked.
       }
     }
     return null;

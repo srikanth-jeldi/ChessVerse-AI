@@ -427,28 +427,33 @@ class DailyReminderService {
   }) async {
     if (kIsWeb) return;
     await initialize();
-    await _plugin.show(
-      id,
-      title,
-      body,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'social_and_match_alerts',
-          'Friends, challenges and community',
-          channelDescription:
-              'Time-sensitive ChessVerseAI social and match alerts',
-          importance: Importance.high,
-          priority: Priority.high,
+    try {
+      await _plugin.show(
+        id,
+        title,
+        body,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'social_and_match_alerts',
+            'Friends, challenges and community',
+            channelDescription:
+                'Time-sensitive ChessVerseAI social and match alerts',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
         ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      payload: actionType == null || actionType.trim().isEmpty
-          ? null
-          : NotificationOpenRequest(
-              actionType: actionType.trim().toUpperCase(),
-              actionId: actionId,
-            ).encode(),
-    );
+        payload: actionType == null || actionType.trim().isEmpty
+            ? null
+            : NotificationOpenRequest(
+                actionType: actionType.trim().toUpperCase(),
+                actionId: actionId,
+              ).encode(),
+      );
+    } catch (_) {
+      // Some OEMs invalidate a notification wake lock while the app process is
+      // being replaced. A realtime alert must never take down the application.
+    }
   }
 
   Future<void> showAnalysisReady() async {
@@ -456,22 +461,27 @@ class DailyReminderService {
     await initialize();
     final String language = await AppLanguageController.effectiveCode();
     final AcademyStoryLocalizations copy = AcademyStoryLocalizations(language);
-    await _plugin.show(
-      _analysisReadyNotificationId,
-      copy.text('report.title'),
-      copy.text('report.empty'),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'analysis_complete',
-          'AI analysis complete',
-          channelDescription: 'Completed Stockfish and AI review alerts',
-          importance: Importance.high,
-          priority: Priority.high,
+    try {
+      await _plugin.show(
+        _analysisReadyNotificationId,
+        copy.text('report.title'),
+        copy.text('report.empty'),
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'analysis_complete',
+            'AI analysis complete',
+            channelDescription: 'Completed Stockfish and AI review alerts',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
         ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      payload: 'open_weekly_report',
-    );
+        payload: 'open_weekly_report',
+      );
+    } catch (_) {
+      // Analysis completion remains available in-app if an OEM rejects the
+      // transient system notification during a process or user-ID change.
+    }
   }
 }
 

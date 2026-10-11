@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -69,6 +70,8 @@ class BadgeRewardResult {
 class EconomyRewardsApi {
   const EconomyRewardsApi();
 
+  static const Duration _requestTimeout = Duration(seconds: 8);
+
   Future<EconomyRewardStatus> status(String token) =>
       _request(token, 'GET', '/api/v1/economy/rewards');
 
@@ -76,14 +79,16 @@ class EconomyRewardsApi {
       _request(token, 'POST', '/api/v1/economy/daily-reward');
 
   Future<BadgeRewardResult> claimBadge(String token, String code) async {
-    final response = await http.post(
-      Uri.parse('${AppConfig.apiBaseUrl}/api/v1/economy/badge-reward'),
-      headers: <String, String>{
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(<String, String>{'code': code}),
-    );
+    final response = await http
+        .post(
+          Uri.parse('${AppConfig.apiBaseUrl}/api/v1/economy/badge-reward'),
+          headers: <String, String>{
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(<String, String>{'code': code}),
+        )
+        .timeout(_requestTimeout);
     final decoded = response.body.isEmpty ? null : jsonDecode(response.body);
     final json = decoded is Map<String, dynamic>
         ? decoded
@@ -106,9 +111,11 @@ class EconomyRewardsApi {
       'Authorization': 'Bearer $token',
       'Content-Type': 'application/json',
     };
-    final http.Response response = method == 'POST'
-        ? await http.post(uri, headers: headers)
-        : await http.get(uri, headers: headers);
+    final http.Response response =
+        await (method == 'POST'
+                ? http.post(uri, headers: headers)
+                : http.get(uri, headers: headers))
+            .timeout(_requestTimeout);
     final Object? decoded = response.body.isEmpty
         ? null
         : jsonDecode(response.body);
