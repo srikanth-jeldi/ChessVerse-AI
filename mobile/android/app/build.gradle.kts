@@ -41,11 +41,11 @@ android {
         versionName = flutter.versionName
         manifestPlaceholders["admobApplicationId"] = admobAndroidAppId.get()
         ndk {
-            // Keep Play's declared ABIs identical to the Flutter engines built
-            // by android-production-release.yml. Advertising x86_64 while the
-            // bundle only contains ARM engines lets Play install an unusable
-            // split and crashes at startup with EM_AARCH64/EM_X86_64.
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+            // Keep every advertised ABI complete. Some plugins ship x86_64
+            // JNI libraries; omitting Flutter's matching engine/app binaries
+            // still makes Play generate an x86_64 split that crashes at
+            // startup when ReLinker falls back to an ARM64 libflutter.so.
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
         }
     }
 

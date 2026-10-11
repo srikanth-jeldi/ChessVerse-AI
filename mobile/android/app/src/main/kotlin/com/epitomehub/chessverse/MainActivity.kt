@@ -27,8 +27,14 @@ class MainActivity : FlutterActivity() {
             Build.VERSION.SDK_INT == Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
                 (Build.MANUFACTURER.equals("ITEL", ignoreCase = true) ||
                     Build.BRAND.equals("ITEL", ignoreCase = true))
+        val isXiaomiAndroid16OrNewer =
+            Build.VERSION.SDK_INT >= 36 &&
+                (Build.MANUFACTURER.equals("XIAOMI", ignoreCase = true) ||
+                    Build.BRAND.equals("XIAOMI", ignoreCase = true) ||
+                    Build.BRAND.equals("REDMI", ignoreCase = true) ||
+                    Build.BRAND.equals("POCO", ignoreCase = true))
 
-        return if (isOppoAndroid12 || isItelAndroid14) {
+        return if (isOppoAndroid12 || isItelAndroid14 || isXiaomiAndroid16OrNewer) {
             RenderMode.texture
         } else {
             super.getRenderMode()
