@@ -180,7 +180,7 @@ class BrandedSplash extends StatelessWidget {
 // high-resolution splash artwork.
 // ignore: unused_element
 class _MobilePremiumSplash extends StatelessWidget {
-  const _MobilePremiumSplash();
+  const _MobilePremiumSplash({super.key});
 
   @override
   Widget build(BuildContext context) {

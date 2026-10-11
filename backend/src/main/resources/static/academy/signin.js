@@ -31,8 +31,25 @@ login = function academySignIn() {
 
 let academyOAuthConfig;
 async function completeAcademyOAuth(provider,payload){const response=await fetch('/api/auth/'+provider,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json();if(!response.ok)throw new Error(result.message||provider+' sign-in failed.');state.token=result.token;await start();}
-function loadSocialScript(id,src,onload){if(document.querySelector('#'+id)){onload?.();return;}const script=document.createElement('script');script.id=id;script.async=true;script.defer=true;script.crossOrigin='anonymous';script.src=src;script.onload=onload;document.head.append(script);}
-async function initializeAcademySocialLogin(){try{academyOAuthConfig=await fetch('/api/auth/oauth-config').then(r=>r.json());if(academyOAuthConfig.googleEnabled)loadSocialScript('google-gsi','https://accounts.google.com/gsi/client',()=>{google.accounts.id.initialize({client_id:academyOAuthConfig.googleClientId,callback:async r=>{try{await completeAcademyOAuth('google',{idToken:r.credential});}catch(e){toast(e.message);}}});google.accounts.id.renderButton(document.querySelector('#academy-google-signin'),{theme:'outline',size:'large',width:360,text:'continue_with'});});const facebook=document.querySelector('[data-signin="facebook"]');if(academyOAuthConfig.facebookEnabled){facebook.hidden=false;window.fbAsyncInit=()=>FB.init({appId:academyOAuthConfig.facebookAppId,cookie:true,xfbml:false,version:'v26.0'});loadSocialScript('facebook-jssdk','https://connect.facebook.net/en_US/sdk.js');}}catch{/* Password sign-in remains available. */}}
+function loadSocialScript(id,src,onload){if(document.querySelector('#'+id)){onload?.();return;}const script=document.createElement('script');script.id=id;script.async=true;script.defer=true;if(id!=='google-gsi')script.crossOrigin='anonymous';script.src=src;script.onload=onload;document.head.append(script);}
+let academyGoogleResize;
+function renderAcademyGoogleButton(){
+  academyGoogleResize?.disconnect();
+  const host=document.querySelector('#academy-google-signin');
+  if(!host)return;
+  let lastWidth=0;
+  const render=()=>{
+    if(!host.isConnected){academyGoogleResize?.disconnect();return;}
+    const width=Math.min(400,Math.floor(host.getBoundingClientRect().width));
+    if(width<=0||width===lastWidth)return;
+    lastWidth=width;
+    google.accounts.id.renderButton(host,{theme:'outline',size:'large',width,text:'continue_with',shape:'rectangular',logo_alignment:'center'});
+  };
+  render();
+  academyGoogleResize=new ResizeObserver(render);
+  academyGoogleResize.observe(host);
+}
+async function initializeAcademySocialLogin(){try{academyOAuthConfig=await fetch('/api/auth/oauth-config').then(r=>r.json());if(academyOAuthConfig.googleEnabled)loadSocialScript('google-gsi','https://accounts.google.com/gsi/client',()=>{google.accounts.id.initialize({client_id:academyOAuthConfig.googleClientId,callback:async r=>{try{await completeAcademyOAuth('google',{idToken:r.credential});}catch(e){toast(e.message);}}});renderAcademyGoogleButton();});const facebook=document.querySelector('[data-signin="facebook"]');if(academyOAuthConfig.facebookEnabled){facebook.hidden=false;window.fbAsyncInit=()=>FB.init({appId:academyOAuthConfig.facebookAppId,cookie:true,xfbml:false,version:'v26.0'});loadSocialScript('facebook-jssdk','https://connect.facebook.net/en_US/sdk.js');}}catch{/* Password sign-in remains available. */}}
 
 function passwordRecoveryView(email = '') {
   return `<button type="button" class="close" data-action="close" aria-label="Close">×</button><h2>Reset your password</h2><p class="intro">Enter your registered ChessVerseAI email to request a six-digit reset code.</p><form id="academy-recovery"><label>Email<input type="email" name="email" value="${esc(email)}" required autocomplete="email"></label><div class="error" role="alert"></div><button type="submit" class="button">Send reset code</button></form>`;

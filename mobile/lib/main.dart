@@ -124,35 +124,45 @@ Future<void> _configureSystemUiAfterFirstFrame() async {
 }
 
 Future<void> _initializeAfterFirstFrame() async {
-  try {
-    await LocalGameArchive.init().timeout(const Duration(seconds: 5));
-  } on Object {
-    // A damaged keystore or slow platform channel must not hold the UI thread.
-  } finally {
-    if (!_localArchiveReady.isCompleted) _localArchiveReady.complete();
-  }
+  // Give Flutter's first frames exclusive access to the UI/platform threads.
+  // This is especially important on low-end Android devices where secure
+  // storage, timezone setup and SDK platform channels can otherwise compete
+  // with surface creation and inflate cold-start time.
+  await Future<void>.delayed(const Duration(milliseconds: 650));
 
-  // These SDKs are independent. None is required to paint or navigate the
-  // first screen, so initialize them concurrently after Flutter is responsive.
-  await Future.wait<void>(
-    <Future<void>>[
-      FirebasePushService.instance.initialize(),
-      AppAnalytics.initialize(),
-      AppDiagnostics.initialize(),
-    ].map((Future<void> task) async {
-      try {
-        await task.timeout(const Duration(seconds: 8));
-      } on Object {
-        // Every service already degrades gracefully; startup must do the same.
-      }
-    }),
-  );
+  startAcademyMistakeSync();
+  final Future<void> archiveTask = () async {
+    try {
+      await LocalGameArchive.init().timeout(const Duration(seconds: 5));
+    } on Object {
+      // A damaged keystore or slow platform channel must not hold the UI.
+    } finally {
+      if (!_localArchiveReady.isCompleted) _localArchiveReady.complete();
+    }
+  }();
+
+  // These services are independent and none is needed to render the app.
+  // Start them together instead of serialising all SDK work behind storage.
+  final Iterable<Future<void>> backgroundTasks =
+      <Future<void>>[
+        archiveTask,
+        FirebasePushService.instance.initialize(),
+        AppAnalytics.initialize(),
+        AppDiagnostics.initialize(),
+        DailyReminderService.instance.initialize(),
+      ].map((Future<void> task) async {
+        try {
+          await task.timeout(const Duration(seconds: 8));
+        } on Object {
+          // Every service already degrades gracefully; startup must do the same.
+        }
+      });
+  await Future.wait<void>(backgroundTasks);
   unawaited(_restoreDailyReminder());
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  startAcademyMistakeSync();
   if (kIsWeb) {
     try {
       await ensureFacebookSdkReady().timeout(const Duration(seconds: 8));
@@ -353,6 +363,7 @@ class _SplashGateState extends State<SplashGate> {
   final Set<String> _openedNotificationMatchIds = <String>{};
   bool _openingNotificationMatch = false;
   bool _splashArtworkLoadingStarted = false;
+  bool _splashArtworkReady = false;
   // The browser owns the first splash while Flutter downloads. Starting the
   // web app on another Flutter splash caused: loader -> splash -> loader.
   // Native platforms do not have that HTML hand-off, so they keep the normal
@@ -391,7 +402,6 @@ class _SplashGateState extends State<SplashGate> {
     DailyReminderService.instance.actionOpenRequests.addListener(
       _openNotificationAction,
     );
-    unawaited(DailyReminderService.instance.initialize());
     if (kIsWeb) {
       unawaited(_restoreSession(forceFreshLogin: _forceFreshWebLogin));
     }
@@ -412,22 +422,25 @@ class _SplashGateState extends State<SplashGate> {
     final String artwork = useWideArtwork
         ? 'assets/branding/chessverse_king_dual_splash.jpg'
         : 'assets/branding/splash_screen_mobile_v2.jpg';
-    unawaited(_preloadSplashAndStartTimer(artwork));
+    // The splash duration must not depend on image decoding speed. Render the
+    // lightweight fallback immediately and upgrade to artwork when ready.
+    _timer = Timer(const Duration(milliseconds: 900), () {
+      if (mounted) {
+        setState(() => _stage = _RootStage.loading);
+        unawaited(_restoreSession(forceFreshLogin: _forceFreshWebLogin));
+      }
+    });
+    unawaited(_preloadSplashArtwork(artwork));
   }
 
-  Future<void> _preloadSplashAndStartTimer(String artwork) async {
+  Future<void> _preloadSplashArtwork(String artwork) async {
     try {
       await precacheImage(AssetImage(artwork), context);
     } catch (_) {
       // Continue with the code-rendered branding if an image decoder fails.
     }
     if (!mounted) return;
-    _timer = Timer(const Duration(milliseconds: 2200), () {
-      if (mounted) {
-        setState(() => _stage = _RootStage.loading);
-        unawaited(_restoreSession(forceFreshLogin: _forceFreshWebLogin));
-      }
-    });
+    setState(() => _splashArtworkReady = true);
   }
 
   Future<void> _restoreSession({required bool forceFreshLogin}) async {
@@ -1120,9 +1133,12 @@ class _SplashGateState extends State<SplashGate> {
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
       child: switch (_stage) {
-        _RootStage.splash => const BrandedSplash(
-          key: ValueKey<String>('splash'),
-        ),
+        _RootStage.splash =>
+          _splashArtworkReady
+              ? const BrandedSplash(key: ValueKey<String>('splash-artwork'))
+              : const _MobilePremiumSplash(
+                  key: ValueKey<String>('splash-lightweight'),
+                ),
         _RootStage.loading => const ChessVerseLoadingScreen(
           key: ValueKey<String>('loading'),
         ),

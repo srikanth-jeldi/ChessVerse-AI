@@ -14,6 +14,18 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import tools.jackson.databind.ObjectMapper;
 
 class AcademyWebBoundaryTest {
+    @Test void signInPolicyAllowsGoogleResourcesAndKeepsFrameProtection() throws Exception {
+        var mvc=MockMvcBuilders.standaloneSetup(new AcademyPortalController()).addFilters(new AcademyHeadersFilter()).build();
+        var result=mvc.perform(get("/academy")).andExpect(status().isOk()).andReturn();
+        var policy=result.getResponse().getHeader("Content-Security-Policy");
+        for (String resource : java.util.List.of("script-src", "style-src", "connect-src", "frame-src")) {
+            var directive=java.util.Arrays.stream(policy.split(";"))
+                .map(String::trim).filter(value -> value.startsWith(resource+" ")).findFirst().orElseThrow();
+            org.junit.jupiter.api.Assertions.assertTrue(directive.contains("https://accounts.google.com/gsi/"),resource);
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(policy.contains("frame-ancestors 'none'"));
+        org.junit.jupiter.api.Assertions.assertFalse(policy.contains("script-src *"));
+    }
     @Test void publicInformationPagesWorkWithoutAuthentication() throws Exception {
         var mvc=MockMvcBuilders.standaloneSetup(new AcademyPortalController()).addFilters(new AcademyHeadersFilter()).build();
         for (String page : java.util.List.of("about", "pricing", "contact", "terms", "privacy", "refunds")) {

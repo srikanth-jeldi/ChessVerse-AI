@@ -28,5 +28,15 @@ void main() {
     expect(criticalPath, isNot(contains('LocalGameArchive.init')));
     expect(source, isNot(contains('RewardedCoinService.instance.initialize')));
     expect(source, isNot(contains('PostMatchAdService.instance.load()')));
+    expect(
+      source,
+      contains('await Future<void>.delayed(const Duration(milliseconds: 650))'),
+    );
+    expect(
+      source.indexOf('DailyReminderService.instance.initialize()'),
+      lessThan(source.indexOf('class _SplashGateState')),
+    );
+    expect(source, contains('Timer(const Duration(milliseconds: 900)'));
+    expect(source, isNot(contains('milliseconds: 2200')));
   });
 }

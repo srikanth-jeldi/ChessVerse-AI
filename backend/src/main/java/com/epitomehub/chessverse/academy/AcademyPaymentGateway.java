@@ -178,6 +178,29 @@ class AcademyPaymentGateway {
         }
     }
 
+    // Fail closed if the provider cannot confirm whether it is safe to release an unpaid checkout.
+    String paymentBeforeDismissal(String order, long amount, String currency) {
+        if (!order.matches("order_[A-Za-z0-9]+")) throw unavailable();
+        JsonNode response=linkRequest("GET", "orders/"+order+"/payments", null);
+        if (!response.path("items").isArray()) throw unavailable();
+        String captured=null;
+        boolean processing=false;
+        for(JsonNode payment:response.path("items")) {
+            if(!order.equals(payment.path("order_id").asText())
+                    || amount!=payment.path("amount").asLong(-1)
+                    || !currency.equals(payment.path("currency").asText())) throw unavailable();
+            String status=payment.path("status").asText();
+            if("captured".equals(status)) {
+                captured=payment.path("id").asText();
+                if(!captured.matches("pay_[A-Za-z0-9]+"))throw unavailable();
+            } else if(!java.util.Set.of("failed","refunded").contains(status)) processing=true;
+        }
+        if(captured!=null)return captured;
+        if(processing)throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Your bank payment is still processing. Check payment status before starting another checkout.");
+        return null;
+    }
+
     String findCapturedPayment(String providerOrderId, long expectedAmount, String expectedCurrency) {
         if (!available()) return null;
         try {

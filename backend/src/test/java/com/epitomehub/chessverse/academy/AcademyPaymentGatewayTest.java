@@ -4,6 +4,16 @@ import java.util.HexFormat;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 class AcademyPaymentGatewayTest {
+ @Test void dismissalRequiresConfirmedUnpaidOrder(){
+  var g=linkGateway();org.mockito.Mockito.doReturn(mapper.readTree("{\"items\":[]}")).when(g).linkRequest("GET","orders/order_a/payments",null);
+  assertNull(g.paymentBeforeDismissal("order_a",100,"INR"));
+  for(String status:java.util.List.of("created","authorized","unknown")){
+   org.mockito.Mockito.doReturn(mapper.readTree("{\"items\":[{\"id\":\"pay_a\",\"order_id\":\"order_a\",\"amount\":100,\"currency\":\"INR\",\"status\":\""+status+"\"}]}")).when(g).linkRequest("GET","orders/order_a/payments",null);
+   assertThrows(org.springframework.web.server.ResponseStatusException.class,()->g.paymentBeforeDismissal("order_a",100,"INR"));
+  }
+  org.mockito.Mockito.doReturn(mapper.readTree("{}")).when(g).linkRequest("GET","orders/order_a/payments",null);
+  assertThrows(org.springframework.web.server.ResponseStatusException.class,()->g.paymentBeforeDismissal("order_a",100,"INR"));
+ }
  @Test void testKeysNeverActivateProductionAcademy(){assertFalse(new AcademyPaymentGateway(new ObjectMapper(),true,"rzp_test_fixture","secret","webhook").available());}
  @Test void disabledGatewayCannotVerifyCheckout(){var g=new AcademyPaymentGateway(new ObjectMapper(),false,"rzp_live_fixture","secret","webhook");assertFalse(g.validPaymentSignature("order_a","pay_b","a".repeat(64)));}
  @Test void signatureBindsPaymentToExactServerOrder(){var g=new AcademyPaymentGateway(new ObjectMapper(),true,"rzp_live_fixture","secret","webhook");String signature=HexFormat.of().formatHex(AcademyPaymentGateway.hmacSha256("secret","order_a|pay_b"));assertTrue(g.validPaymentSignature("order_a","pay_b",signature));assertFalse(g.validPaymentSignature("order_other","pay_b",signature));assertFalse(g.validPaymentSignature("order_a","pay_other",signature));}

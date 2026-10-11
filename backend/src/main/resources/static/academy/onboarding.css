@@ -57,3 +57,7 @@ body:has(.onboarding-plans){background:linear-gradient(#ffffff24,#ffffff24),#f6f
 .trial-value-reminder{background:linear-gradient(120deg,#112641,#204c77);border:1px solid #6287aa;border-radius:16px;padding:24px;color:white;margin-bottom:24px}.trial-value-reminder h2{color:#ffdc88;margin:0 0 12px}.trial-value-reminder p{line-height:1.7}.trial-value-reminder small{display:block;margin-top:14px;color:#c7d7e9}
 
 .plan-continue{text-align:center;margin:0 0 28px}.plan-continue p{color:#365078}.plan-continue .button:disabled{opacity:.5;cursor:not-allowed}
+.onboarding-header-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+.onboarding-header-actions .button{min-height:44px;white-space:nowrap}
+.onboarding-plans>header.has-workspace-action{position:sticky;top:0;z-index:20;padding:12px 16px;background:#fffffff2;backdrop-filter:blur(12px);border:1px solid #dce7fa;border-radius:16px;box-shadow:0 6px 24px #18376b12}
+@media(max-width:760px){.onboarding-plans>header.has-workspace-action{flex-wrap:wrap;gap:12px;padding:12px}.has-workspace-action .onboarding-header-actions{width:100%;flex-wrap:nowrap;gap:8px}.has-workspace-action .workspace-shortcut{flex:1}.onboarding-header-actions .button{padding:10px 12px;font-size:13px}}

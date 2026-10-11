@@ -28,3 +28,8 @@
 @media(max-width:1100px){.academy-signin .signin-brand{font-size:26px}.academy-signin .signin-brand small{font-size:12px}.signin-access{gap:8px}.signin-access>span{font-size:12px}}
 @media(max-width:760px){.academy-signin .signin-brand{font-size:26px}.academy-signin .signin-brand small{font-size:12px}.signin-options,.signin-options label,.signin-options button{font-size:13px}.signin-subtitle{font-size:14px}.signin-access button{font-size:14px}.signin-description{font-size:14px}.signin-features p,.signin-story-footer>p{font-size:12px}}
 .social-signin{display:grid;gap:10px;justify-items:center;margin:0 0 14px}.signin-social{width:100%;min-height:44px;border:1px solid #d6e0ee;border-radius:10px;background:#fff;color:#17233c;font-weight:650}.signin-social.facebook{color:#fff;background:#1877f2;border-color:#1877f2}.signin-social[hidden]{display:none}
+/* Match the provider's supported 400px maximum and 40px large button. */
+.signin-card .social-signin{width:100%;max-width:400px;margin-left:auto;margin-right:auto;min-width:0}
+#academy-google-signin{width:100%;min-width:0;min-height:40px}
+.signin-card .signin-submit,.signin-card .signin-social,.signin-card .signin-demo{box-sizing:border-box;width:100%;max-width:400px;height:40px;min-height:40px;padding:0 12px;margin-left:auto;margin-right:auto;border-radius:4px;display:flex;align-items:center;justify-content:center}
+.signin-card .signin-social[hidden]{display:none}
