@@ -109,9 +109,15 @@ class EconomyControllerTest {
 
         org.junit.jupiter.api.Assertions.assertTrue(economy.grantRewardedAd(playerId, "reward-1"));
         org.junit.jupiter.api.Assertions.assertFalse(economy.grantRewardedAd(playerId, "cooldown-blocked"));
-        for (int index = 2; index <= 15; index++) {
+        jdbc.update("""
+                update economy_transaction set created_at=dateadd('SECOND', -16, current_timestamp)
+                where player_id=? and transaction_type='REWARDED_AD'
+                """, playerId);
+        org.junit.jupiter.api.Assertions.assertTrue(economy.grantRewardedAd(playerId, "reward-2"));
+        org.junit.jupiter.api.Assertions.assertFalse(economy.grantRewardedAd(playerId, "cooldown-blocked-2"));
+        for (int index = 3; index <= 15; index++) {
             jdbc.update("""
-                    update economy_transaction set created_at=dateadd('SECOND', -61, current_timestamp)
+                    update economy_transaction set created_at=dateadd('SECOND', -16, current_timestamp)
                     where player_id=? and transaction_type='REWARDED_AD'
                     """, playerId);
             org.junit.jupiter.api.Assertions.assertTrue(

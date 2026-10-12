@@ -451,6 +451,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                   _busy ||
                       _preparingRewardAd ||
                       _verifyingReward ||
+                      _rewardedCooldownRemaining() > Duration.zero ||
                       (_rewards?.rewardedAdsRemaining ?? 0) <= 0
                   ? null
                   : () => _watchAd(s),
@@ -624,6 +625,13 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         maxLines: 1,
       );
     }
+    if (_rewardedCooldownRemaining() > Duration.zero) {
+      return Text(
+        'NEXT VIDEO • ${formatFreeCoinCountdown(_rewardedCooldownRemaining())}',
+        textAlign: TextAlign.center,
+        maxLines: 1,
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
@@ -734,6 +742,13 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       return 'READY';
     }
     return formatFreeCoinCountdown(remaining);
+  }
+
+  Duration _rewardedCooldownRemaining() {
+    final DateTime? next = _rewards?.nextRewardedAdAt;
+    if (next == null) return Duration.zero;
+    final Duration remaining = next.toUtc().difference(DateTime.now().toUtc());
+    return remaining > Duration.zero ? remaining : Duration.zero;
   }
 
   Future<EconomyRewardStatus?> _waitForRewardCredit(

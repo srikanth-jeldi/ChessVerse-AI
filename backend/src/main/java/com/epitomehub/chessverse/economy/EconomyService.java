@@ -21,7 +21,7 @@ public class EconomyService {
     static final long DAILY_COINS = 100;
     static final long REWARDED_AD_COINS = 30;
     static final int REWARDED_AD_DAILY_LIMIT = 15;
-    static final long REWARDED_AD_COOLDOWN_SECONDS = 60;
+    static final long REWARDED_AD_COOLDOWN_SECONDS = 15;
     static final long FREE_COIN_COOLDOWN_HOURS = 8;
     private final JdbcTemplate jdbc;
 
