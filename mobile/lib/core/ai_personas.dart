@@ -10,6 +10,7 @@ class AiPersona {
     required this.style,
     required this.icon,
     required this.accent,
+    required this.backgroundAsset,
   });
 
   final String name;
@@ -18,6 +19,7 @@ class AiPersona {
   final AiBotStyle style;
   final IconData icon;
   final Color accent;
+  final String backgroundAsset;
 }
 
 const List<AiPersona> aiPersonas = <AiPersona>[
@@ -28,6 +30,7 @@ const List<AiPersona> aiPersonas = <AiPersona>[
     style: AiBotStyle.aggressive,
     icon: Icons.bolt_rounded,
     accent: Color(0xFFFF5B45),
+    backgroundAsset: 'assets/backgrounds/home-computer-hero-v1.webp',
   ),
   AiPersona(
     name: 'Sage the Strategist',
@@ -36,6 +39,7 @@ const List<AiPersona> aiPersonas = <AiPersona>[
     style: AiBotStyle.balanced,
     icon: Icons.auto_awesome_rounded,
     accent: Color(0xFF9B7BFF),
+    backgroundAsset: 'assets/backgrounds/home-puzzles-hero-v1.webp',
   ),
   AiPersona(
     name: 'Onyx the Guardian',
@@ -44,6 +48,7 @@ const List<AiPersona> aiPersonas = <AiPersona>[
     style: AiBotStyle.defensive,
     icon: Icons.shield_rounded,
     accent: Color(0xFF8B9BAA),
+    backgroundAsset: 'assets/backgrounds/home-analysis-hero-v1.webp',
   ),
   AiPersona(
     name: 'Mira the Mentor',
@@ -52,5 +57,6 @@ const List<AiPersona> aiPersonas = <AiPersona>[
     style: AiBotStyle.balanced,
     icon: Icons.school_rounded,
     accent: Color(0xFF55D6C2),
+    backgroundAsset: 'assets/backgrounds/home-learn-hero-v1.webp',
   ),
 ];

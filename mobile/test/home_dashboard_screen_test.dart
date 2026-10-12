@@ -162,6 +162,22 @@ void main() {
       find.byKey(const ValueKey<String>('persona-Mira the Mentor')),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const ValueKey<String>('persona-image-Nova the Tactician')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('persona-image-Sage the Strategist')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('persona-image-Onyx the Guardian')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('persona-image-Mira the Mentor')),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey<String>('play-computer')), findsNothing);
     expect(find.byKey(const ValueKey<String>('play-friends')), findsNothing);
     expect(find.text('Learn'), findsNWidgets(2));

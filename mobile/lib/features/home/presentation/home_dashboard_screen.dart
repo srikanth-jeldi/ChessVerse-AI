@@ -2339,111 +2339,160 @@ class _AiPersonaStrip extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                         onTap: () => onChallenge(persona.name),
                         child: Ink(
-                          padding: EdgeInsets.all(cardWidth < 155 ? 10 : 14),
                           decoration: BoxDecoration(
                             color: const Color(0xFF0B1B29),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: persona.accent.withValues(alpha: .36),
-                            ),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: <Color>[
-                                persona.accent.withValues(alpha: .09),
-                                const Color(0xFF0B1B29),
-                                const Color(0xFF0A1725),
-                              ],
+                              color: persona.accent.withValues(alpha: .72),
+                              width: 1.2,
                             ),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Stack(
+                            fit: StackFit.expand,
                             children: <Widget>[
-                              Row(
-                                children: <Widget>[
-                                  Container(
-                                    width: 38,
-                                    height: 38,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: persona.accent.withValues(
-                                        alpha: .12,
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(19),
+                                child: Image.asset(
+                                  persona.backgroundAsset,
+                                  key: ValueKey<String>(
+                                    'persona-image-${persona.name}',
+                                  ),
+                                  fit: BoxFit.cover,
+                                  alignment: Alignment.center,
+                                ),
+                              ),
+                              DecoratedBox(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(19),
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: <Color>[
+                                      persona.accent.withValues(alpha: .52),
+                                      const Color(0xB30B1B29),
+                                      const Color(0xF20A1420),
+                                    ],
+                                    stops: const <double>[0, .52, 1],
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.all(
+                                  cardWidth < 155 ? 10 : 14,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    Row(
+                                      children: <Widget>[
+                                        Container(
+                                          width: 40,
+                                          height: 40,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: persona.accent.withValues(
+                                              alpha: .22,
+                                            ),
+                                            border: Border.all(
+                                              color: persona.accent.withValues(
+                                                alpha: .92,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            persona.icon,
+                                            color: persona.accent,
+                                            size: 23,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 9,
+                                            vertical: 5,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xB3071724),
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                            border: Border.all(
+                                              color: persona.accent.withValues(
+                                                alpha: .45,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '${persona.rating}',
+                                            style: const TextStyle(
+                                              color: Color(0xFFFFD36B),
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      persona.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: const Color(0xFFFFF8ED),
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: cardWidth < 155 ? 12 : 14,
+                                        height: 1.1,
                                       ),
-                                      border: Border.all(
-                                        color: persona.accent.withValues(
-                                          alpha: .42,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Expanded(
+                                      child: Text(
+                                        persona.tagline.split(' · ').first,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Color(0xFFD5E0E8),
+                                          fontSize: 11,
                                         ),
                                       ),
                                     ),
-                                    child: Icon(
-                                      persona.icon,
-                                      color: persona.accent,
-                                      size: 21,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    '${persona.rating}',
-                                    style: const TextStyle(
-                                      color: Color(0xFFE6B653),
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                persona.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: const Color(0xFFF4F1E9),
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: cardWidth < 155 ? 12 : 14,
-                                  height: 1.1,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Expanded(
-                                child: Text(
-                                  persona.tagline.split(' · ').first,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xFF9FB2C2),
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 32,
-                                child: FilledButton(
-                                  key: ValueKey<String>(
-                                    'challenge-${persona.name}',
-                                  ),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: const Color(0xFFE0AE4F),
-                                    foregroundColor: const Color(0xFF071522),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                    ),
-                                    visualDensity: VisualDensity.compact,
-                                  ),
-                                  onPressed: () => onChallenge(persona.name),
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      'Challenge Now',
-                                      maxLines: 1,
-                                      softWrap: false,
-                                      style: TextStyle(
-                                        fontSize: cardWidth < 155 ? 9 : 11,
-                                        fontWeight: FontWeight.w900,
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 32,
+                                      child: FilledButton(
+                                        key: ValueKey<String>(
+                                          'challenge-${persona.name}',
+                                        ),
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: persona.accent,
+                                          foregroundColor: const Color(
+                                            0xFF071522,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                          ),
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                        onPressed: () =>
+                                            onChallenge(persona.name),
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            'Challenge Now',
+                                            maxLines: 1,
+                                            softWrap: false,
+                                            style: TextStyle(
+                                              fontSize: cardWidth < 155
+                                                  ? 9
+                                                  : 11,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
+                                  ],
                                 ),
                               ),
                             ],
