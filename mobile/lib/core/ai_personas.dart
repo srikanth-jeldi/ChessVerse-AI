@@ -24,12 +24,21 @@ class AiPersona {
 
 const List<AiPersona> aiPersonas = <AiPersona>[
   AiPersona(
+    name: 'Mira the Mentor',
+    tagline: 'Friendly beginner practice · 900 rating',
+    rating: 900,
+    style: AiBotStyle.balanced,
+    icon: Icons.school_rounded,
+    accent: Color(0xFFE6B653),
+    backgroundAsset: 'assets/backgrounds/home-learn-hero-v1.webp',
+  ),
+  AiPersona(
     name: 'Nova the Tactician',
     tagline: 'Sharp attacks · 1400 rating',
     rating: 1400,
     style: AiBotStyle.aggressive,
     icon: Icons.bolt_rounded,
-    accent: Color(0xFFFF5B45),
+    accent: Color(0xFFE6B653),
     backgroundAsset: 'assets/backgrounds/home-computer-hero-v1.webp',
   ),
   AiPersona(
@@ -38,7 +47,7 @@ const List<AiPersona> aiPersonas = <AiPersona>[
     rating: 1800,
     style: AiBotStyle.balanced,
     icon: Icons.auto_awesome_rounded,
-    accent: Color(0xFF9B7BFF),
+    accent: Color(0xFFE6B653),
     backgroundAsset: 'assets/backgrounds/home-puzzles-hero-v1.webp',
   ),
   AiPersona(
@@ -47,16 +56,7 @@ const List<AiPersona> aiPersonas = <AiPersona>[
     rating: 2200,
     style: AiBotStyle.defensive,
     icon: Icons.shield_rounded,
-    accent: Color(0xFF8B9BAA),
+    accent: Color(0xFFE6B653),
     backgroundAsset: 'assets/backgrounds/home-analysis-hero-v1.webp',
-  ),
-  AiPersona(
-    name: 'Mira the Mentor',
-    tagline: 'Friendly beginner practice · 900 rating',
-    rating: 900,
-    style: AiBotStyle.balanced,
-    icon: Icons.school_rounded,
-    accent: Color(0xFF55D6C2),
-    backgroundAsset: 'assets/backgrounds/home-learn-hero-v1.webp',
   ),
 ];

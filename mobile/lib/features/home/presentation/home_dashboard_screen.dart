@@ -2343,7 +2343,7 @@ class _AiPersonaStrip extends StatelessWidget {
                             color: const Color(0xFF0B1B29),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: persona.accent.withValues(alpha: .72),
+                              color: const Color(0xFF245363),
                               width: 1.2,
                             ),
                           ),
@@ -2368,8 +2368,8 @@ class _AiPersonaStrip extends StatelessWidget {
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                     colors: <Color>[
-                                      persona.accent.withValues(alpha: .52),
-                                      const Color(0xB30B1B29),
+                                      const Color(0xA50A1B29),
+                                      const Color(0xCC0A1B29),
                                       const Color(0xF20A1420),
                                     ],
                                     stops: const <double>[0, .52, 1],
@@ -2465,7 +2465,9 @@ class _AiPersonaStrip extends StatelessWidget {
                                           'challenge-${persona.name}',
                                         ),
                                         style: FilledButton.styleFrom(
-                                          backgroundColor: persona.accent,
+                                          backgroundColor: const Color(
+                                            0xFFE6B653,
+                                          ),
                                           foregroundColor: const Color(
                                             0xFF071522,
                                           ),
