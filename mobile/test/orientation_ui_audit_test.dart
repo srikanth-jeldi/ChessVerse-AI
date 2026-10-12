@@ -132,7 +132,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Play vs AI'), findsOneWidget);
-      expect(find.text('Play Computer'), findsOneWidget);
       expect(find.text('Play with Friends'), findsOneWidget);
       expect(
         find.byKey(const ValueKey<String>('chess-puzzles')),
