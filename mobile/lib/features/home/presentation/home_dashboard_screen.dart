@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/ads/banner_ad_slot.dart';
+import '../../../core/ai_personas.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/theme/app_colors.dart';
@@ -26,6 +27,7 @@ class HomeDashboardScreen extends StatelessWidget {
     this.activityGames,
     this.nextTournament,
     required this.onPlayVsAi,
+    this.onAiPersonaSelected,
     required this.onDailyChallenge,
     required this.onLocalGame,
     this.onImportGame = _noOnlineAction,
@@ -53,6 +55,7 @@ class HomeDashboardScreen extends StatelessWidget {
   final List<SavedGameRecord>? activityGames;
   final TournamentDto? nextTournament;
   final VoidCallback onPlayVsAi;
+  final ValueChanged<String>? onAiPersonaSelected;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
   final VoidCallback onImportGame;
@@ -89,6 +92,7 @@ class HomeDashboardScreen extends StatelessWidget {
                 activityGames: activityGames,
                 nextTournament: nextTournament,
                 onPlayVsAi: onPlayVsAi,
+                onAiPersonaSelected: onAiPersonaSelected,
                 onDailyChallenge: onDailyChallenge,
                 onLocalGame: onLocalGame,
                 onImportGame: onImportGame,
@@ -116,6 +120,7 @@ class HomeDashboardScreen extends StatelessWidget {
               activityGames: activityGames,
               nextTournament: nextTournament,
               onPlayVsAi: onPlayVsAi,
+              onAiPersonaSelected: onAiPersonaSelected,
               onDailyChallenge: onDailyChallenge,
               onLocalGame: onLocalGame,
               onImportGame: onImportGame,
@@ -150,6 +155,7 @@ class _MobileHome extends StatefulWidget {
     this.activityGames,
     this.nextTournament,
     required this.onPlayVsAi,
+    this.onAiPersonaSelected,
     required this.onDailyChallenge,
     required this.onLocalGame,
     required this.onImportGame,
@@ -176,6 +182,7 @@ class _MobileHome extends StatefulWidget {
   final List<SavedGameRecord>? activityGames;
   final TournamentDto? nextTournament;
   final VoidCallback onPlayVsAi;
+  final ValueChanged<String>? onAiPersonaSelected;
   final VoidCallback onDailyChallenge;
   final VoidCallback onLocalGame;
   final VoidCallback onImportGame;
@@ -352,6 +359,10 @@ class _MobileHomeState extends State<_MobileHome> {
                       ],
                     ),
                     const SizedBox(height: 12),
+                    _AiPersonaStrip(
+                      onChallenge: widget.onAiPersonaSelected ?? (_) {},
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       children: <Widget>[
                         Expanded(
@@ -479,6 +490,7 @@ class _WideHome extends StatefulWidget {
     this.activityGames,
     this.nextTournament,
     required this.onPlayVsAi,
+    this.onAiPersonaSelected,
     required this.onDailyChallenge,
     required this.onOnlineGame,
     required this.onFriendsGame,
@@ -505,6 +517,7 @@ class _WideHome extends StatefulWidget {
   final List<SavedGameRecord>? activityGames;
   final TournamentDto? nextTournament;
   final VoidCallback onPlayVsAi;
+  final ValueChanged<String>? onAiPersonaSelected;
   final VoidCallback onDailyChallenge;
   final VoidCallback onOnlineGame;
   final VoidCallback onFriendsGame;
@@ -668,6 +681,11 @@ class _WideHomeState extends State<_WideHome> {
                               onTap: widget.onSettings,
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 18),
+                        _AiPersonaStrip(
+                          wide: true,
+                          onChallenge: widget.onAiPersonaSelected ?? (_) {},
                         ),
                         const SizedBox(height: 18),
                         Row(
@@ -2280,6 +2298,145 @@ class _OnlineHero extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _AiPersonaStrip extends StatelessWidget {
+  const _AiPersonaStrip({required this.onChallenge, this.wide = false});
+
+  final ValueChanged<String> onChallenge;
+  final bool wide;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: wide ? 218 : 202,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: aiPersonas.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (BuildContext context, int index) {
+          final AiPersona persona = aiPersonas[index];
+          return SizedBox(
+            width: wide ? 238 : 184,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: ValueKey<String>('persona-${persona.name}'),
+                borderRadius: BorderRadius.circular(22),
+                onTap: () => onChallenge(persona.name),
+                child: Ink(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: persona.accent.withValues(alpha: .75),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: <Color>[
+                        persona.accent.withValues(alpha: .28),
+                        const Color(0xFF0A1725),
+                        const Color(0xFF111827),
+                      ],
+                    ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: persona.accent.withValues(alpha: .12),
+                        blurRadius: 16,
+                        offset: const Offset(0, 7),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: persona.accent.withValues(alpha: .18),
+                              border: Border.all(
+                                color: persona.accent.withValues(alpha: .8),
+                              ),
+                            ),
+                            child: Icon(
+                              persona.icon,
+                              color: persona.accent,
+                              size: 24,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${persona.rating}',
+                            style: TextStyle(
+                              color: persona.accent,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 11),
+                      Text(
+                        persona.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFFFFF8ED),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 15,
+                          height: 1.08,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Expanded(
+                        child: Text(
+                          persona.tagline.split(' · ').first,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFFB7C7D5),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 34,
+                        child: FilledButton(
+                          key: ValueKey<String>('challenge-${persona.name}'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: persona.accent,
+                            foregroundColor: const Color(0xFF07111D),
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          onPressed: () => onChallenge(persona.name),
+                          child: const Text(
+                            'Challenge Now',
+                            maxLines: 1,
+                            softWrap: false,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

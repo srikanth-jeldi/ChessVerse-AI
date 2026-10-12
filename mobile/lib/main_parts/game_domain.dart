@@ -173,11 +173,17 @@ class _FriendPlayChoiceCard extends StatelessWidget {
 }
 
 class _GameLaunchChoice {
-  const _GameLaunchChoice(this.side, this.aiLevel, this.aiStyle);
+  const _GameLaunchChoice(
+    this.side,
+    this.aiLevel,
+    this.aiStyle, {
+    this.opponentName,
+  });
 
   final PlayerSideChoice side;
   final double aiLevel;
   final AiBotStyle aiStyle;
+  final String? opponentName;
 }
 
 Future<void> _restoreDailyReminder() async {

@@ -16,6 +16,7 @@ import 'core/academy_activity.dart';
 import 'features/analysis/domain/mistake_bank_sync.dart';
 import 'features/academy/presentation/my_academy_screen.dart';
 import 'core/ai_bot_preset_store.dart';
+import 'core/ai_personas.dart';
 import 'core/app_language.dart';
 import 'core/coach_localizations.dart';
 import 'core/coach_extra_localizations.dart';
@@ -1205,6 +1206,12 @@ class _SplashGateState extends State<SplashGate> {
         coinBalance: _coinBalance,
         nextTournament: _nextTournament,
         onPlayVsAi: () => _chooseSideAndOpen(context, GameMode.computer),
+        onAiPersonaSelected: (String name) => _chooseSideAndOpen(
+          context,
+          GameMode.computer,
+          personasOnly: true,
+          personaName: name,
+        ),
         onDailyChallenge: () => _openGame(context, GameMode.daily),
         onLocalGame: () => _chooseSideAndOpen(context, GameMode.local),
         onImportGame: () => _push(
@@ -1678,7 +1685,12 @@ class _SplashGateState extends State<SplashGate> {
     }
   }
 
-  Future<void> _chooseSideAndOpen(BuildContext context, GameMode mode) async {
+  Future<void> _chooseSideAndOpen(
+    BuildContext context,
+    GameMode mode, {
+    bool personasOnly = false,
+    String? personaName,
+  }) async {
     bool replacePausedComputerGame = false;
     if (mode == GameMode.computer) {
       try {
@@ -1718,8 +1730,17 @@ class _SplashGateState extends State<SplashGate> {
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         PlayerSideChoice selected = PlayerSideChoice.white;
-        double selectedRating = 1400;
-        AiBotStyle selectedStyle = AiBotStyle.balanced;
+        final AiPersona initialPersona = aiPersonas.firstWhere(
+          (AiPersona persona) => persona.name == personaName,
+          orElse: () => aiPersonas.first,
+        );
+        double selectedRating = personasOnly
+            ? initialPersona.rating.toDouble()
+            : 1400;
+        AiBotStyle selectedStyle = personasOnly
+            ? initialPersona.style
+            : AiBotStyle.balanced;
+        String? selectedPersona = personasOnly ? initialPersona.name : null;
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setSheetState) => SafeArea(
             child: LayoutBuilder(
@@ -1762,7 +1783,9 @@ class _SplashGateState extends State<SplashGate> {
                             size: 52,
                           ),
                           Text(
-                            'Choose Your Side',
+                            personasOnly
+                                ? 'Choose Your AI Rival'
+                                : 'Choose Your Side',
                             style: TextStyle(
                               color: Color(0xFFFFF8ED),
                               fontSize: wide ? 42 : 30,
@@ -1855,7 +1878,67 @@ class _SplashGateState extends State<SplashGate> {
                               );
                             }).toList(),
                           ),
-                          if (mode == GameMode.computer) ...<Widget>[
+                          if (mode == GameMode.computer &&
+                              personasOnly) ...<Widget>[
+                            const Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'AI PERSONAS',
+                                style: TextStyle(
+                                  color: Color(0xFFE2AE49),
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.1,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...aiPersonas.map((persona) {
+                              final bool active =
+                                  selectedPersona == persona.name;
+                              return Card(
+                                color: active
+                                    ? persona.accent.withValues(alpha: .13)
+                                    : const Color(0xFF0A1927),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  side: BorderSide(
+                                    color: active
+                                        ? persona.accent
+                                        : const Color(0xFF39434A),
+                                  ),
+                                ),
+                                child: ListTile(
+                                  leading: Icon(
+                                    persona.icon,
+                                    color: persona.accent,
+                                  ),
+                                  title: Text(persona.name),
+                                  subtitle: Text(persona.tagline),
+                                  trailing: active
+                                      ? Icon(
+                                          Icons.check_circle_rounded,
+                                          color: persona.accent,
+                                        )
+                                      : null,
+                                  onTap: () => setSheetState(() {
+                                    selectedPersona = persona.name;
+                                    selectedRating = persona.rating.toDouble();
+                                    selectedStyle = persona.style;
+                                  }),
+                                ),
+                              );
+                            }),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'ఇవి కృత్రిమ మేధ ప్రత్యర్థులు; నిజమైన బిరుదు పొందిన ఆటగాళ్లు కాదు.',
+                              style: TextStyle(
+                                color: Color(0xFFAEC0D1),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                          if (mode == GameMode.computer &&
+                              !personasOnly) ...<Widget>[
                             SizedBox(height: shortLandscape ? 8 : 18),
                             Align(
                               alignment: Alignment.centerLeft,
@@ -1874,8 +1957,10 @@ class _SplashGateState extends State<SplashGate> {
                               max: 3000,
                               divisions: 26,
                               label: '${selectedRating.round()} Elo',
-                              onChanged: (double value) =>
-                                  setSheetState(() => selectedRating = value),
+                              onChanged: (double value) => setSheetState(() {
+                                selectedRating = value;
+                                selectedPersona = null;
+                              }),
                             ),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1905,9 +1990,10 @@ class _SplashGateState extends State<SplashGate> {
                               selected: <AiBotStyle>{selectedStyle},
                               showSelectedIcon: false,
                               onSelectionChanged: (Set<AiBotStyle> value) =>
-                                  setSheetState(
-                                    () => selectedStyle = value.first,
-                                  ),
+                                  setSheetState(() {
+                                    selectedStyle = value.first;
+                                    selectedPersona = null;
+                                  }),
                             ),
                             if (botPresets.isNotEmpty) ...<Widget>[
                               const SizedBox(height: 12),
@@ -1924,6 +2010,7 @@ class _SplashGateState extends State<SplashGate> {
                                           selectedRating = preset.rating
                                               .toDouble();
                                           selectedStyle = preset.style;
+                                          selectedPersona = null;
                                         }),
                                         onDeleted: () async {
                                           try {
@@ -2050,6 +2137,7 @@ class _SplashGateState extends State<SplashGate> {
                                   ratingToEngineLevel(selectedRating.round())
                                       .toDouble(),
                                   selectedStyle,
+                                  opponentName: selectedPersona,
                                 ),
                               ),
                               icon: const Icon(Icons.play_arrow_rounded),
@@ -2076,6 +2164,7 @@ class _SplashGateState extends State<SplashGate> {
         sideChoice: choice.side,
         aiLevel: choice.aiLevel,
         aiStyle: choice.aiStyle,
+        aiOpponentName: choice.opponentName,
         replacePausedComputerGame: replacePausedComputerGame,
       );
     }

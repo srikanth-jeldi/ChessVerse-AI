@@ -16,6 +16,7 @@ void main() {
     VoidCallback? onSavedGames,
     VoidCallback? onImportGame,
     VoidCallback? onLocalGame,
+    ValueChanged<String>? onAiPersonaSelected,
   }) {
     return MaterialApp(
       theme: AppTheme.darkTheme,
@@ -25,6 +26,7 @@ void main() {
         coinBalance: coinBalance,
         nextTournament: nextTournament,
         onPlayVsAi: onComputer,
+        onAiPersonaSelected: onAiPersonaSelected,
         onDailyChallenge: () {},
         onLocalGame: onLocalGame ?? () {},
         onImportGame: onImportGame ?? () {},
@@ -97,6 +99,34 @@ void main() {
     await tester.pump();
     expect(onlineLaunches, 0);
     expect(computerLaunches, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('persona challenge card launches its selected rival', (
+    WidgetTester tester,
+  ) async {
+    String? selectedPersona;
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      app(
+        onOnline: () {},
+        onComputer: () {},
+        onAiPersonaSelected: (String name) => selectedPersona = name,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final Finder nova = find.byKey(
+      const ValueKey<String>('challenge-Nova the Tactician'),
+    );
+    await tester.ensureVisible(nova);
+    await tester.tap(nova);
+
+    expect(selectedPersona, 'Nova the Tactician');
     expect(tester.takeException(), isNull);
   });
 
