@@ -142,7 +142,28 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Play vs AI'), findsOneWidget);
-    expect(find.text('Play with Friends'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('ai-persona-grid')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('persona-Nova the Tactician')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('persona-Sage the Strategist')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('persona-Onyx the Guardian')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey<String>('persona-Mira the Mentor')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey<String>('play-computer')), findsNothing);
+    expect(find.byKey(const ValueKey<String>('play-friends')), findsNothing);
     expect(find.text('Learn'), findsNWidgets(2));
     expect(tester.takeException(), isNull);
     expect(find.text('Home'), findsOneWidget);

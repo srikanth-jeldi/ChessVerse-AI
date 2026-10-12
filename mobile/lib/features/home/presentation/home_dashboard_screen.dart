@@ -329,35 +329,6 @@ class _MobileHomeState extends State<_MobileHome> {
                       height: 340,
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: _ActionCard(
-                            keyName: 'play-computer',
-                            icon: Icons.computer_rounded,
-                            title: 'Play Computer',
-                            subtitle: 'Challenge the AI',
-                            color: const Color(0xFF143D58),
-                            asset:
-                                'assets/backgrounds/home-computer-hero-v1.webp',
-                            onTap: widget.onPlayVsAi,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _ActionCard(
-                            keyName: 'play-friends',
-                            icon: Icons.groups_rounded,
-                            title: 'Play with Friends',
-                            subtitle: 'Create or join room',
-                            color: const Color(0xFF15513F),
-                            asset:
-                                'assets/backgrounds/home-friends-hero-v1.webp',
-                            onTap: widget.onFriendsGame,
-                          ),
-                        ),
-                      ],
-                    ),
                     const SizedBox(height: 12),
                     _AiPersonaStrip(
                       onChallenge: widget.onAiPersonaSelected ?? (_) {},
@@ -2311,24 +2282,34 @@ class _AiPersonaStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: wide ? 218 : 202,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: aiPersonas.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 12),
-        itemBuilder: (BuildContext context, int index) {
-          final AiPersona persona = aiPersonas[index];
-          return SizedBox(
-            width: wide ? 238 : 184,
-            child: Material(
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final int columns = wide ? 4 : 2;
+        const double spacing = 12;
+        final double cardWidth =
+            (constraints.maxWidth - (spacing * (columns - 1))) / columns;
+        final double cardHeight = wide ? 196 : 184;
+        return GridView.builder(
+          key: const ValueKey<String>('ai-persona-grid'),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: aiPersonas.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+            mainAxisExtent: cardHeight,
+          ),
+          itemBuilder: (BuildContext context, int index) {
+            final AiPersona persona = aiPersonas[index];
+            return Material(
               color: Colors.transparent,
               child: InkWell(
                 key: ValueKey<String>('persona-${persona.name}'),
                 borderRadius: BorderRadius.circular(22),
                 onTap: () => onChallenge(persona.name),
                 child: Ink(
-                  padding: const EdgeInsets.all(14),
+                  padding: EdgeInsets.all(cardWidth < 155 ? 10 : 12),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(22),
                     border: Border.all(
@@ -2383,15 +2364,15 @@ class _AiPersonaStrip extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 11),
+                      const SizedBox(height: 8),
                       Text(
                         persona.name,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Color(0xFFFFF8ED),
                           fontWeight: FontWeight.w900,
-                          fontSize: 15,
+                          fontSize: cardWidth < 155 ? 12 : 14,
                           height: 1.08,
                         ),
                       ),
@@ -2399,7 +2380,7 @@ class _AiPersonaStrip extends StatelessWidget {
                       Expanded(
                         child: Text(
                           persona.tagline.split(' · ').first,
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Color(0xFFB7C7D5),
@@ -2409,7 +2390,7 @@ class _AiPersonaStrip extends StatelessWidget {
                       ),
                       SizedBox(
                         width: double.infinity,
-                        height: 34,
+                        height: 32,
                         child: FilledButton(
                           key: ValueKey<String>('challenge-${persona.name}'),
                           style: FilledButton.styleFrom(
@@ -2419,12 +2400,12 @@ class _AiPersonaStrip extends StatelessWidget {
                             visualDensity: VisualDensity.compact,
                           ),
                           onPressed: () => onChallenge(persona.name),
-                          child: const Text(
-                            'Challenge Now',
+                          child: Text(
+                            cardWidth < 155 ? 'Play Now' : 'Challenge Now',
                             maxLines: 1,
                             softWrap: false,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: cardWidth < 155 ? 10 : 11,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
@@ -2434,10 +2415,10 @@ class _AiPersonaStrip extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-          );
-        },
-      ),
+            );
+          },
+        );
+      },
     );
   }
 }

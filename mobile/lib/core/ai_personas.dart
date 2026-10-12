@@ -45,4 +45,12 @@ const List<AiPersona> aiPersonas = <AiPersona>[
     icon: Icons.shield_rounded,
     accent: Color(0xFF8B9BAA),
   ),
+  AiPersona(
+    name: 'Mira the Mentor',
+    tagline: 'Friendly beginner practice · 900 rating',
+    rating: 900,
+    style: AiBotStyle.balanced,
+    icon: Icons.school_rounded,
+    accent: Color(0xFF55D6C2),
+  ),
 ];
