@@ -12,6 +12,7 @@ import '../../../core/theme/app_colors.dart';
 import '../data/auth_api.dart';
 import '../data/auth_session_store.dart';
 import 'web_google_button.dart';
+import 'chat_access_copy.dart';
 
 class ChessVerseAuthResult {
   const ChessVerseAuthResult({
@@ -22,6 +23,7 @@ class ChessVerseAuthResult {
     this.username,
     this.email,
     this.photoUrl,
+    this.playerId,
   });
 
   final String playerName;
@@ -31,17 +33,22 @@ class ChessVerseAuthResult {
   final String? username;
   final String? email;
   final String? photoUrl;
+  final String? playerId;
 }
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({
     required this.onAuthenticated,
     this.guestUpgradeToken,
+    this.googleChatOnly = false,
+    this.chatLanguage = 'en',
     super.key,
   });
 
-  final ValueChanged<ChessVerseAuthResult> onAuthenticated;
+  final FutureOr<void> Function(ChessVerseAuthResult) onAuthenticated;
   final String? guestUpgradeToken;
+  final bool googleChatOnly;
+  final String chatLanguage;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -84,6 +91,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _restoreRememberMePreference() async {
+    if (widget.googleChatOnly) return;
     final bool rememberMe = await _sessionStore.rememberMeEnabled();
     if (mounted) setState(() => _rememberMe = rememberMe);
   }
@@ -108,6 +116,45 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.googleChatOnly) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Google')),
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.lock_outline, size: 48),
+                  const SizedBox(height: 20),
+                  Text(
+                    googleChatMessage(widget.chatLanguage),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  if (_loading)
+                    const CircularProgressIndicator()
+                  else if (kIsWeb)
+                    buildWebGoogleSignInButton()
+                  else
+                    FilledButton.icon(
+                      onPressed: _signInWithGoogle,
+                      icon: const Icon(Icons.login),
+                      label: const Text('Google'),
+                    ),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Text(_error!),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     final Size viewport = MediaQuery.sizeOf(context);
     final bool compactLandscape =
         viewport.width > viewport.height && viewport.shortestSide < 600;
@@ -1616,8 +1663,9 @@ class _AuthScreenState extends State<AuthScreen> {
       );
     }
     if (!mounted) return;
-    widget.onAuthenticated(
+    await widget.onAuthenticated(
       ChessVerseAuthResult(
+        playerId: _nonBlankString(player['id']),
         playerName: name,
         isGuest: isGuest,
         session: session,

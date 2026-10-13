@@ -62,6 +62,23 @@ void main() {
     await login();
   });
 
+  test('verified guest upgrade retains saved mistakes across identity change', () async {
+    await LocalGameArchive.activateIdentity('guest:chat-upgrade');
+    await LocalGameArchive.restoreMistakeGames('guest:chat-upgrade', [game]);
+    await LocalGameArchive.upgradeGuestIdentity('guest:chat-upgrade', identity);
+    expect(await LocalGameArchive.hasActiveIdentity(identity), isTrue);
+    expect(LocalGameArchive.games, hasLength(1));
+    await LocalGameArchive.init();
+    expect(LocalGameArchive.games, hasLength(1));
+  });
+
+  test('guest upgrade never carries a different active account into Google', () async {
+    await LocalGameArchive.restoreMistakeGames(identity, [game]);
+    await LocalGameArchive.upgradeGuestIdentity('guest:other', 'google:other');
+    expect(LocalGameArchive.games, isEmpty);
+    expect(await LocalGameArchive.hasActiveIdentity('google:other'), isTrue);
+  });
+
   test('fresh installation restores playable mistakes and assisted/independent progress', () async {
     Map<String, dynamic> cloud = {'items': []};
     final api = PersonalMistakeBackup(

@@ -11,6 +11,7 @@ import '../../../core/widgets/coin_balance_badge.dart';
 import '../../../core/widgets/desktop_navigation_shell.dart';
 import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/data/auth_session_store.dart';
+import '../../auth/presentation/google_chat_gate.dart';
 import '../../online/data/online_match_api.dart';
 import '../data/social_api.dart';
 import '../data/community_api.dart';
@@ -44,11 +45,19 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
   late int _section;
   String? _error;
   bool _busy = true;
+  bool _checkingChat = false;
 
   @override
   void initState() {
     super.initState();
-    _section = widget.initialSection.clamp(0, 3);
+    _section = widget.initialSection == 3
+        ? 0
+        : widget.initialSection.clamp(0, 3);
+    if (widget.initialSection == 3) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_changeSection(3));
+      });
+    }
     if (widget.previewHub != null) {
       _hub = widget.previewHub;
       _community = const CommunityDto(
@@ -67,8 +76,23 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
   void didUpdateWidget(covariant SocialHubScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialSection != widget.initialSection) {
-      _section = widget.initialSection.clamp(0, 3);
+      unawaited(_changeSection(widget.initialSection.clamp(0, 3)));
     }
+  }
+
+  Future<void> _changeSection(int section) async {
+    if (_checkingChat) return;
+    if (section == 3) {
+      _checkingChat = true;
+      try {
+        final session = await GoogleChatGate.ensure(context);
+        if (session == null || !mounted) return;
+        await _refresh();
+      } finally {
+        _checkingChat = false;
+      }
+    }
+    if (mounted) setState(() => _section = section);
   }
 
   Future<void> _refresh() async {
@@ -542,7 +566,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
       'CHAT' => 3,
       _ => 0,
     };
-    if (mounted) setState(() => _section = section);
+    if (mounted) await _changeSection(section);
     await _refresh();
   }
 
@@ -595,7 +619,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
         preferredSize: const Size.fromHeight(72),
         child: _CommunityTabs(
           selected: _section,
-          onChanged: (value) => setState(() => _section = value),
+          onChanged: (value) => unawaited(_changeSection(value)),
         ),
       ),
     ),
@@ -935,12 +959,23 @@ class _CommunitySection extends StatelessWidget {
             .map(
               (f) => _ChatCard(
                 friend: f,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) =>
-                        _ChatScreen(friend: f, api: api, token: token),
-                  ),
-                ),
+                onTap: () async {
+                  final session = await GoogleChatGate.ensure(context);
+                  if (session == null ||
+                      session.token != token ||
+                      !context.mounted) {
+                    return;
+                  }
+                  await Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => _ChatScreen(
+                        friend: f,
+                        api: api,
+                        token: session.token,
+                      ),
+                    ),
+                  );
+                },
               ),
             )
             .toList(),

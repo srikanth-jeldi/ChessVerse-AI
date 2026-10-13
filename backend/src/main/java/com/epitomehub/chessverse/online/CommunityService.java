@@ -49,7 +49,10 @@ class CommunityService {
 
     @Transactional
     CommunityDtos.HubDto hub(AuthenticatedPlayer player) {
-        markDelivered(player);
+        boolean googleChat = Boolean.TRUE.equals(jdbc.queryForObject(
+                "select exists(select 1 from oauth_identity where player_id=? and provider='google')",
+                Boolean.class, player.id()));
+        if (googleChat) markDelivered(player);
         List<CommunityDtos.ClubDto> clubs = jdbc.query("""
                 select c.id,c.name,c.description,c.rating_requirement,count(m.player_id) members,
                 exists(select 1 from chess_club_member mine where mine.club_id=c.id and mine.player_id=?) joined
@@ -73,7 +76,7 @@ class CommunityService {
                 rs.getString("badge_code"),rs.getInt("champion_bonus"),rs.getInt("runner_up_bonus"),
                 rs.getInt("participation_bonus"),uuidOrNull(rs,"club_id"),
                 tournamentPlayer(uuidOrNull(rs,"champion_id"))), player.id(),player.id());
-        List<CommunityDtos.ConversationDto> conversations = jdbc.query("""
+        List<CommunityDtos.ConversationDto> conversations = !googleChat ? List.of() : jdbc.query("""
                 select p.id,p.display_name,p.photo_url,
                 (select d.id from direct_message d
                   where (d.sender_id=? and d.recipient_id=p.id) or (d.sender_id=p.id and d.recipient_id=?)

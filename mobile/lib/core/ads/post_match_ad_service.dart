@@ -84,10 +84,22 @@ class PostMatchAdService {
     }
     if (_ad == null) await load();
     final InterstitialAd? ad = _ad;
-    if (ad == null) return;
+    if (ad == null) {
+      await _persistState();
+      return;
+    }
     _ad = null;
     final Completer<void> done = Completer<void>();
     ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdShowedFullScreenContent: (_) {
+        // Failed display attempts must not consume the impression cap or
+        // restart the match/cooldown requirements.
+        _resetDailyCounter();
+        _shownToday++;
+        _completedMatchesSinceLastAd = 0;
+        _lastShownAt = DateTime.now().toUtc();
+        unawaited(_persistState());
+      },
       onAdDismissedFullScreenContent: (InterstitialAd value) {
         value.dispose();
         if (!done.isCompleted) done.complete();
@@ -99,10 +111,6 @@ class PostMatchAdService {
         unawaited(load());
       },
     );
-    _shownToday++;
-    _completedMatchesSinceLastAd = 0;
-    _lastShownAt = now;
-    await _persistState();
     ad.show();
     await done.future.timeout(const Duration(seconds: 45), onTimeout: () {});
   }

@@ -47,6 +47,7 @@ import 'core/desktop_navigation_bridge.dart';
 import 'features/auth/data/auth_api.dart';
 import 'features/auth/data/auth_session_store.dart';
 import 'features/auth/presentation/auth_screen.dart';
+import 'features/auth/presentation/google_chat_gate.dart';
 import 'features/engine/data/engine_api.dart';
 import 'features/analysis/domain/ai_review_report.dart';
 import 'features/analysis/data/game_analysis_api.dart';
@@ -139,9 +140,13 @@ Future<void> _initializeAfterFirstFrame() async {
     AppDiagnostics.log('archive_startup_begin');
     try {
       await LocalGameArchive.init().timeout(const Duration(seconds: 5));
-      AppDiagnostics.log('archive_startup_ready', {'elapsedMs': watch.elapsedMilliseconds});
+      AppDiagnostics.log('archive_startup_ready', {
+        'elapsedMs': watch.elapsedMilliseconds,
+      });
     } on Object {
-      AppDiagnostics.log('archive_startup_deferred', {'elapsedMs': watch.elapsedMilliseconds});
+      AppDiagnostics.log('archive_startup_deferred', {
+        'elapsedMs': watch.elapsedMilliseconds,
+      });
       // A damaged keystore or slow platform channel must not hold the UI.
     } finally {
       if (!_localArchiveReady.isCompleted) _localArchiveReady.complete();
@@ -397,6 +402,7 @@ class _SplashGateState extends State<SplashGate> {
   void initState() {
     super.initState();
     DesktopNavigationBridge.request.addListener(_handleDesktopNavigation);
+    GoogleChatGate.onAuthenticated = _acceptChatGoogleLogin;
     LocalGameArchive.activityRevision.addListener(_handleBadgeProgress);
     _forceFreshWebLogin = consumeFreshWebLaunch();
     DailyReminderService.instance.playOpenRequests.addListener(
@@ -1001,6 +1007,7 @@ class _SplashGateState extends State<SplashGate> {
   @override
   void dispose() {
     DesktopNavigationBridge.request.removeListener(_handleDesktopNavigation);
+    GoogleChatGate.onAuthenticated = null;
     LocalGameArchive.activityRevision.removeListener(_handleBadgeProgress);
     DailyReminderService.instance.playOpenRequests.removeListener(
       _openPlayFromReminder,
@@ -2561,6 +2568,46 @@ class _SplashGateState extends State<SplashGate> {
     );
     if (mounted) setState(() => _photoUrl = photoUrl);
     return photoUrl;
+  }
+
+  Future<void> _acceptChatGoogleLogin(
+    ChessVerseAuthResult result,
+    StoredAuthSession? upgradedGuest,
+  ) async {
+    final nextIdentity = await _sessionStore.progressIdentity(result.session);
+    if (upgradedGuest != null) {
+      final previousIdentity = await _sessionStore.progressIdentity(
+        upgradedGuest,
+      );
+      const academy = AcademyProgressStore();
+      final reviews = await academy.readMistakeReviewsFor(previousIdentity);
+      await LocalGameArchive.upgradeGuestIdentity(
+        previousIdentity,
+        nextIdentity,
+      );
+      await academy.mergeMistakeReviewsFor(nextIdentity, reviews);
+    } else {
+      await LocalGameArchive.activateIdentity(nextIdentity);
+    }
+    if (!mounted) return;
+    setState(() {
+      _playerName = result.playerName;
+      _username = result.username;
+      _email = result.email;
+      _photoUrl = result.photoUrl;
+      _isGuest = result.isGuest;
+    });
+    final String token = result.session.token;
+    _enableCloudSync(token);
+    _startOnlinePresence(token);
+    _startNotificationPolling(token);
+    unawaited(_syncCloudProgress(token));
+    unawaited(_refreshCoinBalance(token));
+    try {
+      await syncCosmeticLoadoutForSession(token);
+    } on Object {
+      // Login remains valid while cosmetic services are unavailable.
+    }
   }
 
   Future<void> _secureGuestProgress(BuildContext currentRouteContext) async {

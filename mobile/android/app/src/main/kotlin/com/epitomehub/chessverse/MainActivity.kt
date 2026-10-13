@@ -43,6 +43,25 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // Suppress ad traffic in automated testing, without changing gameplay.
+        // Firebase documents this flag for Test Lab and Play pre-launch tests.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.epitomehub.chessverse/ad_environment")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "suppressAds") {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                }
+                try {
+                    val testLab = Settings.System.getString(contentResolver, "firebase.test.lab") == "true"
+                    val emulator = Build.HARDWARE == "goldfish" ||
+                        Build.HARDWARE == "ranchu" ||
+                        Build.PRODUCT.startsWith("sdk_gphone") ||
+                        Build.PRODUCT.startsWith("sdk_google_phone")
+                    result.success(testLab || emulator)
+                } catch (_: Exception) {
+                    result.error("AD_ENVIRONMENT_UNAVAILABLE", "Unable to check ad test environment", null)
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, ttsSettingsChannel)
             .setMethodCallHandler { call, result ->
                 if (call.method != "installVoiceData") {

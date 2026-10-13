@@ -439,6 +439,20 @@ class LocalGameArchive {
       await _storage.read(key: _activeIdentityKey) ==
       identity.trim().toLowerCase();
 
+  /// Only call after the server confirms that Google upgraded the SAME player.
+  /// A login to a different existing account must use activateIdentity instead.
+  static Future<void> upgradeGuestIdentity(String previous, String next) async {
+    if (!await hasActiveIdentity(previous)) {
+      await activateIdentity(next);
+      return;
+    }
+    await _storage.write(
+      key: _activeIdentityKey,
+      value: next.trim().toLowerCase(),
+    );
+    activityRevision.value++;
+  }
+
   static Future<void> activateIdentity(String identity) async {
     final String normalized = identity.trim().toLowerCase();
     final String? active = await _storage.read(key: _activeIdentityKey);

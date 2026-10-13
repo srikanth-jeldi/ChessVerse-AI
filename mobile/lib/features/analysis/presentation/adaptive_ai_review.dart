@@ -16,6 +16,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
 import '../../../core/widgets/ai_language_picker.dart';
 import '../../auth/data/auth_session_store.dart';
+import '../../auth/presentation/google_chat_gate.dart';
 import '../data/ai_coach_api.dart';
 import '../data/engine_candidates_api.dart';
 import '../domain/ai_review_report.dart';
@@ -3164,9 +3165,10 @@ Future<void> _showInteractiveCoach(
   AiMoveInsight insight, {
   String? openingEco,
   String? timeControl,
-}) {
+}) async {
   final String initialLanguageCode = _ReviewLanguageScope.of(context);
-  return showDialog<void>(
+  if (await GoogleChatGate.ensure(context) == null || !context.mounted) return;
+  await showDialog<void>(
     context: context,
     builder: (BuildContext context) => _InteractiveCoachDialog(
       insight,

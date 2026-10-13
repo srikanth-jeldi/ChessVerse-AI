@@ -12,9 +12,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PlayerAuthenticationService {
     private final AuthSessionRepository sessions;
+    private final OAuthIdentityRepository identities;
 
-    public PlayerAuthenticationService(AuthSessionRepository sessions) {
+    public PlayerAuthenticationService(AuthSessionRepository sessions, OAuthIdentityRepository identities) {
         this.sessions = sessions;
+        this.identities = identities;
+    }
+
+    @Transactional(readOnly = true)
+    public AuthenticatedPlayer requireGoogleBearer(String authorization) {
+        AuthenticatedPlayer player = requireBearer(authorization);
+        if (!identities.existsByProviderAndPlayer_Id("google", player.id())) {
+            throw new AuthException(HttpStatus.FORBIDDEN, "Google sign-in is required to use chat.");
+        }
+        return player;
     }
 
     @Transactional(readOnly = true)
