@@ -8,6 +8,7 @@ import '../../../core/ads/rewarded_coin_service.dart';
 import '../../../core/chess_piece_appearance.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
 import '../../../core/widgets/animated_coin_reward_balance.dart';
+import '../../../core/widgets/coin_reward_notice.dart';
 import '../data/shop_api.dart';
 import '../data/economy_rewards_api.dart';
 
@@ -96,6 +97,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   bool _rewardRefreshPending = false;
   bool _preparingRewardAd = false;
   bool _verifyingReward = false;
+  String? _rewardMessage;
   @override
   void initState() {
     super.initState();
@@ -474,6 +476,8 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                 side: const BorderSide(color: Color(0x805DE9D3)),
               ),
             ),
+            if (_rewardMessage != null)
+              CoinRewardNotice(message: _rewardMessage!),
           ],
         ),
       ],
@@ -498,93 +502,83 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   }
 
   Future<void> _claimDaily() async {
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _rewardMessage = null;
+    });
     try {
-      _rewards = await _rewardsApi.claimDaily(widget.token);
-      await _load();
+      final credited = await _rewardsApi.claimDaily(widget.token);
+      if (!mounted) return;
+      setState(() {
+        _rewards = credited;
+        _coinBalance = credited.coins;
+        _rewardMessage = 'Free reward added to your coin balance.';
+      });
+    } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Free reward claimed • +100 play coins'),
-          ),
+        setState(
+          () => _rewardMessage = 'Could not confirm the free reward. Refresh your balance before trying again.',
         );
       }
-    } catch (error) {
-      if (mounted) {
-        setState(() => _busy = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString().replaceFirst('Exception: ', '')),
-          ),
-        );
-      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _watchAd(ShopDto shop) async {
     if (!RewardedCoinService.instance.supported) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
+      setState(
+        () => _rewardMessage =
             'Rewarded videos are available in the Android and iOS app.',
-          ),
-        ),
       );
       return;
     }
-    final int coinsBefore = _rewards?.coins ?? shop.wallet.coins;
+    final int coinsBefore = _coinBalance ?? shop.wallet.coins;
     final int rewardAmount = _rewards?.coinsPerAd ?? 30;
     final int adsBefore = _rewards?.rewardedAdsRemaining ?? 0;
-    setState(() => _preparingRewardAd = true);
+    setState(() {
+      _preparingRewardAd = true;
+      _rewardMessage = null;
+    });
     try {
-      final bool earned = await RewardedCoinService.instance.show(
+      final outcome = await RewardedCoinService.instance.show(
         playerId: shop.playerId,
         token: widget.token,
       );
       if (!mounted) return;
       setState(() => _preparingRewardAd = false);
-      if (!earned) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Video could not load. Check your connection and tap again.',
-            ),
-          ),
+      if (outcome != RewardedCoinOutcome.earned) {
+        setState(
+          () => _rewardMessage = outcome == RewardedCoinOutcome.dismissed
+              ? 'Video closed before the reward was earned. Watch a full video to earn coins.'
+              : 'No video is available right now. Try again later. No coins were added.',
         );
-        unawaited(RewardedCoinService.instance.load());
         return;
       }
-      setState(() => _verifyingReward = true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Video completed • verifying your +$rewardAmount coins…',
-          ),
-        ),
-      );
-      final EconomyRewardStatus? credited = await _waitForRewardCredit(
+      setState(() {
+        _verifyingReward = true;
+        _rewardMessage =
+            'Video completed. Confirming your +$rewardAmount coins…';
+      });
+      final credited = await _waitForRewardCredit(
         coinsBefore,
         rewardAmount,
         adsBefore,
       );
       if (!mounted) return;
-      if (credited != null) {
-        setState(() {
+      setState(() {
+        if (credited != null) {
           _rewards = credited;
           _coinBalance = credited.coins;
-          _verifyingReward = false;
-        });
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        await _load();
-        if (!mounted) return;
-      } else {
-        setState(() => _verifyingReward = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Video completed. Reward verification is delayed; please refresh before watching another ad.',
-            ),
-          ),
+          _rewardMessage = 'Reward confirmed. Your coin balance is up to date.';
+        } else {
+          _rewardMessage = 'Video completed. Reward confirmation is taking longer than usual. Refresh your balance before watching another video.';
+        }
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _rewardMessage = 'Could not confirm the video reward. Refresh your balance and try again later.',
         );
       }
     } finally {
@@ -606,7 +600,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       );
     }
     if (_verifyingReward) {
-      return const Text(
+      return Text(
         'VERIFYING +30 COINS…',
         textAlign: TextAlign.center,
         maxLines: 1,

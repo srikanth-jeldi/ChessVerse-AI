@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/analysis_dashboard_localizations.dart';
 import '../../../core/app_language.dart';
+import '../../../core/widgets/ai_language_picker.dart';
 import '../../../core/mistake_bank_localizations.dart';
 import '../../../core/mistake_lesson_localizations.dart';
 import '../../../core/mistake_practice_localizations.dart';
@@ -196,6 +197,25 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
     final String? code = AppLanguageController.effectiveLanguageChanges.value;
     if (code != null && mounted) setState(() => _language = code);
   }
+
+  Widget _languageButton() => TextButton.icon(
+    key: const ValueKey('mistake-language-picker'),
+    onPressed: () async {
+      final String? selected = await showAiLanguagePicker(context);
+      if (selected == null || !mounted) return;
+      await AppLanguageController.select(selected);
+    },
+    icon: const Icon(Icons.translate_rounded, size: 20),
+    label: SizedBox(
+      width: 90,
+      child: Text(
+        AppLanguageController.byCode(_language).nativeName,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    ),
+    style: TextButton.styleFrom(foregroundColor: const Color(0xFF63D2B8)),
+  );
 
   @override
   void dispose() {
@@ -627,7 +647,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
         selected: 'Learn',
         child: Scaffold(
           backgroundColor: AppColors.background,
-          appBar: AppBar(title: Text(m('title'))),
+          appBar: AppBar(title: Text(m('title')), actions: [_languageButton()]),
           body: Center(
             child: Padding(
               padding: const EdgeInsets.all(28),
@@ -664,6 +684,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
+          actions: [_languageButton()],
           toolbarHeight:
               64 * MediaQuery.textScalerOf(context).scale(1).clamp(1, 2),
           backgroundColor: const Color(0xFF071827),

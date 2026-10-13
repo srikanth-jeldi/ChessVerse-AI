@@ -175,6 +175,29 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('in-screen picker changes language and persists the choice', (
+    tester,
+  ) async {
+    await open(tester, review());
+    await tester.tap(find.byKey(const ValueKey('mistake-language-picker')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('తెలుగు'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('తెలుగు'));
+    await tester.pumpAndSettle();
+    expect(await AppLanguageController.selectedCode(), 'te');
+    expect(find.text(mistakeBankText('title', 'te')), findsOneWidget);
+    expect(find.text(mistakePracticeText('learn', 'te')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('mistake-language-picker')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   Future<void> tap(WidgetTester tester, String square) async {
     await tester.ensureVisible(find.byKey(ValueKey('mistake-square-$square')));
     await tester.tap(find.byKey(ValueKey('mistake-square-$square')));

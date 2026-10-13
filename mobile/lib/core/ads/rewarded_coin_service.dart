@@ -7,6 +7,8 @@ import 'ad_sdk_initializer.dart';
 import '../analytics/app_analytics.dart';
 import '../config/app_config.dart';
 
+enum RewardedCoinOutcome { earned, unavailable, dismissed }
+
 class RewardedCoinService {
   RewardedCoinService._();
   static final RewardedCoinService instance = RewardedCoinService._();
@@ -73,14 +75,17 @@ class RewardedCoinService {
     return loading.future.timeout(timeout, onTimeout: () => false);
   }
 
-  Future<bool> show({required String playerId, required String token}) async {
-    if (!supported || _showing) return false;
+  Future<RewardedCoinOutcome> show({
+    required String playerId,
+    required String token,
+  }) async {
+    if (!supported || _showing) return RewardedCoinOutcome.unavailable;
     if (_ad == null) {
       final bool loaded = await load();
-      if (!loaded || _ad == null) return false;
+      if (!loaded || _ad == null) return RewardedCoinOutcome.unavailable;
     }
     _showing = true;
-    final completer = Completer<bool>();
+    final completer = Completer<RewardedCoinOutcome>();
     final ad = _ad!;
     _ad = null;
     bool earned = false;
@@ -108,7 +113,11 @@ class RewardedCoinService {
             context: 'coin_shop',
           ),
         );
-        if (!completer.isCompleted) completer.complete(earned);
+        if (!completer.isCompleted) {
+          completer.complete(
+            earned ? RewardedCoinOutcome.earned : RewardedCoinOutcome.dismissed,
+          );
+        }
         unawaited(load());
       },
       onAdFailedToShowFullScreenContent: (value, _) {
@@ -121,7 +130,9 @@ class RewardedCoinService {
             context: 'show_failed',
           ),
         );
-        if (!completer.isCompleted) completer.complete(false);
+        if (!completer.isCompleted) {
+          completer.complete(RewardedCoinOutcome.unavailable);
+        }
         unawaited(load());
       },
     );
