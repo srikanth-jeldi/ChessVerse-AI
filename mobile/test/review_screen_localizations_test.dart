@@ -6,6 +6,7 @@ import 'package:chessverse_ai/core/review_training_localizations.dart';
 import 'package:chessverse_ai/features/analysis/domain/ai_review_report.dart';
 import 'package:chessverse_ai/features/analysis/presentation/adaptive_ai_review.dart';
 import 'package:flutter/material.dart';
+import 'package:chessverse_ai/features/auth/presentation/chat_access_copy.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -141,16 +142,17 @@ void main() {
             await tester.ensureVisible(explainAction);
             await tester.tap(explainAction);
             await tester.pumpAndSettle();
-            expect(
-              find.text(personalCoachText('title', language.code)),
-              findsOneWidget,
-            );
+            expect(find.text(googleChatMessage(language.code)), findsOneWidget);
             expect(
               tester.takeException(),
               isNull,
-              reason: 'personal ${language.code}',
+              reason: 'Google requirement ${language.code}',
             );
-            await tester.tap(find.text(copy.text('back')));
+            expect(
+              find.text(personalCoachText('title', language.code)),
+              findsNothing,
+            );
+            await tester.tap(find.text('Cancel'));
             await tester.pumpAndSettle();
           }
           await tester.pumpWidget(const SizedBox());
