@@ -935,7 +935,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (!mounted) {
         return;
       }
-      if (_gameMode == GameMode.computer && _computerPaused) return;
+      // Computer games are untimed. Retain old clock fields only for draft
+      // compatibility; even a legacy zero-clock draft must remain playable.
+      if (_gameMode == GameMode.computer) return;
       if (_gameResultTitle != null) {
         if (_gameMode == GameMode.daily &&
             _gameResultTitle!.toLowerCase().contains('challenge complete')) {
@@ -1885,6 +1887,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       if (_signedIn &&
                           _gameResultTitle != null &&
                           !_resultVisible &&
+                          (_onlineResultPresentationTimer?.isActive ?? false) &&
                           !_gameResultTitle!.toLowerCase().contains('draw') &&
                           !_gameResultTitle!.toLowerCase().contains(
                             'challenge missed',
@@ -1907,6 +1910,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       if (_signedIn &&
                           _gameResultTitle != null &&
                           !_resultVisible &&
+                          (_onlineResultPresentationTimer?.isActive ?? false) &&
                           _gameResultTitle!.toLowerCase().contains('draw'))
                         Positioned.fill(
                           child: _DrawResultBadge(
@@ -4395,7 +4399,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         moves: uciMoves,
         depth: 16,
         playerColor: _humanPlaysWhite ? 'WHITE' : 'BLACK',
-        timeControl: '10+0',
         sourceFormat: 'CHESSVERSE',
         sourceSite: 'ChessVerseAI',
         whitePlayer: _whitePlayerName,
@@ -4499,7 +4502,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     await showAdaptiveAiReview(
       context,
       report: report,
-      timeControl: _gameMode == GameMode.computer ? '10+0' : null,
       onRetryPosition: _openReviewedPositionRetry,
       onGeneratePuzzles: _generateMistakePuzzles,
     );
@@ -5860,6 +5862,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     Duration delay = const Duration(seconds: 10),
   }) {
     _onlineResultPresentationTimer?.cancel();
+    if (_gameMode == GameMode.computer) {
+      // Show the reason immediately, without an unexplained board celebration.
+      _resultVisible = true;
+      return;
+    }
     _resultVisible = false;
     _onlineResultPresentationTimer = Timer(delay, () {
       if (!mounted || _gameMode == GameMode.online) return;

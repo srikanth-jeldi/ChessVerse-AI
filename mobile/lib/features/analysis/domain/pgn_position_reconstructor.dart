@@ -22,11 +22,16 @@ List<String?> reconstructFenBeforeMoves(
 
 /// Returns the position after each move in a UCI principal variation.
 /// Invalid/truncated lines stop safely at the last valid position.
-List<String> replayUciLine(String initialFen, List<String> moves) {
+List<String> replayUciLine(
+  String initialFen,
+  List<String> moves, {
+  bool requireLegalMoves = false,
+}) {
   final _PgnBoard? board = _PgnBoard.fromFen(initialFen);
   if (board == null) return const <String>[];
   final List<String> positions = <String>[board.fen];
   for (final String move in moves) {
+    if (requireLegalMoves && !board.isLegalUci(move)) break;
     if (!board.play(move)) break;
     positions.add(board.fen);
   }
@@ -116,6 +121,41 @@ int _pieceValue(String? piece) => switch (piece?.toUpperCase()) {
 };
 
 class _PgnBoard {
+  bool isLegalUci(String move) {
+    if (!RegExp(r'^[a-h][1-8][a-h][1-8][qrbn]?$').hasMatch(move)) return false;
+    final from = move.substring(0, 2), to = move.substring(2, 4);
+    final piece = pieces[from];
+    if (from == to ||
+        piece == null ||
+        _isWhite(piece) != whiteToMove ||
+        pieces[to]?.toUpperCase() == 'K') {
+      return false;
+    }
+    final promotion = move.length == 5 ? move[4] : null;
+    final promotes =
+        piece.toUpperCase() == 'P' && (to[1] == '1' || to[1] == '8');
+    if (promotes != (promotion != null)) return false;
+    final castle =
+        piece.toUpperCase() == 'K' &&
+        (from.codeUnitAt(0) - to.codeUnitAt(0)).abs() == 2;
+    if (castle) {
+      final rook = '${to[0] == 'g' ? 'h' : 'a'}${from[1]}';
+      final through = '${to[0] == 'g' ? 'f' : 'd'}${from[1]}';
+      if (!_canCastle(from, to, piece) ||
+          pieces[rook] != (whiteToMove ? 'R' : 'r') ||
+          _isAttacked(from, byWhite: !whiteToMove) ||
+          !_keepsOwnKingSafe(from, through, null)) {
+        return false;
+      }
+    } else {
+      final capture =
+          pieces.containsKey(to) ||
+          (piece.toUpperCase() == 'P' && enPassant == to);
+      if (!_canMove(from, to, piece, capture)) return false;
+    }
+    return _keepsOwnKingSafe(from, to, promotion);
+  }
+
   _PgnBoard({
     required this.pieces,
     required this.whiteToMove,

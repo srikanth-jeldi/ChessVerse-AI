@@ -91,7 +91,7 @@ void main() {
               ChessPiece(code, white),
             );
             expect(asset, contains('/mobile-readable/$finish/'));
-            expect(asset, endsWith('.png'));
+            expect(asset, endsWith('.webp'));
               assets.add(asset!);
               final ByteData bytes = await rootBundle.load(asset);
               expect(bytes.lengthInBytes, greaterThan(10000), reason: asset);

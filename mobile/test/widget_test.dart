@@ -560,6 +560,13 @@ void main() {
     expect(find.text('New opponent'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
+    // Closing the result must expose the board without restarting fireworks.
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 4));
+    expect(find.byType(GameResultOverlay), findsNothing);
+    expect(find.byType(OnlineVictoryCelebration), findsNothing);
+
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

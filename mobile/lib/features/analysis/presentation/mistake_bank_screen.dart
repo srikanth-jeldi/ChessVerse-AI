@@ -2,19 +2,24 @@ import 'dart:async';
 
 import '../domain/mistake_bank_sync.dart';
 import '../domain/mistake_review.dart';
+import '../domain/mistake_challenge.dart';
+import '../domain/mistake_lesson_engine.dart';
+import '../data/engine_candidates_api.dart';
+import '../../auth/data/auth_session_store.dart';
 
 import 'package:flutter/material.dart';
 
 import '../../../core/analysis_dashboard_localizations.dart';
 import '../../../core/app_language.dart';
+import '../../../core/mistake_bank_localizations.dart';
+import '../../../core/mistake_lesson_localizations.dart';
+import '../../../core/mistake_practice_localizations.dart';
 import '../../../core/coach_extra_localizations.dart';
 import '../../../core/coach_localizations.dart';
-import '../../../core/desktop_navigation_bridge.dart';
 import '../../../core/local_game_archive.dart';
 import '../../../core/review_narrative_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/chessverse_card.dart';
-import '../../../core/widgets/coin_balance_badge.dart';
 import '../../../core/widgets/desktop_navigation_shell.dart';
 import '../../tutorial/data/academy_progress_store.dart';
 import '../domain/mistake_bank.dart';
@@ -104,7 +109,9 @@ class MistakeBankEntryCard extends StatelessWidget {
 }
 
 class MistakeBankScreen extends StatefulWidget {
-  const MistakeBankScreen({super.key});
+  const MistakeBankScreen({super.key, this.analyzePosition});
+
+  final Future<List<EngineCandidateLine>> Function(String fen)? analyzePosition;
 
   @override
   State<MistakeBankScreen> createState() => _MistakeBankScreenState();
@@ -126,6 +133,17 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   int _lineIndex = 0;
   int _hintLevel = 0;
   bool _completed = false;
+  bool _independent = false;
+  bool _usedHelp = false;
+  bool _verifiedIndependent = false;
+  List<String>? _activeLine;
+  List<String> _previewPositions = [];
+  int _previewIndex = 0;
+  String? _feedback;
+  String? _attemptedMove;
+  bool get _previewing => _previewPositions.isNotEmpty;
+  bool _replyPending = false;
+  int _attempt = 0;
   String _language = AppLanguageController.resolveCode(
     AppLanguageController.systemCode,
   );
@@ -185,49 +203,311 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
     super.dispose();
   }
 
-  List<String> get _challengeLine {
-    final MistakeBankItem item = _items[_index];
-    final List<String> pv = item.review.principalVariation
-        .where(
-          (move) =>
-              RegExp(r'^[a-h][1-8][a-h][1-8][qrbn]?$')
-                  .hasMatch(move.trim().toLowerCase()),
-        )
-        .map((move) => move.trim().toLowerCase())
-        .take(5)
-        .toList();
-    final String best = item.review.bestMove.trim().toLowerCase();
-    if (pv.isEmpty || pv.first != best) pv.insert(0, best);
-    return pv.take(5).toList();
+  List<String> get _challengeLine =>
+      _activeLine ?? mistakeChallengeLine(_items[_index].review);
+
+  String m(String key, [Map<String, String> values = const {}]) =>
+      mistakeBankText(key, _language, values);
+
+  String p(String key, [Map<String, String> values = const {}]) =>
+      mistakePracticeText(key, _language, values);
+
+  Future<List<EngineCandidateLine>> _analyze(String fen) async {
+    try {
+      if (widget.analyzePosition != null) {
+        return await widget.analyzePosition!(fen).timeout(
+          const Duration(seconds: 6),
+        );
+      }
+      final session = await const AuthSessionStore().read();
+      if (session == null || session.isExpired) return [];
+      return await const EngineCandidatesApi()
+          .analyze(session.token, fen: fen)
+          .timeout(const Duration(seconds: 6));
+    } catch (_) {
+      return [];
+    }
   }
+
+  void _startPractice(bool independent) {
+    if (_replyPending || _savingReview) return;
+    _retry();
+    setState(() {
+      _independent = independent;
+    });
+  }
+
+  Future<void> _showComparison(bool better) async {
+    if (_replyPending || _savingReview) return;
+    final review = _items[_index].review;
+    final original = _attemptedMove ?? review.playedMove.trim().toLowerCase();
+    final fen = _attemptedMove == null ? review.fenBefore : _currentFen!;
+    final moves = better ? mistakeChallengeLine(review) : [original];
+    var positions = replayUciLine(
+      better ? review.fenBefore : fen,
+      moves,
+      requireLegalMoves: true,
+    );
+    final generation = _attempt;
+    if (positions.length < 2) return;
+    setState(() {
+      _usedHelp = true;
+      _replyPending = true;
+      _feedback = p('checking');
+    });
+    if (!better) {
+      final lines = await _analyze(positions.last);
+      if (!mounted || generation != _attempt) return;
+      final reply = lines.isEmpty
+          ? <String>[]
+          : validCandidateContinuation(positions.last, lines.first);
+      if (reply.isNotEmpty) {
+        positions = [
+          ...positions,
+          ...replayUciLine(positions.last, [
+            reply.first,
+          ], requireLegalMoves: true).skip(1),
+        ];
+        _feedback = p('reply', {'move': _readableMove(reply.first)});
+      } else {
+        _feedback = p('noReply');
+      }
+    } else {
+      _feedback = lesson('better', {
+        'move': _readableMove(_activeLine?.firstOrNull ?? review.bestMove),
+      });
+    }
+    if (!mounted || generation != _attempt) return;
+    setState(() {
+      _replyPending = false;
+      _previewPositions = positions;
+      _previewIndex = 1;
+    });
+  }
+
+  String lesson(String key, [Map<String, String> values = const {}]) =>
+      mistakeLessonText(key, _language, values);
+
+  String _readableMove(String move) {
+    final value = move.trim().toLowerCase();
+    if (!RegExp(r'^[a-h][1-8][a-h][1-8][qrbn]?$').hasMatch(value)) return move;
+    final promotion = value.length == 5
+        ? ' = ${m(value[4].toUpperCase())}'
+        : '';
+    return '${value.substring(0, 2)} → ${value.substring(2, 4)}$promotion';
+  }
+
+  String _goal(MistakeBankItem item) {
+    final theme = item.review.coachingTheme;
+    final focus =
+        const {
+          'opening',
+          'kingSafety',
+          'hangingPieces',
+          'missedCaptures',
+          'timeManagement',
+          'endgame',
+          'tactics',
+        }.contains(theme)
+        ? theme
+        : 'calculation';
+    return lesson('goal', {'focus': t(focus)});
+  }
+
+  Widget _lessonCard(MistakeBankItem item) {
+    final review = item.review;
+    final moveNumber =
+        int.tryParse(review.fenBefore.trim().split(RegExp(r'\s+')).last) ??
+        ((review.ply + 1) ~/ 2);
+    final explanation = review.explanation.trim();
+    return ChessVerseCard(
+      key: const ValueKey('mistake-lesson'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            lesson('context', {'move': '$moveNumber'}),
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            lesson('played', {'move': _readableMove(review.playedMove)}),
+            key: const ValueKey('mistake-original-move'),
+          ),
+          Text(
+            CoachLocalizations(_language).source(review.classification),
+            style: const TextStyle(color: AppColors.accentGold),
+          ),
+          const SizedBox(height: 8),
+          if (_completed) ...[
+            Text(
+              lesson('better', {
+                'move': _readableMove(
+                  _activeLine?.firstOrNull ?? review.bestMove,
+                ),
+              }),
+              key: const ValueKey('mistake-better-move'),
+              style: const TextStyle(
+                color: Color(0xFF59E4C8),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            Text(
+              lesson('complete'),
+              key: const ValueKey('mistake-completion-explanation'),
+            ),
+          ],
+          const SizedBox(height: 8),
+          if (!_independent || _completed || _previewing)
+            ExpansionTile(
+              key: ValueKey(
+                'mistake-explanation-$_index-$_independent-$_completed-$_previewing',
+              ),
+              initiallyExpanded: _completed || _previewing,
+              tilePadding: EdgeInsets.zero,
+              title: Text(
+                lesson('analysis'),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              children: [
+                Text(
+                  explanation.isEmpty
+                      ? lesson('missing')
+                      : localizeReviewNarrative(explanation, _language),
+                  key: const ValueKey('mistake-reason'),
+                ),
+              ],
+            ),
+          if (_completed &&
+              _verifiedIndependent &&
+              _reviews[item.id] != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              lesson('nextReview', {
+                'date': _reviews[item.id]!.nextReview
+                    .toLocal()
+                    .toString()
+                    .split(' ')
+                    .first,
+              }),
+              key: const ValueKey('mistake-next-review'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _piecePrompt(String move) {
+    final from = move.substring(0, 2);
+    final row = 8 - int.parse(from[1]);
+    final col = from.codeUnitAt(0) - 97;
+    final token = _MistakeBoard(
+      fen: _currentFen!,
+      onSquare: (_) {},
+    ).pieces['$row-$col'];
+    if (token == null) return '';
+    return m('piecePrompt', {'square': from, 'piece': m(token.toUpperCase())});
+  }
+
+  String get _instructions => _completed
+      ? p(
+          _verifiedIndependent
+              ? 'independentDone'
+              : _independent
+              ? 'assistedDone'
+              : 'guidedDone',
+        )
+      : _replyPending
+      ? p('checking')
+      : _feedback != null
+      ? _feedback!
+      : m('instructions');
 
   Future<void> _playSquare(String square) async {
     if (_completed ||
+        _previewing ||
+        _replyPending ||
         _savingReview ||
         _loadingReviews ||
         _lineIndex >= _challengeLine.length) {
       return;
     }
-    if (_selectedSquare == null) {
+    final board = _MistakeBoard(fen: _currentFen!, onSquare: (_) {}).pieces;
+    final row = 8 - int.parse(square[1]);
+    final col = square.codeUnitAt(0) - 97;
+    final piece = board['$row-$col'];
+    final white = _currentFen!.split(' ')[1] == 'w';
+    final ownPiece = piece != null && (piece == piece.toUpperCase()) == white;
+    if (ownPiece) {
       setState(() {
-        _selectedSquare = square;
+        _selectedSquare = _selectedSquare == square ? null : square;
         _wrongTarget = null;
       });
       return;
     }
+    if (_selectedSquare == null) return;
     final String attempted = '$_selectedSquare$square'.toLowerCase();
-    final String expected = _challengeLine[_lineIndex];
+    var expected = _challengeLine[_lineIndex];
     if (!expected.startsWith(attempted)) {
-      setState(() {
-        _wrongTarget = square;
-        _selectedSquare = null;
-      });
-      if (!_hadMistake) {
-        _hadMistake = true;
-        await _saveReview(false);
+      final fen = _currentFen!;
+      var candidateMove = attempted;
+      {
+        final from = _selectedSquare!;
+        final source =
+            board['${8 - int.parse(from[1])}-${from.codeUnitAt(0) - 97}'];
+        if (source?.toUpperCase() == 'P' &&
+            (square[1] == '1' || square[1] == '8')) {
+          candidateMove += 'q';
+        }
       }
-      return;
+      final legal =
+          replayUciLine(fen, [candidateMove], requireLegalMoves: true).length ==
+          2;
+      final generation = _attempt;
+      setState(() {
+        _replyPending = true;
+        _feedback = p('checking');
+      });
+      final candidates = legal ? await _analyze(fen) : <EngineCandidateLine>[];
+      if (!mounted || generation != _attempt) return;
+      final candidate = candidates
+          .where((line) => line.move.toLowerCase() == candidateMove)
+          .firstOrNull;
+      final accepted =
+          candidate != null && isComparableLessonMove(candidates, candidate);
+      final continuation = accepted
+          ? validCandidateContinuation(fen, candidate)
+          : <String>[];
+      if (continuation.isNotEmpty) {
+        _activeLine = [..._challengeLine.take(_lineIndex), ...continuation];
+        expected = continuation.first;
+        _replyPending = false;
+      } else {
+        setState(() {
+          _hadMistake = true;
+          _replyPending = false;
+          _wrongTarget = !legal || candidate != null ? square : null;
+          _selectedSquare = null;
+          _attemptedMove = legal ? candidateMove : null;
+          _feedback = legal ? p('unverified') : m('wrong');
+          if (candidate != null &&
+              candidate.mateIn == null &&
+              candidates.every((c) => c.mateIn == null)) {
+            final best = candidates
+                .map((c) => c.evaluationCp)
+                .reduce((a, b) => a > b ? a : b);
+            _feedback = p('lower', {
+              'loss': ((best - candidate.evaluationCp) / 100).toStringAsFixed(
+                2,
+              ),
+            });
+          }
+        });
+        return;
+      }
     }
+    final attempt = _attempt;
     final List<String> positions = replayUciLine(_currentFen!, <String>[
       expected,
     ]);
@@ -238,6 +518,9 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
       _selectedSquare = null;
       _wrongTarget = null;
       _hintLevel = 0;
+      _feedback = null;
+      _attemptedMove = null;
+      _replyPending = true;
     });
     if (_lineIndex < _challengeLine.length) {
       final String reply = _challengeLine[_lineIndex];
@@ -246,17 +529,20 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
       ]);
       if (replyPositions.length > 1) {
         await Future<void>.delayed(const Duration(milliseconds: 450));
-        if (!mounted) return;
+        if (!mounted || attempt != _attempt) return;
         setState(() {
           _currentFen = replyPositions.last;
           _lineIndex++;
         });
       }
     }
+    if (!mounted || attempt != _attempt) return;
     if (_lineIndex >= _challengeLine.length) await _completeChallenge();
+    if (mounted && attempt == _attempt) setState(() => _replyPending = false);
   }
 
   Future<void> _completeChallenge() async {
+    _verifiedIndependent = _independent && !_usedHelp && !_hadMistake;
     await _saveReview(true);
     if (mounted) setState(() => _completed = true);
   }
@@ -265,14 +551,15 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
     _savingReview = true;
     final id = _items[_index].id;
     try {
-      _reviews[id] = await _progressStore.recordMistakeReview(id, correct);
+      _reviews[id] = await _progressStore.recordMistakeReview(
+        id,
+        correct,
+        assisted: !_verifiedIndependent,
+      );
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Review progress could not be saved. Please retry.'),
-          ),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(m('saveError'))));
       }
     } finally {
       _savingReview = false;
@@ -281,6 +568,14 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   }
 
   void _retry() => setState(() {
+    _attempt++;
+    _activeLine = null;
+    _previewPositions = [];
+    _feedback = null;
+    _attemptedMove = null;
+    _usedHelp = false;
+    _verifiedIndependent = false;
+    _replyPending = false;
     _currentFen = _items[_index].review.fenBefore;
     _selectedSquare = null;
     _wrongTarget = null;
@@ -291,13 +586,20 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   });
 
   void _next() {
-    if (_savingReview) return;
+    if (_savingReview || _replyPending) return;
+    _attempt++;
     if (_index >= _items.length - 1) {
       Navigator.pop(context);
       return;
     }
     setState(() {
       _index++;
+      _activeLine = null;
+      _previewPositions = [];
+      _feedback = null;
+      _attemptedMove = null;
+      _usedHelp = false;
+      _verifiedIndependent = false;
       _currentFen = _items[_index].review.fenBefore;
       _selectedSquare = null;
       _wrongTarget = null;
@@ -309,7 +611,14 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Directionality(
+    textDirection: const {'ar', 'ur', 'fa', 'he'}.contains(_language)
+        ? TextDirection.rtl
+        : TextDirection.ltr,
+    child: Builder(builder: _buildScreen),
+  );
+
+  Widget _buildScreen(BuildContext context) {
     if (_loadingReviews || !_languageReady) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -318,10 +627,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
         selected: 'Learn',
         child: Scaffold(
           backgroundColor: AppColors.background,
-          appBar: AppBar(
-            title: const Text('Mistake Bank'),
-            actions: <Widget>[_coinBadge(), const SizedBox(width: 8)],
-          ),
+          appBar: AppBar(title: Text(m('title'))),
           body: Center(
             child: Padding(
               padding: const EdgeInsets.all(28),
@@ -350,24 +656,22 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
       );
     }
     final MistakeBankItem item = _items[_index];
-    final MistakePatternInsight insight = MistakeBank.insightFor(
-      _allItems,
-      item,
-    );
-    final String expected =
-        _challengeLine[_lineIndex.clamp(0, _challengeLine.length - 1)];
+    final String expected = _challengeLine.isEmpty
+        ? ''
+        : _challengeLine[_lineIndex.clamp(0, _challengeLine.length - 1)];
     return DesktopNavigationShell(
       selected: 'Learn',
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
+          toolbarHeight:
+              64 * MediaQuery.textScalerOf(context).scale(1).clamp(1, 2),
           backgroundColor: const Color(0xFF071827),
           title: Text(
-            t('mistakeReplay'),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            m('title'),
+            maxLines: 3,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
-          actions: <Widget>[_coinBadge(), const SizedBox(width: 8)],
         ),
         body: SafeArea(
           top: false,
@@ -390,173 +694,294 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
-                          Text('${t('history')} · 1, 3, 7, 14, 30'),
-                          if (_completed && _reviews[item.id] != null)
-                            Row(
-                              children: <Widget>[
-                                const Icon(
-                                  Icons.event_repeat_rounded,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  _reviews[item.id]!.nextReview
-                                      .toLocal()
-                                      .toString()
-                                      .split(' ')
-                                      .first,
-                                ),
-                              ],
-                            ),
                           _MistakeProgress(
                             current: _index + 1,
                             total: _items.length,
-                            solved: _reviews.values
-                                .where((r) => r.successes > 0)
-                                .length,
                           ),
-                          const SizedBox(height: 16),
-                          _MistakeBoard(
-                            fen: _currentFen ?? item.review.fenBefore,
-                            selectedSquare: _selectedSquare,
-                            wrongTarget: _wrongTarget,
-                            hintFrom: _hintLevel >= 1
-                                ? expected.substring(0, 2)
-                                : null,
-                            hintTo: _hintLevel >= 2
-                                ? expected.substring(2, 4)
-                                : null,
-                            onSquare: _playSquare,
-                          ),
-                          const SizedBox(height: 16),
-                          ChessVerseCard(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: <Widget>[
-                                Text(
-                                  '${item.game.summary} · ${t('gameLabel', <String, String>{'count': '${_index + 1}'})}',
-                                  style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  coachExtraText(
-                                    'mistakePuzzle',
-                                    _language,
-                                    <String, String>{
-                                      'index': '${_index + 1}',
-                                      'total': '${_items.length}',
-                                    },
-                                  ),
-                                  style: TextStyle(
-                                    color: Color(0xFF59E4C8),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '${CoachLocalizations(_language).source(item.review.classification)} · ${item.review.centipawnLoss} cp',
-                                  style: const TextStyle(
-                                    color: AppColors.accentGold,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                _MistakeIntelligenceCard(
-                                  insight: insight,
-                                  language: _language,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  _completed
-                                      ? '${CoachLocalizations(_language).text('bestFound')} · ${item.review.centipawnLoss} cp'
-                                      : CoachLocalizations(_language).text(
-                                          'findContinuation',
-                                          <String, String>{
-                                            'side':
-                                                item.review.fenBefore.split(
-                                                      ' ',
-                                                    )[1] ==
-                                                    'w'
-                                                ? CoachLocalizations(_language)
-                                                      .text('white')
-                                                : CoachLocalizations(_language)
-                                                      .text('black'),
-                                          },
-                                        ),
-                                  style: const TextStyle(height: 1.4),
-                                ),
-                                const SizedBox(height: 14),
-                                Row(
-                                  children: <Widget>[
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        onPressed: _retry,
-                                        icon: const Icon(Icons.replay_rounded),
-                                        label: Text(
-                                          CoachLocalizations(_language)
-                                              .text('retry'),
-                                        ),
-                                      ),
+                          const SizedBox(height: 12),
+                          if (!_completed)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    key: const ValueKey('mistake-learn'),
+                                    style: OutlinedButton.styleFrom(
+                                      backgroundColor: !_independent
+                                          ? const Color(0xFF174C48)
+                                          : null,
                                     ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        onPressed: _completed
-                                            ? null
-                                            : () => setState(
-                                                () => _hintLevel =
-                                                    (_hintLevel + 1).clamp(
-                                                      0,
-                                                      2,
-                                                    ),
-                                              ),
-                                        icon: const Icon(
-                                          Icons.lightbulb_outline_rounded,
-                                        ),
-                                        label: Text('${_hintLevel + 1}/3'),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                if (_completed) ...<Widget>[
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF63D2B8)
-                                          .withValues(alpha: .11),
-                                      borderRadius: BorderRadius.circular(18),
-                                      border: Border.all(
-                                        color: const Color(0xFF63D2B8),
-                                      ),
-                                    ),
+                                    onPressed: _replyPending || _savingReview
+                                        ? null
+                                        : () => _startPractice(false),
                                     child: Text(
-                                      localizeReviewNarrative(
-                                        item.review.explanation,
-                                        _language,
-                                      ),
-                                      style: const TextStyle(height: 1.45),
+                                      p('learn'),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 12),
                                     ),
                                   ),
-                                  const SizedBox(height: 14),
-                                  FilledButton.icon(
-                                    key: const ValueKey<String>('mistake-next'),
-                                    onPressed: _next,
-                                    icon: const Icon(
-                                      Icons.arrow_forward_rounded,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: OutlinedButton(
+                                    key: const ValueKey('mistake-try-own'),
+                                    style: OutlinedButton.styleFrom(
+                                      backgroundColor: _independent
+                                          ? const Color(0xFF174C48)
+                                          : null,
                                     ),
-                                    label: Text(
-                                      coachExtraText('nextPuzzle', _language),
+                                    onPressed: _replyPending || _savingReview
+                                        ? null
+                                        : () => _startPractice(true),
+                                    child: Text(
+                                      p('tryOwn'),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 12),
                                     ),
                                   ),
-                                ],
+                                ),
                               ],
                             ),
+                          if (!_completed) ...[
+                            Text(
+                              lesson('played', {
+                                'move': _readableMove(item.review.playedMove),
+                              }),
+                              key: const ValueKey('mistake-original-summary'),
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                            if (_challengeLine.isNotEmpty)
+                              Text(
+                                _goal(item),
+                                key: const ValueKey('mistake-goal'),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF59E4C8),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                          ],
+                          const SizedBox(height: 12),
+                          if (!_completed)
+                            Text(
+                              _challengeLine.isEmpty
+                                  ? m('unavailable')
+                                  : CoachLocalizations(_language)
+                                        .text('findContinuation', {
+                                          'side': CoachLocalizations(_language)
+                                              .text(
+                                                item.review.fenBefore.split(
+                                                          ' ',
+                                                        )[1] ==
+                                                        'w'
+                                                    ? 'white'
+                                                    : 'black',
+                                              ),
+                                        }),
+                              key: const ValueKey('mistake-turn'),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.accentGold,
+                              ),
+                            ),
+                          const SizedBox(height: 6),
+                          if (_challengeLine.isNotEmpty &&
+                              !_previewing &&
+                              (_completed ||
+                                  _replyPending ||
+                                  _feedback != null ||
+                                  _independent))
+                            Text(
+                              _instructions,
+                              key: const ValueKey('mistake-instructions'),
+                              semanticsLabel: _instructions,
+                            ),
+                          if (!_completed &&
+                              !_replyPending &&
+                              (!_independent || _hintLevel >= 1) &&
+                              expected.length >= 4)
+                            Text(
+                              _piecePrompt(expected),
+                              key: const ValueKey('mistake-piece-prompt'),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF59E4C8),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          if (!_completed &&
+                              (!_independent || _hintLevel >= 2) &&
+                              expected.length >= 4)
+                            Text(
+                              '${expected.substring(0, 2)} → ${expected.substring(2, 4)}',
+                              key: const ValueKey('mistake-hint-move'),
+                            ),
+                          if (_previewing) ...[
+                            Text(
+                              _feedback ?? '',
+                              key: const ValueKey('mistake-preview-feedback'),
+                            ),
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                IconButton(
+                                  key: const ValueKey(
+                                    'mistake-preview-previous',
+                                  ),
+                                  onPressed: _previewIndex == 0
+                                      ? null
+                                      : () => setState(() => _previewIndex--),
+                                  icon: const Icon(Icons.chevron_left),
+                                ),
+                                Text(
+                                  '${_previewIndex + 1}/${_previewPositions.length}',
+                                ),
+                                IconButton(
+                                  key: const ValueKey('mistake-preview-next'),
+                                  onPressed:
+                                      _previewIndex ==
+                                          _previewPositions.length - 1
+                                      ? null
+                                      : () => setState(() => _previewIndex++),
+                                  icon: const Icon(Icons.chevron_right),
+                                ),
+                                TextButton(
+                                  key: const ValueKey('mistake-preview-close'),
+                                  onPressed: () => setState(() {
+                                    _previewPositions = [];
+                                    _feedback = null;
+                                  }),
+                                  child: Text(p('back')),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (_challengeLine.isNotEmpty)
+                            _MistakeBoard(
+                              language: _language,
+                              fen: _previewing
+                                  ? _previewPositions[_previewIndex]
+                                  : _currentFen ?? item.review.fenBefore,
+                              flipped:
+                                  item.review.fenBefore
+                                      .split(' ')
+                                      .elementAtOrNull(1) ==
+                                  'b',
+                              selectedSquare: _previewing
+                                  ? null
+                                  : _selectedSquare,
+                              wrongTarget: _wrongTarget,
+                              hintFrom:
+                                  !_completed &&
+                                      !_previewing &&
+                                      !_replyPending &&
+                                      (!_independent || _hintLevel >= 1) &&
+                                      expected.length >= 4
+                                  ? expected.substring(0, 2)
+                                  : null,
+                              hintTo:
+                                  !_completed &&
+                                      !_previewing &&
+                                      (!_independent || _hintLevel >= 2) &&
+                                      expected.length >= 4
+                                  ? expected.substring(2, 4)
+                                  : null,
+                              onSquare: _playSquare,
+                            ),
+                          if (_completed) ...[
+                            const SizedBox(height: 12),
+                            if (!_verifiedIndependent)
+                              FilledButton(
+                                key: const ValueKey('mistake-self-test'),
+                                onPressed: _savingReview || _replyPending
+                                    ? null
+                                    : () => _startPractice(true),
+                                child: Text(p('tryOwn')),
+                              ),
+                            if (_verifiedIndependent)
+                              FilledButton.icon(
+                                key: const ValueKey('mistake-next'),
+                                onPressed: _savingReview || _replyPending
+                                    ? null
+                                    : _next,
+                                icon: const Icon(Icons.arrow_forward_rounded),
+                                label: Text(
+                                  coachExtraText(
+                                    _index == _items.length - 1
+                                        ? 'finishSet'
+                                        : 'nextPuzzle',
+                                    _language,
+                                  ),
+                                ),
+                              )
+                            else
+                              TextButton(
+                                key: const ValueKey('mistake-next'),
+                                onPressed: _savingReview || _replyPending
+                                    ? null
+                                    : _next,
+                                child: Text(
+                                  coachExtraText(
+                                    _index == _items.length - 1
+                                        ? 'finishSet'
+                                        : 'nextPuzzle',
+                                    _language,
+                                  ),
+                                ),
+                              ),
+                          ],
+                          if (!_completed)
+                            Wrap(
+                              spacing: 10,
+                              children: [
+                                OutlinedButton.icon(
+                                  key: const ValueKey('mistake-hint'),
+                                  onPressed:
+                                      _completed ||
+                                          _replyPending ||
+                                          _challengeLine.isEmpty
+                                      ? null
+                                      : () => setState(() {
+                                          _usedHelp = true;
+                                          _hintLevel = (_hintLevel + 1).clamp(
+                                            0,
+                                            2,
+                                          );
+                                        }),
+                                  icon: const Icon(
+                                    Icons.lightbulb_outline_rounded,
+                                  ),
+                                  label: Text(m('hint')),
+                                ),
+                                TextButton(
+                                  key: const ValueKey('mistake-skip'),
+                                  onPressed: _savingReview || _replyPending
+                                      ? null
+                                      : _next,
+                                  child: Text(m('skip')),
+                                ),
+                              ],
+                            ),
+                          Wrap(
+                            spacing: 8,
+                            children: [
+                              TextButton(
+                                key: const ValueKey('mistake-show-played'),
+                                onPressed: _replyPending || _savingReview
+                                    ? null
+                                    : () => _showComparison(false),
+                                child: Text(p('showPlayed')),
+                              ),
+                              TextButton(
+                                key: const ValueKey('mistake-show-better'),
+                                onPressed: _replyPending || _savingReview
+                                    ? null
+                                    : () => _showComparison(true),
+                                child: Text(p('showBetter')),
+                              ),
+                            ],
                           ),
+                          _lessonCard(item),
                         ],
                       ),
                     ),
@@ -567,104 +992,16 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
       ),
     );
   }
-
-  Widget _coinBadge() => ValueListenableBuilder<int?>(
-    valueListenable: DesktopNavigationBridge.coinBalance,
-    builder: (BuildContext context, int? coins, Widget? child) =>
-        CoinBalanceBadge(balance: coins ?? 0, compact: true),
-  );
-}
-
-class _MistakeIntelligenceCard extends StatelessWidget {
-  const _MistakeIntelligenceCard({
-    required this.insight,
-    required this.language,
-  });
-
-  final MistakePatternInsight insight;
-  final String language;
-
-  String t(String key, [Map<String, String> values = const {}]) =>
-      analysisDashboardText(key, language, values);
-
-  String get _weaknessKey => switch (insight.biggestWeaknessKey) {
-    'opening' => 'opening',
-    'kingSafety' => 'kingSafety',
-    'hangingPieces' => 'hangingPieces',
-    'missedCaptures' => 'missedCaptures',
-    'timeManagement' => 'timeManagement',
-    'endgame' => 'endgame',
-    'tactics' => 'tactics',
-    _ => 'calculation',
-  };
-
-  String get _trainingReasonKey => switch (insight.trainingTheme) {
-    'opening' => 'focusDefault',
-    'kingSafety' => 'focusLoss',
-    'endgame' => 'focusLong',
-    _ => 'slowDetail',
-  };
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: const Color(0xFF59E4C8).withValues(alpha: .08),
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: const Color(0xFF59E4C8).withValues(alpha: .55)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          t('focus'),
-          style: TextStyle(
-            color: Color(0xFF59E4C8),
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          t('reviewedIntro', <String, String>{
-            'games': '${insight.similarPreviousGames}',
-            'moves': '${insight.similarOccurrences}',
-          }),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '${t('nextFocus')}: ${t(_weaknessKey)} · ${insight.biggestWeaknessOccurrences}',
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          '${t('targeted')}: ${t(_weaknessKey)}',
-          style: const TextStyle(
-            color: AppColors.accentGold,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          t(_trainingReasonKey),
-          style: const TextStyle(color: AppColors.textSecondary, height: 1.35),
-        ),
-      ],
-    ),
-  );
 }
 
 class _MistakeProgress extends StatelessWidget {
-  const _MistakeProgress({
-    required this.current,
-    required this.total,
-    required this.solved,
-  });
+  const _MistakeProgress({required this.current, required this.total});
   final int current;
   final int total;
-  final int solved;
 
   @override
-  Widget build(BuildContext context) => ChessVerseCard(
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
     child: Row(
       children: <Widget>[
         const Icon(Icons.psychology_alt_rounded, color: AppColors.accentGold),
@@ -678,7 +1015,7 @@ class _MistakeProgress extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Text(
-          '$current/$total · ✓$solved',
+          '$current/$total',
           style: const TextStyle(fontWeight: FontWeight.w900),
         ),
       ],
@@ -694,8 +1031,12 @@ class _MistakeBoard extends StatelessWidget {
     this.wrongTarget,
     this.hintFrom,
     this.hintTo,
+    this.flipped = false,
+    this.language = 'en',
   });
   final String fen;
+  final bool flipped;
+  final String language;
   final ValueChanged<String> onSquare;
   final String? selectedSquare;
   final String? wrongTarget;
@@ -721,7 +1062,12 @@ class _MistakeBoard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.ltr,
+    child: _buildBoard(context),
+  );
+
+  Widget _buildBoard(BuildContext context) {
     final Map<String, String> board = pieces;
     return Center(
       child: ConstrainedBox(
@@ -738,8 +1084,8 @@ class _MistakeBoard extends StatelessWidget {
                 crossAxisCount: 8,
               ),
               itemBuilder: (BuildContext context, int index) {
-                final int row = index ~/ 8;
-                final int col = index % 8;
+                final int row = flipped ? 7 - index ~/ 8 : index ~/ 8;
+                final int col = flipped ? 7 - index % 8 : index % 8;
                 final String square =
                     '${String.fromCharCode(97 + col)}${8 - row}';
                 final bool selected = square == selectedSquare;
@@ -758,7 +1104,37 @@ class _MistakeBoard extends StatelessWidget {
                         : (row + col).isEven
                         ? const Color(0xFFD8C5A7)
                         : const Color(0xFF6D4A32),
-                    child: Center(child: _piece(board['$row-$col'])),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Center(child: _piece(board['$row-$col'])),
+                        ),
+                        if (col == (flipped ? 7 : 0))
+                          Positioned(
+                            top: 1,
+                            left: 2,
+                            child: Text(
+                              '${8 - row}',
+                              style: const TextStyle(
+                                fontSize: 9,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                        if (row == (flipped ? 0 : 7))
+                          Positioned(
+                            bottom: 1,
+                            right: 2,
+                            child: Text(
+                              String.fromCharCode(97 + col),
+                              style: const TextStyle(
+                                fontSize: 9,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -790,7 +1166,8 @@ class _MistakeBoard extends StatelessWidget {
         'assets/pieces/staunton_${colour}_$name.png',
         fit: BoxFit.contain,
         filterQuality: FilterQuality.high,
-        semanticLabel: '${white ? 'White' : 'Black'} $name',
+        semanticLabel:
+            '${CoachLocalizations(language).text(white ? 'white' : 'black')} ${mistakeBankText(token.toUpperCase(), language)}',
       ),
     );
   }

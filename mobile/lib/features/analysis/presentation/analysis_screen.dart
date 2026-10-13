@@ -273,7 +273,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                       context,
                       report: report,
                       openingEco: game.openingEco,
-                      timeControl: game.mode == 'Play vs AI' ? '10+0' : null,
                     );
                   },
                 ),
@@ -531,9 +530,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                           context,
                           report: latestReport!,
                           openingEco: latest?.openingEco,
-                          timeControl: latest?.mode == 'Play vs AI'
-                              ? '10+0'
-                              : null,
                         ),
                 ),
               ],

@@ -1900,7 +1900,7 @@ String? mobileReadablePremiumPieceAsset(String finish, ChessPiece piece) {
     _ => 'pawn',
   };
   final String side = piece.white ? 'white' : 'black';
-  return 'assets/pieces/premium_individual/mobile-readable/$folder/$side/$name.png';
+  return 'assets/pieces/premium_individual/mobile-readable/$folder/$side/$name.webp';
 }
 
 String? premiumPieceAsset(String finish, ChessPiece piece) {

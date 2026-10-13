@@ -1,7 +1,7 @@
 name: chessverse_ai
 description: Cross-platform ChessVerse AI application.
 publish_to: "none"
-version: 1.3.16+283
+version: 1.3.20+287
 
 environment:
   sdk: ">=3.13.0 <4.0.0"
@@ -72,7 +72,22 @@ flutter:
         - asset: assets/fonts/ChessVerseSerif.ttf
   uses-material-design: true
   assets:
-    - assets/audio/
+    # Bundle runtime audio only; alternate source recordings stay in the repository.
+    - assets/audio/check-warning.wav
+    - assets/audio/chess_capture.wav
+    - assets/audio/chess_check.wav
+    - assets/audio/chess_checkmate_dark.wav
+    - assets/audio/chess_draw.wav
+    - assets/audio/chess_error.wav
+    - assets/audio/chess_move.wav
+    - assets/audio/chess_tap.wav
+    - assets/audio/chess_victory.wav
+    - assets/audio/piece_bishop.ogg
+    - assets/audio/piece_king.wav
+    - assets/audio/piece_knight.ogg
+    - assets/audio/piece_pawn.wav
+    - assets/audio/piece_queen.wav
+    - assets/audio/piece_rook.wav
     - assets/badges/
     - assets/backgrounds/
     - assets/boards/collection/
@@ -111,18 +126,79 @@ flutter:
     - assets/pieces/premium_individual/sapphire-elite/black/
     - assets/pieces/premium_individual/emerald-sovereign/white/
     - assets/pieces/premium_individual/emerald-sovereign/black/
-    - assets/pieces/premium_individual/mobile-readable/crimson-crown-3d/white/
-    - assets/pieces/premium_individual/mobile-readable/crimson-crown-3d/black/
-    - assets/pieces/premium_individual/mobile-readable/inferno-gold/white/
-    - assets/pieces/premium_individual/mobile-readable/inferno-gold/black/
-    - assets/pieces/premium_individual/mobile-readable/ruby-emperor/white/
-    - assets/pieces/premium_individual/mobile-readable/ruby-emperor/black/
-    - assets/pieces/premium_individual/mobile-readable/obsidian-regal/white/
-    - assets/pieces/premium_individual/mobile-readable/obsidian-regal/black/
-    - assets/pieces/premium_individual/mobile-readable/sapphire-elite/white/
-    - assets/pieces/premium_individual/mobile-readable/sapphire-elite/black/
-    - assets/pieces/premium_individual/mobile-readable/emerald-sovereign/white/
-    - assets/pieces/premium_individual/mobile-readable/emerald-sovereign/black/
+    # Explicit lossless WebP assets keep the editable PNG sources out of the bundle.
+    - assets/pieces/premium_individual/mobile-readable/crimson-crown-3d/white/bishop.webp
+    - assets/pieces/premium_individual/mobile-readable/crimson-crown-3d/white/king.webp
+    - assets/pieces/premium_individual/mobile-readable/crimson-crown-3d/white/knight.webp
+    - assets/pieces/premium_individual/mobile-readable/crimson-crown-3d/white/pawn.webp
+    - assets/pieces/premium_individual/mobile-readable/crimson-crown-3d/white/queen.webp
+    - assets/pieces/premium_individual/mobile-readable/crimson-crown-3d/white/rook.webp
+    - assets/pieces/premium_individual/mobile-readable/crimson-crown-3d/black/bishop.webp
+    - assets/pieces/premium_individual/mobile-readable/crimson-crown-3d/black/king.webp
+    - assets/pieces/premium_individual/mobile-readable/crimson-crown-3d/black/knight.webp
+    - assets/pieces/premium_individual/mobile-readable/crimson-crown-3d/black/pawn.webp
+    - assets/pieces/premium_individual/mobile-readable/crimson-crown-3d/black/queen.webp
+    - assets/pieces/premium_individual/mobile-readable/crimson-crown-3d/black/rook.webp
+    - assets/pieces/premium_individual/mobile-readable/inferno-gold/white/bishop.webp
+    - assets/pieces/premium_individual/mobile-readable/inferno-gold/white/king.webp
+    - assets/pieces/premium_individual/mobile-readable/inferno-gold/white/knight.webp
+    - assets/pieces/premium_individual/mobile-readable/inferno-gold/white/pawn.webp
+    - assets/pieces/premium_individual/mobile-readable/inferno-gold/white/queen.webp
+    - assets/pieces/premium_individual/mobile-readable/inferno-gold/white/rook.webp
+    - assets/pieces/premium_individual/mobile-readable/inferno-gold/black/bishop.webp
+    - assets/pieces/premium_individual/mobile-readable/inferno-gold/black/king.webp
+    - assets/pieces/premium_individual/mobile-readable/inferno-gold/black/knight.webp
+    - assets/pieces/premium_individual/mobile-readable/inferno-gold/black/pawn.webp
+    - assets/pieces/premium_individual/mobile-readable/inferno-gold/black/queen.webp
+    - assets/pieces/premium_individual/mobile-readable/inferno-gold/black/rook.webp
+    - assets/pieces/premium_individual/mobile-readable/ruby-emperor/white/bishop.webp
+    - assets/pieces/premium_individual/mobile-readable/ruby-emperor/white/king.webp
+    - assets/pieces/premium_individual/mobile-readable/ruby-emperor/white/knight.webp
+    - assets/pieces/premium_individual/mobile-readable/ruby-emperor/white/pawn.webp
+    - assets/pieces/premium_individual/mobile-readable/ruby-emperor/white/queen.webp
+    - assets/pieces/premium_individual/mobile-readable/ruby-emperor/white/rook.webp
+    - assets/pieces/premium_individual/mobile-readable/ruby-emperor/black/bishop.webp
+    - assets/pieces/premium_individual/mobile-readable/ruby-emperor/black/king.webp
+    - assets/pieces/premium_individual/mobile-readable/ruby-emperor/black/knight.webp
+    - assets/pieces/premium_individual/mobile-readable/ruby-emperor/black/pawn.webp
+    - assets/pieces/premium_individual/mobile-readable/ruby-emperor/black/queen.webp
+    - assets/pieces/premium_individual/mobile-readable/ruby-emperor/black/rook.webp
+    - assets/pieces/premium_individual/mobile-readable/obsidian-regal/white/bishop.webp
+    - assets/pieces/premium_individual/mobile-readable/obsidian-regal/white/king.webp
+    - assets/pieces/premium_individual/mobile-readable/obsidian-regal/white/knight.webp
+    - assets/pieces/premium_individual/mobile-readable/obsidian-regal/white/pawn.webp
+    - assets/pieces/premium_individual/mobile-readable/obsidian-regal/white/queen.webp
+    - assets/pieces/premium_individual/mobile-readable/obsidian-regal/white/rook.webp
+    - assets/pieces/premium_individual/mobile-readable/obsidian-regal/black/bishop.webp
+    - assets/pieces/premium_individual/mobile-readable/obsidian-regal/black/king.webp
+    - assets/pieces/premium_individual/mobile-readable/obsidian-regal/black/knight.webp
+    - assets/pieces/premium_individual/mobile-readable/obsidian-regal/black/pawn.webp
+    - assets/pieces/premium_individual/mobile-readable/obsidian-regal/black/queen.webp
+    - assets/pieces/premium_individual/mobile-readable/obsidian-regal/black/rook.webp
+    - assets/pieces/premium_individual/mobile-readable/sapphire-elite/white/bishop.webp
+    - assets/pieces/premium_individual/mobile-readable/sapphire-elite/white/king.webp
+    - assets/pieces/premium_individual/mobile-readable/sapphire-elite/white/knight.webp
+    - assets/pieces/premium_individual/mobile-readable/sapphire-elite/white/pawn.webp
+    - assets/pieces/premium_individual/mobile-readable/sapphire-elite/white/queen.webp
+    - assets/pieces/premium_individual/mobile-readable/sapphire-elite/white/rook.webp
+    - assets/pieces/premium_individual/mobile-readable/sapphire-elite/black/bishop.webp
+    - assets/pieces/premium_individual/mobile-readable/sapphire-elite/black/king.webp
+    - assets/pieces/premium_individual/mobile-readable/sapphire-elite/black/knight.webp
+    - assets/pieces/premium_individual/mobile-readable/sapphire-elite/black/pawn.webp
+    - assets/pieces/premium_individual/mobile-readable/sapphire-elite/black/queen.webp
+    - assets/pieces/premium_individual/mobile-readable/sapphire-elite/black/rook.webp
+    - assets/pieces/premium_individual/mobile-readable/emerald-sovereign/white/bishop.webp
+    - assets/pieces/premium_individual/mobile-readable/emerald-sovereign/white/king.webp
+    - assets/pieces/premium_individual/mobile-readable/emerald-sovereign/white/knight.webp
+    - assets/pieces/premium_individual/mobile-readable/emerald-sovereign/white/pawn.webp
+    - assets/pieces/premium_individual/mobile-readable/emerald-sovereign/white/queen.webp
+    - assets/pieces/premium_individual/mobile-readable/emerald-sovereign/white/rook.webp
+    - assets/pieces/premium_individual/mobile-readable/emerald-sovereign/black/bishop.webp
+    - assets/pieces/premium_individual/mobile-readable/emerald-sovereign/black/king.webp
+    - assets/pieces/premium_individual/mobile-readable/emerald-sovereign/black/knight.webp
+    - assets/pieces/premium_individual/mobile-readable/emerald-sovereign/black/pawn.webp
+    - assets/pieces/premium_individual/mobile-readable/emerald-sovereign/black/queen.webp
+    - assets/pieces/premium_individual/mobile-readable/emerald-sovereign/black/rook.webp
 
 flutter_launcher_icons:
   android: true
