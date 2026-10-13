@@ -7,6 +7,7 @@ import '../../../core/app_preferences.dart';
 import '../../../core/ads/rewarded_coin_service.dart';
 import '../../../core/chess_piece_appearance.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
+import '../../../core/widgets/animated_coin_reward_balance.dart';
 import '../data/shop_api.dart';
 import '../data/economy_rewards_api.dart';
 
@@ -86,6 +87,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   final ShopApi _api = const ShopApi();
   final EconomyRewardsApi _rewardsApi = const EconomyRewardsApi();
   ShopDto? _shop;
+  int? _coinBalance;
   bool _busy = true;
   String? _error;
   String _category = 'BOARD';
@@ -127,6 +129,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       if (mounted) {
         setState(() {
           _shop = value;
+          _coinBalance = rewards?.coins ?? value.wallet.coins;
           _rewards = rewards;
           _busy = false;
           _error = null;
@@ -172,6 +175,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       if (mounted) {
         setState(() {
           _shop = value;
+          _coinBalance = value.wallet.coins;
           _busy = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
@@ -420,11 +424,8 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _balance(
-                  Icons.paid_rounded,
-                  '${s.wallet.coins}',
-                  'COINS',
-                  const Color(0xFFF4C75B),
+                AnimatedCoinRewardBalance(
+                  balance: _coinBalance ?? s.wallet.coins,
                 ),
               ],
             ),
@@ -570,9 +571,10 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       if (credited != null) {
         setState(() {
           _rewards = credited;
+          _coinBalance = credited.coins;
           _verifyingReward = false;
         });
-        _showRewardAnimation(rewardAmount, credited.coins);
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         await _load();
         if (!mounted) return;
       } else {
@@ -651,82 +653,6 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     );
   }
 
-  void _showRewardAnimation(int rewardAmount, int newBalance) {
-    final OverlayState overlay = Overlay.of(context);
-    late final OverlayEntry entry;
-    entry = OverlayEntry(
-      builder: (context) => IgnorePointer(
-        child: Center(
-          child: TweenAnimationBuilder<double>(
-            tween: Tween<double>(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 650),
-            curve: Curves.easeOutBack,
-            builder: (context, progress, child) => Opacity(
-              opacity: progress.clamp(0, 1),
-              child: Transform.translate(
-                offset: Offset(0, 42 * (1 - progress)),
-                child: Transform.scale(
-                  scale: 0.7 + (0.3 * progress),
-                  child: child,
-                ),
-              ),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 28,
-                  vertical: 20,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xF20A2133),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFF4C75B), width: 2),
-                  boxShadow: const <BoxShadow>[
-                    BoxShadow(color: Color(0x99F4C75B), blurRadius: 28),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.monetization_on_rounded,
-                      color: Color(0xFFFFCB45),
-                      size: 64,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '+$rewardAmount COINS',
-                      style: const TextStyle(
-                        color: Color(0xFFFFD66B),
-                        fontSize: 27,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'BALANCE  $newBalance',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    overlay.insert(entry);
-    Future<void>.delayed(const Duration(milliseconds: 1800), () {
-      if (entry.mounted) entry.remove();
-    });
-  }
-
   String _rewardedAdCountdown() {
     final DateTime? next = _rewards?.nextRewardedAdAt;
     if (next == null) return '--:--:--';
@@ -781,41 +707,6 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     return null;
   }
 
-  Widget _balance(IconData icon, String value, String label, Color color) =>
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
-        decoration: BoxDecoration(
-          color: const Color(0xB2081727),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                  ),
-                ),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
   Widget _tabs() => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     child: Wrap(
