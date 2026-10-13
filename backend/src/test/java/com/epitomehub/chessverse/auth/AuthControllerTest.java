@@ -40,6 +40,49 @@ class AuthControllerTest {
     @MockitoBean
     FacebookIdentityVerifier facebookIdentityVerifier;
 
+    @Autowired
+    org.springframework.jdbc.core.JdbcTemplate activityJdbc;
+
+    @Test
+    void countryReportPreservesLocaleProvenance() throws Exception {
+        String id = java.util.UUID.randomUUID().toString();
+        MvcResult response = mockMvc.perform(post("/api/auth/guest")
+                        .header("X-Device-Id", id)
+                        .header("X-Country-Code", "US")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"installationId\":\"" + id + "\"}"))
+                .andExpect(status().isOk()).andReturn();
+        String player = objectMapper.readTree(response.getResponse().getContentAsString())
+                .path("player").path("id").asText();
+        var row = activityJdbc.queryForMap(
+                "select country_code,country_source,device_region from auth_activity_event where player_id=?",
+                java.util.UUID.fromString(player));
+        org.assertj.core.api.Assertions.assertThat(row.get("country_code")).isEqualTo("US");
+        org.assertj.core.api.Assertions.assertThat(row.get("device_region")).isEqualTo("US");
+        org.assertj.core.api.Assertions.assertThat(row.get("country_source")).isEqualTo("DEVICE_REGION");
+    }
+
+    @Test
+    void countryReportDoesNotTreatCallerSuppliedHeaderAsVerifiedGeoIp() throws Exception {
+        String id = java.util.UUID.randomUUID().toString();
+        MvcResult response = mockMvc.perform(post("/api/auth/guest")
+                        .header("X-Device-Id", id)
+                        .header("X-Country-Code", "IN")
+                        .header("CF-IPCountry", "GB")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"installationId\":\"" + id + "\"}"))
+                .andExpect(status().isOk()).andReturn();
+        String player = objectMapper.readTree(response.getResponse().getContentAsString())
+                .path("player").path("id").asText();
+        var row = activityJdbc.queryForMap(
+                "select country_code,country_source,device_region from auth_activity_event where player_id=?",
+                java.util.UUID.fromString(player));
+        org.assertj.core.api.Assertions.assertThat(row.get("country_code")).isEqualTo("GB");
+        org.assertj.core.api.Assertions.assertThat(row.get("device_region")).isEqualTo("IN");
+        org.assertj.core.api.Assertions.assertThat(row.get("country_source"))
+                .isEqualTo("REQUEST_HEADER_UNVERIFIED");
+    }
+
     @Test
     void registrationCreatesPendingAccountAndSendsOtp() throws Exception {
         mockMvc.perform(post("/api/auth/register")

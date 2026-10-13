@@ -60,10 +60,10 @@ class AuthActivityReportService {
 
     void record(PlayerAccount player, String eventType, String authMethod,
             String deviceName, String clientPlatform, String countryCode,
-            String appVersion, String installationFingerprint, boolean newDevice) {
+            String countrySource, String deviceRegion, String appVersion, String installationFingerprint, boolean newDevice) {
         try {
             events.save(new AuthActivityEvent(player, eventType, authMethod,
-                    deviceName, clientPlatform, countryCode, appVersion,
+                    deviceName, clientPlatform, countryCode, countrySource, deviceRegion, appVersion,
                     installationFingerprint, newDevice));
         } catch (RuntimeException exception) {
             // Reporting must never prevent a player from registering or signing in.
@@ -86,6 +86,8 @@ class AuthActivityReportService {
                        coalesce(e.device_name,'Unknown device') device_name,
                        coalesce(e.client_platform,'Unknown') client_platform,
                        coalesce(e.country_code,'Unknown') country_code,
+                       coalesce(e.country_source,'LEGACY_UNVERIFIED') country_source,
+                       coalesce(e.device_region,'Unknown') device_region,
                        coalesce(e.app_version,'Unknown') app_version,
                        coalesce(e.installation_fingerprint,'Unknown') installation_fingerprint,
                        e.new_device
@@ -101,6 +103,7 @@ class AuthActivityReportService {
                 result.getString("username"), result.getString("display_name"),
                 result.getBoolean("verified"), result.getString("device_name"),
                 result.getString("client_platform"), result.getString("country_code"),
+                result.getString("country_source"), result.getString("device_region"),
                 result.getString("app_version"), result.getString("installation_fingerprint"),
                 result.getBoolean("new_device")));
         byte[] attachment;
@@ -118,6 +121,9 @@ class AuthActivityReportService {
             helper.setSubject("ChessVerseAI daily login report • "
                     + LocalDate.now(REPORT_ZONE) + " • " + rows.size() + " events");
             helper.setText("Attached is the daily ChessVerseAI registration and login report. "
+                    + "Country/region values are unverified: device region is a locale setting, "
+                    + "request country headers are not authenticated GeoIP, and legacy sources are unknown. "
+                    + "Do not use these values as confirmed geographic marketing audiences. "
                     + "New-device logins are marked. Installation IDs are one-way pseudonymous fingerprints. "
                     + "Passwords, OTPs, tokens, raw IP addresses and precise locations are never included.");
             helper.addAttachment("chessverse-auth-activity.xlsx", new ByteArrayResource(attachment),
@@ -146,8 +152,8 @@ class AuthActivityReportService {
             sheet.createFreezePane(0, 1);
             String[] headers = {"Time (IST)", "Event", "Method", "Email", "Username", "@Handle",
                     "Display name", "Verified", "New device", "Device manufacturer/model",
-                    "Platform / OS / browser", "App version", "Approximate country",
-                    "Installation fingerprint"};
+                    "Platform / OS / browser", "App version", "Reported country/region (unverified)",
+                    "Installation fingerprint", "Device region (locale)", "Country source"};
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
             CellStyle headerStyle = workbook.createCellStyle();
@@ -164,7 +170,8 @@ class AuthActivityReportService {
                         value.authMethod(), value.email(), value.username(), "@" + value.username(),
                         value.displayName(), value.verified() ? "Yes" : "No",
                         value.newDevice() ? "Yes" : "No", value.deviceName(), value.clientPlatform(),
-                        value.appVersion(), value.countryCode(), value.installationFingerprint()};
+                        value.appVersion(), value.countryCode(), value.installationFingerprint(),
+                        value.deviceRegion(), value.countrySource()};
                 for (int column = 0; column < cells.length; column++) {
                     row.createCell(column).setCellValue(cells[column] == null ? "" : cells[column]);
                 }
@@ -185,9 +192,9 @@ class AuthActivityReportService {
         return '"' + safe + '"';
     }
 
-    private record AuthActivityRow(
+    record AuthActivityRow(
             UUID id, Timestamp createdAt, String eventType, String authMethod,
             String email, String username, String displayName, boolean verified,
             String deviceName, String clientPlatform, String countryCode,
-            String appVersion, String installationFingerprint, boolean newDevice) {}
+            String countrySource, String deviceRegion, String appVersion, String installationFingerprint, boolean newDevice) {}
 }

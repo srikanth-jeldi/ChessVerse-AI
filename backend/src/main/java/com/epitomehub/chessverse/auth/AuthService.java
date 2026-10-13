@@ -781,10 +781,16 @@ class AuthService {
         boolean newDevice = device.id() == null || sessions
                 .findAllByPlayerIdOrderByLastUsedAtDesc(player.id).stream()
                 .noneMatch(session -> device.id().equals(session.deviceId));
+        String deviceRegion = requestHeader("X-Country-Code", 8, "Unknown");
+        String countryHeader = requestHeader("CF-IPCountry", 8, "");
+        // Neither client locale nor an unauthenticated request header proves
+        // physical location. Preserve provenance until trusted GeoIP is configured.
+        String countrySource = !countryHeader.isEmpty() ? "REQUEST_HEADER_UNVERIFIED"
+                : !"Unknown".equals(deviceRegion) ? "DEVICE_REGION" : "UNKNOWN";
         activityReports.record(player, eventType, authMethod, device.name(),
                 requestHeader("X-Client-Platform", 120, "Unknown"),
-                requestHeader("CF-IPCountry", 8,
-                        requestHeader("X-Country-Code", 8, "Unknown")),
+                countryHeader.isEmpty() ? deviceRegion : countryHeader,
+                countrySource, deviceRegion,
                 requestHeader("X-App-Version", 40, "Unknown"),
                 installationFingerprint(device.id()),
                 newDevice);
