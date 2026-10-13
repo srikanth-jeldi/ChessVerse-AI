@@ -75,10 +75,7 @@ class PersonalMistakeBackup with WidgetsBindingObserver {
           'updatedAt': (review?.updatedAt ?? item.game.playedAt)
               .toUtc()
               .toIso8601String(),
-          'game': {
-            ...item.game.toJson(),
-            'moveReviews': [item.review.toJson()],
-          },
+          'game': item.game.toJson(reviews: [item.review]),
           'practice': review?.toJson(),
         };
       }).toList();

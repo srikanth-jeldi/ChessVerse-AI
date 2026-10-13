@@ -152,28 +152,29 @@ class SavedGameRecord {
     );
   }
 
-  Map<String, dynamic> toJson() => <String, dynamic>{
-    'mode': mode,
-    'result': result,
-    'detail': detail,
-    'moves': moves,
-    'playedAt': playedAt.toUtc().toIso8601String(),
-    'whitePlayer': whitePlayer,
-    'blackPlayer': blackPlayer,
-    'playerOutcome': playerOutcome,
-    'playerSide': playerSide,
-    'reviewScope': reviewScope,
-    'cloudAnalysisJobId': cloudAnalysisJobId,
-    'cloudAnalysisStatus': cloudAnalysisStatus,
-    'openingEco': openingEco,
-    'openingName': openingName,
-    'bookPlies': bookPlies,
-    'firstDeviationPly': firstDeviationPly,
-    'initialFen': initialFen,
-    'moveReviews': moveReviews
-        .map((SavedMoveReview review) => review.toJson())
-        .toList(growable: false),
-  };
+  Map<String, dynamic> toJson({List<SavedMoveReview>? reviews}) =>
+      <String, dynamic>{
+        'mode': mode,
+        'result': result,
+        'detail': detail,
+        'moves': moves,
+        'playedAt': playedAt.toUtc().toIso8601String(),
+        'whitePlayer': whitePlayer,
+        'blackPlayer': blackPlayer,
+        'playerOutcome': playerOutcome,
+        'playerSide': playerSide,
+        'reviewScope': reviewScope,
+        'cloudAnalysisJobId': cloudAnalysisJobId,
+        'cloudAnalysisStatus': cloudAnalysisStatus,
+        'openingEco': openingEco,
+        'openingName': openingName,
+        'bookPlies': bookPlies,
+        'firstDeviationPly': firstDeviationPly,
+        'initialFen': initialFen,
+        'moveReviews': (reviews ?? moveReviews)
+            .map((SavedMoveReview review) => review.toJson())
+            .toList(growable: false),
+      };
 
   String get summary => '$whitePlayer vs $blackPlayer';
 }
@@ -601,7 +602,8 @@ class LocalGameArchive {
     Iterable<SavedGameRecord> restored,
   ) async {
     final generation = _archiveGeneration;
-    if (!await hasActiveIdentity(identity) || generation != _archiveGeneration) {
+    if (!await hasActiveIdentity(identity) ||
+        generation != _archiveGeneration) {
       return;
     }
     var changed = false;
