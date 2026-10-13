@@ -122,6 +122,59 @@ class SavedGameRecord {
   final int? firstDeviationPly;
   final String? initialFen;
 
+  factory SavedGameRecord.fromJson(Map<String, dynamic> json) {
+    return SavedGameRecord(
+      mode: json['mode'] as String? ?? 'Game',
+      result: json['result'] as String? ?? 'Game complete',
+      detail: json['detail'] as String? ?? 'Game complete',
+      moves: (json['moves'] as List<dynamic>? ?? <dynamic>[])
+          .whereType<String>()
+          .toList(growable: false),
+      playedAt:
+          DateTime.tryParse(json['playedAt'] as String? ?? '') ??
+          DateTime.now(),
+      whitePlayer: json['whitePlayer'] as String? ?? 'White',
+      blackPlayer: json['blackPlayer'] as String? ?? 'Black',
+      playerOutcome: json['playerOutcome'] as String?,
+      playerSide: json['playerSide'] as String?,
+      reviewScope: json['reviewScope'] as String? ?? 'player',
+      cloudAnalysisJobId: json['cloudAnalysisJobId'] as String?,
+      cloudAnalysisStatus: json['cloudAnalysisStatus'] as String?,
+      openingEco: json['openingEco'] as String?,
+      openingName: json['openingName'] as String?,
+      bookPlies: (json['bookPlies'] as num?)?.toInt() ?? 0,
+      firstDeviationPly: (json['firstDeviationPly'] as num?)?.toInt(),
+      initialFen: json['initialFen'] as String?,
+      moveReviews: (json['moveReviews'] as List<dynamic>? ?? <dynamic>[])
+          .whereType<Map<String, dynamic>>()
+          .map(SavedMoveReview.fromJson)
+          .toList(growable: false),
+    );
+  }
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'mode': mode,
+    'result': result,
+    'detail': detail,
+    'moves': moves,
+    'playedAt': playedAt.toUtc().toIso8601String(),
+    'whitePlayer': whitePlayer,
+    'blackPlayer': blackPlayer,
+    'playerOutcome': playerOutcome,
+    'playerSide': playerSide,
+    'reviewScope': reviewScope,
+    'cloudAnalysisJobId': cloudAnalysisJobId,
+    'cloudAnalysisStatus': cloudAnalysisStatus,
+    'openingEco': openingEco,
+    'openingName': openingName,
+    'bookPlies': bookPlies,
+    'firstDeviationPly': firstDeviationPly,
+    'initialFen': initialFen,
+    'moveReviews': moveReviews
+        .map((SavedMoveReview review) => review.toJson())
+        .toList(growable: false),
+  };
+
   String get summary => '$whitePlayer vs $blackPlayer';
 }
 
@@ -301,56 +354,48 @@ class LocalGameArchive {
 
   static Future<void> init() async {
     _resetMemory();
-    final String? savedGamesRaw = await _storage.read(key: _savedGamesKey);
+    final generation = _archiveGeneration;
+    const keys = [
+      _savedGamesKey,
+      _completedDailyKey,
+      _lastDailyCompletionKey,
+      _dailyStreakKey,
+      _completedPuzzlesKey,
+      _profileCountryKey,
+      _profileUsernameKey,
+      _profileLevelKey,
+      _profileAvatarKey,
+      _profileUpdatedAtKey,
+    ];
+    final values = <String, String?>{};
+    for (final key in keys) {
+      values[key] = await _storage.read(key: key);
+      if (generation != _archiveGeneration) return;
+    }
+    final String? savedGamesRaw = values[_savedGamesKey];
     if (savedGamesRaw != null && savedGamesRaw.trim().isNotEmpty) {
       try {
-        final List<dynamic> decoded =
-            jsonDecode(savedGamesRaw) as List<dynamic>;
+        final List<SavedGameRecord> decoded = await compute(
+          _decodeArchive,
+          savedGamesRaw,
+        );
+        if (generation != _archiveGeneration) return;
         _games
           ..clear()
-          ..addAll(
-            decoded.map((dynamic value) {
-              final Map<String, dynamic> game = value as Map<String, dynamic>;
-              return SavedGameRecord(
-                mode: game['mode'] as String? ?? 'Game',
-                result: game['result'] as String? ?? 'Game complete',
-                detail: game['detail'] as String? ?? 'Game complete',
-                moves: (game['moves'] as List<dynamic>? ?? <dynamic>[])
-                    .whereType<String>()
-                    .toList(growable: false),
-                playedAt:
-                    DateTime.tryParse(game['playedAt'] as String? ?? '') ??
-                    DateTime.now(),
-                whitePlayer: game['whitePlayer'] as String? ?? 'White',
-                blackPlayer: game['blackPlayer'] as String? ?? 'Black',
-                playerOutcome: game['playerOutcome'] as String?,
-                playerSide: game['playerSide'] as String?,
-                reviewScope: game['reviewScope'] as String? ?? 'player',
-                cloudAnalysisJobId: game['cloudAnalysisJobId'] as String?,
-                cloudAnalysisStatus: game['cloudAnalysisStatus'] as String?,
-                openingEco: game['openingEco'] as String?,
-                openingName: game['openingName'] as String?,
-                bookPlies: (game['bookPlies'] as num?)?.toInt() ?? 0,
-                firstDeviationPly: (game['firstDeviationPly'] as num?)?.toInt(),
-                initialFen: game['initialFen'] as String?,
-                moveReviews:
-                    (game['moveReviews'] as List<dynamic>? ?? <dynamic>[])
-                        .whereType<Map<String, dynamic>>()
-                        .map(SavedMoveReview.fromJson)
-                        .toList(growable: false),
-              );
-            }),
-          )
+          ..addAll(decoded)
           // Puzzle attempts are practice activity, not reviewable saved games.
           ..removeWhere(isPuzzleSession);
-        // Persist the migration so legacy puzzle rows do not return next boot.
-        unawaited(_persistGames());
+        // Avoid encrypting and rewriting an unchanged archive on every launch.
+        if (decoded.any(isPuzzleSession)) {
+          unawaited(_persistGames());
+        }
       } on Object {
+        if (generation != _archiveGeneration) return;
         // Ignore a legacy or partially written archive and start clean.
         _games.clear();
       }
     }
-    final String? raw = await _storage.read(key: _completedDailyKey);
+    final String? raw = values[_completedDailyKey];
     if (raw != null && raw.trim().isNotEmpty) {
       _completedDailyChallengeIds.addAll(
         raw
@@ -360,15 +405,12 @@ class LocalGameArchive {
       );
       _dailySolved = _completedDailyChallengeIds.length;
     }
-    final String? completionRaw = await _storage.read(
-      key: _lastDailyCompletionKey,
-    );
+    final String? completionRaw = values[_lastDailyCompletionKey];
     _lastDailyCompletedAt = completionRaw == null
         ? null
         : DateTime.tryParse(completionRaw)?.toUtc();
-    _dailyStreak =
-        int.tryParse(await _storage.read(key: _dailyStreakKey) ?? '') ?? 0;
-    final String? puzzlesRaw = await _storage.read(key: _completedPuzzlesKey);
+    _dailyStreak = int.tryParse(values[_dailyStreakKey] ?? '') ?? 0;
+    final String? puzzlesRaw = values[_completedPuzzlesKey];
     if (puzzlesRaw != null && puzzlesRaw.trim().isNotEmpty) {
       _completedPuzzleIds.addAll(
         puzzlesRaw
@@ -378,16 +420,12 @@ class LocalGameArchive {
       );
       _puzzlesSolved = _completedPuzzleIds.length;
     }
-    _profileCountry =
-        await _storage.read(key: _profileCountryKey) ?? _profileCountry;
-    _profileUsername = await _storage.read(key: _profileUsernameKey);
-    _profileLevel =
-        int.tryParse(await _storage.read(key: _profileLevelKey) ?? '') ?? 0;
-    _profileAvatar =
-        int.tryParse(await _storage.read(key: _profileAvatarKey) ?? '') ?? 0;
-    _profileUpdatedAt = DateTime.tryParse(
-      await _storage.read(key: _profileUpdatedAtKey) ?? '',
-    )?.toUtc();
+    _profileCountry = values[_profileCountryKey] ?? _profileCountry;
+    _profileUsername = values[_profileUsernameKey];
+    _profileLevel = int.tryParse(values[_profileLevelKey] ?? '') ?? 0;
+    _profileAvatar = int.tryParse(values[_profileAvatarKey] ?? '') ?? 0;
+    _profileUpdatedAt = DateTime.tryParse(values[_profileUpdatedAtKey] ?? '')
+        ?.toUtc();
   }
 
   /// Prevents games, rewards and puzzle completion from one account being
@@ -426,6 +464,7 @@ class LocalGameArchive {
   }
 
   static void _resetMemory() {
+    _archiveGeneration++;
     _games.clear();
     _cloudWeaknessScores.clear();
     _completedDailyChallengeIds.clear();
@@ -541,36 +580,63 @@ class LocalGameArchive {
     activityRevision.value++;
   }
 
+  static int _archiveGeneration = 0;
+  static int _persistRevision = 0;
+
   static Future<void> _persistGames() async {
-    final String encoded = jsonEncode(
-      _games
-          .map(
-            (SavedGameRecord game) => <String, dynamic>{
-              'mode': game.mode,
-              'result': game.result,
-              'detail': game.detail,
-              'moves': game.moves,
-              'playedAt': game.playedAt.toUtc().toIso8601String(),
-              'whitePlayer': game.whitePlayer,
-              'blackPlayer': game.blackPlayer,
-              'playerOutcome': game.playerOutcome,
-              'playerSide': game.playerSide,
-              'reviewScope': game.reviewScope,
-              'cloudAnalysisJobId': game.cloudAnalysisJobId,
-              'cloudAnalysisStatus': game.cloudAnalysisStatus,
-              'openingEco': game.openingEco,
-              'openingName': game.openingName,
-              'bookPlies': game.bookPlies,
-              'firstDeviationPly': game.firstDeviationPly,
-              'initialFen': game.initialFen,
-              'moveReviews': game.moveReviews
-                  .map((SavedMoveReview review) => review.toJson())
-                  .toList(growable: false),
-            },
-          )
-          .toList(growable: false),
-    );
+    final generation = _archiveGeneration;
+    final revision = ++_persistRevision;
+    final snapshot = List<SavedGameRecord>.of(_games, growable: false);
+    final encoded = await compute(_encodeArchive, snapshot);
+    if (generation != _archiveGeneration || revision != _persistRevision) {
+      return;
+    }
     await _storage.write(key: _savedGamesKey, value: encoded);
+  }
+
+  /// Merge restored positions without duplicating a game or replacing newer
+  /// local analysis. The caller verifies the authenticated account first.
+  static Future<void> restoreMistakeGames(
+    String identity,
+    Iterable<SavedGameRecord> restored,
+  ) async {
+    final generation = _archiveGeneration;
+    if (!await hasActiveIdentity(identity) || generation != _archiveGeneration) {
+      return;
+    }
+    var changed = false;
+    for (final game in restored) {
+      if (isPuzzleSession(game)) continue;
+      final index = _games.indexWhere(
+        (local) => local.playedAt.isAtSameMomentAs(game.playedAt),
+      );
+      if (index < 0) {
+        _games.add(game);
+        changed = true;
+      } else {
+        final local = _games[index];
+        final missing = game.moveReviews
+            .where(
+              (review) => !local.moveReviews.any(
+                (existing) => existing.ply == review.ply,
+              ),
+            )
+            .toList();
+        if (missing.isEmpty) continue;
+        _games[index] = SavedGameRecord.fromJson({
+          ...local.toJson(),
+          'moveReviews': [
+            ...local.moveReviews,
+            ...missing,
+          ].map((review) => review.toJson()).toList(),
+        });
+        changed = true;
+      }
+    }
+    if (!changed) return;
+    _games.sort((a, b) => b.playedAt.compareTo(a.playedAt));
+    await _persistGames();
+    activityRevision.value++;
   }
 
   static bool isDailyChallengeComplete(String challengeId) {
@@ -1077,3 +1143,12 @@ class LocalGameArchive {
     );
   }
 }
+
+List<SavedGameRecord> _decodeArchive(String raw) =>
+    (jsonDecode(raw) as List<dynamic>)
+        .whereType<Map<String, dynamic>>()
+        .map(SavedGameRecord.fromJson)
+        .toList(growable: false);
+
+String _encodeArchive(List<SavedGameRecord> games) =>
+    jsonEncode(games.map((game) => game.toJson()).toList(growable: false));

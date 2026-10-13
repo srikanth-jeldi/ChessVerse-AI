@@ -1,0 +1,52 @@
+ChessVerse AI 1.3.24 (291)
+
+Private Mistake Bank backup
+PUT /api/v1/progress/mistakes authenticates the player from the bearer session.
+V85 adds player_mistake_backup, with account deletion cascading to its rows.
+The latest 100 mistakes include the original game context, FEN, played/best
+move, principal variation, explanation, and practice review state (including
+assisted completions, attempts, successes, review stage and next-review date).
+Merges are serialized per account and use updatedAt per mistake. Empty-device
+uploads restore the existing backup; they do not replace it with an empty bank.
+Guests are excluded. Academy sharing permissions are unchanged.
+The app syncs after login, on resume, after saved-game/review changes, and on
+opening the bank. Network failures retain local data and retry. A late response
+for a previous login cannot be applied to the active account. Existing puzzle,
+daily challenge and completed-lesson progress continue using the progress API.
+Install the update and allow an online sync BEFORE uninstalling the old app.
+Data that was never uploaded and was already erased cannot be recovered by
+this new backup. Practice counters use newest-record conflict resolution,
+not additive aggregation of simultaneous offline practice on multiple devices.
+
+ANR evidence
+Firebase issue d6046c282a0bd924eea195051534dc38, inspected 2026-10-13:
+one foreground event/user, version 1.3.23 (290), Itel A667L, Android 14.
+Firebase labels its root cause unknown. Main thread contains Dart frames;
+nativePollOnce alone does not establish a blocking cause.
+Matched ARM app BuildID e72c87255a34daa9b429713780e22157 and Flutter BuildID
+bc2d81d52fa362c469817269236a35a40d52293b to retained release-290 symbols.
+llvm-symbolizer decoded app frames to AndroidOptions.toMap ->
+FlutterSecureStorage.read -> LocalGameArchive.init ->
+_initializeAfterFirstFrame. The secure-storage worker was polling, not shown
+blocked on the main thread; other thread headers showed waits/polling and no
+identified monitor owner proving a deadlock.
+
+Mitigation, not a proven root-cause fix:
+- Session reads fetch auth keys only, instead of decrypting every stored game
+  and setting through readAll.
+- Archive decoding/model reconstruction and JSON encoding run via compute on
+  mobile. Unchanged archives are not rewritten on every launch.
+- Generation/revision checks reject stale archive loads/writes across an
+  account switch or a newer save.
+- Nonessential SDK startup follows the bounded archive startup wait.
+- Diagnostics retain archive-startup timing milestones recorded before their
+  Firebase initialization.
+The Itel event has not been reproduced locally. Monitor Crashlytics after the
+new release; do not close the incident or claim ANR elimination from tests alone.
+
+Validation results and the signed bundle are retained under
+artifacts/release-1.3.24-291. Backend integration tests cover reinstall restore,
+account isolation, stale/duplicate merges, invalid-input rollback, guest
+rejection, and account-deletion cleanup. Mobile tests cover restore, complete
+practice state, account switching during HTTP, offline retry, concurrent local
+practice/restore, cached-archive reload, and existing localized screen flows.

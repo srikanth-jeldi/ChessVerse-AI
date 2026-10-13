@@ -14,6 +14,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'core/analytics/app_analytics.dart';
 import 'core/academy_activity.dart';
 import 'features/analysis/domain/mistake_bank_sync.dart';
+import 'features/analysis/data/personal_mistake_backup.dart';
 import 'features/academy/presentation/my_academy_screen.dart';
 import 'core/ai_bot_preset_store.dart';
 import 'core/ai_personas.dart';
@@ -132,18 +133,25 @@ Future<void> _initializeAfterFirstFrame() async {
   await Future<void>.delayed(const Duration(milliseconds: 650));
 
   startAcademyMistakeSync();
+  PersonalMistakeBackup.instance.start();
   final Future<void> archiveTask = () async {
+    final watch = Stopwatch()..start();
+    AppDiagnostics.log('archive_startup_begin');
     try {
       await LocalGameArchive.init().timeout(const Duration(seconds: 5));
+      AppDiagnostics.log('archive_startup_ready', {'elapsedMs': watch.elapsedMilliseconds});
     } on Object {
+      AppDiagnostics.log('archive_startup_deferred', {'elapsedMs': watch.elapsedMilliseconds});
       // A damaged keystore or slow platform channel must not hold the UI.
     } finally {
       if (!_localArchiveReady.isCompleted) _localArchiveReady.complete();
     }
   }();
 
-  // These services are independent and none is needed to render the app.
-  // Start them together instead of serialising all SDK work behind storage.
+  // Reduce platform-channel contention with archive loading on low-end phones.
+  // This wait is bounded; the Flutter UI keeps rendering while it runs.
+  await archiveTask;
+  await Future<void>.delayed(const Duration(milliseconds: 250));
   final Iterable<Future<void>> backgroundTasks =
       <Future<void>>[
         archiveTask,
@@ -2612,14 +2620,27 @@ class _SplashGateState extends State<SplashGate> {
       return;
     }
     _cloudSyncInFlight = true;
+    unawaited(PersonalMistakeBackup.instance.sync());
     try {
+      final session = await _sessionStore.read();
+      if (session?.token != token) return;
+      final identity = await _sessionStore.progressIdentity(session!);
+      if (!await LocalGameArchive.hasActiveIdentity(identity)) return;
       const AcademyProgressStore academyStore = AcademyProgressStore();
       final Set<String> localAcademy = await academyStore.readCompleted();
+      if ((await _sessionStore.read())?.token != token ||
+          !await LocalGameArchive.hasActiveIdentity(identity)) {
+        return;
+      }
       LocalGameArchive.replaceAcademyLessonProgress(localAcademy);
       final Map<String, dynamic> merged = await _cloudProgressApi.merge(
         token,
         LocalGameArchive.cloudSnapshot(),
       );
+      if ((await _sessionStore.read())?.token != token ||
+          !await LocalGameArchive.hasActiveIdentity(identity)) {
+        return;
+      }
       await LocalGameArchive.mergeCloudSnapshot(merged);
       await academyStore.writeCompleted(
         LocalGameArchive.completedAcademyLessonIds,
@@ -2632,7 +2653,8 @@ class _SplashGateState extends State<SplashGate> {
       _cloudSyncInFlight = false;
       if (_cloudSyncQueued) {
         _cloudSyncQueued = false;
-        unawaited(_syncCloudProgress(token));
+        final current = await _sessionStore.read();
+        if (current != null) unawaited(_syncCloudProgress(current.token));
       }
     }
   }

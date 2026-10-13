@@ -18,6 +18,10 @@ abstract final class AppDiagnostics {
           !kDebugMode,
         );
         _crashlyticsReady = true;
+        // Preserve startup milestones recorded before Firebase was ready.
+        for (final entry in List<String>.of(_entries)) {
+          unawaited(FirebaseCrashlytics.instance.log(entry));
+        }
       } on Object {
         _crashlyticsReady = false;
       }

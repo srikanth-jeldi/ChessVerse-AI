@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../data/personal_mistake_backup.dart';
+
 import '../domain/mistake_bank_sync.dart';
 import '../domain/mistake_review.dart';
 import '../domain/mistake_challenge.dart';
@@ -120,7 +122,7 @@ class MistakeBankScreen extends StatefulWidget {
 
 class _MistakeBankScreenState extends State<MistakeBankScreen> {
   static const AcademyProgressStore _progressStore = AcademyProgressStore();
-  late final List<MistakeBankItem> _allItems;
+  late List<MistakeBankItem> _allItems;
   List<MistakeBankItem> _items = <MistakeBankItem>[];
   Map<String, MistakeReview> _reviews = {};
   bool _savingReview = false;
@@ -172,6 +174,13 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
 
   Future<void> _loadSolved() async {
     try {
+      if (_allItems.isEmpty) {
+        await PersonalMistakeBackup.instance.sync();
+      } else {
+        unawaited(PersonalMistakeBackup.instance.sync());
+      }
+      if (!mounted) return;
+      _allItems = MistakeBank.all(LocalGameArchive.games);
       final value = await _progressStore.readMistakeReviews();
       if (mounted) {
         setState(() {

@@ -50,7 +50,24 @@ class AuthSessionStore {
   static const String _installationIdKey = 'device.installationId';
 
   Future<StoredAuthSession?> read() async {
-    final Map<String, String> values = await _storage.readAll();
+    // Do not decrypt the entire game archive and all settings to read a session.
+    const keys = [
+      _tokenKey,
+      _expiryKey,
+      _displayNameKey,
+      _usernameKey,
+      _emailKey,
+      _photoUrlKey,
+      _rememberMeKey,
+      _isGuestKey,
+      _refreshTokenKey,
+      _refreshExpiryKey,
+      _sessionIdKey,
+    ];
+    final entries = await Future.wait(
+      keys.map((key) async => MapEntry(key, await _storage.read(key: key))),
+    );
+    final values = Map<String, String?>.fromEntries(entries);
     if (values[_rememberMeKey] == 'false') {
       await clearSession();
       return null;
@@ -72,8 +89,8 @@ class AuthSessionStore {
       photoUrl: values[_photoUrlKey],
       isGuest: values[_isGuestKey] == 'true',
       refreshToken: values[_refreshTokenKey],
-      refreshExpiresAt:
-          DateTime.tryParse(values[_refreshExpiryKey] ?? '')?.toUtc(),
+      refreshExpiresAt: DateTime.tryParse(values[_refreshExpiryKey] ?? '')
+          ?.toUtc(),
       sessionId: values[_sessionIdKey],
     );
     if (session.isExpired) {
@@ -142,7 +159,8 @@ class AuthSessionStore {
     if (session.isGuest) {
       return 'guest:${await installationId()}';
     }
-    final String account = session.email?.trim().toLowerCase() ??
+    final String account =
+        session.email?.trim().toLowerCase() ??
         session.username?.trim().toLowerCase() ??
         session.displayName.trim().toLowerCase();
     return 'account:$account';

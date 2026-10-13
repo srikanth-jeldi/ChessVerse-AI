@@ -1,11 +1,27 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
 import '../../analysis/domain/mistake_review.dart';
 import '../../../core/app_preferences.dart';
 import '../../../core/local_game_archive.dart';
 import '../../auth/data/auth_session_store.dart';
 
 class AcademyProgressStore {
+  static final mistakeRevision = ValueNotifier<int>(0);
+  static final Map<String, Future<void>> _reviewWrites = {};
+
+  static Future<T> _withReviewLock<T>(String key, Future<T> Function() action) {
+    final previous = _reviewWrites[key] ?? Future<void>.value();
+    final next = previous.then((_) => action());
+    final tail = next.then<void>((_) {}, onError: (Object _, StackTrace _) {});
+    _reviewWrites[key] = tail;
+    tail.then((_) {
+      if (identical(_reviewWrites[key], tail)) _reviewWrites.remove(key);
+    });
+    return next;
+  }
+
   const AcademyProgressStore({
     this.preferences = const AppPreferences(),
     this.sessions = const AuthSessionStore(),
@@ -187,6 +203,38 @@ class AcademyProgressStore {
 
   Future<Map<String, MistakeReview>> readMistakeReviews() async =>
       _readMistakeReviewsAt(await _storageKey());
+
+  Future<Map<String, MistakeReview>> readMistakeReviewsFor(String identity) =>
+      _readMistakeReviewsAt('academy.completed.v2.${identityHash(identity)}');
+
+  Future<void> mergeMistakeReviewsFor(
+    String identity,
+    Map<String, MistakeReview> incoming,
+  ) async {
+    final key = 'academy.completed.v2.${identityHash(identity)}';
+    return _withReviewLock(key, () => _mergeMistakeReviewsAt(key, incoming));
+  }
+
+  Future<void> _mergeMistakeReviewsAt(
+    String key,
+    Map<String, MistakeReview> incoming,
+  ) async {
+    final local = await _readMistakeReviewsAt(key);
+    for (final entry in incoming.entries) {
+      final existing = local[entry.key];
+      if (existing == null ||
+          entry.value.updatedAt.isAfter(existing.updatedAt)) {
+        local[entry.key] = entry.value;
+      }
+    }
+    final ids = local.keys.toList()
+      ..sort((a, b) => local[b]!.updatedAt.compareTo(local[a]!.updatedAt));
+    await preferences.writeString(
+      '$key.mistakeBank.reviews',
+      jsonEncode({for (final id in ids.take(100)) id: local[id]!.toJson()}),
+    );
+  }
+
   Future<Map<String, MistakeReview>> _readMistakeReviewsAt(String key) async {
     final raw = await preferences.readString(
       '$key.mistakeBank.reviews',
@@ -213,6 +261,19 @@ class AcademyProgressStore {
   }) async {
     final instant = (now ?? DateTime.now()).toUtc();
     final key = await _storageKey();
+    return _withReviewLock(
+      key,
+      () => _recordMistakeReviewAt(key, id, correct, instant, assisted),
+    );
+  }
+
+  Future<MistakeReview> _recordMistakeReviewAt(
+    String key,
+    String id,
+    bool correct,
+    DateTime instant,
+    bool assisted,
+  ) async {
     final reviews = await _readMistakeReviewsAt(key);
     final previous =
         reviews[id] ?? MistakeReview(nextReview: instant, updatedAt: instant);
@@ -231,6 +292,7 @@ class AcademyProgressStore {
     if (await _storageKey() == key) {
       await _recordPractice('mistake-bank-$id', instant);
     }
+    mistakeRevision.value++;
     return updated;
   }
 
