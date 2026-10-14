@@ -1,0 +1,89 @@
+ChessVerseAI stability audit — 14 October 2026
+
+Scope: Firebase Crashlytics Android open issues, 8–14 October (all versions),
+compared against release 1.3.26 (293), commit 86eafaa6.
+Dashboard: https://console.firebase.google.com/u/1/project/chessverseai-7ae27/crashlytics/app/android:com.epitomehub.chessverse/issues?time=7d&state=open&tag=all&sort=eventCount
+
+Observed baseline (not a post-fix measurement):
+- Crash-free users 94.15%; crash-free sessions 93.32%.
+- 150 crashes / 57 affected users; 8 ANRs / 8 affected users.
+- 2 non-fatals: network health probes on old releases.
+- These figures combine old and current releases. They are not the rate for 293.
+
+Crash inventory:
+1. ARM64 libflutter loaded in x86_64 process: 111 + 28 = 139 events.
+   Reported versions 1.3.2–1.3.10 and 1.2.52–1.2.40.
+   Existing release fix packages all three ABIs. Verified all 12 native ELF
+   headers in the signed 293 AAB, including libapp/libflutter/libdartjni for
+   each ABI. Added an upload-workflow check for missing or mislabeled ELF files.
+   Old installations are not repaired by changing a new bundle: users need an
+   updated release. No evidence here establishes 99% crash-free on the new one.
+2. HsdpShimActivity targetPackageName null: 8 events / 8 users, through 279.
+   Sample: OnePlus8Pro Android 11, 1.3.13 (279), within first second.
+   HSDP 2.1.0 itself appears in the crashing stack. Corrected the misleading
+   Gradle comment claiming this pin was a patched fix. Still unresolved.
+   The activity is not exported in the current merged release manifest.
+   A device model alone does not establish that this is automated traffic.
+3. ProxyBillingActivity null PendingIntent: 3 events / 3 users, 257.
+   Sample: OnePlus8Pro Android 11. This billing activity is absent from the
+   current merged release manifest. Do not disable arbitrary SDK activities
+   or suppress crash reporting as a substitute for correcting SDK behavior.
+
+ANR inventory (one event each):
+- 292 / Tecno KJ5 Android 13: J.N.IJ -> Chromium ImeAdapterImpl -> dlsym.
+  Main thread in native symbol lookup; Dart workers also wait on linker lock.
+  Ads workers are present, but no ad/screen breadcrumb proves the trigger.
+  No custom keys and only session_start/MainActivity screen_view were visible.
+  293 has the same relevant app code. This WebView ANR remains unresolved.
+- 290 / Itel A667L Android 14: previously investigated, startup/storage
+  mitigations in 291; no physical reproduction proves elimination.
+- 249 / Itel A669L Android 14: FlutterJNI.nativeSurfaceCreated lock wait.
+  Existing Itel TextureView mitigation is in the current code.
+- 249 / Infinix X6531B Android 14: same nativeSurfaceCreated/SurfaceView path.
+  Added TextureView only for the observed model/OS. This is a mitigation,
+  requiring physical-device cold-start/resume/rotation validation.
+- 249 / RMX3710 Android 14: Google cloud-messaging unbindService binder wait.
+  SDK callback, no safe app-level causal fix established from this trace.
+- 249 / RMX2151 Android 12: Firebase explicitly reports main-thread idle;
+  captured stack does not show the earlier blocking operation.
+- 273 / 2409BRN2CA Android 16: ART NewLocalRef/Flutter/native app frames;
+  existing Xiaomi-family rendering mitigation is not proof this is fixed.
+- 241 / RMX3938 Android 16: issue grouped under nativePollOnce; selected
+  event did not expose stack content in the inspected UI. Cause unresolved.
+
+Concrete code defects corrected during this audit:
+- Push initialized Firebase asynchronously while analytics and diagnostics
+  concurrently accessed Firebase singletons. They could fail before core was
+  ready and never enable custom diagnostics in that session. All three now
+  await shared Firebase initialization; failed initialization can retry.
+- Crashlytics logging/reporting futures could themselves throw into the
+  global handler. Reporting now contains its own platform failures.
+- Rewarded/interstitial/banner load/show/disposal failures were not consistently
+  awaited/caught. They now degrade without aborting the user flow and preserve
+  non-fatal diagnostics. Rewarded server verification options finish before show.
+- Rewarded load timeout previously left loading=true indefinitely. A retry now
+  works, and a late callback from an expired load cannot replace the current ad.
+- Concurrent rewarded show callers now recheck ownership after awaiting load.
+- Added privacy-safe ad initialization/load/show/dismiss breadcrumbs. These do
+  not contain player IDs, auth tokens, ad unit IDs, or user content.
+
+Validation and release limits:
+- Focused regression suite: 10 passed (Firebase concurrency/retry, ad load
+  failure/timeout/stale callback/show failure, test environment suppression,
+  diagnostic redaction). Full suite: 467 passed. After final banner cleanup,
+  focused regression + widget suite: 47 passed. Analyzer: no issues.
+- Android :app:compileDebugKotlin: BUILD SUCCESSFUL. An intermediate misplaced
+  Dart import failed compilation, was corrected, and compilation was rerun.
+- ABI validator fixtures passed for valid, missing-library and wrong-machine
+  payloads. Verification logs: mobile/.build-tmp/stability-audit-*.log.
+- Signed 293 AAB ABI validator: all 12 libraries across 3 ABIs passed.
+- No Android phone connected when adb devices was checked during this audit.
+- New code changes are not inside the already-delivered 293 artifact.
+- Do not close unknown-root-cause issues or claim 99% from automated tests.
+  Measure the released candidate by version, with users/session counts and
+  ANRs separately, after actual adoption. Investigate remaining native cases
+  using affected-device reproduction and system traces.
+
+Reference checked: https://developers.google.com/admob/android/optimize-initialization
+Google Mobile Ads optimization flags are already enabled by default in SDK24+;
+adding redundant flags is not a demonstrated fix for the observed Chromium ANR.

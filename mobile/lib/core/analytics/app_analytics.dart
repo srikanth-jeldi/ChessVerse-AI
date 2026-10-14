@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
 import '../config/app_config.dart';
+import '../diagnostics/firebase_bootstrap.dart';
 
 /// Privacy-safe product analytics for the release funnel.
 ///
@@ -17,6 +18,7 @@ abstract final class AppAnalytics {
   static Future<void> initialize() async {
     if (kIsWeb) return;
     try {
+      await FirebaseBootstrap.ensureReady();
       await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(
         !kDebugMode,
       );

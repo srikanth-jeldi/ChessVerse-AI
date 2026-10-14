@@ -6,11 +6,14 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'ad_sdk_initializer.dart';
 import '../analytics/app_analytics.dart';
 import '../config/app_config.dart';
+import '../diagnostics/app_diagnostics.dart';
 
 enum RewardedCoinOutcome { earned, unavailable, dismissed }
 
 class RewardedCoinService {
   RewardedCoinService._();
+  @visibleForTesting
+  RewardedCoinService.forTesting();
   static final RewardedCoinService instance = RewardedCoinService._();
   RewardedAd? _ad;
   bool _loading = false;
@@ -55,24 +58,52 @@ class RewardedCoinService {
       if (!loading.isCompleted) loading.complete(false);
       return false;
     }
-    RewardedAd.load(
-      adUnitId: _adUnitId,
-      request: const AdRequest(),
-      rewardedAdLoadCallback: RewardedAdLoadCallback(
-        onAdLoaded: (ad) {
-          _ad = ad;
-          _loading = false;
-          _loadCompleter = null;
-          if (!loading.isCompleted) loading.complete(true);
-        },
-        onAdFailedToLoad: (_) {
+    AppDiagnostics.log('ad_rewarded_load');
+    try {
+      await RewardedAd.load(
+        adUnitId: _adUnitId,
+        request: const AdRequest(),
+        rewardedAdLoadCallback: RewardedAdLoadCallback(
+          onAdLoaded: (ad) {
+            if (_loadCompleter != loading) {
+              unawaited(_dispose(ad));
+              return;
+            }
+            _ad = ad;
+            AppDiagnostics.log('ad_rewarded_loaded');
+            _loading = false;
+            _loadCompleter = null;
+            if (!loading.isCompleted) loading.complete(true);
+          },
+          onAdFailedToLoad: (_) {
+            if (_loadCompleter != loading) return;
+            _loading = false;
+            _loadCompleter = null;
+            if (!loading.isCompleted) loading.complete(false);
+          },
+        ),
+      );
+    } on Object catch (error, stack) {
+      _loading = false;
+      _loadCompleter = null;
+      if (!loading.isCompleted) loading.complete(false);
+      await AppDiagnostics.recordError(
+        error,
+        stack,
+        reason: 'Rewarded load failed',
+      );
+    }
+    return loading.future.timeout(
+      timeout,
+      onTimeout: () {
+        if (_loadCompleter == loading) {
           _loading = false;
           _loadCompleter = null;
           if (!loading.isCompleted) loading.complete(false);
-        },
-      ),
+        }
+        return false;
+      },
     );
-    return loading.future.timeout(timeout, onTimeout: () => false);
   }
 
   Future<RewardedCoinOutcome> show({
@@ -84,6 +115,8 @@ class RewardedCoinService {
       final bool loaded = await load();
       if (!loaded || _ad == null) return RewardedCoinOutcome.unavailable;
     }
+    // Another caller may have consumed this ad while we awaited the load.
+    if (_showing || _ad == null) return RewardedCoinOutcome.unavailable;
     _showing = true;
     final completer = Completer<RewardedCoinOutcome>();
     final ad = _ad!;
@@ -96,16 +129,11 @@ class RewardedCoinService {
         context: 'coin_shop',
       ),
     );
-    ad.setServerSideOptions(
-      ServerSideVerificationOptions(
-        userId: playerId,
-        customData: 'chessverse_coins_v1',
-      ),
-    );
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (value) {
-        value.dispose();
+        unawaited(_dispose(value));
         _showing = false;
+        AppDiagnostics.log('ad_rewarded_dismissed');
         unawaited(
           AppAnalytics.logProductEvent(
             token: token,
@@ -121,7 +149,7 @@ class RewardedCoinService {
         unawaited(load());
       },
       onAdFailedToShowFullScreenContent: (value, _) {
-        value.dispose();
+        unawaited(_dispose(value));
         _showing = false;
         unawaited(
           AppAnalytics.logProductEvent(
@@ -136,11 +164,43 @@ class RewardedCoinService {
         unawaited(load());
       },
     );
-    ad.show(
-      onUserEarnedReward: (_, reward) {
-        earned = true;
-      },
-    );
+    try {
+      await ad.setServerSideOptions(
+        ServerSideVerificationOptions(
+          userId: playerId,
+          customData: 'chessverse_coins_v1',
+        ),
+      );
+      AppDiagnostics.log('ad_rewarded_show');
+      await ad.show(
+        onUserEarnedReward: (_, reward) {
+          earned = true;
+        },
+      );
+    } on Object catch (error, stack) {
+      _showing = false;
+      await _dispose(ad);
+      await AppDiagnostics.recordError(
+        error,
+        stack,
+        reason: 'Rewarded show failed',
+      );
+      if (!completer.isCompleted) {
+        completer.complete(RewardedCoinOutcome.unavailable);
+      }
+    }
     return completer.future;
+  }
+
+  static Future<void> _dispose(Ad ad) async {
+    try {
+      await ad.dispose();
+    } on Object catch (error, stack) {
+      await AppDiagnostics.recordError(
+        error,
+        stack,
+        reason: 'Rewarded disposal failed',
+      );
+    }
   }
 }

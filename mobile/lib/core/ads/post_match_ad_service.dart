@@ -6,6 +6,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'ad_sdk_initializer.dart';
 import '../app_preferences.dart';
 import '../config/app_config.dart';
+import '../diagnostics/app_diagnostics.dart';
 
 class PostMatchAdService {
   PostMatchAdService._();
@@ -50,17 +51,28 @@ class PostMatchAdService {
       _loading = false;
       return;
     }
-    InterstitialAd.load(
-      adUnitId: _adUnitId,
-      request: const AdRequest(),
-      adLoadCallback: InterstitialAdLoadCallback(
-        onAdLoaded: (InterstitialAd ad) {
-          _ad = ad;
-          _loading = false;
-        },
-        onAdFailedToLoad: (_) => _loading = false,
-      ),
-    );
+    AppDiagnostics.log('ad_interstitial_load');
+    try {
+      await InterstitialAd.load(
+        adUnitId: _adUnitId,
+        request: const AdRequest(),
+        adLoadCallback: InterstitialAdLoadCallback(
+          onAdLoaded: (InterstitialAd ad) {
+            _ad = ad;
+            AppDiagnostics.log('ad_interstitial_loaded');
+            _loading = false;
+          },
+          onAdFailedToLoad: (_) => _loading = false,
+        ),
+      );
+    } on Object catch (error, stack) {
+      _loading = false;
+      await AppDiagnostics.recordError(
+        error,
+        stack,
+        reason: 'Interstitial load failed',
+      );
+    }
   }
 
   Future<void> showAfterMatch(String matchId) async {
@@ -101,18 +113,42 @@ class PostMatchAdService {
         unawaited(_persistState());
       },
       onAdDismissedFullScreenContent: (InterstitialAd value) {
-        value.dispose();
+        unawaited(_dispose(value));
+        AppDiagnostics.log('ad_interstitial_dismissed');
         if (!done.isCompleted) done.complete();
         unawaited(load());
       },
       onAdFailedToShowFullScreenContent: (InterstitialAd value, _) {
-        value.dispose();
+        unawaited(_dispose(value));
         if (!done.isCompleted) done.complete();
         unawaited(load());
       },
     );
-    ad.show();
+    try {
+      AppDiagnostics.log('ad_interstitial_show');
+      await ad.show();
+    } on Object catch (error, stack) {
+      await _dispose(ad);
+      await AppDiagnostics.recordError(
+        error,
+        stack,
+        reason: 'Interstitial show failed',
+      );
+      if (!done.isCompleted) done.complete();
+    }
     await done.future.timeout(const Duration(seconds: 45), onTimeout: () {});
+  }
+
+  static Future<void> _dispose(Ad ad) async {
+    try {
+      await ad.dispose();
+    } on Object catch (error, stack) {
+      await AppDiagnostics.recordError(
+        error,
+        stack,
+        reason: 'Interstitial disposal failed',
+      );
+    }
   }
 
   void _resetDailyCounter() {

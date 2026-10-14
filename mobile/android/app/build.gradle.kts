@@ -85,9 +85,8 @@ dependencies {
     // this app's minSdk so AndroidX Startup uses the fixed implementation.
     implementation("androidx.work:work-runtime:2.9.1")
 
-    // Google Mobile Ads currently resolves HSDP 2.0.1, whose shim activity can
-    // crash when Play launches it without targetPackageName. Keep the patched
-    // Play library on the runtime classpath.
+    // Keep the selected Play dependency explicit. HSDP 2.1.0 still has reported
+    // missing-targetPackageName crashes; this pin is not a verified fix.
     implementation("com.google.android.play:hsdp:2.1.0")
 
 }

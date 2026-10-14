@@ -116,6 +116,7 @@ jobs:
           set -Eeuo pipefail
           aab=build/app/outputs/bundle/release/app-release.aab
           test -s "$aab"
+          python3 tool/verify_android_abis.py "$aab"
           # Retain native symbols for Play crash reports. This upload-only
           # metadata does not increase the APKs installed on users' devices.
           unzip -Z1 "$aab" > /tmp/bundle-entries.txt

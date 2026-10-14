@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import '../config/app_config.dart';
+import '../diagnostics/app_diagnostics.dart';
 import 'ad_sdk_initializer.dart';
 
 /// Compact banner reserved for non-gameplay screens.
@@ -54,6 +57,7 @@ class _BannerAdSlotState extends State<BannerAdSlot> {
 
   Future<void> _load() async {
     if (!await AdSdkInitializer.ensureReady() || !mounted) return;
+    AppDiagnostics.log('ad_banner_load');
     final BannerAd ad = BannerAd(
       size: AdSize.banner,
       adUnitId: _adUnitId,
@@ -61,25 +65,51 @@ class _BannerAdSlotState extends State<BannerAdSlot> {
       listener: BannerAdListener(
         onAdLoaded: (Ad value) {
           if (!mounted) {
-            value.dispose();
+            unawaited(_disposeAd(value));
             return;
           }
           setState(() => _loaded = true);
+          AppDiagnostics.log('ad_banner_loaded');
         },
         onAdFailedToLoad: (Ad value, LoadAdError _) {
-          value.dispose();
+          unawaited(_disposeAd(value));
+          _ad = null;
           if (mounted) setState(() => _loaded = false);
         },
       ),
     );
     _ad = ad;
-    await ad.load();
+    try {
+      await ad.load();
+    } on Object catch (error, stack) {
+      _ad = null;
+      await _disposeAd(ad);
+      if (mounted) setState(() => _loaded = false);
+      await AppDiagnostics.recordError(
+        error,
+        stack,
+        reason: 'Banner load failed',
+      );
+    }
   }
 
   @override
   void dispose() {
-    _ad?.dispose();
+    final ad = _ad;
+    if (ad != null) unawaited(_disposeAd(ad));
     super.dispose();
+  }
+
+  static Future<void> _disposeAd(Ad ad) async {
+    try {
+      await ad.dispose();
+    } on Object catch (error, stack) {
+      await AppDiagnostics.recordError(
+        error,
+        stack,
+        reason: 'Banner disposal failed',
+      );
+    }
   }
 
   @override

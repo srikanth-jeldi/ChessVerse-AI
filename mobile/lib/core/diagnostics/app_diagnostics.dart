@@ -5,6 +5,8 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import 'firebase_bootstrap.dart';
+
 /// Privacy-safe diagnostics shared by Crashlytics and Help & Support.
 abstract final class AppDiagnostics {
   static const int _maximumEntries = 80;
@@ -14,13 +16,14 @@ abstract final class AppDiagnostics {
   static Future<void> initialize() async {
     if (!kIsWeb) {
       try {
+        await FirebaseBootstrap.ensureReady();
         await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
           !kDebugMode,
         );
         _crashlyticsReady = true;
         // Preserve startup milestones recorded before Firebase was ready.
         for (final entry in List<String>.of(_entries)) {
-          unawaited(FirebaseCrashlytics.instance.log(entry));
+          unawaited(_writeLog(entry));
         }
       } on Object {
         _crashlyticsReady = false;
@@ -66,7 +69,7 @@ abstract final class AppDiagnostics {
       _entries.removeRange(0, _entries.length - _maximumEntries);
     }
     if (_crashlyticsReady) {
-      unawaited(FirebaseCrashlytics.instance.log(line));
+      unawaited(_writeLog(line));
     }
   }
 
@@ -79,12 +82,24 @@ abstract final class AppDiagnostics {
     final String safeError = redact(error.toString());
     log('error', <String, Object?>{'reason': reason, 'message': safeError});
     if (!_crashlyticsReady) return;
-    await FirebaseCrashlytics.instance.recordError(
-      safeError,
-      stack,
-      reason: redact(reason),
-      fatal: fatal,
-    );
+    try {
+      await FirebaseCrashlytics.instance.recordError(
+        safeError,
+        stack,
+        reason: redact(reason),
+        fatal: fatal,
+      );
+    } on Object {
+      // A reporting failure must not recursively reach the global error handler.
+    }
+  }
+
+  static Future<void> _writeLog(String line) async {
+    try {
+      await FirebaseCrashlytics.instance.log(line);
+    } on Object {
+      // Keep the local diagnostic buffer when the native reporter is unavailable.
+    }
   }
 
   static String redact(String value) {

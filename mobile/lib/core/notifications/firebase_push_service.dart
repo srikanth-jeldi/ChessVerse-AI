@@ -11,6 +11,7 @@ import '../../features/social/data/community_api.dart';
 import '../../features/social/data/e2ee_chat_service.dart';
 import '../academy_story_localizations.dart';
 import '../app_language.dart';
+import '../diagnostics/firebase_bootstrap.dart';
 import '../live_coach_localizations.dart';
 import 'daily_reminder_service.dart';
 import 'notification_preview.dart';
@@ -194,7 +195,7 @@ class FirebasePushService {
   Future<void> initialize() async {
     if (kIsWeb) return;
     try {
-      await Firebase.initializeApp();
+      await FirebaseBootstrap.ensureReady();
       FirebaseMessaging.onBackgroundMessage(
         chessVerseFirebaseBackgroundHandler,
       );
