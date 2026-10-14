@@ -18,6 +18,7 @@ void main() {
   late bool failLoad;
   late bool failShow;
   late bool deliverLoaded;
+  Completer<void>? pendingLoad;
 
   setUp(() {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
@@ -27,6 +28,7 @@ void main() {
     failLoad = false;
     failShow = false;
     deliverLoaded = false;
+    pendingLoad = null;
     messenger.setMockMethodCallHandler(environment, (_) async => false);
     messenger.setMockMethodCallHandler(instanceManager.channel, (call) async {
       if (call.method == 'MobileAds#initialize') {
@@ -36,7 +38,9 @@ void main() {
         final id = (call.arguments as Map)['adId'] as int;
         ids.add(id);
         if (failLoad) throw PlatformException(code: 'load_failed');
-        if (deliverLoaded) {
+        final shouldDeliver = deliverLoaded;
+        if (pendingLoad != null) await pendingLoad!.future;
+        if (shouldDeliver) {
           scheduleMicrotask(() {
             final ad = instanceManager.adFor(id) as RewardedAd;
             ad.rewardedAdLoadCallback.onAdLoaded(ad);
@@ -95,4 +99,26 @@ void main() {
     );
     expect(await service.load(), isTrue);
   });
+
+  test(
+    'unresponsive native load times out and late callback cannot replace retry',
+    () async {
+      pendingLoad = Completer<void>();
+      expect(
+        await service.load(timeout: const Duration(milliseconds: 10)),
+        isFalse,
+      );
+      expect(service.isLoading, isFalse);
+      final stale = instanceManager.adFor(ids.single) as RewardedAd;
+      final blocked = pendingLoad!;
+      pendingLoad = null;
+      deliverLoaded = true;
+      expect(await service.load(), isTrue);
+      stale.rewardedAdLoadCallback.onAdLoaded(stale);
+      blocked.complete();
+      await Future<void>.delayed(Duration.zero);
+      expect(service.isReady, isTrue);
+      expect(service.isLoading, isFalse);
+    },
+  );
 }

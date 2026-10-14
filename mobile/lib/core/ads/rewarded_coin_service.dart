@@ -82,11 +82,16 @@ class RewardedCoinService {
             if (!loading.isCompleted) loading.complete(false);
           },
         ),
-      );
+      ).timeout(timeout);
     } on Object catch (error, stack) {
-      _loading = false;
-      _loadCompleter = null;
-      if (!loading.isCompleted) loading.complete(false);
+      // The native method can stop responding before a load callback arrives.
+      // A late failure must not clear an ad delivered by its callback or a
+      // newer request's state.
+      if (_loadCompleter == loading) {
+        _loading = false;
+        _loadCompleter = null;
+        if (!loading.isCompleted) loading.complete(false);
+      }
       await AppDiagnostics.recordError(
         error,
         stack,

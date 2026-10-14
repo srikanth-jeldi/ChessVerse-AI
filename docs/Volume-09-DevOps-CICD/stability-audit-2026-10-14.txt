@@ -87,3 +87,14 @@ Validation and release limits:
 Reference checked: https://developers.google.com/admob/android/optimize-initialization
 Google Mobile Ads optimization flags are already enabled by default in SDK24+;
 adding redundant flags is not a demonstrated fix for the observed Chromium ANR.
+
+Follow-up: rewarded native load responsiveness
+- The callback timeout started only after the native load method returned.
+  A stalled platform response could therefore leave loading stuck indefinitely.
+  Added a timeout to the platform load itself and ownership checks so late
+  callbacks/failures cannot overwrite a newer request or an already loaded ad.
+- Seven ad initialization/failure regression tests passed, including a blocked
+  native response followed by retry and a stale callback. The first run exposed
+  a duplicate callback in the test fixture; corrected the fixture and reran.
+- This fixes an app loading-state hang, not the unproven native WebView ANR.
+  ADB currently lists no connected physical devices. Not yet in a released AAB.

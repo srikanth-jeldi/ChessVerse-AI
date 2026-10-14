@@ -519,7 +519,9 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
           _wrongTarget = !legal || candidate != null ? square : null;
           _selectedSquare = null;
           _attemptedMove = legal ? candidateMove : null;
-          _feedback = legal ? p('unverified') : m('wrong');
+          _feedback = legal
+              ? '${p('unverified')}\n${m('wrong')}'
+              : m('wrong');
           if (candidate != null &&
               candidate.mateIn == null &&
               candidates.every((c) => c.mateIn == null)) {

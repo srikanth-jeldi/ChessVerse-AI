@@ -346,6 +346,12 @@ void main() {
       await tap(tester, 'e3');
       await tester.pumpAndSettle();
       expect(find.textContaining('not in the saved line'), findsOneWidget);
+      expect(
+        find.textContaining(
+          'Try another move. Use Hint if you need help.',
+        ),
+        findsOneWidget,
+      );
       await tester.ensureVisible(find.byKey(const ValueKey('mistake-hint')));
       await tester.tap(find.byKey(const ValueKey('mistake-hint')));
       await tester.pump();
