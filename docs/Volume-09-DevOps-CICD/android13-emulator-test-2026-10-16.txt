@@ -1,0 +1,43 @@
+Android 13 emulator test attempt, 15-16 October 2026
+
+Setup
+- Installed official system-images;android-33;google_apis;x86_64 (revision 17).
+- Created ChessVerse_API33 at .build-tmp/avd/ChessVerse_API33.avd.
+- Windows WHPX acceleration check succeeded. Emulator version 36.4.9.0.
+- Built and installed mobile/build/app/outputs/flutter-apk/app-debug.apk
+  (109133274 bytes), x86_64 debug, ENABLE_ADMOB_TEST_ADS=true.
+- Build used Google's test AdMob app ID; debug ad units already use Google's
+  official test IDs. No production ad config was passed.
+- Added an explicit debug-only opt-in so emulator suppression does not prevent
+  test-ad coverage. Production builds still suppress automated environments.
+  Unknown/failed environment checks remain blocked.
+- Opt-in tests: 2 passed with the define. Default suppression plus initializer
+  regressions: 8 passed without the define. Targeted Dart analysis clean.
+
+Observed results, NOT a passing stability certification
+- Initial 2 GB/2 CPU software-graphics emulator reached boot and installed APK
+  after a non-streaming installation retry, then its emulator process exited.
+- Host-graphics retry booted but Android System UI showed an ANR dialog.
+- 3 GB/4 CPU host-graphics retry with 540x1200 display booted to the launcher.
+  Density was adjusted to 210. App startup commands timed out waiting for the
+  activity; Flutter VM started and notification permission UI was captured.
+- Debug-only software-rendering/Impeller opt-out comparison also had startup
+  wait timeouts. No production renderer settings were changed.
+- System log contains ANRs in com.google.android.gms,
+  com.google.android.gms.persistent and com.google.android.apps.wellbeing.
+- Inspected app exit history contained our two explicit force-stops; this is
+  not evidence of a successful app run or absence of future app ANRs.
+- Ads/shop/background-resume flows were NOT completed. No claim that the Tecno
+  issue was reproduced or fixed. System instability prevents a useful baseline.
+- Image's selected WebView was com.google.android.webview 109.0.5414.123,
+  different from Chromium build 803710603 in the Tecno KJ5 report.
+
+Local diagnostic artifacts (not committed)
+- .build-tmp/api33-app-system.log
+- .build-tmp/emulator-api33.stdout.log / emulator-api33.stderr.log
+- .build-tmp/chessverse-api33-final.png (first-run UI capture)
+
+Next validation requirement
+Establish a responsive Android emulator baseline (including Google Play
+services and screen capture) or use a cloud physical device before running ad
+flows. Keep results separate from Tecno/ARM64/vendor-specific verification.

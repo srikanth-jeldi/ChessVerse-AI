@@ -9,6 +9,10 @@ import '../diagnostics/app_diagnostics.dart';
 /// Starts the native ad/WebView stack only after a user reaches an ad-backed
 /// feature. Keeping it out of app startup reduces cold-start ANR exposure.
 abstract final class AdSdkInitializer {
+  // Only an explicitly opted-in debug build may exercise Google test ads on
+  // an emulator/Test Lab device. Release traffic always retains suppression.
+  static const bool debugTestAds =
+      kDebugMode && bool.fromEnvironment('ENABLE_ADMOB_TEST_ADS');
   static Future<bool>? _initialization;
   static Future<void>? _nativeInitialization;
   static const MethodChannel _environment = MethodChannel(
@@ -37,9 +41,9 @@ abstract final class AdSdkInitializer {
         final bool? suppress = await _environment
             .invokeMethod<bool>('suppressAds')
             .timeout(const Duration(seconds: 2));
-        // No SDK initialization or ad requests until Android confirms that
-        // this is outside the supported automated test environments.
-        if (suppress != false) return false;
+        // Unknown environments fail closed. Automated environments only run
+        // test ads when this debug build explicitly opts in above.
+        if (suppress == null || (suppress && !debugTestAds)) return false;
       }
       // Future.timeout does not cancel Android's initialization. Reuse that
       // operation after a caller times out instead of starting it again.
