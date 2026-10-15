@@ -9,6 +9,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.android.RenderMode
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.StandardMethodCodec
 
 class MainActivity : FlutterActivity() {
     private val ttsSettingsChannel = "com.epitomehub.chessverse/tts_settings"
@@ -52,14 +53,25 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         // Suppress ad traffic in automated testing, without changing gameplay.
         // Firebase documents this flag for Test Lab and Play pre-launch tests.
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.epitomehub.chessverse/ad_environment")
+        // Settings reads can cross a Binder/content-provider boundary. Dart's
+        // timeout cannot unblock Android's UI thread, so run this non-UI check
+        // on Flutter's managed background queue. Ad SDK/UI calls stay on their
+        // plugin's normal thread.
+        val messenger = flutterEngine.dartExecutor.binaryMessenger
+        val resolver = applicationContext.contentResolver
+        MethodChannel(
+            messenger,
+            "com.epitomehub.chessverse/ad_environment",
+            StandardMethodCodec.INSTANCE,
+            messenger.makeBackgroundTaskQueue()
+        )
             .setMethodCallHandler { call, result ->
                 if (call.method != "suppressAds") {
                     result.notImplemented()
                     return@setMethodCallHandler
                 }
                 try {
-                    val testLab = Settings.System.getString(contentResolver, "firebase.test.lab") == "true"
+                    val testLab = Settings.System.getString(resolver, "firebase.test.lab") == "true"
                     val emulator = Build.HARDWARE == "goldfish" ||
                         Build.HARDWARE == "ranchu" ||
                         Build.PRODUCT.startsWith("sdk_gphone") ||

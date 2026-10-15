@@ -81,6 +81,19 @@ void main() {
     expect(adCalls, 2);
   });
 
+  test('slow environment check never starts ads after caller timeout', () async {
+    final pending = Completer<bool>();
+    messenger.setMockMethodCallHandler(environment, (_) => pending.future);
+    expect(await AdSdkInitializer.ensureReady(), isFalse);
+    expect(adCalls, 0);
+    pending.complete(false);
+    await Future<void>.delayed(Duration.zero);
+    expect(adCalls, 0);
+    messenger.setMockMethodCallHandler(environment, (_) async => false);
+    expect(await AdSdkInitializer.ensureReady(), isTrue);
+    expect(adCalls, 1);
+  });
+
   test(
     'failed environment check prevents requests and permits a retry',
     () async {

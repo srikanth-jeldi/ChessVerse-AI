@@ -52,3 +52,33 @@ describe feature additions, not a verified fix for the null-target crash.
 No speculative activity disabling, dependency removal or reporting suppression
 was applied. Reference:
 https://developer.android.com/reference/com/google/android/play/core/release-notes-hsdp
+
+Native WebView follow-up (15 October):
+- Reopened a84db4934cd3c6a5547b9d0576401475: still one event, build 292,
+  Tecno KJ5, Android 13. Main thread is in linker64 do_dlsym via ART native
+  method resolution, J.N.IJ, WV.pr0.close, and ImeAdapterImpl.bindImeRenderHost.
+  This is Chromium/System WebView code, not an app-defined JNI method.
+- Expanded the five DartWorker linker stacks. Four show
+  __cxa_thread_atexit_impl followed by missing Build ID
+  1164bae6165f15f0ecdcba31ceb73ad2ea73038d. This exactly matches arm64-v8a
+  libflutter.so in the retained build 292 and 294 release reports. It does not
+  identify Dart application logic or establish that these waiting threads
+  caused the main-thread stall.
+- No reproducible app-owned cause for this Chromium linker stall or the
+  remaining vendor rendering stalls was established. Existing targeted
+  TextureView mitigations are not claimed as verified fixes on affected phones.
+- Found a separate preventable UI-thread I/O risk in our ad environment
+  channel: Settings.System.getString uses a content resolver/Binder boundary
+  on the default main-thread handler. Moved only that non-UI handler to
+  Flutter's managed background task queue, using the application resolver.
+  SDK/WebView UI operations retain their required threading. This prevents
+  that settings read from holding the Android UI thread; it is NOT presented
+  as a fix for the observed J.N.IJ trace.
+- Added a regression for a delayed environment result: timeout skips ads,
+  a late response does not start the SDK, and a later explicit retry works.
+- Source: https://docs.flutter.dev/platform-integration/platform-channels
+  (Execute channel handlers on a background thread, Android).
+- No claim of eliminating all native ANRs. No new AAB produced in this review.
+- Validation: all 6 initializer tests passed; targeted Dart analysis reported
+  no issues; :app:compileDebugKotlin succeeded. These checks do not reproduce
+  the Tecno WebView or vendor graphics-driver ANRs.
