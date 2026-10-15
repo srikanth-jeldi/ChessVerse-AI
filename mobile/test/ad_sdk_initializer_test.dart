@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -44,6 +46,39 @@ void main() {
     messenger.setMockMethodCallHandler(environment, (_) async => false);
     expect(await AdSdkInitializer.ensureReady(), isTrue);
     expect(adCalls, greaterThan(0));
+  });
+
+  test(
+    'timeout retry reuses native initialization until it completes',
+    () async {
+      messenger.setMockMethodCallHandler(environment, (_) async => false);
+      final pending = Completer<InitializationStatus>();
+      messenger.setMockMethodCallHandler(ads, (call) async {
+        adCalls++;
+        return pending.future;
+      });
+      expect(await AdSdkInitializer.ensureReady(), isFalse);
+      expect(adCalls, 1);
+      final retry = AdSdkInitializer.ensureReady();
+      final concurrent = AdSdkInitializer.ensureReady();
+      pending.complete(InitializationStatus(<String, AdapterStatus>{}));
+      expect(await retry, isTrue);
+      expect(await concurrent, isTrue);
+      expect(await AdSdkInitializer.ensureReady(), isTrue);
+      expect(adCalls, 1);
+    },
+  );
+
+  test('completed native failure permits a new initialization', () async {
+    messenger.setMockMethodCallHandler(environment, (_) async => false);
+    messenger.setMockMethodCallHandler(ads, (call) async {
+      adCalls++;
+      if (adCalls == 1) throw PlatformException(code: 'native_init_failed');
+      return InitializationStatus(<String, AdapterStatus>{});
+    });
+    expect(await AdSdkInitializer.ensureReady(), isFalse);
+    expect(await AdSdkInitializer.ensureReady(), isTrue);
+    expect(adCalls, 2);
   });
 
   test(

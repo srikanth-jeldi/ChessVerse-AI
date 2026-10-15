@@ -10,12 +10,16 @@ import '../diagnostics/app_diagnostics.dart';
 /// feature. Keeping it out of app startup reduces cold-start ANR exposure.
 abstract final class AdSdkInitializer {
   static Future<bool>? _initialization;
+  static Future<void>? _nativeInitialization;
   static const MethodChannel _environment = MethodChannel(
     'com.epitomehub.chessverse/ad_environment',
   );
 
   @visibleForTesting
-  static void resetForTesting() => _initialization = null;
+  static void resetForTesting() {
+    _initialization = null;
+    _nativeInitialization = null;
+  }
 
   static bool get supported =>
       !kIsWeb &&
@@ -37,8 +41,10 @@ abstract final class AdSdkInitializer {
         // this is outside the supported automated test environments.
         if (suppress != false) return false;
       }
-      AppDiagnostics.log('ad_sdk_initialize');
-      await MobileAds.instance.initialize().timeout(const Duration(seconds: 8));
+      // Future.timeout does not cancel Android's initialization. Reuse that
+      // operation after a caller times out instead of starting it again.
+      final native = _nativeInitialization ??= _startNativeInitialization();
+      await native.timeout(const Duration(seconds: 8));
       AppDiagnostics.log('ad_sdk_ready');
       return true;
     } on Object catch (error, stack) {
@@ -50,6 +56,17 @@ abstract final class AdSdkInitializer {
         reason: 'Ad SDK initialization failed',
       );
       return false;
+    }
+  }
+
+  static Future<void> _startNativeInitialization() async {
+    AppDiagnostics.log('ad_sdk_initialize');
+    try {
+      await MobileAds.instance.initialize();
+    } on Object {
+      // A completed failure may retry; a still-running operation must not.
+      _nativeInitialization = null;
+      rethrow;
     }
   }
 }

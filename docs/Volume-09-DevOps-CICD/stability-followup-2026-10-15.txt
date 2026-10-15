@@ -1,0 +1,54 @@
+ChessVerseAI production stability follow-up — 15 October 2026
+
+Source: authenticated Firebase Crashlytics, 9–15 October, Android app
+com.epitomehub.chessverse. Read-only investigation; no issues closed.
+
+All-version open crash groups:
+- ARM64 Flutter library loaded by x86_64 process: 85 + 24 = 109 events,
+  versions 1.3.2–1.3.10 and 1.2.52–1.2.40.
+- HSDP targetPackageName null: 8 events / 8 users, versions 1.3.1–1.3.13.
+- Billing PendingIntent null: 3 events / 3 users, version 1.3.2.
+- Total: 120 crash events in these four open groups. This is a rolling
+  seven-day window, not directly comparable with yesterday's shifted window.
+- Dashboard crash-free users 95.15%, sessions 94.75%, across versions.
+- Open ANR list: 7 groups / 8 events, latest affected version 1.3.25.
+  Native WebView slow IO and rendering-lock root causes remain unresolved.
+
+Current release 1.3.27 (294), all event types and all issue states:
+- Dashboard crash-free users 100%, crash-free sessions 100% at inspection.
+- Three non-fatal events: one ad initialization timeout and two API health
+  probe connection-abort events. No crash/ANR rows were shown for this version.
+- Adoption/session denominator not established. This is not proof of permanent
+  crash-free operation or a prediction for other devices.
+- Play screenshot's 0.10% crash / 0.30% ANR / 3.80 rating covers 28 days.
+  It cannot by itself establish a regression in 294 or quantify rating/revenue
+  loss caused specifically by crashes.
+
+New actionable issue:
+https://console.firebase.google.com/u/0/project/chessverseai-7ae27/crashlytics/app/android:com.epitomehub.chessverse/issues/200c30dd5962dee956c633adc35eb446?time=7d&versions=1.3.27%20(294)
+- 1 non-fatal event / 1 user; Samsung, Android 10 in aggregate device tabs.
+- TimeoutException after eight seconds: Ad SDK initialization failed.
+- Individual session panel returned Error loading your session, so no exact
+  model, event timestamp or triggering screen is claimed.
+
+Code correction:
+- Future.timeout does not cancel the native initialization operation. The old
+  retry path discarded its reference and could start overlapping SDK calls.
+- Retain and reuse the native future after a caller timeout. Completed native
+  failures clear that future so a genuine retry remains possible.
+- Preserve diagnostic error reporting and the existing test-environment gate.
+- This prevents duplicate initialization work; it does not guarantee the
+  original slow native initialization finishes or fix the native WebView ANR.
+- Add tests for timeout/retry/concurrent callers sharing one native operation,
+  and retry after a completed native error.
+- New correction is not inside the already-delivered build 294 AAB.
+- Validation: 9 ad initialization/rewarded failure tests passed. Targeted Dart
+  static analysis: no issues. No claim of physical reproduction of the user's
+  Samsung Android 10 event or of native ANR elimination is made.
+
+HSDP review:
+The explicit 2.1.0 pin was introduced in commit 98a21e43. Its release notes
+describe feature additions, not a verified fix for the null-target crash.
+No speculative activity disabling, dependency removal or reporting suppression
+was applied. Reference:
+https://developer.android.com/reference/com/google/android/play/core/release-notes-hsdp
