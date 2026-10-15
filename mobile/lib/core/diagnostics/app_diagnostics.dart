@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'firebase_bootstrap.dart';
+import 'android_runtime_diagnostics.dart';
 
 /// Privacy-safe diagnostics shared by Crashlytics and Help & Support.
 abstract final class AppDiagnostics {
@@ -21,6 +22,7 @@ abstract final class AppDiagnostics {
           !kDebugMode,
         );
         _crashlyticsReady = true;
+        unawaited(_recordAndroidRuntime());
         // Preserve startup milestones recorded before Firebase was ready.
         for (final entry in List<String>.of(_entries)) {
           unawaited(_writeLog(entry));
@@ -99,6 +101,22 @@ abstract final class AppDiagnostics {
       await FirebaseCrashlytics.instance.log(line);
     } on Object {
       // Keep the local diagnostic buffer when the native reporter is unavailable.
+    }
+  }
+
+  static Future<void> _recordAndroidRuntime() async {
+    final values = await AndroidRuntimeDiagnostics.read();
+    if (values.isEmpty) return;
+    log('android_runtime', values);
+    for (final entry in values.entries) {
+      try {
+        await FirebaseCrashlytics.instance
+            .setCustomKey(entry.key, entry.value)
+            .timeout(const Duration(seconds: 2));
+      } on Object {
+        // Keep diagnostics optional if native reporting is unavailable.
+        return;
+      }
     }
   }
 

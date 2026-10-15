@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import android.speech.tts.TextToSpeech
+import android.webkit.WebView
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.android.RenderMode
 import io.flutter.embedding.engine.FlutterEngine
@@ -13,6 +14,7 @@ import io.flutter.plugin.common.StandardMethodCodec
 
 class MainActivity : FlutterActivity() {
     private val ttsSettingsChannel = "com.epitomehub.chessverse/tts_settings"
+    @Volatile private var selectedRenderMode = "unknown"
 
     override fun getRenderMode(): RenderMode {
         // ColorOS 12 can block the UI thread while FlutterSurfaceView attaches
@@ -41,12 +43,14 @@ class MainActivity : FlutterActivity() {
                     Build.BRAND.equals("REDMI", ignoreCase = true) ||
                     Build.BRAND.equals("POCO", ignoreCase = true))
 
-        return if (isOppoAndroid12 || isItelAndroid14 ||
+        val mode = if (isOppoAndroid12 || isItelAndroid14 ||
             isInfinixX6531BAndroid14 || isXiaomiAndroid16OrNewer) {
             RenderMode.texture
         } else {
             super.getRenderMode()
         }
+        selectedRenderMode = mode.name
+        return mode
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -59,6 +63,36 @@ class MainActivity : FlutterActivity() {
         // plugin's normal thread.
         val messenger = flutterEngine.dartExecutor.binaryMessenger
         val resolver = applicationContext.contentResolver
+        MethodChannel(
+            messenger,
+            "com.epitomehub.chessverse/runtime_diagnostics",
+            StandardMethodCodec.INSTANCE,
+            messenger.makeBackgroundTaskQueue()
+        ).setMethodCallHandler { call, result ->
+            if (call.method != "read") {
+                result.notImplemented()
+                return@setMethodCallHandler
+            }
+            // This API queries the provider without loading WebView. Keep
+            // package-manager/Binder work off the UI thread and separate from
+            // the ad environment queue so diagnostics cannot hold up ads.
+            val values = mutableMapOf(
+                "android_render_mode" to selectedRenderMode,
+                "android_api" to Build.VERSION.SDK_INT.toString()
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                try {
+                    val provider = WebView.getCurrentWebViewPackage()
+                    values["webview_provider"] = provider?.packageName ?: "none"
+                    values["webview_version"] = provider?.versionName ?: "unknown"
+                } catch (_: Exception) {
+                    values["webview_provider"] = "unavailable"
+                }
+            } else {
+                values["webview_provider"] = "unsupported_api"
+            }
+            result.success(values)
+        }
         MethodChannel(
             messenger,
             "com.epitomehub.chessverse/ad_environment",
