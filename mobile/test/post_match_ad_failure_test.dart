@@ -5,6 +5,7 @@ import 'package:chessverse_ai/core/ads/post_match_ad_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:google_mobile_ads/src/ad_instance_manager.dart';
 
@@ -19,6 +20,7 @@ void main() {
 
   late bool deliverLoaded;
   Completer<void>? pendingLoad;
+  Completer<void>? pendingDispose;
 
   setUp(() {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
@@ -29,10 +31,15 @@ void main() {
 
     deliverLoaded = false;
     pendingLoad = null;
+    pendingDispose = null;
+    FlutterSecureStorage.setMockInitialValues({});
     messenger.setMockMethodCallHandler(environment, (_) async => false);
     messenger.setMockMethodCallHandler(instanceManager.channel, (call) async {
       if (call.method == 'MobileAds#initialize') {
         return InitializationStatus(<String, AdapterStatus>{});
+      }
+      if (call.method == 'disposeAd' && pendingDispose != null) {
+        await pendingDispose!.future;
       }
       if (call.method == 'loadInterstitialAd') {
         final id = (call.arguments as Map)['adId'] as int;
@@ -59,6 +66,25 @@ void main() {
     messenger.setMockMethodCallHandler(instanceManager.channel, null);
     AdSdkInitializer.resetForTesting();
     debugDefaultTargetPlatformOverride = null;
+  });
+
+  test('post-match completion and next load wait for native disposal', () async {
+    deliverLoaded = true;
+    await service.load();
+    await service.showAfterMatch('one');
+    await service.showAfterMatch('two');
+    final ad = instanceManager.adFor(ids.single) as InterstitialAd;
+    final shown = service.showAfterMatch('three');
+    await Future<void>.delayed(Duration.zero);
+    pendingDispose = Completer<void>();
+    ad.fullScreenContentCallback!.onAdDismissedFullScreenContent!(ad);
+    await Future<void>.delayed(Duration.zero);
+    expect(await service.load(), false);
+    expect(ids, hasLength(1));
+    pendingDispose!.complete();
+    await shown;
+    await Future<void>.delayed(Duration.zero);
+    expect(ids, hasLength(2));
   });
 
   test(

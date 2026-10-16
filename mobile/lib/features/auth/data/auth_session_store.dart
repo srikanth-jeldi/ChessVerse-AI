@@ -27,6 +27,11 @@ class StoredAuthSession {
   final String? sessionId;
 
   bool get isExpired => !expiresAt.isAfter(DateTime.now().toUtc());
+
+  // Opening another Activity must not revoke a still-valid token held by an
+  // existing game/shop route. Rotate only when close to expiry.
+  bool needsRefreshAt(DateTime now) =>
+      !expiresAt.isAfter(now.toUtc().add(const Duration(minutes: 5)));
 }
 
 class AuthSessionStore {
@@ -49,7 +54,7 @@ class AuthSessionStore {
   static const String _sessionIdKey = 'auth.sessionId';
   static const String _installationIdKey = 'device.installationId';
 
-  Future<StoredAuthSession?> read() async {
+  Future<StoredAuthSession?> read({bool allowRefresh = false}) async {
     // Do not decrypt the entire game archive and all settings to read a session.
     const keys = [
       _tokenKey,
@@ -93,9 +98,12 @@ class AuthSessionStore {
           ?.toUtc(),
       sessionId: values[_sessionIdKey],
     );
+    final canRefresh =
+        (session.refreshToken?.isNotEmpty ?? false) &&
+        (session.refreshExpiresAt?.isAfter(DateTime.now().toUtc()) ?? false);
     if (session.isExpired) {
-      await clear();
-      return null;
+      if (!canRefresh) await clear();
+      if (!allowRefresh || !canRefresh) return null;
     }
     return session;
   }

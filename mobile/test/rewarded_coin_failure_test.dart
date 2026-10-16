@@ -19,6 +19,7 @@ void main() {
   late bool failShow;
   late bool deliverLoaded;
   Completer<void>? pendingLoad;
+  Completer<void>? pendingDispose;
 
   setUp(() {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
@@ -29,6 +30,7 @@ void main() {
     failShow = false;
     deliverLoaded = false;
     pendingLoad = null;
+    pendingDispose = null;
     messenger.setMockMethodCallHandler(environment, (_) async => false);
     messenger.setMockMethodCallHandler(instanceManager.channel, (call) async {
       if (call.method == 'MobileAds#initialize') {
@@ -49,6 +51,9 @@ void main() {
       }
       if (call.method == 'showAdWithoutView' && failShow) {
         throw PlatformException(code: 'show_failed');
+      }
+      if (call.method == 'disposeAd' && pendingDispose != null) {
+        await pendingDispose!.future;
       }
       return null;
     });
@@ -101,6 +106,26 @@ void main() {
   });
 
   test(
+    'dismissal waits for disposal before preloading the next WebView',
+    () async {
+      deliverLoaded = true;
+      await service.load();
+      final ad = instanceManager.adFor(ids.single) as RewardedAd;
+      final shown = service.show(playerId: 'test', token: '');
+      await Future<void>.delayed(Duration.zero);
+      pendingDispose = Completer<void>();
+      ad.fullScreenContentCallback!.onAdDismissedFullScreenContent!(ad);
+      await Future<void>.delayed(Duration.zero);
+      expect(await service.load(), false);
+      expect(ids, hasLength(1));
+      pendingDispose!.complete();
+      expect(await shown, RewardedCoinOutcome.dismissed);
+      await Future<void>.delayed(Duration.zero);
+      expect(ids, hasLength(2));
+    },
+  );
+
+  test(
     'unresponsive native load times out and late callback cannot replace retry',
     () async {
       pendingLoad = Completer<void>();
@@ -121,4 +146,21 @@ void main() {
       expect(service.isLoading, isFalse);
     },
   );
+
+  test('earned reward returns after bounded cleanup without overlapping loads', () async {
+    deliverLoaded = true;
+    await service.load();
+    final ad = instanceManager.adFor(ids.single) as RewardedAd;
+    final shown = service.show(playerId: 'test', token: '');
+    await Future<void>.delayed(Duration.zero);
+    ad.onUserEarnedRewardCallback!(ad, RewardItem(30, 'coins'));
+    pendingDispose = Completer<void>();
+    ad.fullScreenContentCallback!.onAdDismissedFullScreenContent!(ad);
+    expect(await shown.timeout(const Duration(seconds: 3)), RewardedCoinOutcome.earned);
+    expect(await service.load(), false);
+    expect(ids, hasLength(1));
+    pendingDispose!.complete();
+    await Future<void>.delayed(Duration.zero);
+    expect(ids, hasLength(2));
+  });
 }

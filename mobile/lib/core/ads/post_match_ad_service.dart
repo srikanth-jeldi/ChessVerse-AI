@@ -31,6 +31,7 @@ class PostMatchAdService {
 
   InterstitialAd? _ad;
   bool _loading = false;
+  bool _showing = false;
   Completer<bool>? _loadCompleter;
   int _shownToday = 0;
   DateTime _day = DateTime.now().toUtc();
@@ -49,9 +50,10 @@ class PostMatchAdService {
 
   bool get isReady => _ad != null;
   bool get isLoading => _loading;
+  bool get isShowing => _showing;
 
   Future<bool> load({Duration timeout = const Duration(seconds: 12)}) async {
-    if (!supported) return false;
+    if (!supported || _showing) return false;
     if (_ad != null) return true;
     if (_loading) {
       return (_loadCompleter?.future ?? Future<bool>.value(false)).timeout(
@@ -122,7 +124,7 @@ class PostMatchAdService {
   }
 
   Future<void> showAfterMatch(String matchId) async {
-    if (!supported || !_handledMatches.add(matchId)) return;
+    if (!supported || _showing || !_handledMatches.add(matchId)) return;
     await _loadState();
     _resetDailyCounter();
     _completedMatchesSinceLastAd++;
@@ -154,6 +156,7 @@ class PostMatchAdService {
       return;
     }
     _ad = null;
+    _showing = true;
     final Completer<void> done = Completer<void>();
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdShowedFullScreenContent: (_) {
@@ -166,24 +169,20 @@ class PostMatchAdService {
         unawaited(_persistState());
       },
       onAdDismissedFullScreenContent: (InterstitialAd value) {
-        unawaited(_dispose(value));
         AppDiagnostics.log('ad_interstitial_dismissed');
-        if (!done.isCompleted) done.complete();
-        unawaited(load());
+        unawaited(_finishAd(value, done));
       },
       onAdImpression: (_) => AppDiagnostics.log('ad_interstitial_impression'),
       onAdFailedToShowFullScreenContent: (InterstitialAd value, error) {
         AppDiagnostics.log('ad_interstitial_show_failed', {'code': error.code});
-        unawaited(_dispose(value));
-        if (!done.isCompleted) done.complete();
-        unawaited(load());
+        unawaited(_finishAd(value, done));
       },
     );
     try {
       AppDiagnostics.log('ad_interstitial_show');
       await ad.show();
     } on Object catch (error, stack) {
-      await _dispose(ad);
+      await _finishAd(ad, done);
       await AppDiagnostics.recordError(
         error,
         stack,
@@ -192,6 +191,18 @@ class PostMatchAdService {
       if (!done.isCompleted) done.complete();
     }
     await done.future.timeout(const Duration(seconds: 45), onTimeout: () {});
+  }
+
+  Future<void> _finishAd(Ad ad, Completer<void> done) async {
+    final disposal = _dispose(ad);
+    unawaited(
+      disposal.then((_) {
+        _showing = false;
+        unawaited(load());
+      }),
+    );
+    await disposal.timeout(const Duration(seconds: 2), onTimeout: () {});
+    if (!done.isCompleted) done.complete();
   }
 
   static Future<void> _dispose(Ad ad) async {

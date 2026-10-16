@@ -480,7 +480,7 @@ class _SplashGateState extends State<SplashGate> {
 
     StoredAuthSession? session;
     try {
-      session = await _sessionStore.read();
+      session = await _sessionStore.read(allowRefresh: true);
     } on Object {
       // Browser privacy modes and damaged secure-storage state can reject the
       // read. Treat that exactly like a signed-out launch instead of leaving
@@ -500,7 +500,8 @@ class _SplashGateState extends State<SplashGate> {
     }
 
     StoredAuthSession restoredSession = session;
-    if (restoredSession.refreshToken != null &&
+    if (restoredSession.needsRefreshAt(DateTime.now()) &&
+        restoredSession.refreshToken != null &&
         restoredSession.refreshToken!.isNotEmpty) {
       try {
         final Map<String, dynamic> rotated = await _authApi.refresh(
@@ -660,9 +661,15 @@ class _SplashGateState extends State<SplashGate> {
     if (_sessionValidationInFlight || _stage != _RootStage.home) return;
     _sessionValidationInFlight = true;
     try {
+      final current = await _sessionStore.read();
+      if (current == null || current.token != token) return;
       await _authApi.currentPlayer(token);
     } on AuthApiException catch (error) {
       if (error.statusCode != 401 && error.statusCode != 403) return;
+      // A login/upgrade can complete while this request is in flight. Never
+      // let a rejected old token erase the newly authenticated session.
+      final current = await _sessionStore.read();
+      if (current == null || current.token != token) return;
       _sessionValidationTimer?.cancel();
       _presenceTimer?.cancel();
       _stopNotificationPolling();
@@ -674,7 +681,7 @@ class _SplashGateState extends State<SplashGate> {
         ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           const SnackBar(
             content: Text(
-              'This account was signed in on another device. Please sign in again.',
+              'Your session has expired. Please sign in again.',
             ),
           ),
         );
@@ -1201,6 +1208,7 @@ class _SplashGateState extends State<SplashGate> {
               _enableCloudSync(result.token!);
               unawaited(_syncCloudProgress(result.token!));
               _startOnlinePresence(result.token!);
+              _startSessionValidation(result.token!);
               unawaited(_refreshCoinBalance(result.token!));
               _startNotificationPolling(result.token!);
             }
@@ -2600,6 +2608,7 @@ class _SplashGateState extends State<SplashGate> {
     final String token = result.session.token;
     _enableCloudSync(token);
     _startOnlinePresence(token);
+    _startSessionValidation(token);
     _startNotificationPolling(token);
     unawaited(_syncCloudProgress(token));
     unawaited(_refreshCoinBalance(token));

@@ -67,6 +67,12 @@ class BadgeRewardResult {
   }
 }
 
+class EconomyRewardsException implements Exception {
+  const EconomyRewardsException(this.message, this.statusCode);
+  final String message;
+  final int statusCode;
+}
+
 class EconomyRewardsApi {
   const EconomyRewardsApi();
 
@@ -123,8 +129,9 @@ class EconomyRewardsApi {
         ? decoded
         : <String, dynamic>{};
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(
+      throw EconomyRewardsException(
         json['message'] as String? ?? 'Reward service unavailable.',
+        response.statusCode,
       );
     }
     return EconomyRewardStatus.fromJson(json);

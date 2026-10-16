@@ -75,9 +75,15 @@ class CosmeticShopScreen extends StatefulWidget {
     required this.token,
     this.onDestinationSelected,
     this.onMyGames,
+    this.shopApi = const ShopApi(),
+    this.rewardsApi = const EconomyRewardsApi(),
+    this.rewardedCoins,
     super.key,
   });
   final String token;
+  final ShopApi shopApi;
+  final EconomyRewardsApi rewardsApi;
+  final RewardedCoinService? rewardedCoins;
   final ValueChanged<int>? onDestinationSelected;
   final VoidCallback? onMyGames;
   @override
@@ -85,8 +91,10 @@ class CosmeticShopScreen extends StatefulWidget {
 }
 
 class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
-  final ShopApi _api = const ShopApi();
-  final EconomyRewardsApi _rewardsApi = const EconomyRewardsApi();
+  ShopApi get _api => widget.shopApi;
+  EconomyRewardsApi get _rewardsApi => widget.rewardsApi;
+  RewardedCoinService get _rewardedCoins =>
+      widget.rewardedCoins ?? RewardedCoinService.instance;
   ShopDto? _shop;
   int? _coinBalance;
   bool _busy = true;
@@ -102,7 +110,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   void initState() {
     super.initState();
     _load();
-    unawaited(RewardedCoinService.instance.load());
+    unawaited(_rewardedCoins.load());
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted &&
           (_rewards?.nextDailyAt != null ||
@@ -391,13 +399,15 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                     color: Color(0xFFFFD266),
                   ),
                   SizedBox(width: 8),
-                  Text(
-                    'CHESSVERSEAI ROYAL COLLECTION',
-                    style: TextStyle(
-                      color: Color(0xFFF4C75B),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.6,
+                  Expanded(
+                    child: Text(
+                      'CHESSVERSEAI ROYAL COLLECTION',
+                      style: TextStyle(
+                        color: Color(0xFFF4C75B),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.6,
+                      ),
                     ),
                   ),
                 ],
@@ -526,22 +536,35 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   }
 
   Future<void> _watchAd(ShopDto shop) async {
-    if (!RewardedCoinService.instance.supported) {
+    if (!_rewardedCoins.supported) {
       setState(
         () => _rewardMessage =
             'Rewarded videos are available in the Android and iOS app.',
       );
       return;
     }
-    final int coinsBefore = _coinBalance ?? shop.wallet.coins;
-    final int rewardAmount = _rewards?.coinsPerAd ?? 30;
-    final int adsBefore = _rewards?.rewardedAdsRemaining ?? 0;
+    if (_preparingRewardAd || _verifyingReward) return;
     setState(() {
       _preparingRewardAd = true;
       _rewardMessage = null;
     });
     try {
-      final outcome = await RewardedCoinService.instance.show(
+      // Validate the session before asking the player to watch a video. An
+      // expired/revoked token must not consume their time and then poll for 60s.
+      final before = await _rewardsApi.status(widget.token);
+      if (!mounted) return;
+      final int rewardAmount = before.coinsPerAd;
+      final int adsBefore = before.rewardedAdsRemaining;
+      if (adsBefore <= 0 ||
+          (before.nextRewardedAdAt?.isAfter(DateTime.now()) ?? false)) {
+        setState(() {
+          _rewards = before;
+          _coinBalance = before.coins;
+          _rewardMessage = 'Your next video reward is not available yet.';
+        });
+        return;
+      }
+      final outcome = await _rewardedCoins.show(
         playerId: shop.playerId,
         token: widget.token,
       );
@@ -560,11 +583,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         _rewardMessage =
             'Video completed. Confirming your +$rewardAmount coins…';
       });
-      final credited = await _waitForRewardCredit(
-        coinsBefore,
-        rewardAmount,
-        adsBefore,
-      );
+      final credited = await _waitForRewardCredit(adsBefore);
       if (!mounted) return;
       setState(() {
         if (credited != null) {
@@ -575,6 +594,14 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
           _rewardMessage = 'Video completed. Reward confirmation is taking longer than usual. Refresh your balance before watching another video.';
         }
       });
+    } on EconomyRewardsException catch (error) {
+      if (mounted) {
+        setState(
+          () => _rewardMessage = error.statusCode == 401
+              ? 'Your session has expired. Sign in again to check your saved coin balance.'
+              : 'Could not confirm the video reward. Refresh your balance and try again later.',
+        );
+      }
     } catch (_) {
       if (mounted) {
         setState(
@@ -671,14 +698,11 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     return remaining > Duration.zero ? remaining : Duration.zero;
   }
 
-  Future<EconomyRewardStatus?> _waitForRewardCredit(
-    int coinsBefore,
-    int rewardAmount,
-    int adsBefore,
-  ) async {
+  Future<EconomyRewardStatus?> _waitForRewardCredit(int adsBefore) async {
     final DateTime deadline = DateTime.now().add(const Duration(seconds: 60));
     while (DateTime.now().isBefore(deadline)) {
       await Future<void>.delayed(const Duration(seconds: 2));
+      if (!mounted) return null;
       final Duration remaining = deadline.difference(DateTime.now());
       if (remaining <= Duration.zero) break;
       try {
@@ -689,10 +713,13 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                   ? remaining
                   : const Duration(seconds: 6),
             );
-        if (status.coins >= coinsBefore + rewardAmount ||
-            status.rewardedAdsRemaining < adsBefore) {
+        // A daily/badge reward may independently increase the balance. Only
+        // the server's ad counter confirms that a video reward was credited.
+        if (status.rewardedAdsRemaining < adsBefore) {
           return status;
         }
+      } on EconomyRewardsException catch (error) {
+        if (error.statusCode == 401 || error.statusCode == 403) rethrow;
       } catch (_) {
         // SSV is asynchronous. Retry only inside the fixed verification window
         // so a slow or disconnected request can never leave the UI locked.

@@ -4295,6 +4295,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Future<void> _maybeRequestStoreReview() {
     if (!mounted ||
+        PostMatchAdService.instance.isShowing ||
         widget.spectatorMode ||
         _gameResultTitle == null ||
         (_gameMode != GameMode.computer && _gameMode != GameMode.online)) {

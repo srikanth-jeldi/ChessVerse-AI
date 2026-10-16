@@ -148,6 +148,34 @@ class EconomyControllerTest {
     }
 
     @Test
+    void verifiedRewardSurvivesGuestSessionReplacementAndCallbackRetry() throws Exception {
+        String installation = UUID.randomUUID().toString();
+        String oldToken = guest(installation);
+        UUID playerId = UUID.fromString(json.readTree(mockMvc.perform(get("/api/auth/me")
+                .header("Authorization", "Bearer " + oldToken)).andReturn().getResponse()
+                .getContentAsString()).path("id").asText());
+        // Stub only Google's signature boundary; exercise the real callback,
+        // wallet/ledger transaction, session replacement and authenticated API.
+        AdMobRewardVerifier verifier = org.mockito.Mockito.mock(AdMobRewardVerifier.class);
+        org.mockito.Mockito.when(verifier.verify("verified-query")).thenReturn(java.util.Map.of(
+                "custom_data", "chessverse_coins_v1", "ad_unit", "3857200476",
+                "transaction_id", "session-reward-" + playerId, "user_id", playerId.toString()));
+        AdMobRewardController callback = new AdMobRewardController(verifier, economy,
+                "ca-app-pub-9061518700917881/3857200476");
+        var request = new org.springframework.mock.web.MockHttpServletRequest();
+        request.setQueryString("verified-query");
+        String newToken = guest(installation);
+        callback.callback(request);
+        callback.callback(request);
+        mockMvc.perform(get("/api/v1/economy/rewards").header("Authorization", "Bearer " + oldToken))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/economy/rewards").header("Authorization", "Bearer " + newToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.wallet.coins").value(130))
+                .andExpect(jsonPath("$.rewardedAdsRemaining").value(14));
+    }
+
+    @Test
     void purchaseIsPermanentButOnlyExplicitEquipChangesTheLoadout() throws Exception {
         String token = guest(UUID.randomUUID().toString());
         String authorization = "Bearer " + token;

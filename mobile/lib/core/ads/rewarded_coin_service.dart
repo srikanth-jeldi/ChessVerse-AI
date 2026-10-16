@@ -136,8 +136,6 @@ class RewardedCoinService {
     );
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (value) {
-        unawaited(_dispose(value));
-        _showing = false;
         AppDiagnostics.log('ad_rewarded_dismissed');
         unawaited(
           AppAnalytics.logProductEvent(
@@ -146,16 +144,19 @@ class RewardedCoinService {
             context: 'coin_shop',
           ),
         );
-        if (!completer.isCompleted) {
-          completer.complete(
-            earned ? RewardedCoinOutcome.earned : RewardedCoinOutcome.dismissed,
-          );
-        }
-        unawaited(load());
+        unawaited(
+          _finishAd(value, () {
+            if (!completer.isCompleted) {
+              completer.complete(
+                earned
+                    ? RewardedCoinOutcome.earned
+                    : RewardedCoinOutcome.dismissed,
+              );
+            }
+          }),
+        );
       },
       onAdFailedToShowFullScreenContent: (value, _) {
-        unawaited(_dispose(value));
-        _showing = false;
         unawaited(
           AppAnalytics.logProductEvent(
             token: token,
@@ -163,10 +164,13 @@ class RewardedCoinService {
             context: 'show_failed',
           ),
         );
-        if (!completer.isCompleted) {
-          completer.complete(RewardedCoinOutcome.unavailable);
-        }
-        unawaited(load());
+        unawaited(
+          _finishAd(value, () {
+            if (!completer.isCompleted) {
+              completer.complete(RewardedCoinOutcome.unavailable);
+            }
+          }),
+        );
       },
     );
     try {
@@ -183,8 +187,9 @@ class RewardedCoinService {
         },
       );
     } on Object catch (error, stack) {
-      _showing = false;
-      await _dispose(ad);
+      await _finishAd(ad, () {
+        if (!completer.isCompleted) completer.complete(RewardedCoinOutcome.unavailable);
+      });
       await AppDiagnostics.recordError(
         error,
         stack,
@@ -195,6 +200,21 @@ class RewardedCoinService {
       }
     }
     return completer.future;
+  }
+
+  Future<void> _finishAd(Ad ad, VoidCallback complete) async {
+    final disposal = _dispose(ad);
+    // Avoid overlapping WebView destruction and the next ad's construction.
+    // A slow native cleanup must not hold the reward UI indefinitely, but
+    // keep new ad loads blocked until that actual operation completes.
+    unawaited(
+      disposal.then((_) {
+        _showing = false;
+        unawaited(load());
+      }),
+    );
+    await disposal.timeout(const Duration(seconds: 2), onTimeout: () {});
+    complete();
   }
 
   static Future<void> _dispose(Ad ad) async {

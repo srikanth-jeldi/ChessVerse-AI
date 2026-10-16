@@ -1,0 +1,38 @@
+Stability, session and reward follow-up — 16 October 2026
+
+User constraint
+- Ads must remain available on physical devices. The proposed Tecno KJ5/Android 13 ad suppression was removed before release; no device/model block remains. Existing automated-test suppression is unchanged.
+
+Crash report evidence
+- Open crash issues, last 7 days: 93 events. 55 SystemLibraryLoader and 28 MainActivity events are ARM64-versus-x86_64 native library mismatches, on old 1.3.2–1.3.10 / 1.2.x versions. Remaining 7 HSDP and 3 Billing events are also on old versions (through 1.3.13).
+- Latest 1.3.27 (294), last 24h: no crash/ANR issue rows shown; five non-fatal events (four network probes and one ad SDK initialization timeout). Adoption denominator not established. Not a zero-risk guarantee, and not directly comparable to Play's 28-day 0.14% crash / 0.37% ANR screenshot.
+- Revalidated retained build 294 AAB using mobile/tool/verify_android_abis.py: 12 native libraries, all three ABIs valid.
+
+Changes
+- Preserve a valid access token on app restoration instead of rotating it at every launch. Rotate near expiry. Preserve an expired access token's valid refresh credentials for the explicit restore path; ordinary API consumers still cannot obtain an expired access token.
+- Session validation checks whether its token is still current before requesting and before clearing authentication. New login/upgrade restarts validation with its new token. This prevents a stale rejection from clearing a newer session.
+- Guard duplicate guest-login calls before the widget rebuild. Guest login replaces old server sessions, so duplicate requests can invalidate a token just returned to the client.
+- Reward video preflight checks server session and reward eligibility before display. Authentication rejection during verification stops polling instead of retrying for 60 seconds.
+- Reward confirmation uses the server ad counter, not an unrelated increase from daily/badge coins. The server wallet remains authoritative; no client-side coin minting or signature bypass was added.
+- Both fullscreen ad formats wait for native disposal before preloading the next ad. UI completion waits at most two seconds; if cleanup is still pending, new loads remain blocked until the actual disposal completes. Review requests are skipped while a post-match ad remains active/cleaning up.
+- Fix shop heading text overflow found by the reward screen tests.
+
+Validation
+- 31 focused Flutter tests passed across the targeted runs. They cover session expiry/refresh storage, real board checkmate -> result -> dismiss/new-game -> native review method request, credit/no-credit/expired-session screen flows, ad initialization/failure/disposal ordering.
+- Backend EconomyControllerTest: 15 passed, including callback -> real wallet/ledger -> session replacement -> authenticated wallet read and duplicate callback. Google's signature boundary is mocked in that new test; this is not a live AdMob signature/end-to-end network test.
+- Final full Flutter analyze: No issues found. Debug ARMv7/ARM64 APK built successfully.
+- Test APK: artifacts/testing-2026-10-16/ChessVerseAI-session-ad-lifecycle-test.apk
+- SHA256: EBC415FC753053AE56918AFE700B0889DA769AD26D57FA7637C11D42F8F3EF58
+- Production API URLs, Google demo test ads only. Demo ads do not exercise our production configured SSV callback; production coin credit cannot be certified by a demo-ad screenshot.
+- Physical Pixel 7 API 33 rerun submitted: matrix-2tpsrfcj508v2 / 4805079093569593865, label android13-session-ad-lifecycle-20261016. Result pending.
+
+Limits
+- The original cloud session-expired event was not conclusively traced to a particular token rotation. The changes address verified risky code paths and tested regressions, not a proven root cause for that individual event.
+- Tecno KJ5 Android 13 WebView/native-linker ANR remains un-reproduced. The lifecycle change removes an app-owned overlap; it is not evidence that the vendor linker defect is fixed.
+- Native Play review dialog rendering/submission depends on Google Play eligibility/quota. Tests verify our actual game-to-review callback; they do not claim a real review was submitted.
+- No new release AAB, no production backend change/deploy required by these client changes.
+
+References
+https://developers.google.com/admob/flutter/ssv
+https://developer.android.com/topic/performance/anrs/diagnose-and-fix-anrs
+

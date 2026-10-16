@@ -1678,6 +1678,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _continueAsGuest() async {
+    if (_loading) return;
     setState(() {
       _loading = true;
       _error = null;
