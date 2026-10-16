@@ -36,7 +36,15 @@ jobs:
           set -Eeuo pipefail
           cd /root/ChessVerse-AI/infrastructure/vps
           compose=(docker compose --env-file vps.env -f docker-compose.prod.yml)
-          "${compose[@]}" ps backend
+          "${compose[@]}" ps backend academy
+          for service in backend academy; do
+            echo "report_service=$service"
+            "${compose[@]}" exec -T "$service" sh -c '
+              echo "role=${CHESSVERSE_SERVICE_ROLE:-all}"
+              echo "report_enabled=${AUTH_ACTIVITY_REPORT_ENABLED:-default_true}"
+              echo "report_cron=${AUTH_ACTIVITY_REPORT_CRON:-default_2359_IST}"
+            ' </dev/null
+          done
           "${compose[@]}" exec -T backend sh -c '
             test -n "$MAIL_USERNAME" && echo "MAIL_USERNAME=set" || echo "MAIL_USERNAME=missing"
             test -n "$MAIL_PASSWORD" && echo "MAIL_PASSWORD=set" || echo "MAIL_PASSWORD=missing"
