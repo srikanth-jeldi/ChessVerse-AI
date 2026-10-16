@@ -23,7 +23,8 @@ class _GameStudioHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) => _buildHeader(context, constraints.maxWidth),
+    builder: (context, constraints) =>
+        _buildHeader(context, constraints.maxWidth),
   );
 
   Widget _buildHeader(BuildContext context, double availableWidth) {
@@ -395,7 +396,10 @@ class _StudioCoachPanel extends StatelessWidget {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final bool hasBoundedHeight = constraints.hasBoundedHeight;
-        final bool compact = constraints.maxHeight < 560;
+        final bool compact =
+            constraints.maxHeight <
+            560 *
+                math.max(1.0, MediaQuery.textScalerOf(context).scale(16) / 16);
         final Widget coachMessageCard = _CoachInsightCard(
           icon: Icons.psychology_alt_rounded,
           accent: const Color(0xFF9C6CFF),
@@ -2056,9 +2060,8 @@ class GameModeLauncher extends StatelessWidget {
                     boxShadow: <BoxShadow>[
                       if (active)
                         BoxShadow(
-                          color: const Color(
-                            0xFF6D4FD8,
-                          ).withValues(alpha: 0.28),
+                          color: const Color(0xFF6D4FD8)
+                              .withValues(alpha: 0.28),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -2287,9 +2290,8 @@ class PositionAnalysisSheet extends StatelessWidget {
                       ),
                       AnalysisMetric(
                         icon: Icons.auto_graph_rounded,
-                        label: CoachLocalizations(
-                          languageCode,
-                        ).text('moveQuality'),
+                        label: CoachLocalizations(languageCode)
+                            .text('moveQuality'),
                         value: localizeLiveCoach(
                           analysis.quality,
                           languageCode,
@@ -2311,14 +2313,12 @@ class PositionAnalysisSheet extends StatelessWidget {
                       SizedBox(height: shortLandscape ? 6 : 12),
                       DecoratedBox(
                         decoration: BoxDecoration(
-                          color: const Color(
-                            0xFFD6A84F,
-                          ).withValues(alpha: 0.12),
+                          color: const Color(0xFFD6A84F)
+                              .withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(7),
                           border: Border.all(
-                            color: const Color(
-                              0xFFD6A84F,
-                            ).withValues(alpha: 0.48),
+                            color: const Color(0xFFD6A84F)
+                                .withValues(alpha: 0.48),
                           ),
                         ),
                         child: Padding(

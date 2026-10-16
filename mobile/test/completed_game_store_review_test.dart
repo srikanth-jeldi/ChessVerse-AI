@@ -7,8 +7,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  for (final action in ['dismiss', 'new game']) {
-    testWidgets('checkmate -> $action -> native review requested once', (
+  for (final action in ['dismiss', 'new game', 'direct new game', 'analysis']) {
+    testWidgets('checkmate -> $action respects store review eligibility', (
       tester,
     ) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
@@ -66,20 +66,45 @@ void main() {
       await tester.pump();
       tester.widget<ChessBoard>(find.byType(ChessBoard)).onSquareTap('g7');
       await tester.pump();
-      final result = tester.widget<GameResultOverlay>(
-        find.byType(GameResultOverlay),
-      );
-      expect(result.detail, 'Checkmate');
+      expect(find.byType(GameResultOverlay), findsNothing);
       expect(requests, 0);
-      if (action == 'dismiss') {
-        result.onDismiss();
+      await tester.pump(const Duration(seconds: 31));
+      expect(find.byType(GameResultOverlay), findsNothing);
+      expect(requests, 0);
+      if (action == 'analysis') {
+        await tester.tap(find.byKey(const ValueKey('review-completed-game')));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.byIcon(Icons.close_rounded), findsWidgets);
+        expect(requests, 0);
+        await tester.tap(find.byIcon(Icons.close_rounded).last);
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(requests, 0);
+        expect(find.byType(GameResultOverlay), findsNothing);
+        expect(
+          find.byKey(const ValueKey('completed-game-actions')),
+          findsOneWidget,
+        );
+      } else if (action == 'direct new game') {
+        await tester.tap(find.byKey(const ValueKey('new-game-after-result')));
       } else {
-        result.onNewGame();
+        await tester.tap(find.byKey(const ValueKey('view-game-result')));
+        await tester.pump();
+        final result = tester.widget<GameResultOverlay>(
+          find.byType(GameResultOverlay),
+        );
+        expect(result.detail, 'Checkmate');
+        if (action == 'dismiss') {
+          result.onDismiss();
+        } else {
+          result.onNewGame();
+        }
       }
       for (var i = 0; i < 10; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
-      expect(requests, 1);
+      expect(requests, action == 'analysis' ? 0 : 1);
       expect(find.byType(GameResultOverlay), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

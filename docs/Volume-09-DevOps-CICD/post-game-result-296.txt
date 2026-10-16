@@ -1,0 +1,22 @@
+ChessVerseAI 1.3.29 / 296 — completed-game presentation
+
+The final board remains visible after computer, local and online games.
+Brief non-interactive celebration ends after three seconds. The result dialog
+opens only when the player selects View result; it no longer opens on a timer.
+The completed-game bar provides View result, AI game review and New game.
+The dialog includes an explicit close control. New action labels support all
+34 app languages. Large-text portrait coach panels receive more vertical space.
+
+AI analysis does not trigger a post-match ad or Google Play review request.
+New game and explicit result dismissal retain existing ad/review eligibility.
+Native Play review display remains subject to Google Play availability/quota.
+Daily/puzzle completion behavior is retained.
+
+Validation: 54 focused Flutter tests passed, covering completed-game review
+eligibility, untimed computer games, online winner/loser presentation, general
+game widgets, overlay regressions, all 34 locale entries, 390x844 Telugu,
+320x640 with 1.5 text scale, and 740x360 landscape.
+Flutter analyze --no-pub: no issues found.
+
+This is a game-result UX update, not proof that the unresolved Tecno KJ5 native
+ANR is fixed. The final release AAB has not been tested on a physical device.

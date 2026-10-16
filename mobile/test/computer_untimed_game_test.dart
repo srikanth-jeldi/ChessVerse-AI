@@ -10,7 +10,7 @@ import 'package:http/testing.dart';
 
 void main() {
   testWidgets(
-    'computer checkmate explains the result immediately and dismisses cleanly',
+    'computer checkmate leaves board visible until result is requested',
     (tester) async {
       FlutterSecureStorage.setMockInitialValues({
         'settings.coachLanguage': 'en',
@@ -47,6 +47,17 @@ void main() {
       tester.widget<ChessBoard>(find.byType(ChessBoard)).onSquareTap('f7');
       await tester.pump();
       tester.widget<ChessBoard>(find.byType(ChessBoard)).onSquareTap('g7');
+      await tester.pump();
+      expect(find.byType(GameResultOverlay), findsNothing);
+      expect(
+        find.byKey(const ValueKey('completed-game-actions')),
+        findsOneWidget,
+      );
+      expect(find.byType(OnlineVictoryCelebration), findsOneWidget);
+      await tester.pump(const Duration(seconds: 31));
+      expect(find.byType(GameResultOverlay), findsNothing);
+      expect(find.byType(OnlineVictoryCelebration), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('view-game-result')));
       await tester.pump();
       final result = tester.widget<GameResultOverlay>(
         find.byType(GameResultOverlay),

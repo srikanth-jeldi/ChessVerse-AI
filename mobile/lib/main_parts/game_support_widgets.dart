@@ -725,61 +725,6 @@ class OnlineReconnectCountdown extends StatelessWidget {
   }
 }
 
-class _DrawResultBadge extends StatelessWidget {
-  const _DrawResultBadge({required this.detail});
-
-  final String detail;
-
-  @override
-  Widget build(BuildContext context) => IgnorePointer(
-    child: Center(
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(begin: .72, end: 1),
-        duration: const Duration(milliseconds: 360),
-        curve: Curves.easeOutBack,
-        builder: (BuildContext context, double scale, Widget? child) =>
-            Transform.scale(scale: scale, child: child),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: const Color(0xF2071827),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: const Color(0xFF65C9F4), width: 1.5),
-            boxShadow: const <BoxShadow>[
-              BoxShadow(color: Color(0x663CA6FF), blurRadius: 28),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                const Text(
-                  'DRAW',
-                  style: TextStyle(
-                    color: Color(0xFF65C9F4),
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  detail,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
 class OnlineVictoryCelebration extends StatefulWidget {
   const OnlineVictoryCelebration({
     required this.winnerAtTop,
@@ -991,6 +936,8 @@ class GameResultOverlay extends StatelessWidget {
     required this.detail,
     required this.scoreLabel,
     this.showScore = true,
+    this.showCelebration = true,
+    this.languageCode = 'en',
     required this.accuracy,
     required this.turningPoint,
     this.entryCoins,
@@ -1010,6 +957,8 @@ class GameResultOverlay extends StatelessWidget {
   final String detail;
   final String scoreLabel;
   final bool showScore;
+  final bool showCelebration;
+  final String languageCode;
   final int? accuracy;
   final String? turningPoint;
   final int? entryCoins;
@@ -1063,6 +1012,16 @@ class GameResultOverlay extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
+                        Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: IconButton(
+                            key: const ValueKey('close-game-result'),
+                            tooltip: MaterialLocalizations.of(context)
+                                .closeButtonTooltip,
+                            onPressed: onDismiss,
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                        ),
                         Icon(
                           draw
                               ? Icons.handshake_rounded
@@ -1078,7 +1037,15 @@ class GameResultOverlay extends StatelessWidget {
                         ),
                         SizedBox(height: shortLandscape ? 6 : 16),
                         Text(
-                          title,
+                          localizeLiveCoach(
+                            postGameText(
+                              title == 'ChessVerseAI wins'
+                                  ? 'Opponent wins'
+                                  : title,
+                              languageCode,
+                            ),
+                            languageCode,
+                          ),
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
@@ -1097,7 +1064,10 @@ class GameResultOverlay extends StatelessWidget {
                           ),
                           SizedBox(height: shortLandscape ? 3 : 8),
                         ],
-                        Text(detail, textAlign: TextAlign.center),
+                        Text(
+                          localizeLiveCoach(detail, languageCode),
+                          textAlign: TextAlign.center,
+                        ),
                         if (showCoinOutcome) ...<Widget>[
                           SizedBox(height: shortLandscape ? 7 : 14),
                           TweenAnimationBuilder<double>(
@@ -1199,7 +1169,14 @@ class GameResultOverlay extends StatelessWidget {
                                 child: OutlinedButton.icon(
                                   onPressed: onReview,
                                   icon: const Icon(Icons.analytics_outlined),
-                                  label: const Text('AI Review My Game'),
+                                  label: Text(
+                                    languageCode == 'en'
+                                        ? 'AI Review My Game'
+                                        : postGameText(
+                                            'AI game review',
+                                            languageCode,
+                                          ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -1221,7 +1198,11 @@ class GameResultOverlay extends StatelessWidget {
                                             ? 'Done'
                                             : missed
                                             ? 'Try again'
-                                            : newGameLabel ?? 'New game',
+                                            : newGameLabel ??
+                                                  postGameText(
+                                                    'New game',
+                                                    languageCode,
+                                                  ),
                                       ),
                                     )
                                   : OutlinedButton.icon(
@@ -1281,7 +1262,7 @@ class GameResultOverlay extends StatelessWidget {
     // the non-interactive sparks here so a player who is looking at the final
     // result still sees the win celebration. The result card remains readable
     // and all of its actions stay tappable because the effect ignores input.
-    if (draw || missed) return resultCard;
+    if (draw || missed || !showCelebration) return resultCard;
     return Stack(
       key: const ValueKey<String>('victory-result-fireworks'),
       children: <Widget>[
@@ -1310,17 +1291,15 @@ class GameResultOverlay extends StatelessWidget {
           ),
           OutlinedButton.icon(
             key: const ValueKey<String>('export-fen-file'),
-            onPressed: () => Navigator.of(
-              dialogContext,
-            ).pop(_GameExportFormat.fen),
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(_GameExportFormat.fen),
             icon: const Icon(Icons.grid_on_rounded),
             label: const Text('FEN (.fen)'),
           ),
           FilledButton.icon(
             key: const ValueKey<String>('export-pgn-file'),
-            onPressed: () => Navigator.of(
-              dialogContext,
-            ).pop(_GameExportFormat.pgn),
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(_GameExportFormat.pgn),
             icon: const Icon(Icons.description_outlined),
             label: const Text('PGN (.pgn)'),
           ),
@@ -1342,9 +1321,7 @@ class GameResultOverlay extends StatelessWidget {
     final String contents = isPgn ? data.pgn : data.fen;
     await SharePlus.instance.share(
       ShareParams(
-        subject: isPgn
-            ? 'ChessVerseAI PGN game'
-            : 'ChessVerseAI FEN position',
+        subject: isPgn ? 'ChessVerseAI PGN game' : 'ChessVerseAI FEN position',
         files: <XFile>[
           XFile.fromData(
             Uint8List.fromList(utf8.encode('$contents\n')),

@@ -706,7 +706,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Timer? _onlineSocketReconnectTimer;
   int _onlineSocketReconnectAttempts = 0;
   Timer? _onlineHeartbeatTimer;
-  Timer? _onlineResultPresentationTimer;
+  Timer? _resultCelebrationTimer;
   Timer? _quickChatTimer;
   OnlineMatchDto? _onlineMatch;
   String? _handledDrawOfferKey;
@@ -716,7 +716,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   bool _onlineSocketConnected = false;
   bool _onlineSubmitting = false;
   bool _onlineRefreshing = false;
-  String? _onlineCelebrationMatchId;
   String? _quickChatMessage;
   bool _quickChatMine = false;
   String? _selectedSquare;
@@ -774,6 +773,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String? _gameResultTitle;
   String? _gameResultDetail;
   bool _resultVisible = true;
+  bool _postGameActionInFlight = false;
   bool _checkWarningActive = false;
   bool _resultSaved = false;
   bool _analysisReadyNotified = false;
@@ -972,7 +972,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             (_whiteSeconds == 0 || _blackSeconds == 0)) {
           _gameResultTitle = _whiteSeconds == 0 ? 'Black wins' : 'White wins';
           _gameResultDetail = 'Victory on time';
-          _delayLocalResultOverlay();
+          _presentCompletedGame();
           _coachNote = '$_gameResultTitle. $_gameResultDetail.';
           _archiveFinishedGame();
           unawaited(ChessSoundService.instance.victory());
@@ -1074,7 +1074,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     unawaited(_onlineChannel?.sink.close());
     _onlineSocketReconnectTimer?.cancel();
     _onlineHeartbeatTimer?.cancel();
-    _onlineResultPresentationTimer?.cancel();
+    _resultCelebrationTimer?.cancel();
     _quickChatTimer?.cancel();
     final AudioPlayer? warningPlayer = _warningPlayer;
     _warningPlayer = null;
@@ -1225,6 +1225,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         : _legalTargetsFor(_selectedSquare!).toSet();
 
     return Scaffold(
+      bottomNavigationBar:
+          _signedIn &&
+              !widget.spectatorMode &&
+              !_isTacticsMode &&
+              _gameResultTitle != null &&
+              !_resultVisible
+          ? _buildCompletedGameActions()
+          : null,
       body: DecoratedBox(
         decoration: BoxDecoration(
           color: const Color(0xFF193128),
@@ -1654,10 +1662,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                               const SizedBox(height: 8),
                               SizedBox(
                                 key: const ValueKey<String>('mobile-ai-coach'),
-                                height: (constraints.maxHeight * 0.46).clamp(
-                                  360.0,
-                                  440.0,
-                                ),
+                                height:
+                                    (constraints.maxHeight * 0.46).clamp(
+                                      360.0,
+                                      440.0,
+                                    ) *
+                                    math.max(
+                                      1.0,
+                                      MediaQuery.textScalerOf(context)
+                                              .scale(16) /
+                                          16,
+                                    ),
                                 child: Padding(
                                   padding: const EdgeInsets.fromLTRB(
                                     6,
@@ -1790,6 +1805,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           _resultVisible)
                         Positioned.fill(
                           child: GameResultOverlay(
+                            languageCode: _coachLanguageCode,
+                            showCelebration: _isTacticsMode,
                             title: _resultDisplayTitle(),
                             detail: _gameResultDetail ?? 'Game complete',
                             scoreLabel: _resultScoreLabel(),
@@ -1807,19 +1824,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             coinsEarned: _gameMode == GameMode.online
                                 ? _onlineMatch?.coinsEarned
                                 : null,
-                            onNewGame: () async {
-                              await _showPostMatchAdIfEligible();
-                              await _maybeRequestStoreReview();
-                              if (!mounted) return;
-                              if (_gameMode == GameMode.online) {
-                                await _startFreshOnlineGame();
-                              } else if (_gameMode == GameMode.puzzle &&
-                                  !_puzzleAttemptWasMissed) {
-                                _startNextPuzzle();
-                              } else {
-                                _reset();
-                              }
-                            },
+                            onNewGame: _startGameAfterResult,
                             newGameLabel: _gameMode == GameMode.puzzle
                                 ? 'Next puzzle'
                                 : null,
@@ -1838,12 +1843,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             },
                             onReview: _isTacticsMode
                                 ? null
-                                : () async {
-                                    await _showPostMatchAdIfEligible();
-                                    if (!mounted) return;
-                                    await _showAiReview();
-                                    await _maybeRequestStoreReview();
-                                  },
+                                : _reviewCompletedGame,
                             onShare: _isTacticsMode
                                 ? null
                                 : () async {
@@ -1892,7 +1892,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       if (_signedIn &&
                           _gameResultTitle != null &&
                           !_resultVisible &&
-                          (_onlineResultPresentationTimer?.isActive ?? false) &&
+                          (_resultCelebrationTimer?.isActive ?? false) &&
+                          (_gameMode == GameMode.local ||
+                              _resultScoreLabel() == '1 - 0') &&
                           !_gameResultTitle!.toLowerCase().contains('draw') &&
                           !_gameResultTitle!.toLowerCase().contains(
                             'challenge missed',
@@ -1909,17 +1911,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           child: OnlineVictoryCelebration(
                             winnerAtTop: true,
                             title: _resultDisplayTitle(),
-                            showTitle: true,
-                          ),
-                        ),
-                      if (_signedIn &&
-                          _gameResultTitle != null &&
-                          !_resultVisible &&
-                          (_onlineResultPresentationTimer?.isActive ?? false) &&
-                          _gameResultTitle!.toLowerCase().contains('draw'))
-                        Positioned.fill(
-                          child: _DrawResultBadge(
-                            detail: _gameResultDetail ?? 'Game drawn',
+                            showTitle: false,
                           ),
                         ),
                       if (_moveQualityText != null &&
@@ -4080,6 +4072,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _reset({bool confirmed = false}) async {
     if (_draftConflict) return;
+    _resultCelebrationTimer?.cancel();
     if (!confirmed &&
         _gameMode == GameMode.computer &&
         _moves.isNotEmpty &&
@@ -4203,6 +4196,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _confirmNewGame() async {
+    if (_gameResultTitle != null && !_isTacticsMode) {
+      await _startGameAfterResult();
+      return;
+    }
     if (_gameMode == GameMode.computer) {
       _reset();
       return;
@@ -4236,6 +4233,104 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     );
     if (confirmed == true) {
       _reset();
+    }
+  }
+
+  Widget _buildCompletedGameActions() {
+    String text(String source) => postGameText(source, _coachLanguageCode);
+    final title = _resultDisplayTitle();
+    final localizedTitle = title == 'ChessVerseAI wins'
+        ? text('Opponent wins')
+        : localizeLiveCoach(text(title), _coachLanguageCode);
+    return Material(
+      key: const ValueKey('completed-game-actions'),
+      color: const Color(0xFF071B27),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$localizedTitle · ${_resultScoreLabel()} · '
+                '${localizeLiveCoach(_gameResultDetail ?? 'Game complete', _coachLanguageCode)}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFFFFD477),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                children: [
+                  TextButton(
+                    key: const ValueKey('view-game-result'),
+                    onPressed: _postGameActionInFlight
+                        ? null
+                        : () {
+                            _resultCelebrationTimer?.cancel();
+                            setState(() => _resultVisible = true);
+                          },
+                    child: Text(text('View result')),
+                  ),
+                  OutlinedButton(
+                    key: const ValueKey('review-completed-game'),
+                    onPressed: _postGameActionInFlight
+                        ? null
+                        : _reviewCompletedGame,
+                    child: Text(text('AI game review')),
+                  ),
+                  FilledButton(
+                    key: const ValueKey('new-game-after-result'),
+                    onPressed: _postGameActionInFlight
+                        ? null
+                        : _startGameAfterResult,
+                    child: Text(text('New game')),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _reviewCompletedGame() async {
+    if (_postGameActionInFlight) return;
+    _resultCelebrationTimer?.cancel();
+    setState(() {
+      _resultVisible = false;
+      _postGameActionInFlight = true;
+    });
+    try {
+      // Reviewing the board must not trigger an ad or store-rating prompt.
+      await _showAiReview();
+    } finally {
+      if (mounted) setState(() => _postGameActionInFlight = false);
+    }
+  }
+
+  Future<void> _startGameAfterResult() async {
+    if (_postGameActionInFlight) return;
+    setState(() => _postGameActionInFlight = true);
+    _resultCelebrationTimer?.cancel();
+    try {
+      await _showPostMatchAdIfEligible();
+      await _maybeRequestStoreReview();
+      if (!mounted) return;
+      if (_gameMode == GameMode.online) {
+        await _startFreshOnlineGame();
+      } else if (_gameMode == GameMode.puzzle && !_puzzleAttemptWasMissed) {
+        _startNextPuzzle();
+      } else {
+        _reset();
+      }
+    } finally {
+      if (mounted) setState(() => _postGameActionInFlight = false);
     }
   }
 
@@ -5068,8 +5163,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           ? 'Live spectator • ${match.activeColor} to move. Tap Analyze for AI insight.'
           : _onlineStatusText(match);
       if (newMatch) {
-        _onlineResultPresentationTimer?.cancel();
-        _onlineCelebrationMatchId = null;
+        _resultCelebrationTimer?.cancel();
         _gameResultTitle = null;
         _gameResultDetail = null;
         _resultVisible = false;
@@ -5395,8 +5489,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _analysisReadyNotified = false;
       _handledDrawOfferKey = null;
       _joiningRematchId = null;
-      _onlineResultPresentationTimer?.cancel();
-      _onlineCelebrationMatchId = null;
+      _resultCelebrationTimer?.cancel();
       _coachNote = 'Choose how you want to start your next online match.';
     });
     await _showOnlineMatchmakingInfo();
@@ -5655,25 +5748,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             : 'Opponent wins';
         _gameResultDetail = _onlineResultDetail(match);
         if (firstPresentation) {
-          // Keep the decisive move visible. The celebration occupies the
-          // winner's side of the board first; the score/action popup follows
-          // after the player has had time to identify the final move.
+          // Keep the final position visible until the player asks for results.
           _resultVisible = false;
-          _onlineCelebrationMatchId = match.id;
         }
         _coachNote = _onlineResultDetail(match);
       });
       if (firstPresentation) {
-        _onlineResultPresentationTimer?.cancel();
-        _onlineResultPresentationTimer = Timer(
-          draw ? const Duration(milliseconds: 900) : const Duration(seconds: 3),
-          () {
-            if (!mounted || _onlineCelebrationMatchId != match.id) return;
-            setState(() {
-              _resultVisible = true;
-            });
-          },
-        );
+        _presentCompletedGame();
         if (decisive) {
           unawaited(ChessSoundService.instance.victory());
         } else {
@@ -5836,7 +5917,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
       _gameResultTitle = '${sideToMoveWhite ? 'Black' : 'White'} wins';
       _gameResultDetail = 'Checkmate';
-      _delayLocalResultOverlay();
+      _presentCompletedGame();
       _archiveFinishedGame();
       unawaited(ChessSoundService.instance.checkmate());
       return 'Checkmate. $_gameResultTitle.';
@@ -5851,7 +5932,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
       _gameResultTitle = 'Draw';
       _gameResultDetail = 'Stalemate';
-      _delayLocalResultOverlay(delay: const Duration(milliseconds: 900));
+      _presentCompletedGame();
       _archiveFinishedGame();
       unawaited(ChessSoundService.instance.draw());
       return 'Stalemate. No legal move for $side.';
@@ -5862,19 +5943,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     return fallback;
   }
 
-  void _delayLocalResultOverlay({
-    Duration delay = const Duration(seconds: 10),
-  }) {
-    _onlineResultPresentationTimer?.cancel();
-    if (_gameMode == GameMode.computer) {
-      // Show the reason immediately, without an unexplained board celebration.
-      _resultVisible = true;
-      return;
-    }
+  void _presentCompletedGame() {
+    _resultCelebrationTimer?.cancel();
     _resultVisible = false;
-    _onlineResultPresentationTimer = Timer(delay, () {
-      if (!mounted || _gameMode == GameMode.online) return;
-      setState(() => _resultVisible = true);
+    // This timer only ends the decoration. A result dialog is always opt-in.
+    _resultCelebrationTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      setState(() {});
     });
   }
 

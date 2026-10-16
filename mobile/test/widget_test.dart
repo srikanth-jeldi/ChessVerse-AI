@@ -514,7 +514,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('online loser sees fallen king then result popup', (
+  testWidgets('online loser sees final board and opens result on request', (
     WidgetTester tester,
   ) async {
     const OnlineMatchDto match = OnlineMatchDto(
@@ -555,6 +555,9 @@ void main() {
     expect(board.fallenKingWhite, isTrue);
 
     await tester.pump(const Duration(milliseconds: 3200));
+    await tester.pump();
+    expect(find.byType(GameResultOverlay), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('view-game-result')));
     await tester.pump();
     expect(find.text('AI Review My Game'), findsOneWidget);
     expect(find.text('New opponent'), findsOneWidget);
@@ -602,6 +605,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 3200));
     await tester.pump();
 
+    await tester.tap(find.byKey(const ValueKey('view-game-result')));
+    await tester.pump();
     expect(find.text('1 - 0'), findsOneWidget);
     expect(
       find.textContaining('1 - 0 • Opponent left the match'),
@@ -1317,16 +1322,20 @@ void main() {
     );
     expect(checkedKing.checkedKing, isTrue);
     await tester.pump(const Duration(milliseconds: 10500));
-    expect(find.text('AI Review My Game'), findsOneWidget);
+    expect(find.byType(GameResultOverlay), findsNothing);
+    expect(find.byKey(const ValueKey('review-completed-game')), findsOneWidget);
 
-    await tester.tap(find.text('AI Review My Game'));
+    await tester.tap(find.byKey(const ValueKey('review-completed-game')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 800));
     expect(find.byIcon(Icons.close_rounded), findsWidgets);
     await tester.tap(find.byIcon(Icons.close_rounded).last);
     await tester.pump();
-    expect(find.text('AI Review My Game'), findsOneWidget);
+    expect(find.byType(GameResultOverlay), findsNothing);
+    expect(find.byKey(const ValueKey('review-completed-game')), findsOneWidget);
 
+    await tester.tap(find.byKey(const ValueKey('view-game-result')));
+    await tester.pump();
     await tester.binding.handlePopRoute();
     await tester.pump();
     expect(find.text('AI Review My Game'), findsNothing);
