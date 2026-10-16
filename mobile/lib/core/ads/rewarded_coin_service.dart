@@ -11,10 +11,18 @@ import '../diagnostics/app_diagnostics.dart';
 enum RewardedCoinOutcome { earned, unavailable, dismissed }
 
 class RewardedCoinService {
-  RewardedCoinService._();
+  RewardedCoinService._({bool hintReward = false}) : _hintReward = hintReward;
   @visibleForTesting
-  RewardedCoinService.forTesting();
+  RewardedCoinService.forTesting({bool hintReward = false})
+    : _hintReward = hintReward;
+  final bool _hintReward;
   static final RewardedCoinService instance = RewardedCoinService._();
+  static final RewardedCoinService hints = RewardedCoinService._(
+    hintReward: true,
+  );
+  String get _androidId => _hintReward
+      ? AppConfig.admobAndroidHintRewardedId
+      : AppConfig.admobAndroidRewardedId;
   RewardedAd? _ad;
   bool _loading = false;
   bool _showing = false;
@@ -23,9 +31,7 @@ class RewardedCoinService {
   static const String _iosTest = 'ca-app-pub-3940256099942544/1712485313';
 
   String get _adUnitId => defaultTargetPlatform == TargetPlatform.android
-      ? (kReleaseMode && AppConfig.admobAndroidRewardedId.isNotEmpty
-            ? AppConfig.admobAndroidRewardedId
-            : _androidTest)
+      ? (kReleaseMode && _androidId.isNotEmpty ? _androidId : _androidTest)
       : (kReleaseMode && AppConfig.admobIosRewardedId.isNotEmpty
             ? AppConfig.admobIosRewardedId
             : _iosTest);
@@ -34,8 +40,8 @@ class RewardedCoinService {
       AdSdkInitializer.supported &&
       (!kReleaseMode ||
           (defaultTargetPlatform == TargetPlatform.android
-              ? AppConfig.admobAndroidRewardedId.isNotEmpty
-              : AppConfig.admobIosRewardedId.isNotEmpty));
+              ? _androidId.isNotEmpty
+              : !_hintReward && AppConfig.admobIosRewardedId.isNotEmpty));
 
   bool get isReady => _ad != null;
   bool get isLoading => _loading;
@@ -131,7 +137,7 @@ class RewardedCoinService {
       AppAnalytics.logProductEvent(
         token: token,
         name: 'rewarded_ad_started',
-        context: 'coin_shop',
+        context: _hintReward ? 'mistake_hint' : 'coin_shop',
       ),
     );
     ad.fullScreenContentCallback = FullScreenContentCallback(
@@ -141,7 +147,7 @@ class RewardedCoinService {
           AppAnalytics.logProductEvent(
             token: token,
             name: earned ? 'rewarded_ad_completed' : 'rewarded_ad_dismissed',
-            context: 'coin_shop',
+            context: _hintReward ? 'mistake_hint' : 'coin_shop',
           ),
         );
         unawaited(
@@ -174,12 +180,13 @@ class RewardedCoinService {
       },
     );
     try {
-      await ad.setServerSideOptions(
-        ServerSideVerificationOptions(
-          userId: playerId,
-          customData: 'chessverse_coins_v1',
-        ),
-      );
+      if (!_hintReward)
+        await ad.setServerSideOptions(
+          ServerSideVerificationOptions(
+            userId: playerId,
+            customData: 'chessverse_coins_v1',
+          ),
+        );
       AppDiagnostics.log('ad_rewarded_show');
       await ad.show(
         onUserEarnedReward: (_, reward) {
@@ -188,7 +195,8 @@ class RewardedCoinService {
       );
     } on Object catch (error, stack) {
       await _finishAd(ad, () {
-        if (!completer.isCompleted) completer.complete(RewardedCoinOutcome.unavailable);
+        if (!completer.isCompleted)
+          completer.complete(RewardedCoinOutcome.unavailable);
       });
       await AppDiagnostics.recordError(
         error,

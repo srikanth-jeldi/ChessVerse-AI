@@ -128,12 +128,6 @@ class PostMatchAdService {
     await _loadState();
     _resetDailyCounter();
     _completedMatchesSinceLastAd++;
-    if (_completedMatchesSinceLastAd < 3) {
-      AppDiagnostics.log('ad_interstitial_skipped', {'reason': 'match_count'});
-      await _persistState();
-      unawaited(load());
-      return;
-    }
     final DateTime now = DateTime.now().toUtc();
     final bool cooledDown =
         _lastShownAt == null ||

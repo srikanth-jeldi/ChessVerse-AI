@@ -68,24 +68,45 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
-  test('post-match completion and next load wait for native disposal', () async {
-    deliverLoaded = true;
-    await service.load();
-    await service.showAfterMatch('one');
-    await service.showAfterMatch('two');
-    final ad = instanceManager.adFor(ids.single) as InterstitialAd;
-    final shown = service.showAfterMatch('three');
-    await Future<void>.delayed(Duration.zero);
-    pendingDispose = Completer<void>();
-    ad.fullScreenContentCallback!.onAdDismissedFullScreenContent!(ad);
-    await Future<void>.delayed(Duration.zero);
-    expect(await service.load(), false);
-    expect(ids, hasLength(1));
-    pendingDispose!.complete();
-    await shown;
-    await Future<void>.delayed(Duration.zero);
-    expect(ids, hasLength(2));
-  });
+  test(
+    'post-match completion and next load wait for native disposal',
+    () async {
+      deliverLoaded = true;
+      await service.load();
+      final ad = instanceManager.adFor(ids.single) as InterstitialAd;
+      final shown = service.showAfterMatch('three');
+      await Future<void>.delayed(Duration.zero);
+      pendingDispose = Completer<void>();
+      ad.fullScreenContentCallback!.onAdDismissedFullScreenContent!(ad);
+      await Future<void>.delayed(Duration.zero);
+      expect(await service.load(), false);
+      expect(ids, hasLength(1));
+      pendingDispose!.complete();
+      await shown;
+      await Future<void>.delayed(Duration.zero);
+      expect(ids, hasLength(2));
+    },
+  );
+
+  test(
+    'first match shows once and subsequent match respects cooldown',
+    () async {
+      deliverLoaded = true;
+      await service.load();
+      final ad = instanceManager.adFor(ids.single) as InterstitialAd;
+      final shown = service.showAfterMatch('first');
+      await Future<void>.delayed(Duration.zero);
+      expect(service.isShowing, isTrue);
+      ad.fullScreenContentCallback!.onAdShowedFullScreenContent!(ad);
+      ad.fullScreenContentCallback!.onAdDismissedFullScreenContent!(ad);
+      await shown;
+      await Future<void>.delayed(Duration.zero);
+      await service.showAfterMatch('first');
+      await service.showAfterMatch('second');
+      expect(service.isShowing, isFalse);
+      expect(service.isReady, isTrue);
+    },
+  );
 
   test(
     'platform load failure releases loading state and allows retry',

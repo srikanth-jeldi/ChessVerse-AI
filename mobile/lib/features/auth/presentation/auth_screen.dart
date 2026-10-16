@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../../core/widgets/login_bonus_message.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter/material.dart';
@@ -404,6 +406,7 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
           const SizedBox(height: 10),
+          if (!compactLandscape) const LoginBonusMessage(),
           const Text(
             'Start instantly as a guest, or sign in to keep your rating, games and learning progress on every device.',
             maxLines: 3,
@@ -879,6 +882,7 @@ class _AuthScreenState extends State<AuthScreen> {
   List<Widget> _premiumFormFields(BuildContext context) {
     if (widget.guestUpgradeToken != null) {
       return const <Widget>[
+        LoginBonusMessage(),
         Text(
           'Link Google or Facebook to keep this guest profile, rating and match history across devices. Your existing progress will not be deleted.',
           style: TextStyle(color: AppColors.textSecondary, height: 1.45),

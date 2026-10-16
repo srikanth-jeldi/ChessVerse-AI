@@ -18,6 +18,7 @@ void main() {
   late bool failLoad;
   late bool failShow;
   late bool deliverLoaded;
+  late List<String> methods;
   Completer<void>? pendingLoad;
   Completer<void>? pendingDispose;
 
@@ -29,10 +30,12 @@ void main() {
     failLoad = false;
     failShow = false;
     deliverLoaded = false;
+    methods = [];
     pendingLoad = null;
     pendingDispose = null;
     messenger.setMockMethodCallHandler(environment, (_) async => false);
     messenger.setMockMethodCallHandler(instanceManager.channel, (call) async {
+      methods.add(call.method);
       if (call.method == 'MobileAds#initialize') {
         return InitializationStatus(<String, AdapterStatus>{});
       }
@@ -57,6 +60,19 @@ void main() {
       }
       return null;
     });
+  });
+
+  test('hint reward never configures coin server verification', () async {
+    service = RewardedCoinService.forTesting(hintReward: true);
+    deliverLoaded = true;
+    await service.load();
+    final ad = instanceManager.adFor(ids.single) as RewardedAd;
+    final shown = service.show(playerId: '', token: '');
+    await Future<void>.delayed(Duration.zero);
+    ad.onUserEarnedRewardCallback!(ad, RewardItem(1, 'Hint'));
+    ad.fullScreenContentCallback!.onAdDismissedFullScreenContent!(ad);
+    expect(await shown, RewardedCoinOutcome.earned);
+    expect(methods.where((method) => method.contains('ServerSide')), isEmpty);
   });
   tearDown(() async {
     for (final id in ids) {
@@ -147,20 +163,26 @@ void main() {
     },
   );
 
-  test('earned reward returns after bounded cleanup without overlapping loads', () async {
-    deliverLoaded = true;
-    await service.load();
-    final ad = instanceManager.adFor(ids.single) as RewardedAd;
-    final shown = service.show(playerId: 'test', token: '');
-    await Future<void>.delayed(Duration.zero);
-    ad.onUserEarnedRewardCallback!(ad, RewardItem(30, 'coins'));
-    pendingDispose = Completer<void>();
-    ad.fullScreenContentCallback!.onAdDismissedFullScreenContent!(ad);
-    expect(await shown.timeout(const Duration(seconds: 3)), RewardedCoinOutcome.earned);
-    expect(await service.load(), false);
-    expect(ids, hasLength(1));
-    pendingDispose!.complete();
-    await Future<void>.delayed(Duration.zero);
-    expect(ids, hasLength(2));
-  });
+  test(
+    'earned reward returns after bounded cleanup without overlapping loads',
+    () async {
+      deliverLoaded = true;
+      await service.load();
+      final ad = instanceManager.adFor(ids.single) as RewardedAd;
+      final shown = service.show(playerId: 'test', token: '');
+      await Future<void>.delayed(Duration.zero);
+      ad.onUserEarnedRewardCallback!(ad, RewardItem(30, 'coins'));
+      pendingDispose = Completer<void>();
+      ad.fullScreenContentCallback!.onAdDismissedFullScreenContent!(ad);
+      expect(
+        await shown.timeout(const Duration(seconds: 3)),
+        RewardedCoinOutcome.earned,
+      );
+      expect(await service.load(), false);
+      expect(ids, hasLength(1));
+      pendingDispose!.complete();
+      await Future<void>.delayed(Duration.zero);
+      expect(ids, hasLength(2));
+    },
+  );
 }

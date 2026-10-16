@@ -1,6 +1,10 @@
 import 'package:flutter/foundation.dart';
 
 abstract final class AppConfig {
+  static const String admobAndroidHintRewardedId = String.fromEnvironment(
+    'ADMOB_ANDROID_HINT_REWARDED_ID',
+    defaultValue: 'ca-app-pub-9061518700917881/6640887311',
+  );
   static const String environmentName = String.fromEnvironment(
     'CHESSVERSE_ENV',
     defaultValue: 'local',

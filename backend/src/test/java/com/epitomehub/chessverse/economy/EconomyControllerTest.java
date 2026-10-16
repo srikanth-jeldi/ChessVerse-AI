@@ -22,6 +22,25 @@ import tools.jackson.databind.ObjectMapper;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class EconomyControllerTest {
+    @Test
+    void socialBonusRequiresVerifiedIdentityAndIsOnceAcrossProviders() throws Exception {
+        String token = guest(UUID.randomUUID().toString());
+        UUID playerId = UUID.fromString(json.readTree(mockMvc.perform(get("/api/auth/me")
+                .header("Authorization", "Bearer " + token)).andReturn().getResponse().getContentAsString()).path("id").asText());
+        mockMvc.perform(get("/api/v1/economy/wallet").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.coins").value(100));
+        for (String provider : new String[]{"google", "facebook"}) {
+            jdbc.update("insert into oauth_identity(id,provider,subject,player_id,created_at) values(?,?,?,?,current_timestamp)",
+                    UUID.randomUUID(), provider, UUID.randomUUID().toString(), playerId);
+            for (int repeat = 0; repeat < 2; repeat++) {
+                mockMvc.perform(get("/api/v1/economy/wallet").header("Authorization", "Bearer " + token))
+                        .andExpect(status().isOk()).andExpect(jsonPath("$.coins").value(150));
+            }
+        }
+        org.junit.jupiter.api.Assertions.assertEquals(1, jdbc.queryForObject(
+                "select count(*) from economy_transaction where player_id=? and reference_key='social-login-bonus:v1'",
+                Integer.class, playerId));
+    }
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;

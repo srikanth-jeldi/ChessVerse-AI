@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:chessverse_ai/core/ads/rewarded_coin_service.dart';
+import 'package:chessverse_ai/core/monetization_copy.dart';
+
 import 'package:chessverse_ai/core/mistake_practice_localizations.dart';
 import 'package:chessverse_ai/features/analysis/data/engine_candidates_api.dart';
 import 'package:chessverse_ai/features/tutorial/data/academy_progress_store.dart';
@@ -137,6 +140,7 @@ void main() {
     Size size = const Size(390, 844),
     double scale = 1,
     Future<List<EngineCandidateLine>> Function(String fen)? analyze,
+    Future<RewardedCoinOutcome> Function()? rewardedHint,
   }) async {
     FlutterSecureStorage.setMockInitialValues({});
     LocalGameArchive.clearAccountScopedCloudState();
@@ -168,7 +172,10 @@ void main() {
         initialRoute: '/mistakes',
         routes: {
           '/': (_) => const Scaffold(),
-          '/mistakes': (_) => MistakeBankScreen(analyzePosition: analyze),
+          '/mistakes': (_) => MistakeBankScreen(
+            analyzePosition: analyze,
+            showRewardedHint: rewardedHint,
+          ),
         },
       ),
     );
@@ -255,6 +262,51 @@ void main() {
     expect(progress.assistedCompletions, 1);
     expect(find.textContaining('Completed with help'), findsOneWidget);
   });
+
+  test('monetization messages cover all supported languages', () {
+    expect(
+      monetizationCopy.keys.toSet(),
+      AppLanguageController.supported
+          .where((l) => l.code != 'system')
+          .map((l) => l.code)
+          .toSet(),
+    );
+    for (final language in monetizationCopy.keys) {
+      expect(monetizationCopy[language]!.split('|'), hasLength(3));
+    }
+  });
+
+  for (final outcome in RewardedCoinOutcome.values) {
+    testWidgets('rewarded hint grants only completed video: $outcome', (
+      tester,
+    ) async {
+      int videos = 0;
+      await open(
+        tester,
+        review(pv: ['e2e4']),
+        rewardedHint: () async {
+          videos++;
+          return outcome;
+        },
+      );
+      await press(tester, 'mistake-try-own');
+      await press(tester, 'mistake-hint');
+      expect(videos, 0);
+      expect(find.text(monetizationText('hintVideo', 'en')), findsOneWidget);
+      await press(tester, 'mistake-hint');
+      expect(videos, 1);
+      expect(
+        find.byKey(const ValueKey('mistake-hint-move')),
+        outcome == RewardedCoinOutcome.earned ? findsOneWidget : findsNothing,
+      );
+      if (outcome == RewardedCoinOutcome.unavailable) {
+        expect(
+          find.byKey(const ValueKey('hint-video-message')),
+          findsOneWidget,
+        );
+      }
+    });
+  }
 
   testWidgets(
     'verified equally good alternative is accepted with its own line',
@@ -347,9 +399,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('not in the saved line'), findsOneWidget);
       expect(
-        find.textContaining(
-          'Try another move. Use Hint if you need help.',
-        ),
+        find.textContaining('Try another move. Use Hint if you need help.'),
         findsOneWidget,
       );
       await tester.ensureVisible(find.byKey(const ValueKey('mistake-hint')));

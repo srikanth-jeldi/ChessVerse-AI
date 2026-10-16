@@ -32,6 +32,16 @@ public class EconomyService {
     @Transactional
     EconomyDtos.WalletDto wallet(AuthenticatedPlayer player) {
         ensureWallet(player.id());
+        // Identity is verified by our OAuth flow, never supplied by the client.
+        // ensureWallet holds the player lock until this transaction commits.
+        Boolean socialAccount = jdbc.queryForObject("""
+                select exists(select 1 from oauth_identity
+                where player_id=? and provider in ('google','facebook'))
+                """, Boolean.class, player.id());
+        if (Boolean.TRUE.equals(socialAccount)) {
+            grantCoins(player.id(), 50, "SOCIAL_LOGIN_BONUS", "social-login-bonus:v1",
+                    "One-time Google/Facebook sign-in bonus");
+        }
         return readWallet(player.id());
     }
 

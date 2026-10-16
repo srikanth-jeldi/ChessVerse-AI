@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import '../../../core/ads/rewarded_coin_service.dart';
+import '../../../core/monetization_copy.dart';
+
 import '../data/personal_mistake_backup.dart';
 
 import '../domain/mistake_bank_sync.dart';
@@ -112,7 +115,13 @@ class MistakeBankEntryCard extends StatelessWidget {
 }
 
 class MistakeBankScreen extends StatefulWidget {
-  const MistakeBankScreen({super.key, this.analyzePosition});
+  const MistakeBankScreen({
+    super.key,
+    this.analyzePosition,
+    this.showRewardedHint,
+  });
+
+  final Future<RewardedCoinOutcome> Function()? showRewardedHint;
 
   final Future<List<EngineCandidateLine>> Function(String fen)? analyzePosition;
 
@@ -135,6 +144,60 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   String? _wrongTarget;
   int _lineIndex = 0;
   int _hintLevel = 0;
+  bool _hintVideoPending = false;
+  String? _hintVideoMessage;
+  bool get _offersHintVideo =>
+      _independent &&
+      _hintLevel == 1 &&
+      (widget.showRewardedHint != null || RewardedCoinService.hints.supported);
+
+  Future<void> _requestHint() async {
+    if (_hintVideoPending || _completed || _replyPending || _hintLevel >= 2)
+      return;
+    if (!_offersHintVideo) {
+      setState(() {
+        _usedHelp = true;
+        _hintLevel++;
+      });
+      return;
+    }
+    final attempt = _attempt;
+    final fen = _currentFen;
+    final index = _index;
+    setState(() {
+      _hintVideoPending = true;
+      _hintVideoMessage = null;
+    });
+    try {
+      final outcome =
+          await (widget.showRewardedHint?.call() ??
+              RewardedCoinService.hints.show(playerId: '', token: ''));
+      if (!mounted ||
+          attempt != _attempt ||
+          fen != _currentFen ||
+          index != _index ||
+          _completed ||
+          !_independent)
+        return;
+      setState(() {
+        if (outcome == RewardedCoinOutcome.earned) {
+          _usedHelp = true;
+          _hintLevel = 2;
+        } else if (outcome == RewardedCoinOutcome.unavailable) {
+          _hintVideoMessage = monetizationText('unavailable', _language);
+        }
+      });
+    } on Object {
+      if (mounted && attempt == _attempt && index == _index) {
+        setState(
+          () => _hintVideoMessage = monetizationText('unavailable', _language),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _hintVideoPending = false);
+    }
+  }
+
   bool _completed = false;
   bool _independent = false;
   bool _usedHelp = false;
@@ -519,9 +582,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
           _wrongTarget = !legal || candidate != null ? square : null;
           _selectedSquare = null;
           _attemptedMove = legal ? candidateMove : null;
-          _feedback = legal
-              ? '${p('unverified')}\n${m('wrong')}'
-              : m('wrong');
+          _feedback = legal ? '${p('unverified')}\n${m('wrong')}' : m('wrong');
           if (candidate != null &&
               candidate.mateIn == null &&
               candidates.every((c) => c.mateIn == null)) {
@@ -549,6 +610,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
       _selectedSquare = null;
       _wrongTarget = null;
       _hintLevel = 0;
+      _hintVideoMessage = null;
       _feedback = null;
       _attemptedMove = null;
       _replyPending = true;
@@ -612,6 +674,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
     _wrongTarget = null;
     _lineIndex = 0;
     _hintLevel = 0;
+    _hintVideoMessage = null;
     _completed = false;
     _hadMistake = false;
   });
@@ -636,6 +699,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
       _wrongTarget = null;
       _lineIndex = 0;
       _hintLevel = 0;
+      _hintVideoMessage = null;
       _completed = false;
       _hadMistake = false;
     });
@@ -971,19 +1035,32 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
                                   onPressed:
                                       _completed ||
                                           _replyPending ||
-                                          _challengeLine.isEmpty
+                                          _challengeLine.isEmpty ||
+                                          _hintVideoPending ||
+                                          _hintLevel >= 2
                                       ? null
-                                      : () => setState(() {
-                                          _usedHelp = true;
-                                          _hintLevel = (_hintLevel + 1).clamp(
-                                            0,
-                                            2,
-                                          );
-                                        }),
-                                  icon: const Icon(
-                                    Icons.lightbulb_outline_rounded,
+                                      : _requestHint,
+                                  icon: Icon(
+                                    _offersHintVideo
+                                        ? Icons.ondemand_video
+                                        : Icons.lightbulb_outline_rounded,
                                   ),
-                                  label: Text(m('hint')),
+                                  label: _hintVideoPending
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : Text(
+                                          _offersHintVideo
+                                              ? monetizationText(
+                                                  'hintVideo',
+                                                  _language,
+                                                )
+                                              : m('hint'),
+                                        ),
                                 ),
                                 TextButton(
                                   key: const ValueKey('mistake-skip'),
@@ -993,6 +1070,14 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
                                   child: Text(m('skip')),
                                 ),
                               ],
+                            ),
+                          if (_hintVideoMessage != null)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Text(
+                                _hintVideoMessage!,
+                                key: const ValueKey('hint-video-message'),
+                              ),
                             ),
                           Wrap(
                             spacing: 8,

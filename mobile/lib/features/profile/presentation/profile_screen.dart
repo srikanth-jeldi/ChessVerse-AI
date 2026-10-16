@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import '../../../core/widgets/login_bonus_message.dart';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -325,6 +327,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 if (widget.isGuest &&
                     widget.onSecureProgress != null) ...<Widget>[
                   const SizedBox(height: 14),
+                  const LoginBonusMessage(),
                   FilledButton.icon(
                     key: const ValueKey<String>('secure-guest-progress'),
                     onPressed: () => widget.onSecureProgress!.call(),

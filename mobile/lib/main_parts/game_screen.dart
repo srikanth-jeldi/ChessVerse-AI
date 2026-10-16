@@ -1438,7 +1438,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                       'challenge missed',
                                     ) ==
                                     true
-                                ? _reset
+                                ? _startGameAfterResult
                                 : null)
                           : _confirmNewGame,
                       onUndo: _undo,
@@ -4319,7 +4319,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     setState(() => _postGameActionInFlight = true);
     _resultCelebrationTimer?.cancel();
     try {
-      await _showPostMatchAdIfEligible();
+      await _showPostMatchAdIfEligible(puzzleRetry: true);
       await _maybeRequestStoreReview();
       if (!mounted) return;
       if (_gameMode == GameMode.online) {
@@ -4399,11 +4399,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     return _storeReview.maybeRequestReview(completedGame: true);
   }
 
-  Future<void> _showPostMatchAdIfEligible() async {
-    if (_gameMode != GameMode.computer && _gameMode != GameMode.online) {
+  Future<void> _showPostMatchAdIfEligible({bool puzzleRetry = false}) async {
+    if (_gameResultTitle == null || widget.spectatorMode) return;
+    if (_gameMode != GameMode.computer &&
+        _gameMode != GameMode.online &&
+        !(puzzleRetry && _isTacticsMode && _puzzleAttemptWasMissed)) {
       return;
     }
-    final String matchId = _onlineMatch?.id ?? 'computer:$_draftId';
+    final String matchId = _onlineMatch?.id ?? '${_gameMode.name}:$_draftId';
     await PostMatchAdService.instance.showAfterMatch(matchId);
   }
 
