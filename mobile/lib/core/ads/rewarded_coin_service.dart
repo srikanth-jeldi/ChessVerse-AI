@@ -13,8 +13,7 @@ enum RewardedCoinOutcome { earned, unavailable, dismissed }
 class RewardedCoinService {
   RewardedCoinService._([this._hintReward = false]);
   @visibleForTesting
-  factory RewardedCoinService.forTesting({bool hintReward = false}) =>
-      RewardedCoinService._(hintReward);
+  RewardedCoinService.forTesting({bool hintReward = false}) : this._(hintReward);
   final bool _hintReward;
   static final RewardedCoinService instance = RewardedCoinService._();
   static final RewardedCoinService hints = RewardedCoinService._(true);
