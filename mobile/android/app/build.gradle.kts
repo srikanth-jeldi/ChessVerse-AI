@@ -77,6 +77,7 @@ android {
 }
 
 dependencies {
+    implementation("com.google.android.play:app-update:2.1.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     // google_mobile_ads pulls WorkManager transitively. Its legacy 2.7.0

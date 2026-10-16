@@ -1,0 +1,42 @@
+// Title, explanation, update, later, store-unavailable message.
+List<String> appUpdateStrings(String language) =>
+    (appUpdateTranslations[language] ?? appUpdateTranslations['en']!).split(
+      '|',
+    );
+
+const appUpdateTranslations = <String, String>{
+  'en': 'Update available|Update ChessVerseAI for new features and stability improvements.|Update|Later|Could not open Google Play. Please try again from the Play Store.',
+  'te': 'కొత్త అప్‌డేట్ వచ్చింది|కొత్త ఫీచర్లు, మెరుగైన పనితీరు కోసం ChessVerseAIని అప్‌డేట్ చేయండి.|అప్‌డేట్ చేయండి|తర్వాత|Google Play తెరవలేకపోయాం. Play Store నుంచి మళ్లీ ప్రయత్నించండి.',
+  'hi': 'अपडेट उपलब्ध है|नई सुविधाओं और बेहतर स्थिरता के लिए ChessVerseAI अपडेट करें।|अपडेट करें|बाद में|Google Play नहीं खुल सका। Play Store से फिर कोशिश करें।',
+  'ta': 'புதிய புதுப்பிப்பு உள்ளது|புதிய அம்சங்கள் மற்றும் மேம்பட்ட நிலைத்தன்மைக்காக ChessVerseAIஐப் புதுப்பிக்கவும்.|புதுப்பிக்கவும்|பிறகு|Google Playஐத் திறக்க முடியவில்லை. Play Storeஇல் மீண்டும் முயலவும்.',
+  'kn': 'ಹೊಸ ಅಪ್‌ಡೇಟ್ ಲಭ್ಯವಿದೆ|ಹೊಸ ವೈಶಿಷ್ಟ್ಯಗಳು ಮತ್ತು ಉತ್ತಮ ಸ್ಥಿರತೆಗಾಗಿ ChessVerseAI ಅಪ್‌ಡೇಟ್ ಮಾಡಿ.|ಅಪ್‌ಡೇಟ್ ಮಾಡಿ|ನಂತರ|Google Play ತೆರೆಯಲಾಗಲಿಲ್ಲ. Play Store ಮೂಲಕ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+  'ml': 'അപ്‌ഡേറ്റ് ലഭ്യമാണ്|പുതിയ സവിശേഷതകൾക്കും മെച്ചപ്പെട്ട സ്ഥിരതയ്ക്കുമായി ChessVerseAI അപ്‌ഡേറ്റ് ചെയ്യുക.|അപ്‌ഡേറ്റ് ചെയ്യുക|പിന്നീട്|Google Play തുറക്കാനായില്ല. Play Store വഴി വീണ്ടും ശ്രമിക്കുക.',
+  'mr': 'अपडेट उपलब्ध आहे|नवीन सुविधा आणि सुधारित स्थिरतेसाठी ChessVerseAI अपडेट करा.|अपडेट करा|नंतर|Google Play उघडता आले नाही. Play Store मधून पुन्हा प्रयत्न करा.',
+  'bn': 'আপডেট উপলব্ধ|নতুন সুবিধা ও উন্নত স্থিতিশীলতার জন্য ChessVerseAI আপডেট করুন।|আপডেট করুন|পরে|Google Play খোলা যায়নি। Play Store থেকে আবার চেষ্টা করুন।',
+  'gu': 'અપડેટ ઉપલબ્ધ છે|નવી સુવિધાઓ અને વધુ સ્થિરતા માટે ChessVerseAI અપડેટ કરો.|અપડેટ કરો|પછી|Google Play ખોલી શકાયું નહીં. Play Storeમાંથી ફરી પ્રયાસ કરો.',
+  'pa': 'ਅੱਪਡੇਟ ਉਪਲਬਧ ਹੈ|ਨਵੀਆਂ ਵਿਸ਼ੇਸ਼ਤਾਵਾਂ ਅਤੇ ਬਿਹਤਰ ਸਥਿਰਤਾ ਲਈ ChessVerseAI ਅੱਪਡੇਟ ਕਰੋ।|ਅੱਪਡੇਟ ਕਰੋ|ਬਾਅਦ ਵਿੱਚ|Google Play ਨਹੀਂ ਖੁੱਲ੍ਹਿਆ। Play Store ਤੋਂ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+  'ur': 'اپ ڈیٹ دستیاب ہے|نئی خصوصیات اور بہتر استحکام کے لیے ChessVerseAI اپ ڈیٹ کریں۔|اپ ڈیٹ کریں|بعد میں|Google Play نہیں کھل سکا۔ Play Store سے دوبارہ کوشش کریں۔',
+  'ar': 'يتوفر تحديث|حدّث ChessVerseAI للحصول على ميزات جديدة وتحسينات في الاستقرار.|تحديث|لاحقًا|تعذر فتح Google Play. حاول مجددًا من متجر Play.',
+  'es': 'Actualización disponible|Actualiza ChessVerseAI para obtener nuevas funciones y mejoras de estabilidad.|Actualizar|Más tarde|No se pudo abrir Google Play. Inténtalo desde Play Store.',
+  'fr': 'Mise à jour disponible|Mettez à jour ChessVerseAI pour profiter de nouvelles fonctionnalités et d’une meilleure stabilité.|Mettre à jour|Plus tard|Impossible d’ouvrir Google Play. Réessayez depuis le Play Store.',
+  'de': 'Update verfügbar|Aktualisiere ChessVerseAI für neue Funktionen und verbesserte Stabilität.|Aktualisieren|Später|Google Play konnte nicht geöffnet werden. Versuche es über den Play Store.',
+  'it': 'Aggiornamento disponibile|Aggiorna ChessVerseAI per nuove funzionalità e una maggiore stabilità.|Aggiorna|Più tardi|Impossibile aprire Google Play. Riprova dal Play Store.',
+  'pt': 'Atualização disponível|Atualize o ChessVerseAI para obter novos recursos e melhorias de estabilidade.|Atualizar|Mais tarde|Não foi possível abrir o Google Play. Tente pela Play Store.',
+  'ru': 'Доступно обновление|Обновите ChessVerseAI: новые функции и улучшенная стабильность.|Обновить|Позже|Не удалось открыть Google Play. Попробуйте через Play Маркет.',
+  'uk': 'Доступне оновлення|Оновіть ChessVerseAI, щоб отримати нові функції та покращену стабільність.|Оновити|Пізніше|Не вдалося відкрити Google Play. Спробуйте через Play Маркет.',
+  'tr': 'Güncelleme mevcut|Yeni özellikler ve kararlılık iyileştirmeleri için ChessVerseAI uygulamasını güncelleyin.|Güncelle|Daha sonra|Google Play açılamadı. Play Store üzerinden tekrar deneyin.',
+  'fa': 'به‌روزرسانی موجود است|برای قابلیت‌های جدید و پایداری بهتر، ChessVerseAI را به‌روز کنید.|به‌روزرسانی|بعداً|Google Play باز نشد. از فروشگاه Play دوباره تلاش کنید.',
+  'zh': '有可用更新|更新 ChessVerseAI，体验新功能和更稳定的运行。|更新|稍后|无法打开 Google Play。请从 Play 商店重试。',
+  'ja': 'アップデートがあります|新機能と安定性の向上のため、ChessVerseAIを更新してください。|更新|後で|Google Playを開けませんでした。Playストアからお試しください。',
+  'ko': '업데이트가 있습니다|새로운 기능과 안정성 개선을 위해 ChessVerseAI를 업데이트하세요.|업데이트|나중에|Google Play를 열 수 없습니다. Play 스토어에서 다시 시도하세요.',
+  'id': 'Pembaruan tersedia|Perbarui ChessVerseAI untuk fitur baru dan peningkatan stabilitas.|Perbarui|Nanti|Google Play tidak dapat dibuka. Coba melalui Play Store.',
+  'ms': 'Kemas kini tersedia|Kemas kini ChessVerseAI untuk ciri baharu dan kestabilan yang lebih baik.|Kemas kini|Kemudian|Google Play tidak dapat dibuka. Cuba melalui Play Store.',
+  'th': 'มีอัปเดตใหม่|อัปเดต ChessVerseAI เพื่อรับฟีเจอร์ใหม่และการปรับปรุงความเสถียร|อัปเดต|ภายหลัง|เปิด Google Play ไม่ได้ โปรดลองจาก Play Store อีกครั้ง',
+  'vi': 'Có bản cập nhật|Cập nhật ChessVerseAI để có tính năng mới và cải thiện độ ổn định.|Cập nhật|Để sau|Không thể mở Google Play. Hãy thử từ Play Store.',
+  'pl': 'Dostępna aktualizacja|Zaktualizuj ChessVerseAI, aby uzyskać nowe funkcje i lepszą stabilność.|Aktualizuj|Później|Nie udało się otworzyć Google Play. Spróbuj przez Sklep Play.',
+  'nl': 'Update beschikbaar|Werk ChessVerseAI bij voor nieuwe functies en betere stabiliteit.|Bijwerken|Later|Google Play kon niet worden geopend. Probeer het via de Play Store.',
+  'sv': 'Uppdatering tillgänglig|Uppdatera ChessVerseAI för nya funktioner och bättre stabilitet.|Uppdatera|Senare|Kunde inte öppna Google Play. Försök via Play Butik.',
+  'el': 'Διαθέσιμη ενημέρωση|Ενημερώστε το ChessVerseAI για νέες λειτουργίες και βελτιωμένη σταθερότητα.|Ενημέρωση|Αργότερα|Δεν ήταν δυνατό το άνοιγμα του Google Play. Δοκιμάστε από το Play Store.',
+  'he': 'עדכון זמין|עדכנו את ChessVerseAI לקבלת תכונות חדשות ושיפורי יציבות.|עדכון|מאוחר יותר|לא ניתן לפתוח את Google Play. נסו דרך חנות Play.',
+  'sw': 'Sasisho linapatikana|Sasisha ChessVerseAI kwa vipengele vipya na uthabiti bora.|Sasisha|Baadaye|Google Play haikuweza kufunguliwa. Jaribu kupitia Play Store.',
+};

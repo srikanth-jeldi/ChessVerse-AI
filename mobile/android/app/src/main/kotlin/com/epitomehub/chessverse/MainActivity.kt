@@ -62,6 +62,7 @@ class MainActivity : FlutterActivity() {
         // on Flutter's managed background queue. Ad SDK/UI calls stay on their
         // plugin's normal thread.
         val messenger = flutterEngine.dartExecutor.binaryMessenger
+        PlayUpdateChannel.register(applicationContext, messenger)
         val resolver = applicationContext.contentResolver
         MethodChannel(
             messenger,

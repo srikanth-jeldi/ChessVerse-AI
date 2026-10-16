@@ -30,6 +30,7 @@ import 'core/ads/post_match_ad_service.dart';
 import 'core/audio/chess_sound_service.dart';
 import 'core/auth/facebook_sdk_ready.dart';
 import 'core/app_preferences.dart';
+import 'core/app_update_prompt.dart';
 import 'core/web_launch_policy.dart';
 import 'core/chess_piece_appearance.dart';
 import 'core/config/app_config.dart';
@@ -363,6 +364,9 @@ class SplashGate extends StatefulWidget {
 }
 
 class _SplashGateState extends State<SplashGate> {
+  final AppUpdatePrompt _appUpdatePrompt = AppUpdatePrompt();
+  bool _updatePromptScheduled = false;
+  Timer? _updatePromptTimer;
   static const AuthApi _authApi = AuthApi();
   static const AuthSessionStore _sessionStore = AuthSessionStore();
   static const CloudProgressApi _cloudProgressApi = CloudProgressApi();
@@ -681,9 +685,7 @@ class _SplashGateState extends State<SplashGate> {
         if (!mounted) return;
         ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           const SnackBar(
-            content: Text(
-              'Your session has expired. Please sign in again.',
-            ),
+            content: Text('Your session has expired. Please sign in again.'),
           ),
         );
       });
@@ -1014,6 +1016,7 @@ class _SplashGateState extends State<SplashGate> {
 
   @override
   void dispose() {
+    _updatePromptTimer?.cancel();
     DesktopNavigationBridge.request.removeListener(_handleDesktopNavigation);
     GoogleChatGate.onAuthenticated = null;
     LocalGameArchive.activityRevision.removeListener(_handleBadgeProgress);
@@ -1152,6 +1155,24 @@ class _SplashGateState extends State<SplashGate> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_updatePromptScheduled &&
+        _stage == _RootStage.home &&
+        _primaryDestination == 0) {
+      _updatePromptScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _updatePromptTimer = Timer(const Duration(milliseconds: 600), () async {
+          if (!mounted) return;
+          await _appUpdatePrompt.maybeShow(
+            context,
+            canShow: () =>
+                mounted &&
+                _stage == _RootStage.home &&
+                _primaryDestination == 0,
+          );
+        });
+      });
+    }
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 520),
       switchInCurve: Curves.easeOutCubic,
