@@ -1,0 +1,46 @@
+Post-game review and physical-device testing — 2026-10-16
+
+Review change
+- Replaced the two-consecutive-wins gate with first completed computer/online game eligibility.
+- Win, loss and draw are treated equally. Spectators, unfinished games and puzzle/local modes are excluded.
+- Requests occur after the result action/ad returns, before starting another game, or after closing analysis.
+- Existing persistent request flag is retained: previously prompted installations are not prompted again.
+- Native Google Play review UI is used without a custom sentiment questionnaire or rewards.
+- Play controls whether the dialog appears; completion does not prove a rating was submitted.
+- No new app-owned text: native dialog language is managed by Play, not the app's 34-language selector.
+- Six focused tests pass (first completion, repeat/upgrade suppression, unfinished/non-Android, unavailable store, platform failure, concurrent requests).
+- Full flutter analyze: no issues.
+
+Physical-device test preparation
+- Firebase ChessVerseAI Test Lab console shows Spark (no-cost) plan.
+- Android 13 catalogue includes Infinix SMART 8, Galaxy A03s, SPARK Go 2024 and Pixel 7.
+- Exact Tecno KJ5 has not been identified in this catalogue.
+- Built ARMv7 + ARM64 debug APK with ENABLE_ADMOB_TEST_ADS=true and Google's test AdMob app ID.
+- Debug SDK opt-in exercises test ads only; production bot suppression remains unchanged.
+- Debug build defaults to localhost backend: this first run checks offline/guest startup and exploratory navigation, not live account sync or production-network flows.
+- This debug APK is not a Play release, and cannot prove release renderer timing or review-dialog display on a Play-installed app.
+- Cloud execution/results pending; upload in progress when this note was created.
+
+References
+https://developer.android.com/guide/playcore/in-app-review
+https://firebase.google.com/docs/test-lab/usage-quotas-pricing
+
+First cloud result (limited coverage)
+- matrix-13k3bh9t68u31 / 4985765227432418990: Pixel 5 API 30, Passed.
+- Test 38 seconds, crawl 26 seconds, 8 actions, 3 activities, 5 screens.
+- Screenshots show server-unavailable overlay. No evidence of game/ad flow coverage; NOT a stability sign-off.
+- Original APK SHA256: D48D11B6B084B087A53D24D0E371949E2DE9864545C2293031D55A0FB7ACC6B2.
+- matrix-1wqz9s3by323l / 8060959507921030685: Pixel 7 + Infinix SMART 8 API 33 cancelled after identifying the coverage limitation. Final UI: 2 Inconclusive.
+- SPARK Go 2024 API 33 had capacity None (no available devices), so not scheduled.
+
+Corrected cloud APK
+- Added --dart-define=API_BASE_URL=https://api.chessverseai.com --dart-define=WEB_BASE_URL=https://chessverseai.com to test build command.
+- Public /api/v1/health returned UP before rerun.
+- Build succeeded; APK 181120445 bytes, ARMv7 + ARM64 Flutter libraries present.
+- SHA256: 8BD304BF9F7083413C33AF26E4CC41D93ED20CDCF08058DEBB621B25C61BBC5D.
+- Still DEBUG, test ads only; release review UI must be verified on Play-installed build.
+- Corrected matrix submitted: matrix-2su6pabf7ccri / 8712024402434016799, label android13-api-testads-review-20261016, 5-minute default timeout.
+- Devices: Infinix SMART 8 Android 13 (low capacity), Pixel 7 Android 13 (high capacity).
+- Test artifact preserved at artifacts/testing-2026-10-16/ChessVerseAI-cloud-arm-test.apk.
+- Corrected Infinix execution bs.1940cbe56c32a247 ended Inconclusive at 0 seconds: Firebase reported an unexpected problem. No app execution evidence and no performance data. This is not a passed test or a reproduced app crash.
+- Pixel 7 execution remains pending as of this report update.

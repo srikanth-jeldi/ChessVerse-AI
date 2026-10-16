@@ -5,22 +5,22 @@ import 'app_preferences.dart';
 
 bool isStoreReviewEligible({
   required bool isAndroid,
-  required int consecutiveWins,
+  required bool completedGame,
   required bool alreadyRequested,
 }) {
-  return isAndroid && consecutiveWins >= 2 && !alreadyRequested;
+  return isAndroid && completedGame && !alreadyRequested;
 }
 
 class StoreReviewService {
   const StoreReviewService();
 
   static const String _requestedKey = 'playStoreReviewRequested';
-  static const String _consecutiveWinsKey = 'playStoreReviewConsecutiveWins';
   static const AppPreferences _preferences = AppPreferences();
   static bool _requestInProgress = false;
 
-  Future<void> maybeRequestReview({required bool playerWon}) async {
-    if (_requestInProgress ||
+  Future<void> maybeRequestReview({required bool completedGame}) async {
+    if (!completedGame ||
+        _requestInProgress ||
         kIsWeb ||
         defaultTargetPlatform != TargetPlatform.android) {
       return;
@@ -32,16 +32,11 @@ class StoreReviewService {
         _requestedKey,
         fallback: false,
       );
-      final int previousWins =
-          int.tryParse(
-            await _preferences.readString(_consecutiveWinsKey, fallback: '0'),
-          ) ??
-          0;
-      final int consecutiveWins = playerWon ? previousWins + 1 : 0;
-      await _preferences.writeString(_consecutiveWinsKey, '$consecutiveWins');
+      // Every completed game's outcome is eligible, including a loss or draw.
+      // Preserve the existing request key so upgrades don't prompt again.
       if (!isStoreReviewEligible(
         isAndroid: true,
-        consecutiveWins: consecutiveWins,
+        completedGame: completedGame,
         alreadyRequested: alreadyRequested,
       )) {
         return;

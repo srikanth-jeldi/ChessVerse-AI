@@ -1809,6 +1809,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                 : null,
                             onNewGame: () async {
                               await _showPostMatchAdIfEligible();
+                              await _maybeRequestStoreReview();
+                              if (!mounted) return;
                               if (_gameMode == GameMode.online) {
                                 await _startFreshOnlineGame();
                               } else if (_gameMode == GameMode.puzzle &&
@@ -1824,6 +1826,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             onRematch: _gameMode == GameMode.online
                                 ? () async {
                                     await _showPostMatchAdIfEligible();
+                                    await _maybeRequestStoreReview();
+                                    if (!mounted) return;
                                     await _requestOnlineRematch();
                                   }
                                 : null,
@@ -1838,6 +1842,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                     await _showPostMatchAdIfEligible();
                                     if (!mounted) return;
                                     await _showAiReview();
+                                    await _maybeRequestStoreReview();
                                   },
                             onShare: _isTacticsMode
                                 ? null
@@ -4289,15 +4294,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _maybeRequestStoreReview() {
-    if (_isTacticsMode || _gameMode == GameMode.local) {
+    if (!mounted ||
+        widget.spectatorMode ||
+        _gameResultTitle == null ||
+        (_gameMode != GameMode.computer && _gameMode != GameMode.online)) {
       return Future<void>.value();
     }
-    final String outcome = playerOutcomeForResult(
-      _gameResultTitle ?? '',
-      humanPlaysWhite: _humanPlaysWhite,
-      tracksPlayer: _gameMode != GameMode.local,
-    );
-    return _storeReview.maybeRequestReview(playerWon: outcome == 'win');
+    return _storeReview.maybeRequestReview(completedGame: true);
   }
 
   Future<void> _showPostMatchAdIfEligible() async {
