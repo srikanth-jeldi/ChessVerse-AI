@@ -2,6 +2,11 @@ name: Diagnose auth activity report
 
 on:
   workflow_dispatch:
+    inputs:
+      disable_academy_report:
+        description: Apply the checked-in academy report opt-out without rebuilding its image
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -29,13 +34,30 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
+          DISABLE_ACADEMY_REPORT: ${{ inputs.disable_academy_report || 'false' }}
         run: |
           set -Eeuo pipefail
           ssh -i ~/.ssh/chessverse_vps -p "$VPS_PORT" -o BatchMode=yes -o IdentitiesOnly=yes \
-            "$VPS_USER@$VPS_HOST" 'bash -s' <<'REMOTE_SCRIPT'
+            "$VPS_USER@$VPS_HOST" "bash -s -- '$DISABLE_ACADEMY_REPORT'" <<'REMOTE_SCRIPT'
           set -Eeuo pipefail
           cd /root/ChessVerse-AI/infrastructure/vps
           compose=(docker compose --env-file vps.env -f docker-compose.prod.yml)
+          if [[ "$1" == true ]]; then
+            "${compose[@]}" config --format json | python3 -c '
+          import json,sys
+          config=json.load(sys.stdin)
+          assert str(config["services"]["academy"]["environment"]["AUTH_ACTIVITY_REPORT_ENABLED"]).lower()=="false"
+          '
+            academy_id="$("${compose[@]}" ps -q academy)"
+            old_image="$(docker inspect --format='{{.Image}}' "$academy_id")"
+            "${compose[@]}" up -d --no-deps --no-build academy
+            academy_id="$("${compose[@]}" ps -q academy)"
+            test "$(docker inspect --format='{{.Image}}' "$academy_id")" = "$old_image"
+            "${compose[@]}" exec -T academy sh -c 'test "$AUTH_ACTIVITY_REPORT_ENABLED" = false' </dev/null
+            "${compose[@]}" exec -T academy curl --fail --silent --show-error \
+              --retry 18 --retry-delay 5 --retry-all-errors \
+              http://localhost:8080/actuator/health/readiness </dev/null
+          fi
           "${compose[@]}" ps backend academy
           for service in backend academy; do
             echo "report_service=$service"

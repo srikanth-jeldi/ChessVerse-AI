@@ -106,6 +106,12 @@ class AuthActivityReportService {
                 result.getString("country_source"), result.getString("device_region"),
                 result.getString("app_version"), result.getString("installation_fingerprint"),
                 result.getBoolean("new_device")));
+        // Another scheduler may already hold these rows (SKIP LOCKED), or no
+        // new activity occurred. Neither case warrants an empty daily email.
+        if (rows.isEmpty()) {
+            log.info("Auth activity report skipped: no pending events");
+            return;
+        }
         byte[] attachment;
         try {
             attachment = workbook(rows);

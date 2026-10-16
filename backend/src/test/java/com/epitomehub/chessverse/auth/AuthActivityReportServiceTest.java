@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyString;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
@@ -13,6 +16,52 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mail.javamail.JavaMailSender;
 
 class AuthActivityReportServiceTest {
+    @Test
+    void emptyPendingRowsNeverCreateOrSendMail() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        JavaMailSender sender = mock(JavaMailSender.class);
+        when(jdbc.query(anyString(), org.mockito.ArgumentMatchers
+                .<org.springframework.jdbc.core.RowMapper<AuthActivityReportService.AuthActivityRow>>any()))
+                .thenReturn(java.util.List.of());
+        var service = new AuthActivityReportService(jdbc, mock(AuthActivityEventRepository.class),
+                sender, "from@example.com", "owner@example.com", true);
+        service.sendPendingReport();
+        verifyNoInteractions(sender);
+    }
+
+    @Test
+    void disabledSchedulerDoesNotQueryOrSendMail() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        JavaMailSender sender = mock(JavaMailSender.class);
+        var service = new AuthActivityReportService(jdbc, mock(AuthActivityEventRepository.class),
+                sender, "from@example.com", "owner@example.com", false);
+        service.sendPendingReport();
+        verifyNoInteractions(jdbc, sender);
+    }
+
+    @Test
+    void nonemptyPendingReportStillSendsAndMarksEvents() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        JavaMailSender sender = mock(JavaMailSender.class);
+        var id = java.util.UUID.randomUUID();
+        var row = new AuthActivityReportService.AuthActivityRow(id,
+                java.sql.Timestamp.from(java.time.Instant.now()), "LOGIN", "GOOGLE",
+                "player@example.com", "player", "Player", true, "Test device", "Android",
+                "Unknown", "UNKNOWN", "IN", "1.3.30+297", "test-fingerprint", false);
+        when(jdbc.query(anyString(), org.mockito.ArgumentMatchers
+                .<org.springframework.jdbc.core.RowMapper<AuthActivityReportService.AuthActivityRow>>any()))
+                .thenReturn(java.util.List.of(row));
+        var message = new jakarta.mail.internet.MimeMessage(
+                jakarta.mail.Session.getInstance(new java.util.Properties()));
+        when(sender.createMimeMessage()).thenReturn(message);
+        var service = new AuthActivityReportService(jdbc, mock(AuthActivityEventRepository.class),
+                sender, "from@example.com", "owner@example.com", true);
+        service.sendPendingReport();
+        verify(sender).send(message);
+        assertThat(message.getSubject()).endsWith("1 events");
+        verify(jdbc).batchUpdate(anyString(), org.mockito.ArgumentMatchers.<java.util.List<Object[]>>any());
+    }
+
     @Test
     void recordsUsefulActivityMetadataWithoutRawSecrets() {
         AuthActivityEventRepository repository = mock(AuthActivityEventRepository.class);

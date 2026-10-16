@@ -122,6 +122,8 @@ services:
       service: backend
     environment:
       CHESSVERSE_SERVICE_ROLE: platform
+      # The consumer backend owns the daily report for their shared database.
+      AUTH_ACTIVITY_REPORT_ENABLED: "false"
       ALLOWED_ORIGIN_PATTERNS: https://academy.${APP_DOMAIN}
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "5"
       AI_COACH_LLM_ENABLED: "false"
