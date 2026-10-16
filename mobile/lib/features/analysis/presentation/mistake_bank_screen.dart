@@ -152,8 +152,9 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
       (widget.showRewardedHint != null || RewardedCoinService.hints.supported);
 
   Future<void> _requestHint() async {
-    if (_hintVideoPending || _completed || _replyPending || _hintLevel >= 2)
+    if (_hintVideoPending || _completed || _replyPending || _hintLevel >= 2) {
       return;
+    }
     if (!_offersHintVideo) {
       setState(() {
         _usedHelp = true;
@@ -177,8 +178,9 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
           fen != _currentFen ||
           index != _index ||
           _completed ||
-          !_independent)
+          !_independent) {
         return;
+      }
       setState(() {
         if (outcome == RewardedCoinOutcome.earned) {
           _usedHelp = true;

@@ -11,15 +11,13 @@ import '../diagnostics/app_diagnostics.dart';
 enum RewardedCoinOutcome { earned, unavailable, dismissed }
 
 class RewardedCoinService {
-  RewardedCoinService._({bool hintReward = false}) : _hintReward = hintReward;
+  RewardedCoinService._([this._hintReward = false]);
   @visibleForTesting
-  RewardedCoinService.forTesting({bool hintReward = false})
-    : _hintReward = hintReward;
+  factory RewardedCoinService.forTesting({bool hintReward = false}) =>
+      RewardedCoinService._(hintReward);
   final bool _hintReward;
   static final RewardedCoinService instance = RewardedCoinService._();
-  static final RewardedCoinService hints = RewardedCoinService._(
-    hintReward: true,
-  );
+  static final RewardedCoinService hints = RewardedCoinService._(true);
   String get _androidId => _hintReward
       ? AppConfig.admobAndroidHintRewardedId
       : AppConfig.admobAndroidRewardedId;
@@ -180,13 +178,14 @@ class RewardedCoinService {
       },
     );
     try {
-      if (!_hintReward)
+      if (!_hintReward) {
         await ad.setServerSideOptions(
           ServerSideVerificationOptions(
             userId: playerId,
             customData: 'chessverse_coins_v1',
           ),
         );
+      }
       AppDiagnostics.log('ad_rewarded_show');
       await ad.show(
         onUserEarnedReward: (_, reward) {
@@ -195,8 +194,9 @@ class RewardedCoinService {
       );
     } on Object catch (error, stack) {
       await _finishAd(ad, () {
-        if (!completer.isCompleted)
+        if (!completer.isCompleted) {
           completer.complete(RewardedCoinOutcome.unavailable);
+        }
       });
       await AppDiagnostics.recordError(
         error,
