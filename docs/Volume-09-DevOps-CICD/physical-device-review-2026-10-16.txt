@@ -44,3 +44,16 @@ Corrected cloud APK
 - Test artifact preserved at artifacts/testing-2026-10-16/ChessVerseAI-cloud-arm-test.apk.
 - Corrected Infinix execution bs.1940cbe56c32a247 ended Inconclusive at 0 seconds: Firebase reported an unexpected problem. No app execution evidence and no performance data. This is not a passed test or a reproduced app crash.
 - Pixel 7 execution remains pending as of this report update.
+
+Corrected matrix final result and discovered defect
+- Pixel 7 API 33: UI says Passed, test duration 3m50s, crawl 3m39s, 88 actions, 4 activities, 14 screens.
+- IMPORTANT: manual screenshot/log inspection found No Overlay widget found 7 times. Screens included onboarding/login and Flutter error screens; gameplay/ad completion was NOT verified.
+- This is a concrete Flutter framework UI failure despite Robo's green Passed label.
+- Root cause: NetworkStatusLayer is mounted in MaterialApp.builder above Navigator. Its banner IconButton tooltip had no Overlay ancestor.
+- Fix: replace that tooltip with an accessible Semantics label; retain the dismiss button. Use Material and a scrollable body for API-unavailable content to avoid inherited debug text styling and small-screen overflow.
+- Added 3 widget regressions reproducing the actual above-Navigator placement, both offline/slow banners, and server-error recovery at 320x480 with 2x text scaling.
+- All 9 combined review/network-widget tests pass. Physical rerun with the UI fix still pending.
+- Pre-fix evidence: artifacts/testing-2026-10-16/pixel7-overlay-error.jpg and pixel7-overlay-log.txt.
+- Fix APK: artifacts/testing-2026-10-16/ChessVerseAI-cloud-overlay-fix.apk.
+- Fix APK SHA256: 30FC747E9990A9512E7DF5667EB1ABDE08BC92A9453FE63AF8E3C3D1F61B0A48.
+- Full flutter analyze after fix: No issues found. Test-ad ARM debug build succeeded.

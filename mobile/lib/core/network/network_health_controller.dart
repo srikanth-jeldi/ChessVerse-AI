@@ -12,6 +12,9 @@ enum NetworkHealth { checking, online, slow, offline, apiUnavailable }
 class NetworkHealthController extends ChangeNotifier {
   NetworkHealthController._();
 
+  @visibleForTesting
+  NetworkHealthController.forTesting(NetworkHealth health) : _health = health;
+
   static final NetworkHealthController instance = NetworkHealthController._();
 
   final Connectivity _connectivity = Connectivity();

@@ -3,16 +3,18 @@ import 'package:flutter/material.dart';
 import '../network/network_health_controller.dart';
 
 class NetworkStatusLayer extends StatefulWidget {
-  const NetworkStatusLayer({required this.child, super.key});
+  const NetworkStatusLayer({required this.child, this.controller, super.key});
 
   final Widget child;
+  final NetworkHealthController? controller;
 
   @override
   State<NetworkStatusLayer> createState() => _NetworkStatusLayerState();
 }
 
 class _NetworkStatusLayerState extends State<NetworkStatusLayer> {
-  final NetworkHealthController _controller = NetworkHealthController.instance;
+  late final NetworkHealthController _controller =
+      widget.controller ?? NetworkHealthController.instance;
   bool _bannerDismissed = false;
 
   @override
@@ -69,26 +71,29 @@ class _NetworkStatusLayerState extends State<NetworkStatusLayer> {
           ),
         if (_controller.showApiUnavailableScreen)
           Positioned.fill(
-            child: ColoredBox(
+            child: Material(
               color: const Color(0xF2071524),
               child: SafeArea(
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 430),
-                    child: Padding(
+                    child: SingleChildScrollView(
                       padding: const EdgeInsets.all(28),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
-                          const Icon(Icons.cloud_off_rounded,
-                              size: 68, color: Color(0xFFFFC857)),
+                          const Icon(
+                            Icons.cloud_off_rounded,
+                            size: 68,
+                            color: Color(0xFFFFC857),
+                          ),
                           const SizedBox(height: 20),
-                          Text('ChessVerseAI server is unavailable',
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineSmall
-                                  ?.copyWith(fontWeight: FontWeight.w900)),
+                          Text(
+                            'ChessVerseAI server is unavailable',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                          ),
                           const SizedBox(height: 10),
                           const Text(
                             'Your local games and learning progress remain safe. Retry now or continue with offline features.',
@@ -135,31 +140,40 @@ class _NetworkBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: color,
-        elevation: 12,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          child: Row(
-            children: <Widget>[
-              Icon(icon, color: Colors.white),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(message,
-                    style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.w700)),
+    color: color,
+    elevation: 12,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      child: Row(
+        children: <Widget>[
+          Icon(icon, color: Colors.white),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
               ),
-              TextButton(
-                onPressed: onRetry,
-                style: TextButton.styleFrom(foregroundColor: Colors.white),
-                child: const Text('Retry'),
-              ),
-              IconButton(
-                tooltip: 'Dismiss connection notice',
-                onPressed: onDismiss,
-                icon: const Icon(Icons.close_rounded, color: Colors.white),
-              ),
-            ],
+            ),
           ),
-        ),
-      );
+          TextButton(
+            onPressed: onRetry,
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
+            child: const Text('Retry'),
+          ),
+          // This layer sits above Navigator in MaterialApp.builder, so
+          // tooltips cannot rely on Navigator's descendant Overlay.
+          Semantics(
+            label: 'Dismiss connection notice',
+            button: true,
+            child: IconButton(
+              onPressed: onDismiss,
+              icon: const Icon(Icons.close_rounded, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
