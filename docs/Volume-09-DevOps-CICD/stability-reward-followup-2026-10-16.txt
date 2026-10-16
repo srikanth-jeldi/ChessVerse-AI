@@ -24,13 +24,16 @@ Validation
 - Test APK: artifacts/testing-2026-10-16/ChessVerseAI-session-ad-lifecycle-test.apk
 - SHA256: EBC415FC753053AE56918AFE700B0889DA769AD26D57FA7637C11D42F8F3EF58
 - Production API URLs, Google demo test ads only. Demo ads do not exercise our production configured SSV callback; production coin credit cannot be certified by a demo-ad screenshot.
-- Physical Pixel 7 API 33 rerun submitted: matrix-2tpsrfcj508v2 / 4805079093569593865, label android13-session-ad-lifecycle-20261016. Result pending.
+- Physical Pixel 7 API 33 rerun completed: matrix-2tpsrfcj508v2 / 4805079093569593865, execution bs.b25e049f412d383b, label android13-session-ad-lifecycle-20261016. PASSED, 5m10s total, 4m58s crawl, 140 actions, 4 activities, 27 screens. The crawl reached its configured time budget; this is not an application ANR.
+- Screens inspected: onboarding, authentication/guest entry, home, play/online entry, My Games, rook lessons and French/Hebrew language switching. This run did not demonstrate rewarded video, completed-game review, or live production coin credit.
+- Cloud log search: no FATAL EXCEPTION or E/flutter matches. E Flutter matched secure-storage algorithm migration messages; the following logs explicitly show successful migration of zero stored items. This was not an unhandled app failure.
+- Evidence: artifacts/testing-2026-10-16/session-ad-lifecycle-cloud-passed.jpg and pixel7-storage-migration-log.txt. The initial saved log excerpt is only the rendered log window, not a complete logcat export.
 
 Limits
 - The original cloud session-expired event was not conclusively traced to a particular token rotation. The changes address verified risky code paths and tested regressions, not a proven root cause for that individual event.
 - Tecno KJ5 Android 13 WebView/native-linker ANR remains un-reproduced. The lifecycle change removes an app-owned overlap; it is not evidence that the vendor linker defect is fixed.
 - Native Play review dialog rendering/submission depends on Google Play eligibility/quota. Tests verify our actual game-to-review callback; they do not claim a real review was submitted.
-- No new release AAB, no production backend change/deploy required by these client changes.
+- Next release is 1.3.28 (295). A separate release report records artifact verification. No production backend change/deploy is required by these client changes.
 
 References
 https://developers.google.com/admob/flutter/ssv
