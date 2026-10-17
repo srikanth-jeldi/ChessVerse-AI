@@ -159,7 +159,7 @@ class AuthActivityReportService {
             String[] headers = {"Time (IST)", "Event", "Method", "Email", "Username", "@Handle",
                     "Display name", "Verified", "New device", "Device manufacturer/model",
                     "Platform / OS / browser", "App version", "Reported country/region (unverified)",
-                    "Installation fingerprint", "Device region (locale)", "Country source"};
+                    "Installation fingerprint", "Device region (locale)", "Country source", "Client type"};
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
             CellStyle headerStyle = workbook.createCellStyle();
@@ -177,7 +177,7 @@ class AuthActivityReportService {
                         value.displayName(), value.verified() ? "Yes" : "No",
                         value.newDevice() ? "Yes" : "No", value.deviceName(), value.clientPlatform(),
                         value.appVersion(), value.countryCode(), value.installationFingerprint(),
-                        value.deviceRegion(), value.countrySource()};
+                        value.deviceRegion(), value.countrySource(), clientType(value.clientPlatform(), value.deviceName())};
                 for (int column = 0; column < cells.length; column++) {
                     row.createCell(column).setCellValue(cells[column] == null ? "" : cells[column]);
                 }
@@ -189,6 +189,17 @@ class AuthActivityReportService {
             workbook.write(output);
             return output.toByteArray();
         }
+    }
+
+    // Client-reported metadata describes the client; it is not verified identity.
+    static String clientType(String platform, String deviceName) {
+        String p = platform == null ? "" : platform.trim().toLowerCase(java.util.Locale.ROOT);
+        String d = deviceName == null ? "" : deviceName.trim().toLowerCase(java.util.Locale.ROOT);
+        // Older Flutter web clients reported Win32/Linux but named their browser.
+        if (p.equals("web") || p.startsWith("web /") || d.endsWith(" browser")) return "Web";
+        if (p.equals("android") || p.startsWith("android ")) return "Android app";
+        if (p.equals("ios") || p.startsWith("ios ")) return "iOS app";
+        return "Unknown";
     }
 
     String csvCell(String value) {

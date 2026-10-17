@@ -111,6 +111,8 @@ class AuthActivityReportServiceTest {
         try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(
                 new java.io.ByteArrayInputStream(service.workbook(rows)))) {
             var sheet = workbook.getSheet("Login activity");
+            assertThat(sheet.getRow(0).getCell(16).getStringCellValue()).isEqualTo("Client type");
+            assertThat(sheet.getRow(1).getCell(16).getStringCellValue()).isEqualTo("Android app");
             assertThat(sheet.getRow(0).getCell(12).getStringCellValue())
                     .isEqualTo("Reported country/region (unverified)");
             assertThat(sheet.getRow(0).getCell(14).getStringCellValue())
@@ -121,6 +123,18 @@ class AuthActivityReportServiceTest {
             assertThat(sheet.getRow(2).getCell(14).getStringCellValue()).isEqualTo("Unknown");
             assertThat(sheet.getRow(2).getCell(15).getStringCellValue()).isEqualTo("LEGACY_UNVERIFIED");
         }
+    }
+
+    @Test
+    void distinguishesWebFromNativeAndKeepsMissingMetadataUnknown() {
+        assertThat(AuthActivityReportService.clientType("Web / Academy", "Academy web browser")).isEqualTo("Web");
+        assertThat(AuthActivityReportService.clientType("Linux armv8l", "chrome browser")).isEqualTo("Web");
+        assertThat(AuthActivityReportService.clientType("Web", "Unknown device")).isEqualTo("Web");
+        assertThat(AuthActivityReportService.clientType("Android 15", "Pixel")).isEqualTo("Android app");
+        assertThat(AuthActivityReportService.clientType("iOS 18", "iPhone")).isEqualTo("iOS app");
+        assertThat(AuthActivityReportService.clientType("Unknown", "Unknown device")).isEqualTo("Unknown");
+        assertThat(AuthActivityReportService.clientType(null, null)).isEqualTo("Unknown");
+        assertThat(AuthActivityReportService.clientType("Linux", "Unknown device")).isEqualTo("Unknown");
     }
 
     @Test

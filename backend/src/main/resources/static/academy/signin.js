@@ -30,7 +30,7 @@ login = function academySignIn() {
 };
 
 let academyOAuthConfig;
-async function completeAcademyOAuth(provider,payload){const response=await fetch('/api/auth/'+provider,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json();if(!response.ok)throw new Error(result.message||provider+' sign-in failed.');state.token=result.token;await start();}
+async function completeAcademyOAuth(provider,payload){const response=await fetch('/api/auth/'+provider,{method:'POST',headers:{'Content-Type':'application/json','X-Client-Platform':'Web / Academy','X-Device-Name':'Academy web browser'},body:JSON.stringify(payload)});const result=await response.json();if(!response.ok)throw new Error(result.message||provider+' sign-in failed.');state.token=result.token;await start();}
 function loadSocialScript(id,src,onload){if(document.querySelector('#'+id)){onload?.();return;}const script=document.createElement('script');script.id=id;script.async=true;script.defer=true;if(id!=='google-gsi')script.crossOrigin='anonymous';script.src=src;script.onload=onload;document.head.append(script);}
 let academyGoogleResize;
 function renderAcademyGoogleButton(){
@@ -90,7 +90,7 @@ document.addEventListener('submit', async event => {
   try {
     const data = Object.fromEntries(new FormData(form));
     const response = await fetch('/api/auth/password/' + (form.id === 'academy-recovery' ? 'forgot' : 'reset'), {
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
+      method:'POST', headers:{'Content-Type':'application/json','X-Client-Platform':'Web / Academy','X-Device-Name':'Academy web browser'}, body:JSON.stringify(data)
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || 'Unable to reset your password. Please try again.');

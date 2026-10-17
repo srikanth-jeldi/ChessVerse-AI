@@ -352,7 +352,7 @@ class AuthApi {
         final WebBrowserInfo web = await info.webBrowserInfo;
         return _ClientDevice(
           '${web.browserName.name} browser',
-          web.platform ?? 'Web',
+          'Web / ${web.browserName.name} / ${web.platform ?? 'Unknown OS'}',
           _deviceCountryCode(),
           appVersion,
         );
@@ -389,8 +389,8 @@ class AuthApi {
       }
     } catch (_) {
       return _ClientDevice(
-        'Unknown device',
-        'Unknown',
+        kIsWeb ? 'Web browser' : 'Unknown device',
+        kIsWeb ? 'Web' : 'Unknown',
         _deviceCountryCode(),
         'Unknown',
       );
