@@ -108,6 +108,40 @@ void main() {
     },
   );
 
+  test('expired cached ad is replaced before reuse', () async {
+    var now = DateTime.utc(2026, 10, 17);
+    service = PostMatchAdService.forTesting(now: () => now);
+    deliverLoaded = true;
+    expect(await service.load(), isTrue);
+    final oldId = ids.single;
+    now = now.add(const Duration(minutes: 59));
+    expect(await service.load(), isTrue);
+    expect(ids, hasLength(1));
+    now = now.add(const Duration(minutes: 1));
+    expect(service.isReady, isFalse);
+    expect(await service.load(), isTrue);
+    expect(ids, hasLength(2));
+    expect(instanceManager.adFor(oldId), isNull);
+    expect(service.isReady, isTrue);
+  });
+
+  test(
+    'result preparation makes first continuation ready without showing',
+    () async {
+      deliverLoaded = true;
+      expect(await service.prepareForMatchResult(), isTrue);
+      expect(service.isShowing, isFalse);
+      final ad = instanceManager.adFor(ids.single) as InterstitialAd;
+      final shown = service.showAfterMatch('prepared-first-match');
+      await Future<void>.delayed(Duration.zero);
+      expect(service.isShowing, isTrue);
+      ad.fullScreenContentCallback!.onAdShowedFullScreenContent!(ad);
+      ad.fullScreenContentCallback!.onAdDismissedFullScreenContent!(ad);
+      await shown;
+      expect(await service.prepareForMatchResult(), isFalse);
+    },
+  );
+
   test(
     'platform load failure releases loading state and allows retry',
     () async {

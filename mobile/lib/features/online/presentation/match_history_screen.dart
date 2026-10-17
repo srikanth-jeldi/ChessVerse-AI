@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import '../../../core/analytics/app_analytics.dart';
+
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -214,6 +218,11 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
           }
         }
       }
+      if (added > 0) {
+        unawaited(
+          AppAnalytics.logFeature(FeatureEvent.import_completed, format: 'pgn'),
+        );
+      }
       if (!mounted) return;
       await _refresh();
       if (!mounted) return;
@@ -284,6 +293,11 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
           }
         }
         added++;
+      }
+      if (added > 0) {
+        unawaited(
+          AppAnalytics.logFeature(FeatureEvent.import_completed, format: 'fen'),
+        );
       }
       if (!mounted) return;
       setState(() {});
@@ -870,6 +884,17 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       playerSide: choice.playerSide,
       reviewScope: choice.reviewScope,
       initialFen: game.initialFen,
+    );
+    final imported = game.mode.startsWith('Imported');
+    unawaited(
+      AppAnalytics.logFeature(
+        imported
+            ? FeatureEvent.imported_review_viewed
+            : FeatureEvent.saved_review_viewed,
+        format: imported
+            ? (game.mode == 'Imported FEN' ? 'fen' : 'pgn')
+            : 'saved_game',
+      ),
     );
     await showAdaptiveAiReview(
       context,

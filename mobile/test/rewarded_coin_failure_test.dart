@@ -84,6 +84,23 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  test('expired cached ad is replaced before reuse', () async {
+    var now = DateTime.utc(2026, 10, 17);
+    service = RewardedCoinService.forTesting(now: () => now);
+    deliverLoaded = true;
+    expect(await service.load(), isTrue);
+    final oldId = ids.single;
+    now = now.add(const Duration(minutes: 59));
+    expect(await service.load(), isTrue);
+    expect(ids, hasLength(1));
+    now = now.add(const Duration(minutes: 1));
+    expect(service.isReady, isFalse);
+    expect(await service.load(), isTrue);
+    expect(ids, hasLength(2));
+    expect(instanceManager.adFor(oldId), isNull);
+    expect(service.isReady, isTrue);
+  });
+
   test(
     'platform load failure releases loading state and allows retry',
     () async {

@@ -9,9 +9,10 @@ import '../config/app_config.dart';
 import '../diagnostics/app_diagnostics.dart';
 
 class PostMatchAdService {
-  PostMatchAdService._();
+  PostMatchAdService._() : _now = DateTime.now;
   @visibleForTesting
-  PostMatchAdService.forTesting();
+  PostMatchAdService.forTesting({DateTime Function()? now})
+    : _now = now ?? DateTime.now;
 
   static final PostMatchAdService instance = PostMatchAdService._();
   static const String _shownKey = 'ads.interstitial.shown';
@@ -29,6 +30,9 @@ class PostMatchAdService {
             ? AppConfig.admobIosInterstitialId
             : _iosTest);
 
+  final DateTime Function() _now;
+  static const Duration _maxAdAge = Duration(hours: 1);
+  DateTime? _loadedAt;
   InterstitialAd? _ad;
   bool _loading = false;
   bool _showing = false;
@@ -48,13 +52,16 @@ class PostMatchAdService {
               ? AppConfig.admobAndroidInterstitialId.isNotEmpty
               : AppConfig.admobIosInterstitialId.isNotEmpty));
 
-  bool get isReady => _ad != null;
+  bool get isReady =>
+      _ad != null &&
+      _loadedAt != null &&
+      _now().difference(_loadedAt!) < _maxAdAge;
   bool get isLoading => _loading;
   bool get isShowing => _showing;
 
   Future<bool> load({Duration timeout = const Duration(seconds: 12)}) async {
     if (!supported || _showing) return false;
-    if (_ad != null) return true;
+    if (isReady) return true;
     if (_loading) {
       return (_loadCompleter?.future ?? Future<bool>.value(false)).timeout(
         timeout,
@@ -64,6 +71,13 @@ class PostMatchAdService {
     _loading = true;
     final Completer<bool> loading = Completer<bool>();
     _loadCompleter = loading;
+    final expired = _ad;
+    if (expired != null) {
+      _ad = null;
+      _loadedAt = null;
+      AppDiagnostics.log('ad_interstitial_expired');
+      await _dispose(expired);
+    }
     if (!await AdSdkInitializer.ensureReady()) {
       _loading = false;
       _loadCompleter = null;
@@ -82,12 +96,16 @@ class PostMatchAdService {
               return;
             }
             _ad = ad;
+            _loadedAt = _now();
             AppDiagnostics.log('ad_interstitial_loaded');
             _loading = false;
             _loadCompleter = null;
             if (!loading.isCompleted) loading.complete(true);
           },
-          onAdFailedToLoad: (_) {
+          onAdFailedToLoad: (error) {
+            AppDiagnostics.log('ad_interstitial_load_failed', {
+              'code': error.code,
+            });
             if (_loadCompleter != loading) return;
             _loading = false;
             _loadCompleter = null;
@@ -123,6 +141,21 @@ class PostMatchAdService {
     );
   }
 
+  /// Load while the result is visible, before the player chooses to continue.
+  /// Never wait for an ad on the navigation path or request one during cooldown.
+  Future<bool> prepareForMatchResult() async {
+    if (!supported || _showing) return false;
+    await _loadState();
+    _resetDailyCounter();
+    if (_shownToday >= 12 ||
+        (_lastShownAt != null &&
+            _now().toUtc().difference(_lastShownAt!) <
+                const Duration(minutes: 5))) {
+      return false;
+    }
+    return load();
+  }
+
   Future<void> showAfterMatch(String matchId) async {
     if (!supported || _showing || !_handledMatches.add(matchId)) return;
     await _loadState();
@@ -142,7 +175,7 @@ class PostMatchAdService {
     }
 
     final InterstitialAd? ad = _ad;
-    if (ad == null) {
+    if (ad == null || !isReady) {
       // Never hold the post-match navigation while waiting for network demand.
       AppDiagnostics.log('ad_interstitial_skipped', {'reason': 'not_ready'});
       unawaited(load());

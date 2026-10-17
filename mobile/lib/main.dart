@@ -1369,6 +1369,7 @@ class _SplashGateState extends State<SplashGate> {
         onDaily: () => _openGame(context, GameMode.daily),
       ),
       PuzzlesScreen(
+        isActive: _primaryDestination == 2,
         showPrimaryNavigation: false,
         onStartPuzzle: (String puzzleId) =>
             _openGame(context, GameMode.puzzle, puzzleId: puzzleId),

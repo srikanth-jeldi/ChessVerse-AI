@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/analytics/app_analytics.dart';
 import 'package:chessverse_ai/core/theme/app_theme.dart';
 import 'package:chessverse_ai/core/local_game_archive.dart';
 import 'package:chessverse_ai/features/puzzles/presentation/puzzle_academy_screen.dart';
@@ -5,6 +6,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('hidden puzzle tab is not counted as a visit', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final events = <String>[];
+    AppAnalytics.featureRecorder = (name, _) async => events.add(name);
+    addTearDown(() => AppAnalytics.featureRecorder = null);
+    Future<void> show(bool active) => tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.darkTheme,
+        home: PuzzleAcademyScreen(isActive: active),
+      ),
+    );
+    await show(false);
+    await tester.pumpAndSettle();
+    expect(events, isEmpty);
+    await show(true);
+    await tester.pumpAndSettle();
+    expect(events, ['puzzles_viewed']);
+    await show(true);
+    await tester.pumpAndSettle();
+    expect(events, ['puzzles_viewed']);
+  });
+
   testWidgets('rotated phone keeps the mobile puzzle composition', (
     WidgetTester tester,
   ) async {

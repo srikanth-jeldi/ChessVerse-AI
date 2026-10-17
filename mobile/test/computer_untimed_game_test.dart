@@ -1,3 +1,5 @@
+import 'package:chessverse_ai/core/analytics/app_analytics.dart';
+
 import 'dart:convert';
 
 import 'package:chessverse_ai/core/computer_game_store.dart';
@@ -12,6 +14,10 @@ void main() {
   testWidgets(
     'computer checkmate leaves board visible until result is requested',
     (tester) async {
+      final events = <String>[];
+      AppAnalytics.featureRecorder = (name, parameters) async =>
+          events.add(name);
+      addTearDown(() => AppAnalytics.featureRecorder = null);
       FlutterSecureStorage.setMockInitialValues({
         'settings.coachLanguage': 'en',
       });
@@ -44,6 +50,7 @@ void main() {
         ),
       );
       await tester.pump();
+      expect(events, isEmpty);
       tester.widget<ChessBoard>(find.byType(ChessBoard)).onSquareTap('f7');
       await tester.pump();
       tester.widget<ChessBoard>(find.byType(ChessBoard)).onSquareTap('g7');
@@ -69,6 +76,9 @@ void main() {
       await tester.pump(const Duration(seconds: 30));
       expect(find.byType(GameResultOverlay), findsNothing);
       expect(find.byType(OnlineVictoryCelebration), findsNothing);
+      expect(events.where((e) => e == 'game_first_move'), hasLength(1));
+      expect(events.where((e) => e == 'game_completed'), hasLength(1));
+      expect(events.where((e) => e == 'puzzle_first_move'), isEmpty);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       await tester.pump();

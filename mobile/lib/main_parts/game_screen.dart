@@ -776,6 +776,19 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   bool _postGameActionInFlight = false;
   bool _checkWarningActive = false;
   bool _resultSaved = false;
+  final PlayActivityTracker _playActivity = PlayActivityTracker();
+  void _trackHumanPlay() {
+    if (widget.spectatorMode || !_playActivity.acceptHumanMove()) return;
+    unawaited(
+      AppAnalytics.logFeature(
+        _isTacticsMode
+            ? FeatureEvent.puzzle_first_move
+            : FeatureEvent.game_first_move,
+        mode: _gameMode.name,
+      ),
+    );
+  }
+
   bool _analysisReadyNotified = false;
   bool _soundEnabled = true;
   bool _showCoordinates = true;
@@ -3207,6 +3220,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _selectedSquare = null;
     });
 
+    if (moveCommitted && _gameMode != GameMode.online) _trackHumanPlay();
     if (promotionSquare != null && promotionWhite != null) {
       _showPromotionPicker(promotionSquare!, promotionWhite!).then((_) {
         _scheduleComputerDraftSave();
@@ -4170,6 +4184,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           : null;
       _resultVisible = true;
       _resultSaved = false;
+      _playActivity.reset();
       _analysisReadyNotified = false;
       _checkWarningActive = false;
     });
@@ -4344,6 +4359,33 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
     _resultSaved = true;
+    if (!widget.spectatorMode &&
+        (_gameMode == GameMode.computer || _gameMode == GameMode.online ||
+            (_isTacticsMode && _puzzleAttemptWasMissed))) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _gameResultTitle != null) {
+          unawaited(PostMatchAdService.instance.prepareForMatchResult());
+        }
+      });
+    }
+    if (!widget.spectatorMode) {
+      if (!_isTacticsMode) {
+        unawaited(
+          AppAnalytics.logFeature(
+            FeatureEvent.game_completed,
+            mode: _gameMode.name,
+          ),
+        );
+      } else if (_gameResultTitle == 'Puzzle complete' ||
+          _gameResultTitle == 'Challenge complete') {
+        unawaited(
+          AppAnalytics.logFeature(
+            FeatureEvent.puzzle_completed,
+            mode: _gameMode.name,
+          ),
+        );
+      }
+    }
     // Puzzle Academy is disposable practice. Keep completion/progress rewards,
     // but never add puzzle attempts to My Saved Games or cloud analysis.
     if (_gameMode == GameMode.puzzle) return;
@@ -5171,6 +5213,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _gameResultDetail = null;
         _resultVisible = false;
         _resultSaved = false;
+        _playActivity.reset();
         _analysisReadyNotified = false;
         _selectedSquare = null;
         _lastFromSquare = null;
@@ -5489,6 +5532,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _gameResultDetail = null;
       _resultVisible = false;
       _resultSaved = false;
+      _playActivity.reset();
       _analysisReadyNotified = false;
       _handledDrawOfferKey = null;
       _joiningRematchId = null;
@@ -5514,6 +5558,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         expectedPly: expectedPly,
       );
       if (!mounted) return;
+      _trackHumanPlay();
       _rebuildFromOnline(latest);
     } on OnlineMatchException catch (error) {
       if (!mounted) return;

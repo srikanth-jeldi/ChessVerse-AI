@@ -1,3 +1,5 @@
+import '../../../core/analytics/app_analytics.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -23,17 +25,35 @@ class PuzzleAcademyScreen extends StatefulWidget {
   const PuzzleAcademyScreen({
     this.onStartPuzzle = _noPuzzleLaunch,
     this.showPrimaryNavigation = true,
+    this.isActive = true,
     super.key,
   });
 
   final PuzzleLauncher onStartPuzzle;
   final bool showPrimaryNavigation;
+  final bool isActive;
 
   @override
   State<PuzzleAcademyScreen> createState() => _PuzzleAcademyScreenState();
 }
 
 class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isActive) {
+      unawaited(AppAnalytics.logFeature(FeatureEvent.puzzles_viewed));
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant PuzzleAcademyScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      unawaited(AppAnalytics.logFeature(FeatureEvent.puzzles_viewed));
+    }
+  }
+
   void _openSprintRecords() => Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) => const PuzzleSprintLeaderboardScreen(),

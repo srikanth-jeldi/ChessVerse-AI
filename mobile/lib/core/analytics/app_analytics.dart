@@ -15,6 +15,34 @@ import '../diagnostics/firebase_bootstrap.dart';
 abstract final class AppAnalytics {
   static bool _ready = false;
 
+  @visibleForTesting
+  static Future<void> Function(String, Map<String, Object>)? featureRecorder;
+
+  /// Fixed event names and categorical metadata only; never chess files or IDs.
+  static Future<void> logFeature(
+    FeatureEvent event, {
+    String? mode,
+    String? format,
+    bool? assisted,
+  }) async {
+    final parameters = <String, Object>{
+      'tracking_version': 2,
+      if (mode != null) 'mode': _safeEnum(mode),
+      if (format != null) 'format': _safeEnum(format),
+      if (assisted != null) 'assisted': assisted ? 1 : 0,
+    };
+    if (kDebugMode && featureRecorder != null) {
+      try {
+        await featureRecorder!(event.name, parameters);
+      } on Object {
+        // Test failures in the analytics transport must not interrupt play.
+      }
+      return;
+    }
+    if (!_ready) return;
+    await _safeLog(event.name, parameters);
+  }
+
   static Future<void> initialize() async {
     if (kIsWeb) return;
     try {
@@ -112,4 +140,34 @@ abstract final class AppAnalytics {
     if (normalized.isEmpty) return 'unknown';
     return normalized.length <= 40 ? normalized : normalized.substring(0, 40);
   }
+}
+
+// Names are the reporting contract in Firebase/GA4.
+// ignore_for_file: constant_identifier_names
+enum FeatureEvent {
+  game_first_move,
+  game_completed,
+  import_completed,
+  imported_review_viewed,
+  saved_review_viewed,
+  puzzles_viewed,
+  puzzle_first_move,
+  puzzle_completed,
+  mistake_bank_viewed,
+  mistake_practice_started,
+  mistake_practice_completed,
+}
+
+/// Deduplicates accepted human moves within a board visit/attempt. A resumed
+/// visit may emit again, allowing daily unique players to include resumed play.
+class PlayActivityTracker {
+  bool _played = false;
+
+  bool acceptHumanMove() {
+    if (_played) return false;
+    _played = true;
+    return true;
+  }
+
+  void reset() => _played = false;
 }

@@ -9,17 +9,20 @@ class PuzzlesScreen extends StatelessWidget {
   const PuzzlesScreen({
     this.onStartPuzzle = _ignorePuzzleLaunch,
     this.showPrimaryNavigation = true,
+    this.isActive = true,
     super.key,
   });
 
   final PuzzleLauncher onStartPuzzle;
   final bool showPrimaryNavigation;
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
     return PuzzleAcademyScreen(
       onStartPuzzle: onStartPuzzle,
       showPrimaryNavigation: showPrimaryNavigation,
+      isActive: isActive,
     );
   }
 }

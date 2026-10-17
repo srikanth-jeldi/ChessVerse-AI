@@ -11,15 +11,22 @@ import '../diagnostics/app_diagnostics.dart';
 enum RewardedCoinOutcome { earned, unavailable, dismissed }
 
 class RewardedCoinService {
-  RewardedCoinService._([this._hintReward = false]);
+  RewardedCoinService._([this._hintReward = false, DateTime Function()? now])
+    : _now = now ?? DateTime.now;
   @visibleForTesting
-  RewardedCoinService.forTesting({bool hintReward = false}) : this._(hintReward);
+  RewardedCoinService.forTesting({
+    bool hintReward = false,
+    DateTime Function()? now,
+  }) : this._(hintReward, now);
   final bool _hintReward;
   static final RewardedCoinService instance = RewardedCoinService._();
   static final RewardedCoinService hints = RewardedCoinService._(true);
   String get _androidId => _hintReward
       ? AppConfig.admobAndroidHintRewardedId
       : AppConfig.admobAndroidRewardedId;
+  final DateTime Function() _now;
+  static const Duration _maxAdAge = Duration(hours: 1);
+  DateTime? _loadedAt;
   RewardedAd? _ad;
   bool _loading = false;
   bool _showing = false;
@@ -40,12 +47,15 @@ class RewardedCoinService {
               ? _androidId.isNotEmpty
               : !_hintReward && AppConfig.admobIosRewardedId.isNotEmpty));
 
-  bool get isReady => _ad != null;
+  bool get isReady =>
+      _ad != null &&
+      _loadedAt != null &&
+      _now().difference(_loadedAt!) < _maxAdAge;
   bool get isLoading => _loading;
 
   Future<bool> load({Duration timeout = const Duration(seconds: 12)}) async {
     if (!supported || _showing) return false;
-    if (_ad != null) return true;
+    if (isReady) return true;
     if (_loading) {
       return (_loadCompleter?.future ?? Future<bool>.value(false)).timeout(
         timeout,
@@ -55,6 +65,13 @@ class RewardedCoinService {
     _loading = true;
     final Completer<bool> loading = Completer<bool>();
     _loadCompleter = loading;
+    final expired = _ad;
+    if (expired != null) {
+      _ad = null;
+      _loadedAt = null;
+      AppDiagnostics.log('ad_rewarded_expired');
+      await _dispose(expired);
+    }
     if (!await AdSdkInitializer.ensureReady()) {
       _loading = false;
       _loadCompleter = null;
@@ -73,12 +90,14 @@ class RewardedCoinService {
               return;
             }
             _ad = ad;
+            _loadedAt = _now();
             AppDiagnostics.log('ad_rewarded_loaded');
             _loading = false;
             _loadCompleter = null;
             if (!loading.isCompleted) loading.complete(true);
           },
-          onAdFailedToLoad: (_) {
+          onAdFailedToLoad: (error) {
+            AppDiagnostics.log('ad_rewarded_load_failed', {'code': error.code});
             if (_loadCompleter != loading) return;
             _loading = false;
             _loadCompleter = null;
@@ -119,7 +138,7 @@ class RewardedCoinService {
     required String token,
   }) async {
     if (!supported || _showing) return RewardedCoinOutcome.unavailable;
-    if (_ad == null) {
+    if (!isReady) {
       final bool loaded = await load();
       if (!loaded || _ad == null) return RewardedCoinOutcome.unavailable;
     }
@@ -159,7 +178,11 @@ class RewardedCoinService {
           }),
         );
       },
-      onAdFailedToShowFullScreenContent: (value, _) {
+      onAdImpression: (_) => AppDiagnostics.log('ad_rewarded_impression'),
+      onAdShowedFullScreenContent: (_) =>
+          AppDiagnostics.log('ad_rewarded_displayed'),
+      onAdFailedToShowFullScreenContent: (value, error) {
+        AppDiagnostics.log('ad_rewarded_show_failed', {'code': error.code});
         unawaited(
           AppAnalytics.logProductEvent(
             token: token,

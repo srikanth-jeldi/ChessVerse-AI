@@ -1,3 +1,5 @@
+import '../../../core/analytics/app_analytics.dart';
+
 import 'dart:async';
 
 import '../../../core/ads/rewarded_coin_service.dart';
@@ -222,6 +224,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   @override
   void initState() {
     super.initState();
+    unawaited(AppAnalytics.logFeature(FeatureEvent.mistake_bank_viewed));
     _allItems = MistakeBank.all(LocalGameArchive.games);
     _items = _allItems.take(5).toList(growable: false);
     if (_items.isNotEmpty) _currentFen = _items.first.review.fenBefore;
@@ -518,6 +521,8 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
       ? _feedback!
       : m('instructions');
 
+  final PlayActivityTracker _practiceActivity = PlayActivityTracker();
+
   Future<void> _playSquare(String square) async {
     if (_completed ||
         _previewing ||
@@ -541,6 +546,14 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
       return;
     }
     if (_selectedSquare == null) return;
+    if (_practiceActivity.acceptHumanMove()) {
+      unawaited(
+        AppAnalytics.logFeature(
+          FeatureEvent.mistake_practice_started,
+          assisted: !_independent,
+        ),
+      );
+    }
     final String attempted = '$_selectedSquare$square'.toLowerCase();
     var expected = _challengeLine[_lineIndex];
     if (!expected.startsWith(attempted)) {
@@ -637,7 +650,14 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   }
 
   Future<void> _completeChallenge() async {
+    if (_completed || _savingReview) return;
     _verifiedIndependent = _independent && !_usedHelp && !_hadMistake;
+    unawaited(
+      AppAnalytics.logFeature(
+        FeatureEvent.mistake_practice_completed,
+        assisted: !_verifiedIndependent,
+      ),
+    );
     await _saveReview(true);
     if (mounted) setState(() => _completed = true);
   }
@@ -664,6 +684,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
 
   void _retry() => setState(() {
     _attempt++;
+    _practiceActivity.reset();
     _activeLine = null;
     _previewPositions = [];
     _feedback = null;
@@ -684,6 +705,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   void _next() {
     if (_savingReview || _replyPending) return;
     _attempt++;
+    _practiceActivity.reset();
     if (_index >= _items.length - 1) {
       Navigator.pop(context);
       return;
