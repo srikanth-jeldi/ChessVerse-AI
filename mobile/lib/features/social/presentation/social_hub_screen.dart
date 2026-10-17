@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/app_language.dart';
+import '../../../core/club_localizations.dart';
 import '../../../core/desktop_navigation_bridge.dart';
 import '../../../core/widgets/coin_balance_badge.dart';
 import '../../../core/widgets/desktop_navigation_shell.dart';
@@ -15,6 +16,7 @@ import '../../auth/presentation/google_chat_gate.dart';
 import '../../online/data/online_match_api.dart';
 import '../data/social_api.dart';
 import '../data/community_api.dart';
+import 'club_activity_screen.dart';
 import '../data/e2ee_chat_service.dart';
 import 'tournament_detail_screen.dart';
 import 'tournament_circuit_view.dart';
@@ -570,6 +572,33 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
     await _refresh();
   }
 
+  bool _openingClub = false;
+  Future<void> _openClub(ClubDto club) async {
+    final session = _session;
+    if (session == null || _openingClub) return;
+    _openingClub = true;
+    try {
+      if (!club.joined) {
+        final value = await _communityApi.club(session.token, club.id, true);
+        if (!mounted) return;
+        setState(() => _community = value);
+      }
+      if (!mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => ClubActivityScreen(
+          club: club, token: session.token, onOpenMatch: widget.onOpenMatch),
+      ));
+      if (mounted) await _refresh();
+    } on SocialException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(clubText('error',
+            AppLanguageController.effectiveLanguageChanges.value ?? 'system'))));
+      }
+    } finally {
+      _openingClub = false;
+    }
+  }
   Future<void> _communityAct(Future<CommunityDto> Function() action) async {
     try {
       final CommunityDto value = await action();
@@ -767,9 +796,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
             community: _community!,
             friends: _hub!.friends,
             onRefresh: _refresh,
-            onClub: (club) => _communityAct(
-              () => _communityApi.club(_session!.token, club.id, !club.joined),
-            ),
+            onClub: _openClub,
             onTournament: (event) => _communityAct(
               () => _communityApi.tournament(
                 _session!.token,
@@ -1139,7 +1166,7 @@ class _ClubCard extends StatelessWidget {
       'Blitz Warriors' => (Icons.bolt_rounded, const Color(0xFFE29A42)),
       _ => (Icons.shield_rounded, const Color(0xFF55DCC8)),
     };
-    return _FeatureCard(
+    Widget card(String language) => _FeatureCard(
       icon: identity.$1,
       color: identity.$2,
       artwork: switch (club.name) {
@@ -1150,9 +1177,17 @@ class _ClubCard extends StatelessWidget {
       },
       title: club.name,
       subtitle: club.description,
-      meta: '${club.members} members • ${club.ratingRequirement}+ rating',
-      button: club.joined ? 'Leave' : 'Join club',
+      meta: "${club.members} ${clubText('members', language)} • ${club.ratingRequirement}+",
+      button: clubText(club.joined ? 'open' : 'join', language),
       onTap: onTap,
+    );
+    return FutureBuilder<String>(
+      future: AppLanguageController.effectiveCode(),
+      initialData: AppLanguageController.resolveCode('system'),
+      builder: (context, snapshot) => ValueListenableBuilder<String?>(
+        valueListenable: AppLanguageController.effectiveLanguageChanges,
+        builder: (context, selected, _) => card(selected ?? snapshot.data ?? 'en'),
+      ),
     );
   }
 }
