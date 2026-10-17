@@ -118,6 +118,9 @@ class SocialService {
                 Integer.class, clubId, player.id(), memberId);
         if (members == null || members != 2) throw new OnlineMatchException(HttpStatus.FORBIDDEN, "Both players must belong to this club.");
         SocialDtos.ChallengeDto result = sendChallenge(player, memberId, minutes);
+        // Hibernate defers new match/challenge inserts until flush. The JDBC
+        // club link below has a foreign key to that match and must see it first.
+        challenges.flush();
         jdbc.update("insert into club_activity_match(match_id,club_id) values (?,?) on conflict (match_id) do nothing", result.matchId(), clubId);
         return result;
     }
