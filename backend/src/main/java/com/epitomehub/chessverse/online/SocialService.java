@@ -108,6 +108,21 @@ class SocialService {
         if (link == null || !"ACCEPTED".equals(link.status)) {
             throw new OnlineMatchException(HttpStatus.FORBIDDEN, "Add this player as a friend before challenging them.");
         }
+        return sendChallenge(player, friendId, minutes);
+    }
+
+    @Transactional
+    SocialDtos.ChallengeDto clubChallenge(AuthenticatedPlayer player, UUID clubId, UUID memberId, int minutes) {
+        if (player.id().equals(memberId)) throw new OnlineMatchException(HttpStatus.BAD_REQUEST, "Choose another member.");
+        Integer members = jdbc.queryForObject("select count(*) from chess_club_member where club_id=? and player_id in (?,?)",
+                Integer.class, clubId, player.id(), memberId);
+        if (members == null || members != 2) throw new OnlineMatchException(HttpStatus.FORBIDDEN, "Both players must belong to this club.");
+        SocialDtos.ChallengeDto result = sendChallenge(player, memberId, minutes);
+        jdbc.update("insert into club_activity_match(match_id,club_id) values (?,?) on conflict (match_id) do nothing", result.matchId(), clubId);
+        return result;
+    }
+
+    private SocialDtos.ChallengeDto sendChallenge(AuthenticatedPlayer player, UUID friendId, int minutes) {
         int supported = switch (minutes) { case 3, 5, 10, 15 -> minutes; default -> 10; };
         SocialChallenge pendingBetween = challenges.recentFor(player.id()).stream()
                 .filter(value -> "PENDING".equals(value.status) && value.expiresAt.isAfter(Instant.now()))
