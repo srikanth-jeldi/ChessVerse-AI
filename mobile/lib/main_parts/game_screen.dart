@@ -1241,10 +1241,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       bottomNavigationBar:
           _signedIn &&
               !widget.spectatorMode &&
-              !_isTacticsMode &&
               _gameResultTitle != null &&
               !_resultVisible
-          ? _buildCompletedGameActions()
+          ? (_isTacticsMode
+                ? _buildCompletedChallengeActions()
+                : _buildCompletedGameActions())
           : null,
       body: DecoratedBox(
         decoration: BoxDecoration(
@@ -1819,7 +1820,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                         Positioned.fill(
                           child: GameResultOverlay(
                             languageCode: _coachLanguageCode,
-                            showCelebration: _isTacticsMode,
+                            showCelebration: false,
                             title: _resultDisplayTitle(),
                             detail: _gameResultDetail ?? 'Game complete',
                             scoreLabel: _resultScoreLabel(),
@@ -1839,7 +1840,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                 : null,
                             onNewGame: _startGameAfterResult,
                             newGameLabel: _gameMode == GameMode.puzzle
-                                ? 'Next puzzle'
+                                ? coachExtraText(
+                                    'nextPuzzle',
+                                    _coachLanguageCode,
+                                  )
                                 : null,
                             onRematch: _gameMode == GameMode.online
                                 ? () async {
@@ -1903,6 +1907,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           ),
                         ),
                       if (_signedIn &&
+                          !_isTacticsMode &&
                           _gameResultTitle != null &&
                           !_resultVisible &&
                           (_resultCelebrationTimer?.isActive ?? false) &&
@@ -2874,7 +2879,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _gameResultDetail =
         '$streak ${streak == 1 ? 'day' : 'days'} streak. '
         '${_dailyUnlockMessage()}';
-    _resultVisible = true;
+    _resultVisible = false;
     _coachNote = _dailyUnlockMessage();
   }
 
@@ -2892,7 +2897,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         '$streak ${streak == 1 ? 'day' : 'days'} streak. '
         '${milestoneBonus ? '+100 streak bonus coins! ' : ''}'
         '${_dailyUnlockMessage()}';
-    _resultVisible = true;
+    _resultVisible = false;
     _coachNote =
         "Brilliant! Today's ${_dailyDifficulty.label.toLowerCase()} challenge is complete. "
         '$streak ${streak == 1 ? 'day' : 'days'} streak. '
@@ -2915,7 +2920,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _gameResultTitle = 'Puzzle complete';
     _gameResultDetail =
         '${_activePuzzle.title} solved. Continue with the next puzzle anytime.';
-    _resultVisible = true;
+    _resultVisible = false;
     _coachNote =
         'Brilliant! ${_activePuzzle.title} complete — no daily waiting limit.';
     if (firstCompletion) {
@@ -4182,7 +4187,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _gameResultDetail = completedToday && _gameMode == GameMode.daily
           ? _dailyUnlockMessage()
           : null;
-      _resultVisible = true;
+      _resultVisible = !(completedToday && _gameMode == GameMode.daily);
       _resultSaved = false;
       _playActivity.reset();
       _analysisReadyNotified = false;
@@ -4250,6 +4255,55 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _reset();
     }
   }
+
+  Widget _buildCompletedChallengeActions() => Material(
+    key: const ValueKey('completed-challenge-actions'),
+    color: const Color(0xFF071B27),
+    child: SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.check_circle, color: Color(0xFF62DEC6)),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    localizeLiveCoach(
+                      _resultDisplayTitle(),
+                      _coachLanguageCode,
+                    ),
+                    style: const TextStyle(
+                      color: Color(0xFF62DEC6),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            TextButton(
+              key: const ValueKey('view-challenge-result'),
+              onPressed: () => setState(() => _resultVisible = true),
+              child: Text(postGameText('View result', _coachLanguageCode)),
+            ),
+            if (_gameMode == GameMode.puzzle)
+              FilledButton(
+                key: const ValueKey('next-completed-puzzle'),
+                onPressed: _postGameActionInFlight
+                    ? null
+                    : _startGameAfterResult,
+                child: Text(coachExtraText('nextPuzzle', _coachLanguageCode)),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
 
   Widget _buildCompletedGameActions() {
     String text(String source) => postGameText(source, _coachLanguageCode);
@@ -4360,7 +4414,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
     _resultSaved = true;
     if (!widget.spectatorMode &&
-        (_gameMode == GameMode.computer || _gameMode == GameMode.online ||
+        (_gameMode == GameMode.computer ||
+            _gameMode == GameMode.online ||
             (_isTacticsMode && _puzzleAttemptWasMissed))) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _gameResultTitle != null) {

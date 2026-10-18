@@ -1,8 +1,12 @@
+import 'club_streak_card.dart';
+export 'club_streak_card.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 
 import '../../../core/app_language.dart';
+import '../../../core/coach_localizations.dart';
 import '../../../core/analytics/app_analytics.dart';
 import '../../../core/club_localizations.dart';
 import '../../../core/club_learning_strings.dart';
@@ -634,105 +638,6 @@ class _ClubActivityScreenState extends State<ClubActivityScreen>
   }
 }
 
-class ClubStreakCard extends StatelessWidget {
-  const ClubStreakCard({
-    super.key,
-    required this.reward,
-    required this.language,
-  });
-  final Map<String, dynamic> reward;
-  final String language;
-  @override
-  Widget build(BuildContext context) {
-    String l(String k) => clubLearningText(k, language);
-    final streak = (reward['streak'] as num?)?.toInt() ?? 0;
-    final award = (reward['awardedCoins'] as num?)?.toInt() ?? 0;
-    final current = streak == 0 ? 0 : (streak - 1) % 7 + 1;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '${l('streak')} · $streak',
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 6,
-          runSpacing: 8,
-          children: [
-            for (final e in [5, 10, 15, 15, 15, 15, 25].indexed)
-              Container(
-                width: 32,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: e.$1 < current
-                      ? const Color(0xFF185950)
-                      : const Color(0xFF18273B),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: e.$1 == current
-                        ? const Color(0xFFE5BE65)
-                        : const Color(0xFF33505D),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      '${e.$1 + 1}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.white70,
-                      ),
-                    ),
-                    Icon(
-                      e.$1 < current
-                          ? Icons.check_circle
-                          : Icons.monetization_on_outlined,
-                      size: 18,
-                      color: const Color(0xFFE5BE65),
-                    ),
-                    Text(
-                      '+${e.$2}',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (award > 0)
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: award.toDouble()),
-            duration: const Duration(milliseconds: 700),
-            builder: (context, v, child) => Text(
-              '+${v.round()} ${l('coins')}',
-              key: const ValueKey('club-coins-awarded'),
-              style: const TextStyle(
-                fontSize: 26,
-                color: Color(0xFF62DEC6),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        Text(
-          reward['earnedToday'] == true
-              ? l('tomorrow')
-              : '${l('next')}: +${reward['nextCoins'] ?? 5} ${l('coins')}',
-          style: const TextStyle(color: Color(0xFFE5BE65), height: 1.5),
-        ),
-        ExpansionTile(
-          tilePadding: EdgeInsets.zero,
-          title: Text(l('coins')),
-          children: [
-            Text(l('rewardRules'), style: const TextStyle(height: 1.5)),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
 class ClubPuzzleScreen extends StatefulWidget {
   const ClubPuzzleScreen({
     super.key,
@@ -914,7 +819,7 @@ class _ClubPuzzleScreenState extends State<ClubPuzzleScreen>
           _reward = result['reward'] is Map
               ? Map<String, dynamic>.from(result['reward'] as Map)
               : null;
-          _feedback = _complete ? 'complete' : 'goal';
+          _feedback = _complete ? 'complete' : 'good';
         } else {
           _feedback = 'wrong';
         }
@@ -1157,9 +1062,18 @@ class _ClubPuzzleScreenState extends State<ClubPuzzleScreen>
                         Text(
                           _feedback == 'wrong'
                               ? mistakePracticeText('unverified', language)
+                              : _feedback == 'good'
+                              ? CoachLocalizations(language).text('good')
                               : t(_feedback!),
                           key: const ValueKey('club-puzzle-feedback'),
-                          style: const TextStyle(height: 1.5),
+                          style: TextStyle(
+                            height: 1.5,
+                            fontWeight: FontWeight.w700,
+                            color:
+                                _feedback == 'good' || _feedback == 'complete'
+                                ? const Color(0xFF62DEC6)
+                                : Colors.white,
+                          ),
                         ),
                       ),
                     if (_hint > 0 && _nextMove != null)

@@ -93,9 +93,11 @@ void main() {
     expect(find.text('EXPORT PGN / FEN'), findsOneWidget);
     expect(find.text('SHARE RESULT'), findsOneWidget);
 
-    await tester.tap(
+    await tester.ensureVisible(
       find.byKey(const ValueKey<String>('export-game-data')),
     );
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey<String>('export-game-data')));
     // The winner overlay has a continuous celebration animation, so waiting
     // for every frame to settle would never complete. One dialog transition
     // duration is enough to reveal the export choices deterministically.

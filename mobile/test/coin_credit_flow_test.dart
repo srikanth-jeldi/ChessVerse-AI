@@ -19,15 +19,16 @@ class Rewards extends EconomyRewardsApi {
   int calls = 0;
   int? failAt;
   bool credit = false;
+  int creditAfter = 2;
   @override
   Future<EconomyRewardStatus> status(String token) async {
     calls++;
     if (calls == failAt) throw const EconomyRewardsException('expired', 401);
     return EconomyRewardStatus(
-      coins: calls > 2 ? 130 : 100,
+      coins: calls > creditAfter ? 130 : 100,
       dailyAvailable: false,
       nextDailyAt: null,
-      rewardedAdsRemaining: credit && calls > 2 ? 14 : 15,
+      rewardedAdsRemaining: credit && calls > creditAfter ? 14 : 15,
       nextRewardedAdAt: null,
       dailyCoins: 100,
       coinsPerAd: 30,
@@ -38,6 +39,7 @@ class Rewards extends EconomyRewardsApi {
 class Video extends RewardedCoinService {
   Video() : super.forTesting();
   int shows = 0;
+  RewardedCoinOutcome outcome = RewardedCoinOutcome.earned;
   @override
   bool get supported => true;
   @override
@@ -49,7 +51,7 @@ class Video extends RewardedCoinService {
     required String token,
   }) async {
     shows++;
-    return RewardedCoinOutcome.earned;
+    return outcome;
   }
 }
 
@@ -59,6 +61,9 @@ void main() {
     'expired before',
     'expired after',
     'unrelated coins',
+    'delayed credit',
+    'unavailable',
+    'dismissed',
   ]) {
     testWidgets('video reward flow: $scenario', (tester) async {
       FlutterSecureStorage.setMockInitialValues({});
@@ -66,13 +71,20 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       final rewards = Rewards()
-        ..credit = scenario == 'credit'
+        ..credit = scenario == 'credit' || scenario == 'delayed credit'
+        ..creditAfter = scenario == 'delayed credit' ? 3 : 2
         ..failAt = scenario == 'expired before'
             ? 2
             : scenario == 'expired after'
             ? 3
             : null;
       final video = Video();
+      if (scenario == 'unavailable') {
+        video.outcome = RewardedCoinOutcome.unavailable;
+      }
+      if (scenario == 'dismissed') {
+        video.outcome = RewardedCoinOutcome.dismissed;
+      }
       await tester.pumpWidget(
         MaterialApp(
           home: CosmeticShopScreen(
@@ -86,32 +98,46 @@ void main() {
       for (var i = 0; i < 5; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
-      await tester.ensureVisible(find.text('WATCH VIDEO'));
-      await tester.tap(find.text('WATCH VIDEO'));
+      await tester.ensureVisible(find.text('Watch video'));
+      await tester.tap(find.text('Watch video'));
       await tester.pump();
-      await tester.pump(const Duration(seconds: 3));
       await tester.pump();
       if (scenario == 'credit') {
-        expect(
-          find.text('Reward confirmed. Your coin balance is up to date.'),
-          findsOneWidget,
-        );
+        // Credit and gain animation must appear without a two-second wait.
+        expect(rewards.calls, 3);
+        expect(find.byKey(const ValueKey('coin-reward-gain')), findsOneWidget);
+        expect(find.text('+30'), findsOneWidget);
+      }
+      if (scenario == 'credit') {
+        expect(find.text('+30 coins added · Balance 130'), findsOneWidget);
         expect(video.shows, 1);
-      } else if (scenario.startsWith('expired')) {
+      } else if (scenario == 'delayed credit') {
+        expect(find.byKey(const ValueKey('coin-reward-gain')), findsNothing);
+        expect(find.textContaining('Confirming +30'), findsWidgets);
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump();
+        expect(find.text('+30 coins added · Balance 130'), findsOneWidget);
+        expect(find.byKey(const ValueKey('coin-reward-gain')), findsOneWidget);
+      } else if (scenario == 'unavailable' || scenario == 'dismissed') {
+        expect(rewards.calls, 2);
+        expect(find.byKey(const ValueKey('coin-reward-gain')), findsNothing);
         expect(
-          find.textContaining('Your session has expired.'),
+          find.textContaining(
+            scenario == 'unavailable'
+                ? 'No video available'
+                : 'Video closed early',
+          ),
           findsOneWidget,
         );
+      } else if (scenario.startsWith('expired')) {
+        expect(find.textContaining('Session expired.'), findsOneWidget);
         expect(video.shows, scenario == 'expired before' ? 0 : 1);
         final calls = rewards.calls;
         await tester.pump(const Duration(seconds: 10));
         expect(rewards.calls, calls);
       } else {
-        expect(
-          find.text('Reward confirmed. Your coin balance is up to date.'),
-          findsNothing,
-        );
-        expect(find.textContaining('Confirming your +30'), findsOneWidget);
+        expect(find.text('+30 coins added · Balance 130'), findsNothing);
+        expect(find.textContaining('Confirming +30'), findsWidgets);
       }
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

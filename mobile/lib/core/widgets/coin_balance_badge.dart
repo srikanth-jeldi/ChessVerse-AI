@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../app_language.dart';
+import '../shop_localizations.dart';
+
 class CoinBalanceBadge extends StatelessWidget {
   const CoinBalanceBadge({
     required this.balance,
@@ -17,8 +20,13 @@ class CoinBalanceBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String amount = balance == null ? '—' : formatCoinAmount(balance!);
+    final label = shopText(
+      'coins',
+      AppLanguageController.effectiveLanguageChanges.value ??
+          AppLanguageController.resolveCode('system'),
+    );
     return Semantics(
-      label: balance == null ? 'Coin balance loading' : 'Your coins $amount',
+      label: '$label $amount',
       button: onTap != null,
       child: Material(
         color: Colors.transparent,
@@ -70,8 +78,8 @@ class CoinBalanceBadge extends StatelessWidget {
                 ),
                 SizedBox(width: expandedLabel ? 8 : 6),
                 if (expandedLabel)
-                  const Text(
-                    'Your Coins: ',
+                  Text(
+                    '$label: ',
                     style: TextStyle(
                       color: Color(0xFFDCE8F0),
                       fontSize: 13,

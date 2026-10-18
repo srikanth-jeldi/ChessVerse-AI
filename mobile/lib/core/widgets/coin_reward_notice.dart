@@ -9,21 +9,18 @@ class CoinRewardNotice extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     liveRegion: true,
     child: Container(
-      width: 330,
+      constraints: const BoxConstraints(maxWidth: 480),
       margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF102B3B),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x805DE9D3)),
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.info_outline_rounded,
+          Icon(
+            message.startsWith('+')
+                ? Icons.check_circle_outline_rounded
+                : Icons.info_outline_rounded,
             color: Color(0xFFFFD66B),
-            size: 20,
+            size: 16,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -31,7 +28,7 @@ class CoinRewardNotice extends StatelessWidget {
               message,
               style: const TextStyle(
                 color: Color(0xFFE3EDF3),
-                fontSize: 14,
+                fontSize: 12,
                 height: 1.4,
               ),
             ),

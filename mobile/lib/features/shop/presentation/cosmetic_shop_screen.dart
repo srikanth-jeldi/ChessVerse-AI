@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/ads/banner_ad_slot.dart';
 import '../../../core/app_preferences.dart';
+import '../../../core/app_language.dart';
+import '../../../core/shop_localizations.dart';
 import '../../../core/ads/rewarded_coin_service.dart';
 import '../../../core/chess_piece_appearance.dart';
 import '../../../core/widgets/desktop_app_sidebar.dart';
@@ -11,6 +13,13 @@ import '../../../core/widgets/animated_coin_reward_balance.dart';
 import '../../../core/widgets/coin_reward_notice.dart';
 import '../data/shop_api.dart';
 import '../data/economy_rewards_api.dart';
+
+String _s(String key, [Map<String, Object> values = const {}]) => shopText(
+  key,
+  AppLanguageController.effectiveLanguageChanges.value ??
+      AppLanguageController.resolveCode('system'),
+  values,
+);
 
 const Duration freeCoinCooldown = Duration(hours: 8);
 
@@ -109,6 +118,9 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   @override
   void initState() {
     super.initState();
+    AppLanguageController.effectiveLanguageChanges.addListener(
+      _languageChanged,
+    );
     _load();
     unawaited(_rewardedCoins.load());
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -120,8 +132,15 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     });
   }
 
+  void _languageChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    AppLanguageController.effectiveLanguageChanges.removeListener(
+      _languageChanged,
+    );
     _countdownTimer?.cancel();
     super.dispose();
   }
@@ -149,7 +168,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       if (mounted) {
         setState(() {
           _busy = false;
-          _error = e is ShopException ? e.message : 'Shop unavailable.';
+          _error = _s('unavailable');
         });
       }
     }
@@ -192,10 +211,10 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
           SnackBar(
             content: Text(
               restoreDefault
-                  ? 'Default ${item.category == 'BOARD' ? 'board' : 'pieces'} restored • Ready for your next game'
+                  ? _s('saved')
                   : purchasing
-                  ? '${item.name} purchased • Tap Equip to use it'
-                  : '${item.name} equipped • Ready for your next game',
+                  ? _s('purchased')
+                  : _s('saved'),
             ),
             behavior: SnackBarBehavior.floating,
           ),
@@ -206,7 +225,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         setState(() => _busy = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e is ShopException ? e.message : 'Try again.'),
+            content: Text(_s('retry')),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -219,49 +238,63 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Widget page = Scaffold(
-      backgroundColor: const Color(0xFF061524),
-      bottomNavigationBar: const BannerAdSlot(),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF071B2D),
-        title: const Text(
-          'ROYAL COLLECTION',
-          style: TextStyle(
-            color: Colors.white,
-            fontFamily: 'serif',
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
+    final Widget page = Directionality(
+      textDirection:
+          [
+            'ar',
+            'ur',
+            'fa',
+            'he',
+          ].contains(AppLanguageController.effectiveLanguageChanges.value)
+          ? TextDirection.rtl
+          : TextDirection.ltr,
+      child: Scaffold(
+        backgroundColor: const Color(0xFF061524),
+        bottomNavigationBar: const BannerAdSlot(),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF0B1520),
+          title: Text(
+            _s('collection'),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.3,
+            ),
           ),
+          actions: [
+            IconButton(
+              onPressed: _load,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+          ],
         ),
-        actions: [
-          IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
-        ],
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment.topCenter,
-            radius: 1.2,
-            colors: [Color(0xFF103753), Color(0xFF061524), Color(0xFF020B13)],
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.topCenter,
+              radius: 1.2,
+              colors: [Color(0xFF101E2C), Color(0xFF0B1520), Color(0xFF0B1520)],
+            ),
           ),
+          child: _busy && _shop == null
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _error!,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton(onPressed: _load, child: Text(_s('retry'))),
+                    ],
+                  ),
+                )
+              : _content(),
         ),
-        child: _busy && _shop == null
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-            ? Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _error!,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton(onPressed: _load, child: const Text('Retry')),
-                  ],
-                ),
-              )
-            : _content(),
       ),
     );
     return LayoutBuilder(
@@ -324,9 +357,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                   wide ? 40 : 16,
                   4,
                 ),
-                sliver: const SliverToBoxAdapter(
-                  child: _PieceCollectionGuide(),
-                ),
+                sliver: SliverToBoxAdapter(child: _PieceCollectionGuide()),
               ),
             if (_category == 'FRAME')
               SliverPadding(
@@ -336,7 +367,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                   wide ? 40 : 16,
                   4,
                 ),
-                sliver: const SliverToBoxAdapter(child: _BadgePurposeCard()),
+                sliver: SliverToBoxAdapter(child: _BadgePurposeCard()),
               ),
             SliverPadding(
               padding: EdgeInsets.fromLTRB(
@@ -372,94 +403,102 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     );
   }
 
-  Widget _hero(ShopDto s) => Container(
-    padding: const EdgeInsets.all(22),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(26),
-      gradient: const LinearGradient(
-        colors: [Color(0xFF123D55), Color(0xFF071625), Color(0xFF17152C)],
-      ),
-      border: Border.all(color: const Color(0x99E2B451)),
-      boxShadow: const [BoxShadow(color: Color(0x305DE9D3), blurRadius: 30)],
-    ),
-    child: Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      runSpacing: 16,
-      children: [
-        const SizedBox(
-          width: 430,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.workspace_premium_rounded,
-                    color: Color(0xFFFFD266),
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'CHESSVERSEAI ROYAL COLLECTION',
-                      style: TextStyle(
-                        color: Color(0xFFF4C75B),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.6,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 7),
-              Text(
-                'Collect. Customize. Compete.',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontFamily: 'serif',
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              SizedBox(height: 6),
-              Text(
-                'Extraordinary boards, pieces and badges for extraordinary minds.',
-                style: TextStyle(color: Color(0xFFB7CAD7)),
-              ),
-            ],
-          ),
+  Widget _hero(ShopDto s) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        _s('collection'),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 26,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.7,
         ),
-        Column(
-          mainAxisSize: MainAxisSize.min,
+      ),
+      const SizedBox(height: 6),
+      Text(
+        '${_s('boards')} · ${_s('pieces')} · ${_s('badges')}',
+        style: TextStyle(color: Color(0xFF9EACBB), fontSize: 13, height: 1.5),
+      ),
+      const SizedBox(height: 22),
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
+        decoration: BoxDecoration(
+          color: const Color(0xFF101F2E),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFF2A3947)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _s('wallet'),
+                        style: TextStyle(
+                          color: Color(0xFFA7B4C2),
+                          fontSize: 10,
+                          letterSpacing: 1.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 5),
+                      Text(
+                        _s('coins'),
+                        style: TextStyle(color: Colors.white, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
                 AnimatedCoinRewardBalance(
                   balance: _coinBalance ?? s.wallet.coins,
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            FilledButton.icon(
-              onPressed: _busy
-                  ? null
-                  : (_rewards?.dailyAvailable ?? false)
-                  ? _claimDaily
-                  : null,
-              icon: const Icon(Icons.card_giftcard_rounded),
-              label: Text(
-                (_rewards?.dailyAvailable ?? false)
-                    ? 'CLAIM FREE • +100 COINS'
-                    : 'NEXT FREE DROP • ${_freeDropCountdown()}',
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFB8862F),
-              ),
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: Color(0xFF2A3947)),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                const Icon(
+                  Icons.card_giftcard_rounded,
+                  size: 19,
+                  color: Color(0xFFD9BB78),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    (_rewards?.dailyAvailable ?? false)
+                        ? _s('freeDrop')
+                        : '${_s('freeDrop')} · ${_freeDropCountdown()}',
+                    style: const TextStyle(
+                      color: Color(0xFFB8C4D0),
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: !_busy && (_rewards?.dailyAvailable ?? false)
+                      ? _claimDaily
+                      : null,
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFFE8C779),
+                    disabledForegroundColor: const Color(0xFF788796),
+                  ),
+                  child: Text(
+                    '+${_rewards?.dailyCoins ?? 100}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
-            OutlinedButton.icon(
+            FilledButton.icon(
               onPressed:
                   _busy ||
                       _preparingRewardAd ||
@@ -471,27 +510,31 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
               icon: Icon(
                 _preparingRewardAd || _verifyingReward
                     ? Icons.hourglass_top_rounded
-                    : Icons.play_circle_fill_rounded,
+                    : Icons.play_circle_outline_rounded,
+                size: 21,
               ),
               label: _rewardVideoLabel(),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(330, 58),
-                alignment: Alignment.center,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 52),
+                backgroundColor: const Color(0xFFDEC18A),
+                foregroundColor: const Color(0xFF15202B),
+                disabledBackgroundColor: const Color(0xFF1D2C3A),
+                disabledForegroundColor: const Color(0xFF9AAABA),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 8,
+                  horizontal: 12,
+                  vertical: 10,
                 ),
-                foregroundColor: const Color(0xFF5DE9D3),
-                disabledForegroundColor: const Color(0xFF8FA3AA),
-                side: const BorderSide(color: Color(0x805DE9D3)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             if (_rewardMessage != null)
               CoinRewardNotice(message: _rewardMessage!),
           ],
         ),
-      ],
-    ),
+      ),
+    ],
   );
 
   String _freeDropCountdown() {
@@ -506,7 +549,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
           _rewardRefreshPending = false;
         });
       }
-      return 'READY';
+      return _s('ready');
     }
     return formatFreeCoinCountdown(remaining);
   }
@@ -522,13 +565,11 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       setState(() {
         _rewards = credited;
         _coinBalance = credited.coins;
-        _rewardMessage = 'Free reward added to your coin balance.';
+        _rewardMessage = _s('confirmed', {'balance': credited.coins});
       });
     } catch (_) {
       if (mounted) {
-        setState(
-          () => _rewardMessage = 'Could not confirm the free reward. Refresh your balance before trying again.',
-        );
+        setState(() => _rewardMessage = _s('pending'));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -537,10 +578,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
 
   Future<void> _watchAd(ShopDto shop) async {
     if (!_rewardedCoins.supported) {
-      setState(
-        () => _rewardMessage =
-            'Rewarded videos are available in the Android and iOS app.',
-      );
+      setState(() => _rewardMessage = _s('mobile'));
       return;
     }
     if (_preparingRewardAd || _verifyingReward) return;
@@ -555,12 +593,16 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       if (!mounted) return;
       final int rewardAmount = before.coinsPerAd;
       final int adsBefore = before.rewardedAdsRemaining;
+      setState(() {
+        _rewards = before;
+        _coinBalance = before.coins;
+      });
       if (adsBefore <= 0 ||
           (before.nextRewardedAdAt?.isAfter(DateTime.now()) ?? false)) {
         setState(() {
           _rewards = before;
           _coinBalance = before.coins;
-          _rewardMessage = 'Your next video reward is not available yet.';
+          _rewardMessage = _s('unavailable');
         });
         return;
       }
@@ -573,15 +615,14 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       if (outcome != RewardedCoinOutcome.earned) {
         setState(
           () => _rewardMessage = outcome == RewardedCoinOutcome.dismissed
-              ? 'Video closed before the reward was earned. Watch a full video to earn coins.'
-              : 'No video is available right now. Try again later. No coins were added.',
+              ? _s('closed')
+              : _s('noVideo'),
         );
         return;
       }
       setState(() {
         _verifyingReward = true;
-        _rewardMessage =
-            'Video completed. Confirming your +$rewardAmount coins…';
+        _rewardMessage = _s('verifying', {'amount': rewardAmount});
       });
       final credited = await _waitForRewardCredit(adsBefore);
       if (!mounted) return;
@@ -589,24 +630,25 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         if (credited != null) {
           _rewards = credited;
           _coinBalance = credited.coins;
-          _rewardMessage = 'Reward confirmed. Your coin balance is up to date.';
+          final gain = credited.coins - before.coins;
+          _rewardMessage = gain > 0
+              ? _s('added', {'amount': gain, 'balance': credited.coins})
+              : _s('confirmed', {'balance': credited.coins});
         } else {
-          _rewardMessage = 'Video completed. Reward confirmation is taking longer than usual. Refresh your balance before watching another video.';
+          _rewardMessage = _s('pending');
         }
       });
     } on EconomyRewardsException catch (error) {
       if (mounted) {
         setState(
           () => _rewardMessage = error.statusCode == 401
-              ? 'Your session has expired. Sign in again to check your saved coin balance.'
-              : 'Could not confirm the video reward. Refresh your balance and try again later.',
+              ? _s('expired')
+              : _s('pending'),
         );
       }
     } catch (_) {
       if (mounted) {
-        setState(
-          () => _rewardMessage = 'Could not confirm the video reward. Refresh your balance and try again later.',
-        );
+        setState(() => _rewardMessage = _s('pending'));
       }
     } finally {
       if (mounted) {
@@ -620,54 +662,46 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
 
   Widget _rewardVideoLabel() {
     if (_preparingRewardAd) {
-      return const Text(
-        'PREPARING VIDEO…',
-        textAlign: TextAlign.center,
-        maxLines: 1,
-      );
+      return Text(_s('preparing'), textAlign: TextAlign.center, softWrap: true);
     }
     if (_verifyingReward) {
       return Text(
-        'VERIFYING +30 COINS…',
+        _s('verifying', {'amount': _rewards?.coinsPerAd ?? 30}),
         textAlign: TextAlign.center,
-        maxLines: 1,
+        softWrap: true,
       );
     }
-    if (!RewardedCoinService.instance.supported) {
-      return const Text(
-        'FREE COINS • MOBILE APP',
-        textAlign: TextAlign.center,
-        maxLines: 1,
-      );
+    if (!_rewardedCoins.supported) {
+      return Text(_s('mobile'), textAlign: TextAlign.center, softWrap: true);
     }
     final int remaining = _rewards?.rewardedAdsRemaining ?? 0;
     if (remaining <= 0) {
       return Text(
-        'NEXT VIDEO • ${_rewardedAdCountdown()}',
+        '${_s('nextVideo')} · ${_rewardedAdCountdown()}',
         textAlign: TextAlign.center,
-        maxLines: 1,
+        softWrap: true,
       );
     }
     if (_rewardedCooldownRemaining() > Duration.zero) {
       return Text(
-        'NEXT VIDEO • ${formatFreeCoinCountdown(_rewardedCooldownRemaining())}',
+        '${_s('nextVideo')} · ${formatFreeCoinCountdown(_rewardedCooldownRemaining())}',
         textAlign: TextAlign.center,
-        maxLines: 1,
+        softWrap: true,
       );
     }
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        const Text(
-          'WATCH VIDEO',
+        Text(
+          _s('watch'),
           textAlign: TextAlign.center,
-          maxLines: 1,
+          softWrap: true,
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
         Text(
-          '+${_rewards?.coinsPerAd ?? 30} COINS • $remaining LEFT',
+          '+${_rewards?.coinsPerAd ?? 30} ${_s('coins')} · ${_s('remaining', {'count': remaining})}',
           textAlign: TextAlign.center,
-          maxLines: 1,
+          softWrap: true,
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
         ),
       ],
@@ -686,7 +720,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
           _rewardRefreshPending = false;
         });
       }
-      return 'READY';
+      return _s('ready');
     }
     return formatFreeCoinCountdown(remaining);
   }
@@ -700,8 +734,14 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
 
   Future<EconomyRewardStatus?> _waitForRewardCredit(int adsBefore) async {
     final DateTime deadline = DateTime.now().add(const Duration(seconds: 60));
+    bool firstCheck = true;
     while (DateTime.now().isBefore(deadline)) {
-      await Future<void>.delayed(const Duration(seconds: 2));
+      // SSV may already have credited the wallet while the video was open.
+      // Check immediately; delay only subsequent retries.
+      if (!firstCheck) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+      }
+      firstCheck = false;
       if (!mounted) return null;
       final Duration remaining = deadline.difference(DateTime.now());
       if (remaining <= Duration.zero) break;
@@ -736,13 +776,13 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         for (final t in ['BOARD', 'PIECES', 'FRAME'])
           ChoiceChip(
             label: Text(switch (t) {
-              'BOARD' => 'BOARDS',
-              'PIECES' => '3D PIECES',
-              _ => 'BADGES',
+              'BOARD' => _s('boards'),
+              'PIECES' => _s('pieces'),
+              _ => _s('badges'),
             }),
             selected: _category == t,
             onSelected: (_) => setState(() => _category = t),
-            selectedColor: const Color(0xFF1E766F),
+            selectedColor: const Color(0xFF263D4D),
             labelStyle: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w800,
@@ -819,15 +859,23 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                     spacing: 7,
                     runSpacing: 6,
                     children: <Widget>[
-                      _pieceTag(_pieceTier(item)),
-                      _pieceTag('12 PIECES • BOTH SIDES'),
-                      _pieceTag(item.owned ? 'OWNED' : 'ONE-TIME UNLOCK'),
+                      _pieceTag(
+                        item.priceAmount == 0 ? _s('free') : _s('coins'),
+                      ),
+                      _pieceTag(_s('pieces')),
+                      _pieceTag(item.owned ? _s('owned') : _s('collection')),
                     ],
                   ),
                 ],
                 const SizedBox(height: 4),
                 Text(
-                  item.description,
+                  _s(
+                    item.category == 'PIECES'
+                        ? 'piecesInfo'
+                        : item.category == 'FRAME'
+                        ? 'badgesInfo'
+                        : 'boards',
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -853,14 +901,14 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                     ),
                     label: Text(
                       canRestoreDefault
-                          ? 'USE DEFAULT'
+                          ? _s('default')
                           : item.equipped
-                          ? 'EQUIPPED'
+                          ? _s('equipped')
                           : item.owned
-                          ? 'EQUIP'
+                          ? _s('equip')
                           : item.priceCurrency == 'FREE'
-                          ? 'FREE'
-                          : '${item.priceAmount} ${item.priceCurrency}',
+                          ? _s('free')
+                          : '${item.priceAmount} ${_s(item.priceCurrency == 'DIAMONDS' ? 'diamonds' : 'coins')}',
                     ),
                     style: FilledButton.styleFrom(
                       backgroundColor: item.priceCurrency == 'DIAMONDS'
@@ -895,13 +943,6 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       ),
     ),
   );
-
-  String _pieceTier(CosmeticItemDto item) {
-    if (item.priceAmount == 0) return 'STARTER • FREE';
-    if (item.priceAmount <= 1200) return 'PREMIUM';
-    if (item.priceAmount <= 1800) return 'ELITE';
-    return 'LEGENDARY';
-  }
 
   Widget _badgePreview(CosmeticItemDto item, Color accent) => Container(
     width: double.infinity,
@@ -941,7 +982,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
               border: Border.all(color: accent.withValues(alpha: .8)),
             ),
             child: Text(
-              _badgeRarity(item.slug),
+              _s('badges'),
               style: TextStyle(
                 color: accent,
                 fontSize: 10,
@@ -965,17 +1006,6 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     'blitz-charger' => 'assets/badges/blitz-charger-v1.webp',
     'checkmate-crown' => 'assets/badges/checkmate-crown-v1.webp',
     _ => 'assets/badges/academy-scout-v1.webp',
-  };
-
-  String _badgeRarity(String slug) => switch (slug) {
-    'academy-scout' => 'COMMON',
-    'tactical-eye' ||
-    'streak-flame' ||
-    'puzzle-hunter' ||
-    'blitz-charger' => 'RARE',
-    'royal-master' || 'opening-sage' => 'EPIC',
-    'checkmate-crown' => 'LEGENDARY',
-    _ => 'COLLECTIBLE',
   };
 
   IconData _badgeIcon(String? key) => switch (key) {
@@ -1026,8 +1056,8 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
               borderRadius: BorderRadius.circular(999),
               border: Border.all(color: const Color(0x99F4C75B)),
             ),
-            child: const Text(
-              'ROYAL 3D SET',
+            child: Text(
+              _s('pieces'),
               style: TextStyle(
                 color: Color(0xFFFFD77A),
                 fontSize: 9,
@@ -1162,7 +1192,7 @@ class _BadgePurposeCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(18),
       border: Border.all(color: const Color(0x805DE9D3)),
     ),
-    child: const Row(
+    child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Icon(Icons.workspace_premium_rounded, color: Color(0xFFE7B54D)),
@@ -1172,7 +1202,7 @@ class _BadgePurposeCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                'MAKE YOUR PROFILE RECOGNIZABLE',
+                _s('badges'),
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
@@ -1180,7 +1210,7 @@ class _BadgePurposeCard extends StatelessWidget {
               ),
               SizedBox(height: 4),
               Text(
-                'Collect and equip one badge at a time. Your selected badge is saved to your Royal Collection loadout and represents your chess identity.',
+                _s('badgesInfo'),
                 style: TextStyle(color: Color(0xFF9FB6C8), height: 1.35),
               ),
             ],
@@ -1202,7 +1232,7 @@ class _PieceCollectionGuide extends StatelessWidget {
       borderRadius: BorderRadius.circular(18),
       border: Border.all(color: const Color(0x805DE9D3)),
     ),
-    child: const Row(
+    child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Icon(Icons.auto_awesome_rounded, color: Color(0xFFF4C75B)),
@@ -1212,7 +1242,7 @@ class _PieceCollectionGuide extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                'ROYAL 3D PIECES • PERMANENT ACCOUNT UNLOCK',
+                _s('pieces'),
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
@@ -1220,7 +1250,7 @@ class _PieceCollectionGuide extends StatelessWidget {
               ),
               SizedBox(height: 4),
               Text(
-                'Every purchase includes the complete white and black set: King, Queen, Rook, Bishop, Knight and Pawn. Buy once with play coins, then equip it anytime on web or mobile.',
+                _s('piecesInfo'),
                 style: TextStyle(color: Color(0xFFB7CAD8), height: 1.35),
               ),
             ],
