@@ -1,3 +1,4 @@
+import 'game_feedback_localizations.dart';
 import 'app_language.dart';
 import 'analysis_dashboard_localizations.dart';
 import 'coach_localizations.dart';
@@ -725,16 +726,16 @@ String? _translateDaily(String value, String code) {
   }
   m = RegExp(r'^Brilliant! (.+) complete — no daily waiting limit\.$')
       .firstMatch(value);
-  if (m != null) return t('puzzleDone', {'title': m[1]!});
+  if (m != null) return t('puzzleDone', {'title': localizedPuzzleTitle(m[1]!, code)});
   m = RegExp(r'^(.+) solved\. Continue with the next puzzle anytime\.$')
       .firstMatch(value);
-  if (m != null) return t('puzzleSolved', {'title': m[1]!});
+  if (m != null) return t('puzzleSolved', {'title': localizedPuzzleTitle(m[1]!, code)});
   m = RegExp(r'^Move any legal white coin\. Checkmate in (\d+) moves\.$')
       .firstMatch(value);
   if (m != null) return t('legalWhite', {'count': m[1]!});
   m = RegExp(r'^(.+): checkmate in (\d+) moves\.$').firstMatch(value);
   if (m != null) {
-    return '${m[1]}: ${localizeLiveCoach('Checkmate in ${m[2]}', code)}';
+    return '${localizedPuzzleTitle(m[1]!, code)}: ${localizeLiveCoach('Checkmate in ${m[2]}', code)}';
   }
   m = RegExp(r'^No checkmate within (\d+) moves\.(.*)$').firstMatch(value);
   if (m != null) {

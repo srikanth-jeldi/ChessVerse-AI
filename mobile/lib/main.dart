@@ -23,6 +23,7 @@ import 'core/coach_localizations.dart';
 import 'core/coach_extra_localizations.dart';
 import 'core/live_coach_localizations.dart';
 import 'core/post_game_localizations.dart';
+import 'core/game_feedback_localizations.dart';
 import 'core/analysis_dashboard_localizations.dart';
 import 'core/computer_game_store.dart';
 import 'core/review_narrative_localizations.dart';

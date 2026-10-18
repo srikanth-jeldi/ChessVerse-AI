@@ -1709,11 +1709,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           left: wide ? 24 : 12,
                           right: wide ? widePanelWidth + 42 : 12,
                           child: _TurnBanner(
-                            label: _gameMode == GameMode.local
-                                ? (_moves.length.isEven
-                                      ? 'PLAYER 1 • WHITE'
-                                      : 'PLAYER 2 • BLACK')
-                                : 'YOUR TURN',
+                            label: _localizedLiveCoachText(
+                              _gameMode == GameMode.local
+                                  ? (_moves.length.isEven
+                                        ? 'PLAYER 1 • WHITE'
+                                        : 'PLAYER 2 • BLACK')
+                                  : 'YOUR TURN',
+                              _coachLanguageCode,
+                            ),
                           ),
                         ),
                       if (_signedIn &&
@@ -4902,13 +4905,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _showHint() async {
-    if (_gameResultTitle != null) return;
+    if (!mounted || _gameResultTitle != null) return;
     final bool whiteToMove = _isTacticsMode ? true : _moves.length.isEven;
+    final int requestEpoch = ++_coachRequestEpoch;
+    final String requestedFen = _toFen();
     final int hintStage = (_hintStage % 3) + 1;
     setState(() => _hintStage = hintStage);
     if (_gameMode == GameMode.computer && widget.useRemoteEngine) {
-      final int requestEpoch = ++_coachRequestEpoch;
-      final String requestedFen = _toFen();
       try {
         setState(() => _coachNote = 'Stockfish is finding your best plan…');
         final Map<String, dynamic> engine = await _engineApi.analyze(
@@ -4942,6 +4945,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       } on EngineApiException {
         // Continue with the always-available local hint below.
       }
+    }
+    // Failed requests also resume after navigation or a changed position.
+    if (!mounted ||
+        requestEpoch != _coachRequestEpoch ||
+        requestedFen != _toFen()) {
+      return;
     }
     String? bestFrom;
     List<String> bestTargets = <String>[];
@@ -5009,11 +5018,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _showAnalysis() async {
+    if (!mounted) return;
+    final int requestEpoch = ++_coachRequestEpoch;
+    final String requestedFen = _toFen();
     final bool whiteToMove = _moves.length.isEven;
     PositionAnalysis analysis = _analyzePosition(whiteToMove);
     if (_gameMode == GameMode.computer && widget.useRemoteEngine) {
-      final int requestEpoch = ++_coachRequestEpoch;
-      final String requestedFen = _toFen();
       try {
         setState(() => _coachNote = 'Running Stockfish position analysis…');
         final Map<String, dynamic> engine = await _engineApi.analyze(
@@ -5059,6 +5069,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       } on EngineApiException {
         // The local analysis remains useful while the engine is offline.
       }
+    }
+
+    // Failed requests also resume after navigation or a changed position.
+    if (!mounted ||
+        requestEpoch != _coachRequestEpoch ||
+        requestedFen != _toFen()) {
+      return;
     }
 
     setState(() {

@@ -1156,8 +1156,8 @@ class GameResultOverlay extends StatelessWidget {
                         SizedBox(height: shortLandscape ? 3 : 8),
                         Text(
                           missed
-                              ? 'This attempt is not counted as a loss. Review the position and retry today.'
-                              : 'Saved locally. Open Saved Games to review this match.',
+                              ? gameFeedbackText('retry', languageCode)
+                              : gameFeedbackText('saved', languageCode),
                           textAlign: TextAlign.center,
                           style: const TextStyle(color: Color(0xFFAAA69E)),
                         ),
