@@ -26,6 +26,11 @@ class ClubActivityController {
     ClubActivityService.Attempt puzzle(@RequestHeader("Authorization") String token,@PathVariable UUID club,@Valid @RequestBody PuzzleRequest request) {
         return activities.attempt(auth.requireBearer(token),club,request.day(),request.moves());
     }
+    record HelpRequest(@NotNull LocalDate day,@NotNull @Size(max=30) List<@NotNull @Pattern(regexp="[a-h][1-8][a-h][1-8][qrbn]?") String> moves, boolean reveal) {}
+    @PostMapping("/puzzle/help")
+    ClubActivityService.Help help(@RequestHeader("Authorization") String token,@PathVariable UUID club,@Valid @RequestBody HelpRequest request) {
+        return activities.help(auth.requireBearer(token),club,request.day(),request.moves(),request.reveal());
+    }
     record ChallengeRequest(@NotNull UUID memberId,@Min(3) @Max(15) int minutes) {}
     @PostMapping("/challenge")
     SocialDtos.ChallengeDto challenge(@RequestHeader("Authorization") String token,@PathVariable UUID club,@Valid @RequestBody ChallengeRequest request) {

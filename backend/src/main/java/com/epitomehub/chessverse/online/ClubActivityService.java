@@ -21,9 +21,11 @@ class ClubActivityService {
     private final JdbcTemplate jdbc;
     private final OnlinePresenceService presence;
     private final List<Puzzle> puzzles;
+    private final ClubDailyRewards rewards;
 
-    ClubActivityService(JdbcTemplate jdbc, OnlinePresenceService presence) {
+    ClubActivityService(JdbcTemplate jdbc, OnlinePresenceService presence, ClubDailyRewards rewards) {
         this.jdbc = jdbc;
+        this.rewards = rewards;
         this.presence = presence;
         try (var stream = Objects.requireNonNull(getClass().getResourceAsStream("/club_daily_puzzles.txt"));
              var reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
@@ -38,8 +40,12 @@ class ClubActivityService {
     record Member(UUID id, String name, int rating, boolean online, boolean self) {}
     record Score(UUID id, String name, int puzzles, int wins, int draws, int points) {}
     record Detail(String name, LocalDate day, LocalDate weekStart, Instant resetsAt,
-                  String fen, boolean completed, int completedMembers, List<Member> members, List<Score> leaderboard) {}
-    record Attempt(boolean correct, boolean completed, String fen) {}
+                  String fen, boolean completed, int completedMembers, List<Member> members, List<Score> leaderboard, ClubDailyRewards.Status reward, int totalMoves) {}
+    record Attempt(boolean correct, boolean completed, String fen, ClubDailyRewards.Status reward) {
+        Attempt(boolean correct, boolean completed, String fen) { this(correct,completed,fen,null); }
+    }
+    record LessonMove(String move, String fenBefore, String fenAfter, String piece, String effect, boolean playerMove) {}
+    record Help(String nextMove, List<String> legalMoves, List<LessonMove> solution) {}
 
     void requireMember(UUID club, UUID player) {
         if (!Boolean.TRUE.equals(jdbc.queryForObject(
@@ -54,6 +60,11 @@ class ClubActivityService {
     }
 
     Puzzle puzzle(LocalDate day) { return puzzles.get(Math.floorMod(day.toEpochDay(), puzzles.size())); }
+
+    Puzzle puzzle(UUID club, LocalDate day) {
+        Long seed=jdbc.queryForObject("select puzzle_seed from chess_club where id=?",Long.class,club);
+        return puzzle(day.plusDays(seed == null ? 0 : seed));
+    }
 
     @Transactional(readOnly = true)
     Detail detail(AuthenticatedPlayer player, UUID club) {
@@ -94,10 +105,10 @@ class ClubActivityService {
                 java.sql.Timestamp.from(week.atStartOfDay(ZONE).toInstant()),
                 java.sql.Timestamp.from(week.plusDays(7).atStartOfDay(ZONE).toInstant()), club);
         return new Detail(jdbc.queryForObject("select name from chess_club where id=?",String.class,club),
-                day, week, day.plusDays(1).atStartOfDay(ZONE).toInstant(), puzzle(day).fen(),
+                day, week, day.plusDays(1).atStartOfDay(ZONE).toInstant(), puzzle(club,day).fen(),
                 Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from club_daily_completion where club_id=? and player_id=? and puzzle_day=?)", Boolean.class,club,player.id(),Date.valueOf(day))),
                 jdbc.queryForObject("select count(*) from club_daily_completion where club_id=? and puzzle_day=?",Integer.class,club,Date.valueOf(day)),
-                members,scores);
+                members,scores,rewards.status(player.id(),day),(puzzle(club,day).moves().size()+1)/2);
     }
 
     // Every supplied human move must match the curated line. Opponent replies
@@ -123,8 +134,43 @@ class ClubActivityService {
     Attempt attempt(AuthenticatedPlayer player, UUID club, LocalDate day, List<String> moves) {
         requireMember(club, player.id());
         if (!LocalDate.now(ZONE).equals(day)) throw new OnlineMatchException(HttpStatus.CONFLICT,"Today's puzzle changed. Refresh the club.");
-        Attempt result = evaluate(puzzle(day), moves);
+        Attempt result = evaluate(puzzle(club,day), moves);
         if (result.completed()) jdbc.update("insert into club_daily_completion(club_id,player_id,puzzle_day) values (?,?,?) on conflict do nothing",club,player.id(),Date.valueOf(day));
+        if (result.completed()) return new Attempt(true,true,result.fen(),rewards.award(player.id(),day));
+        return result;
+    }
+
+    @Transactional(readOnly = true)
+    Help help(AuthenticatedPlayer player, UUID club, LocalDate day, List<String> moves, boolean reveal) {
+        requireMember(club,player.id());
+        if (!LocalDate.now(ZONE).equals(day)) throw new OnlineMatchException(HttpStatus.CONFLICT,"Today's puzzle changed. Refresh the club.");
+        Puzzle puzzle=puzzle(club,day);
+        String fen=puzzle.fen();
+        if(!moves.isEmpty()) {
+            Attempt attempt=evaluate(puzzle,moves);
+            if(!attempt.correct()) throw new OnlineMatchException(HttpStatus.BAD_REQUEST,"Invalid puzzle progress.");
+            fen=attempt.fen();
+        }
+        Board board=new Board(); board.loadFromFen(fen);
+        int ply=Math.min(moves.size()*2,puzzle.moves().size());
+        String next=ply<puzzle.moves().size()?puzzle.moves().get(ply):null;
+        List<String> legal=board.legalMoves().stream().map(Object::toString).toList();
+        return new Help(next,legal,reveal?lesson(puzzle):List.of());
+    }
+
+    static List<LessonMove> lesson(Puzzle puzzle) {
+        Board board=new Board(); board.loadFromFen(puzzle.fen());
+        List<LessonMove> result=new ArrayList<>();
+        for(int i=0;i<puzzle.moves().size();i++) {
+            String uci=puzzle.moves().get(i), before=board.getFen();
+            Move move=new Move(uci,board.getSideToMove());
+            var piece=board.getPiece(move.getFrom());
+            boolean capture=board.getPiece(move.getTo())!=com.github.bhlangonijr.chesslib.Piece.NONE ||
+                    (piece.getPieceType()==com.github.bhlangonijr.chesslib.PieceType.PAWN && move.getFrom().getFile()!=move.getTo().getFile());
+            if(!board.doMove(move,true)) throw new IllegalStateException("Invalid curated club puzzle");
+            String effect=board.isMated()?"mate":board.isKingAttacked()?"check":capture?"capture":"improve";
+            result.add(new LessonMove(uci,before,board.getFen(),piece.getFenSymbol().toUpperCase(),effect,i%2==0));
+        }
         return result;
     }
 }

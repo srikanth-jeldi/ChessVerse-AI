@@ -10,7 +10,7 @@ import static org.mockito.Mockito.*;
 
 class ClubActivityServiceTest {
     final JdbcTemplate jdbc = mock(JdbcTemplate.class);
-    final ClubActivityService service = new ClubActivityService(jdbc, mock(OnlinePresenceService.class));
+    final ClubActivityService service = new ClubActivityService(jdbc, mock(OnlinePresenceService.class), mock(ClubDailyRewards.class));
 
     @Test void allTwoHundredPuzzlesHaveLegalCompleteLines() {
         Set<String> ids = new HashSet<>();
@@ -53,5 +53,32 @@ class ClubActivityServiceTest {
         assertTrue(service.attempt(player,club,day,moves).completed());
         assertTrue(service.attempt(player,club,day,moves).completed());
         verify(jdbc,times(2)).update(eq("insert into club_daily_completion(club_id,player_id,puzzle_day) values (?,?,?) on conflict do nothing"),eq(club),eq(player.id()),eq(java.sql.Date.valueOf(day)));
+    }
+
+    @Test void clubsGetDistinctStableOffsetsAndLessonsAreLegal() {
+        var day=LocalDate.of(2026,10,18);
+        var a=UUID.randomUUID();var b=UUID.randomUUID();
+        when(jdbc.queryForObject(anyString(),eq(Long.class),eq(a))).thenReturn(1L);
+        when(jdbc.queryForObject(anyString(),eq(Long.class),eq(b))).thenReturn(2L);
+        assertNotEquals(service.puzzle(a,day).id(),service.puzzle(b,day).id());
+        assertEquals(service.puzzle(a,day),service.puzzle(a,day));
+        for(int n=0;n<200;n++) {
+            var puzzle=service.puzzle(day.plusDays(n));
+            var lesson=ClubActivityService.lesson(puzzle);
+            assertEquals(puzzle.moves().size(),lesson.size());
+            assertEquals(puzzle.fen(),lesson.getFirst().fenBefore());
+            for(int i=1;i<lesson.size();i++) assertEquals(lesson.get(i-1).fenAfter(),lesson.get(i).fenBefore());
+        }
+    }
+    @Test void helpRequiresMembershipAndRejectsInvalidPrefixWithoutAwards(){
+        var player=new AuthenticatedPlayer(UUID.randomUUID(),"test","Test",null);
+        var club=UUID.randomUUID();var day=LocalDate.now(ClubActivityService.ZONE);
+        assertThrows(OnlineMatchException.class,()->service.help(player,club,day,List.of(),true));
+        when(jdbc.queryForObject(anyString(),eq(Boolean.class),eq(club),eq(player.id()))).thenReturn(true);
+        assertThrows(OnlineMatchException.class,()->service.help(player,club,day,List.of("a1a1"),true));
+        var help=service.help(player,club,day,List.of(),true);
+        assertEquals(service.puzzle(day).moves().getFirst(),help.nextMove());
+        assertFalse(help.solution().isEmpty());
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
     }
 }
