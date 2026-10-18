@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:chessverse_ai/core/app_language.dart';
 import 'package:chessverse_ai/core/club_localizations.dart';
+import 'package:chessverse_ai/core/club_learning_strings.dart';
 import 'package:chessverse_ai/main.dart' show ChessBoard;
 
 import 'package:chessverse_ai/features/social/data/community_api.dart';
@@ -15,6 +16,29 @@ import 'package:chessverse_ai/features/social/data/social_api.dart';
 import 'package:chessverse_ai/features/social/presentation/club_activity_screen.dart';
 
 class FakeCommunity extends CommunityApi {
+  @override
+  Future<Map<String, dynamic>> clubPuzzleHelp(
+    String token,
+    String clubId,
+    String day,
+    List<String> moves, {
+    bool reveal = false,
+  }) async => {
+    'nextMove': 'e2e3',
+    'legalMoves': ['e2e3'],
+    'solution': reveal
+        ? [
+            {
+              'move': 'e2e3',
+              'fenBefore': '8/8/8/8/8/8/4K3/7k w - - 0 1',
+              'fenAfter': '8/8/8/8/8/4K3/8/7k b - - 1 1',
+              'piece': 'K',
+              'effect': 'improve',
+              'playerMove': true,
+            },
+          ]
+        : [],
+  };
   bool fail = false;
   int attempts = 0;
   Completer<Map<String, dynamic>>? answer;
@@ -40,6 +64,13 @@ class FakeCommunity extends CommunityApi {
       'weekStart': '2026-10-12',
       'fen': '8/8/8/8/8/8/4K3/7k w - - 0 1',
       'completed': false,
+      'totalMoves': 2,
+      'reward': {
+        'streak': 2,
+        'earnedToday': false,
+        'nextCoins': 15,
+        'awardedCoins': 0,
+      },
       'completedMembers': 0,
       'members': <Map<String, dynamic>>[
         {
@@ -114,6 +145,17 @@ void main() {
           .toSet();
       expect(clubTranslations.keys.toSet(), codes);
       expect(codes.length, 34);
+      expect(clubLearningTranslations.keys.toSet(), codes);
+      for (final code in codes) {
+        expect(
+          clubLearningTranslations[code]!.length,
+          clubLearningKeys.length,
+          reason: code,
+        );
+        for (final key in clubLearningKeys) {
+          expect(clubLearningText(key, code).trim(), isNotEmpty);
+        }
+      }
       for (final code in codes) {
         expect(clubTranslations[code]!.length, clubKeys.length, reason: code);
         for (final key in clubKeys) {
@@ -158,6 +200,74 @@ void main() {
       expect(find.text(clubText('complete', 'en')), findsOneWidget);
       tester.widget<ChessBoard>(find.byType(ChessBoard)).onSquareTap('e4');
       expect(api.attempts, 1);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'Hints and solution review guide moves without awarding completion',
+    (tester) async {
+      final api = FakeCommunity();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ClubPuzzleScreen(
+            api: api,
+            token: 'test',
+            clubId: 'one',
+            day: '2026-10-18',
+            initialFen: '8/8/8/8/8/8/4K3/7k w - - 0 1',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final hint = find.byKey(const ValueKey('club-hint'));
+      await tester.ensureVisible(hint);
+      await tester.pumpAndSettle();
+      await tester.tap(hint);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<ChessBoard>(find.byType(ChessBoard)).selectedSquare,
+        'e2',
+      );
+      await tester.ensureVisible(hint);
+      await tester.pumpAndSettle();
+      await tester.tap(hint);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<ChessBoard>(find.byType(ChessBoard)).coachArrowTo,
+        'e3',
+      );
+      final solution = find.byKey(const ValueKey('club-solution'));
+      await tester.ensureVisible(solution);
+      await tester.pumpAndSettle();
+      await tester.tap(solution);
+      await tester.pumpAndSettle();
+      expect(api.attempts, 0);
+      final next = find.byKey(const ValueKey('club-solution-next'));
+      await tester.ensureVisible(next);
+      await tester.pumpAndSettle();
+      await tester.tap(next);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<ChessBoard>(find.byType(ChessBoard))
+            .pieces
+            .containsKey('e3'),
+        true,
+      );
+      expect(api.attempts, 0);
+      final back = find.byKey(const ValueKey('club-back-practice'));
+      await tester.ensureVisible(back);
+      await tester.pumpAndSettle();
+      await tester.tap(back);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<ChessBoard>(find.byType(ChessBoard))
+            .pieces
+            .containsKey('e2'),
+        true,
+      );
       await tester.pumpWidget(const SizedBox());
     },
   );
@@ -220,7 +330,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(clubText('daily', code)), findsOneWidget);
       final tab = find.byKey(const ValueKey('club-week-tab'));
-      await tester.ensureVisible(tab);
+      await tester.scrollUntilVisible(
+        tab,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(tab);
       await tester.pumpAndSettle();
       expect(find.text(clubText('rules', code)), findsOneWidget);
@@ -234,6 +349,41 @@ void main() {
         await expectLater(
           find.byType(Scaffold),
           matchesGoldenFile('goldens/club_$code.png'),
+        );
+      }
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+  for (final code in ['en', 'te', 'ar']) {
+    testWidgets('Puzzle screen preview $code', (tester) async {
+      FlutterSecureStorage.setMockInitialValues({'settings.language': code});
+      AppLanguageController.effectiveLanguageChanges.value = code;
+      tester.view.physicalSize = const Size(390, 950);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final rows = File('../backend/src/main/resources/club_daily_puzzles.txt')
+          .readAsLinesSync()
+          .where((s) => s.isNotEmpty && !s.startsWith('#'));
+      final fen = rows.first.split('|')[1];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(fontFamily: code == 'ar' ? 'ArabicPreview' : null),
+          home: ClubPuzzleScreen(
+            api: FakeCommunity(),
+            token: 'test',
+            clubId: 'one',
+            day: '2026-10-18',
+            initialFen: fen,
+            totalMoves: 3,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      if (Platform.environment['CLUB_VISUAL_FONTS'] == '1') {
+        await expectLater(
+          find.byType(Scaffold),
+          matchesGoldenFile('goldens/club_puzzle_$code.png'),
         );
       }
       await tester.pumpWidget(const SizedBox());

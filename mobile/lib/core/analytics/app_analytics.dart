@@ -145,6 +145,10 @@ abstract final class AppAnalytics {
 // Names are the reporting contract in Firebase/GA4.
 // ignore_for_file: constant_identifier_names
 enum FeatureEvent {
+  club_puzzle_viewed,
+  club_puzzle_completed,
+  club_puzzle_hint,
+  club_puzzle_solution_viewed,
   game_first_move,
   game_completed,
   import_completed,

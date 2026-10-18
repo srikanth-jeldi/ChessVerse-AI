@@ -395,14 +395,40 @@ class CommunityApi {
   const CommunityApi();
   Future<Map<String, dynamic>> clubActivities(String token, String clubId) =>
       _request(token, 'GET', '/api/v1/community/clubs/$clubId/activities');
-  Future<Map<String, dynamic>> clubPuzzle(String token, String clubId,
-          String day, List<String> moves) =>
-      _request(token, 'POST', '/api/v1/community/clubs/$clubId/activities/puzzle',
-          body: {'day': day, 'moves': moves});
-  Future<Map<String, dynamic>> clubChallenge(String token, String clubId,
-          String memberId, int minutes) =>
-      _request(token, 'POST', '/api/v1/community/clubs/$clubId/activities/challenge',
-          body: {'memberId': memberId, 'minutes': minutes});
+  Future<Map<String, dynamic>> clubPuzzle(
+    String token,
+    String clubId,
+    String day,
+    List<String> moves,
+  ) => _request(
+    token,
+    'POST',
+    '/api/v1/community/clubs/$clubId/activities/puzzle',
+    body: {'day': day, 'moves': moves},
+  );
+  Future<Map<String, dynamic>> clubPuzzleHelp(
+    String token,
+    String clubId,
+    String day,
+    List<String> moves, {
+    bool reveal = false,
+  }) => _request(
+    token,
+    'POST',
+    '/api/v1/community/clubs/$clubId/activities/puzzle/help',
+    body: {'day': day, 'moves': moves, 'reveal': reveal},
+  );
+  Future<Map<String, dynamic>> clubChallenge(
+    String token,
+    String clubId,
+    String memberId,
+    int minutes,
+  ) => _request(
+    token,
+    'POST',
+    '/api/v1/community/clubs/$clubId/activities/challenge',
+    body: {'memberId': memberId, 'minutes': minutes},
+  );
   Future<CommunityDto> load(String token) async =>
       CommunityDto.fromJson(await _request(token, 'GET', '/api/v1/community'));
   Future<CommunityDto> club(String token, String id, bool join) async =>

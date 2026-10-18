@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/app_language.dart';
+import '../../../core/analytics/app_analytics.dart';
 import '../../../core/club_localizations.dart';
+import '../../../core/club_learning_strings.dart';
 import '../../../core/mistake_bank_localizations.dart';
 import '../../../core/mistake_practice_localizations.dart';
 
@@ -18,6 +20,7 @@ mixin ClubLanguage<T extends StatefulWidget> on State<T> {
       AppLanguageController.effectiveLanguageChanges.value ??
       AppLanguageController.resolveCode('system');
   String t(String key) => clubText(key, language);
+  String l(String key) => clubLearningText(key, language);
   TextDirection get direction => ['ar', 'ur', 'fa', 'he'].contains(language)
       ? TextDirection.rtl
       : TextDirection.ltr;
@@ -441,6 +444,10 @@ class _ClubActivityScreenState extends State<ClubActivityScreen>
                                             clubId: widget.club.id,
                                             day: data['day'] as String,
                                             initialFen: data['fen'] as String,
+                                            totalMoves:
+                                                (data['totalMoves'] as num?)
+                                                    ?.toInt() ??
+                                                0,
                                           ),
                                         ),
                                       );
@@ -452,6 +459,15 @@ class _ClubActivityScreenState extends State<ClubActivityScreen>
                       ),
                       hero: true,
                     ),
+                    if (data['reward'] is Map)
+                      _panel(
+                        ClubStreakCard(
+                          reward: Map<String, dynamic>.from(
+                            data['reward'] as Map,
+                          ),
+                          language: language,
+                        ),
+                      ),
                     if (_challenges.isNotEmpty)
                       _panel(
                         Column(
@@ -618,6 +634,105 @@ class _ClubActivityScreenState extends State<ClubActivityScreen>
   }
 }
 
+class ClubStreakCard extends StatelessWidget {
+  const ClubStreakCard({
+    super.key,
+    required this.reward,
+    required this.language,
+  });
+  final Map<String, dynamic> reward;
+  final String language;
+  @override
+  Widget build(BuildContext context) {
+    String l(String k) => clubLearningText(k, language);
+    final streak = (reward['streak'] as num?)?.toInt() ?? 0;
+    final award = (reward['awardedCoins'] as num?)?.toInt() ?? 0;
+    final current = streak == 0 ? 0 : (streak - 1) % 7 + 1;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${l('streak')} · $streak',
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 6,
+          runSpacing: 8,
+          children: [
+            for (final e in [5, 10, 15, 15, 15, 15, 25].indexed)
+              Container(
+                width: 32,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: e.$1 < current
+                      ? const Color(0xFF185950)
+                      : const Color(0xFF18273B),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: e.$1 == current
+                        ? const Color(0xFFE5BE65)
+                        : const Color(0xFF33505D),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      '${e.$1 + 1}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                      ),
+                    ),
+                    Icon(
+                      e.$1 < current
+                          ? Icons.check_circle
+                          : Icons.monetization_on_outlined,
+                      size: 18,
+                      color: const Color(0xFFE5BE65),
+                    ),
+                    Text(
+                      '+${e.$2}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (award > 0)
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: award.toDouble()),
+            duration: const Duration(milliseconds: 700),
+            builder: (context, v, child) => Text(
+              '+${v.round()} ${l('coins')}',
+              key: const ValueKey('club-coins-awarded'),
+              style: const TextStyle(
+                fontSize: 26,
+                color: Color(0xFF62DEC6),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        Text(
+          reward['earnedToday'] == true
+              ? l('tomorrow')
+              : '${l('next')}: +${reward['nextCoins'] ?? 5} ${l('coins')}',
+          style: const TextStyle(color: Color(0xFFE5BE65), height: 1.5),
+        ),
+        ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          title: Text(l('coins')),
+          children: [
+            Text(l('rewardRules'), style: const TextStyle(height: 1.5)),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 class ClubPuzzleScreen extends StatefulWidget {
   const ClubPuzzleScreen({
     super.key,
@@ -626,9 +741,11 @@ class ClubPuzzleScreen extends StatefulWidget {
     required this.clubId,
     required this.day,
     required this.initialFen,
+    this.totalMoves = 0,
   });
   final CommunityApi api;
   final String token, clubId, day, initialFen;
+  final int totalMoves;
   @override
   State<ClubPuzzleScreen> createState() => _ClubPuzzleScreenState();
 }
@@ -637,12 +754,27 @@ class _ClubPuzzleScreenState extends State<ClubPuzzleScreen>
     with ClubLanguage<ClubPuzzleScreen> {
   late String _fen = widget.initialFen;
   final List<String> _moves = [];
-  String? _selected;
-  String? _feedback;
-  bool _busy = false, _complete = false;
+  List<String> _legal = [];
+  List<Map<String, dynamic>> _lesson = [];
+  Map<String, dynamic>? _reward;
+  String? _selected, _feedback, _nextMove, _lastFrom, _lastTo;
+  bool _busy = false, _complete = false, _review = false;
+  int _hint = 0, _step = 0, _generation = 0;
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadHelp());
+    unawaited(AppAnalytics.logFeature(FeatureEvent.club_puzzle_viewed));
+  }
+
+  String get _displayFen => !_review
+      ? _fen
+      : _step < _lesson.length
+      ? _lesson[_step]['fenBefore'] as String
+      : _lesson.last['fenAfter'] as String;
   Map<String, ChessPiece> _pieces() {
     final pieces = <String, ChessPiece>{};
-    final rows = _fen.split(' ').first.split('/');
+    final rows = _displayFen.split(' ').first.split('/');
     for (var row = 0; row < 8; row++) {
       var file = 0;
       for (final symbol in rows[row].split('')) {
@@ -661,8 +793,68 @@ class _ClubPuzzleScreenState extends State<ClubPuzzleScreen>
     return pieces;
   }
 
+  Future<void> _loadHelp() async {
+    final generation = ++_generation;
+    try {
+      final help = await widget.api.clubPuzzleHelp(
+        widget.token,
+        widget.clubId,
+        widget.day,
+        List.of(_moves),
+      );
+      if (!mounted || generation != _generation) return;
+      setState(() {
+        _nextMove = help['nextMove'] as String?;
+        _legal = (help['legalMoves'] as List? ?? []).cast<String>();
+      });
+    } on SocialException {
+      /* Server still validates attempts when hints are offline. */
+    }
+  }
+
+  Future<void> _showHelp({bool solution = false}) async {
+    if (_busy) return;
+    unawaited(
+      AppAnalytics.logFeature(
+        solution
+            ? FeatureEvent.club_puzzle_solution_viewed
+            : FeatureEvent.club_puzzle_hint,
+      ),
+    );
+    setState(() => _busy = true);
+    try {
+      final help = await widget.api.clubPuzzleHelp(
+        widget.token,
+        widget.clubId,
+        widget.day,
+        List.of(_moves),
+        reveal: solution,
+      );
+      if (!mounted) return;
+      setState(() {
+        _nextMove = help['nextMove'] as String?;
+        _legal = (help['legalMoves'] as List? ?? []).cast<String>();
+        _feedback = null;
+        if (solution) {
+          _lesson = (help['solution'] as List? ?? [])
+              .cast<Map<String, dynamic>>();
+          _review = _lesson.isNotEmpty;
+          _step = 0;
+          _selected = null;
+        } else if (_nextMove != null) {
+          _hint = (_hint + 1).clamp(1, 2);
+          _selected = _nextMove!.substring(0, 2);
+        }
+      });
+    } on SocialException {
+      if (mounted) setState(() => _feedback = 'error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _tap(String square) async {
-    if (_busy || _complete) return;
+    if (_busy || _complete || _review) return;
     final pieces = _pieces();
     final white = _fen.split(' ')[1] == 'w';
     if (pieces[square]?.white == white) {
@@ -671,6 +863,10 @@ class _ClubPuzzleScreenState extends State<ClubPuzzleScreen>
     }
     final from = _selected;
     if (from == null) return;
+    if (_legal.isNotEmpty && !_legal.any((m) => m.startsWith('$from$square'))) {
+      setState(() => _feedback = 'wrong');
+      return;
+    }
     String promotion = '';
     if (pieces[from]?.code == 'P' &&
         (square.endsWith('8') || square.endsWith('1'))) {
@@ -691,6 +887,7 @@ class _ClubPuzzleScreenState extends State<ClubPuzzleScreen>
       if (chosen == null || !mounted) return;
       promotion = chosen;
     }
+    ++_generation;
     setState(() {
       _busy = true;
       _feedback = null;
@@ -709,12 +906,24 @@ class _ClubPuzzleScreenState extends State<ClubPuzzleScreen>
           _moves.add(moves.last);
           _fen = result['fen'] as String;
           _complete = result['completed'] == true;
+          _lastFrom = from;
+          _lastTo = square;
+          _hint = 0;
+          _legal = [];
+          _nextMove = null;
+          _reward = result['reward'] is Map
+              ? Map<String, dynamic>.from(result['reward'] as Map)
+              : null;
           _feedback = _complete ? 'complete' : 'goal';
         } else {
           _feedback = 'wrong';
         }
         _selected = null;
       });
+      if (_complete) {
+        unawaited(AppAnalytics.logFeature(FeatureEvent.club_puzzle_completed));
+      }
+      if (!_complete) await _loadHelp();
     } on SocialException {
       if (mounted) setState(() => _feedback = 'error');
     } finally {
@@ -722,77 +931,305 @@ class _ClubPuzzleScreenState extends State<ClubPuzzleScreen>
     }
   }
 
-  @override
-  Widget build(BuildContext context) => Directionality(
-    textDirection: direction,
-    child: Scaffold(
-      appBar: AppBar(title: Text(t('daily')), actions: [languageButton()]),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(
-            _complete
-                ? t('done')
-                : t(_fen.split(' ')[1] == 'w' ? 'white' : 'black'),
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          Text(mistakeBankText('instructions', language)),
-          if (_feedback != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                _feedback == 'wrong'
-                    ? mistakePracticeText('unverified', language)
-                    : t(_feedback!),
-                key: const ValueKey('club-puzzle-feedback'),
-              ),
-            ),
-          if (_busy) const LinearProgressIndicator(),
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: ChessBoard(
-                  pieces: _pieces(),
-                  selectedSquare: _selected,
-                  legalTargets: const {},
-                  lastFromSquare: null,
-                  lastToSquare: null,
-                  lastCaptureSquare: null,
-                  moveSequence: _moves.length,
-                  checkedKingSquare: null,
-                  decisiveSquare: null,
-                  coachArrowFrom: null,
-                  coachArrowTo: null,
-                  flipped: widget.initialFen.split(' ')[1] == 'b',
-                  showCoordinates: true,
-                  palette: boardPalettes[BoardSkin.royalWalnut]!,
-                  onSquareTap: _tap,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (_complete)
-            FilledButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(t('open')),
-            ),
-          if (!_complete)
-            TextButton(
-              onPressed: _busy
-                  ? null
-                  : () => setState(() {
-                      _moves.clear();
-                      _fen = widget.initialFen;
-                      _selected = null;
-                      _feedback = null;
-                    }),
-              child: Text(t('restart')),
-            ),
-        ],
-      ),
+  void _restart() {
+    ++_generation;
+    setState(() {
+      _moves.clear();
+      _fen = widget.initialFen;
+      _selected = null;
+      _feedback = null;
+      _hint = 0;
+      _review = false;
+      _complete = false;
+      _nextMove = null;
+      _legal = [];
+      _lastFrom = null;
+      _lastTo = null;
+      _reward = null;
+    });
+    unawaited(_loadHelp());
+  }
+
+  Widget _card(Widget child) => Container(
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: const Color(0xFF102537),
+      border: Border.all(color: const Color(0xFF33515D)),
+      borderRadius: BorderRadius.circular(18),
     ),
+    child: child,
   );
+  @override
+  Widget build(BuildContext context) {
+    final move = _review && _step < _lesson.length
+        ? _lesson[_step]['move'] as String
+        : _nextMove;
+    final arrow = (_review || _hint >= 2) && move != null;
+    final targets = _selected == null
+        ? <String>{}
+        : _legal
+              .where((m) => m.startsWith(_selected!))
+              .map((m) => m.substring(2, 4))
+              .toSet();
+    final lessonMove = _review && _step < _lesson.length
+        ? _lesson[_step]
+        : null;
+    return Directionality(
+      textDirection: direction,
+      child: Theme(
+        data: ThemeData.dark(useMaterial3: true).copyWith(
+          textTheme: Theme.of(context).textTheme
+              .apply(bodyColor: Colors.white, displayColor: Colors.white),
+          colorScheme: const ColorScheme.dark(
+            primary: Color(0xFF62DEC6),
+            secondary: Color(0xFFE5BE65),
+            surface: Color(0xFF102537),
+          ),
+        ),
+        child: Scaffold(
+          backgroundColor: const Color(0xFF07121F),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF07121F),
+            title: Text(t('daily')),
+            actions: [languageButton()],
+          ),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _card(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _review
+                              ? l('solution')
+                              : _complete
+                              ? t('done')
+                              : t(
+                                  _fen.split(' ')[1] == 'w' ? 'white' : 'black',
+                                ),
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFE5BE65),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _review
+                              ? mistakePracticeText('savedLine', language)
+                              : t('goal'),
+                          style: const TextStyle(height: 1.4),
+                        ),
+                        if (widget.totalMoves > 0 && !_review) ...[
+                          const SizedBox(height: 10),
+                          LinearProgressIndicator(
+                            value: (_moves.length / widget.totalMoves).clamp(
+                              0,
+                              1,
+                            ),
+                          ),
+                          Text(
+                            '${l('step')} ${_moves.length}/${widget.totalMoves}',
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (_busy) const LinearProgressIndicator(),
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 480),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(0xFFE5BE65),
+                            width: 2,
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x44000000),
+                              blurRadius: 20,
+                              offset: Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: AspectRatio(
+                            aspectRatio: 1,
+                            child: Directionality(
+                              textDirection: TextDirection.ltr,
+                              child: ChessBoard(
+                                pieces: _pieces(),
+                                selectedSquare: _review ? null : _selected,
+                                legalTargets: _review ? const {} : targets,
+                                lastFromSquare: _review ? null : _lastFrom,
+                                lastToSquare: _review ? null : _lastTo,
+                                lastCaptureSquare: null,
+                                moveSequence: _moves.length + _step,
+                                checkedKingSquare: null,
+                                decisiveSquare: null,
+                                coachArrowFrom: arrow
+                                    ? move.substring(0, 2)
+                                    : null,
+                                coachArrowTo: arrow
+                                    ? move.substring(2, 4)
+                                    : null,
+                                flipped: widget.initialFen.split(' ')[1] == 'b',
+                                showCoordinates: true,
+                                coordinatesOnMobile: true,
+                                palette: boardPalettes[BoardSkin.royalWalnut]!,
+                                onSquareTap: _tap,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (_review) ...[
+                    _card(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${l('step')} ${_step.clamp(0, _lesson.length - 1) + 1}/${_lesson.length}',
+                            style: const TextStyle(color: Color(0xFFE5BE65)),
+                          ),
+                          if (lessonMove != null) ...[
+                            Text(
+                              '${lessonMove['playerMove'] == true ? t('you') : mistakeBankText('replying', language)} · ${mistakeBankText(lessonMove['piece'] as String, language)}',
+                              style: const TextStyle(fontSize: 18),
+                            ),
+                            Directionality(
+                              textDirection: TextDirection.ltr,
+                              child: Text(
+                                '${move!.substring(0, 2)} → ${move.substring(2, 4)}${move.length > 4 ? ' = ${mistakeBankText(move.substring(4).toUpperCase(), language)}' : ''}',
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF62DEC6),
+                                ),
+                              ),
+                            ),
+                            Text(l(lessonMove['effect'] as String)),
+                          ] else
+                            Text('${l('solution')} ✓'),
+                          Wrap(
+                            spacing: 12,
+                            children: [
+                              IconButton(
+                                key: const ValueKey('club-solution-back'),
+                                tooltip: mistakePracticeText('back', language),
+                                onPressed: _step > 0
+                                    ? () => setState(() => _step--)
+                                    : null,
+                                icon: const Icon(Icons.chevron_left),
+                              ),
+                              FilledButton.icon(
+                                key: const ValueKey('club-solution-next'),
+                                onPressed: _step < _lesson.length
+                                    ? () => setState(() => _step++)
+                                    : null,
+                                icon: const Icon(Icons.chevron_right),
+                                label: Text(l('next')),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    FilledButton(
+                      key: const ValueKey('club-back-practice'),
+                      onPressed: () => setState(() => _review = false),
+                      child: Text(mistakePracticeText('back', language)),
+                    ),
+                  ] else ...[
+                    if (_feedback != null)
+                      _card(
+                        Text(
+                          _feedback == 'wrong'
+                              ? mistakePracticeText('unverified', language)
+                              : t(_feedback!),
+                          key: const ValueKey('club-puzzle-feedback'),
+                          style: const TextStyle(height: 1.5),
+                        ),
+                      ),
+                    if (_hint > 0 && _nextMove != null)
+                      _card(
+                        Text(
+                          _hint == 1
+                              ? mistakeBankText('piecePrompt', language, {
+                                  'square': _nextMove!.substring(0, 2),
+                                  'piece': mistakeBankText(
+                                    _pieces()[_nextMove!.substring(0, 2)]!.code,
+                                    language,
+                                  ),
+                                })
+                              : '${_nextMove!.substring(0, 2)} → ${_nextMove!.substring(2, 4)}',
+                          style: const TextStyle(
+                            color: Color(0xFF62DEC6),
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                    if (!_complete)
+                      Text(
+                        mistakeBankText('instructions', language),
+                        style: const TextStyle(
+                          height: 1.5,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      children: [
+                        if (!_complete)
+                          OutlinedButton.icon(
+                            key: const ValueKey('club-hint'),
+                            onPressed: _busy ? null : () => _showHelp(),
+                            icon: const Icon(Icons.lightbulb_outline),
+                            label: Text(mistakeBankText('hint', language)),
+                          ),
+                        OutlinedButton.icon(
+                          key: const ValueKey('club-solution'),
+                          onPressed: _busy
+                              ? null
+                              : () => _showHelp(solution: true),
+                          icon: const Icon(Icons.school_outlined),
+                          label: Text(l('solution')),
+                        ),
+                        TextButton(
+                          onPressed: _busy ? null : _restart,
+                          child: Text(t('restart')),
+                        ),
+                      ],
+                    ),
+                    if (_reward != null)
+                      _card(
+                        ClubStreakCard(reward: _reward!, language: language),
+                      ),
+                    if (_complete)
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(t('open')),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

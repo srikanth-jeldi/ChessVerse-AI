@@ -617,6 +617,7 @@ class ChessBoard extends StatefulWidget {
     this.idleHintTo,
     required this.flipped,
     required this.showCoordinates,
+    this.coordinatesOnMobile = false,
     required this.palette,
     required this.onSquareTap,
     super.key,
@@ -641,6 +642,7 @@ class ChessBoard extends StatefulWidget {
   final String? idleHintTo;
   final bool flipped;
   final bool showCoordinates;
+  final bool coordinatesOnMobile;
   final BoardPalette palette;
   final ValueChanged<String> onSquareTap;
 
@@ -723,7 +725,9 @@ class _ChessBoardState extends State<ChessBoard> {
     final bool moveAnimating =
         _activeMoveToken != null && _activeMoveToken == _moveToken(widget);
     final bool showBoardCoordinates =
-        showCoordinates && MediaQuery.sizeOf(context).shortestSide >= 600;
+        showCoordinates &&
+        (widget.coordinatesOnMobile ||
+            MediaQuery.sizeOf(context).shortestSide >= 600);
 
     return AspectRatio(
       aspectRatio: 1,
