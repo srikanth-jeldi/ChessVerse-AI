@@ -24,6 +24,8 @@ class ClubStreakCard extends StatelessWidget {
     final award = (reward['awardedCoins'] as num?)?.toInt() ?? 0;
     final shownAward = award > 0
         ? award
+        : reward['creditedCoins'] is num
+        ? (reward['creditedCoins'] as num).toInt()
         : earned && completed > 0
         ? amounts[completed - 1]
         : 0;

@@ -108,7 +108,7 @@ class ClubActivityService {
                 day, week, day.plusDays(1).atStartOfDay(ZONE).toInstant(), puzzle(club,day).fen(),
                 Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from club_daily_completion where club_id=? and player_id=? and puzzle_day=?)", Boolean.class,club,player.id(),Date.valueOf(day))),
                 jdbc.queryForObject("select count(*) from club_daily_completion where club_id=? and puzzle_day=?",Integer.class,club,Date.valueOf(day)),
-                members,scores,rewards.status(player.id(),day),(puzzle(club,day).moves().size()+1)/2);
+                members,scores,rewards.status(player.id(),club,day),(puzzle(club,day).moves().size()+1)/2);
     }
 
     // Every supplied human move must match the curated line. Opponent replies
@@ -136,7 +136,7 @@ class ClubActivityService {
         if (!LocalDate.now(ZONE).equals(day)) throw new OnlineMatchException(HttpStatus.CONFLICT,"Today's puzzle changed. Refresh the club.");
         Attempt result = evaluate(puzzle(club,day), moves);
         if (result.completed()) jdbc.update("insert into club_daily_completion(club_id,player_id,puzzle_day) values (?,?,?) on conflict do nothing",club,player.id(),Date.valueOf(day));
-        if (result.completed()) return new Attempt(true,true,result.fen(),rewards.award(player.id(),day));
+        if (result.completed()) return new Attempt(true,true,result.fen(),rewards.award(player.id(),club,day));
         return result;
     }
 

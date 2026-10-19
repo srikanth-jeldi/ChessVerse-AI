@@ -81,4 +81,26 @@ void main() {
     expect(find.byKey(const ValueKey('club-coins-awarded')), findsNothing);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('historical completion does not invent a coin award', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ClubStreakCard(
+            language: 'en',
+            reward: {
+              'streak': 2,
+              'earnedToday': true,
+              'awardedCoins': 0,
+              'creditedCoins': 0,
+              'nextCoins': 15,
+            },
+          ),
+        ),
+      ),
+    );
+    expect(find.byKey(const ValueKey('club-coins-awarded')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }
