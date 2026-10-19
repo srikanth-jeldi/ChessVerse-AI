@@ -85,6 +85,16 @@ class NetworkHealthController extends ChangeNotifier {
     } on TimeoutException {
       _lastLatency = const Duration(seconds: 8);
       _setHealth(NetworkHealth.slow);
+    } on http.ClientException catch (error) {
+      // An interface (Wi-Fi/mobile) can exist without a usable connection.
+      // A failed transport is not an HTTP response proving a server outage.
+      // Keep local play available and let the existing connectivity/periodic
+      // probes restore online status. Preserve a breadcrumb for diagnosis.
+      _lastLatency = null;
+      _setHealth(NetworkHealth.offline);
+      AppDiagnostics.log('network_probe_transport_unavailable', {
+        'type': error.runtimeType.toString(),
+      });
     } on Object catch (error, stack) {
       _lastLatency = null;
       _setHealth(NetworkHealth.apiUnavailable);

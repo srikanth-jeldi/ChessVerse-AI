@@ -86,9 +86,9 @@ dependencies {
     // this app's minSdk so AndroidX Startup uses the fixed implementation.
     implementation("androidx.work:work-runtime:2.9.1")
 
-    // Keep the selected Play dependency explicit. HSDP 2.1.0 still has reported
-    // missing-targetPackageName crashes; this pin is not a verified fix.
-    implementation("com.google.android.play:hsdp:2.1.0")
+    // Google's 2.2.0 release fixes a crash in HsdpShimActivity. Keep this
+    // explicit so older transitive ad dependencies cannot select 2.1.0.
+    implementation("com.google.android.play:hsdp:2.2.0")
 
 }
 

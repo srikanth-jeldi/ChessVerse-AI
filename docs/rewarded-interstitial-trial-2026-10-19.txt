@@ -1,0 +1,37 @@
+Rewarded interstitial trial v1
+
+Source default OFF. Release 1.3.38+305 enables the 10% trial via mobile/config/release-305.json.
+Signed artifact preparation is authorized; Play Store publishing has not been performed.
+Enable a release only with both:
+  --dart-define=REWARDED_INTERSTITIAL_TRIAL_ENABLED=true
+  --dart-define=ADMOB_ANDROID_REWARDED_INTERSTITIAL_ID=<dedicated real rewarded-interstitial ad unit>
+Do not reuse the normal rewarded or interstitial IDs. Configure the unit reward
+as 24 hours of advanced Mistake Bank hints. Android only. Debug uses Google test ID.
+
+Random, persisted per-installation bucket: 10% treatment, 90% control.
+Computer/online completed matches only, at existing post-match navigation.
+Treatment replaces normal interstitial; no fallback after skip, no-fill or error.
+Shared display cap/cooldown: at most 2 treatment displays/day, 5 minutes apart.
+Shared lease also excludes existing coin/hint rewarded displays while intro/ad open.
+Intro explicitly describes reward and includes Skip. Reward only on SDK reward callback.
+Reward is device-local, saved for 24 hours, consumed by advanced Mistake Bank hints.
+Storage failure preserves current-session entitlement and records diagnostics.
+
+Firebase event post_match_ad_trial: assigned/displayed/intro_skipped/load_failed/
+show_failed/reward_earned, with arm. User property post_match_ad_trial_arm.
+Compare revenue/active user and retention by arm over a complete observation window;
+do not conclude success from eCPM alone. Experiment also changes the treatment cap.
+Disable with REWARDED_INTERSTITIAL_TRIAL_ENABLED=false in the next build; this is
+a compile-time kill switch, not remote config. Already earned rewards remain valid.
+
+AdMob unit created 2026-10-19:
+  Name: ChessVerseAI Post Match Rewarded Interstitial Trial
+  ID: ca-app-pub-9061518700917881/1649173258
+  Reward: 1 x 24-hour advanced Mistake Bank hints pass
+  AdMob frequency cap: 2 impressions per 1 day
+  Production configuration: mobile/config/release-305.json
+Release verification: artifacts/release-1.3.38-305/release-report.json
+38 lifecycle/regression tests passed and targeted Flutter analyze passed.
+Before Play rollout, physically test SDK ad playback with test ads, reward UI,
+dismissal/back/no-fill and consent. Emulator startup does not verify live ad delivery.
+Test command: flutter test --no-pub --dart-define=REWARDED_INTERSTITIAL_TRIAL_ENABLED=true test/rewarded_interstitial_trial_test.dart

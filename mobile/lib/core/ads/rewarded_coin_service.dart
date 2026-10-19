@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'ad_sdk_initializer.dart';
+import 'full_screen_ad_gate.dart';
 import '../analytics/app_analytics.dart';
 import '../config/app_config.dart';
 import '../diagnostics/app_diagnostics.dart';
@@ -30,6 +31,7 @@ class RewardedCoinService {
   RewardedAd? _ad;
   bool _loading = false;
   bool _showing = false;
+  Object? _lease;
   Completer<bool>? _loadCompleter;
   static const String _androidTest = 'ca-app-pub-3940256099942544/5224354917';
   static const String _iosTest = 'ca-app-pub-3940256099942544/1712485313';
@@ -144,6 +146,9 @@ class RewardedCoinService {
     }
     // Another caller may have consumed this ad while we awaited the load.
     if (_showing || _ad == null) return RewardedCoinOutcome.unavailable;
+    final lease = FullScreenAdGate.acquire();
+    if (lease == null) return RewardedCoinOutcome.unavailable;
+    _lease = lease;
     _showing = true;
     final completer = Completer<RewardedCoinOutcome>();
     final ad = _ad!;
@@ -240,6 +245,8 @@ class RewardedCoinService {
     unawaited(
       disposal.then((_) {
         _showing = false;
+        FullScreenAdGate.release(_lease);
+        _lease = null;
         unawaited(load());
       }),
     );

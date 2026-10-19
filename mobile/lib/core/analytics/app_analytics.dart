@@ -14,6 +14,24 @@ import '../diagnostics/firebase_bootstrap.dart';
 /// other user-provided values to these events.
 abstract final class AppAnalytics {
   static bool _ready = false;
+  static Future<void> logAdTrial(String event, String arm) async {
+    if (!_ready) return;
+    if (event == 'assigned') {
+      try {
+        await FirebaseAnalytics.instance.setUserProperty(
+          name: 'post_match_ad_trial_arm',
+          value: arm,
+        );
+      } on Object {
+        /* Analytics must not interrupt play. */
+      }
+    }
+    await _safeLog('post_match_ad_trial', {
+      'experiment': 'rewarded_interstitial_v1',
+      'event': event,
+      'arm': arm,
+    });
+  }
 
   @visibleForTesting
   static Future<void> Function(String, Map<String, Object>)? featureRecorder;

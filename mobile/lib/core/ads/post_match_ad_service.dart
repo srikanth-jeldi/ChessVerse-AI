@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'ad_sdk_initializer.dart';
+import 'full_screen_ad_gate.dart';
+import 'rewarded_interstitial_trial.dart';
+import '../analytics/app_analytics.dart';
 import '../app_preferences.dart';
 import '../config/app_config.dart';
 import '../diagnostics/app_diagnostics.dart';
@@ -36,6 +39,7 @@ class PostMatchAdService {
   InterstitialAd? _ad;
   bool _loading = false;
   bool _showing = false;
+  Object? _lease;
   Completer<bool>? _loadCompleter;
   int _shownToday = 0;
   DateTime _day = DateTime.now().toUtc();
@@ -57,7 +61,7 @@ class PostMatchAdService {
       _loadedAt != null &&
       _now().difference(_loadedAt!) < _maxAdAge;
   bool get isLoading => _loading;
-  bool get isShowing => _showing;
+  bool get isShowing => _lease != null || _showing;
 
   Future<bool> load({Duration timeout = const Duration(seconds: 12)}) async {
     if (!supported || _showing) return false;
@@ -143,8 +147,21 @@ class PostMatchAdService {
 
   /// Load while the result is visible, before the player chooses to continue.
   /// Never wait for an ad on the navigation path or request one during cooldown.
-  Future<bool> prepareForMatchResult() async {
-    if (!supported || _showing) return false;
+  Future<bool> prepareForMatchResult({bool allowRewardedTrial = false}) async {
+    if (isShowing) return false;
+    if (allowRewardedTrial &&
+        await RewardedInterstitialTrial.instance.treatment()) {
+      await _loadState();
+      _resetDailyCounter();
+      if (_shownToday >= 2 ||
+          (_lastShownAt != null &&
+              _now().toUtc().difference(_lastShownAt!) <
+                  const Duration(minutes: 5))) {
+        return false;
+      }
+      return RewardedInterstitialTrial.instance.load();
+    }
+    if (!supported) return false;
     await _loadState();
     _resetDailyCounter();
     if (_shownToday >= 12 ||
@@ -156,24 +173,61 @@ class PostMatchAdService {
     return load();
   }
 
-  Future<void> showAfterMatch(String matchId) async {
-    if (!supported || _showing || !_handledMatches.add(matchId)) return;
+  Future<void> showAfterMatch(
+    String matchId, {
+    Future<bool> Function()? rewardedIntro,
+  }) async {
+    if (isShowing || _handledMatches.contains(matchId)) return;
+    final lease = FullScreenAdGate.acquire();
+    if (lease == null) return;
+    _lease = lease;
+    _handledMatches.add(matchId);
+    try {
+      await _showAfterMatch(rewardedIntro);
+    } finally {
+      // A timed-out native display keeps its lease until actual dismissal.
+      if (!_showing) {
+        FullScreenAdGate.release(lease);
+        _lease = null;
+      }
+    }
+  }
+
+  Future<void> _showAfterMatch(Future<bool> Function()? rewardedIntro) async {
+    final treatment =
+        rewardedIntro != null &&
+        await RewardedInterstitialTrial.instance.treatment();
+    if (!treatment && !supported) return;
     await _loadState();
     _resetDailyCounter();
     _completedMatchesSinceLastAd++;
-    final DateTime now = DateTime.now().toUtc();
+    final DateTime now = _now().toUtc();
     final bool cooledDown =
         _lastShownAt == null ||
         now.difference(_lastShownAt!) >= const Duration(minutes: 5);
-    if (_shownToday >= 12 || !cooledDown) {
+    if (_shownToday >= (treatment ? 2 : 12) || !cooledDown) {
       AppDiagnostics.log('ad_interstitial_skipped', {
-        'reason': _shownToday >= 12 ? 'daily_cap' : 'cooldown',
+        'reason': _shownToday >= (treatment ? 2 : 12)
+            ? 'daily_cap'
+            : 'cooldown',
       });
       await _persistState();
-      unawaited(load());
       return;
     }
 
+    if (treatment) {
+      await RewardedInterstitialTrial.instance.show(
+        intro: rewardedIntro,
+        onShown: () {
+          _resetDailyCounter();
+          _shownToday++;
+          _lastShownAt = _now().toUtc();
+          unawaited(_persistState());
+        },
+      );
+      // Skip, no-fill and display failure never fall back to another ad.
+      return;
+    }
     final InterstitialAd? ad = _ad;
     if (ad == null || !isReady) {
       // Never hold the post-match navigation while waiting for network demand.
@@ -191,8 +245,11 @@ class PostMatchAdService {
         // restart the match/cooldown requirements.
         _resetDailyCounter();
         _shownToday++;
+        if (RewardedInterstitialTrial.instance.enabled) {
+          unawaited(AppAnalytics.logAdTrial('displayed', 'control'));
+        }
         _completedMatchesSinceLastAd = 0;
-        _lastShownAt = DateTime.now().toUtc();
+        _lastShownAt = _now().toUtc();
         unawaited(_persistState());
       },
       onAdDismissedFullScreenContent: (InterstitialAd value) {
@@ -225,6 +282,8 @@ class PostMatchAdService {
     unawaited(
       disposal.then((_) {
         _showing = false;
+        FullScreenAdGate.release(_lease);
+        _lease = null;
         unawaited(load());
       }),
     );
@@ -245,7 +304,7 @@ class PostMatchAdService {
   }
 
   void _resetDailyCounter() {
-    final DateTime now = DateTime.now().toUtc();
+    final DateTime now = _now().toUtc();
     if (now.year == _day.year &&
         now.month == _day.month &&
         now.day == _day.day) {
@@ -257,7 +316,7 @@ class PostMatchAdService {
 
   Future<void> _loadState() async {
     if (_stateLoaded) return;
-    final DateTime now = DateTime.now().toUtc();
+    final DateTime now = _now().toUtc();
     try {
       final String storedDay = await _preferences.readString(
         _dayKey,

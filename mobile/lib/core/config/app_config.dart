@@ -1,6 +1,14 @@
 import 'package:flutter/foundation.dart';
 
 abstract final class AppConfig {
+  // Fail closed until a dedicated rewarded-interstitial unit is configured.
+  static const bool rewardedInterstitialTrial = bool.fromEnvironment(
+    'REWARDED_INTERSTITIAL_TRIAL_ENABLED',
+  );
+  static const String rewardedInterstitialId = String.fromEnvironment(
+    'ADMOB_ANDROID_REWARDED_INTERSTITIAL_ID',
+  );
+
   static const String admobAndroidHintRewardedId = String.fromEnvironment(
     'ADMOB_ANDROID_HINT_REWARDED_ID',
     defaultValue: 'ca-app-pub-9061518700917881/6640887311',

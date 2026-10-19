@@ -3,6 +3,7 @@ import '../../../core/analytics/app_analytics.dart';
 import 'dart:async';
 
 import '../../../core/ads/rewarded_coin_service.dart';
+import '../../../core/ads/rewarded_interstitial_trial.dart';
 import '../../../core/monetization_copy.dart';
 
 import '../data/personal_mistake_backup.dart';
@@ -147,6 +148,12 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   int _lineIndex = 0;
   int _hintLevel = 0;
   bool _hintVideoPending = false;
+  bool _hintPassActive = false;
+  Future<void> _refreshHintPass() async {
+    final active = await RewardedInterstitialTrial.hintsUnlocked();
+    if (mounted) setState(() => _hintPassActive = active);
+  }
+
   String? _hintVideoMessage;
   bool get _offersHintVideo =>
       _independent &&
@@ -172,9 +179,11 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
       _hintVideoMessage = null;
     });
     try {
-      final outcome =
-          await (widget.showRewardedHint?.call() ??
-              RewardedCoinService.hints.show(playerId: '', token: ''));
+      final unlocked = await RewardedInterstitialTrial.hintsUnlocked();
+      final outcome = unlocked
+          ? RewardedCoinOutcome.earned
+          : await (widget.showRewardedHint?.call() ??
+                RewardedCoinService.hints.show(playerId: '', token: ''));
       if (!mounted ||
           attempt != _attempt ||
           fen != _currentFen ||
@@ -224,6 +233,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   @override
   void initState() {
     super.initState();
+    unawaited(_refreshHintPass());
     unawaited(AppAnalytics.logFeature(FeatureEvent.mistake_bank_viewed));
     _allItems = MistakeBank.all(LocalGameArchive.games);
     _items = _allItems.take(5).toList(growable: false);
@@ -1065,7 +1075,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
                                       ? null
                                       : _requestHint,
                                   icon: Icon(
-                                    _offersHintVideo
+                                    _offersHintVideo && !_hintPassActive
                                         ? Icons.ondemand_video
                                         : Icons.lightbulb_outline_rounded,
                                   ),
@@ -1078,7 +1088,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
                                           ),
                                         )
                                       : Text(
-                                          _offersHintVideo
+                                          _offersHintVideo && !_hintPassActive
                                               ? monetizationText(
                                                   'hintVideo',
                                                   _language,

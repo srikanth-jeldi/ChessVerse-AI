@@ -591,6 +591,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _computerPaused = true;
       _aiMoveEpoch++;
       if (mounted) {
+        final gameNavigator = Navigator.of(context);
+        final gameRoute = ModalRoute.of(context);
         await showDialog<void>(
           context: context,
           barrierDismissible: false,
@@ -603,7 +605,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               TextButton(
                 onPressed: () {
                   Navigator.pop(dialogContext);
-                  Navigator.of(context).maybePop();
+                  // The dialog can outlive this game (for example after an
+                  // account/navigation change). Never use a disposed context
+                  // or pop a different screen that has since replaced it.
+                  if (mounted && gameNavigator.mounted &&
+                      gameRoute?.isCurrent == true) {
+                    gameNavigator.maybePop();
+                  }
                 },
                 child: const Text('Back to My Games'),
               ),
@@ -4422,7 +4430,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             (_isTacticsMode && _puzzleAttemptWasMissed))) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _gameResultTitle != null) {
-          unawaited(PostMatchAdService.instance.prepareForMatchResult());
+          unawaited(
+            PostMatchAdService.instance.prepareForMatchResult(
+              allowRewardedTrial:
+                  _gameMode == GameMode.computer ||
+                  _gameMode == GameMode.online,
+            ),
+          );
         }
       });
     }
@@ -4507,7 +4521,38 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
     final String matchId = _onlineMatch?.id ?? '${_gameMode.name}:$_draftId';
-    await PostMatchAdService.instance.showAfterMatch(matchId);
+    await PostMatchAdService.instance.showAfterMatch(
+      matchId,
+      rewardedIntro:
+          (_gameMode == GameMode.computer || _gameMode == GameMode.online)
+          ? () async {
+              if (!mounted) return false;
+              return await showDialog<bool>(
+                        context: context,
+                        builder: (dialogContext) => AlertDialog(
+                          title: const Text('Unlock advanced hints'),
+                          content: const Text(
+                            'Watch this ad to unlock advanced hints in Mistake Bank for 24 hours on this device. You can skip and continue playing.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext, false),
+                              child: const Text('Skip'),
+                            ),
+                            FilledButton(
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext, true),
+                              child: const Text('Watch ad'),
+                            ),
+                          ],
+                        ),
+                      ) ==
+                      true &&
+                  mounted;
+            }
+          : null,
+    );
   }
 
   bool get _isHumanTurnForIdleHint {
