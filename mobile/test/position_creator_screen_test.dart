@@ -29,8 +29,11 @@ void main() {
 
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
-    expect(find.text('POSITION CREATOR'), findsOneWidget);
+    expect(find.text('Set Up Board'), findsOneWidget);
 
+    await tester.ensureVisible(find.byKey(const ValueKey('setup-black-turn')));
+    await tester.tap(find.byKey(const ValueKey('setup-black-turn')));
+    await tester.ensureVisible(find.text('PLAY BLACK'));
     await tester.tap(find.text('PLAY BLACK'));
     final Finder start = find.byKey(
       const ValueKey<String>('position-start-ai'),
@@ -43,5 +46,7 @@ void main() {
     expect(result, isNotNull);
     expect(result!.pieces, <String, String>{'e1': 'wK', 'e8': 'bK'});
     expect(result!.humanWhite, isFalse);
+    expect(result!.whiteToMove, isFalse);
+    expect(result!.initialFen.split(' ')[1], 'b');
   });
 }

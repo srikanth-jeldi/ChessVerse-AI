@@ -737,9 +737,12 @@ class GameSnapshot {
 int computerUndoSnapshotIndex(
   List<GameSnapshot> history, {
   required bool humanPlaysWhite,
+  bool initialWhiteToMove = true,
 }) {
   for (int index = history.length - 1; index >= 0; index--) {
-    final bool whiteToMove = history[index].moves.length.isEven;
+    final bool whiteToMove = history[index].moves.length.isEven
+        ? initialWhiteToMove
+        : !initialWhiteToMove;
     if (whiteToMove == humanPlaysWhite) {
       return index;
     }

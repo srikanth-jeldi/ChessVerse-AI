@@ -10,6 +10,71 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  for (final humanWhite in [true, false]) {
+    testWidgets(
+      'custom Black-to-move game assigns correct turn: humanWhite=$humanWhite',
+      (tester) async {
+        FlutterSecureStorage.setMockInitialValues({});
+        tester.view.physicalSize = const Size(1400, 1000);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final draft = ComputerGameDraft(
+          id: 'black-setup',
+          updatedAt: DateTime.now(),
+          state: {
+            'version': 1,
+            'initialFen': '4k3/p7/8/8/8/8/8/4K3 b - - 0 1',
+            'pieces': {'e1': 'wK', 'e8': 'bK', 'a7': 'bP'},
+            'moves': <String>[],
+            'humanWhite': humanWhite,
+            'whiteName': 'White',
+            'blackName': 'Black',
+            'level': 1,
+            'whiteSeconds': 600,
+            'blackSeconds': 600,
+          },
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            home: GameScreen(
+              initiallySignedIn: true,
+              useRemoteEngine: false,
+              initialGameMode: GameMode.computer,
+              resumeDraft: draft,
+            ),
+          ),
+        );
+        await tester.pump();
+        if (!humanWhite) {
+          // Black is the human. The pawn must be selectable immediately.
+          final board = tester.widget<ChessBoard>(find.byType(ChessBoard));
+          board.onSquareTap('a7');
+          await tester.pump();
+          board.onSquareTap('a6');
+          await tester.pump();
+          expect(
+            tester
+                .widget<ChessBoard>(find.byType(ChessBoard))
+                .pieces['a6']
+                ?.code,
+            'P',
+          );
+        } else {
+          // Black is the AI; it must move without waiting for a fictitious White ply.
+          await tester.pump(const Duration(seconds: 2));
+          await tester.pump(const Duration(seconds: 2));
+          final board = tester.widget<ChessBoard>(find.byType(ChessBoard));
+          expect(
+            board.pieces['a7'] == null || board.pieces['e8'] == null,
+            isTrue,
+          );
+        }
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump(const Duration(seconds: 2));
+      },
+    );
+  }
   for (final removeGame in [false, true]) {
     testWidgets(
       'save conflict dialog closes safely (removed game: $removeGame)',

@@ -77,6 +77,8 @@ import 'features/shop/presentation/cosmetic_shop_screen.dart';
 import 'features/shop/data/economy_rewards_api.dart';
 import 'features/puzzles/domain/puzzle_catalog.dart';
 import 'features/play/presentation/position_creator_screen.dart';
+import 'features/analysis/domain/pgn_position_reconstructor.dart'
+    show positionWhiteToMove;
 import 'features/progress/data/cloud_progress_api.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/social/presentation/social_hub_screen.dart';
@@ -1104,7 +1106,10 @@ class _SplashGateState extends State<SplashGate> {
       return;
     }
     DailyReminderService.instance.takePendingWeeklyReportOpen();
-    _push(context, const AnalysisScreen());
+    _push(
+      context,
+      AnalysisScreen(onSetUpBoard: () => _openPositionCreator(context)),
+    );
   }
 
   void _openNotificationAction() {
@@ -1130,7 +1135,10 @@ class _SplashGateState extends State<SplashGate> {
       return;
     }
     if (action == 'ANALYSIS' || action == 'REVIEW') {
-      await _push(context, const AnalysisScreen());
+      await _push(
+        context,
+        AnalysisScreen(onSetUpBoard: () => _openPositionCreator(context)),
+      );
       return;
     }
     if (action == 'DAILY_GAME_REMINDER' ||
@@ -1277,7 +1285,10 @@ class _SplashGateState extends State<SplashGate> {
         ),
         onOnlineGame: () => _openOnlineGame(context),
         onFriendsGame: () => _openFriendPlayChooser(context),
-        onAnalysis: () => _push(context, const AnalysisScreen()),
+        onAnalysis: () => _push(
+          context,
+          AnalysisScreen(onSetUpBoard: () => _openPositionCreator(context)),
+        ),
         onPuzzles: () => setState(() => _primaryDestination = 2),
         onSavedGames: () => _push(
           context,
@@ -2253,7 +2264,7 @@ class _SplashGateState extends State<SplashGate> {
         'moves': <String>[],
         'capturedWhite': <String>[],
         'capturedBlack': <String>[],
-        'coachNote': 'Custom position ready. White moves first.',
+        'coachNote': setup.whiteToMove ? 'White to move' : 'Black to move',
         'lastFrom': null,
         'lastTo': null,
         'lastCapture': null,

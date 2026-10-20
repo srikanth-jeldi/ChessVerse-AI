@@ -440,6 +440,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   String _draftId = DateTime.now().microsecondsSinceEpoch.toString();
   String _initialGameFen = _standardInitialFen;
+  bool get _localWhiteToMove =>
+      positionWhiteToMove(_initialGameFen, _moves.length);
   String? _draftOwner;
   String? _lastDraftFingerprint;
   bool _computerPaused = false;
@@ -949,7 +951,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           '${_activePuzzle.title}: checkmate in ${_dailyChallenge.playerMoveGoal} moves.';
     }
     if (_gameMode == GameMode.computer &&
-        (_moves.length.isEven != _humanPlaysWhite)) {
+        (_localWhiteToMove != _humanPlaysWhite)) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleAiMove());
     }
     WidgetsBinding.instance.addPostFrameCallback((_) => _restartTurnReminder());
@@ -1003,7 +1005,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           return;
         }
         if (_moves.isEmpty) return;
-        if (_moves.length.isEven) {
+        if (_localWhiteToMove) {
           _whiteSeconds = math.max(0, _whiteSeconds - 1);
         } else {
           _blackSeconds = math.max(0, _blackSeconds - 1);
@@ -1156,7 +1158,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
     final bool aiPlaysWhite = !_humanPlaysWhite;
-    final bool aiTurn = _moves.length.isEven == aiPlaysWhite;
+    final bool aiTurn = _localWhiteToMove == aiPlaysWhite;
     if (!aiTurn) return;
 
     _aiWatchdogTimer?.cancel();
@@ -1247,7 +1249,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final bool sideToMoveWhite =
         _gameMode == GameMode.online && _onlineMatch != null
         ? _onlineMatch!.whiteToMove
-        : _moves.length.isEven;
+        : _localWhiteToMove;
     final bool sideInCheck = ChessRules.isKingInCheck(sideToMoveWhite, _pieces);
     final String? checkedKingSquare = sideInCheck
         ? _kingSquare(sideToMoveWhite)
@@ -1435,7 +1437,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                                 : 'AI TURN')
                           : _gameMode == GameMode.online && _onlineMatch != null
                           ? (_onlineStatusText(_onlineMatch!))
-                          : _moves.length.isEven
+                          : _localWhiteToMove
                           ? 'PLAYER 1 • WHITE'
                           : 'PLAYER 2 • BLACK',
                       aiThinking: _aiThinking,
@@ -1738,7 +1740,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           child: _TurnBanner(
                             label: _localizedLiveCoachText(
                               _gameMode == GameMode.local
-                                  ? (_moves.length.isEven
+                                  ? (_localWhiteToMove
                                         ? 'PLAYER 1 • WHITE'
                                         : 'PLAYER 2 • BLACK')
                                   : 'YOUR TURN',
@@ -3053,7 +3055,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       final bool whitesTurn =
           _gameMode == GameMode.online && onlineMatch != null
           ? onlineMatch.whiteToMove
-          : _moves.length.isEven;
+          : _localWhiteToMove;
       if (_gameMode == GameMode.online && whitesTurn != _humanPlaysWhite) {
         _coachNote = 'Waiting for your opponent to move.';
         return;
@@ -3460,7 +3462,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return;
     }
     final bool aiPlaysWhite = !_humanPlaysWhite;
-    final bool aiTurn = _moves.length.isEven == aiPlaysWhite;
+    final bool aiTurn = _localWhiteToMove == aiPlaysWhite;
     if (_gameMode != GameMode.computer ||
         !aiTurn ||
         _gameResultTitle != null ||
@@ -3487,7 +3489,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           _gameResultTitle != null) {
         return;
       }
-      final bool stillAiTurn = _moves.length.isEven == aiPlaysWhite;
+      final bool stillAiTurn = _localWhiteToMove == aiPlaysWhite;
       setState(() {
         _aiThinking = false;
         _coachNote = stillAiTurn
@@ -3631,7 +3633,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Future<void> _performAiMove(int requestEpoch) async {
     final bool aiPlaysWhite = !_humanPlaysWhite;
-    final bool aiTurn = _moves.length.isEven == aiPlaysWhite;
+    final bool aiTurn = _localWhiteToMove == aiPlaysWhite;
     if (!mounted ||
         _gameMode != GameMode.computer ||
         _gameResultTitle != null ||
@@ -3670,7 +3672,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
     }
 
-    final bool aiStillTurn = _moves.length.isEven == aiPlaysWhite;
+    final bool aiStillTurn = _localWhiteToMove == aiPlaysWhite;
     if (!mounted ||
         _gameMode != GameMode.computer ||
         _gameResultTitle != null ||
@@ -3852,24 +3854,30 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       ranks.add(row.toString());
     }
 
-    final String side = _moves.length.isEven ? 'w' : 'b';
+    final String side = _localWhiteToMove ? 'w' : 'b';
     final String castling = _fenCastlingRights();
     final String enPassant = _fenEnPassantSquare();
-    final int fullMove = _moves.length ~/ 2 + 1;
+    final int fullMove =
+        (_moves.length + (positionWhiteToMove(_initialGameFen, 0) ? 0 : 1)) ~/
+            2 +
+        1;
     return '${ranks.join('/')} $side $castling $enPassant 0 $fullMove';
   }
 
   String _fenCastlingRights() {
+    final initialRights = _initialGameFen.split(' ')[2];
     final StringBuffer rights = StringBuffer();
     if (_pieces['e1']?.code == 'K' &&
         _pieces['e1']?.white == true &&
         !_hasMovedFrom('e1')) {
-      if (_pieces['h1']?.code == 'R' &&
+      if (initialRights.contains('K') &&
+          _pieces['h1']?.code == 'R' &&
           _pieces['h1']?.white == true &&
           !_hasMovedFrom('h1')) {
         rights.write('K');
       }
-      if (_pieces['a1']?.code == 'R' &&
+      if (initialRights.contains('Q') &&
+          _pieces['a1']?.code == 'R' &&
           _pieces['a1']?.white == true &&
           !_hasMovedFrom('a1')) {
         rights.write('Q');
@@ -3878,12 +3886,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (_pieces['e8']?.code == 'K' &&
         _pieces['e8']?.white == false &&
         !_hasMovedFrom('e8')) {
-      if (_pieces['h8']?.code == 'R' &&
+      if (initialRights.contains('k') &&
+          _pieces['h8']?.code == 'R' &&
           _pieces['h8']?.white == false &&
           !_hasMovedFrom('h8')) {
         rights.write('k');
       }
-      if (_pieces['a8']?.code == 'R' &&
+      if (initialRights.contains('q') &&
+          _pieces['a8']?.code == 'R' &&
           _pieces['a8']?.white == false &&
           !_hasMovedFrom('a8')) {
         rights.write('q');
@@ -3960,6 +3970,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     required List<String> emptySquares,
     required List<String> kingPath,
   }) {
+    final right = white
+        ? (rookFrom[0] == 'h' ? 'K' : 'Q')
+        : (rookFrom[0] == 'h' ? 'k' : 'q');
+    if (!_initialGameFen.split(' ')[2].contains(right)) return false;
     final ChessPiece? rook = _pieces[rookFrom];
     if (rook == null ||
         rook.code != 'R' ||
@@ -4085,7 +4099,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       final String move = _moves[index];
       if (move.startsWith('O-O')) {
         final int chronologicalPly = _moves.length - 1 - index;
-        final bool whiteCastled = chronologicalPly.isEven;
+        final bool whiteCastled = positionWhiteToMove(
+          _initialGameFen,
+          chronologicalPly,
+        );
         final String homeRank = whiteCastled ? '1' : '8';
         final String rookSquare = move.startsWith('O-O-O')
             ? 'a$homeRank'
@@ -4229,7 +4246,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _checkWarningActive = false;
     });
     _restartTurnReminder();
-    if (_gameMode == GameMode.computer && !_humanPlaysWhite) {
+    if (_gameMode == GameMode.computer &&
+        _localWhiteToMove != _humanPlaysWhite) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _scheduleAiMove();
@@ -4628,7 +4646,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       return false;
     }
     return switch (_gameMode) {
-      GameMode.computer => _moves.length.isEven == _humanPlaysWhite,
+      GameMode.computer => _localWhiteToMove == _humanPlaysWhite,
       GameMode.online =>
         _onlineMatch?.isActive == true &&
             _onlineMatch?.isYourTurn == true &&
@@ -4662,8 +4680,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (currentPly != scheduledPly) return;
       final ({String from, String to})? hint = _bestLocalHintMove(
         _gameMode == GameMode.online
-            ? (_onlineMatch?.whiteToMove ?? _moves.length.isEven)
-            : (_isTacticsMode ? true : _moves.length.isEven),
+            ? (_onlineMatch?.whiteToMove ?? _localWhiteToMove)
+            : (_isTacticsMode ? true : _localWhiteToMove),
       );
       if (hint == null) return;
       setState(() {
@@ -4770,11 +4788,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     for (int index = 0; index < chronological.length; index++) {
       final String notation = chronological[index];
       if (notation.startsWith('O-O-O')) {
-        result.add(index.isEven ? 'e1c1' : 'e8c8');
+        result.add(
+          positionWhiteToMove(_initialGameFen, index) ? 'e1c1' : 'e8c8',
+        );
         continue;
       }
       if (notation.startsWith('O-O')) {
-        result.add(index.isEven ? 'e1g1' : 'e8g8');
+        result.add(
+          positionWhiteToMove(_initialGameFen, index) ? 'e1g1' : 'e8g8',
+        );
         continue;
       }
       final ParsedMove? parsed = _parseMove(notation);
@@ -4967,7 +4989,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     // turn. This works both while AI is thinking (one ply to undo) and after
     // its reply (two plies), without leaving an unscheduled AI turn.
     final int snapshotIndex = _gameMode == GameMode.computer
-        ? computerUndoSnapshotIndex(_history, humanPlaysWhite: _humanPlaysWhite)
+        ? computerUndoSnapshotIndex(
+            _history,
+            humanPlaysWhite: _humanPlaysWhite,
+            initialWhiteToMove: positionWhiteToMove(_initialGameFen, 0),
+          )
         : (_isTacticsMode && _history.length >= 2
               ? _history.length - 2
               : _history.length - 1);
@@ -5005,7 +5031,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _gameResultDetail = null;
       _resultVisible = true;
       _checkWarningActive = ChessRules.isKingInCheck(
-        _moves.length.isEven,
+        _localWhiteToMove,
         _pieces,
       );
       _coachNote = 'Move undone. ${snapshot.coachNote}';
@@ -5014,7 +5040,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Future<void> _showHint() async {
     if (!mounted || _gameResultTitle != null) return;
-    final bool whiteToMove = _isTacticsMode ? true : _moves.length.isEven;
+    final bool whiteToMove = _isTacticsMode ? true : _localWhiteToMove;
     final int requestEpoch = ++_coachRequestEpoch;
     final String requestedFen = _toFen();
     final int hintStage = (_hintStage % 3) + 1;
@@ -5129,7 +5155,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (!mounted) return;
     final int requestEpoch = ++_coachRequestEpoch;
     final String requestedFen = _toFen();
-    final bool whiteToMove = _moves.length.isEven;
+    final bool whiteToMove = _localWhiteToMove;
     PositionAnalysis analysis = _analyzePosition(whiteToMove);
     if (_gameMode == GameMode.computer && widget.useRemoteEngine) {
       try {

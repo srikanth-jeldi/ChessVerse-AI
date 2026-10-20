@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/app_ui_localizations.dart';
+
 import '../../../core/layout/responsive_page.dart';
 import '../../../core/analysis_dashboard_localizations.dart';
 import '../../../core/analysis_metadata_localizations.dart';
@@ -110,7 +112,8 @@ String _analysisNarrative(String value, String code) {
 }
 
 class AnalysisScreen extends StatefulWidget {
-  const AnalysisScreen({super.key});
+  const AnalysisScreen({super.key, this.onSetUpBoard});
+  final VoidCallback? onSetUpBoard;
 
   @override
   State<AnalysisScreen> createState() => _AnalysisScreenState();
@@ -252,6 +255,21 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
+              if (widget.onSetUpBoard != null) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    key: const ValueKey('analysis-set-up-board'),
+                    onPressed: widget.onSetUpBoard,
+                    icon: const Icon(Icons.dashboard_customize_outlined),
+                    label: const UiText(
+                      'Set Up Board',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               if (_usePremiumDashboard)
                 _PremiumAnalysisDashboard(
                   games: games,

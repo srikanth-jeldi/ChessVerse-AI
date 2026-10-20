@@ -1,6 +1,22 @@
 const String standardInitialFen =
     'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
+/// A custom game can start with Black; do not add a fictitious White move.
+bool positionWhiteToMove(String initialFen, int playedPlies) {
+  final startsWhite = initialFen.split(' ')[1] != 'b';
+  return playedPlies.isEven ? startsWhite : !startsWhite;
+}
+
+/// The side which just moved cannot have left its own king in check.
+bool setupHasNonMovingKingInCheck(String fen) {
+  final board = _PgnBoard.fromFen(fen);
+  if (board == null) return true;
+  final king = board.whiteToMove ? 'k' : 'K';
+  final squares = board.pieces.entries.where((e) => e.value == king);
+  return squares.length != 1 ||
+      board._isAttacked(squares.single.key, byWhite: board.whiteToMove);
+}
+
 /// Replays standard SAN (and coordinate/UCI) moves and returns the FEN before
 /// every ply. This keeps imported PGN boards available while cloud analysis is
 /// pending or when a move did not need an engine review.

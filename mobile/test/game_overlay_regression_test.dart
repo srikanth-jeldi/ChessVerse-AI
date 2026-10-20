@@ -51,6 +51,14 @@ void main() {
     );
   });
 
+  test('undo honours a Black-to-move initial position', () {
+    final history = [snapshotWithPly(0), snapshotWithPly(1), snapshotWithPly(2)];
+    expect(computerUndoSnapshotIndex(history, humanPlaysWhite: false,
+      initialWhiteToMove: false), 2);
+    expect(computerUndoSnapshotIndex(history, humanPlaysWhite: true,
+      initialWhiteToMove: false), 1);
+  });
+
   testWidgets('turn reminder is text-only and has no popup subtitle', (
     WidgetTester tester,
   ) async {

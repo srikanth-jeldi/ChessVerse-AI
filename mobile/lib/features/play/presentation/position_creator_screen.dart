@@ -2,12 +2,19 @@ import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/desktop_navigation_shell.dart';
+import '../../analysis/domain/pgn_position_reconstructor.dart';
+import '../../analysis/presentation/setup_analysis_screen.dart';
 
 class PositionSetup {
-  const PositionSetup({required this.pieces, required this.humanWhite});
+  const PositionSetup({
+    required this.pieces,
+    required this.humanWhite,
+    this.whiteToMove = true,
+  });
 
   final Map<String, String> pieces;
   final bool humanWhite;
+  final bool whiteToMove;
 
   String get initialFen {
     final List<String> ranks = <String>[];
@@ -31,8 +38,7 @@ class PositionSetup {
       if (empty > 0) row.write(empty);
       ranks.add(row.toString());
     }
-    // Position Creator always starts with White to move and disables castling.
-    return '${ranks.join('/')} w - - 0 1';
+    return '${ranks.join('/')} ${whiteToMove ? 'w' : 'b'} - - 0 1';
   }
 }
 
@@ -47,6 +53,12 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
   Map<String, String> _pieces = <String, String>{'e1': 'wK', 'e8': 'bK'};
   String? _brush = 'wQ';
   bool _humanWhite = true;
+  bool _whiteToMove = true;
+  PositionSetup get _setup => PositionSetup(
+    pieces: Map<String, String>.unmodifiable(_pieces),
+    humanWhite: _humanWhite,
+    whiteToMove: _whiteToMove,
+  );
 
   static const List<String?> _palette = <String?>[
     'wK',
@@ -109,6 +121,9 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
     if (fileGap <= 1 && rankGap <= 1) {
       return 'Kings cannot stand on adjacent squares.';
     }
+    if (setupHasNonMovingKingInCheck(_setup.initialFen)) {
+      return 'The side not moving cannot already be in check. Change the board or side to move.';
+    }
     return null;
   }
 
@@ -116,7 +131,7 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
     final String? error = _validationError();
     if (error != null) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error)));
+          .showSnackBar(SnackBar(content: UiText(error)));
       return;
     }
     Navigator.pop(
@@ -124,6 +139,21 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
       PositionSetup(
         pieces: Map<String, String>.unmodifiable(_pieces),
         humanWhite: _humanWhite,
+        whiteToMove: _whiteToMove,
+      ),
+    );
+  }
+
+  void _analyse() {
+    final error = _validationError();
+    if (error != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: UiText(error)));
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SetupAnalysisScreen(fen: _setup.initialFen),
       ),
     );
   }
@@ -137,7 +167,7 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFF061524),
         appBar: AppBar(
-          title: const UiText('POSITION CREATOR'),
+          title: const UiText('Set Up Board'),
           backgroundColor: const Color(0xFF071B2D),
           actions: <Widget>[
             TextButton.icon(
@@ -179,7 +209,10 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
     );
   }
 
-  Widget _board() => DecoratedBox(
+  Widget _board() =>
+      Directionality(textDirection: TextDirection.ltr, child: _boardContent());
+
+  Widget _boardContent() => DecoratedBox(
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(24),
       border: Border.all(color: const Color(0xFFE2AE49), width: 2),
@@ -207,6 +240,7 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
               button: true,
               label: '$square${piece == null ? ', empty' : ', $piece'}',
               child: InkWell(
+                key: ValueKey('setup-square-$square'),
                 onTap: () => _tapSquare(square),
                 child: ColoredBox(
                   color: dark
@@ -260,7 +294,7 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         const UiText(
-          'BUILD YOUR CHALLENGE',
+          'Set up a position',
           style: TextStyle(
             color: Color(0xFFE2AE49),
             fontWeight: FontWeight.w900,
@@ -269,7 +303,7 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
         ),
         const SizedBox(height: 8),
         const UiText(
-          'Choose a piece, place it on the board, then face ChessVerseAI.',
+          'Place pieces, choose the side to move, then analyse or play.',
           style: TextStyle(color: Color(0xFFB7CAD7), height: 1.4),
         ),
         const SizedBox(height: 18),
@@ -317,28 +351,71 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
           }).toList(),
         ),
         const SizedBox(height: 18),
-        SegmentedButton<bool>(
-          segments: const <ButtonSegment<bool>>[
-            ButtonSegment<bool>(value: true, label: UiText('PLAY WHITE')),
-            ButtonSegment<bool>(value: false, label: UiText('PLAY BLACK')),
+        const UiText('Side to move'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ChoiceChip(
+              key: const ValueKey('setup-white-turn'),
+              label: const UiText('White to move'),
+              selected: _whiteToMove,
+              onSelected: (_) => setState(() => _whiteToMove = true),
+            ),
+            ChoiceChip(
+              key: const ValueKey('setup-black-turn'),
+              label: const UiText('Black to move'),
+              selected: !_whiteToMove,
+              onSelected: (_) => setState(() => _whiteToMove = false),
+            ),
           ],
-          selected: <bool>{_humanWhite},
-          onSelectionChanged: (Set<bool> value) =>
-              setState(() => _humanWhite = value.first),
+        ),
+        const SizedBox(height: 18),
+        const UiText('Your side against AI'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ChoiceChip(
+              label: const UiText('PLAY WHITE'),
+              selected: _humanWhite,
+              onSelected: (_) => setState(() => _humanWhite = true),
+            ),
+            ChoiceChip(
+              label: const UiText('PLAY BLACK'),
+              selected: !_humanWhite,
+              onSelected: (_) => setState(() => _humanWhite = false),
+            ),
+          ],
         ),
         const SizedBox(height: 18),
         const UiText(
-          'White moves first. Castling is disabled in custom setups.',
+          'No castling or en passant rights in the starting position.',
           style: TextStyle(color: Color(0xFF8FA8BA), fontSize: 12),
         ),
         const SizedBox(height: 20),
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
+            key: const ValueKey('position-analyse'),
+            onPressed: _analyse,
+            icon: const Icon(Icons.analytics_outlined),
+            label: const UiText(
+              'Analyse Position',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
             key: const ValueKey<String>('position-start-ai'),
             onPressed: _start,
             icon: const Icon(Icons.smart_toy_rounded),
-            label: const UiText('PLAY THIS POSITION'),
+            label: const UiText('Play against AI', textAlign: TextAlign.center),
           ),
         ),
       ],

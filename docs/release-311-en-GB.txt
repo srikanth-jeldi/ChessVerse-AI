@@ -1,0 +1,6 @@
+<en-GB>
+New: Set Up Board in Analysis.
+Arrange pieces and choose White or Black to move, then analyse the position or play against AI.
+Explore engine recommendations and alternative lines with move-by-move previews.
+Includes translated controls across 34 languages and clearer setup validation and connection messages.
+</en-GB>

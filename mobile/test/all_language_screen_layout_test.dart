@@ -44,7 +44,7 @@ void main() {
     'puzzle_academy': () => const PuzzleAcademyScreen(),
     'onboarding': () => OnboardingScreen(onComplete: () {}),
     'auth': () => AuthScreen(onAuthenticated: (_) {}),
-    'analysis': () => const AnalysisScreen(),
+    'analysis': () => AnalysisScreen(onSetUpBoard: () {}),
     'profile': () => const ProfileScreen(),
     'settings': () => const SettingsScreen(),
     'options': () => const GameOptionsScreen(),

@@ -1,0 +1,42 @@
+Release 1.3.44 (311): Set Up Board
+
+Implemented
+- Analysis dashboard: Set Up Board entry.
+- Editor: independent White/Black to move and human playing colour.
+- Analyse Position opens the existing authenticated Stockfish candidate API.
+- Best/alternative moves, evaluation from White's perspective, legal line
+  previews, move navigation, original FEN, bounded timeout and retry states.
+- Play against AI retains the exact custom FEN and chosen side to move.
+- Turn/clock/hint/AI scheduling, undo and FEN generation respect a Black start.
+- Custom initial castling rights are respected instead of reconstructed from
+  king/rook placement. New setups begin without castling/en passant rights.
+- Invalid non-moving king checks are rejected before either action.
+- Chess board coordinates remain left-to-right in RTL interfaces.
+- 34 catalogs contain 962 labels each; brand tokens remain unchanged.
+
+Validation
+- 234 feature/regression tests passed (setup311-tests-final.txt).
+  Includes 204 cases: 6 setup/analysis states x 34 languages at 320px,
+  1.3 text scale, loading/data/empty/error/signed-out states.
+  Includes exact FEN, independent side selection, invalid position handling,
+  analysis navigation/retry, engine line preview, Black AI opening move,
+  Black human opening move, game resume and undo regressions.
+- 34 Analysis dashboard layout tests passed (setup311-dashboard-tests.txt).
+- Final scoped Dart analysis: no issues (setup311-analyze-clean.txt).
+- git diff --check passed.
+
+Limits
+- Engine responses in UI tests are controlled fixtures; no new live backend
+  authentication/Stockfish end-to-end test was performed.
+- No physical-device test was performed for this release.
+- Machine translations are not native-speaker editorial certification.
+- No Play Store upload or backend deployment is part of this release.
+- This feature validation does not establish that all native ANRs are resolved.
+
+Final AAB verification
+- artifacts/release-1.3.44-311/ChessVerseAI-1.3.44-build311.aab
+- Package com.epitomehub.chessverse; versionName 1.3.44; versionCode 311.
+- jarsigner: jar verified; 12 native libraries verified across all 3 ABIs.
+- Bundle contains 34 catalogs x 962 labels, new setup controls and preserved
+  brand tokens; no local Translator configuration present.
+- SHA256: 441740f3f677d89c536442dfcf5a258dbeeb00222876ddc1dfd9d51bffce5c9e
