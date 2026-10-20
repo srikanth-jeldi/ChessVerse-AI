@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/skeleton_loader.dart';
@@ -66,13 +67,17 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: const Color(0xFF020D16),
     appBar: AppBar(
-      title: const Text(
+      title: const UiText(
         'NOTIFICATIONS',
         style: TextStyle(fontWeight: FontWeight.w900),
       ),
       actions: <Widget>[
         if ((_inbox?.unreadCount ?? 0) > 0)
-          TextButton(onPressed: _readAll, child: const Text('Mark all read')),
+          IconButton(
+            onPressed: _readAll,
+            tooltip: uiText(context, 'Mark all read'),
+            icon: const Icon(Icons.done_all_rounded),
+          ),
       ],
     ),
     body: _body(),
@@ -88,7 +93,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
             const SizedBox(height: 12),
             Text(_error!),
             const SizedBox(height: 12),
-            FilledButton(onPressed: _load, child: const Text('Retry')),
+            FilledButton(onPressed: _load, child: const UiText('Retry')),
           ],
         ),
       );
@@ -106,7 +111,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
               color: Color(0xFF607B8B),
             ),
             SizedBox(height: 12),
-            Text('You are all caught up.', textAlign: TextAlign.center),
+            UiText('You are all caught up.', textAlign: TextAlign.center),
           ],
         ),
       );

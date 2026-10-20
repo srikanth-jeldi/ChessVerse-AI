@@ -1,3 +1,5 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
+
 import 'dart:async';
 
 import '../../../core/widgets/login_bonus_message.dart';
@@ -249,8 +251,10 @@ class _AuthScreenState extends State<AuthScreen> {
                           child: _welcomeArtwork(compact: compact),
                         )
                       else
-                        SizedBox(
-                          height: compact ? 260 : 340,
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: compact ? 260 : 340,
+                          ),
                           child: _welcomeArtwork(compact: true),
                         ),
                       if (wide)
@@ -272,33 +276,38 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _welcomeArtwork({required bool compact}) => Stack(
-    fit: StackFit.expand,
+    fit: StackFit.loose,
     children: <Widget>[
-      Image.asset(
-        'assets/backgrounds/onboarding-worldwide-v1.webp',
-        fit: BoxFit.cover,
-        alignment: const Alignment(.42, .5),
+      Positioned.fill(
+        child: Image.asset(
+          'assets/backgrounds/onboarding-worldwide-v1.webp',
+          fit: BoxFit.cover,
+          alignment: const Alignment(.42, .5),
+        ),
       ),
-      const DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: <Color>[
-              Color(0x12020B17),
-              Color(0x48020B17),
-              Color(0xF5051425),
-            ],
+      const Positioned.fill(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[
+                Color(0x12020B17),
+                Color(0x48020B17),
+                Color(0xF5051425),
+              ],
+            ),
           ),
         ),
       ),
       Padding(
         padding: EdgeInsets.all(compact ? 26 : 40),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.end,
           children: <Widget>[
-            const Text(
+            const UiText(
               'YOUR NEXT GREAT MOVE STARTS HERE',
               style: TextStyle(
                 color: Color(0xFF58E3D0),
@@ -311,9 +320,9 @@ class _AuthScreenState extends State<AuthScreen> {
             Text.rich(
               TextSpan(
                 children: <InlineSpan>[
-                  const TextSpan(text: 'Welcome to\nChessVerse'),
+                  TextSpan(text: uiText(context, 'Welcome to\nChessVerse')),
                   TextSpan(
-                    text: 'AI',
+                    text: uiText(context, 'AI'),
                     style: TextStyle(color: AppColors.accentGold),
                   ),
                 ],
@@ -330,7 +339,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             ),
             const SizedBox(height: 14),
-            const Text(
+            const UiText(
               'Play smarter. Learn faster. Challenge the world.',
               style: TextStyle(
                 color: Color(0xFFD6E0EA),
@@ -396,7 +405,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 ? 24
                 : 38,
           ),
-          const Text(
+          const UiText(
             'Ready when you are.',
             style: TextStyle(
               color: AppColors.textPrimary,
@@ -407,7 +416,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           const SizedBox(height: 10),
           if (!compactLandscape) const LoginBonusMessage(),
-          const Text(
+          const UiText(
             'Start instantly as a guest, or sign in to keep your rating, games and learning progress on every device.',
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
@@ -437,7 +446,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
               icon: const Icon(Icons.bolt_rounded),
-              label: const Text(
+              label: const UiText(
                 'Play as Guest',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
               ),
@@ -456,7 +465,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             ),
             icon: const Icon(Icons.person_outline_rounded, size: 20),
-            label: const Text(
+            label: const UiText(
               'Sign In or Create Account',
               style: TextStyle(fontWeight: FontWeight.w800),
             ),
@@ -643,7 +652,7 @@ class _AuthScreenState extends State<AuthScreen> {
       children: <Widget>[
         if (showBrand) _premiumBrandHeader(context, dense: dense),
         if (showBrand) SizedBox(height: dense ? 10 : 24),
-        Text(
+        UiText(
           widget.guestUpgradeToken != null
               ? 'Secure your progress'
               : _verificationMode
@@ -659,7 +668,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         ),
         SizedBox(height: dense ? 6 : 10),
-        Text(
+        UiText(
           widget.guestUpgradeToken != null
               ? 'Choose Email, Google or Facebook. Your guest progress stays safe.'
               : _loginMode
@@ -701,7 +710,7 @@ class _AuthScreenState extends State<AuthScreen> {
           OutlinedButton.icon(
             onPressed: _loading ? null : _loginGuestWithEmail,
             icon: const Icon(Icons.mail_outline_rounded),
-            label: const Text('LOGIN WITH EMAIL'),
+            label: const UiText('LOGIN WITH EMAIL'),
           ),
         ],
         if (widget.guestUpgradeToken == null) ...<Widget>[
@@ -779,9 +788,9 @@ class _AuthScreenState extends State<AuthScreen> {
         Text.rich(
           TextSpan(
             children: <InlineSpan>[
-              const TextSpan(text: 'ChessVerse'),
+              TextSpan(text: uiText(context, 'ChessVerse')),
               TextSpan(
-                text: 'AI',
+                text: uiText(context, 'AI'),
                 style: TextStyle(color: AppColors.accentGold),
               ),
             ],
@@ -828,7 +837,7 @@ class _AuthScreenState extends State<AuthScreen> {
             child: _ModeButton(
               selected: _loginMode,
               icon: Icons.login_rounded,
-              label: 'Login',
+              label: uiText(context, 'Login'),
               onTap: _loading ? null : () => _setPremiumLoginMode(true),
             ),
           ),
@@ -836,7 +845,7 @@ class _AuthScreenState extends State<AuthScreen> {
             child: _ModeButton(
               selected: !_loginMode,
               icon: Icons.person_add_alt_rounded,
-              label: 'Register',
+              label: uiText(context, 'Register'),
               onTap: _loading ? null : () => _setPremiumLoginMode(false),
             ),
           ),
@@ -883,7 +892,7 @@ class _AuthScreenState extends State<AuthScreen> {
     if (widget.guestUpgradeToken != null) {
       return const <Widget>[
         LoginBonusMessage(),
-        Text(
+        UiText(
           'Link Google or Facebook to keep this guest profile, rating and match history across devices. Your existing progress will not be deleted.',
           style: TextStyle(color: AppColors.textSecondary, height: 1.45),
         ),
@@ -891,14 +900,15 @@ class _AuthScreenState extends State<AuthScreen> {
     }
     if (_verificationMode) {
       return <Widget>[
-        Text(
-          'Enter the 6-digit code sent to ${_emailController.text.trim()}.',
+        UiText(
+          'Enter the 6-digit code sent to {0}.',
+          values: [_emailController.text.trim()],
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 12),
         _AuthField(
           controller: _verificationCodeController,
-          label: 'Verification code',
+          label: uiText(context, 'Verification code'),
           icon: Icons.verified_outlined,
           keyboardType: TextInputType.number,
           maxLength: 6,
@@ -911,7 +921,7 @@ class _AuthScreenState extends State<AuthScreen> {
               onPressed: _loading || !_canResendVerification
                   ? null
                   : _resendVerificationCode,
-              child: const Text('Resend code'),
+              child: const UiText('Resend code'),
             ),
           ],
         ),
@@ -921,13 +931,13 @@ class _AuthScreenState extends State<AuthScreen> {
       if (!_loginMode) ...<Widget>[
         _AuthField(
           controller: _userIdController,
-          label: 'User ID',
+          label: uiText(context, 'User ID'),
           icon: Icons.alternate_email_rounded,
         ),
         const SizedBox(height: 12),
         _AuthField(
           controller: _displayNameController,
-          label: 'Player name',
+          label: uiText(context, 'Player name'),
           icon: Icons.person_outline_rounded,
         ),
         const SizedBox(height: 12),
@@ -960,25 +970,30 @@ class _AuthScreenState extends State<AuthScreen> {
                   : (bool? value) => unawaited(_setRememberMe(value ?? true)),
             ),
             const Expanded(
-              child: Text(
+              child: UiText(
                 'Remember me',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 13),
               ),
             ),
-            TextButton(
-              style: TextButton.styleFrom(
-                minimumSize: Size.zero,
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-              ),
-              onPressed: _loading ? null : _forgotPassword,
-              child: const Text(
-                'Forgot password?',
-                maxLines: 1,
-                style: TextStyle(color: AppColors.accentGold, fontSize: 13),
+            Flexible(
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  minimumSize: Size.zero,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 8,
+                  ),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: _loading ? null : _forgotPassword,
+                child: const UiText(
+                  'Forgot password?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.accentGold, fontSize: 13),
+                ),
               ),
             ),
           ],
@@ -1017,7 +1032,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : const Icon(Icons.login_rounded),
-        label: Text(
+        label: UiText(
           _verificationMode
               ? 'Verify & Continue'
               : _loginMode
@@ -1047,7 +1062,7 @@ class _AuthScreenState extends State<AuthScreen> {
               children: <Widget>[
                 Icon(Icons.person_outline_rounded, size: 20),
                 SizedBox(width: 8),
-                Text(
+                UiText(
                   'Continue as Guest',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                 ),
@@ -1055,7 +1070,7 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
           SizedBox(height: 3),
-          Text(
+          UiText(
             'Start playing instantly. Upgrade anytime.',
             style: TextStyle(color: Color(0xFF9EACC2), fontSize: 11),
           ),
@@ -1180,7 +1195,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             ),
                             const SizedBox(width: 14),
                             Expanded(
-                              child: Text(
+                              child: UiText(
                                 'CHESSVERSEAI',
                                 style: Theme.of(context).textTheme.titleLarge
                                     ?.copyWith(
@@ -1192,7 +1207,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           ],
                         ),
                         const SizedBox(height: 28),
-                        Text(
+                        UiText(
                           widget.guestUpgradeToken != null
                               ? 'Secure your progress'
                               : _verificationMode
@@ -1213,12 +1228,12 @@ class _AuthScreenState extends State<AuthScreen> {
                             segments: const <ButtonSegment<bool>>[
                               ButtonSegment<bool>(
                                 value: false,
-                                label: Text('Register'),
+                                label: UiText('Register'),
                                 icon: Icon(Icons.person_add_alt_rounded),
                               ),
                               ButtonSegment<bool>(
                                 value: true,
-                                label: Text('Login'),
+                                label: UiText('Login'),
                                 icon: Icon(Icons.check_rounded),
                               ),
                             ],
@@ -1235,7 +1250,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                         const SizedBox(height: 18),
                         if (widget.guestUpgradeToken != null) ...<Widget>[
-                          const Text(
+                          const UiText(
                             'Use Email, Google or Facebook to secure this guest profile, rating and match history across devices. Your existing progress will not be deleted.',
                             style: TextStyle(
                               color: AppColors.textSecondary,
@@ -1243,14 +1258,15 @@ class _AuthScreenState extends State<AuthScreen> {
                             ),
                           ),
                         ] else if (_verificationMode) ...<Widget>[
-                          Text(
-                            'Enter the 6-digit code sent to ${_emailController.text.trim()}.',
+                          UiText(
+                            'Enter the 6-digit code sent to {0}.',
+                            values: [_emailController.text.trim()],
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                           const SizedBox(height: 12),
                           _AuthField(
                             controller: _verificationCodeController,
-                            label: 'Verification code',
+                            label: uiText(context, 'Verification code'),
                             icon: Icons.verified_outlined,
                             keyboardType: TextInputType.number,
                             maxLength: 6,
@@ -1269,20 +1285,20 @@ class _AuthScreenState extends State<AuthScreen> {
                                 onPressed: _loading || !_canResendVerification
                                     ? null
                                     : _resendVerificationCode,
-                                child: const Text('Resend code'),
+                                child: const UiText('Resend code'),
                               ),
                             ],
                           ),
                         ] else if (!_loginMode) ...<Widget>[
                           _AuthField(
                             controller: _userIdController,
-                            label: 'User ID',
+                            label: uiText(context, 'User ID'),
                             icon: Icons.alternate_email_rounded,
                           ),
                           const SizedBox(height: 12),
                           _AuthField(
                             controller: _displayNameController,
-                            label: 'Player name',
+                            label: uiText(context, 'Player name'),
                             icon: Icons.person_outline_rounded,
                           ),
                           const SizedBox(height: 12),
@@ -1317,10 +1333,10 @@ class _AuthScreenState extends State<AuthScreen> {
                                         _setRememberMe(value ?? true),
                                       ),
                               ),
-                              const Expanded(child: Text('Remember me')),
+                              const Expanded(child: UiText('Remember me')),
                               TextButton(
                                 onPressed: _loading ? null : _forgotPassword,
-                                child: const Text('Forgot password?'),
+                                child: const UiText('Forgot password?'),
                               ),
                             ],
                           ),
@@ -1345,7 +1361,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                     ),
                                   )
                                 : const Icon(Icons.login_rounded),
-                            label: Text(
+                            label: UiText(
                               _verificationMode
                                   ? 'Verify & Continue'
                                   : _loginMode
@@ -1359,7 +1375,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           OutlinedButton.icon(
                             onPressed: _loading ? null : _continueAsGuest,
                             icon: const Icon(Icons.person_pin_circle_outlined),
-                            label: const Text('Continue as Guest Player'),
+                            label: const UiText('Continue as Guest Player'),
                           ),
                         const SizedBox(height: 10),
                         Row(
@@ -1374,7 +1390,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                       icon: const Icon(
                                         Icons.g_mobiledata_rounded,
                                       ),
-                                      label: Text(
+                                      label: UiText(
                                         widget.guestUpgradeToken == null
                                             ? 'Google'
                                             : 'SECURE WITH GOOGLE',
@@ -1389,10 +1405,10 @@ class _AuthScreenState extends State<AuthScreen> {
                           OutlinedButton.icon(
                             onPressed: _loading ? null : _signInWithFacebook,
                             icon: const Icon(Icons.facebook_rounded),
-                            label: const Text('Facebook Login'),
+                            label: const UiText('Facebook Login'),
                           ),
                         const SizedBox(height: 16),
-                        Text(
+                        UiText(
                           'Guest players receive a secure numbered identity for online games, ratings and history. Add Google or email later for account recovery.',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodySmall
@@ -1917,19 +1933,19 @@ class _AuthScreenState extends State<AuthScreen> {
         builder: (BuildContext context, StateSetter setDialogState) =>
             AlertDialog(
               scrollable: true,
-              title: const Text('Login with email'),
+              title: const UiText('Login with email'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  const Text(
+                  const UiText(
                     'Sign in to your existing ChessVerseAI account. Your guest profile remains safe on this device.',
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: identityController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'User ID or email',
+                    decoration: InputDecoration(
+                      labelText: uiText(context, 'User ID or email'),
                       prefixIcon: Icon(Icons.mail_outline_rounded),
                     ),
                   ),
@@ -1937,8 +1953,8 @@ class _AuthScreenState extends State<AuthScreen> {
                   TextField(
                     controller: passwordController,
                     obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Password',
+                    decoration: InputDecoration(
+                      labelText: uiText(context, 'Password'),
                       prefixIcon: Icon(Icons.lock_outline_rounded),
                     ),
                   ),
@@ -1959,7 +1975,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   onPressed: submitting
                       ? null
                       : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
+                  child: const UiText('Cancel'),
                 ),
                 FilledButton(
                   onPressed: submitting
@@ -2003,7 +2019,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Login'),
+                      : const UiText('Login'),
                 ),
               ],
             ),
@@ -2032,21 +2048,24 @@ class _AuthScreenState extends State<AuthScreen> {
                 vertical: 24,
               ),
               actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
-              title: const Text('Reset password'),
+              title: const UiText('Reset password'),
               content: SizedBox(
                 width: 420,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    Text('Enter the 6-digit reset code sent to $email.'),
+                    UiText(
+                      'Enter the 6-digit reset code sent to {0}.',
+                      values: [email],
+                    ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: codeController,
                       keyboardType: TextInputType.number,
                       maxLength: 6,
-                      decoration: const InputDecoration(
-                        labelText: 'Reset code',
+                      decoration: InputDecoration(
+                        labelText: uiText(context, 'Reset code'),
                         prefixIcon: Icon(Icons.pin_outlined),
                       ),
                     ),
@@ -2054,9 +2073,12 @@ class _AuthScreenState extends State<AuthScreen> {
                     TextField(
                       controller: newPasswordController,
                       obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'New password',
-                        helperText: 'Use at least 8 characters.',
+                      decoration: InputDecoration(
+                        labelText: uiText(context, 'New password'),
+                        helperText: uiText(
+                          context,
+                          'Use at least 8 characters.',
+                        ),
                         prefixIcon: Icon(Icons.lock_reset_rounded),
                       ),
                     ),
@@ -2097,7 +2119,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   onPressed: submitting
                       ? null
                       : () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('Cancel'),
+                  child: const UiText('Cancel'),
                 ),
                 FilledButton(
                   onPressed: submitting
@@ -2150,7 +2172,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Update password'),
+                      : const UiText('Update password'),
                 ),
               ],
             ),
@@ -2247,9 +2269,16 @@ class _DividerLabel extends StatelessWidget {
     return Row(
       children: <Widget>[
         const Expanded(child: Divider(color: Color(0xFF34445C))),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(label, style: const TextStyle(color: Color(0xFF9EACC2))),
+        Flexible(
+          flex: 4,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF9EACC2)),
+            ),
+          ),
         ),
         const Expanded(child: Divider(color: Color(0xFF34445C))),
       ],
@@ -2320,7 +2349,7 @@ class _SecurityNote extends StatelessWidget {
           Icon(Icons.shield_outlined, color: Color(0xFF5EEAD4), size: 34),
           SizedBox(width: 14),
           Expanded(
-            child: Text(
+            child: UiText(
               'Guest players receive a secure temporary identity.\nLink Google or email later for account recovery.',
               style: TextStyle(color: Color(0xFFB1BED1), height: 1.45),
             ),
@@ -2508,7 +2537,7 @@ class _SocialSignInOverlay extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                Text(
+                UiText(
                   'Signing you in…',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: AppColors.textPrimary,
@@ -2518,8 +2547,9 @@ class _SocialSignInOverlay extends StatelessWidget {
                 const SizedBox(height: 8),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Text(
-                    'Securely verifying your $providerName account.',
+                  child: UiText(
+                    'Securely verifying your {0} account.',
+                    values: [providerName],
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: AppColors.textSecondary),
                   ),

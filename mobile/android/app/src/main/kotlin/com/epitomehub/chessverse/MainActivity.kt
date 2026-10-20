@@ -70,6 +70,12 @@ class MainActivity : FlutterActivity() {
             StandardMethodCodec.INSTANCE,
             messenger.makeBackgroundTaskQueue()
         ).setMethodCallHandler { call, result ->
+            if (call.method == "sdkInt") {
+                // No Binder, storage or WebView provider lookup is needed for
+                // the startup window policy.
+                result.success(Build.VERSION.SDK_INT)
+                return@setMethodCallHandler
+            }
             if (call.method != "read") {
                 result.notImplemented()
                 return@setMethodCallHandler

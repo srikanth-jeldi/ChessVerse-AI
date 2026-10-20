@@ -1,0 +1,47 @@
+Club features and language layout validation — 20 October 2026
+
+Implemented
+- Club-specific Challenges tab, sent/received labels and expiration states.
+- Sending a challenge selects the Challenges tab.
+- Challenge API checks membership and filters matches by club.
+- Reusing a pending challenge belonging to another club is rejected.
+- Create your club form; creator receives OWNER membership transactionally.
+- Up to three currently owned clubs per player, unique name validation.
+- Exact registered email/@username invitations through app notifications.
+  Invitations do not send email or automatically join the recipient.
+- Invitation membership checks, daily deduplication and 20/day sender limit.
+- New club labels translated into all 34 supported languages.
+- Fixed post-game action wrapping: three equal-width actions with wrapping
+  inside each button. Removed stale English language-selection snackbars.
+- Fixed detected narrow-screen overflows in auth, home, options, analysis,
+  daily challenge, master games, Learn Chess and leaderboard layouts.
+
+Verification
+- 859 combined Flutter tests passed:
+  23 initial screen states x 34 languages = 782 layout cases,
+  36 post-game layout cases and 41 existing club cases.
+- 110 club UI tests passed, including all 34 languages for both create/invite
+  forms at 320px with 1.3 text scaling and a populated challenge queue case.
+- 2 additional form-submission tests passed (trimmed input, API arguments,
+  successful dialog results).
+- 118 earlier regression tests passed covering club activity, Mistake Bank,
+  auth, academy responsive layout and coin-credit flows.
+- 19 backend tests passed, including club creation/invitation permissions,
+  challenge cross-club isolation, existing club activities and rewards.
+- English/Telugu post-game visual tests: 2 passed; generated images inspected.
+  Test images have test-font/asset-loading limitations and are not device captures.
+- Dart analysis of all changed implementation files: no issues.
+- git diff --check: passed.
+
+Limits and release state
+- Layout tests cover the stated initial states and selected interactions;
+  they do not prove every loaded-data/error/navigation state on every device.
+- No live two-account invitation/push test or physical-device test performed.
+- Backend changes have not been deployed in this work.
+- No new AAB generated and no Git commit/push made in this work.
+- Existing startup/ANR mitigation changes in the workspace are preserved;
+  these UI tests do not establish that native ANRs are resolved.
+
+Logs: .build-tmp/ui-final-suite.txt, club-ui-final.txt, club-submit-tests.txt,
+club-backend-final.txt, ui-changed-analyze.txt, ui-flow-regressions.txt,
+post-game-visual-verified.txt.

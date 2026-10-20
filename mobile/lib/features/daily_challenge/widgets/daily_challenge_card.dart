@@ -79,9 +79,8 @@ class DailyChallengeCard extends StatelessWidget {
                 const SizedBox(height: 18),
                 Text(
                   challenge.title,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontSize: 24,
-                      ),
+                  style: Theme.of(context).textTheme.headlineMedium
+                      ?.copyWith(fontSize: 24),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -115,8 +114,9 @@ class DailyChallengeCard extends StatelessWidget {
                   children: <Widget>[
                     Expanded(
                       child: ChessVerseButton(
-                        label:
-                            challenge.completedToday ? 'Review' : 'Play today',
+                        label: challenge.completedToday
+                            ? 'Review'
+                            : 'Play today',
                         icon: Icons.play_arrow_rounded,
                         onPressed: onPlay,
                       ),
@@ -188,12 +188,14 @@ class _MetricChip extends StatelessWidget {
         children: <Widget>[
           Icon(icon, size: 15, color: AppColors.accentGold),
           const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -240,8 +242,9 @@ class _ProgressSection extends StatelessWidget {
             minHeight: 9,
             value: challenge.progress,
             backgroundColor: AppColors.backgroundDeep.withValues(alpha: 0.55),
-            valueColor:
-                const AlwaysStoppedAnimation<Color>(AppColors.accentGold),
+            valueColor: const AlwaysStoppedAnimation<Color>(
+              AppColors.accentGold,
+            ),
           ),
         ),
       ],

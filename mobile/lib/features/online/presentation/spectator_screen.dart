@@ -1,3 +1,5 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -68,7 +70,7 @@ class _SpectatorScreenState extends State<SpectatorScreen> {
     child: Scaffold(
       backgroundColor: const Color(0xFF061524),
       appBar: AppBar(
-        title: const Text('WATCH & LEARN'),
+        title: const UiText('WATCH & LEARN'),
         backgroundColor: const Color(0xFF071B2D),
         actions: <Widget>[
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
@@ -104,12 +106,12 @@ class _EmptyArena extends StatelessWidget {
         children: <Widget>[
           Icon(Icons.visibility_rounded, size: 72, color: Color(0xFF63D2B8)),
           SizedBox(height: 18),
-          Text(
+          UiText(
             'No live games right now',
             style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
           ),
           SizedBox(height: 8),
-          Text(
+          UiText(
             'Active community battles will appear here automatically.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Color(0xFFAEC0D1)),
@@ -149,16 +151,21 @@ class _LiveGameCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(
-                    '${game.whitePlayerName ?? 'White'}  vs  ${game.blackPlayerName ?? 'Black'}',
+                  UiText(
+                    '{0}  vs  {1}',
+                    values: [
+                      game.whitePlayerName ?? 'White',
+                      game.blackPlayerName ?? 'Black',
+                    ],
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    'LIVE • ${game.plyCount} moves • ${game.activeColor} to move',
+                  UiText(
+                    'LIVE • {0} moves • {1} to move',
+                    values: [game.plyCount, game.activeColor],
                     style: const TextStyle(color: Color(0xFF63D2B8)),
                   ),
                 ],

@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/local_game_archive.dart';
@@ -37,7 +38,7 @@ class SavedGamesScreen extends StatelessWidget {
     final List<SavedGameRecord> games = LocalGameArchive.games;
 
     return _ReferenceScaffold(
-      title: 'My Games',
+      title: uiText(context, 'My Games'),
       alignment: Alignment.topCenter,
       child: Column(
         children: <Widget>[
@@ -59,18 +60,27 @@ class GameOptionsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _ReferenceScaffold(
-      title: 'Game Options',
+      title: uiText(context, 'Game Options'),
       child: Column(
-        children: const <Widget>[
-          _SwitchOption(label: 'Flip Board', enabled: true),
-          _MenuOption(label: 'Board Theme', value: 'Walnut'),
-          _MenuOption(label: 'Piece Theme', value: 'Staunton 3D'),
-          _SwitchOption(label: 'Sound', enabled: true),
-          _SwitchOption(label: 'Show Coordinates', enabled: true),
-          _SwitchOption(label: 'Move Hints', enabled: false),
-          _SwitchOption(label: 'Best Move Trail', enabled: true),
+        children: <Widget>[
+          _SwitchOption(label: uiText(context, 'Flip Board'), enabled: true),
+          _MenuOption(label: uiText(context, 'Board Theme'), value: 'Walnut'),
+          _MenuOption(
+            label: uiText(context, 'Piece Theme'),
+            value: 'Staunton 3D',
+          ),
+          _SwitchOption(label: uiText(context, 'Sound'), enabled: true),
+          _SwitchOption(
+            label: uiText(context, 'Show Coordinates'),
+            enabled: true,
+          ),
+          _SwitchOption(label: uiText(context, 'Move Hints'), enabled: false),
+          _SwitchOption(
+            label: uiText(context, 'Best Move Trail'),
+            enabled: true,
+          ),
           SizedBox(height: 26),
-          _DangerButton(label: 'Resign'),
+          _DangerButton(label: uiText(context, 'Resign')),
         ],
       ),
     );
@@ -94,14 +104,14 @@ class MoveHistoryScreen extends StatelessWidget {
     ];
 
     return _ReferenceScaffold(
-      title: 'Move History',
+      title: uiText(context, 'Move History'),
       child: Column(
         children: <Widget>[
           const Row(
             children: <Widget>[
               SizedBox(width: 36),
-              Expanded(child: Text('White', textAlign: TextAlign.center)),
-              Expanded(child: Text('Black', textAlign: TextAlign.center)),
+              Expanded(child: UiText('White', textAlign: TextAlign.center)),
+              Expanded(child: UiText('Black', textAlign: TextAlign.center)),
             ],
           ),
           const Divider(),
@@ -119,7 +129,7 @@ class MoveHistoryScreen extends StatelessWidget {
             );
           }),
           const SizedBox(height: 20),
-          FilledButton(onPressed: null, child: Text('Close')),
+          FilledButton(onPressed: null, child: UiText('Close')),
         ],
       ),
     );
@@ -144,15 +154,15 @@ class GameResultScreen extends StatelessWidget {
             size: 72,
           ),
           const SizedBox(height: 12),
-          Text(
+          UiText(
             draw ? 'Draw!' : 'You Win!',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: draw ? AppColors.textPrimary : AppColors.accentGold,
-                  fontWeight: FontWeight.w900,
-                ),
+              color: draw ? AppColors.textPrimary : AppColors.accentGold,
+              fontWeight: FontWeight.w900,
+            ),
           ),
-          Text(
+          UiText(
             draw ? 'by Stalemate' : 'by Checkmate',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium,
@@ -160,14 +170,17 @@ class GameResultScreen extends StatelessWidget {
           const SizedBox(height: 22),
           _ScoreCard(score: draw ? '½ - ½' : '1 - 0'),
           const SizedBox(height: 18),
-          const _ResultMetric(label: 'Moves', value: '18'),
-          const _ResultMetric(label: 'Accuracy', value: '92.4%'),
-          const _ResultMetric(label: 'Best Move (%)', value: '87.1%'),
-          const _ResultMetric(label: 'Time Taken', value: '07:23'),
+          _ResultMetric(label: uiText(context, 'Moves'), value: '18'),
+          _ResultMetric(label: uiText(context, 'Accuracy'), value: '92.4%'),
+          _ResultMetric(
+            label: uiText(context, 'Best Move (%)'),
+            value: '87.1%',
+          ),
+          _ResultMetric(label: uiText(context, 'Time Taken'), value: '07:23'),
           const SizedBox(height: 24),
-          FilledButton(onPressed: null, child: Text('New Game')),
+          FilledButton(onPressed: null, child: UiText('New Game')),
           const SizedBox(height: 10),
-          OutlinedButton(onPressed: null, child: Text('Back to Home')),
+          OutlinedButton(onPressed: null, child: UiText('Back to Home')),
         ],
       ),
     );
@@ -270,8 +283,11 @@ class _SectionTitle extends StatelessWidget {
 
 // ignore: unused_element
 class _ProgressTile extends StatelessWidget {
-  const _ProgressTile(
-      {required this.label, required this.value, required this.color});
+  const _ProgressTile({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
   final String label;
   final String value;
   final Color color;
@@ -317,7 +333,13 @@ class _MenuOption extends StatelessWidget {
       child: Row(
         children: <Widget>[
           Expanded(child: Text(label)),
-          Text(value, style: const TextStyle(color: AppColors.textSecondary)),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
           const SizedBox(width: 8),
           const Icon(Icons.chevron_right_rounded),
         ],
@@ -395,8 +417,10 @@ class _PuzzleResultCard extends StatelessWidget {
     return _MenuSurface(
       child: Row(
         children: <Widget>[
-          const Icon(Icons.local_fire_department_rounded,
-              color: AppColors.accentGold),
+          const Icon(
+            Icons.local_fire_department_rounded,
+            color: AppColors.accentGold,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -405,8 +429,11 @@ class _PuzzleResultCard extends StatelessWidget {
                   : 'Puzzle result saved. Daily streak: $streak',
             ),
           ),
-          Text('$solved solved',
-              style: const TextStyle(color: AppColors.success)),
+          UiText(
+            '{0} solved',
+            values: [solved],
+            style: const TextStyle(color: AppColors.success),
+          ),
         ],
       ),
     );
@@ -423,7 +450,7 @@ class _EmptySavedGames extends StatelessWidget {
         children: <Widget>[
           Icon(Icons.save_alt_rounded, color: AppColors.accentGold, size: 34),
           SizedBox(height: 10),
-          Text(
+          UiText(
             'No saved games yet. Finish a game, resign, draw, or complete Daily Checkmate to save it locally.',
             textAlign: TextAlign.center,
           ),
@@ -441,8 +468,8 @@ class _SavedGameTile extends StatelessWidget {
     final Color resultColor = game.result.toLowerCase().contains('draw')
         ? AppColors.accentGold
         : game.result.toLowerCase().contains('black')
-            ? AppColors.danger
-            : AppColors.success;
+        ? AppColors.danger
+        : AppColors.success;
     return _MenuSurface(
       child: Row(
         children: <Widget>[
@@ -461,17 +488,20 @@ class _SavedGameTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(game.mode, style: Theme.of(context).textTheme.titleMedium),
-                Text('${game.result} - ${game.detail}',
-                    style: TextStyle(color: resultColor)),
                 Text(
-                  '${game.summary} - ${game.moves.length} moves',
+                  '${game.result} - ${game.detail}',
+                  style: TextStyle(color: resultColor),
+                ),
+                UiText(
+                  '{0} - {1} moves',
+                  values: [game.summary, game.moves.length],
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
             ),
           ),
           Tooltip(
-            message: 'Review mode preview',
+            message: uiText(context, 'Review mode preview'),
             child: IconButton(
               onPressed: () {
                 showModalBottomSheet<void>(
@@ -509,8 +539,10 @@ class _SavedGameReviewSheet extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              Text('Review saved game',
-                  style: Theme.of(context).textTheme.headlineSmall),
+              UiText(
+                'Review saved game',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
               const SizedBox(height: 8),
               Text('${game.mode} - ${game.result}'),
               const SizedBox(height: 12),
@@ -523,7 +555,7 @@ class _SavedGameReviewSheet extends StatelessWidget {
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close review'),
+                child: const UiText('Close review'),
               ),
             ],
           ),
@@ -541,7 +573,7 @@ class _ScoreCard extends StatelessWidget {
     return _MenuSurface(
       child: Row(
         children: <Widget>[
-          const CircleAvatar(child: Text('You')),
+          const CircleAvatar(child: UiText('You')),
           Expanded(
             child: Text(
               score,
@@ -549,7 +581,7 @@ class _ScoreCard extends StatelessWidget {
               style: Theme.of(context).textTheme.headlineMedium,
             ),
           ),
-          const CircleAvatar(child: Text('AI')),
+          const CircleAvatar(child: UiText('AI')),
         ],
       ),
     );

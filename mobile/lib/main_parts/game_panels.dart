@@ -49,7 +49,7 @@ class _GameStudioHeader extends StatelessWidget {
             if (compact)
               IconButton.outlined(
                 key: const ValueKey<String>('desktop-back-to-home'),
-                tooltip: 'Back to Home',
+                tooltip: uiText(context, 'Back to Home'),
                 onPressed: onHome,
                 icon: const Icon(Icons.arrow_back_rounded),
               )
@@ -58,7 +58,7 @@ class _GameStudioHeader extends StatelessWidget {
                 key: const ValueKey<String>('desktop-back-to-home'),
                 onPressed: onHome,
                 icon: const Icon(Icons.arrow_back_rounded),
-                label: const Text('Back to Home'),
+                label: const UiText('Back to Home'),
               ),
             SizedBox(width: compact ? 10 : 16),
             if (onPause != null)
@@ -66,7 +66,7 @@ class _GameStudioHeader extends StatelessWidget {
                 key: const ValueKey('pause-computer-game'),
                 onPressed: onPause,
                 icon: const Icon(Icons.pause_circle_outline),
-                label: const Text('Pause & Save'),
+                label: const UiText('Pause & Save'),
               ),
             Row(
               children: <Widget>[
@@ -124,7 +124,7 @@ class _GameStudioHeader extends StatelessWidget {
                           ),
                         ),
                         if (!compact)
-                          const Text(
+                          const UiText(
                             'Tap for today\'s challenge',
                             style: TextStyle(
                               color: Color(0xFFC7C1B8),
@@ -150,7 +150,7 @@ class _GameStudioHeader extends StatelessWidget {
             const SizedBox(width: 14),
             if (compact)
               IconButton.outlined(
-                tooltip: 'Profile',
+                tooltip: uiText(context, 'Profile'),
                 onPressed: onProfile,
                 icon: const Icon(Icons.person_rounded),
               )
@@ -208,7 +208,7 @@ class _GameStudioDock extends StatelessWidget {
                         children: <Widget>[
                           Icon(Icons.format_list_bulleted_rounded, size: 18),
                           SizedBox(width: 8),
-                          Text(
+                          UiText(
                             'Move history',
                             style: TextStyle(fontWeight: FontWeight.w800),
                           ),
@@ -217,7 +217,7 @@ class _GameStudioDock extends StatelessWidget {
                       const SizedBox(height: 10),
                       Expanded(
                         child: recentMoves.isEmpty
-                            ? const Text(
+                            ? const UiText(
                                 'Your moves will appear here.',
                                 style: TextStyle(color: Color(0xFF9FA8B8)),
                               )
@@ -1558,7 +1558,7 @@ class GamePanel extends StatelessWidget {
                             SizedBox(height: 8),
                             RotatedBox(
                               quarterTurns: 3,
-                              child: Text(
+                              child: UiText(
                                 'GAME CONTROLS',
                                 style: TextStyle(
                                   fontSize: 11,
@@ -1575,12 +1575,12 @@ class GamePanel extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    tooltip: 'New game',
+                    tooltip: uiText(context, 'New game'),
                     onPressed: onNewGameRequested,
                     icon: const Icon(Icons.refresh_rounded),
                   ),
                   IconButton(
-                    tooltip: 'Undo move',
+                    tooltip: uiText(context, 'Undo move'),
                     onPressed: canUndo ? onUndo : null,
                     icon: const Icon(Icons.undo_rounded),
                   ),
@@ -1609,7 +1609,7 @@ class GamePanel extends StatelessWidget {
                     children: <Widget>[
                       const Icon(Icons.drag_handle_rounded, size: 28),
                       const SizedBox(width: 6),
-                      Text(
+                      UiText(
                         expanded ? 'Less controls' : 'More controls',
                         style: Theme.of(context).textTheme.labelLarge,
                       ),
@@ -1645,18 +1645,18 @@ class GamePanel extends StatelessWidget {
                 ),
               ),
               IconButton(
-                tooltip: 'New game',
+                tooltip: uiText(context, 'New game'),
                 onPressed: onNewGameRequested,
                 icon: const Icon(Icons.refresh_rounded),
               ),
               IconButton(
-                tooltip: 'Undo move',
+                tooltip: uiText(context, 'Undo move'),
                 onPressed: canUndo ? onUndo : null,
                 icon: const Icon(Icons.undo_rounded),
               ),
               if (!compact)
                 IconButton(
-                  tooltip: 'Sign out',
+                  tooltip: uiText(context, 'Sign out'),
                   onPressed: onLogout,
                   icon: const Icon(Icons.logout_rounded),
                 ),
@@ -1698,7 +1698,7 @@ class GamePanel extends StatelessWidget {
               key: const ValueKey<String>('rename-player-two'),
               onPressed: onEditBlackPlayer,
               icon: const Icon(Icons.manage_accounts_outlined),
-              label: Text('Player 2: $blackPlayerName'),
+              label: UiText('Player 2: {0}', values: [blackPlayerName]),
             ),
           ],
           if (gameMode == GameMode.daily) ...<Widget>[
@@ -1709,8 +1709,14 @@ class GamePanel extends StatelessWidget {
             ),
             if (dailyMistakes > 0) ...<Widget>[
               const SizedBox(height: 8),
-              Text(
-                '$dailyMistakes attempt${dailyMistakes == 1 ? '' : 's'} missed - keep calculating',
+              UiText(
+                '{0} attempt{1} missed - keep calculating',
+                values: [
+                  dailyMistakes,
+                  UiCopy.language.value == 'en' && dailyMistakes != 1
+                      ? 's'
+                      : '',
+                ],
                 style: const TextStyle(color: Color(0xFFE2B458)),
               ),
             ],
@@ -1743,7 +1749,7 @@ class GamePanel extends StatelessWidget {
                 child: _PanelActionButton(
                   onPressed: onMoveHistory,
                   icon: const Icon(Icons.history_rounded),
-                  label: const Text('History'),
+                  label: const UiText('History'),
                 ),
               ),
               SizedBox(
@@ -1751,7 +1757,7 @@ class GamePanel extends StatelessWidget {
                 child: _PanelActionButton(
                   onPressed: onOfferDraw,
                   icon: const Icon(Icons.handshake_rounded),
-                  label: const Text('Draw'),
+                  label: const UiText('Draw'),
                 ),
               ),
               SizedBox(
@@ -1759,7 +1765,7 @@ class GamePanel extends StatelessWidget {
                 child: _PanelActionButton(
                   onPressed: onResign,
                   icon: const Icon(Icons.flag_rounded),
-                  label: const Text('Resign'),
+                  label: const UiText('Resign'),
                 ),
               ),
             ],
@@ -1786,13 +1792,13 @@ class GamePanel extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 18),
-          Text('Board', style: Theme.of(context).textTheme.titleMedium),
+          UiText('Board', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           DropdownButtonFormField<BoardSkin>(
             key: const ValueKey<String>('board-theme-menu'),
             initialValue: skin,
-            decoration: const InputDecoration(
-              labelText: 'Board theme',
+            decoration: InputDecoration(
+              labelText: uiText(context, 'Board theme'),
               prefixIcon: Icon(Icons.palette_outlined),
               border: OutlineInputBorder(),
             ),
@@ -1816,13 +1822,15 @@ class GamePanel extends StatelessWidget {
             Row(
               children: <Widget>[
                 Expanded(
-                  child: Text(
-                    '${aiProfile.name} - Level $aiLevel',
+                  child: UiText(
+                    '{0} - Level {1}',
+                    values: [aiProfile.name, aiLevel],
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
-                Text(
-                  '~${aiProfile.elo} Elo',
+                UiText(
+                  '~{0} Elo',
+                  values: [aiProfile.elo],
                   style: const TextStyle(
                     color: Color(0xFF63D2B8),
                     fontWeight: FontWeight.w800,
@@ -1850,7 +1858,7 @@ class GamePanel extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               value: coachEnabled,
               onChanged: onCoachChanged,
-              title: const Text('AI coach'),
+              title: const UiText('AI coach'),
               secondary: const Icon(Icons.psychology_alt_rounded),
             ),
           ),
@@ -1860,7 +1868,7 @@ class GamePanel extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               value: soundEnabled,
               onChanged: onSoundChanged,
-              title: const Text('Sound effects'),
+              title: const UiText('Sound effects'),
               secondary: const Icon(Icons.volume_up_rounded),
             ),
           ),
@@ -1870,7 +1878,7 @@ class GamePanel extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               value: showCoordinates,
               onChanged: onShowCoordinatesChanged,
-              title: const Text('Show coordinates'),
+              title: const UiText('Show coordinates'),
               secondary: const Icon(Icons.grid_4x4_rounded),
             ),
           ),
@@ -1880,15 +1888,15 @@ class GamePanel extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               value: showMoveHints,
               onChanged: onShowMoveHintsChanged,
-              title: const Text('Move hints'),
+              title: const UiText('Move hints'),
               secondary: const Icon(Icons.lightbulb_outline_rounded),
             ),
           ),
           const ListTile(
             contentPadding: EdgeInsets.zero,
             leading: Icon(Icons.view_in_ar_rounded),
-            title: Text('Piece theme'),
-            subtitle: Text('Staunton 3D active - more themes coming soon'),
+            title: UiText('Piece theme'),
+            subtitle: UiText('Staunton 3D active - more themes coming soon'),
           ),
           const SizedBox(height: 8),
           Row(
@@ -1897,7 +1905,7 @@ class GamePanel extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: onHint,
                   icon: const Icon(Icons.psychology_alt_rounded),
-                  label: const Text('Hint'),
+                  label: const UiText('Hint'),
                 ),
               ),
               const SizedBox(width: 10),
@@ -1905,13 +1913,13 @@ class GamePanel extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: onAnalyze,
                   icon: const Icon(Icons.analytics_rounded),
-                  label: const Text('Analyze'),
+                  label: const UiText('Analyze'),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 18),
-          Text(
+          UiText(
             'Move history',
             style: compact
                 ? Theme.of(context).textTheme.titleMedium
@@ -2000,29 +2008,29 @@ class GameModeLauncher extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<_GameModeChoice> choices = <_GameModeChoice>[
-      const _GameModeChoice(
+      _GameModeChoice(
         mode: GameMode.computer,
         icon: Icons.smart_toy_rounded,
-        title: 'Play vs AI',
-        subtitle: 'Challenge ChessVerseAI',
+        title: uiText(context, 'Play vs AI'),
+        subtitle: uiText(context, 'Challenge ChessVerseAI'),
       ),
-      const _GameModeChoice(
+      _GameModeChoice(
         mode: GameMode.daily,
         icon: Icons.local_fire_department_rounded,
-        title: 'Daily Checkmate',
-        subtitle: 'Finish a late-game puzzle',
+        title: uiText(context, 'Daily Checkmate'),
+        subtitle: uiText(context, 'Finish a late-game puzzle'),
       ),
-      const _GameModeChoice(
+      _GameModeChoice(
         mode: GameMode.local,
         icon: Icons.groups_2_rounded,
-        title: '2 Players',
-        subtitle: 'Same-device match',
+        title: uiText(context, '2 Players'),
+        subtitle: uiText(context, 'Same-device match'),
       ),
-      const _GameModeChoice(
+      _GameModeChoice(
         mode: GameMode.online,
         icon: Icons.public_rounded,
-        title: 'Online',
-        subtitle: 'Matchmaking & reconnect',
+        title: uiText(context, 'Online'),
+        subtitle: uiText(context, 'Matchmaking & reconnect'),
       ),
     ];
 

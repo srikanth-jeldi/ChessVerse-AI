@@ -1,7 +1,28 @@
 import 'package:chessverse_ai/core/app_language.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'cold start restores the saved language for synchronous labels',
+    () async {
+      for (final language in AppLanguageController.supported.where(
+        (language) => language.code != AppLanguageController.systemCode,
+      )) {
+        FlutterSecureStorage.setMockInitialValues({
+          'settings.language': language.code,
+        });
+        AppLanguageController.effectiveLanguageChanges.value = null;
+        expect(await AppLanguageController.effectiveCode(), language.code);
+        expect(
+          AppLanguageController.effectiveLanguageChanges.value,
+          language.code,
+        );
+      }
+      AppLanguageController.effectiveLanguageChanges.value = null;
+    },
+  );
   test('every offered language resolves without switching to English', () {
     final languages = AppLanguageController.supported.where(
       (language) => language.code != AppLanguageController.systemCode,

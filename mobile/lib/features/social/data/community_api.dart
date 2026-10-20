@@ -393,6 +393,48 @@ class CommunityDto {
 
 class CommunityApi {
   const CommunityApi();
+  Future<List<SocialChallengeDto>> clubChallenges(
+    String token,
+    String clubId,
+  ) async {
+    final data = await _request(
+      token,
+      'GET',
+      '/api/v1/community/clubs/$clubId/challenges',
+    );
+    return (data['challenges'] as List? ?? [])
+        .map(
+          (v) =>
+              SocialChallengeDto.fromJson(Map<String, dynamic>.from(v as Map)),
+        )
+        .toList();
+  }
+
+  Future<ClubDto> createClub(
+    String token,
+    String name,
+    String description,
+  ) async => ClubDto.fromJson(
+    await _request(
+      token,
+      'POST',
+      '/api/v1/community/clubs',
+      body: {'name': name, 'description': description},
+    ),
+  );
+  Future<void> inviteToClub(
+    String token,
+    String clubId,
+    String identity,
+  ) async {
+    await _request(
+      token,
+      'POST',
+      '/api/v1/community/clubs/$clubId/invites',
+      body: {'identity': identity},
+    );
+  }
+
   Future<Map<String, dynamic>> clubActivities(String token, String clubId) =>
       _request(token, 'GET', '/api/v1/community/clubs/$clubId/activities');
   Future<Map<String, dynamic>> clubPuzzle(

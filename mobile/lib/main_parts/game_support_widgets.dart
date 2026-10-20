@@ -26,7 +26,7 @@ class MoveHistorySheet extends StatelessWidget {
                 Row(
                   children: <Widget>[
                     Expanded(
-                      child: Text(
+                      child: UiText(
                         'Move History',
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
@@ -244,7 +244,7 @@ class EmptyMoveState extends StatelessWidget {
         ),
         child: const Padding(
           padding: EdgeInsets.all(16),
-          child: Text(
+          child: UiText(
             'Select a coin, then choose its target square.',
             textAlign: TextAlign.center,
           ),
@@ -269,7 +269,7 @@ class SessionLoadingOverlay extends StatelessWidget {
             SizedBox(height: 20),
             CircularProgressIndicator(color: Color(0xFFD6A84F)),
             SizedBox(height: 14),
-            Text('Restoring your secure session...'),
+            UiText('Restoring your secure session...'),
           ],
         ),
       ),
@@ -352,14 +352,14 @@ class AuthOverlay extends StatelessWidget {
                         children: <Widget>[
                           const ChessVerseMark(size: 34),
                           const SizedBox(width: 8),
-                          Text(
+                          UiText(
                             'CHESSVERSEAI',
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                         ],
                       ),
                       const SizedBox(height: 14),
-                      Text(
+                      UiText(
                         registerMode
                             ? 'Create ChessVerseAI ID'
                             : 'Welcome back',
@@ -377,11 +377,11 @@ class AuthOverlay extends StatelessWidget {
                           segments: const <ButtonSegment<bool>>[
                             ButtonSegment<bool>(
                               value: true,
-                              label: Text('Register'),
+                              label: UiText('Register'),
                             ),
                             ButtonSegment<bool>(
                               value: false,
-                              label: Text('Login'),
+                              label: UiText('Login'),
                             ),
                           ],
                           selected: <bool>{registerMode},
@@ -395,8 +395,8 @@ class AuthOverlay extends StatelessWidget {
                           TextField(
                             onChanged: onUsernameChanged,
                             textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'User ID',
+                            decoration: InputDecoration(
+                              labelText: uiText(context, 'User ID'),
                               prefixIcon: Icon(Icons.alternate_email_rounded),
                               border: OutlineInputBorder(),
                             ),
@@ -405,8 +405,8 @@ class AuthOverlay extends StatelessWidget {
                           TextField(
                             onChanged: onDisplayNameChanged,
                             textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Player name',
+                            decoration: InputDecoration(
+                              labelText: uiText(context, 'Player name'),
                               prefixIcon: Icon(Icons.person_outline_rounded),
                               border: OutlineInputBorder(),
                             ),
@@ -448,7 +448,7 @@ class AuthOverlay extends StatelessWidget {
                             alignment: Alignment.centerRight,
                             child: TextButton(
                               onPressed: loading ? null : onForgotPassword,
-                              child: const Text('Forgot password?'),
+                              child: const UiText('Forgot password?'),
                             ),
                           ),
                       ],
@@ -483,8 +483,11 @@ class AuthOverlay extends StatelessWidget {
                             letterSpacing: 0,
                           ),
                           onSubmitted: (_) => onSubmit(),
-                          decoration: const InputDecoration(
-                            labelText: 'Six-digit verification code',
+                          decoration: InputDecoration(
+                            labelText: uiText(
+                              context,
+                              'Six-digit verification code',
+                            ),
                             border: OutlineInputBorder(),
                           ),
                         ),
@@ -542,7 +545,7 @@ class AuthOverlay extends StatelessWidget {
                                     ? Icons.verified_rounded
                                     : Icons.login_rounded,
                               ),
-                        label: Text(
+                        label: UiText(
                           awaitingCode
                               ? 'Verify and Continue'
                               : registerMode
@@ -555,13 +558,13 @@ class AuthOverlay extends StatelessWidget {
                         OutlinedButton.icon(
                           onPressed: loading ? null : onContinueDefault,
                           icon: const Icon(Icons.person_pin_circle_outlined),
-                          label: const Text('Continue as Guest Player'),
+                          label: const UiText('Continue as Guest Player'),
                         ),
                         const SizedBox(height: 10),
                         OutlinedButton.icon(
                           onPressed: loading ? null : onFacebookLogin,
                           icon: const Icon(Icons.facebook_rounded),
-                          label: const Text(
+                          label: const UiText(
                             'Facebook Login',
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -575,18 +578,18 @@ class AuthOverlay extends StatelessWidget {
                             TextButton.icon(
                               onPressed: loading ? null : onResendCode,
                               icon: const Icon(Icons.refresh_rounded),
-                              label: const Text('Resend code'),
+                              label: const UiText('Resend code'),
                             ),
                             TextButton.icon(
                               onPressed: loading ? null : onBackFromCode,
                               icon: const Icon(Icons.arrow_back_rounded),
-                              label: const Text('Change details'),
+                              label: const UiText('Change details'),
                             ),
                           ],
                         ),
                       if (!awaitingCode) ...<Widget>[
                         const SizedBox(height: 14),
-                        const Text(
+                        const UiText(
                           'Use a verified ChessVerseAI account to save games, ratings and coach history. Guest Player is local-only for quick testing.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
@@ -694,7 +697,7 @@ class OnlineReconnectCountdown extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 11),
-                  Text(
+                  UiText(
                     finalising ? 'FINALISING RESULT' : 'WAITING FOR OPPONENT',
                     style: const TextStyle(
                       color: Colors.white,
@@ -1136,8 +1139,9 @@ class GameResultOverlay extends StatelessWidget {
                         ],
                         if (accuracy != null) ...<Widget>[
                           SizedBox(height: shortLandscape ? 5 : 10),
-                          Text(
-                            'AI accuracy: $accuracy%',
+                          UiText(
+                            'AI accuracy: {0}%',
+                            values: [accuracy],
                             style: const TextStyle(
                               color: Color(0xFF57E0C3),
                               fontSize: 17,
@@ -1145,8 +1149,9 @@ class GameResultOverlay extends StatelessWidget {
                             ),
                           ),
                           if (turningPoint != null)
-                            Text(
-                              'Turning point: $turningPoint',
+                            UiText(
+                              'Turning point: {0}',
+                              values: [turningPoint],
                               textAlign: TextAlign.center,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -1208,7 +1213,7 @@ class GameResultOverlay extends StatelessWidget {
                                   : OutlinedButton.icon(
                                       onPressed: onRematch,
                                       icon: const Icon(Icons.sync_rounded),
-                                      label: const Text('Rematch'),
+                                      label: const UiText('Rematch'),
                                     ),
                             ),
                           ],
@@ -1220,7 +1225,7 @@ class GameResultOverlay extends StatelessWidget {
                             child: FilledButton.icon(
                               onPressed: onNewGame,
                               icon: const Icon(Icons.add_rounded),
-                              label: const Text('New opponent'),
+                              label: const UiText('New opponent'),
                             ),
                           ),
                         ],
@@ -1232,7 +1237,7 @@ class GameResultOverlay extends StatelessWidget {
                               key: const ValueKey<String>('share-game-result'),
                               onPressed: onShare,
                               icon: const Icon(Icons.ios_share_rounded),
-                              label: const Text('SHARE RESULT'),
+                              label: const UiText('SHARE RESULT'),
                             ),
                           ),
                         ],
@@ -1244,7 +1249,7 @@ class GameResultOverlay extends StatelessWidget {
                               key: const ValueKey<String>('export-game-data'),
                               onPressed: () => _showGameExport(context),
                               icon: const Icon(Icons.file_upload_outlined),
-                              label: const Text('EXPORT PGN / FEN'),
+                              label: const UiText('EXPORT PGN / FEN'),
                             ),
                           ),
                         ],
@@ -1282,26 +1287,26 @@ class GameResultOverlay extends StatelessWidget {
     final _GameExportFormat? format = await showDialog<_GameExportFormat>(
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('Export game file'),
-        content: const Text('Choose the file format you want to share.'),
+        title: const UiText('Export game file'),
+        content: const UiText('Choose the file format you want to share.'),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+            child: const UiText('Cancel'),
           ),
           OutlinedButton.icon(
             key: const ValueKey<String>('export-fen-file'),
             onPressed: () =>
                 Navigator.of(dialogContext).pop(_GameExportFormat.fen),
             icon: const Icon(Icons.grid_on_rounded),
-            label: const Text('FEN (.fen)'),
+            label: const UiText('FEN (.fen)'),
           ),
           FilledButton.icon(
             key: const ValueKey<String>('export-pgn-file'),
             onPressed: () =>
                 Navigator.of(dialogContext).pop(_GameExportFormat.pgn),
             icon: const Icon(Icons.description_outlined),
-            label: const Text('PGN (.pgn)'),
+            label: const UiText('PGN (.pgn)'),
           ),
         ],
       ),
@@ -1396,16 +1401,22 @@ class CapturedMaterial extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Text('Captured', style: Theme.of(context).textTheme.titleMedium),
+        UiText('Captured', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 6),
         Row(
           children: <Widget>[
             Expanded(
-              child: CaptureRow(label: 'White', pieces: capturedWhite),
+              child: CaptureRow(
+                label: uiText(context, 'White'),
+                pieces: capturedWhite,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: CaptureRow(label: 'Black', pieces: capturedBlack),
+              child: CaptureRow(
+                label: uiText(context, 'Black'),
+                pieces: capturedBlack,
+              ),
             ),
           ],
         ),

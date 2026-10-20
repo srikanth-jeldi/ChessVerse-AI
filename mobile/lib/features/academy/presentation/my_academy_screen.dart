@@ -1,4 +1,7 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
+
 import '../../analysis/domain/mistake_bank_sync.dart';
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -142,7 +145,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
         puzzle = await showDialog<String>(
           context: context,
           builder: (context) => SimpleDialog(
-            title: const Text('Choose a practice puzzle'),
+            title: const UiText('Choose a practice puzzle'),
             children: PuzzleCatalog.all
                 .take(30)
                 .map(
@@ -197,7 +200,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, update) => AlertDialog(
-          title: Text(
+          title: UiText(
             study
                 ? 'Submit study notes'
                 : capture.solved
@@ -239,7 +242,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
           actions: [
             TextButton(
               onPressed: sending ? null : () => Navigator.pop(context),
-              child: const Text('Close without sending'),
+              child: const UiText('Close without sending'),
             ),
             FilledButton(
               onPressed: sending
@@ -273,7 +276,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                         }
                       }
                     },
-              child: Text(sending ? 'Saving…' : 'Submit to coach'),
+              child: UiText(sending ? 'Saving…' : 'Submit to coach'),
             ),
           ],
         ),
@@ -289,7 +292,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
       showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('${report['period']} progress'),
+          title: UiText('{0} progress', values: [report['period']]),
           content: SizedBox(
             width: 520,
             child: SingleChildScrollView(
@@ -302,15 +305,22 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                   for (final o in summary['observations'] ?? [])
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
-                      child: Text(
-                        '${o['practiced_on']}: ${o['accuracy']}% accuracy · ${o['minutes']} minutes\n${o['notes']}',
+                      child: UiText(
+                        '{0}: {1}% accuracy · {2} minutes\n{3}',
+                        values: [
+                          o['practiced_on'],
+                          o['accuracy'],
+                          o['minutes'],
+                          o['notes'],
+                        ],
                       ),
                     ),
                   for (final d in summary['appDaily'] ?? [])
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        '${d['day']} · ${d['kind']}: ${d['events']} events, ${d['solved']} solved',
+                      child: UiText(
+                        '{0} · {1}: {2} events, {3} solved',
+                        values: [d['day'], d['kind'], d['events'], d['solved']],
                       ),
                     ),
                 ],
@@ -320,7 +330,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
+              child: const UiText('Close'),
             ),
           ],
         ),
@@ -345,12 +355,12 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
     );
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Academy'),
+        title: const UiText('My Academy'),
         actions: [
           IconButton(
             onPressed: busy ? null : load,
             icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh academy',
+            tooltip: uiText(context, 'Refresh academy'),
           ),
         ],
       ),
@@ -371,7 +381,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          const UiText(
                             'Your coach. Your training. Your next move.',
                             style: TextStyle(
                               fontSize: 24,
@@ -381,35 +391,49 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                           const SizedBox(height: 12),
                           TextField(
                             controller: invite,
-                            decoration: const InputDecoration(
-                              labelText: 'Academy invitation link',
-                              helperText: 'Use the same verified email your academy invited.',
+                            decoration: InputDecoration(
+                              labelText: uiText(
+                                context,
+                                'Academy invitation link',
+                              ),
+                              helperText: uiText(
+                                context,
+                                'Use the same verified email your academy invited.',
+                              ),
                             ),
                           ),
                           const SizedBox(height: 12),
                           FilledButton.icon(
                             onPressed: busy ? null : join,
                             icon: const Icon(Icons.school),
-                            label: const Text('Accept invitation'),
+                            label: const UiText('Accept invitation'),
                           ),
                         ],
                       ),
                     ),
                     if (!busy && organizations.isEmpty && error == null)
                       box(
-                        const Text(
+                        const UiText(
                           'No student academy membership yet. Ask your academy for an invitation. Personal practice remains available.',
                         ),
                       ),
                     if (organizations.isNotEmpty)
                       DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        itemHeight: null,
                         initialValue: org,
-                        decoration: const InputDecoration(labelText: 'Academy'),
+                        decoration: InputDecoration(
+                          labelText: uiText(context, 'Academy'),
+                        ),
                         items: organizations
                             .map(
                               (o) => DropdownMenuItem<String>(
                                 value: o['id'],
-                                child: Text(o['name']),
+                                child: Text(
+                                  o['name'],
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             )
                             .toList(),
@@ -444,26 +468,48 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                                 'Batch not assigned',
                               ),
                             ),
-                            if(student != null && student['active']==true) SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: const Text('Share Mistake Bank positions and review progress'),
-                              subtitle: const Text('Optional: shares up to 100 saved mistake positions, moves, and retry schedules with authorized academy staff and linked parents. Includes existing saved positions. Turn off to remove the shared bank.'),
-                              value: shared && (activity?['sharing'] as List? ?? []).any((s)=>s['mistake_bank_enabled']==true),
-                              onChanged: busy || !shared ? null : (value) async {
-                                setState(()=>busy=true);
-                                try {
-                                  await api.request('/$org/mistake-bank/sharing',method:'PUT',body:{'enabled':value});
-                                  if(value)await syncAcademyMistakeBank();
-                                  await load();
-                                } catch(e){message(e.toString());if(mounted)setState(()=>busy=false);}
-                              },
-                            ),
+                            if (student != null && student['active'] == true)
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const UiText(
+                                  'Share Mistake Bank positions and review progress',
+                                ),
+                                subtitle: const UiText(
+                                  'Optional: shares up to 100 saved mistake positions, moves, and retry schedules with authorized academy staff and linked parents. Includes existing saved positions. Turn off to remove the shared bank.',
+                                ),
+                                value:
+                                    shared &&
+                                    (activity?['sharing'] as List? ?? []).any(
+                                      (s) => s['mistake_bank_enabled'] == true,
+                                    ),
+                                onChanged: busy || !shared
+                                    ? null
+                                    : (value) async {
+                                        setState(() => busy = true);
+                                        try {
+                                          await api.request(
+                                            '/$org/mistake-bank/sharing',
+                                            method: 'PUT',
+                                            body: {'enabled': value},
+                                          );
+                                          if (value) {
+                                            await syncAcademyMistakeBank();
+                                          }
+                                          await load();
+                                        } catch (e) {
+                                          message(e.toString());
+                                          if (mounted) {
+                                            setState(() => busy = false);
+                                          }
+                                        }
+                                      },
+                              ),
                             SwitchListTile(
                               contentPadding: EdgeInsets.zero,
-                              title: const Text(
+                              title: const UiText(
                                 'Share personal practice with this academy',
                               ),
-                              subtitle: const Text(
+                              subtitle: const UiText(
                                 'Shares new app activity with authorized staff and linked parents. Stopping sharing keeps earlier report snapshots. Assignment submissions are shared separately.',
                               ),
                               value: shared,
@@ -489,7 +535,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                           ],
                         ),
                       ),
-                      const Text(
+                      const UiText(
                         'Assignments',
                         style: TextStyle(
                           fontSize: 24,
@@ -499,7 +545,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                       const SizedBox(height: 12),
                       if (rows('assignments').isEmpty)
                         box(
-                          const Text(
+                          const UiText(
                             'Your coach’s assignments will appear here.',
                           ),
                         ),
@@ -515,7 +561,10 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              Text('${a['kind']} · Due ${a['due_date']}'),
+                              UiText(
+                                '{0} · Due {1}',
+                                values: [a['kind'], a['due_date']],
+                              ),
                               const SizedBox(height: 10),
                               Text(a['instructions']),
                               const SizedBox(height: 14),
@@ -528,7 +577,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                                       ? Icons.check_circle
                                       : Icons.play_arrow,
                                 ),
-                                label: Text(
+                                label: UiText(
                                   a['completed_at'] != null
                                       ? 'Completed'
                                       : a['kind'] == 'OPENINGS' ||
@@ -540,7 +589,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                             ],
                           ),
                         ),
-                      const Text(
+                      const UiText(
                         'Announcements',
                         style: TextStyle(
                           fontSize: 22,
@@ -554,7 +603,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                             subtitle: Text(a['message']),
                           ),
                         ),
-                      const Text(
+                      const UiText(
                         'Progress reports',
                         style: TextStyle(
                           fontSize: 22,
@@ -564,7 +613,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                       for (final r in rows('reports'))
                         box(
                           ListTile(
-                            title: Text('${r['period']} report'),
+                            title: UiText('{0} report', values: [r['period']]),
                             subtitle: Text('${r['created_at']}'),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () =>

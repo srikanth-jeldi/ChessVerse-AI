@@ -1,3 +1,8 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
+
+import 'club_social_dialog.dart';
+import '../../../core/club_social_localizations.dart';
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -138,7 +143,9 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
     if (club == null || _session == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Join a club before creating its private tournament.'),
+          content: UiText(
+            'Join a club before creating its private tournament.',
+          ),
         ),
       );
       return;
@@ -154,7 +161,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
       builder: (BuildContext context) => StatefulBuilder(
         builder: (BuildContext context, StateSetter setDialogState) =>
             AlertDialog(
-              title: Text('Create ${club.name} tournament'),
+              title: UiText('Create {0} tournament', values: [club.name]),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -162,44 +169,61 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                     TextField(
                       controller: name,
                       maxLength: 100,
-                      decoration: const InputDecoration(
-                        labelText: 'Tournament name',
+                      decoration: InputDecoration(
+                        labelText: uiText(context, 'Tournament name'),
                       ),
                     ),
                     DropdownButtonFormField<int>(
                       initialValue: startsInHours,
-                      decoration: const InputDecoration(labelText: 'Starts in'),
+                      decoration: InputDecoration(
+                        labelText: uiText(context, 'Starts in'),
+                      ),
                       items: const <DropdownMenuItem<int>>[
-                        DropdownMenuItem(value: 1, child: Text('1 hour')),
-                        DropdownMenuItem(value: 6, child: Text('6 hours')),
-                        DropdownMenuItem(value: 24, child: Text('24 hours')),
+                        DropdownMenuItem(value: 1, child: UiText('1 hour')),
+                        DropdownMenuItem(value: 6, child: UiText('6 hours')),
+                        DropdownMenuItem(value: 24, child: UiText('24 hours')),
                       ],
                       onChanged: (value) =>
                           setDialogState(() => startsInHours = value ?? 6),
                     ),
                     DropdownButtonFormField<int>(
                       initialValue: minutes,
-                      decoration: const InputDecoration(
-                        labelText: 'Time control',
+                      decoration: InputDecoration(
+                        labelText: uiText(context, 'Time control'),
                       ),
                       items: const <DropdownMenuItem<int>>[
-                        DropdownMenuItem(value: 3, child: Text('3 minutes')),
-                        DropdownMenuItem(value: 5, child: Text('5 minutes')),
-                        DropdownMenuItem(value: 10, child: Text('10 minutes')),
-                        DropdownMenuItem(value: 15, child: Text('15 minutes')),
+                        DropdownMenuItem(value: 3, child: UiText('3 minutes')),
+                        DropdownMenuItem(value: 5, child: UiText('5 minutes')),
+                        DropdownMenuItem(
+                          value: 10,
+                          child: UiText('10 minutes'),
+                        ),
+                        DropdownMenuItem(
+                          value: 15,
+                          child: UiText('15 minutes'),
+                        ),
                       ],
                       onChanged: (value) =>
                           setDialogState(() => minutes = value ?? 10),
                     ),
                     DropdownButtonFormField<int>(
                       initialValue: entryCoins,
-                      decoration: const InputDecoration(
-                        labelText: 'Play-coin entry',
+                      decoration: InputDecoration(
+                        labelText: uiText(context, 'Play-coin entry'),
                       ),
                       items: const <DropdownMenuItem<int>>[
-                        DropdownMenuItem(value: 100, child: Text('100 coins')),
-                        DropdownMenuItem(value: 200, child: Text('200 coins')),
-                        DropdownMenuItem(value: 500, child: Text('500 coins')),
+                        DropdownMenuItem(
+                          value: 100,
+                          child: UiText('100 coins'),
+                        ),
+                        DropdownMenuItem(
+                          value: 200,
+                          child: UiText('200 coins'),
+                        ),
+                        DropdownMenuItem(
+                          value: 500,
+                          child: UiText('500 coins'),
+                        ),
                       ],
                       onChanged: (value) =>
                           setDialogState(() => entryCoins = value ?? 100),
@@ -210,11 +234,11 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
               actions: <Widget>[
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: const Text('CANCEL'),
+                  child: const UiText('CANCEL'),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.pop(context, true),
-                  child: const Text('CREATE'),
+                  child: const UiText('CREATE'),
                 ),
               ],
             ),
@@ -312,15 +336,15 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                             ),
                           ),
                           SizedBox(height: keyboardVisible ? 12 : 22),
-                          const Text.rich(
+                          Text.rich(
                             TextSpan(
                               children: <InlineSpan>[
-                                TextSpan(text: 'Add a '),
+                                TextSpan(text: uiText(context, 'Add a ')),
                                 TextSpan(
                                   text: 'ChessVerseAI',
                                   style: TextStyle(color: Color(0xFFE8B54D)),
                                 ),
-                                TextSpan(text: ' friend'),
+                                TextSpan(text: uiText(context, ' friend')),
                               ],
                             ),
                             textAlign: TextAlign.center,
@@ -330,7 +354,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          const Text(
+                          const UiText(
                             'Search by username or player ID to\nsend a friend request.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
@@ -341,7 +365,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                           SizedBox(height: keyboardVisible ? 16 : 24),
                           const Align(
                             alignment: Alignment.centerLeft,
-                            child: Text(
+                            child: UiText(
                               'Username or Player ID',
                               style: TextStyle(color: Color(0xFF68DFC9)),
                             ),
@@ -353,8 +377,8 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                             textInputAction: TextInputAction.send,
                             onSubmitted: (_) =>
                                 Navigator.pop(context, controller.text.trim()),
-                            decoration: const InputDecoration(
-                              hintText: 'Enter username',
+                            decoration: InputDecoration(
+                              hintText: uiText(context, 'Enter username'),
                               prefixIcon: Icon(
                                 Icons.person_outline_rounded,
                                 color: Color(0xFF62DDC8),
@@ -365,7 +389,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                             alignment: Alignment.centerLeft,
                             child: Padding(
                               padding: EdgeInsets.only(top: 8),
-                              child: Text(
+                              child: UiText(
                                 'Example: MagnusAI',
                                 style: TextStyle(color: Color(0xFF71828E)),
                               ),
@@ -381,7 +405,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
+                          child: const UiText('Cancel'),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -396,7 +420,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                               Navigator.pop(context, controller.text.trim()),
                           child: const FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: Text(
+                            child: UiText(
                               'Send Request',
                               maxLines: 1,
                               style: TextStyle(fontWeight: FontWeight.w900),
@@ -454,22 +478,23 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              Text(
-                'Challenge ${friend.displayName}',
+              UiText(
+                'Challenge {0}',
+                values: [friend.displayName],
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text('Choose an authoritative server clock.'),
+              const UiText('Choose an authoritative server clock.'),
               const SizedBox(height: 18),
               Wrap(
                 spacing: 8,
                 children: <int>[3, 5, 10, 15]
                     .map(
                       (value) => ChoiceChip(
-                        label: Text('$value min'),
+                        label: UiText('{0} min', values: [value]),
                         selected: minutes == value,
                         onSelected: (_) {
                           minutes = value;
@@ -493,7 +518,12 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Challenge sent • room ${value.roomCode}')),
+        SnackBar(
+          content: UiText(
+            'Challenge sent • room {0}',
+            values: [value.roomCode],
+          ),
+        ),
       );
       await _refresh();
     } on SocialException catch (error) {
@@ -531,7 +561,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
       setState(() => _hub = hub);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Challenge declined. The challenger was notified.'),
+          content: UiText('Challenge declined. The challenger was notified.'),
         ),
       );
     } on SocialException catch (error) {
@@ -584,21 +614,35 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
         setState(() => _community = value);
       }
       if (!mounted) return;
-      await Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => ClubActivityScreen(
-          club: club, token: session.token, onOpenMatch: widget.onOpenMatch),
-      ));
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ClubActivityScreen(
+            club: club,
+            token: session.token,
+            onOpenMatch: widget.onOpenMatch,
+          ),
+        ),
+      );
       if (mounted) await _refresh();
     } on SocialException {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(clubText('error',
-            AppLanguageController.effectiveLanguageChanges.value ?? 'system'))));
+          SnackBar(
+            content: Text(
+              clubText(
+                'error',
+                AppLanguageController.effectiveLanguageChanges.value ??
+                    'system',
+              ),
+            ),
+          ),
+        );
       }
     } finally {
       _openingClub = false;
     }
   }
+
   Future<void> _communityAct(Future<CommunityDto> Function() action) async {
     try {
       final CommunityDto value = await action();
@@ -624,7 +668,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: const Color(0xFF020D16),
     appBar: AppBar(
-      title: const Text(
+      title: const UiText(
         'COMMUNITY',
         style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.3),
       ),
@@ -640,7 +684,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
         if (_section == 0)
           IconButton(
             onPressed: _addFriend,
-            tooltip: 'Add friend',
+            tooltip: uiText(context, 'Add friend'),
             icon: const Icon(Icons.person_add_alt_1_rounded),
           ),
       ],
@@ -672,7 +716,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                   _FriendFinder(onAdd: _addFriend),
                   if (_hub!.incoming.isNotEmpty)
                     _Section(
-                      title: 'FRIEND REQUESTS',
+                      title: uiText(context, 'FRIEND REQUESTS'),
                       icon: Icons.person_add_rounded,
                       children: _hub!.incoming
                           .map(
@@ -703,7 +747,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                     ),
                   if (_hub!.outgoing.isNotEmpty)
                     _Section(
-                      title: 'SENT REQUESTS',
+                      title: uiText(context, 'SENT REQUESTS'),
                       icon: Icons.outgoing_mail,
                       children: _hub!.outgoing
                           .map(
@@ -720,7 +764,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                           .toList(),
                     ),
                   _Section(
-                    title: 'CHALLENGES',
+                    title: uiText(context, 'CHALLENGES'),
                     icon: Icons.sports_martial_arts_rounded,
                     empty: 'Your private challenges will appear here.',
                     children: _hub!.challenges
@@ -739,7 +783,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                         .toList(),
                   ),
                   _Section(
-                    title: 'ACTIVE FRIENDS',
+                    title: uiText(context, 'ACTIVE FRIENDS'),
                     icon: Icons.circle,
                     empty: 'No friends are online right now.',
                     children: _hub!.friends
@@ -1036,10 +1080,42 @@ class _CommunitySection extends StatelessWidget {
                   const SizedBox(height: 10),
                   if (section == 1) ...<Widget>[
                     FilledButton.icon(
+                      key: const ValueKey('create-own-club'),
+                      icon: const Icon(Icons.group_add),
+                      label: ValueListenableBuilder<String?>(
+                        valueListenable:
+                            AppLanguageController.effectiveLanguageChanges,
+                        builder: (context, language, _) => Text(
+                          clubSocialText('create', language ?? 'en'),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      onPressed: () async {
+                        final club = await showDialog<ClubDto>(
+                          context: context,
+                          builder: (_) => ClubSocialDialog(
+                            api: api,
+                            token: token,
+                            language:
+                                AppLanguageController
+                                    .effectiveLanguageChanges
+                                    .value ??
+                                'en',
+                          ),
+                        );
+                        if (club != null) {
+                          await onRefresh();
+                          onClub(club);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    FilledButton.icon(
                       key: const ValueKey<String>('create-club-tournament'),
                       onPressed: onCreateClubTournament,
                       icon: const Icon(Icons.add_rounded),
-                      label: const Text('CREATE PRIVATE CLUB TOURNAMENT'),
+                      label: const UiText('CREATE PRIVATE CLUB TOURNAMENT'),
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -1115,7 +1191,7 @@ class _FairPlayBanner extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(
+              UiText(
                 'FAIR PLAY PROTECTED',
                 style: TextStyle(
                   color: Color(0xFF5DE3CF),
@@ -1125,7 +1201,7 @@ class _FairPlayBanner extends StatelessWidget {
                 ),
               ),
               SizedBox(height: 8),
-              Text(
+              UiText(
                 'Server-validated moves •\nauthoritative clocks • auditable signals',
                 style: TextStyle(
                   color: Color(0xFFABB9C6),
@@ -1177,7 +1253,8 @@ class _ClubCard extends StatelessWidget {
       },
       title: club.name,
       subtitle: club.description,
-      meta: "${club.members} ${clubText('members', language)} • ${club.ratingRequirement}+",
+      meta:
+          "${club.members} ${clubText('members', language)} • ${club.ratingRequirement}+",
       button: clubText(club.joined ? 'open' : 'join', language),
       onTap: onTap,
     );
@@ -1186,7 +1263,8 @@ class _ClubCard extends StatelessWidget {
       initialData: AppLanguageController.resolveCode('system'),
       builder: (context, snapshot) => ValueListenableBuilder<String?>(
         valueListenable: AppLanguageController.effectiveLanguageChanges,
-        builder: (context, selected, _) => card(selected ?? snapshot.data ?? 'en'),
+        builder: (context, selected, _) =>
+            card(selected ?? snapshot.data ?? 'en'),
       ),
     );
   }
@@ -1350,7 +1428,7 @@ class _ChatCard extends StatelessWidget {
       friend.displayName,
       style: const TextStyle(fontWeight: FontWeight.w900),
     ),
-    subtitle: Text(
+    subtitle: UiText(
       friend.online
           ? 'Online • Tap to chat'
           : 'Offline • Messages sync securely',
@@ -1382,12 +1460,12 @@ class _EmptyCommunity extends StatelessWidget {
           child: Icon(Icons.forum_outlined, size: 52, color: Color(0xFF55E4CF)),
         ),
         const SizedBox(height: 24),
-        const Text(
+        const UiText(
           'Nothing here yet.',
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
         ),
         const SizedBox(height: 8),
-        const Text(
+        const UiText(
           'Add a friend to start your\nchess network.',
           textAlign: TextAlign.center,
           style: TextStyle(
@@ -1401,7 +1479,7 @@ class _EmptyCommunity extends StatelessWidget {
           key: const ValueKey<String>('empty-chat-find-friends'),
           onPressed: onFindFriends,
           icon: const Icon(Icons.person_add_alt_1_rounded),
-          label: const Text('FIND OR ADD FRIENDS'),
+          label: const UiText('FIND OR ADD FRIENDS'),
         ),
       ],
     ),
@@ -1710,7 +1788,7 @@ class _ChatScreenState extends State<_ChatScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.reply_rounded),
-                title: const Text('Reply'),
+                title: const UiText('Reply'),
                 onTap: () {
                   Navigator.pop(sheetContext);
                   setState(() => _replyingTo = message);
@@ -1719,7 +1797,7 @@ class _ChatScreenState extends State<_ChatScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.delete_outline_rounded),
-                title: const Text('Delete for me'),
+                title: const UiText('Delete for me'),
                 onTap: () {
                   Navigator.pop(sheetContext);
                   _deleteMessage(message, false);
@@ -1731,8 +1809,8 @@ class _ChatScreenState extends State<_ChatScreen> {
                     Icons.delete_forever_rounded,
                     color: Color(0xFFFF7A7A),
                   ),
-                  title: const Text('Delete for everyone'),
-                  subtitle: const Text('Available for 15 minutes'),
+                  title: const UiText('Delete for everyone'),
+                  subtitle: const UiText('Available for 15 minutes'),
                   onTap: () {
                     Navigator.pop(sheetContext);
                     _deleteMessage(message, true);
@@ -1755,7 +1833,7 @@ class _ChatScreenState extends State<_ChatScreen> {
     if (!mounted) return;
     if (bytes.length > 10 * 1024 * 1024) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Choose a file smaller than 10 MB.')),
+        const SnackBar(content: UiText('Choose a file smaller than 10 MB.')),
       );
       return;
     }
@@ -1884,7 +1962,7 @@ class _ChatScreenState extends State<_ChatScreen> {
                   child: Row(
                     children: <Widget>[
                       const Expanded(
-                        child: Text(
+                        child: UiText(
                           'Express yourself',
                           style: TextStyle(fontWeight: FontWeight.w800),
                         ),
@@ -1896,16 +1974,19 @@ class _ChatScreenState extends State<_ChatScreen> {
                     ],
                   ),
                 ),
-                const TabBar(
+                TabBar(
                   tabs: <Widget>[
                     Tab(
                       icon: Icon(Icons.emoji_emotions_outlined),
-                      text: 'Emoji',
+                      text: uiText(context, 'Emoji'),
                     ),
-                    Tab(icon: Icon(Icons.gif_box_outlined), text: 'GIF'),
+                    Tab(
+                      icon: Icon(Icons.gif_box_outlined),
+                      text: uiText(context, 'GIF'),
+                    ),
                     Tab(
                       icon: Icon(Icons.sticky_note_2_outlined),
-                      text: 'Stickers',
+                      text: uiText(context, 'Stickers'),
                     ),
                   ],
                 ),
@@ -2040,7 +2121,7 @@ class _ChatScreenState extends State<_ChatScreen> {
                 child: Row(
                   children: <Widget>[
                     IconButton(
-                      tooltip: 'Attach image or file',
+                      tooltip: uiText(context, 'Attach image or file'),
                       onPressed: _attach,
                       icon: const Icon(
                         Icons.add_rounded,
@@ -2060,7 +2141,7 @@ class _ChatScreenState extends State<_ChatScreen> {
                         decoration: InputDecoration(
                           counterText: '',
                           border: InputBorder.none,
-                          hintText: 'Message your friend…',
+                          hintText: uiText(context, 'Message your friend…'),
                           contentPadding: const EdgeInsets.symmetric(
                             vertical: 10,
                           ),
@@ -2187,7 +2268,7 @@ class _ChatScreenState extends State<_ChatScreen> {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  Text(
+                  UiText(
                     _friendOnline ? 'Online' : 'Offline',
                     style: TextStyle(
                       color: _friendOnline
@@ -2403,7 +2484,7 @@ class _OnlineMediaSearchState extends State<_OnlineMediaSearch> {
                         'Search ${widget.kind == 'gif' ? 'GIFs' : 'stickers'}',
                     prefixIcon: const Icon(Icons.search_rounded),
                     suffixIcon: IconButton(
-                      tooltip: 'Search',
+                      tooltip: uiText(context, 'Search'),
                       onPressed: _search,
                       icon: const Icon(Icons.arrow_forward_rounded),
                     ),
@@ -2416,7 +2497,10 @@ class _OnlineMediaSearchState extends State<_OnlineMediaSearch> {
               if (widget.onChooseDevice != null) ...<Widget>[
                 const SizedBox(width: 8),
                 IconButton.filledTonal(
-                  tooltip: 'Choose GIF from device (max 10 MB)',
+                  tooltip: uiText(
+                    context,
+                    'Choose GIF from device (max 10 MB)',
+                  ),
                   onPressed: widget.onChooseDevice,
                   icon: const Icon(Icons.add_photo_alternate_rounded),
                 ),
@@ -2455,8 +2539,9 @@ class _OnlineMediaSearchState extends State<_OnlineMediaSearch> {
                     return Padding(
                       padding: const EdgeInsets.all(24),
                       child: Center(
-                        child: Text(
-                          'Online ${widget.kind == 'gif' ? 'GIF' : 'sticker'} search is unavailable. You can still use local media.',
+                        child: UiText(
+                          'Online {0} search is unavailable. You can still use local media.',
+                          values: [widget.kind == 'gif' ? 'GIF' : 'sticker'],
                           textAlign: TextAlign.center,
                           style: const TextStyle(color: Color(0xFFAAB8C4)),
                         ),
@@ -2465,7 +2550,7 @@ class _OnlineMediaSearchState extends State<_OnlineMediaSearch> {
                   }
                   final List<ChatMediaDto> items = snapshot.data ?? const [];
                   if (items.isEmpty) {
-                    return const Center(child: Text('No results found.'));
+                    return const Center(child: UiText('No results found.'));
                   }
                   return GridView.builder(
                     padding: const EdgeInsets.all(12),
@@ -2510,7 +2595,7 @@ class _OnlineMediaSearchState extends State<_OnlineMediaSearch> {
         ),
         const Padding(
           padding: EdgeInsets.only(bottom: 6),
-          child: Text(
+          child: UiText(
             'Powered by GIPHY',
             style: TextStyle(fontSize: 10, color: Color(0xFF8395A3)),
           ),
@@ -2742,7 +2827,7 @@ class _GiphyChatMedia extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!_allowed) {
-      return const Text(
+      return const UiText(
         'Media link unavailable.',
         style: TextStyle(color: Color(0xFFAAB8C4)),
       );
@@ -2785,7 +2870,7 @@ class _GiphyChatMedia extends StatelessWidget {
                   top: 10,
                   left: 10,
                   child: IconButton.filled(
-                    tooltip: 'Close preview',
+                    tooltip: uiText(context, 'Close preview'),
                     onPressed: () => Navigator.pop(dialogContext),
                     icon: const Icon(Icons.close_rounded),
                   ),
@@ -2896,7 +2981,7 @@ class _ChatAttachmentState extends State<_ChatAttachment> {
                   top: 10,
                   left: 10,
                   child: IconButton.filled(
-                    tooltip: 'Close preview',
+                    tooltip: uiText(context, 'Close preview'),
                     onPressed: () => Navigator.pop(dialogContext),
                     icon: const Icon(Icons.close_rounded),
                   ),
@@ -2905,7 +2990,7 @@ class _ChatAttachmentState extends State<_ChatAttachment> {
                   top: 10,
                   right: 10,
                   child: IconButton.filled(
-                    tooltip: 'Save image',
+                    tooltip: uiText(context, 'Save image'),
                     onPressed: _save,
                     icon: const Icon(Icons.download_rounded),
                   ),
@@ -2918,7 +3003,7 @@ class _ChatAttachmentState extends State<_ChatAttachment> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Image preview could not be opened.')),
+          const SnackBar(content: UiText('Image preview could not be opened.')),
         );
       }
     }
@@ -2937,7 +3022,9 @@ class _ChatAttachmentState extends State<_ChatAttachment> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Attachment could not be downloaded.')),
+          const SnackBar(
+            content: UiText('Attachment could not be downloaded.'),
+          ),
         );
       }
     } finally {
@@ -3014,8 +3101,9 @@ class _ChatAttachmentState extends State<_ChatAttachment> {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  Text(
-                    '${kb.toStringAsFixed(kb >= 100 ? 0 : 1)} KB · Tap to save',
+                  UiText(
+                    '{0} KB · Tap to save',
+                    values: [kb.toStringAsFixed(kb >= 100 ? 0 : 1)],
                     style: const TextStyle(
                       fontSize: 10,
                       color: Color(0xFFB2BEC5),
@@ -3093,7 +3181,7 @@ class _Hero extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(
+              UiText(
                 'YOUR CHESS NETWORK',
                 style: TextStyle(
                   color: Color(0xFFE3B653),
@@ -3102,7 +3190,7 @@ class _Hero extends StatelessWidget {
                 ),
               ),
               SizedBox(height: 5),
-              Text(
+              UiText(
                 'Friends, private challenges and live rivals',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
               ),
@@ -3193,18 +3281,20 @@ class _FriendFinder extends StatelessWidget {
           children: <Widget>[
             Icon(Icons.people_alt_rounded, color: Color(0xFFF0B74B)),
             SizedBox(width: 10),
-            Text(
-              'FRIENDS',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                letterSpacing: .7,
+            Expanded(
+              child: UiText(
+                'FRIENDS',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .7,
+                ),
               ),
             ),
           ],
         ),
         const SizedBox(height: 6),
-        const Text(
+        const UiText(
           'Add friends by their ChessVerseAI username.',
           style: TextStyle(color: Color(0xFFAAB7C2)),
         ),
@@ -3225,7 +3315,7 @@ class _FriendFinder extends StatelessWidget {
                 Icon(Icons.search_rounded, color: Color(0xFF9CADB9)),
                 SizedBox(width: 12),
                 Expanded(
-                  child: Text(
+                  child: UiText(
                     'Search username or player ID',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -3240,7 +3330,7 @@ class _FriendFinder extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: onAdd,
           icon: const Icon(Icons.person_add_alt_1_rounded),
-          label: const Text('Add friend'),
+          label: const UiText('Add friend'),
         ),
       ],
     ),
@@ -3295,11 +3385,13 @@ class _Section extends StatelessWidget {
           children: <Widget>[
             Icon(icon, color: const Color(0xFFE2AE49)),
             const SizedBox(width: 9),
-            Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.1,
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.1,
+                ),
               ),
             ),
           ],
@@ -3362,56 +3454,72 @@ class _PlayerCard extends StatelessWidget {
           ],
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Stack(
+          Row(
             children: <Widget>[
-              CircleAvatar(
-                backgroundImage: player.photoUrl == null
-                    ? null
-                    : NetworkImage(player.photoUrl!),
-                child: player.photoUrl == null
-                    ? Text(player.displayName.substring(0, 1).toUpperCase())
-                    : null,
+              Stack(
+                children: <Widget>[
+                  CircleAvatar(
+                    backgroundImage: player.photoUrl == null
+                        ? null
+                        : NetworkImage(player.photoUrl!),
+                    child: player.photoUrl == null
+                        ? Text(player.displayName.substring(0, 1).toUpperCase())
+                        : null,
+                  ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: CircleAvatar(
+                      radius: 5,
+                      backgroundColor: player.online
+                          ? const Color(0xFF45E6A8)
+                          : const Color(0xFF607684),
+                    ),
+                  ),
+                ],
               ),
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: CircleAvatar(
-                  radius: 5,
-                  backgroundColor: player.online
-                      ? const Color(0xFF45E6A8)
-                      : const Color(0xFF607684),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      player.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    Text(
+                      '@${player.username} • ${player.rating}',
+                      style: const TextStyle(
+                        color: Color(0xFF92A6B4),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  player.displayName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.end,
+            children: [
+              if (secondaryLabel != null)
+                TextButton(
+                  onPressed: onSecondary,
+                  child: Text(secondaryLabel!),
                 ),
-                Text(
-                  '@${player.username} • ${player.rating}',
-                  style: const TextStyle(
-                    color: Color(0xFF92A6B4),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (secondaryLabel != null)
-            TextButton(onPressed: onSecondary, child: Text(secondaryLabel!)),
-          FilledButton(
-            onPressed: primaryEnabled ? onPrimary : null,
-            child: Text(primaryLabel),
+              FilledButton(
+                onPressed: primaryEnabled ? onPrimary : null,
+                child: Text(primaryLabel),
+              ),
+            ],
           ),
         ],
       ),
@@ -3432,7 +3540,7 @@ class _SocialPlayerProfile extends StatelessWidget {
       backgroundColor: const Color(0xFF020D16),
       appBar: AppBar(
         centerTitle: true,
-        title: const Text(
+        title: const UiText(
           'PLAYER PROFILE',
           style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.4),
         ),
@@ -3555,7 +3663,7 @@ class _SocialPlayerProfile extends StatelessWidget {
                                 : const Color(0xFF7A8993),
                           ),
                           const SizedBox(width: 9),
-                          Text(
+                          UiText(
                             player.online ? 'ONLINE' : 'OFFLINE',
                             style: const TextStyle(
                               color: Color(0xFF62E3D0),
@@ -3577,7 +3685,7 @@ class _SocialPlayerProfile extends StatelessWidget {
                         onChallenge();
                       },
                       icon: const Icon(Icons.castle_rounded, size: 30),
-                      label: const Text(
+                      label: const UiText(
                         'CHALLENGE',
                         style: TextStyle(
                           fontSize: 17,
@@ -3706,18 +3814,21 @@ class _ChallengeCard extends StatelessWidget {
       challenge.opponentName,
       style: const TextStyle(fontWeight: FontWeight.w900),
     ),
-    subtitle: Text('${challenge.minutes} min • Room ${challenge.roomCode}'),
+    subtitle: UiText(
+      '{0} min • Room {1}',
+      values: [challenge.minutes, challenge.roomCode],
+    ),
     trailing: onAccept == null
-        ? const Chip(label: Text('SENT'))
+        ? const Chip(label: UiText('SENT'))
         : Row(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               IconButton(
                 onPressed: onDecline,
-                tooltip: 'Decline',
+                tooltip: uiText(context, 'Decline'),
                 icon: const Icon(Icons.close_rounded),
               ),
-              FilledButton(onPressed: onAccept, child: const Text('Play')),
+              FilledButton(onPressed: onAccept, child: const UiText('Play')),
             ],
           ),
   );
@@ -3736,7 +3847,7 @@ class _Error extends StatelessWidget {
         const SizedBox(height: 12),
         Text(message),
         const SizedBox(height: 12),
-        FilledButton(onPressed: retry, child: const Text('Retry')),
+        FilledButton(onPressed: retry, child: const UiText('Retry')),
       ],
     ),
   );

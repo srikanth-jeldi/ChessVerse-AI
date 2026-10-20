@@ -1,0 +1,60 @@
+ChessVerseAI 1.3.42 (309) — physical UI follow-up
+20 October 2026
+
+Resumed wireless testing on Samsung SM-F415F / Android 12.
+Only com.epitomehub.chessverse.uitest was installed/updated; the Play
+installation and its account, coins and saved games were preserved.
+
+Physical observations
+- Confirmed the build-308 Arabic home fix: full hero title and translated
+  Play Now button are visible. Evidence: .build-tmp/cv-home-fixed.png.
+- Opened Arabic settings and its language picker.
+- Searched Telugu with the real keyboard; sheet and result remained visible.
+  Evidence: .build-tmp/cv309-language-keyboard.png.
+- Switched to Telugu; after loading, settings mirrored back to LTR and the
+  keyboard closed. Evidence: .build-tmp/cv309-settings-te-settled.png.
+- Found another English network message and English startup feature labels.
+
+Follow-up fixes
+- Network banner now resolves its app-owned message through UiText.
+- Retry uses a refresh icon with a translated accessibility label.
+  The banner is above Navigator, so it must not depend on a tooltip Overlay.
+- Startup Puzzles/Compete/Progress use translated labels and constrained widths.
+- Startup canvas can grow to fit larger translated text before fitting the
+  display, avoiding fixed-height overflow.
+- Corrected six awkward Telugu settings translations.
+- All 34 bundled UI catalogs now contain 935 source keys.
+
+Validation
+- 108 tests passed: 102 startup/offline/slow-language cases, three strict
+  catalog/interpolation/language-switch tests, and three network layer tests.
+- New matrix uses 320x568 at text scale 1.3. Initial failures were fixed;
+  passing evidence: .build-tmp/ui309-regressions-final.txt.
+- Earlier 308 evidence remains: 2,142 screen/interaction cases across 34
+  languages, plus home translation assertions. Those were not all repeated
+  for this follow-up.
+- Not every screen in every language was physically visited. Automated
+  coverage and representative physical checks must not be conflated.
+- Machine-translated copy is not native-speaker editorial certification.
+
+Final artifact and final physical smoke check
+- Final isolated APK installed successfully. Telugu preference persisted.
+- Visually inspected corrected Telugu startup labels and layout:
+  .build-tmp/cv309-startup-final.png.
+- Visually inspected corrected Telugu settings copy:
+  .build-tmp/cv309-settings-final.png.
+- Recent test-app PID log scan contained no FATAL EXCEPTION, ANR-in,
+  RenderFlex-overflow or EXCEPTION-CAUGHT matches. This short smoke check
+  does not establish that all user-device crashes/ANRs are resolved.
+- Final scoped code analysis: no issues (ui309-analyze.txt).
+- Telugu settings layout test also passed (ui309-telugu-settings.txt).
+- Final signed AAB:
+  artifacts/release-1.3.42-309/ChessVerseAI-1.3.42-build309.aab
+- Verified production package com.epitomehub.chessverse, version 1.3.42,
+  version code 309, jarsigner verification, and 12 native libraries across
+  armeabi-v7a, arm64-v8a and x86_64.
+- Verified 34 bundled catalogs with 935 keys each and no local Translator
+  config in the archive.
+- Size: 97,963,377 bytes.
+- SHA256: c443e4df15504960de23f9faab0546a17910d44d144f9cebf9249095b76fae3c
+- No Play upload, Git push or backend deployment performed in this turn.

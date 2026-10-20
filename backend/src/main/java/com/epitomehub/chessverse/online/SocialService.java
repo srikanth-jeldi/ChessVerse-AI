@@ -121,8 +121,28 @@ class SocialService {
         // Hibernate defers new match/challenge inserts until flush. The JDBC
         // club link below has a foreign key to that match and must see it first.
         challenges.flush();
+        var linkedClubs = jdbc.query("select club_id from club_activity_match where match_id=?",
+                (rs, row) -> rs.getObject("club_id", UUID.class), result.matchId());
+        if (!linkedClubs.isEmpty() && !linkedClubs.getFirst().equals(clubId))
+            throw new OnlineMatchException(HttpStatus.CONFLICT, "A challenge is already pending in another club.");
         jdbc.update("insert into club_activity_match(match_id,club_id) values (?,?) on conflict (match_id) do nothing", result.matchId(), clubId);
         return result;
+    }
+
+    @Transactional
+    List<SocialDtos.ChallengeDto> clubChallenges(AuthenticatedPlayer player, UUID clubId) {
+        Integer member = jdbc.queryForObject(
+                "select count(*) from chess_club_member where club_id=? and player_id=?",
+                Integer.class, clubId, player.id());
+        if (member == null || member != 1)
+            throw new OnlineMatchException(HttpStatus.FORBIDDEN, "Join this club to view challenges.");
+        normalizeChallenges(player.id(), false);
+        var matchIds = new java.util.HashSet<>(jdbc.query(
+                "select match_id from club_activity_match where club_id=?",
+                (rs, row) -> rs.getObject("match_id", UUID.class), clubId));
+        return challenges.recentFor(player.id()).stream()
+                .filter(value -> matchIds.contains(value.matchId))
+                .limit(30).map(value -> challenge(value, player.id())).toList();
     }
 
     private SocialDtos.ChallengeDto sendChallenge(AuthenticatedPlayer player, UUID friendId, int minutes) {

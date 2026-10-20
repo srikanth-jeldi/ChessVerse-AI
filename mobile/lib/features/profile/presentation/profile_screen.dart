@@ -1,3 +1,5 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
+
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -102,7 +104,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('PLAYER PROFILE'),
+        title: const UiText('PLAYER PROFILE'),
         centerTitle: false,
         backgroundColor: const Color(0xD9071827),
         actions: <Widget>[
@@ -112,7 +114,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             child: PopupMenuButton<String>(
               key: const ValueKey<String>('profile-actions-menu'),
-              tooltip: 'Profile actions',
+              tooltip: uiText(context, 'Profile actions'),
               icon: const Icon(Icons.menu_rounded),
               onSelected: (String action) {
                 switch (action) {
@@ -132,7 +134,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     value: 'language',
                     child: ListTile(
                       leading: Icon(Icons.translate_rounded),
-                      title: Text('Language & translation'),
+                      title: UiText('Language & translation'),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
@@ -141,7 +143,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     value: 'missions',
                     child: ListTile(
                       leading: Icon(Icons.task_alt_rounded),
-                      title: Text('Daily & weekly missions'),
+                      title: UiText('Daily & weekly missions'),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
@@ -150,7 +152,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     value: 'shop',
                     child: ListTile(
                       leading: Icon(Icons.storefront_rounded),
-                      title: Text('Boards & piece shop'),
+                      title: UiText('Boards & piece shop'),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
@@ -159,7 +161,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     value: 'academy',
                     child: ListTile(
                       leading: Icon(Icons.groups_rounded),
-                      title: Text('My Academy'),
+                      title: UiText('My Academy'),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
@@ -192,14 +194,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 18),
           _SectionCard(
-            title: 'PLAYER PROGRESS',
+            title: uiText(context, 'PLAYER PROGRESS'),
             icon: Icons.military_tech_rounded,
             asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
-                  'Level ${rewards.level}  •  ${rewards.xp} XP',
+                UiText(
+                  'Level {0}  •  {1} XP',
+                  values: [rewards.level, rewards.xp],
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -237,7 +240,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   key: const ValueKey<String>('view-rewards-and-badges'),
                   onPressed: () => _showRewards(rewards),
                   icon: const Icon(Icons.redeem_rounded),
-                  label: const Text('VIEW REWARDS & BADGES'),
+                  label: const UiText('VIEW REWARDS & BADGES'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF62E4D1),
                     side: const BorderSide(color: Color(0x8062E4D1)),
@@ -260,7 +263,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisCount: MediaQuery.sizeOf(context).width >= 700 ? 4 : 2,
             mainAxisSpacing: 10,
             crossAxisSpacing: 10,
-            childAspectRatio: 1.55,
+            mainAxisExtent: 110 * MediaQuery.textScalerOf(context).scale(1),
             children: <Widget>[
               _Stat('All games', '${stats.gamesPlayed}', Icons.sports_esports),
               _Stat('All wins', '${stats.wins}', Icons.emoji_events_rounded),
@@ -270,7 +273,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 10),
           _SectionCard(
-            title: 'ACCOUNT',
+            title: uiText(context, 'ACCOUNT'),
             asset: 'assets/backgrounds/home-settings-hero-v1.webp',
             icon: widget.isGuest
                 ? Icons.person_outline_rounded
@@ -299,7 +302,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.add_a_photo_rounded),
-                    label: Text(
+                    label: UiText(
                       _uploadingPhoto
                           ? 'UPLOADING PHOTO…'
                           : 'CHANGE PROFILE PHOTO',
@@ -312,7 +315,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   OutlinedButton.icon(
                     onPressed: () => widget.onLinkedAccounts!.call(),
                     icon: const Icon(Icons.link_rounded),
-                    label: const Text('SECURITY & LINKED ACCOUNTS'),
+                    label: const UiText('SECURITY & LINKED ACCOUNTS'),
                   ),
                 ],
                 if (widget.onAcademy != null) ...<Widget>[
@@ -321,7 +324,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     key: const ValueKey<String>('open-my-academy'),
                     onPressed: widget.onAcademy,
                     icon: const Icon(Icons.groups_rounded),
-                    label: const Text('MY ACADEMY'),
+                    label: const UiText('MY ACADEMY'),
                   ),
                 ],
                 if (widget.isGuest &&
@@ -332,7 +335,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     key: const ValueKey<String>('secure-guest-progress'),
                     onPressed: () => widget.onSecureProgress!.call(),
                     icon: const Icon(Icons.security_rounded),
-                    label: const Text('SECURE PROGRESS'),
+                    label: const UiText('SECURE PROGRESS'),
                   ),
                 ],
               ],
@@ -349,94 +352,101 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return email;
   }
 
-  Future<void> _showRewards(
-    RewardSnapshot rewards,
-  ) => showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (BuildContext context) => DraggableScrollableSheet(
-      initialChildSize: 0.76,
-      minChildSize: 0.55,
-      maxChildSize: 0.92,
-      expand: false,
-      builder: (BuildContext context, ScrollController controller) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xF2071827),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          border: Border(top: BorderSide(color: Color(0x8062E4D1))),
-        ),
-        child: ListView(
-          controller: controller,
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-          children: <Widget>[
-            Center(
-              child: Container(
-                width: 44,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF526778),
-                  borderRadius: BorderRadius.circular(99),
+  Future<void> _showRewards(RewardSnapshot rewards) =>
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (BuildContext context) => DraggableScrollableSheet(
+          initialChildSize: 0.76,
+          minChildSize: 0.55,
+          maxChildSize: 0.92,
+          expand: false,
+          builder: (BuildContext context, ScrollController controller) =>
+              Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xF2071827),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                  border: Border(top: BorderSide(color: Color(0x8062E4D1))),
+                ),
+                child: ListView(
+                  controller: controller,
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                  children: <Widget>[
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF526778),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const UiText(
+                      'REWARDS & BADGES',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    UiText(
+                      '{0} coins  •  {1} XP  •  Level {2}',
+                      values: [rewards.coins, rewards.xp, rewards.level],
+                      style: const TextStyle(
+                        color: AppColors.accentGold,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    _RewardInfoTile(
+                      icon: Icons.sports_esports_rounded,
+                      title: uiText(context, 'Finish a match'),
+                      subtitle: uiText(context, '+8 coins and +25 XP'),
+                    ),
+                    _RewardInfoTile(
+                      icon: Icons.emoji_events_rounded,
+                      title: uiText(context, 'Win a match'),
+                      subtitle: uiText(
+                        context,
+                        '+18 bonus coins and +45 bonus XP',
+                      ),
+                    ),
+                    _RewardInfoTile(
+                      icon: Icons.extension_rounded,
+                      title: uiText(context, 'Solve a puzzle'),
+                      subtitle: uiText(context, '+12 coins and +35 XP'),
+                    ),
+                    _RewardInfoTile(
+                      icon: Icons.today_rounded,
+                      title: uiText(context, 'Complete the daily challenge'),
+                      subtitle: uiText(
+                        context,
+                        '+35 coins and +80 XP; keep your streak alive',
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const UiText(
+                      'BADGE COLLECTION',
+                      style: TextStyle(
+                        color: AppColors.accentGold,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ...rewards.badges.map(
+                      (RewardBadge badge) => _BadgeProgressTile(badge: badge),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'REWARDS & BADGES',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '${rewards.coins} coins  •  ${rewards.xp} XP  •  Level ${rewards.level}',
-              style: const TextStyle(
-                color: AppColors.accentGold,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 18),
-            const _RewardInfoTile(
-              icon: Icons.sports_esports_rounded,
-              title: 'Finish a match',
-              subtitle: '+8 coins and +25 XP',
-            ),
-            const _RewardInfoTile(
-              icon: Icons.emoji_events_rounded,
-              title: 'Win a match',
-              subtitle: '+18 bonus coins and +45 bonus XP',
-            ),
-            const _RewardInfoTile(
-              icon: Icons.extension_rounded,
-              title: 'Solve a puzzle',
-              subtitle: '+12 coins and +35 XP',
-            ),
-            const _RewardInfoTile(
-              icon: Icons.today_rounded,
-              title: 'Complete the daily challenge',
-              subtitle: '+35 coins and +80 XP; keep your streak alive',
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'BADGE COLLECTION',
-              style: TextStyle(
-                color: AppColors.accentGold,
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 10),
-            ...rewards.badges.map(
-              (RewardBadge badge) => _BadgeProgressTile(badge: badge),
-            ),
-          ],
         ),
-      ),
-    ),
-  );
+      );
 
   Future<void> _changeProfilePhoto() async {
     final file = await FilePicker.pickFile(type: FileType.image);
@@ -444,7 +454,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (file == null || bytes == null || !mounted) return;
     if (bytes.length > 5 * 1024 * 1024) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Choose an image up to 5 MB.')),
+        const SnackBar(content: UiText('Choose an image up to 5 MB.')),
       );
       return;
     }
@@ -459,7 +469,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _savePhotoPreference(true);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile photo updated everywhere.')),
+        const SnackBar(content: UiText('Profile photo updated everywhere.')),
       );
     } on Object catch (error) {
       if (!mounted) return;
@@ -475,6 +485,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await showModalBottomSheet<_EditableProfile>(
           context: context,
           isScrollControlled: true,
+          useSafeArea: true,
           backgroundColor: Colors.transparent,
           builder: (BuildContext context) => _ProfileEditorSheet(
             initialDisplayName: _displayName,
@@ -501,8 +512,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _useAccountPhoto = value.useAccountPhoto;
       });
       unawaited(_savePhotoPreference(value.useAccountPhoto));
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Player profile saved')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: UiText('Player profile saved')));
     } on Object catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -571,7 +583,7 @@ class _TournamentTrophies extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _SectionCard(
-    title: 'TOURNAMENT TROPHIES',
+    title: uiText(context, 'TOURNAMENT TROPHIES'),
     icon: Icons.emoji_events_rounded,
     asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
     child: Column(
@@ -599,7 +611,7 @@ class _TournamentTrophies extends StatelessWidget {
             achievement.tournamentName,
             style: const TextStyle(fontWeight: FontWeight.w900),
           ),
-          subtitle: Text(
+          subtitle: UiText(
             champion ? 'Champion' : 'Runner-up',
             style: TextStyle(
               color: champion
@@ -781,7 +793,7 @@ class _ProfileHero extends StatelessWidget {
               ),
               IconButton.filledTonal(
                 key: const ValueKey<String>('edit-player-profile'),
-                tooltip: 'Edit profile',
+                tooltip: uiText(context, 'Edit profile'),
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_rounded),
               ),
@@ -791,13 +803,16 @@ class _ProfileHero extends StatelessWidget {
           Row(
             children: <Widget>[
               _HeroMetric(
-                label: 'STATUS',
+                label: uiText(context, 'STATUS'),
                 value: isGuest ? 'GUEST ONLINE' : 'VERIFIED',
               ),
               const _Divider(),
-              _HeroMetric(label: 'EST. STRENGTH', value: '${_elo(level)} ELO'),
+              _HeroMetric(
+                label: uiText(context, 'EST. STRENGTH'),
+                value: '${_elo(level)} ELO',
+              ),
               const _Divider(),
-              const _HeroMetric(label: 'ARENA', value: 'READY'),
+              _HeroMetric(label: uiText(context, 'ARENA'), value: 'READY'),
             ],
           ),
         ],
@@ -1082,7 +1097,7 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
                 ),
               ),
               const SizedBox(height: 18),
-              const Text(
+              const UiText(
                 'CUSTOMIZE YOUR PLAYER',
                 style: TextStyle(
                   color: Color(0xFFF6E7C2),
@@ -1091,7 +1106,7 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
                   letterSpacing: 0.8,
                 ),
               ),
-              const Text(
+              const UiText(
                 'Build the identity opponents see in the arena.',
                 style: TextStyle(color: Color(0xFF91A8B4)),
               ),
@@ -1152,7 +1167,7 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
               if (widget.accountPhotoUrl?.trim().isNotEmpty ==
                   true) ...<Widget>[
                 const SizedBox(height: 8),
-                Text(
+                UiText(
                   _useAccountPhoto
                       ? 'Using your Google or Facebook account photo.'
                       : 'Using a ChessVerse avatar. Tap the first photo to restore your account photo.',
@@ -1164,18 +1179,24 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
                 key: const ValueKey<String>('profile-display-name-field'),
                 controller: _displayName,
                 maxLength: 80,
-                decoration: const InputDecoration(
-                  labelText: 'Display name',
-                  helperText: 'This is the name other players will see.',
+                decoration: InputDecoration(
+                  labelText: uiText(context, 'Display name'),
+                  helperText: uiText(
+                    context,
+                    'This is the name other players will see.',
+                  ),
                   prefixIcon: Icon(Icons.badge_rounded),
                 ),
               ),
               if (widget.username.isNotEmpty) ...<Widget>[
                 const SizedBox(height: 8),
                 InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Account username',
-                    helperText: 'Your unique sign-in and friend-search handle.',
+                  decoration: InputDecoration(
+                    labelText: uiText(context, 'Account username'),
+                    helperText: uiText(
+                      context,
+                      'Your unique sign-in and friend-search handle.',
+                    ),
                     prefixIcon: Icon(Icons.alternate_email_rounded),
                   ),
                   child: Text('@${widget.username}'),
@@ -1186,8 +1207,8 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
                 initialValue: _country,
                 isExpanded: true,
                 menuMaxHeight: 420,
-                decoration: const InputDecoration(
-                  labelText: 'Country',
+                decoration: InputDecoration(
+                  labelText: uiText(context, 'Country'),
                   prefixIcon: Icon(Icons.public_rounded),
                 ),
                 items: _countries
@@ -1210,8 +1231,9 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              Text(
-                'Estimated rating: ${_elo(_level)} ELO',
+              UiText(
+                'Estimated rating: {0} ELO',
+                values: [_elo(_level)],
                 style: const TextStyle(color: AppColors.accentGold),
               ),
               Slider(
@@ -1227,8 +1249,8 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: const <Widget>[
-                  Text('NEW', style: TextStyle(color: Color(0xFF8198A5))),
-                  Text('MASTER', style: TextStyle(color: Color(0xFF8198A5))),
+                  UiText('NEW', style: TextStyle(color: Color(0xFF8198A5))),
+                  UiText('MASTER', style: TextStyle(color: Color(0xFF8198A5))),
                 ],
               ),
               const SizedBox(height: 22),
@@ -1244,7 +1266,7 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
                   if (name.length < 2 || name.length > 80) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text(
+                        content: UiText(
                           'Display name must be between 2 and 80 characters.',
                         ),
                       ),
@@ -1262,7 +1284,7 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
                   );
                 },
                 icon: const Icon(Icons.save_rounded),
-                label: const Text(
+                label: const UiText(
                   'SAVE PLAYER PROFILE',
                   style: TextStyle(fontWeight: FontWeight.w900),
                 ),

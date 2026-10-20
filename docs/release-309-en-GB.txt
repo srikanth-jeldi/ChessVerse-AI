@@ -1,0 +1,7 @@
+<en-GB>
+Improved translations across 34 languages.
+Refined layouts for smaller screens, longer text and right-to-left languages.
+Improved game-result buttons, language selection and loading screens.
+Clearer offline and slow-connection messages.
+Added startup stability improvements and general UI fixes.
+</en-GB>

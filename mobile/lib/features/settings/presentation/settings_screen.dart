@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -123,13 +124,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Text(
+            const UiText(
               'SETTINGS',
               style: TextStyle(letterSpacing: 1.5, fontWeight: FontWeight.w900),
             ),
             if (wide) ...<Widget>[
               const SizedBox(height: 4),
-              const Text(
+              const UiText(
                 'Customize your game experience',
                 style: TextStyle(
                   color: AppColors.textSecondary,
@@ -145,7 +146,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: <Widget>[
           IconButton(
             key: const ValueKey<String>('settings-language-shortcut'),
-            tooltip: 'Language',
+            tooltip: uiText(context, 'Language'),
             onPressed: _loading ? null : _chooseLanguage,
             icon: const Icon(Icons.translate_rounded),
           ),
@@ -162,9 +163,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
-                      const _SettingsSectionTitle(
+                      _SettingsSectionTitle(
                         icon: Icons.workspace_premium_rounded,
-                        label: 'GAME PREFERENCES',
+                        label: uiText(context, 'GAME PREFERENCES'),
                       ),
                       const SizedBox(height: 12),
                       ChessVerseCard(
@@ -225,9 +226,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                       ),
                       const SizedBox(height: 18),
-                      const _SettingsSectionTitle(
+                      _SettingsSectionTitle(
                         icon: Icons.translate_rounded,
-                        label: 'LANGUAGE & AI COACH',
+                        label: uiText(context, 'LANGUAGE & AI COACH'),
                       ),
                       const SizedBox(height: 12),
                       ChessVerseCard(
@@ -237,7 +238,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         child: _SettingRow(
                           icon: Icons.language_rounded,
-                          title: 'App & coach language',
+                          title: uiText(context, 'App & coach language'),
                           value: AppLanguageController.byCode(_language)
                               .displayName,
                           onTap: _chooseLanguage,
@@ -245,7 +246,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const Padding(
                         padding: EdgeInsets.fromLTRB(8, 8, 8, 0),
-                        child: Text(
+                        child: UiText(
                           'AI explanations use your selected language. Untranslated app text safely falls back to English.',
                           style: TextStyle(
                             color: AppColors.textSecondary,
@@ -254,9 +255,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      const _SettingsSectionTitle(
+                      _SettingsSectionTitle(
                         icon: Icons.support_agent_rounded,
-                        label: 'HELP & SUPPORT',
+                        label: uiText(context, 'HELP & SUPPORT'),
                       ),
                       const SizedBox(height: 12),
                       ChessVerseCard(
@@ -268,7 +269,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           children: <Widget>[
                             _ActionRow(
                               icon: Icons.help_outline_rounded,
-                              title: 'Help & Support',
+                              title: uiText(context, 'Help & Support'),
                               onTap: () => Navigator.of(context).push(
                                 MaterialPageRoute<void>(
                                   builder: (_) => const HelpSupportScreen(),
@@ -305,9 +306,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      const _SettingsSectionTitle(
+                      _SettingsSectionTitle(
                         icon: Icons.palette_rounded,
-                        label: 'APPEARANCE',
+                        label: uiText(context, 'APPEARANCE'),
                       ),
                       const SizedBox(height: 12),
                       _AppearancePreview(
@@ -328,10 +329,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               expanded: desktop,
                               child: _SettingRow(
                                 icon: Icons.grid_view_rounded,
-                                title: 'Board theme',
+                                title: uiText(context, 'Board theme'),
                                 value: _boardTheme,
                                 onTap: () => _choose(
-                                  title: 'Board theme',
+                                  title: uiText(context, 'Board theme'),
                                   values: const <String>[
                                     'Royal Walnut',
                                     'Jade Glass',
@@ -370,10 +371,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               expanded: desktop,
                               child: _SettingRow(
                                 icon: Icons.extension_rounded,
-                                title: 'Piece style',
+                                title: uiText(context, 'Piece style'),
                                 value: _pieceStyle,
                                 onTap: () => _choose(
-                                  title: 'Piece style',
+                                  title: uiText(context, 'Piece style'),
                                   values: ChessPieceAppearanceController
                                       .styleLabels,
                                   selected: _pieceStyle,
@@ -418,10 +419,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               expanded: desktop,
                               child: _SettingRow(
                                 icon: Icons.zoom_out_map_rounded,
-                                title: 'Piece size',
+                                title: uiText(context, 'Piece size'),
                                 value: _pieceSize,
                                 onTap: () => _choose(
-                                  title: 'Piece size',
+                                  title: uiText(context, 'Piece size'),
                                   values:
                                       ChessPieceAppearanceController.sizeLabels,
                                   selected: _pieceSize,
@@ -466,10 +467,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               expanded: desktop,
                               child: _SettingRow(
                                 icon: Icons.dark_mode_rounded,
-                                title: 'App theme',
+                                title: uiText(context, 'App theme'),
                                 value: _appTheme,
                                 onTap: () => _choose(
-                                  title: 'App theme',
+                                  title: uiText(context, 'App theme'),
                                   values: const <String>[
                                     'Dark premium',
                                     'Midnight blue',
@@ -487,15 +488,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      const _SettingsSectionTitle(
+                      _SettingsSectionTitle(
                         icon: Icons.security_rounded,
-                        label: 'SECURITY',
+                        label: uiText(context, 'SECURITY'),
                       ),
                       const SizedBox(height: 12),
                       ChessVerseCard(
                         child: _ActionRow(
                           icon: Icons.devices_rounded,
-                          title: 'Devices & sessions',
+                          title: uiText(context, 'Devices & sessions'),
                           onTap: () async {
                             final bool? loggedOut = await Navigator.of(context)
                                 .push<bool>(
@@ -511,9 +512,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      const _SettingsSectionTitle(
+                      _SettingsSectionTitle(
                         icon: Icons.shield_outlined,
-                        label: 'LEGAL',
+                        label: uiText(context, 'LEGAL'),
                       ),
                       const SizedBox(height: 12),
                       ChessVerseCard(
@@ -528,7 +529,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               expanded: desktop,
                               child: _ActionRow(
                                 icon: Icons.privacy_tip_rounded,
-                                title: 'Privacy Policy',
+                                title: uiText(context, 'Privacy Policy'),
                                 onTap: () =>
                                     _openLegal(context, LegalPageType.privacy),
                               ),
@@ -544,7 +545,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               expanded: desktop,
                               child: _ActionRow(
                                 icon: Icons.description_rounded,
-                                title: 'Terms of Service',
+                                title: uiText(context, 'Terms of Service'),
                                 onTap: () =>
                                     _openLegal(context, LegalPageType.terms),
                               ),
@@ -576,11 +577,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: <Widget>[
-                                  Text(
-                                    'Logout',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w900,
+                                  Flexible(
+                                    child: UiText(
+                                      'Logout',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                      ),
                                     ),
                                   ),
                                   SizedBox(width: 10),
@@ -606,7 +610,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               )
                             : const Icon(Icons.delete_forever_rounded),
-                        label: Text(
+                        label: UiText(
                           _deletingAccount
                               ? 'Deleting account…'
                               : 'Delete account permanently',
@@ -641,8 +645,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _soundSwitch() => _SettingSwitch(
     icon: Icons.volume_up_rounded,
-    title: 'Sound effects',
-    subtitle: 'Move sounds, check alerts, and result effects',
+    title: uiText(context, 'Sound effects'),
+    subtitle: uiText(context, 'Move sounds, check alerts, and result effects'),
     value: _soundEnabled,
     onChanged: (bool value) {
       setState(() => _soundEnabled = value);
@@ -653,8 +657,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _hintsSwitch() => _SettingSwitch(
     icon: Icons.lightbulb_rounded,
-    title: 'Move hints',
-    subtitle: 'Show legal move and daily challenge hints',
+    title: uiText(context, 'Move hints'),
+    subtitle: uiText(context, 'Show legal move and daily challenge hints'),
     value: _hintsEnabled,
     onChanged: (bool value) {
       setState(() => _hintsEnabled = value);
@@ -664,8 +668,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _coordinatesSwitch() => _SettingSwitch(
     icon: Icons.grid_4x4_rounded,
-    title: 'Show coordinates',
-    subtitle: 'Display a-h and 1-8 board labels',
+    title: uiText(context, 'Show coordinates'),
+    subtitle: uiText(context, 'Display a-h and 1-8 board labels'),
     value: _coordinatesEnabled,
     onChanged: (bool value) {
       setState(() => _coordinatesEnabled = value);
@@ -675,8 +679,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _coachSwitch() => _SettingSwitch(
     icon: Icons.psychology_alt_rounded,
-    title: 'AI coach',
-    subtitle: 'Explain moves and tactical ideas',
+    title: uiText(context, 'AI coach'),
+    subtitle: uiText(context, 'Explain moves and tactical ideas'),
     value: _coachEnabled,
     onChanged: (bool value) {
       setState(() => _coachEnabled = value);
@@ -686,8 +690,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _animationsSwitch() => _SettingSwitch(
     icon: Icons.auto_awesome_rounded,
-    title: 'Animations',
-    subtitle: 'Board highlights and smooth transitions',
+    title: uiText(context, 'Animations'),
+    subtitle: uiText(context, 'Board highlights and smooth transitions'),
     value: _animationsEnabled,
     onChanged: (bool value) {
       setState(() => _animationsEnabled = value);
@@ -697,8 +701,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _dailyReminderSwitch() => _SettingSwitch(
     icon: Icons.notifications_active_rounded,
-    title: 'Play reminders',
-    subtitle: 'Remind me after 8 hours away, with one gentle follow-up',
+    title: uiText(context, 'Play reminders'),
+    subtitle: uiText(
+      context,
+      'Remind me after 8 hours away, with one gentle follow-up',
+    ),
     value: _dailyReminderEnabled,
     onChanged: (bool value) async {
       final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
@@ -713,7 +720,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _preferences.writeBool('dailyReminder', enabled);
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
+          content: UiText(
             enabled
                 ? 'Play reminders enabled. Quiet hours are 10 PM–8 AM.'
                 : value
@@ -751,16 +758,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
-        title: const Text('Logout?'),
-        content: const Text('You can sign in again with the same account.'),
+        title: const UiText('Logout?'),
+        content: const UiText('You can sign in again with the same account.'),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const UiText('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Logout'),
+            child: const UiText('Logout'),
           ),
         ],
       ),
@@ -773,21 +780,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
-        title: const Text('Delete account permanently?'),
-        content: const Text(
+        title: const UiText('Delete account permanently?'),
+        content: const UiText(
           'Your profile, progress, rating and match history will be permanently deleted. This cannot be undone.',
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Keep account'),
+            child: const UiText('Keep account'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFFB3261E),
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete forever'),
+            child: const UiText('Delete forever'),
           ),
         ],
       ),
@@ -799,7 +806,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } on Object catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Account deletion failed: ${error.toString()}')),
+        SnackBar(
+          content: UiText(
+            'Account deletion failed: {0}',
+            values: [error.toString()],
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _deletingAccount = false);
@@ -847,7 +859,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 title: Text(title),
                                 subtitle: previewBuilder == null
                                     ? null
-                                    : const Text(
+                                    : const UiText(
                                         'Select an option to preview it live.',
                                       ),
                               ),
@@ -869,7 +881,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 onPressed: () =>
                                     Navigator.pop(sheetContext, pendingValue),
                                 icon: const Icon(Icons.check_rounded),
-                                label: const Text('Apply'),
+                                label: const UiText('Apply'),
                               ),
                             ],
                           ),
@@ -990,7 +1002,7 @@ class _AppearancePreview extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
+                    UiText(
                       'LIVE BOARD & PIECE PREVIEW',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         color: AppColors.accentGold,
@@ -1195,12 +1207,12 @@ class _LanguagePickerState extends State<_LanguagePicker> {
             constraints: const BoxConstraints(maxWidth: 720),
             child: Column(
               children: <Widget>[
-                const Text(
+                const UiText(
                   'Choose language',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                const UiText(
                   'App interface & AI chess coach',
                   style: TextStyle(color: AppColors.textSecondary),
                 ),
@@ -1209,9 +1221,9 @@ class _LanguagePickerState extends State<_LanguagePicker> {
                   child: TextField(
                     autofocus: false,
                     onChanged: (String value) => setState(() => _query = value),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       prefixIcon: Icon(Icons.search_rounded),
-                      hintText: 'Search language',
+                      hintText: uiText(context, 'Search language'),
                       border: OutlineInputBorder(),
                     ),
                   ),

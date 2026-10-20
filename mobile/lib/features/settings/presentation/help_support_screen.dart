@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -20,75 +21,86 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(title: const Text('HELP & SUPPORT')),
-        body: ListView(
-          padding: const EdgeInsets.all(18),
-          children: <Widget>[
-            ChessVerseCard(
-              child: FutureBuilder<PackageInfo>(
-                future: _packageInfo,
-                builder: (BuildContext context,
-                    AsyncSnapshot<PackageInfo> snapshot) {
+    backgroundColor: Colors.transparent,
+    appBar: AppBar(title: const UiText('HELP & SUPPORT')),
+    body: ListView(
+      padding: const EdgeInsets.all(18),
+      children: <Widget>[
+        ChessVerseCard(
+          child: FutureBuilder<PackageInfo>(
+            future: _packageInfo,
+            builder:
+                (BuildContext context, AsyncSnapshot<PackageInfo> snapshot) {
                   final PackageInfo? info = snapshot.data;
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const CircleAvatar(
                       backgroundColor: Color(0xFF123955),
-                      child: Icon(Icons.info_outline_rounded,
-                          color: AppColors.info),
+                      child: Icon(
+                        Icons.info_outline_rounded,
+                        color: AppColors.info,
+                      ),
                     ),
                     title: const Text('ChessVerseAI'),
-                    subtitle: Text(info == null
-                        ? 'Reading app version…'
-                        : 'Version ${info.version}'),
+                    subtitle: Text(
+                      info == null
+                          ? 'Reading app version…'
+                          : 'Version ${info.version}',
+                    ),
                   );
                 },
-              ),
-            ),
-            const SizedBox(height: 14),
-            ChessVerseCard(
-              padding: EdgeInsets.zero,
-              child: Column(
-                children: <Widget>[
-                  _SupportAction(
-                    icon: Icons.copy_all_rounded,
-                    title: 'Copy diagnostic information',
-                    subtitle:
-                        'Copies version, device details and redacted recent events',
-                    onTap: _working ? null : _copyDiagnostics,
-                  ),
-                  const Divider(height: 1, color: AppColors.border),
-                  _SupportAction(
-                    icon: Icons.bug_report_outlined,
-                    title: 'Report a problem',
-                    subtitle:
-                        'Opens an email with privacy-safe diagnostics attached',
-                    onTap: _working ? null : _reportProblem,
-                  ),
-                  const Divider(height: 1, color: AppColors.border),
-                  _SupportAction(
-                    icon: Icons.chat_bubble_outline_rounded,
-                    title: 'Send feedback',
-                    subtitle: 'Tell us what would make ChessVerseAI better',
-                    onTap: _working ? null : _sendFeedback,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Diagnostics never include passwords, authentication tokens, API keys or full email addresses.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-            ),
-            if (_working) ...<Widget>[
-              const SizedBox(height: 20),
-              const Center(child: CircularProgressIndicator()),
-            ],
-          ],
+          ),
         ),
-      );
+        const SizedBox(height: 14),
+        ChessVerseCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: <Widget>[
+              _SupportAction(
+                icon: Icons.copy_all_rounded,
+                title: uiText(context, 'Copy diagnostic information'),
+                subtitle: uiText(
+                  context,
+                  'Copies version, device details and redacted recent events',
+                ),
+                onTap: _working ? null : _copyDiagnostics,
+              ),
+              const Divider(height: 1, color: AppColors.border),
+              _SupportAction(
+                icon: Icons.bug_report_outlined,
+                title: uiText(context, 'Report a problem'),
+                subtitle: uiText(
+                  context,
+                  'Opens an email with privacy-safe diagnostics attached',
+                ),
+                onTap: _working ? null : _reportProblem,
+              ),
+              const Divider(height: 1, color: AppColors.border),
+              _SupportAction(
+                icon: Icons.chat_bubble_outline_rounded,
+                title: uiText(context, 'Send feedback'),
+                subtitle: uiText(
+                  context,
+                  'Tell us what would make ChessVerseAI better',
+                ),
+                onTap: _working ? null : _sendFeedback,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        const UiText(
+          'Diagnostics never include passwords, authentication tokens, API keys or full email addresses.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+        ),
+        if (_working) ...<Widget>[
+          const SizedBox(height: 20),
+          const Center(child: CircularProgressIndicator()),
+        ],
+      ],
+    ),
+  );
 
   Future<void> _copyDiagnostics() async {
     await _run(() async {
@@ -110,14 +122,18 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
   }
 
   Future<void> _sendFeedback() async {
-    await _run(() => _openEmail(
-          subject: 'ChessVerseAI feedback',
-          body: 'My feedback:\n\n',
-        ));
+    await _run(
+      () => _openEmail(
+        subject: 'ChessVerseAI feedback',
+        body: 'My feedback:\n\n',
+      ),
+    );
   }
 
-  Future<void> _openEmail(
-      {required String subject, required String body}) async {
+  Future<void> _openEmail({
+    required String subject,
+    required String body,
+  }) async {
     final Uri email = Uri(
       scheme: 'mailto',
       path: 'contactus@epitomehub.com',
@@ -167,10 +183,10 @@ class _SupportAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        leading: Icon(icon, color: AppColors.info),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: onTap,
-      );
+    leading: Icon(icon, color: AppColors.info),
+    title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+    subtitle: Text(subtitle),
+    trailing: const Icon(Icons.chevron_right_rounded),
+    onTap: onTap,
+  );
 }

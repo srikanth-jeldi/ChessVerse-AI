@@ -1,3 +1,5 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
+
 import '../../../core/analytics/app_analytics.dart';
 
 import 'dart:async';
@@ -120,8 +122,12 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
               Row(
                 children: <Widget>[
                   Expanded(
-                    child: Text(
-                      '${difficulty.name.toUpperCase()} · ${PuzzleCatalog.puzzlesPerDifficulty} PUZZLES',
+                    child: UiText(
+                      '{0} · {1} PUZZLES',
+                      values: [
+                        difficulty.name.toUpperCase(),
+                        PuzzleCatalog.puzzlesPerDifficulty,
+                      ],
                       style: TextStyle(
                         color: accent,
                         fontSize: 18,
@@ -136,7 +142,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                   ),
                 ],
               ),
-              const Text(
+              const UiText(
                 'Choose any independent board. Completed levels keep their progress.',
                 style: TextStyle(color: Color(0xFF9EB5C0)),
               ),
@@ -284,7 +290,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text(
+                        UiText(
                           'PUZZLE ACADEMY',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -296,7 +302,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                           ),
                         ),
                         SizedBox(height: 2),
-                        Text(
+                        UiText(
                           'Train tactics and sharpen pattern recognition',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -325,10 +331,16 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                               onStart: () => _launchPuzzle(adaptiveStart.id),
                             ),
                             const SizedBox(height: 28),
-                            const _SectionHeading(
+                            _SectionHeading(
                               eyebrow: 'SPEED ARENA',
-                              title: 'Think fast. Stay accurate.',
-                              subtitle: 'Three competitive sessions powered by real curated positions.',
+                              title: uiText(
+                                context,
+                                'Think fast. Stay accurate.',
+                              ),
+                              subtitle: uiText(
+                                context,
+                                'Three competitive sessions powered by real curated positions.',
+                              ),
                             ),
                             const SizedBox(height: 14),
                             _SprintModeStrip(
@@ -336,16 +348,19 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                               onRecords: _openSprintRecords,
                             ),
                             const SizedBox(height: 28),
-                            const _SectionHeading(
+                            _SectionHeading(
                               eyebrow: 'TACTICAL TRAINING',
-                              title: 'Choose your challenge',
-                              subtitle: 'Every position is interactive and validated by the ChessVerseAI rules engine.',
+                              title: uiText(context, 'Choose your challenge'),
+                              subtitle: uiText(
+                                context,
+                                'Every position is interactive and validated by the ChessVerseAI rules engine.',
+                              ),
                             ),
                             const SizedBox(height: 14),
                             _DifficultyCard(
                               keyName: 'puzzle-easy',
                               level: 'EASY',
-                              title: 'Easy Tactics',
+                              title: uiText(context, 'Easy Tactics'),
                               detail: 'Clear forcing mates rated 800–1300.',
                               icon: Icons.school_rounded,
                               accent: const Color(0xFF63D2B8),
@@ -361,7 +376,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                             _DifficultyCard(
                               keyName: 'puzzle-medium',
                               level: 'MEDIUM',
-                              title: 'Medium Tactics',
+                              title: uiText(context, 'Medium Tactics'),
                               detail: 'Deeper mating lines rated 1301–1800.',
                               icon: Icons.bolt_rounded,
                               accent: AppColors.accentGold,
@@ -377,7 +392,7 @@ class _PuzzleAcademyScreenState extends State<PuzzleAcademyScreen> {
                             _DifficultyCard(
                               keyName: 'puzzle-hard',
                               level: 'HARD',
-                              title: 'Hard Tactics',
+                              title: uiText(context, 'Hard Tactics'),
                               detail: 'Advanced forced mates rated 1801–2400.',
                               icon: Icons.local_fire_department_rounded,
                               accent: const Color(0xFFF08A4B),
@@ -441,7 +456,7 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
+                    UiText(
                       'PUZZLE ACADEMY',
                       style: TextStyle(
                         color: Colors.white,
@@ -451,7 +466,7 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: 2),
-                    Text(
+                    UiText(
                       'Train tactics and sharpen pattern recognition',
                       style: TextStyle(color: Color(0xFFA7B7CA), fontSize: 14),
                     ),
@@ -477,10 +492,13 @@ class _DesktopPuzzleAcademy extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
-                          const _SectionHeading(
+                          _SectionHeading(
                             eyebrow: 'TACTICAL TRAINING',
-                            title: 'Choose your challenge',
-                            subtitle: 'Every position is interactive and validated by the ChessVerseAI rules engine.',
+                            title: uiText(context, 'Choose your challenge'),
+                            subtitle: uiText(
+                              context,
+                              'Every position is interactive and validated by the ChessVerseAI rules engine.',
+                            ),
                           ),
                           const SizedBox(height: 12),
                           _SprintModeStrip(
@@ -669,7 +687,7 @@ class _SprintModeStrip extends StatelessWidget {
                 key: const ValueKey<String>('sprint-records'),
                 onPressed: onRecords,
                 icon: const Icon(Icons.leaderboard_rounded),
-                label: const Text('LEADERBOARD & MY HISTORY'),
+                label: const UiText('LEADERBOARD & MY HISTORY'),
               ),
             ),
           ],
@@ -819,10 +837,13 @@ class _PuzzleSprintSheetState extends State<_PuzzleSprintSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: <Widget>[
-              _SprintMetric(label: 'TIME', value: clock),
-              _SprintMetric(label: 'SCORE', value: '${_session.score}'),
+              _SprintMetric(label: uiText(context, 'TIME'), value: clock),
               _SprintMetric(
-                label: 'LIVES',
+                label: uiText(context, 'SCORE'),
+                value: '${_session.score}',
+              ),
+              _SprintMetric(
+                label: uiText(context, 'LIVES'),
                 value: List<String>.filled(_session.lives, '♥').join(),
               ),
             ],
@@ -864,7 +885,7 @@ class _PuzzleSprintSheetState extends State<_PuzzleSprintSheet> {
                         : Colors.redAccent,
                   ),
                 ),
-                child: Text(
+                child: UiText(
                   _lastAttemptSolved!
                       ? 'Solved — the next puzzle is ready.'
                       : 'Not solved — 1 life lost. Retry the same puzzle.',
@@ -890,7 +911,7 @@ class _PuzzleSprintSheetState extends State<_PuzzleSprintSheet> {
                     ? Icons.hourglass_top_rounded
                     : Icons.play_arrow_rounded,
               ),
-              label: Text(
+              label: UiText(
                 _launching
                     ? 'OPENING BOARD…'
                     : _lastAttemptSolved == false
@@ -1016,7 +1037,7 @@ class _PuzzleHero extends StatelessWidget {
                         size: 18,
                       ),
                       SizedBox(width: 8),
-                      Text(
+                      UiText(
                         'FEATURED PUZZLE',
                         style: TextStyle(
                           color: AppColors.accentGold,
@@ -1061,7 +1082,7 @@ class _PuzzleHero extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              const Text(
+                              const UiText(
                                 'Your Adaptive Sprint',
                                 style: TextStyle(
                                   color: Colors.white,
@@ -1109,7 +1130,7 @@ class _PuzzleHero extends StatelessWidget {
                             ),
                           ),
                           icon: const Icon(Icons.sports_esports_rounded),
-                          label: const Text(
+                          label: const UiText(
                             'SOLVE NOW',
                             style: TextStyle(fontWeight: FontWeight.w900),
                           ),
@@ -1376,7 +1397,7 @@ class _TrainingStatsPanel extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    const Text(
+                    const UiText(
                       'YOUR TRAINING',
                       style: TextStyle(
                         color: Color(0xFF66AFFF),
@@ -1384,8 +1405,9 @@ class _TrainingStatsPanel extends StatelessWidget {
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    Text(
-                      '${stats.puzzlesSolved} puzzles\ncompleted',
+                    UiText(
+                      '{0} puzzles\ncompleted',
+                      values: [stats.puzzlesSolved],
                       style: const TextStyle(
                         color: Colors.white,
                         fontFamily: 'serif',
@@ -1401,7 +1423,7 @@ class _TrainingStatsPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          const Text(
+          const UiText(
             'Solve combinations to improve accuracy and build your streak.',
             style: TextStyle(color: Color(0xFFA7B7C6), height: 1.35),
           ),
@@ -1419,19 +1441,19 @@ class _TrainingStatsPanel extends StatelessWidget {
                 children: <Widget>[
                   _TrainingStatRow(
                     icon: Icons.extension_rounded,
-                    label: 'Puzzles Solved',
+                    label: uiText(context, 'Puzzles Solved'),
                     value: '${stats.puzzlesSolved}',
                     color: const Color(0xFF5DD7C0),
                   ),
                   _TrainingStatRow(
                     icon: Icons.verified_outlined,
-                    label: 'Completion',
+                    label: uiText(context, 'Completion'),
                     value: '$completion%',
                     color: const Color(0xFF5DD7C0),
                   ),
                   _TrainingStatRow(
                     icon: Icons.local_fire_department_rounded,
-                    label: 'Daily Streak',
+                    label: uiText(context, 'Daily Streak'),
                     value: '${rewards.streak}',
                     color: const Color(0xFFF06E42),
                   ),
@@ -1452,7 +1474,7 @@ class _TrainingStatsPanel extends StatelessWidget {
               ),
             ),
             icon: const Icon(Icons.bar_chart_rounded),
-            label: const Text(
+            label: const UiText(
               'VIEW INSIGHTS',
               style: TextStyle(letterSpacing: 1.2),
             ),
@@ -1519,7 +1541,7 @@ class _TrainingInsightsSheet extends StatelessWidget {
                   Row(
                     children: <Widget>[
                       const Expanded(
-                        child: Text(
+                        child: UiText(
                           'TRAINING INSIGHTS',
                           style: TextStyle(
                             color: AppColors.accentGold,
@@ -1530,13 +1552,13 @@ class _TrainingInsightsSheet extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        tooltip: 'Close',
+                        tooltip: uiText(context, 'Close'),
                         onPressed: () => Navigator.of(context).pop(),
                         icon: const Icon(Icons.close_rounded),
                       ),
                     ],
                   ),
-                  const Text(
+                  const UiText(
                     'Real progress from completed ChessVerseAI puzzle boards.',
                     style: TextStyle(color: Color(0xFFA7B7C6)),
                   ),
@@ -1546,22 +1568,22 @@ class _TrainingInsightsSheet extends StatelessWidget {
                     runSpacing: 10,
                     children: <Widget>[
                       _InsightMetric(
-                        label: 'COMPLETED',
+                        label: uiText(context, 'COMPLETED'),
                         value: '${stats.puzzlesSolved}/$total',
                         icon: Icons.extension_rounded,
                       ),
                       _InsightMetric(
-                        label: 'COMPLETION',
+                        label: uiText(context, 'COMPLETION'),
                         value: '$completion%',
                         icon: Icons.donut_large_rounded,
                       ),
                       _InsightMetric(
-                        label: 'REMAINING',
+                        label: uiText(context, 'REMAINING'),
                         value: '$remaining',
                         icon: Icons.flag_outlined,
                       ),
                       _InsightMetric(
-                        label: 'DAILY STREAK',
+                        label: uiText(context, 'DAILY STREAK'),
                         value: '${rewards.streak}',
                         icon: Icons.local_fire_department_rounded,
                       ),
@@ -1582,8 +1604,9 @@ class _TrainingInsightsSheet extends StatelessWidget {
                     key: const ValueKey<String>('continue-recommended-puzzles'),
                     onPressed: () => onDifficulty(recommended),
                     icon: const Icon(Icons.play_arrow_rounded),
-                    label: Text(
-                      'CONTINUE ${recommended.name.toUpperCase()} TRAINING',
+                    label: UiText(
+                      'CONTINUE {0} TRAINING',
+                      values: [recommended.name.toUpperCase()],
                     ),
                   ),
                 ],
@@ -1678,8 +1701,9 @@ class _DifficultyInsight extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(
-                    '${difficulty.name.toUpperCase()} TACTICS',
+                  UiText(
+                    '{0} TACTICS',
+                    values: [difficulty.name.toUpperCase()],
                     style: TextStyle(
                       color: accent,
                       fontWeight: FontWeight.w900,
@@ -1765,7 +1789,7 @@ class _TrainingSummary extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text(
+                const UiText(
                   'YOUR TRAINING',
                   style: TextStyle(
                     color: AppColors.accentGold,
@@ -1774,15 +1798,16 @@ class _TrainingSummary extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                Text(
-                  '${stats.puzzlesSolved} puzzles completed',
+                UiText(
+                  '{0} puzzles completed',
+                  values: [stats.puzzlesSolved],
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const Text(
+                const UiText(
                   'Solve combinations to improve accuracy and build your streak.',
                   style: TextStyle(color: Color(0xFF8FA5B1), fontSize: 11),
                 ),

@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/config/app_config.dart';
@@ -67,22 +68,22 @@ class LegalScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar:
-          AppBar(title: Text(privacy ? 'Privacy Policy' : 'Terms of Service')),
+      appBar: AppBar(
+        title: UiText(privacy ? 'Privacy Policy' : 'Terms of Service'),
+      ),
       body: ResponsivePage(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
+            UiText(
               privacy ? 'ChessVerseAI Privacy Policy' : 'ChessVerseAI Terms',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 8),
-            Text(
+            UiText(
               'Effective August 21, 2026',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 18),
             for (final _LegalSection section in sections) ...<Widget>[
@@ -90,8 +91,10 @@ class LegalScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(section.title,
-                        style: Theme.of(context).textTheme.titleLarge),
+                    Text(
+                      section.title,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
                     const SizedBox(height: 8),
                     Text(section.body),
                   ],

@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/desktop_navigation_shell.dart';
@@ -136,7 +137,7 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFF061524),
         appBar: AppBar(
-          title: const Text('POSITION CREATOR'),
+          title: const UiText('POSITION CREATOR'),
           backgroundColor: const Color(0xFF071B2D),
           actions: <Widget>[
             TextButton.icon(
@@ -144,7 +145,7 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
                 () => _pieces = <String, String>{'e1': 'wK', 'e8': 'bK'},
               ),
               icon: const Icon(Icons.delete_sweep_rounded),
-              label: const Text('CLEAR'),
+              label: const UiText('CLEAR'),
             ),
           ],
         ),
@@ -258,7 +259,7 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        const Text(
+        const UiText(
           'BUILD YOUR CHALLENGE',
           style: TextStyle(
             color: Color(0xFFE2AE49),
@@ -267,7 +268,7 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
+        const UiText(
           'Choose a piece, place it on the board, then face ChessVerseAI.',
           style: TextStyle(color: Color(0xFFB7CAD7), height: 1.4),
         ),
@@ -318,15 +319,15 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
         const SizedBox(height: 18),
         SegmentedButton<bool>(
           segments: const <ButtonSegment<bool>>[
-            ButtonSegment<bool>(value: true, label: Text('PLAY WHITE')),
-            ButtonSegment<bool>(value: false, label: Text('PLAY BLACK')),
+            ButtonSegment<bool>(value: true, label: UiText('PLAY WHITE')),
+            ButtonSegment<bool>(value: false, label: UiText('PLAY BLACK')),
           ],
           selected: <bool>{_humanWhite},
           onSelectionChanged: (Set<bool> value) =>
               setState(() => _humanWhite = value.first),
         ),
         const SizedBox(height: 18),
-        const Text(
+        const UiText(
           'White moves first. Castling is disabled in custom setups.',
           style: TextStyle(color: Color(0xFF8FA8BA), fontSize: 12),
         ),
@@ -337,7 +338,7 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
             key: const ValueKey<String>('position-start-ai'),
             onPressed: _start,
             icon: const Icon(Icons.smart_toy_rounded),
-            label: const Text('PLAY THIS POSITION'),
+            label: const UiText('PLAY THIS POSITION'),
           ),
         ),
       ],

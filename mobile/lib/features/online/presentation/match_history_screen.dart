@@ -1,3 +1,5 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
+
 import 'dart:async';
 
 import '../../../core/analytics/app_analytics.dart';
@@ -366,7 +368,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                       ),
                       SizedBox(width: 12),
                       Expanded(
-                        child: Text(
+                        child: UiText(
                           'Personalise your AI review',
                           style: TextStyle(
                             fontSize: 24,
@@ -377,12 +379,12 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  const UiText(
                     'Tell ChessVerseAI who you played as and what the coach should analyse.',
                     style: TextStyle(color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 22),
-                  const Text(
+                  const UiText(
                     'WHICH PLAYER ARE YOU?',
                     style: TextStyle(
                       color: AppColors.accentGold,
@@ -398,14 +400,14 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                             selected: side == 'white',
                             icon: Icons.light_mode_rounded,
                             title: game.whitePlayer,
-                            subtitle: 'White pieces',
+                            subtitle: uiText(context, 'White pieces'),
                             onTap: () => setDialogState(() => side = 'white'),
                           );
                           final Widget blackTile = _PgnChoiceTile(
                             selected: side == 'black',
                             icon: Icons.dark_mode_rounded,
                             title: game.blackPlayer,
-                            subtitle: 'Black pieces',
+                            subtitle: uiText(context, 'Black pieces'),
                             onTap: () => setDialogState(() => side = 'black'),
                           );
                           if (constraints.maxWidth < 430) {
@@ -427,7 +429,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                         },
                   ),
                   const SizedBox(height: 22),
-                  const Text(
+                  const UiText(
                     'REVIEW MODE',
                     style: TextStyle(
                       color: AppColors.accentGold,
@@ -442,21 +444,30 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                       icon: Icons.person_search_rounded,
                       title:
                           'Analyse ${side == 'white' ? game.whitePlayer : game.blackPlayer}',
-                      subtitle: 'Accuracy, mistakes and better alternatives for this player',
+                      subtitle: uiText(
+                        context,
+                        'Accuracy, mistakes and better alternatives for this player',
+                      ),
                     ),
                     (
                       value: 'opponent',
                       icon: Icons.visibility_rounded,
                       title:
                           'Analyse ${side == 'white' ? game.blackPlayer : game.whitePlayer}',
-                      subtitle: 'Best ideas, threats and improvements for the other player',
+                      subtitle: uiText(
+                        context,
+                        'Best ideas, threats and improvements for the other player',
+                      ),
                     ),
                     (
                       value: 'both',
                       icon: Icons.compare_arrows_rounded,
                       title:
                           'Analyse ${game.whitePlayer} and ${game.blackPlayer}',
-                      subtitle: 'Complete coaching for both players',
+                      subtitle: uiText(
+                        context,
+                        'Complete coaching for both players',
+                      ),
                     ),
                   ].map(
                     (item) => Padding(
@@ -485,7 +496,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                         _PgnReviewChoice(playerSide: side, reviewScope: scope),
                       ),
                       icon: const Icon(Icons.psychology_alt_rounded),
-                      label: const Text(
+                      label: const UiText(
                         'IMPORT & START LEARNING',
                         style: TextStyle(fontWeight: FontWeight.w900),
                       ),
@@ -559,7 +570,12 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Game exported as ${format.toUpperCase()}.')),
+        SnackBar(
+          content: UiText(
+            'Game exported as {0}.',
+            values: [format.toUpperCase()],
+          ),
+        ),
       );
     } on FormatException catch (error) {
       if (!mounted) return;
@@ -600,7 +616,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: IconButton(
-                    tooltip: 'Close',
+                    tooltip: uiText(context, 'Close'),
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close_rounded),
                   ),
@@ -621,37 +637,46 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                const UiText(
                   'Choose how you want to keep or share this game.',
                   style: TextStyle(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 18),
                 _PremiumGameAction(
                   icon: Icons.description_outlined,
-                  title: 'EXPORT PGN',
-                  subtitle: 'Complete game, players, result and move history',
+                  title: uiText(context, 'EXPORT PGN'),
+                  subtitle: uiText(
+                    context,
+                    'Complete game, players, result and move history',
+                  ),
                   onTap: () => Navigator.pop(context, 'pgn'),
                 ),
                 const SizedBox(height: 10),
                 _PremiumGameAction(
                   icon: Icons.grid_on_rounded,
-                  title: 'EXPORT FEN',
-                  subtitle: 'Exact saved and engine-reviewed positions',
+                  title: uiText(context, 'EXPORT FEN'),
+                  subtitle: uiText(
+                    context,
+                    'Exact saved and engine-reviewed positions',
+                  ),
                   onTap: () => Navigator.pop(context, 'fen'),
                 ),
                 const SizedBox(height: 10),
                 _PremiumGameAction(
                   icon: Icons.library_add_check_rounded,
-                  title: 'SELECT MULTIPLE GAMES',
-                  subtitle: 'Choose several games and export separate files',
+                  title: uiText(context, 'SELECT MULTIPLE GAMES'),
+                  subtitle: uiText(
+                    context,
+                    'Choose several games and export separate files',
+                  ),
                   onTap: () => Navigator.pop(context, 'select'),
                 ),
                 if (allowDelete) ...<Widget>[
                   const SizedBox(height: 10),
                   _PremiumGameAction(
                     icon: Icons.delete_outline_rounded,
-                    title: 'DELETE GAME',
-                    subtitle: 'Remove this game from My Games',
+                    title: uiText(context, 'DELETE GAME'),
+                    subtitle: uiText(context, 'Remove this game from My Games'),
                     danger: true,
                     onTap: () => Navigator.pop(context, 'delete'),
                   ),
@@ -689,7 +714,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
         .toList(growable: false);
     if (selected.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select at least one game to export.')),
+        const SnackBar(content: UiText('Select at least one game to export.')),
       );
       return;
     }
@@ -715,7 +740,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     if (games.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Play or import a game before exporting.'),
+          content: UiText('Play or import a game before exporting.'),
         ),
       );
       return;
@@ -726,7 +751,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Select one or more games, then choose PGN or FEN.'),
+        content: UiText('Select one or more games, then choose PGN or FEN.'),
       ),
     );
   }
@@ -743,46 +768,48 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
-        child: Padding(
-          padding: const EdgeInsets.all(26),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                '${importing ? 'IMPORT' : 'EXPORT'} CHESS DATA',
-                style: const TextStyle(
-                  color: AppColors.accentGold,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(26),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                UiText(
+                  importing ? 'Import PGN or FEN' : 'Export PGN or FEN',
+                  style: const TextStyle(
+                    color: AppColors.accentGold,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 7),
-              Text(
-                importing
-                    ? 'Choose whether you are bringing in a complete game or one exact position.'
-                    : 'Choose the format you want to keep or share.',
-                style: const TextStyle(color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 20),
-              _ArchiveFormatTile(
-                icon: Icons.history_rounded,
-                title: 'PGN • COMPLETE GAMES',
-                subtitle: importing
-                    ? 'Import move history from Chess.com or another chess app'
-                    : 'Select games, then export players, result and moves',
-                onTap: () => Navigator.pop(context, 'pgn'),
-              ),
-              const SizedBox(height: 12),
-              _ArchiveFormatTile(
-                icon: Icons.grid_on_rounded,
-                title: 'FEN • BOARD POSITIONS',
-                subtitle: importing
-                    ? 'Import an exact board setup, side to move and castling rights'
-                    : 'Export imported and engine-reviewed positions',
-                onTap: () => Navigator.pop(context, 'fen'),
-              ),
-            ],
+                const SizedBox(height: 7),
+                UiText(
+                  importing
+                      ? 'Choose whether you are bringing in a complete game or one exact position.'
+                      : 'Choose the format you want to keep or share.',
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 20),
+                _ArchiveFormatTile(
+                  icon: Icons.history_rounded,
+                  title: uiText(context, 'PGN • COMPLETE GAMES'),
+                  subtitle: importing
+                      ? 'Import move history from Chess.com or another chess app'
+                      : 'Select games, then export players, result and moves',
+                  onTap: () => Navigator.pop(context, 'pgn'),
+                ),
+                const SizedBox(height: 12),
+                _ArchiveFormatTile(
+                  icon: Icons.grid_on_rounded,
+                  title: uiText(context, 'FEN • BOARD POSITIONS'),
+                  subtitle: importing
+                      ? 'Import an exact board setup, side to move and castling rights'
+                      : 'Export imported and engine-reviewed positions',
+                  onTap: () => Navigator.pop(context, 'fen'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -819,12 +846,12 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
           actions: <Widget>[
             OutlinedButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('KEEP IT'),
+              child: const UiText('KEEP IT'),
             ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('DELETE'),
+              child: const UiText('DELETE'),
             ),
           ],
         ),
@@ -843,7 +870,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     LocalGameArchive.removeGame(game);
     setState(() {});
     ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Game deleted.')));
+        .showSnackBar(const SnackBar(content: UiText('Game deleted.')));
   }
 
   Future<void> _deleteAllImported() async {
@@ -852,12 +879,12 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
         .length;
     if (count == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No imported PGN games to delete.')),
+        const SnackBar(content: UiText('No imported PGN games to delete.')),
       );
       return;
     }
     final bool confirmed = await _confirmDelete(
-      title: 'Delete all imported chess data?',
+      title: uiText(context, 'Delete all imported chess data?'),
       body:
           'All $count imported game${count == 1 ? '' : 's'} will be removed. Your ChessVerseAI games stay safe.',
     );
@@ -866,8 +893,12 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     setState(() {});
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          'Deleted $removed imported PGN game${removed == 1 ? '' : 's'}.',
+        content: UiText(
+          'Deleted {0} imported PGN game{1}.',
+          values: [
+            removed,
+            UiCopy.language.value == 'en' && removed != 1 ? 's' : '',
+          ],
         ),
       ),
     );
@@ -923,7 +954,9 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     if (bestMove == null || bestMove.length < 4) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('This position needs engine analysis before retrying.'),
+          content: UiText(
+            'This position needs engine analysis before retrying.',
+          ),
         ),
       );
       return;
@@ -1026,8 +1059,8 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('MY GAMES', style: TextStyle(fontWeight: FontWeight.w900)),
-            Text(
+            UiText('MY GAMES', style: TextStyle(fontWeight: FontWeight.w900)),
+            UiText(
               'Review. Learn. Get Better.',
               style: TextStyle(color: Color(0xFFAFC2D1), fontSize: 11),
             ),
@@ -1036,7 +1069,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
         backgroundColor: const Color(0xD9071827),
         actions: <Widget>[
           PopupMenuButton<String>(
-            tooltip: 'Manage saved games',
+            tooltip: uiText(context, 'Manage saved games'),
             onSelected: (String value) {
               if (value == 'delete-imported') _deleteAllImported();
             },
@@ -1049,7 +1082,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                     Icons.delete_sweep_rounded,
                     color: AppColors.danger,
                   ),
-                  title: Text('Delete imported PGNs'),
+                  title: UiText('Delete imported PGNs'),
                 ),
               ),
             ],
@@ -1072,7 +1105,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return ListTile(
-                    title: const Text('Saved game could not sync'),
+                    title: const UiText('Saved game could not sync'),
                     trailing: IconButton(
                       icon: const Icon(Icons.refresh),
                       onPressed: _refresh,
@@ -1082,29 +1115,47 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                 if (!snapshot.hasData) return const LinearProgressIndicator();
                 if (snapshot.data!.isEmpty) {
                   return ListTile(
-                    title: const Text('No paused computer game'),
-                    trailing: TextButton(
-                      onPressed: widget.onPlayAgain == null
-                          ? null
-                          : _startNewGame,
-                      child: const Text('New Game'),
+                    title: const UiText('No paused computer game'),
+                    trailing: SizedBox(
+                      width: 96,
+                      child: TextButton(
+                        onPressed: widget.onPlayAgain == null
+                            ? null
+                            : _startNewGame,
+                        child: const UiText(
+                          'New Game',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                     ),
                   );
                 }
                 final draft = snapshot.data!.first;
                 return ListTile(
-                  title: const Text('Continue computer game'),
-                  subtitle: Text(
-                    '${draft.whiteName} vs ${draft.blackName} · ${draft.plyCount} half-moves · Level ${draft.level.toInt()}',
+                  title: const UiText('Continue computer game'),
+                  subtitle: UiText(
+                    '{0} vs {1} · {2} half-moves · Level {3}',
+                    values: [
+                      draft.whiteName,
+                      draft.blackName,
+                      draft.plyCount,
+                      draft.level.toInt(),
+                    ],
                   ),
-                  trailing: FilledButton(
-                    onPressed: widget.onResume == null
-                        ? null
-                        : () async {
-                            await widget.onResume!(draft);
-                            if (mounted) await _refresh();
-                          },
-                    child: const Text('Continue'),
+                  trailing: SizedBox(
+                    width: 96,
+                    child: FilledButton(
+                      onPressed: widget.onResume == null
+                          ? null
+                          : () async {
+                              await widget.onResume!(draft);
+                              if (mounted) await _refresh();
+                            },
+                      child: const UiText(
+                        'Continue',
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   ),
                 );
               },
@@ -1156,14 +1207,20 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                             local.isEmpty) {
                           return _HistoryMessage(
                             icon: Icons.cloud_off_rounded,
-                            message: 'Match history could not be loaded. Pull to retry.',
+                            message: uiText(
+                              context,
+                              'Match history could not be loaded. Pull to retry.',
+                            ),
                             detail: '${snapshot.error}',
                           );
                         }
                         if (online.isEmpty && local.isEmpty) {
-                          return const _HistoryMessage(
+                          return _HistoryMessage(
                             icon: Icons.history_rounded,
-                            message: 'Your completed matches will appear here.',
+                            message: uiText(
+                              context,
+                              'Your completed matches will appear here.',
+                            ),
                           );
                         }
                         return ListView(
@@ -1171,7 +1228,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                           children: <Widget>[
                             if (_historySyncFailed || snapshot.hasError)
-                              const Text(
+                              const UiText(
                                 'Some account history could not sync. Pull to retry.',
                               ),
                             Builder(
@@ -1213,8 +1270,17 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                                 final gamesPlayed = outcomes.length;
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 12),
-                                  child: Text(
-                                    'Recorded matches: $gamesPlayed games · $wins wins · $losses losses · $draws draws · ${total == 0 ? 0 : (wins * 100 / total).round()}% wins',
+                                  child: UiText(
+                                    'Recorded matches: {0} games · {1} wins · {2} losses · {3} draws · {4}% wins',
+                                    values: [
+                                      gamesPlayed,
+                                      wins,
+                                      losses,
+                                      draws,
+                                      total == 0
+                                          ? 0
+                                          : (wins * 100 / total).round(),
+                                    ],
                                   ),
                                 );
                               },
@@ -1263,7 +1329,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                                     _filter == 'Online')) ...<Widget>[
                               const _Heading('ONLINE ARENA'),
                               const SizedBox(height: 4),
-                              const Text(
+                              const UiText(
                                 'Tap a completed game for full AI analysis. Use the replay button to watch every move.',
                                 style: TextStyle(
                                   color: Color(0xFF8FA5B1),
@@ -1472,7 +1538,7 @@ class _PgnChoiceTile extends StatelessWidget {
                         ),
                       ),
                       if (recommended)
-                        const Text(
+                        const UiText(
                           'BEST',
                           style: TextStyle(
                             fontSize: 10,
@@ -1520,7 +1586,8 @@ class _PgnCoachBanner extends StatelessWidget {
         colors: <Color>[Color(0xFF10374A), Color(0xFF091D31)],
       ),
     ),
-    child: Row(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         const Icon(
           Icons.auto_awesome_rounded,
@@ -1528,11 +1595,11 @@ class _PgnCoachBanner extends StatelessWidget {
           size: 30,
         ),
         const SizedBox(width: 12),
-        const Expanded(
+        const SizedBox(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(
+              UiText(
                 'PLAY ANYWHERE. IMPROVE HERE.',
                 style: TextStyle(
                   color: Color(0xFFF1C45A),
@@ -1541,7 +1608,7 @@ class _PgnCoachBanner extends StatelessWidget {
                 ),
               ),
               SizedBox(height: 3),
-              Text(
+              UiText(
                 'Import or export complete PGN games and exact FEN positions.',
                 style: TextStyle(color: Color(0xFFB8CAD5), fontSize: 12),
               ),
@@ -1549,15 +1616,19 @@ class _PgnCoachBanner extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        IconButton.filledTonal(
-          tooltip: 'Import PGN or FEN',
-          onPressed: onImport,
-          icon: const Icon(Icons.upload_file_rounded),
-        ),
-        IconButton(
-          tooltip: 'Export PGN or FEN',
-          onPressed: onExport,
-          icon: const Icon(Icons.download_rounded),
+        Row(
+          children: [
+            IconButton.filledTonal(
+              tooltip: uiText(context, 'Import PGN or FEN'),
+              onPressed: onImport,
+              icon: const Icon(Icons.upload_file_rounded),
+            ),
+            IconButton(
+              tooltip: uiText(context, 'Export PGN or FEN'),
+              onPressed: onExport,
+              icon: const Icon(Icons.download_rounded),
+            ),
+          ],
         ),
       ],
     ),
@@ -1663,8 +1734,9 @@ class _MultiSelectToolbar extends StatelessWidget {
       children: <Widget>[
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6),
-          child: Text(
-            '$count SELECTED',
+          child: UiText(
+            '{0} SELECTED',
+            values: [count],
             style: const TextStyle(
               color: Color(0xFFFFD978),
               fontWeight: FontWeight.w900,
@@ -1674,15 +1746,15 @@ class _MultiSelectToolbar extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: onExportPgn,
           icon: const Icon(Icons.description_outlined),
-          label: const Text('PGN FILES'),
+          label: const UiText('PGN FILES'),
         ),
         OutlinedButton.icon(
           onPressed: onExportFen,
           icon: const Icon(Icons.grid_on_rounded),
-          label: const Text('FEN FILES'),
+          label: const UiText('FEN FILES'),
         ),
         IconButton(
-          tooltip: 'Cancel selection',
+          tooltip: uiText(context, 'Cancel selection'),
           onPressed: onCancel,
           icon: const Icon(Icons.close_rounded),
         ),
@@ -1799,15 +1871,21 @@ class _OnlineHistoryCard extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                Text(
-                  'vs ${presentation.opponent}',
+                UiText(
+                  'vs {0}',
+                  values: [presentation.opponent],
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  '${presentation.reason}  •  ${match.moves.length} ply  •  ${_formatDuration(match.durationSeconds)}',
+                UiText(
+                  '{0}  •  {1} ply  •  {2}',
+                  values: [
+                    presentation.reason,
+                    match.moves.length,
+                    _formatDuration(match.durationSeconds),
+                  ],
                   style: const TextStyle(
                     color: Color(0xFF8FA5B1),
                     fontSize: 11,
@@ -1846,12 +1924,12 @@ class _OnlineHistoryCard extends StatelessWidget {
                   children: <Widget>[
                     IconButton(
                       key: const ValueKey<String>('online-game-replay'),
-                      tooltip: 'Replay every move',
+                      tooltip: uiText(context, 'Replay every move'),
                       onPressed: onReplay,
                       icon: const Icon(Icons.replay_rounded),
                     ),
                     IconButton(
-                      tooltip: 'Export PGN or FEN',
+                      tooltip: uiText(context, 'Export PGN or FEN'),
                       onPressed: onExport,
                       icon: const Icon(Icons.more_horiz_rounded),
                     ),
@@ -1912,8 +1990,13 @@ class _LocalHistoryCard extends StatelessWidget {
                 game.summary,
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
-              Text(
-                '${game.mode} • ${game.moves.length} ply • ${_formatDate(game.playedAt)}',
+              UiText(
+                '{0} • {1} ply • {2}',
+                values: [
+                  game.mode,
+                  game.moves.length,
+                  _formatDate(game.playedAt),
+                ],
                 style: const TextStyle(color: Color(0xFF8FA5B1), fontSize: 11),
               ),
             ],
@@ -1926,7 +2009,7 @@ class _LocalHistoryCard extends StatelessWidget {
             key: ValueKey<String>(
               'game-actions-${game.playedAt.toIso8601String()}',
             ),
-            tooltip: 'Export or manage game',
+            tooltip: uiText(context, 'Export or manage game'),
             onPressed: onActions,
             icon: const Icon(Icons.more_horiz_rounded),
           ),
@@ -1999,7 +2082,7 @@ class _OnlineMatchReplayScreenState extends State<OnlineMatchReplayScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('GAME REPLAY'),
+        title: const UiText('GAME REPLAY'),
         backgroundColor: const Color(0xD9071827),
       ),
       body: SafeArea(
@@ -2052,7 +2135,7 @@ class _OnlineMatchReplayScreenState extends State<OnlineMatchReplayScreen> {
                             ? null
                             : () => setState(() => _ply--),
                         icon: const Icon(Icons.skip_previous_rounded),
-                        label: const Text('Previous'),
+                        label: const UiText('Previous'),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -2062,7 +2145,7 @@ class _OnlineMatchReplayScreenState extends State<OnlineMatchReplayScreen> {
                             ? null
                             : () => setState(() => _ply++),
                         icon: const Icon(Icons.skip_next_rounded),
-                        label: const Text('Next'),
+                        label: const UiText('Next'),
                       ),
                     ),
                   ],
@@ -2104,7 +2187,7 @@ class _ReplayPlayers extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
-            Expanded(child: Text('You • ${match.yourColor}')),
+            Expanded(child: UiText('You • {0}', values: [match.yourColor])),
             Text(
               presentation.outcome,
               style: TextStyle(

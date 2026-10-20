@@ -1,3 +1,5 @@
+import 'club_social_dialog.dart';
+import '../../../core/club_social_localizations.dart';
 import 'club_streak_card.dart';
 export 'club_streak_card.dart';
 
@@ -166,21 +168,12 @@ class _ClubActivityScreenState extends State<ClubActivityScreen>
       if (!mounted) return;
       setState(() => _data = data);
       // Club activities remain available when the separate invitations feed fails.
-      SocialHubDto? hub;
-      try {
-        hub = await widget.socialApi.load(widget.token);
-      } on SocialException {
-        /* retry on refresh */
-      }
+      final challenges = await widget.api.clubChallenges(
+        widget.token,
+        widget.club.id,
+      );
       if (!mounted) return;
-      setState(() {
-        _data = data;
-        _challenges =
-            hub?.challenges
-                .where((c) => c.status == 'PENDING' || c.status == 'ACCEPTED')
-                .toList() ??
-            [];
-      });
+      setState(() => _challenges = challenges);
     } on SocialException {
       if (mounted) setState(() => _error = t('error'));
     } finally {
@@ -246,6 +239,7 @@ class _ClubActivityScreenState extends State<ClubActivityScreen>
         member['id'] as String,
         minutes,
       );
+      if (mounted) setState(() => _tab = 2);
       _message(t('sent'));
       await _load();
     });
@@ -472,45 +466,16 @@ class _ClubActivityScreenState extends State<ClubActivityScreen>
                           language: language,
                         ),
                       ),
-                    if (_challenges.isNotEmpty)
-                      _panel(
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              t('invites'),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                              ),
-                            ),
-                            ..._challenges.map(
-                              (c) => ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: Text(c.opponentName),
-                                subtitle: Text("${c.minutes} ${t('minutes')}"),
-                                trailing: TextButton(
-                                  onPressed:
-                                      _acting ||
-                                          widget.onOpenMatch == null ||
-                                          (!c.incoming && c.status == 'PENDING')
-                                      ? null
-                                      : () => _openChallenge(c),
-                                  child: Text(
-                                    c.status == 'PENDING'
-                                        ? t(c.incoming ? 'accept' : 'waiting')
-                                        : t('openMatch'),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     Wrap(
                       spacing: 10,
                       runSpacing: 8,
                       children: [
+                        ChoiceChip(
+                          key: const ValueKey('club-challenges-tab'),
+                          selected: _tab == 2,
+                          label: Text(clubSocialText('challenges', language)),
+                          onSelected: (_) => setState(() => _tab = 2),
+                        ),
                         ChoiceChip(
                           key: const ValueKey('club-members-tab'),
                           selected: _tab == 0,
@@ -526,6 +491,87 @@ class _ClubActivityScreenState extends State<ClubActivityScreen>
                       ],
                     ),
                     const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.person_add_alt_1),
+                      label: Text(
+                        clubSocialText('invite', language),
+                        textAlign: TextAlign.center,
+                      ),
+                      onPressed: () async {
+                        final sent = await showDialog<Object>(
+                          context: context,
+                          builder: (_) => ClubSocialDialog(
+                            api: widget.api,
+                            token: widget.token,
+                            language: language,
+                            clubId: widget.club.id,
+                          ),
+                        );
+                        if (sent == true) {
+                          _message(clubSocialText('outgoing', language));
+                        }
+                      },
+                    ),
+                    if (_tab == 2 && _challenges.isEmpty)
+                      _panel(Text(clubSocialText('empty', language))),
+                    if (_tab == 2)
+                      ..._challenges.map(
+                        (c) => _panel(
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                c.opponentName,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              Text(
+                                '${clubSocialText(c.incoming ? 'incoming' : 'outgoing', language)} · ${c.minutes} ${t('minutes')}',
+                              ),
+                              const SizedBox(height: 8),
+                              TextButton(
+                                onPressed:
+                                    _acting ||
+                                        widget.onOpenMatch == null ||
+                                        !(c.status == 'ACCEPTED' ||
+                                            (c.status == 'PENDING' &&
+                                                c.incoming &&
+                                                (c.expiresAt?.isAfter(
+                                                      DateTime.now(),
+                                                    ) ??
+                                                    false)))
+                                    ? null
+                                    : () => _openChallenge(c),
+                                child: Text(
+                                  c.status == 'PENDING'
+                                      ? ((c.expiresAt?.isBefore(
+                                                  DateTime.now(),
+                                                ) ??
+                                                true)
+                                            ? clubSocialText(
+                                                'expired',
+                                                language,
+                                              )
+                                            : t(
+                                                c.incoming
+                                                    ? 'accept'
+                                                    : 'waiting',
+                                              ))
+                                      : c.status == 'ACCEPTED'
+                                      ? t('openMatch')
+                                      : clubSocialText(
+                                          c.status == 'DECLINED'
+                                              ? 'declined'
+                                              : c.status == 'EXPIRED'
+                                              ? 'expired'
+                                              : 'cancelled',
+                                          language,
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     if (_tab == 0)
                       ...members.map(
                         (m) => _panel(

@@ -22,7 +22,7 @@ class CompactHeader extends StatelessWidget {
       children: <Widget>[
         IconButton(
           key: const ValueKey<String>('mobile-back-to-home'),
-          tooltip: 'Back to Home',
+          tooltip: uiText(context, 'Back to Home'),
           onPressed: onHome,
           icon: const Icon(Icons.arrow_back_rounded),
         ),
@@ -30,18 +30,18 @@ class CompactHeader extends StatelessWidget {
         if (onPause != null)
           IconButton(
             key: const ValueKey('pause-computer-game'),
-            tooltip: 'Pause and save',
+            tooltip: uiText(context, 'Pause and save'),
             onPressed: onPause,
             icon: const Icon(Icons.pause_circle_outline),
           ),
         const SizedBox(width: 8),
         Expanded(
           child: Text.rich(
-            const TextSpan(
+            TextSpan(
               children: <InlineSpan>[
-                TextSpan(text: 'ChessVerse'),
+                TextSpan(text: uiText(context, 'ChessVerse')),
                 TextSpan(
-                  text: 'AI',
+                  text: uiText(context, 'AI'),
                   style: TextStyle(color: Color(0xFFEABF61)),
                 ),
               ],
@@ -54,17 +54,17 @@ class CompactHeader extends StatelessWidget {
           ),
         ),
         IconButton(
-          tooltip: 'Profile',
+          tooltip: uiText(context, 'Profile'),
           onPressed: onProfile,
           icon: const Icon(Icons.person_rounded),
         ),
         IconButton(
-          tooltip: 'Reset board',
+          tooltip: uiText(context, 'Reset board'),
           onPressed: onReset,
           icon: const Icon(Icons.refresh_rounded),
         ),
         IconButton(
-          tooltip: 'Sign out',
+          tooltip: uiText(context, 'Sign out'),
           onPressed: onLogout,
           icon: const Icon(Icons.logout_rounded),
         ),
@@ -575,7 +575,10 @@ class _ReviewedPositionRetryDialogState
                     key: const ValueKey<String>('position-retry-hint'),
                     onPressed: _hintStage < 3 ? _showRetryHint : null,
                     icon: const Icon(Icons.lightbulb_rounded),
-                    label: Text('Hint ${(_hintStage + 1).clamp(1, 3)}/3'),
+                    label: UiText(
+                      'Hint {0}/3',
+                      values: [(_hintStage + 1).clamp(1, 3)],
+                    ),
                   ),
                   FilledButton(
                     onPressed:

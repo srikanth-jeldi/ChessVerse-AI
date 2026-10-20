@@ -1,0 +1,63 @@
+ChessVerseAI 1.3.41 (308) — localization and UI validation
+20 October 2026
+
+Changes
+- Completed the 933-key audited UI catalog in all 34 bundled languages.
+- Azure Translator translated the missing 392 labels in each of 32 languages.
+  English and reviewed Telugu were preserved; Telugu TIME/UNLINK were fixed.
+- Reprocessed ordinary English labels left unchanged in older catalogs.
+  Ambiguous labels were given equivalent chess context before translation.
+- Names, PGN/FEN formats and score units can intentionally remain unchanged.
+- Translator credentials are local, Git-ignored, build-time only. The app
+  loads bundled JSON and does not call Translator during ordinary use.
+- Retains the earlier responsive layout, club UI and language-switch fixes
+  present in the working tree. This is not a claim of new ANR/crash fixes.
+
+Validation completed
+- 2,145 tests passed in azure-ui-full-tests.txt:
+  2,142 screen/interaction cases (63 states x 34 languages), plus three
+  catalog completeness, placeholder and language-switch tests.
+- Matrix uses 320x740, text scale 1.3, RTL and translated catalogs.
+  Includes representative loaded data, keyboard, errors and popups.
+- Full lib analysis found four brace-style findings in linked accounts.
+  Corrected them; focused reanalysis reports no issues.
+- Machine translation is not native-speaker editorial certification.
+- Tests cover the stated matrix, not every possible screen/data/device state.
+
+Physical-device and release artifact verification
+- Installed the isolated com.epitomehub.chessverse.uitest APK on Samsung
+  SM-F415F / Android 12, preserving the Play installation and its data.
+- Inspected persisted Arabic home. Found an English Play Now CTA passed
+  through a data object and a truncated hero title.
+- Changed the CTA to UiText and allowed four title lines at a smaller phone
+  font size. All 34 home layout cases passed again; added a translation
+  assertion, and all 34 cases passed with that assertion.
+- Wireless debugging disconnected before additional physical flows and
+  visual recheck of that last fix. Do not claim complete physical-device QA.
+- Physical capture: .build-tmp/device308-home.png (before last home fix).
+- Final signed AAB rebuilt after the home fix:
+  artifacts/release-1.3.41-308/ChessVerseAI-1.3.41-build308.aab
+- Manifest: version 1.3.41, code 308,
+  production package com.epitomehub.chessverse.
+- jarsigner: jar verified (ordinary self-signed upload certificate trust-chain
+  warning remains; this is not a Play upload confirmation).
+- Verified 12 native libraries across armeabi-v7a, arm64-v8a and x86_64.
+- Verified all 34 bundled catalogs contain exactly the 933 English keys.
+- Verified local Translator configuration is not included in the archive.
+- Size: 97,961,634 bytes.
+- SHA256: 2213092ae806299f5fc70d88de9a7e6343bdf4dff175df82d5ad5fe6ca3bc542
+- Final focused analysis of home and linked accounts: no issues.
+- No Play upload, Git push or backend deployment performed in this turn.
+
+Evidence
+.build-tmp/azure-ui-translations.txt
+.build-tmp/azure-ui-cleanup.txt
+.build-tmp/azure-ui-context-cleanup.txt
+.build-tmp/azure-ui-full-tests.txt
+.build-tmp/azure-ui-analyze.txt
+.build-tmp/azure-ui-analyze-fixed.txt
+.build-tmp/azure-home-label-regression.txt
+.build-tmp/azure-ui-final-scoped-analyze.txt
+.build-tmp/release-308-final-build.txt
+.build-tmp/release-308-signature.txt
+.build-tmp/release-308-manifest.xml

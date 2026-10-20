@@ -1,3 +1,5 @@
+import 'package:chessverse_ai/core/club_social_localizations.dart';
+import 'package:chessverse_ai/features/social/presentation/club_social_dialog.dart';
 import 'package:flutter/material.dart';
 
 import 'dart:io';
@@ -16,6 +18,41 @@ import 'package:chessverse_ai/features/social/data/social_api.dart';
 import 'package:chessverse_ai/features/social/presentation/club_activity_screen.dart';
 
 class FakeCommunity extends CommunityApi {
+  String? createdName, invitedIdentity, invitedClub;
+  @override
+  Future<ClubDto> createClub(
+    String token,
+    String name,
+    String description,
+  ) async {
+    createdName = name;
+    return ClubDto(
+      id: 'created',
+      name: name,
+      description: description,
+      members: 1,
+      ratingRequirement: 0,
+      joined: true,
+    );
+  }
+
+  @override
+  Future<void> inviteToClub(
+    String token,
+    String clubId,
+    String identity,
+  ) async {
+    invitedClub = clubId;
+    invitedIdentity = identity;
+  }
+
+  List<SocialChallengeDto> queue = [];
+  @override
+  Future<List<SocialChallengeDto>> clubChallenges(
+    String token,
+    String clubId,
+  ) async => queue;
+
   @override
   Future<Map<String, dynamic>> clubPuzzleHelp(
     String token,
@@ -145,6 +182,14 @@ void main() {
           .toSet();
       expect(clubTranslations.keys.toSet(), codes);
       expect(codes.length, 34);
+      expect(clubSocialRows.keys.toSet(), codes);
+      for (final row in clubSocialRows.values) {
+        expect(row.split('|').length, clubSocialKeys.length);
+        expect(
+          row.split('|').every((value) => value.trim().isNotEmpty),
+          isTrue,
+        );
+      }
       expect(clubLearningTranslations.keys.toSet(), codes);
       for (final code in codes) {
         expect(
@@ -303,6 +348,53 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
+
+  testWidgets(
+    'Challenge queue is separate from members and shows received invitations',
+    (tester) async {
+      final api = FakeCommunity()
+        ..queue = [
+          SocialChallengeDto(
+            id: 'challenge',
+            opponentName: 'Inviting player',
+            minutes: 5,
+            roomCode: 'room',
+            matchId: 'match',
+            status: 'PENDING',
+            incoming: true,
+            expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+          ),
+        ];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ClubActivityScreen(
+            club: club,
+            token: 'test',
+            api: api,
+            socialApi: FakeSocial(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Inviting player'), findsNothing);
+      final tab = find.byKey(const ValueKey('club-challenges-tab'));
+      await tester.scrollUntilVisible(
+        tab,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(tab);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Inviting player'),
+        150,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Inviting player'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
   for (final code
       in AppLanguageController.supported
           .where((l) => l.code != 'system')
@@ -339,6 +431,9 @@ void main() {
       await tester.tap(tab);
       await tester.pumpAndSettle();
       expect(find.text(clubText('rules', code)), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('club-challenges-tab')));
+      await tester.pumpAndSettle();
+      expect(find.text(clubSocialText('empty', code)), findsOneWidget);
       expect(tester.takeException(), isNull);
       if (Platform.environment['CLUB_VISUAL_FONTS'] == '1' &&
           ['te', 'ar', 'en'].contains(code)) {
@@ -387,6 +482,89 @@ void main() {
         );
       }
       await tester.pumpWidget(const SizedBox());
+    });
+  }
+  for (final code in clubSocialRows.keys) {
+    for (final invite in [false, true]) {
+      testWidgets('Club form $code invite=$invite at 320px', (tester) async {
+        tester.view.physicalSize = const Size(320, 740);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: MediaQuery(
+              data: const MediaQueryData(
+                size: Size(320, 740),
+                textScaler: TextScaler.linear(1.3),
+              ),
+              child: Scaffold(
+                body: ClubSocialDialog(
+                  api: FakeCommunity(),
+                  token: 'test',
+                  language: code,
+                  clubId: invite ? 'one' : null,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      });
+    }
+  }
+  for (final invite in [false, true]) {
+    testWidgets('Club form submits trimmed input invite=$invite', (
+      tester,
+    ) async {
+      final api = FakeCommunity();
+      Object? result;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () async {
+                  result = await showDialog<Object>(
+                    context: context,
+                    builder: (_) => ClubSocialDialog(
+                      api: api,
+                      token: 'test',
+                      language: 'en',
+                      clubId: invite ? 'one' : null,
+                    ),
+                  );
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byType(TextField).first,
+        invite ? ' friend@example.com ' : ' My chess friends ',
+      );
+      await tester.tap(
+        find.widgetWithText(
+          FilledButton,
+          clubSocialText(invite ? 'send' : 'create', 'en'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(ClubSocialDialog), findsNothing);
+      if (invite) {
+        expect(api.invitedIdentity, 'friend@example.com');
+        expect(api.invitedClub, 'one');
+        expect(result, true);
+      } else {
+        expect(api.createdName, 'My chess friends');
+        expect((result as ClubDto).joined, true);
+      }
+      expect(tester.takeException(), isNull);
     });
   }
 }

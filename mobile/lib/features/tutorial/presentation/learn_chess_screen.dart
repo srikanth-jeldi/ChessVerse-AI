@@ -347,9 +347,9 @@ class _LearnChessScreenState extends State<LearnChessScreen> {
                 crossAxisCount: viewport.width >= 1100 ? 4 : (compact ? 1 : 2),
                 crossAxisSpacing: 14,
                 mainAxisSpacing: 14,
-                childAspectRatio: viewport.width >= 1100
-                    ? 0.78
-                    : (compact ? 1.22 : 0.9),
+                mainAxisExtent:
+                    (compact ? 340 : 380) *
+                    MediaQuery.textScalerOf(context).scale(1),
               ),
               itemBuilder: (BuildContext context, int index) => _LessonCard(
                 lesson: LearnChessScreen._journey[index],
@@ -862,12 +862,14 @@ class _DailyAcademyMissionCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Chip(
-                avatar: const Icon(
-                  Icons.local_fire_department_rounded,
-                  size: 17,
+              Flexible(
+                child: Chip(
+                  avatar: const Icon(
+                    Icons.local_fire_department_rounded,
+                    size: 17,
+                  ),
+                  label: Text(copy.missionStreak(streak), softWrap: true),
                 ),
-                label: Text(copy.missionStreak(streak)),
               ),
             ],
           ),
@@ -1618,13 +1620,17 @@ class _LessonCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  Text(
-                    copy.text(
-                      visibleProgress == 0 ? 'course.start' : 'course.continue',
-                    ),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 11,
+                  Expanded(
+                    child: Text(
+                      copy.text(
+                        visibleProgress == 0
+                            ? 'course.start'
+                            : 'course.continue',
+                      ),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
                   Icon(

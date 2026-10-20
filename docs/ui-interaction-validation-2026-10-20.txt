@@ -1,0 +1,133 @@
+UI interaction validation — 20 October 2026
+
+Scope and evidence
+1. localized_interaction_matrix_test.dart: 1,258 checks passed
+   (37 states x 34 languages), 320x740 logical pixels, text scale 1.3,
+   RTL direction for Arabic, Persian, Hebrew and Urdu.
+2. localized_modal_layout_test.dart: 68 checks passed
+   (Google chat requirement and reviewed-position retry x 34 languages).
+   Combined modal, coin-credit and club regression run: 187 passed.
+   Scoped Dart analysis of 13 changed implementation/test files: no issues.
+3. Earlier initial-screen and post-game coverage is documented separately in
+   club-ui-validation-2026-10-20.txt. Do not add overlapping runs together
+   as unique screen counts.
+4. Additional Settings language-search keyboard case: 34/34 passed.
+   Verifies the filtered language ListTile is hit-testable with keyboard insets,
+   rather than merely checking for text somewhere in the widget tree.
+   The interaction matrix now defines 38 states; the evidence is the completed
+   37-state run plus the separate 34-case language-search run.
+
+States covered by the 37-state matrix
+Auth keyboard; profile editor keyboard and menu; language popup;
+loaded club and club error; club invitation error with keyboard; create club;
+loaded social hub and tournament; master-game answer; academy lesson;
+loaded shop and shop error; linked-account error; academy error with keyboard;
+loaded missions; spectator list and spectator error; loaded academy workspace;
+boss challenge; privacy and terms; saved analysis, library and Mistake Bank;
+review popup and full review; history import/export popups;
+settings logout/delete confirmation; loaded notifications, sessions,
+leaderboard and sprint leaderboard; guest sprint leaderboard.
+
+Fixes found during this expanded audit
+- Profile statistics: accommodate enlarged text with scalable card extent.
+- Club streak header: constrain long day-count text.
+- Social hub: flexible section headings and wrapped player actions.
+- Tournament: content-driven hero height and wrapping badges, points and
+  pairing labels, without invalid Spacer use inside Wrap.
+- Authentication: flexible forgot-password and divider labels.
+- Game import: scrollable format chooser on narrow screens.
+- Sprint leaderboard: clear loading state for guest users.
+- Saved analysis: flexible metadata labels.
+- Academy lesson: flexible language action for long translations.
+- Missions: wrap progress and claim controls.
+- Academy selector: expand within available width, variable-height options.
+
+Device evidence and limitations
+- A Samsung SM-F415F / Android 12 / 1080x2340 was identified via ADB;
+  installed app was 1.3.39 (306), and the app launch command succeeded.
+- Wireless connection subsequently disappeared. Discovery returned no device;
+  the previously discovered 192.168.0.192:34199 refused reconnection.
+- Repaired successfully using the user-provided pairing endpoint. ADB then
+  rediscovered the phone at 192.168.0.192:40701.
+- Latest release test APK built successfully. Android rejected install -r
+  with INSTALL_FAILED_UPDATE_INCOMPATIBLE (Play signing vs local signing).
+  The existing app and its data were not removed.
+- Added opt-in debug-only sideBySideUiTest Gradle property
+  (or CHESSVERSE_UI_TEST=true environment variable), using .uitest application
+  suffix. Release application ID is unaffected. A temporary debug Firebase
+  package mapping is ignored by Git; it is not a production Firebase app
+  registration and cannot validate package-bound Google authentication.
+- Side-by-side debug APK built successfully and installed successfully as
+  com.epitomehub.chessverse.uitest. Temporary Firebase mapping was removed
+  after the build. Original Play app remains installed and untouched.
+- Launch command succeeded, but wireless ADB went offline before the app UI
+  dump could be pulled. Reconnection to 192.168.0.192:40701 was refused.
+  An older XML dump still on disk is NOT evidence of this app's current screen.
+  USB or a fresh wireless connection is needed to complete physical UI checks.
+- The current fixes have NOT yet been validated on that physical phone.
+- Test APK builds disable production ad-unit IDs. No real ad impressions,
+  account deletion, actual invitations, production publishing or backend
+  deployment are part of these tests.
+- Widget tests use seeded data and mocked network responses. They detect
+  layout/interaction failures in the specified states, not every possible
+  server response or live multiplayer session.
+- These tests do not establish translation quality/completeness, coverage of
+  every popup, landscape layout, every device font, or resolution of native ANRs.
+- Full live chat/multiplayer flows and exhaustive physical-device verification
+  remain outside the completed evidence. Do not describe all screens as proven
+  error-free in all 34 languages.
+
+Physical-device continuation (same day)
+- Reconnected on 192.168.0.192:36057 after pairing.
+- Tested the separate .uitest app on Samsung SM-F415F / Android 12:
+  onboarding dismissal, guest entry, loaded home/profile/community club list,
+  language search with the real keyboard, Telugu create-club dialog with
+  unsent input, Telugu Google chat requirement/cancel, profile editing and
+  scrolling with the keyboard visible. No real club/invitation was submitted.
+- The guest flow created a separate guest session in the test app; this did
+  not modify the original Play installation's account or storage.
+- Found a real profile-sheet overlap with the Android status bar when the
+  keyboard was open. Added useSafeArea to the modal route. Rebuilt, installed,
+  and visually confirmed the sheet stays below the status bar with the Save
+  action still reachable above the keyboard.
+- Profile safe-area regression: all 34 locale cases passed with top and
+  keyboard insets. This is a rerun of an existing matrix state, not 34 new states.
+- Also found a cold-start language inconsistency: persisted Arabic rendered
+  existing club labels in Arabic but the new create-club label in English.
+  Initialize the language notifier from persisted settings, without overwriting
+  a newer explicit selection; make the create label listen to that notifier.
+- Existing Settings, Profile and Community static English labels remain.
+  Layout testing is not a claim of complete translation coverage.
+- Saved-language fix rebuilt and installed, then verified after a cold start:
+  create-club label and dialog displayed persisted Arabic, with correctly
+  mirrored dialog layout. No club was submitted.
+- Final combined regression run: 1,408 passed (38-state x 34-language
+  interaction matrix plus app-language and club tests). Scoped analysis of
+  the latest five changed Dart files: no issues.
+- The test package reported FCM registration errors because its separate
+  package is not a registered production Firebase Android client. This test
+  cannot validate production push/Google sign-in. Do not attribute those
+  test-package errors to the Play installation.
+
+Physical screenshots inspected
+.build-tmp/device-language-keyboard.png
+.build-tmp/device-club-keyboard-te.png
+.build-tmp/device-profile-keyboard-settled.png (before safe-area fix)
+.build-tmp/device-profile-safearea-fixed.png (after safe-area fix)
+Additional capture: .build-tmp/device-chat-gate-te.png.
+Cold-start Arabic dialog inspected: .build-tmp/device-club-ar-fixed.png.
+device-club-ar.png was a home-screen capture after a navigation miss and is
+NOT evidence that the Arabic club popup was inspected.
+
+Evidence logs
+.build-tmp/interaction-matrix-verified.txt
+.build-tmp/ui-modal-regressions.txt
+.build-tmp/interaction-analyze.txt
+.build-tmp/interaction-analyze-final.txt
+.build-tmp/ui-device-build-latest.txt
+.build-tmp/ui-device-sidecar-build-retry.txt
+.build-tmp/settings-keyboard-matrix-final.txt
+.build-tmp/profile-safe-area-matrix.txt
+.build-tmp/ui-device-fixes-regressions.txt
+.build-tmp/device-fixes-analyze.txt
+.build-tmp/ui-language-restore-build.txt

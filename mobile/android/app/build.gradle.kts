@@ -11,6 +11,10 @@ plugins {
 
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
+// Opt-in side-by-side UI testing preserves the user's Play-signed installation.
+val sideBySideUiTest = providers.gradleProperty("sideBySideUiTest")
+    .orElse(providers.environmentVariable("CHESSVERSE_UI_TEST"))
+    .map { it.toBoolean() }.orElse(false)
 val admobAndroidAppId = providers.gradleProperty("ADMOB_ANDROID_APP_ID")
     .orElse(providers.environmentVariable("ADMOB_ANDROID_APP_ID"))
     .orElse("ca-app-pub-3940256099942544~3347511713")
@@ -61,6 +65,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            if (sideBySideUiTest.get()) {
+                applicationIdSuffix = ".uitest"
+            }
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true

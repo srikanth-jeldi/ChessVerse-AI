@@ -239,11 +239,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         appBar: AppBar(
           title: Text(t('analysis')),
           actions: <Widget>[
-            TextButton.icon(
+            IconButton(
               key: const ValueKey<String>('analysis-ai-language'),
               onPressed: () => chooseAndSaveAiLanguage(context),
+              tooltip: t('language'),
               icon: const Icon(Icons.translate_rounded),
-              label: Text(t('language')),
             ),
             const SizedBox(width: 8),
           ],
@@ -1548,9 +1548,11 @@ class _Meta extends StatelessWidget {
     children: <Widget>[
       Icon(icon, size: 15, color: const Color(0xFF9AB4D0)),
       const SizedBox(width: 5),
-      Text(
-        label,
-        style: const TextStyle(color: Color(0xFFBCD0E5), fontSize: 11),
+      Flexible(
+        child: Text(
+          label,
+          style: const TextStyle(color: Color(0xFFBCD0E5), fontSize: 11),
+        ),
       ),
     ],
   );

@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
@@ -43,24 +44,53 @@ class DesktopAppSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<({IconData icon, String label, VoidCallback? onTap})> items =
         <({IconData icon, String label, VoidCallback? onTap})>[
-          (icon: Icons.home_rounded, label: 'Home', onTap: onHome),
-          (icon: Icons.sports_esports_rounded, label: 'Play', onTap: onPlay),
+          (
+            icon: Icons.home_rounded,
+            label: uiText(context, 'Home'),
+            onTap: onHome,
+          ),
+          (
+            icon: Icons.sports_esports_rounded,
+            label: uiText(context, 'Play'),
+            onTap: onPlay,
+          ),
           if (onMyGames != null)
-            (icon: Icons.history_rounded, label: 'My Games', onTap: onMyGames),
-          (icon: Icons.extension_rounded, label: 'Puzzles', onTap: onPuzzles),
-          (icon: Icons.school_rounded, label: 'Learn', onTap: onLearn),
-          if(onAcademy != null) (icon: Icons.groups_rounded, label: 'My Academy', onTap: onAcademy),
-          (icon: Icons.person_rounded, label: 'Profile', onTap: onProfile),
+            (
+              icon: Icons.history_rounded,
+              label: uiText(context, 'My Games'),
+              onTap: onMyGames,
+            ),
+          (
+            icon: Icons.extension_rounded,
+            label: uiText(context, 'Puzzles'),
+            onTap: onPuzzles,
+          ),
+          (
+            icon: Icons.school_rounded,
+            label: uiText(context, 'Learn'),
+            onTap: onLearn,
+          ),
+          if (onAcademy != null)
+            (
+              icon: Icons.groups_rounded,
+              label: uiText(context, 'My Academy'),
+              onTap: onAcademy,
+            ),
+          (
+            icon: Icons.person_rounded,
+            label: uiText(context, 'Profile'),
+            onTap: onProfile,
+          ),
           if (onFriends != null)
             (
               icon: Icons.groups_2_rounded,
-              label: 'Community',
+              label: uiText(context, 'Community'),
               onTap: onFriends,
             ),
           if (onCollection != null || selected == 'Collection')
             (
               icon: Icons.workspace_premium_rounded,
-              label: 'Collection',
+              label: uiText(context, 'Collection'),
               onTap: onCollection,
             ),
         ];
@@ -79,7 +109,7 @@ class DesktopAppSidebar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               Flexible(
-                child: Text(
+                child: UiText(
                   'CHESSVERSE',
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
@@ -92,7 +122,7 @@ class DesktopAppSidebar extends StatelessWidget {
                   ),
                 ),
               ),
-              Text(
+              UiText(
                 'AI',
                 style: TextStyle(
                   color: Color(0xFFE9B84C),
@@ -165,7 +195,7 @@ class _DesktopNavItem extends StatelessWidget {
                 ),
                 const SizedBox(width: 18),
                 Expanded(
-                  child: Text(
+                  child: UiText(
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

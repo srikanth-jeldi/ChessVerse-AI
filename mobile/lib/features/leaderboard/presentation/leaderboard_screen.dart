@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/layout/app_breakpoints.dart';
@@ -139,7 +140,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     final Widget page = Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text(
+        title: const UiText(
           'RANKINGS',
           style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2),
         ),
@@ -156,7 +157,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               ),
             ),
             icon: const Icon(Icons.groups_rounded, color: Color(0xFF56DEC8)),
-            label: const Text(
+            label: const UiText(
               'Friends',
               style: TextStyle(
                 color: Color(0xFF56DEC8),
@@ -249,17 +250,23 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                               const SizedBox(height: 17),
                               Row(
                                 children: <Widget>[
-                                  const Text(
-                                    'TOP PLAYERS',
-                                    style: TextStyle(
-                                      color: Color(0xFF8396A2),
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 1.2,
+                                  const Expanded(
+                                    child: UiText(
+                                      'TOP PLAYERS',
+                                      style: TextStyle(
+                                        color: Color(0xFF8396A2),
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 1.2,
+                                      ),
                                     ),
                                   ),
-                                  const Spacer(),
-                                  Text(
-                                    'TOP ${board.entries.length} OF ${board.totalPlayers}',
+                                  const SizedBox(width: 8),
+                                  UiText(
+                                    'TOP {0} OF {1}',
+                                    values: [
+                                      board.entries.length,
+                                      board.totalPlayers,
+                                    ],
                                     style: const TextStyle(
                                       color: Color(0xFF8396A2),
                                       fontSize: 11,
@@ -337,7 +344,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                           children: <Widget>[
                             const Padding(
                               padding: EdgeInsets.only(left: 8, bottom: 4),
-                              child: Text(
+                              child: UiText(
                                 'YOUR CURRENT RANK',
                                 style: TextStyle(
                                   color: Color(0xFF65C9F4),
@@ -426,7 +433,7 @@ class _RatingHero extends StatelessWidget {
           color: Color(0xFFFFD45D),
         ),
         const SizedBox(height: 10),
-        const Text(
+        const UiText(
           'CHESSVERSEAI ELO',
           style: TextStyle(
             color: AppColors.accentGold,
@@ -451,7 +458,7 @@ class _RatingHero extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: const Color(0xFF5FE3C6)),
             ),
-            child: const Text(
+            child: const UiText(
               'PROVISIONAL • Play 1 rated online game to earn your rank',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -609,7 +616,7 @@ class _ScopeSwitch extends StatelessWidget {
         _ScopeOption(
           selected: scope == 'global',
           icon: Icons.public_rounded,
-          text: 'Global',
+          text: uiText(context, 'Global'),
           onTap: () => onChanged('global'),
         ),
         _ScopeOption(
@@ -761,17 +768,6 @@ class _LeaderboardTile extends StatelessWidget {
               children: <Widget>[
                 Row(
                   children: <Widget>[
-                    if (entry.you)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 5),
-                        child: Text(
-                          'YOU',
-                          style: TextStyle(
-                            color: Color(0xFF54DDC2),
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
                     Expanded(
                       child: Text(
                         entry.displayName,
@@ -785,8 +781,9 @@ class _LeaderboardTile extends StatelessWidget {
                     ),
                   ],
                 ),
-                Text(
-                  '${entry.country}  ·  ${entry.gamesPlayed} games',
+                UiText(
+                  '{0}  ·  {1} games',
+                  values: [entry.country, entry.gamesPlayed],
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -794,8 +791,14 @@ class _LeaderboardTile extends StatelessWidget {
                     fontSize: 11,
                   ),
                 ),
-                Text(
-                  '${entry.wins}W ${entry.draws}D ${entry.losses}L  ·  🪙 ${entry.careerCoinsWon} coins won',
+                UiText(
+                  '{0}W {1}D {2}L  ·  🪙 {3} coins won',
+                  values: [
+                    entry.wins,
+                    entry.draws,
+                    entry.losses,
+                    entry.careerCoinsWon,
+                  ],
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -888,7 +891,7 @@ class _EmptyBoard extends StatelessWidget {
       children: <Widget>[
         Icon(Icons.leaderboard_rounded, size: 52, color: Color(0xFF527081)),
         SizedBox(height: 12),
-        Text('Complete an online match to enter the rankings.'),
+        UiText('Complete an online match to enter the rankings.'),
       ],
     ),
   );
@@ -909,7 +912,7 @@ class _ErrorState extends StatelessWidget {
           const SizedBox(height: 12),
           Text(message, textAlign: TextAlign.center),
           const SizedBox(height: 14),
-          FilledButton(onPressed: onRetry, child: const Text('Try again')),
+          FilledButton(onPressed: onRetry, child: const UiText('Try again')),
         ],
       ),
     ),

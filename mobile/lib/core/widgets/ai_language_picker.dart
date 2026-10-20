@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../app_language.dart';
@@ -24,14 +25,14 @@ Future<String?> showAiLanguagePicker(BuildContext context) async {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text(
+                        UiText(
                           'AI Coach language',
                           style: TextStyle(
                             fontSize: 19,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        Text(
+                        UiText(
                           'Explanations, hints and lessons use this language.',
                           style: TextStyle(
                             color: Color(0xFFAAB8C4),
@@ -90,16 +91,10 @@ Future<String?> selectAndSaveAiLanguage(BuildContext context) async {
   if (selected == null || !context.mounted) return null;
   await AppLanguageController.select(selected);
   if (!context.mounted) return null;
-  final AppLanguage language = AppLanguageController.byCode(selected);
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(
-        selected == AppLanguageController.systemCode
-            ? 'AI Coach now follows your device language.'
-            : 'AI Coach will answer in ${language.englishName}.',
-      ),
-    ),
-  );
+  // The selected language is reflected by the caller's chip. Do not queue
+  // English confirmation snackbars: rapid changes otherwise show an obsolete
+  // language over the board after the current selection has already changed.
+  ScaffoldMessenger.of(context).clearSnackBars();
   return selected;
 }
 

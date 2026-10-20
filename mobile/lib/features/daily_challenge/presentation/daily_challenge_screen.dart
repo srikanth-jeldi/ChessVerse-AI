@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/layout/app_breakpoints.dart';
@@ -21,13 +22,13 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
   bool _showResultPreview = false;
 
   DailyChallengeUiState get _challenge => DailyChallengeUiState(
-        title: 'Find the forcing line',
-        difficulty: _difficulty,
-        streakDays: 5,
-        completedToday: _showResultPreview,
-        currentMove: _showResultPreview ? _difficulty.moveGoal : 1,
-        bestTimeLabel: '01:42',
-      );
+    title: uiText(context, 'Find the forcing line'),
+    difficulty: _difficulty,
+    streakDays: 5,
+    completedToday: _showResultPreview,
+    currentMove: _showResultPreview ? _difficulty.moveGoal : 1,
+    bestTimeLabel: '01:42',
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +37,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('Daily Challenge'),
+        title: const UiText('Daily Challenge'),
         actions: <Widget>[
           IconButton(
             onPressed: () =>
@@ -46,7 +47,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
                   ? Icons.visibility_off_rounded
                   : Icons.visibility_rounded,
             ),
-            tooltip: 'Toggle result preview',
+            tooltip: uiText(context, 'Toggle result preview'),
           ),
         ],
       ),
@@ -55,11 +56,13 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
             ? _WideLayout(
                 challenge: _challenge,
                 onDifficultyChanged: _changeDifficulty,
-                onResultToggle: _toggleResult)
+                onResultToggle: _toggleResult,
+              )
             : _PhoneLayout(
                 challenge: _challenge,
                 onDifficultyChanged: _changeDifficulty,
-                onResultToggle: _toggleResult),
+                onResultToggle: _toggleResult,
+              ),
       ),
     );
   }
@@ -98,8 +101,10 @@ class _PhoneLayout extends StatelessWidget {
           onViewDetails: onResultToggle,
         ),
         const SizedBox(height: 20),
-        Text('Choose difficulty',
-            style: Theme.of(context).textTheme.titleLarge),
+        UiText(
+          'Choose difficulty',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
         const SizedBox(height: 12),
         DailyChallengeDifficultySelector(
           selected: challenge.difficulty,
@@ -154,8 +159,10 @@ class _WideLayout extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text('Choose difficulty',
-                        style: Theme.of(context).textTheme.titleLarge),
+                    UiText(
+                      'Choose difficulty',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
                     const SizedBox(height: 12),
                     DailyChallengeDifficultySelector(
                       selected: challenge.difficulty,
@@ -202,12 +209,14 @@ class _RulesCard extends StatelessWidget {
                   color: AppColors.info.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child:
-                    const Icon(Icons.lightbulb_rounded, color: AppColors.info),
+                child: const Icon(
+                  Icons.lightbulb_rounded,
+                  color: AppColors.info,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
+                child: UiText(
                   'How it works',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
@@ -215,11 +224,19 @@ class _RulesCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _RuleLine(text: 'Solve one tactical puzzle every day.'),
-          _RuleLine(text: 'Only forcing moves keep the challenge alive.'),
           _RuleLine(
-              text:
-                  'Complete ${challenge.moveGoal} moves to protect your streak.'),
+            text: uiText(context, 'Solve one tactical puzzle every day.'),
+          ),
+          _RuleLine(
+            text: uiText(
+              context,
+              'Only forcing moves keep the challenge alive.',
+            ),
+          ),
+          _RuleLine(
+            text:
+                'Complete ${challenge.moveGoal} moves to protect your streak.',
+          ),
           const SizedBox(height: 4),
         ],
       ),
@@ -239,8 +256,11 @@ class _RuleLine extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Icon(Icons.check_circle_rounded,
-              size: 18, color: AppColors.success),
+          const Icon(
+            Icons.check_circle_rounded,
+            size: 18,
+            color: AppColors.success,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(text, style: Theme.of(context).textTheme.bodyMedium),

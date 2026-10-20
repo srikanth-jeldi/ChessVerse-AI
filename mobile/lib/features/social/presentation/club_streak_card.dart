@@ -71,22 +71,24 @@ class ClubStreakCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF005D60),
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: const Color(0xFF00AAA3)),
-                ),
-                child: Text(
-                  shopText('days', language, {'count': streak}),
-                  style: const TextStyle(
-                    color: Color(0xFF74F6E0),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF005D60),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: const Color(0xFF00AAA3)),
+                  ),
+                  child: Text(
+                    shopText('days', language, {'count': streak}),
+                    style: const TextStyle(
+                      color: Color(0xFF74F6E0),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
               ),

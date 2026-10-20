@@ -76,7 +76,7 @@ class BrandedSplash extends StatelessWidget {
                               Color(0xFF75C9FF),
                             ],
                           ).createShader(bounds),
-                          child: const Text(
+                          child: const UiText(
                             'CHESSVERSEAI',
                             textAlign: TextAlign.center,
                             style: TextStyle(
@@ -89,7 +89,7 @@ class BrandedSplash extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        Text(
+                        UiText(
                           'PLAY  •  LEARN  •  MASTER',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.72),
@@ -118,7 +118,7 @@ class BrandedSplash extends StatelessWidget {
                             ),
                             child: const FittedBox(
                               fit: BoxFit.scaleDown,
-                              child: Text(
+                              child: UiText(
                                 'Powered by EpitomeHub',
                                 textAlign: TextAlign.center,
                                 maxLines: 1,
@@ -248,7 +248,7 @@ class _MobilePremiumSplash extends StatelessWidget {
                   ),
                   const SizedBox(height: 30),
                   FittedBox(
-                    child: Text(
+                    child: UiText(
                       'CHESSVERSEAI',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
@@ -259,7 +259,7 @@ class _MobilePremiumSplash extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text(
+                  UiText(
                     'Think • Move • Master',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -297,7 +297,7 @@ class _MobilePremiumSplash extends StatelessWidget {
                     ),
                   ),
                   const Spacer(flex: 3),
-                  Text(
+                  UiText(
                     'Powered by EpitomeHub',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: const Color(0xCCF8F2E4),
@@ -377,10 +377,15 @@ class ChessVerseLoadingScreen extends StatelessWidget {
                 return Center(
                   child: FittedBox(
                     fit: BoxFit.contain,
-                    child: SizedBox(
-                      width: canvasWidth,
-                      height: canvasHeight,
-                      child: landscape ? _landscape() : _portrait(),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minWidth: canvasWidth,
+                        maxWidth: canvasWidth,
+                        minHeight: canvasHeight,
+                      ),
+                      child: IntrinsicHeight(
+                        child: landscape ? _landscape() : _portrait(),
+                      ),
                     ),
                   ),
                 );
@@ -399,7 +404,7 @@ class ChessVerseLoadingScreen extends StatelessWidget {
         const SizedBox(height: 14),
         const Align(
           alignment: Alignment.centerRight,
-          child: Text(
+          child: UiText(
             'A SMARTER\nPLAYER\nA BRIGHTER\nYOU',
             textAlign: TextAlign.right,
             style: TextStyle(
@@ -422,7 +427,7 @@ class ChessVerseLoadingScreen extends StatelessWidget {
         const SizedBox(height: 28),
         const _CinematicLoadingFeatures(),
         const Spacer(),
-        const Text(
+        const UiText(
           'MORE THAN A GAME\nA BRIGHTER MIND',
           textAlign: TextAlign.center,
           style: TextStyle(
@@ -490,15 +495,15 @@ class _LoadingLogo extends StatelessWidget {
 class _LoadingBrand extends StatelessWidget {
   const _LoadingBrand();
   @override
-  Widget build(BuildContext context) => const Column(
+  Widget build(BuildContext context) => Column(
     children: <Widget>[
       FittedBox(
         child: Text.rich(
           TextSpan(
             children: <InlineSpan>[
-              TextSpan(text: 'CHESSVERSE '),
+              TextSpan(text: uiText(context, 'CHESSVERSE ')),
               TextSpan(
-                text: 'AI',
+                text: uiText(context, 'AI'),
                 style: TextStyle(color: Color(0xFFFFCF69)),
               ),
             ],
@@ -515,7 +520,7 @@ class _LoadingBrand extends StatelessWidget {
         ),
       ),
       SizedBox(height: 7),
-      Text(
+      UiText(
         'Think • Move • Master',
         style: TextStyle(
           fontFamily: 'ChessVerseSerif',
@@ -571,7 +576,7 @@ class _LoadingProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
     children: <Widget>[
-      const Text(
+      const UiText(
         'Preparing your board',
         textAlign: TextAlign.center,
         style: TextStyle(
@@ -582,7 +587,7 @@ class _LoadingProgress extends StatelessWidget {
       ),
       const SizedBox(height: 18),
       Semantics(
-        label: 'Loading your chess workspace',
+        label: uiText(context, 'Loading your chess workspace'),
         child: Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
@@ -605,7 +610,7 @@ class _LoadingProgress extends StatelessWidget {
         ),
       ),
       const SizedBox(height: 13),
-      const Text(
+      const UiText(
         'Loading pieces, puzzles, and your profile',
         textAlign: TextAlign.center,
         style: TextStyle(
@@ -630,33 +635,36 @@ class _CinematicLoadingFeatures extends StatelessWidget {
       _feature(Icons.stacked_bar_chart_rounded, 'Progress'),
     ],
   );
-  Widget _feature(IconData icon, String title) => Column(
-    children: <Widget>[
-      Container(
-        width: 57,
-        height: 57,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const RadialGradient(
-            colors: <Color>[Color(0xBB09535D), Color(0xEE021923)],
+  Widget _feature(IconData icon, String title) => Expanded(
+    child: Column(
+      children: <Widget>[
+        Container(
+          width: 57,
+          height: 57,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const RadialGradient(
+              colors: <Color>[Color(0xBB09535D), Color(0xEE021923)],
+            ),
+            border: Border.all(color: const Color(0xFF4BCEC9)),
+            boxShadow: const <BoxShadow>[
+              BoxShadow(color: Color(0x3341F3D5), blurRadius: 12),
+            ],
           ),
-          border: Border.all(color: const Color(0xFF4BCEC9)),
-          boxShadow: const <BoxShadow>[
-            BoxShadow(color: Color(0x3341F3D5), blurRadius: 12),
-          ],
+          child: Icon(icon, size: 29, color: const Color(0xFF5EF7E4)),
         ),
-        child: Icon(icon, size: 29, color: const Color(0xFF5EF7E4)),
-      ),
-      const SizedBox(height: 7),
-      Text(
-        title,
-        style: const TextStyle(
-          fontFamily: 'ChessVerseSerif',
-          color: Color(0xFFFAF7EF),
-          fontSize: 14,
+        const SizedBox(height: 7),
+        UiText(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: 'ChessVerseSerif',
+            color: Color(0xFFFAF7EF),
+            fontSize: 14,
+          ),
         ),
-      ),
-    ],
+      ],
+    ),
   );
 }
 

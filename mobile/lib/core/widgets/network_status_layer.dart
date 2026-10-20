@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../network/network_health_controller.dart';
@@ -88,14 +89,14 @@ class _NetworkStatusLayerState extends State<NetworkStatusLayer> {
                             color: Color(0xFFFFC857),
                           ),
                           const SizedBox(height: 20),
-                          Text(
+                          UiText(
                             'ChessVerseAI server is unavailable',
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.headlineSmall
                                 ?.copyWith(fontWeight: FontWeight.w900),
                           ),
                           const SizedBox(height: 10),
-                          const Text(
+                          const UiText(
                             'Your local games and learning progress remain safe. Retry now or continue with offline features.',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Color(0xFFB8C7D6)),
@@ -104,11 +105,11 @@ class _NetworkStatusLayerState extends State<NetworkStatusLayer> {
                           FilledButton.icon(
                             onPressed: _controller.checkNow,
                             icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Retry connection'),
+                            label: const UiText('Retry connection'),
                           ),
                           TextButton(
                             onPressed: _controller.continueOffline,
-                            child: const Text('Continue offline'),
+                            child: const UiText('Continue offline'),
                           ),
                         ],
                       ),
@@ -149,7 +150,7 @@ class _NetworkBanner extends StatelessWidget {
           Icon(icon, color: Colors.white),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
+            child: UiText(
               message,
               style: const TextStyle(
                 color: Colors.white,
@@ -157,15 +158,18 @@ class _NetworkBanner extends StatelessWidget {
               ),
             ),
           ),
-          TextButton(
-            onPressed: onRetry,
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            child: const Text('Retry'),
+          Semantics(
+            label: uiText(context, 'Retry'),
+            button: true,
+            child: IconButton(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+            ),
           ),
           // This layer sits above Navigator in MaterialApp.builder, so
           // tooltips cannot rely on Navigator's descendant Overlay.
           Semantics(
-            label: 'Dismiss connection notice',
+            label: uiText(context, 'Dismiss connection notice'),
             button: true,
             child: IconButton(
               onPressed: onDismiss,

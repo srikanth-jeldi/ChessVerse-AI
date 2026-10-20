@@ -33,14 +33,14 @@ class _PlayDestination extends StatelessWidget {
           child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(
+              UiText(
                 'PLAY',
                 style: TextStyle(
                   letterSpacing: 1.8,
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              Text(
+              UiText(
                 'Choose your battle mode',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -72,32 +72,41 @@ class _PlayDestination extends StatelessWidget {
                     children: <Widget>[
                       _PlayModeCard(
                         icon: Icons.public_rounded,
-                        title: 'Play Online',
-                        subtitle: 'Find a live rival worldwide',
+                        title: uiText(context, 'Play Online'),
+                        subtitle: uiText(
+                          context,
+                          'Find a live rival worldwide',
+                        ),
                         color: const Color(0xFF0F6B61),
                         asset: 'assets/backgrounds/home-online-hero-v1.webp',
                         onTap: onOnline,
                       ),
                       _PlayModeCard(
                         icon: Icons.computer_rounded,
-                        title: 'Play Computer',
-                        subtitle: 'Challenge ChessVerseAI',
+                        title: uiText(context, 'Play Computer'),
+                        subtitle: uiText(context, 'Challenge ChessVerseAI'),
                         color: const Color(0xFF174A69),
                         asset: 'assets/backgrounds/play-computer-card-v2.webp',
                         onTap: onComputer,
                       ),
                       _PlayModeCard(
                         icon: Icons.history_rounded,
-                        title: 'My Games',
-                        subtitle: 'Continue or replay your saved games',
+                        title: uiText(context, 'My Games'),
+                        subtitle: uiText(
+                          context,
+                          'Continue or replay your saved games',
+                        ),
                         color: const Color(0xFF5A3F78),
                         asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
                         onTap: onMyGames,
                       ),
                       _PlayModeCard(
                         icon: Icons.dashboard_customize_rounded,
-                        title: 'Position Creator',
-                        subtitle: 'Build any legal setup and challenge the AI',
+                        title: uiText(context, 'Position Creator'),
+                        subtitle: uiText(
+                          context,
+                          'Build any legal setup and challenge the AI',
+                        ),
                         color: const Color(0xFF7B5DA8),
                         asset:
                             'assets/backgrounds/position-creator-card-v1.webp',
@@ -105,32 +114,41 @@ class _PlayDestination extends StatelessWidget {
                       ),
                       _PlayModeCard(
                         icon: Icons.visibility_rounded,
-                        title: 'Watch & Learn',
-                        subtitle: 'Spectate live games with AI insights',
+                        title: uiText(context, 'Watch & Learn'),
+                        subtitle: uiText(
+                          context,
+                          'Spectate live games with AI insights',
+                        ),
                         color: const Color(0xFF2B8C83),
                         asset: 'assets/backgrounds/home-online-hero-v1.webp',
                         onTap: onSpectate,
                       ),
                       _PlayModeCard(
                         icon: Icons.groups_rounded,
-                        title: 'Local Match',
-                        subtitle: 'Two players on one board',
+                        title: uiText(context, 'Local Match'),
+                        subtitle: uiText(context, 'Two players on one board'),
                         color: const Color(0xFF25664F),
                         asset: 'assets/backgrounds/local-match-card-v2.webp',
                         onTap: onLocal,
                       ),
                       _PlayModeCard(
                         icon: Icons.emoji_events_rounded,
-                        title: 'Tournaments',
-                        subtitle: 'Enter the World Chess Circuit',
+                        title: uiText(context, 'Tournaments'),
+                        subtitle: uiText(
+                          context,
+                          'Enter the World Chess Circuit',
+                        ),
                         color: const Color(0xFFD5A63B),
                         asset: 'assets/backgrounds/tournament-new-york-grand-final-v1.webp',
                         onTap: onTournaments,
                       ),
                       _PlayModeCard(
                         icon: Icons.calendar_month_rounded,
-                        title: 'Daily Challenge',
-                        subtitle: 'Solve today’s featured position',
+                        title: uiText(context, 'Daily Challenge'),
+                        subtitle: uiText(
+                          context,
+                          'Solve today’s featured position',
+                        ),
                         color: const Color(0xFF8A5A21),
                         asset:
                             'assets/backgrounds/daily-challenge-card-v2.webp',
@@ -266,7 +284,7 @@ class _PlayModeCard extends StatelessWidget {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: <Widget>[
-                              Text(
+                              UiText(
                                 title == 'Daily Challenge'
                                     ? 'Solve Now'
                                     : title == 'Tournaments'
@@ -597,8 +615,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           context: context,
           barrierDismissible: false,
           builder: (dialogContext) => AlertDialog(
-            title: const Text('Game changed on another device'),
-            content: const Text(
+            title: const UiText('Game changed on another device'),
+            content: const UiText(
               'This board can no longer save changes. Open My Games to continue the latest position.',
             ),
             actions: [
@@ -608,12 +626,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   // The dialog can outlive this game (for example after an
                   // account/navigation change). Never use a disposed context
                   // or pop a different screen that has since replaced it.
-                  if (mounted && gameNavigator.mounted &&
+                  if (mounted &&
+                      gameNavigator.mounted &&
                       gameRoute?.isCurrent == true) {
                     gameNavigator.maybePop();
                   }
                 },
-                child: const Text('Back to My Games'),
+                child: const UiText('Back to My Games'),
               ),
             ],
           ),
@@ -626,7 +645,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         _draftSaveWarningShown = true;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
+            content: UiText(
               'Game is not synced. Reconnect before leaving to continue on another device.',
             ),
           ),
@@ -1184,7 +1203,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (!_lastSaveOkay && !_draftConflict) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
+          content: UiText(
             'Game was not synced, but you can keep playing or start again.',
           ),
         ),
@@ -2237,7 +2256,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             }
 
             return AlertDialog(
-              title: const Text('Reset password'),
+              title: const UiText('Reset password'),
               content: SingleChildScrollView(
                 child: SizedBox(
                   width: 380,
@@ -2251,8 +2270,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                         controller: emailController,
                         enabled: !codeSent && !loading,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          labelText: 'Verified email',
+                        decoration: InputDecoration(
+                          labelText: uiText(context, 'Verified email'),
                           prefixIcon: Icon(Icons.mail_outline_rounded),
                           border: OutlineInputBorder(),
                         ),
@@ -2264,8 +2283,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           enabled: !loading,
                           keyboardType: TextInputType.number,
                           maxLength: 6,
-                          decoration: const InputDecoration(
-                            labelText: 'Six-digit reset code',
+                          decoration: InputDecoration(
+                            labelText: uiText(context, 'Six-digit reset code'),
                             border: OutlineInputBorder(),
                           ),
                         ),
@@ -2274,9 +2293,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                           controller: passwordController,
                           enabled: !loading,
                           obscureText: true,
-                          decoration: const InputDecoration(
-                            labelText: 'New password',
-                            helperText: 'At least 8 characters',
+                          decoration: InputDecoration(
+                            labelText: uiText(context, 'New password'),
+                            helperText: uiText(
+                              context,
+                              'At least 8 characters',
+                            ),
                             border: OutlineInputBorder(),
                           ),
                         ),
@@ -2297,11 +2319,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   onPressed: loading
                       ? null
                       : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
+                  child: const UiText('Cancel'),
                 ),
                 FilledButton(
                   onPressed: loading ? null : submit,
-                  child: Text(codeSent ? 'Update password' : 'Send reset code'),
+                  child: UiText(
+                    codeSent ? 'Update password' : 'Send reset code',
+                  ),
                 ),
               ],
             );
@@ -2501,18 +2525,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           final replace = await showDialog<bool>(
             context: context,
             builder: (dialogContext) => AlertDialog(
-              title: const Text('Replace paused computer game?'),
-              content: const Text(
+              title: const UiText('Replace paused computer game?'),
+              content: const UiText(
                 'Your account can keep one paused computer game. Completed history stays saved.',
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text('Cancel'),
+                  child: const UiText('Cancel'),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.pop(dialogContext, true),
-                  child: const Text('New Game'),
+                  child: const UiText('New Game'),
                 ),
               ],
             ),
@@ -2530,7 +2554,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text(
+              content: UiText(
                 'Cloud saves are offline. Starting the computer game locally.',
               ),
             ),
@@ -4110,18 +4134,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       final replace = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Replace this game?'),
-          content: const Text(
+          title: const UiText('Replace this game?'),
+          content: const UiText(
             'Your unfinished computer game will be replaced. Completed history is kept.',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
+              child: const UiText('Cancel'),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('New Game'),
+              child: const UiText('New Game'),
             ),
           ],
         ),
@@ -4246,18 +4270,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
-        title: const Text('Start new game?'),
-        content: const Text(
+        title: const UiText('Start new game?'),
+        content: const UiText(
           'Current board will be cleared. Finished games are saved automatically.',
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: const UiText('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('New game'),
+            child: const UiText('New game'),
           ),
         ],
       ),
@@ -4342,35 +4366,74 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 ),
               ),
               const SizedBox(height: 4),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 8,
-                children: [
-                  TextButton(
-                    key: const ValueKey('view-game-result'),
-                    onPressed: _postGameActionInFlight
-                        ? null
-                        : () {
-                            _resultCelebrationTimer?.cancel();
-                            setState(() => _resultVisible = true);
-                          },
-                    child: Text(text('View result')),
-                  ),
-                  OutlinedButton(
-                    key: const ValueKey('review-completed-game'),
-                    onPressed: _postGameActionInFlight
-                        ? null
-                        : _reviewCompletedGame,
-                    child: Text(text('AI game review')),
-                  ),
-                  FilledButton(
-                    key: const ValueKey('new-game-after-result'),
-                    onPressed: _postGameActionInFlight
-                        ? null
-                        : _startGameAfterResult,
-                    child: Text(text('New game')),
-                  ),
-                ],
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 10,
+                          ),
+                          minimumSize: const Size(0, 56),
+                        ),
+                        key: const ValueKey('view-game-result'),
+                        onPressed: _postGameActionInFlight
+                            ? null
+                            : () {
+                                _resultCelebrationTimer?.cancel();
+                                setState(() => _resultVisible = true);
+                              },
+                        child: Text(
+                          text('View result'),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 10,
+                          ),
+                          minimumSize: const Size(0, 56),
+                        ),
+                        key: const ValueKey('review-completed-game'),
+                        onPressed: _postGameActionInFlight
+                            ? null
+                            : _reviewCompletedGame,
+                        child: Text(
+                          text('AI game review'),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 10,
+                          ),
+                          minimumSize: const Size(0, 56),
+                        ),
+                        key: const ValueKey('new-game-after-result'),
+                        onPressed: _postGameActionInFlight
+                            ? null
+                            : _startGameAfterResult,
+                        child: Text(
+                          text('New game'),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -4530,20 +4593,20 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               return await showDialog<bool>(
                         context: context,
                         builder: (dialogContext) => AlertDialog(
-                          title: const Text('Unlock advanced hints'),
-                          content: const Text(
+                          title: const UiText('Unlock advanced hints'),
+                          content: const UiText(
                             'Watch this ad to unlock advanced hints in Mistake Bank for 24 hours on this device. You can skip and continue playing.',
                           ),
                           actions: [
                             TextButton(
                               onPressed: () =>
                                   Navigator.pop(dialogContext, false),
-                              child: const Text('Skip'),
+                              child: const UiText('Skip'),
                             ),
                             FilledButton(
                               onPressed: () =>
                                   Navigator.pop(dialogContext, true),
-                              child: const Text('Watch ad'),
+                              child: const UiText('Watch ad'),
                             ),
                           ],
                         ),
@@ -5240,7 +5303,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (token == null || token.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Sign in to play online and reconnect matches.'),
+          content: UiText('Sign in to play online and reconnect matches.'),
         ),
       );
       return;
@@ -5737,7 +5800,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     final WebSocketChannel? channel = _onlineChannel;
     if (channel == null || !_onlineSocketConnected) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reconnect to send a game message.')),
+        const SnackBar(content: UiText('Reconnect to send a game message.')),
       );
       return;
     }
@@ -5748,7 +5811,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Widget _buildQuickChatButton() => IconButton.filled(
     key: const ValueKey<String>('online-quick-chat-button'),
-    tooltip: 'Quick game chat',
+    tooltip: uiText(context, 'Quick game chat'),
     onPressed: _showQuickChatPicker,
     style: IconButton.styleFrom(
       backgroundColor: const Color(0xEE08283A),
@@ -5789,7 +5852,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Text(
+              const UiText(
                 'QUICK GAME CHAT',
                 style: TextStyle(fontWeight: FontWeight.w900),
               ),
@@ -5807,7 +5870,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     .toList(growable: false),
               ),
               const SizedBox(height: 14),
-              const Text(
+              const UiText(
                 'REACTIONS',
                 style: TextStyle(
                   color: Color(0xFF59E5D2),
@@ -5945,16 +6008,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       final bool? accept = await showDialog<bool>(
         context: context,
         builder: (BuildContext context) => AlertDialog(
-          title: const Text('Draw offer'),
-          content: const Text('Your opponent is offering a draw.'),
+          title: const UiText('Draw offer'),
+          content: const UiText('Your opponent is offering a draw.'),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Decline'),
+              child: const UiText('Decline'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Accept draw'),
+              child: const UiText('Accept draw'),
             ),
           ],
         ),
@@ -6028,7 +6091,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF191A1F),
-          title: const Text('Promote pawn'),
+          title: const UiText('Promote pawn'),
           content: Wrap(
             spacing: 10,
             runSpacing: 10,

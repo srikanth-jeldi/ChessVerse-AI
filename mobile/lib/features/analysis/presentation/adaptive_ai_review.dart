@@ -1,3 +1,5 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -2099,7 +2101,7 @@ class _LinePlayerDialogState extends State<_LinePlayerDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Try this line'),
+    title: const UiText('Try this line'),
     content: SizedBox(
       width: 480,
       child: Column(
@@ -2127,7 +2129,7 @@ class _LinePlayerDialogState extends State<_LinePlayerDialog> {
             runSpacing: 8,
             children: <Widget>[
               IconButton(
-                tooltip: 'Restart',
+                tooltip: uiText(context, 'Restart'),
                 onPressed: () => _seek(0),
                 constraints: const BoxConstraints.tightFor(
                   width: 52,
@@ -2138,7 +2140,7 @@ class _LinePlayerDialogState extends State<_LinePlayerDialog> {
                 icon: const Icon(Icons.restart_alt_rounded),
               ),
               IconButton(
-                tooltip: 'Previous',
+                tooltip: uiText(context, 'Previous'),
                 onPressed: _index > 0 ? () => _seek(_index - 1) : null,
                 constraints: const BoxConstraints.tightFor(
                   width: 52,
@@ -2162,7 +2164,7 @@ class _LinePlayerDialogState extends State<_LinePlayerDialog> {
                 ),
               ),
               IconButton(
-                tooltip: 'Next',
+                tooltip: uiText(context, 'Next'),
                 onPressed: _index < _positions.length - 1
                     ? () => _seek(_index + 1)
                     : null,
@@ -2182,7 +2184,7 @@ class _LinePlayerDialogState extends State<_LinePlayerDialog> {
     actions: <Widget>[
       TextButton(
         onPressed: () => Navigator.of(context).pop(),
-        child: const Text('Close'),
+        child: const UiText('Close'),
       ),
     ],
   );
@@ -2432,7 +2434,7 @@ class _CandidateMoveTile extends StatelessWidget {
                       ),
                     ),
                     icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                    label: const Text('Try this line'),
+                    label: const UiText('Try this line'),
                   ),
                 ],
               ],
@@ -3516,8 +3518,16 @@ class _InteractiveCoachDialogState extends State<_InteractiveCoachDialog> {
                         in _cloudAnswer!.comparisons)
                       Chip(
                         avatar: const Icon(Icons.analytics_rounded, size: 16),
-                        label: Text(
-                          '${item.move} • ${_localizedReviewQuality(item.classification, _languageCode)} • ${item.centipawnLoss}cp',
+                        label: UiText(
+                          '{0} • {1} • {2}cp',
+                          values: [
+                            item.move,
+                            _localizedReviewQuality(
+                              item.classification,
+                              _languageCode,
+                            ),
+                            item.centipawnLoss,
+                          ],
                         ),
                       ),
                   ],

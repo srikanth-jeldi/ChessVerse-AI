@@ -1,0 +1,80 @@
+ChessVerseAI 1.3.40 (307) — UI validation and release hold
+20 October 2026
+
+Superseded working-tree status: the 308 work completed the 34-language
+933-key catalogs. See release-308-ui-validation.txt for current evidence.
+This document and the original 307 validation AAB retain their historical
+incomplete-translation status.
+
+Implemented in the working tree
+- Bundled UI catalogs and reactive language changes; Material controls follow
+  the selected app locale, including RTL languages.
+- Parameterized app text preserves names, numbers and chess notation.
+- 933 audited source phrases. English and Telugu have 933 entries each.
+- The other 32 language catalogs currently have 541 entries each; 392 entries
+  per language still fall back to English. This is not complete localization.
+- Fixed translated-text overflows in My Games, onboarding, home training/
+  progress, Logout, notification actions, linked accounts, community friends,
+  tournament status and reward badges.
+- Earlier changes retained: profile keyboard safe area, persisted language
+  initialization, club forms/challenge queue and post-game responsive actions.
+
+Validation
+- 2,142 UI cases passed: 63 screen/interaction states x 34 locale settings,
+  at 320x740 with text scale 1.3, using actual available catalogs and RTL.
+  These cases include loaded data, keyboard, errors and popups; they do not
+  prove every possible screen/data combination or fully translated coverage.
+- Flutter analyze --no-pub lib: no issues.
+- Four focused tests passed: interpolation preserves user values, latest
+  language request wins, SRS intervals, incorrect retry reset/persistence.
+- Full catalog-completeness acceptance remains blocked by the missing keys.
+  app_ui_localizations_test.dart intentionally retains that strict assertion.
+- Phone briefly reconnected, then disappeared before the new APK installation.
+  No real-device validation of this new translation build is claimed.
+  Earlier physical-device evidence is documented in
+  ui-interaction-validation-2026-10-20.txt.
+
+Translation quality and blocker
+- Public translation service returned HTTP 429 after the initial catalogs.
+- An MIT-licensed local model was evaluated, but its new translations were
+  rejected for obvious semantic errors. Its additions were removed from the
+  shipped assets and cache. The local generator was removed.
+- Telugu's remaining 392 phrases were written separately; chess-context
+  overrides correct labels such as TRAIN. Other retained machine translations
+  still need native-language editorial review.
+- A working translation service/configuration is needed to complete the
+  remaining 32 catalogs. Never publish this as "all 34 languages complete."
+
+Release status
+- Release-mode AAB compiled successfully: 1.3.40+307,
+  package com.epitomehub.chessverse. Signature verified; 12 native libraries
+  verified across armeabi-v7a, arm64-v8a and x86_64.
+- Validation artifact:
+  artifacts/release-1.3.40-307/ChessVerseAI-1.3.40-build307.aab
+  97,641,253 bytes. SHA256:
+  f15ea3321ca117e7757bc5591bd4f3ebb3d6b0c49c37eed122cacd481857e67b
+- Inspected all 34 packaged catalogs inside the AAB; they match the partial
+  coverage above. RELEASE-HOLD.txt accompanies the artifact.
+- Production rollout is on hold for localization completion and current
+  physical-device verification. No Play upload, Git push or backend deployment
+  was performed during this continuation.
+
+New feature questions — findings, not new feature implementation
+- MistakeReview already implements 1, 3, 7, 14 and 30-day spaced repetition.
+  Early replay does not advance it; an incorrect retry schedules tomorrow.
+  This does not establish automatic reminders or generated related puzzles.
+- Existing CloudNarrationService uses the backend speech endpoint, audio
+  caching and device-TTS fallback. Backend SpeechSynthesisService uses Azure
+  Neural voices; Telugu is te-IN-ShrutiNeural. Live provider availability was
+  not checked.
+- ElevenLabs/Google TTS integration and Serious/Friendly/Fun coach choices
+  are feasible proposals, not implemented changes in build 307.
+- Stockfish-validated related puzzles and automatic SRS reminders remain
+  separate feature work.
+
+Evidence
+.build-tmp/ui-translated-matrix-final.txt
+.build-tmp/ui-localization-final-analyze.txt
+.build-tmp/ui-format-srs-regressions.txt
+.build-tmp/ui-catalog-coverage.json
+.build-tmp/release-307-build.txt

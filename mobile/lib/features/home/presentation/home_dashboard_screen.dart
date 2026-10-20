@@ -1,3 +1,5 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -252,8 +254,11 @@ class _MobileHomeState extends State<_MobileHome> {
                           setState(() => _heroIndex = value),
                       slides: <_HomeHeroData>[
                         _HomeHeroData(
-                          title: 'Play vs AI',
-                          subtitle: 'Start instantly at your perfect level',
+                          title: uiText(context, 'Play vs AI'),
+                          subtitle: uiText(
+                            context,
+                            'Start instantly at your perfect level',
+                          ),
                           icon: Icons.psychology_rounded,
                           buttonLabel: 'Play Now',
                           asset:
@@ -261,9 +266,11 @@ class _MobileHomeState extends State<_MobileHome> {
                           onTap: widget.onPlayVsAi,
                         ),
                         _HomeHeroData(
-                          title: 'Play Online',
-                          subtitle:
-                              'Find a live opponent from around the world',
+                          title: uiText(context, 'Play Online'),
+                          subtitle: uiText(
+                            context,
+                            'Find a live opponent from around the world',
+                          ),
                           icon: Icons.public_rounded,
                           buttonLabel: 'Play Now',
                           asset: 'assets/backgrounds/home-online-hero-v1.webp',
@@ -271,16 +278,22 @@ class _MobileHomeState extends State<_MobileHome> {
                           onTap: widget.onOnlineGame,
                         ),
                         _HomeHeroData(
-                          title: 'Daily Puzzle',
-                          subtitle: 'Build your streak with today’s challenge',
+                          title: uiText(context, 'Daily Puzzle'),
+                          subtitle: uiText(
+                            context,
+                            'Build your streak with today’s challenge',
+                          ),
                           icon: Icons.extension_rounded,
                           buttonLabel: 'Solve Today',
                           asset: 'assets/backgrounds/home-puzzles-hero-v1.webp',
                           onTap: widget.onDailyChallenge,
                         ),
                         _HomeHeroData(
-                          title: 'Learn with AI Coach',
-                          subtitle: 'Improve step by step with guided lessons',
+                          title: uiText(context, 'Learn with AI Coach'),
+                          subtitle: uiText(
+                            context,
+                            'Improve step by step with guided lessons',
+                          ),
                           icon: Icons.school_rounded,
                           buttonLabel: 'Continue Learning',
                           asset: 'assets/backgrounds/onboarding-ai-coach-wide-v2.webp',
@@ -291,24 +304,33 @@ class _MobileHomeState extends State<_MobileHome> {
                           widget.onTournaments,
                         ),
                         _HomeHeroData(
-                          title: 'Play with Friends',
-                          subtitle: 'Create a private room or join with a code',
+                          title: uiText(context, 'Play with Friends'),
+                          subtitle: uiText(
+                            context,
+                            'Create a private room or join with a code',
+                          ),
                           icon: Icons.groups_rounded,
                           buttonLabel: 'Open Rooms',
                           asset: 'assets/backgrounds/home-friends-hero-v1.webp',
                           onTap: widget.onFriendsGame,
                         ),
                         _HomeHeroData(
-                          title: 'Chess Puzzles',
-                          subtitle: 'Train with 150 tactical challenges',
+                          title: uiText(context, 'Chess Puzzles'),
+                          subtitle: uiText(
+                            context,
+                            'Train with 150 tactical challenges',
+                          ),
                           icon: Icons.extension_rounded,
                           buttonLabel: 'Solve Now',
                           asset: 'assets/backgrounds/home-puzzles-hero-v1.webp',
                           onTap: widget.onPuzzles,
                         ),
                         _HomeHeroData(
-                          title: 'Rankings',
-                          subtitle: 'Track your ELO and global position',
+                          title: uiText(context, 'Rankings'),
+                          subtitle: uiText(
+                            context,
+                            'Track your ELO and global position',
+                          ),
                           icon: Icons.leaderboard_rounded,
                           buttonLabel: 'View Rankings',
                           asset:
@@ -316,9 +338,11 @@ class _MobileHomeState extends State<_MobileHome> {
                           onTap: widget.onRankings,
                         ),
                         _HomeHeroData(
-                          title: 'Settings',
-                          subtitle:
-                              'Personalize your board and game experience',
+                          title: uiText(context, 'Settings'),
+                          subtitle: uiText(
+                            context,
+                            'Personalize your board and game experience',
+                          ),
                           icon: Icons.tune_rounded,
                           buttonLabel: 'Open Settings',
                           asset:
@@ -340,8 +364,11 @@ class _MobileHomeState extends State<_MobileHome> {
                           child: _ActionCard(
                             keyName: 'import-game',
                             icon: Icons.upload_file_rounded,
-                            title: 'Import Game',
-                            subtitle: 'Chess.com / Lichess PGN or FEN',
+                            title: uiText(context, 'Import Game'),
+                            subtitle: uiText(
+                              context,
+                              'Chess.com / Lichess PGN or FEN',
+                            ),
                             color: const Color(0xFF174A61),
                             asset:
                                 'assets/backgrounds/home-analysis-hero-v1.webp',
@@ -353,8 +380,11 @@ class _MobileHomeState extends State<_MobileHome> {
                           child: _ActionCard(
                             keyName: 'pass-and-play',
                             icon: Icons.people_alt_rounded,
-                            title: 'Pass & Play',
-                            subtitle: 'Two players • works offline',
+                            title: uiText(context, 'Pass & Play'),
+                            subtitle: uiText(
+                              context,
+                              'Two players • works offline',
+                            ),
                             color: const Color(0xFF5A4022),
                             asset:
                                 'assets/backgrounds/home-friends-hero-v1.webp',
@@ -374,7 +404,7 @@ class _MobileHomeState extends State<_MobileHome> {
                         _MiniCard(
                           keyName: 'chess-puzzles',
                           icon: Icons.extension_rounded,
-                          label: 'Puzzles',
+                          label: uiText(context, 'Puzzles'),
                           color: AppColors.accentGold,
                           asset: 'assets/backgrounds/home-puzzles-hero-v1.webp',
                           onTap: widget.onPuzzles,
@@ -382,7 +412,7 @@ class _MobileHomeState extends State<_MobileHome> {
                         _MiniCard(
                           keyName: 'rankings',
                           icon: Icons.leaderboard_rounded,
-                          label: 'Rankings',
+                          label: uiText(context, 'Rankings'),
                           color: const Color(0xFFF3B84F),
                           asset:
                               'assets/backgrounds/home-rankings-hero-v1.webp',
@@ -391,7 +421,7 @@ class _MobileHomeState extends State<_MobileHome> {
                         _MiniCard(
                           keyName: 'community',
                           icon: Icons.groups_2_rounded,
-                          label: 'Community',
+                          label: uiText(context, 'Community'),
                           color: const Color(0xFF55E1CF),
                           asset: 'assets/backgrounds/home-friends-hero-v1.webp',
                           onTap: widget.onCommunity,
@@ -399,7 +429,7 @@ class _MobileHomeState extends State<_MobileHome> {
                         _MiniCard(
                           keyName: 'analysis',
                           icon: Icons.trending_up_rounded,
-                          label: 'Analysis',
+                          label: uiText(context, 'Analysis'),
                           color: const Color(0xFF3DA2FF),
                           asset:
                               'assets/backgrounds/home-analysis-hero-v1.webp',
@@ -408,7 +438,7 @@ class _MobileHomeState extends State<_MobileHome> {
                         _MiniCard(
                           keyName: 'learn',
                           icon: Icons.school_rounded,
-                          label: 'Learn',
+                          label: uiText(context, 'Learn'),
                           color: const Color(0xFFA879F5),
                           asset: 'assets/backgrounds/home-learn-hero-v1.webp',
                           onTap: widget.onLearnChess,
@@ -416,7 +446,7 @@ class _MobileHomeState extends State<_MobileHome> {
                         _MiniCard(
                           keyName: 'my-games',
                           icon: Icons.history_rounded,
-                          label: 'My Games',
+                          label: uiText(context, 'My Games'),
                           color: const Color(0xFF55E1CF),
                           asset:
                               'assets/backgrounds/home-analysis-hero-v1.webp',
@@ -575,17 +605,22 @@ class _WideHomeState extends State<_WideHome> {
                           wide: true,
                           slides: <_HomeHeroData>[
                             _HomeHeroData(
-                              title: 'Play vs AI',
-                              subtitle: 'Start instantly at your perfect level',
+                              title: uiText(context, 'Play vs AI'),
+                              subtitle: uiText(
+                                context,
+                                'Start instantly at your perfect level',
+                              ),
                               icon: Icons.psychology_rounded,
                               buttonLabel: 'Play Now',
                               asset: 'assets/backgrounds/home-computer-hero-v1.webp',
                               onTap: widget.onPlayVsAi,
                             ),
                             _HomeHeroData(
-                              title: 'Play Online',
-                              subtitle:
-                                  'Find a live opponent from around the world',
+                              title: uiText(context, 'Play Online'),
+                              subtitle: uiText(
+                                context,
+                                'Find a live opponent from around the world',
+                              ),
                               icon: Icons.public_rounded,
                               buttonLabel: 'Play Now',
                               asset:
@@ -596,18 +631,22 @@ class _WideHomeState extends State<_WideHome> {
                               onTap: widget.onOnlineGame,
                             ),
                             _HomeHeroData(
-                              title: 'Daily Puzzle',
-                              subtitle:
-                                  'Build your streak with today’s challenge',
+                              title: uiText(context, 'Daily Puzzle'),
+                              subtitle: uiText(
+                                context,
+                                'Build your streak with today’s challenge',
+                              ),
                               icon: Icons.extension_rounded,
                               buttonLabel: 'Solve Today',
                               asset: 'assets/backgrounds/home-puzzles-hero-v1.webp',
                               onTap: widget.onDailyChallenge,
                             ),
                             _HomeHeroData(
-                              title: 'Learn with AI Coach',
-                              subtitle:
-                                  'Improve step by step with guided lessons',
+                              title: uiText(context, 'Learn with AI Coach'),
+                              subtitle: uiText(
+                                context,
+                                'Improve step by step with guided lessons',
+                              ),
                               icon: Icons.school_rounded,
                               buttonLabel: 'Continue Learning',
                               asset: 'assets/backgrounds/onboarding-ai-coach-wide-v2.webp',
@@ -618,34 +657,44 @@ class _WideHomeState extends State<_WideHome> {
                               widget.onTournaments,
                             ),
                             _HomeHeroData(
-                              title: 'Play with Friends',
-                              subtitle:
-                                  'Create a private room or join with a code',
+                              title: uiText(context, 'Play with Friends'),
+                              subtitle: uiText(
+                                context,
+                                'Create a private room or join with a code',
+                              ),
                               icon: Icons.groups_rounded,
                               buttonLabel: 'Open Rooms',
                               asset: 'assets/backgrounds/home-friends-hero-v1.webp',
                               onTap: widget.onFriendsGame,
                             ),
                             _HomeHeroData(
-                              title: 'Chess Puzzles',
-                              subtitle: 'Train with 150 tactical challenges',
+                              title: uiText(context, 'Chess Puzzles'),
+                              subtitle: uiText(
+                                context,
+                                'Train with 150 tactical challenges',
+                              ),
                               icon: Icons.extension_rounded,
                               buttonLabel: 'Solve Now',
                               asset: 'assets/backgrounds/home-puzzles-hero-v1.webp',
                               onTap: widget.onPuzzles,
                             ),
                             _HomeHeroData(
-                              title: 'Rankings',
-                              subtitle: 'Track your ELO and global position',
+                              title: uiText(context, 'Rankings'),
+                              subtitle: uiText(
+                                context,
+                                'Track your ELO and global position',
+                              ),
                               icon: Icons.leaderboard_rounded,
                               buttonLabel: 'View Rankings',
                               asset: 'assets/backgrounds/home-rankings-hero-v1.webp',
                               onTap: widget.onRankings,
                             ),
                             _HomeHeroData(
-                              title: 'Settings',
-                              subtitle:
-                                  'Personalize your board and game experience',
+                              title: uiText(context, 'Settings'),
+                              subtitle: uiText(
+                                context,
+                                'Personalize your board and game experience',
+                              ),
                               icon: Icons.tune_rounded,
                               buttonLabel: 'Open Settings',
                               asset: 'assets/backgrounds/home-settings-hero-v1.webp',
@@ -665,9 +714,14 @@ class _WideHomeState extends State<_WideHome> {
                               child: _ActionCard(
                                 keyName: 'import-game',
                                 icon: Icons.upload_file_rounded,
-                                title: 'Import Chess.com / Lichess Game',
-                                subtitle:
-                                    'Open a PGN or FEN for free AI review',
+                                title: uiText(
+                                  context,
+                                  'Import Chess.com / Lichess Game',
+                                ),
+                                subtitle: uiText(
+                                  context,
+                                  'Open a PGN or FEN for free AI review',
+                                ),
                                 color: const Color(0xFF174A61),
                                 asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
                                 onTap: widget.onImportGame,
@@ -678,8 +732,11 @@ class _WideHomeState extends State<_WideHome> {
                               child: _ActionCard(
                                 keyName: 'pass-and-play',
                                 icon: Icons.people_alt_rounded,
-                                title: 'Pass & Play Offline',
-                                subtitle: 'Play a friend on one device — no internet needed',
+                                title: uiText(context, 'Pass & Play Offline'),
+                                subtitle: uiText(
+                                  context,
+                                  'Play a friend on one device — no internet needed',
+                                ),
                                 color: const Color(0xFF5A4022),
                                 asset: 'assets/backgrounds/home-friends-hero-v1.webp',
                                 onTap: widget.onLocalGame,
@@ -695,8 +752,11 @@ class _WideHomeState extends State<_WideHome> {
                               child: _MiniCard(
                                 keyName: 'chess-puzzles',
                                 icon: Icons.extension_rounded,
-                                label: 'Puzzles',
-                                subtitle: 'Sharpen your skills',
+                                label: uiText(context, 'Puzzles'),
+                                subtitle: uiText(
+                                  context,
+                                  'Sharpen your skills',
+                                ),
                                 color: AppColors.accentGold,
                                 asset: 'assets/backgrounds/home-puzzles-hero-v1.webp',
                                 onTap: widget.onPuzzles,
@@ -707,8 +767,11 @@ class _WideHomeState extends State<_WideHome> {
                               child: _MiniCard(
                                 keyName: 'rankings',
                                 icon: Icons.leaderboard_rounded,
-                                label: 'Rankings',
-                                subtitle: 'See stats & progress',
+                                label: uiText(context, 'Rankings'),
+                                subtitle: uiText(
+                                  context,
+                                  'See stats & progress',
+                                ),
                                 color: const Color(0xFFF1B74D),
                                 asset: 'assets/backgrounds/home-rankings-hero-v1.webp',
                                 onTap: widget.onRankings,
@@ -719,8 +782,11 @@ class _WideHomeState extends State<_WideHome> {
                               child: _MiniCard(
                                 keyName: 'community',
                                 icon: Icons.groups_2_rounded,
-                                label: 'Community',
-                                subtitle: 'Friends, clubs & events',
+                                label: uiText(context, 'Community'),
+                                subtitle: uiText(
+                                  context,
+                                  'Friends, clubs & events',
+                                ),
                                 color: const Color(0xFF55E1CF),
                                 asset: 'assets/backgrounds/home-friends-hero-v1.webp',
                                 onTap: widget.onCommunity,
@@ -731,8 +797,8 @@ class _WideHomeState extends State<_WideHome> {
                               child: _MiniCard(
                                 keyName: 'analysis',
                                 icon: Icons.trending_up_rounded,
-                                label: 'Analysis',
-                                subtitle: 'Review your games',
+                                label: uiText(context, 'Analysis'),
+                                subtitle: uiText(context, 'Review your games'),
                                 color: const Color(0xFF3DA2FF),
                                 asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
                                 onTap: widget.onAnalysis,
@@ -743,8 +809,8 @@ class _WideHomeState extends State<_WideHome> {
                               child: _MiniCard(
                                 keyName: 'learn',
                                 icon: Icons.school_rounded,
-                                label: 'Learn',
-                                subtitle: 'Improve & grow',
+                                label: uiText(context, 'Learn'),
+                                subtitle: uiText(context, 'Improve & grow'),
                                 color: const Color(0xFFA879F5),
                                 asset: 'assets/backgrounds/home-learn-hero-v1.webp',
                                 onTap: widget.onLearnChess,
@@ -755,8 +821,8 @@ class _WideHomeState extends State<_WideHome> {
                               child: _MiniCard(
                                 keyName: 'my-games',
                                 icon: Icons.history_rounded,
-                                label: 'My Games',
-                                subtitle: 'Continue or replay',
+                                label: uiText(context, 'My Games'),
+                                subtitle: uiText(context, 'Continue or replay'),
                                 color: const Color(0xFF55E1CF),
                                 asset: 'assets/backgrounds/home-analysis-hero-v1.webp',
                                 onTap: widget.onSavedGames,
@@ -823,9 +889,12 @@ class _ProgressPulse extends StatelessWidget {
               color: Color(0xFFE7B54D),
             ),
             const SizedBox(width: 10),
-            Text(
-              'LEVEL ${rewards.level}',
-              style: const TextStyle(fontWeight: FontWeight.w900),
+            Flexible(
+              child: UiText(
+                'LEVEL {0}',
+                values: [rewards.level],
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -840,8 +909,9 @@ class _ProgressPulse extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Text(
-              '${rewards.xp} XP',
+            UiText(
+              '{0} XP',
+              values: [rewards.xp],
               style: const TextStyle(
                 color: Color(0xFF54DECA),
                 fontWeight: FontWeight.w800,
@@ -934,7 +1004,7 @@ class _PersonalTrainingCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text(
+                const UiText(
                   'TODAY’S AI TRAINING',
                   style: TextStyle(
                     color: AppColors.accentGold,
@@ -969,10 +1039,13 @@ class _PersonalTrainingCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          FilledButton.icon(
-            onPressed: onTrain,
-            icon: const Icon(Icons.play_arrow_rounded, size: 18),
-            label: const Text('TRAIN'),
+          SizedBox(
+            width: 100,
+            child: FilledButton.icon(
+              onPressed: onTrain,
+              icon: const Icon(Icons.play_arrow_rounded, size: 18),
+              label: const UiText('TRAIN', textAlign: TextAlign.center),
+            ),
           ),
         ],
       ),
@@ -1063,20 +1136,20 @@ class _WideDashboardRowState extends State<_WideDashboardRow> {
           return Column(
             children: <Widget>[
               _DashboardPanel(
-                title: 'Daily Puzzle',
+                title: uiText(context, 'Daily Puzzle'),
                 trailing: 'View all',
                 onTap: widget.onPuzzles,
                 child: _CompactDailyPuzzle(onTap: widget.onDailyChallenge),
               ),
               const SizedBox(height: 16),
               _DashboardPanel(
-                title: 'Activity Feed',
+                title: uiText(context, 'Activity Feed'),
                 trailing: 'Live',
                 child: _ActivityFeed(games: _recentGames),
               ),
               const SizedBox(height: 16),
               _DashboardPanel(
-                title: 'Top Players',
+                title: uiText(context, 'Top Players'),
                 trailing: 'Global',
                 onTap: widget.onRankings,
                 child: _TopPlayersPreview(
@@ -1092,7 +1165,7 @@ class _WideDashboardRowState extends State<_WideDashboardRow> {
         final List<Widget> panels = <Widget>[
           Expanded(
             child: _DashboardPanel(
-              title: 'Daily Puzzle',
+              title: uiText(context, 'Daily Puzzle'),
               trailing: 'View all',
               onTap: widget.onPuzzles,
               child: Row(
@@ -1116,7 +1189,7 @@ class _WideDashboardRowState extends State<_WideDashboardRow> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        const Text(
+                        const UiText(
                           'Find the best move',
                           style: TextStyle(
                             color: Colors.white,
@@ -1124,7 +1197,7 @@ class _WideDashboardRowState extends State<_WideDashboardRow> {
                           ),
                         ),
                         const SizedBox(height: 5),
-                        const Text(
+                        const UiText(
                           'Today’s tactical challenge',
                           style: TextStyle(
                             color: Color(0xFF9EB5C7),
@@ -1134,7 +1207,7 @@ class _WideDashboardRowState extends State<_WideDashboardRow> {
                         const SizedBox(height: 14),
                         FilledButton(
                           onPressed: widget.onDailyChallenge,
-                          child: const Text('Solve Puzzle'),
+                          child: const UiText('Solve Puzzle'),
                         ),
                       ],
                     ),
@@ -1146,7 +1219,7 @@ class _WideDashboardRowState extends State<_WideDashboardRow> {
           const SizedBox(width: 16, height: 16),
           Expanded(
             child: _DashboardPanel(
-              title: 'Activity Feed',
+              title: uiText(context, 'Activity Feed'),
               trailing: 'Live',
               child: _ActivityFeed(games: _recentGames),
             ),
@@ -1154,7 +1227,7 @@ class _WideDashboardRowState extends State<_WideDashboardRow> {
           const SizedBox(width: 16, height: 16),
           Expanded(
             child: _DashboardPanel(
-              title: 'Top Players',
+              title: uiText(context, 'Top Players'),
               trailing: 'Global',
               onTap: widget.onRankings,
               child: _TopPlayersPreview(
@@ -1199,7 +1272,7 @@ class _CompactDailyPuzzle extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Text(
+            const UiText(
               'Find the best move',
               style: TextStyle(
                 color: Colors.white,
@@ -1207,7 +1280,7 @@ class _CompactDailyPuzzle extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            FilledButton(onPressed: onTap, child: const Text('Solve Puzzle')),
+            FilledButton(onPressed: onTap, child: const UiText('Solve Puzzle')),
           ],
         ),
       ),
@@ -1348,10 +1421,13 @@ class _ActivityFeed extends StatelessWidget {
         ),
     ].take(3).toList(growable: false);
     if (items.isEmpty) {
-      return const _EmptyDashboardState(
+      return _EmptyDashboardState(
         icon: Icons.auto_graph_rounded,
-        title: 'Your activity appears here',
-        subtitle: 'Games, puzzles and achievements update automatically.',
+        title: uiText(context, 'Your activity appears here'),
+        subtitle: uiText(
+          context,
+          'Games, puzzles and achievements update automatically.',
+        ),
       );
     }
     return Column(
@@ -1635,7 +1711,7 @@ class _PlayerHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
+          UiText(
             'Welcome back,',
             style: TextStyle(
               color: const Color(0xFF9FB6C8),
@@ -1663,7 +1739,7 @@ class _PlayerHeader extends StatelessWidget {
     final Widget settings = IconButton(
       key: const ValueKey<String>('home-settings-top'),
       onPressed: onSettings,
-      tooltip: 'Settings',
+      tooltip: uiText(context, 'Settings'),
       style: IconButton.styleFrom(
         backgroundColor: const Color(0xFF102A40),
         foregroundColor: Colors.white,
@@ -1679,7 +1755,7 @@ class _PlayerHeader extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: wide ? 12 : 9, vertical: 9),
       ),
       icon: const Icon(Icons.card_giftcard_rounded, size: 19),
-      label: const Text(
+      label: const UiText(
         'Free Coins',
         style: TextStyle(fontWeight: FontWeight.w800),
       ),
@@ -1756,7 +1832,7 @@ class _BrandHero extends StatelessWidget {
         const SizedBox(height: 4),
         _BrandWordmark(fontSize: compact ? 28 : 29),
         const SizedBox(height: 4),
-        const Text(
+        const UiText(
           'CHOOSE YOUR NEXT MOVE',
           style: TextStyle(
             color: Color(0xFFA9C1D2),
@@ -1778,13 +1854,13 @@ class _BrandWordmark extends StatelessWidget {
     return Text.rich(
       TextSpan(
         children: <InlineSpan>[
-          const TextSpan(
-            text: 'CHESSVERSE',
+          TextSpan(
+            text: uiText(context, 'CHESSVERSE'),
             style: TextStyle(color: Color(0xFFE6F4FF)),
           ),
           const TextSpan(text: ' '),
-          const TextSpan(
-            text: 'AI',
+          TextSpan(
+            text: uiText(context, 'AI'),
             style: TextStyle(color: AppColors.accentGold),
           ),
         ],
@@ -1990,17 +2066,13 @@ class _CarouselHero extends StatelessWidget {
                         Expanded(
                           child: Text(
                             data.title,
-                            maxLines: data.title == 'World Chess Tournaments'
-                                ? 3
-                                : 2,
+                            maxLines: 4,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: wide
                                   ? 40
-                                  : data.title == 'World Chess Tournaments'
-                                  ? 23
-                                  : 28,
+                                  : 22,
                               height: 1,
                               fontWeight: FontWeight.w900,
                             ),
@@ -2026,7 +2098,7 @@ class _CarouselHero extends StatelessWidget {
                           : null,
                       onPressed: data.onTap,
                       icon: const Icon(Icons.arrow_forward_rounded, size: 17),
-                      label: Text(data.buttonLabel),
+                      label: UiText(data.buttonLabel),
                     ),
                     if (data.statusLabel != null ||
                         data.countdownTarget != null)
@@ -2054,7 +2126,7 @@ class _CarouselHero extends StatelessWidget {
             top: wide ? 22 : 14,
             child: IconButton.filledTonal(
               key: const ValueKey<String>('home-hero-next'),
-              tooltip: 'Next feature',
+              tooltip: uiText(context, 'Next feature'),
               onPressed: onNext,
               style: IconButton.styleFrom(
                 backgroundColor: const Color(0xB20A2842),
@@ -2196,7 +2268,7 @@ class _OnlineHero extends StatelessWidget {
                           size: 38,
                         ),
                         const SizedBox(height: 12),
-                        Text(
+                        UiText(
                           'Play Online',
                           style: TextStyle(
                             color: Colors.white,
@@ -2206,7 +2278,7 @@ class _OnlineHero extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        const Text(
+                        const UiText(
                           'Find a live opponent from around the world',
                           style: TextStyle(
                             color: Color(0xFFC5D5E0),
@@ -2227,7 +2299,7 @@ class _OnlineHero extends StatelessWidget {
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
-                              Text(
+                              UiText(
                                 'Play Now',
                                 style: TextStyle(
                                   color: Colors.white,
@@ -2297,7 +2369,7 @@ class _AiPersonaStrip extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Flexible(
-                  child: Text(
+                  child: UiText(
                     'CHOOSE YOUR AI RIVAL',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -2480,7 +2552,7 @@ class _AiPersonaStrip extends StatelessWidget {
                                             onChallenge(persona.name),
                                         child: FittedBox(
                                           fit: BoxFit.scaleDown,
-                                          child: Text(
+                                          child: UiText(
                                             'Challenge Now',
                                             maxLines: 1,
                                             softWrap: false,
@@ -2542,7 +2614,12 @@ class _ActionCard extends StatelessWidget {
             onTap: onTap,
             borderRadius: BorderRadius.circular(20),
             child: Ink(
-              height: 164,
+              height:
+                  164 +
+                  (MediaQuery.textScalerOf(context).scale(100) - 100).clamp(
+                    0,
+                    double.infinity,
+                  ),
               padding: EdgeInsets.all(narrow ? 15 : 18),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: .76),
@@ -2757,38 +2834,38 @@ class _MobileNav extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 5, 8, 7),
       child: Row(
         children: <Widget>[
-          const Expanded(
+          Expanded(
             child: _NavItem(
               icon: Icons.home_rounded,
-              label: 'Home',
+              label: uiText(context, 'Home'),
               selected: true,
             ),
           ),
           Expanded(
             child: _NavItem(
               icon: Icons.sports_esports_rounded,
-              label: 'Play',
+              label: uiText(context, 'Play'),
               onTap: onPlay,
             ),
           ),
           Expanded(
             child: _NavItem(
               icon: Icons.extension_rounded,
-              label: 'Puzzles',
+              label: uiText(context, 'Puzzles'),
               onTap: onPuzzles,
             ),
           ),
           Expanded(
             child: _NavItem(
               icon: Icons.school_rounded,
-              label: 'Learn',
+              label: uiText(context, 'Learn'),
               onTap: onLearn,
             ),
           ),
           Expanded(
             child: _NavItem(
               icon: Icons.person_rounded,
-              label: 'Profile',
+              label: uiText(context, 'Profile'),
               onTap: onProfile,
             ),
           ),

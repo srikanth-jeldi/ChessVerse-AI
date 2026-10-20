@@ -1,3 +1,5 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -597,7 +599,7 @@ class _InteractiveAcademyLessonScreenState
             ),
           if (desktop)
             IconButton(
-              tooltip: 'Replay demonstration',
+              tooltip: uiText(context, 'Replay demonstration'),
               onPressed: _playDemonstration,
               icon: const Icon(Icons.replay_rounded),
             ),
@@ -907,7 +909,7 @@ class _AnimatedAcademyBoard extends StatelessWidget {
                               horizontal: 12,
                               vertical: 7,
                             ),
-                            child: Text(
+                            child: UiText(
                               phase == _LessonPhase.demonstration
                                   ? '1  AI DEMO'
                                   : phase == _LessonPhase.practice
@@ -1477,8 +1479,9 @@ class _CoachPanel extends StatelessWidget {
                       color: AppColors.accentGold,
                     ),
                   const Spacer(),
-                  Text(
-                    '+${masteryStars * 25} XP',
+                  UiText(
+                    '+{0} XP',
+                    values: [masteryStars * 25],
                     style: const TextStyle(
                       color: Color(0xFF59E4C8),
                       fontWeight: FontWeight.w900,
@@ -1644,19 +1647,21 @@ class _MobileLessonHeader extends StatelessWidget {
       Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: <Widget>[
-          OutlinedButton.icon(
-            key: const ValueKey<String>('lesson-language-picker'),
-            onPressed: onChooseLanguage,
-            icon: const Icon(Icons.translate_rounded, size: 18),
-            label: Text(languageName),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.accentGold,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              visualDensity: VisualDensity.compact,
+          Flexible(
+            child: OutlinedButton.icon(
+              key: const ValueKey<String>('lesson-language-picker'),
+              onPressed: onChooseLanguage,
+              icon: const Icon(Icons.translate_rounded, size: 18),
+              label: Text(languageName),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.accentGold,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                visualDensity: VisualDensity.compact,
+              ),
             ),
           ),
           IconButton(
-            tooltip: 'Replay demonstration',
+            tooltip: uiText(context, 'Replay demonstration'),
             onPressed: onReplay,
             icon: const Icon(Icons.replay_rounded),
           ),
@@ -1809,7 +1814,7 @@ class _TimePressureBanner extends StatelessWidget {
             color: solved ? const Color(0xFF59E4C8) : const Color(0xFFFF8A72),
           ),
           const SizedBox(width: 10),
-          Text(
+          UiText(
             solved ? '+ 00:02' : '00:10',
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
           ),

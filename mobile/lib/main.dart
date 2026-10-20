@@ -1,3 +1,6 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -41,6 +44,7 @@ import 'core/notifications/daily_reminder_service.dart';
 import 'core/notifications/notification_preview.dart';
 import 'core/notifications/firebase_push_service.dart';
 import 'core/store_review_service.dart';
+import 'core/startup_system_ui.dart';
 import 'core/widgets/chessverse_app_backdrop.dart';
 import 'core/widgets/ai_language_picker.dart';
 import 'core/widgets/desktop_app_sidebar.dart';
@@ -116,17 +120,7 @@ List<SavedMoveReview> _savedReviewsFromCloud(CloudAnalysisJob job) => job.plies
 final Completer<void> _localArchiveReady = Completer<void>();
 
 Future<void> _configureSystemUiAfterFirstFrame() async {
-  if (kIsWeb) return;
-  try {
-    // Window inset changes can recreate or relayout the Android rendering
-    // surface. Wait until Flutter has presented its first frame so low-end and
-    // OEM-customised Android devices are not asked to mutate the window while
-    // the engine is still attaching its initial surface.
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge)
-        .timeout(const Duration(seconds: 2));
-  } on Object {
-    // System UI configuration is cosmetic and must never delay app startup.
-  }
+  await StartupSystemUi.configure();
 }
 
 Future<void> _initializeAfterFirstFrame() async {
@@ -208,16 +202,25 @@ class ChessVerseApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ChessVerseAI',
-      debugShowCheckedModeBanner: false,
-      theme: ChessVerseTheme.dark(),
-      builder: (BuildContext context, Widget? child) {
-        return NetworkStatusLayer(
-          child: ChessVerseAppBackdrop(child: child ?? const SizedBox.shrink()),
-        );
-      },
-      home: const SplashGate(),
+    return UiLanguageHost(
+      builder: (context, locale) => MaterialApp(
+        locale: locale,
+        supportedLocales: AppLanguageController.supported
+            .where((language) => language.code != 'system')
+            .map((language) => Locale(language.code)),
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        title: 'ChessVerseAI',
+        debugShowCheckedModeBanner: false,
+        theme: ChessVerseTheme.dark(),
+        builder: (BuildContext context, Widget? child) {
+          return NetworkStatusLayer(
+            child: ChessVerseAppBackdrop(
+              child: child ?? const SizedBox.shrink(),
+            ),
+          );
+        },
+        home: const SplashGate(),
+      ),
     );
   }
 }
@@ -288,7 +291,7 @@ class _GlassBottomNavigation extends StatelessWidget {
                         child: Semantics(
                           selected: selected,
                           button: true,
-                          label: destination.label,
+                          label: uiText(context, destination.label),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(18),
                             onTap: () => onDestinationSelected(index),
@@ -325,7 +328,7 @@ class _GlassBottomNavigation extends StatelessWidget {
                                   const SizedBox(height: 1),
                                   FittedBox(
                                     fit: BoxFit.scaleDown,
-                                    child: Text(
+                                    child: UiText(
                                       destination.label,
                                       maxLines: 1,
                                       style: TextStyle(
@@ -686,7 +689,7 @@ class _SplashGateState extends State<SplashGate> {
         if (!mounted) return;
         ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           const SnackBar(
-            content: Text('Your session has expired. Please sign in again.'),
+            content: UiText('Your session has expired. Please sign in again.'),
           ),
         );
       });
@@ -829,7 +832,7 @@ class _SplashGateState extends State<SplashGate> {
                 const SizedBox(height: 12),
                 Text(badge.icon, style: const TextStyle(fontSize: 68)),
                 const SizedBox(height: 10),
-                const Text(
+                const UiText(
                   'BADGE ACHIEVED!',
                   style: TextStyle(
                     color: Color(0xFFF2C14E),
@@ -864,8 +867,9 @@ class _SplashGateState extends State<SplashGate> {
                     color: const Color(0x332FD9C4),
                     borderRadius: BorderRadius.circular(99),
                   ),
-                  child: Text(
-                    '+$coins COINS ADDED TO YOUR ACCOUNT',
+                  child: UiText(
+                    '+{0} COINS ADDED TO YOUR ACCOUNT',
+                    values: [coins],
                     style: const TextStyle(
                       color: Color(0xFF62E4D1),
                       fontWeight: FontWeight.w900,
@@ -875,7 +879,7 @@ class _SplashGateState extends State<SplashGate> {
                 const SizedBox(height: 20),
                 FilledButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('AWESOME!'),
+                  child: const UiText('AWESOME!'),
                 ),
               ],
             ),
@@ -1541,7 +1545,7 @@ class _SplashGateState extends State<SplashGate> {
     if (_isGuest) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
+          content: UiText(
             'Sign in with your verified student account to join an academy.',
           ),
         ),
@@ -1554,7 +1558,7 @@ class _SplashGateState extends State<SplashGate> {
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please sign in again to open your academy.'),
+          content: UiText('Please sign in again to open your academy.'),
         ),
       );
       return;
@@ -1675,7 +1679,7 @@ class _SplashGateState extends State<SplashGate> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
-                            Text(
+                            UiText(
                               'Choose How to Play',
                               style: TextStyle(
                                 color: Color(0xFFFFF8ED),
@@ -1684,7 +1688,7 @@ class _SplashGateState extends State<SplashGate> {
                               ),
                             ),
                             SizedBox(height: 4),
-                            Text(
+                            UiText(
                               'Play online with a friend or share this device.',
                               style: TextStyle(color: Color(0xFFAFBCCB)),
                             ),
@@ -1692,7 +1696,7 @@ class _SplashGateState extends State<SplashGate> {
                         ),
                       ),
                       IconButton(
-                        tooltip: 'Close',
+                        tooltip: uiText(context, 'Close'),
                         onPressed: () => Navigator.of(sheetContext).pop(),
                         icon: const Icon(Icons.close_rounded),
                       ),
@@ -1701,8 +1705,11 @@ class _SplashGateState extends State<SplashGate> {
                   const SizedBox(height: 18),
                   _FriendPlayChoiceCard(
                     icon: Icons.language_rounded,
-                    title: 'Online with Friend',
-                    subtitle: 'Create a private room or join with a room code.',
+                    title: uiText(context, 'Online with Friend'),
+                    subtitle: uiText(
+                      context,
+                      'Create a private room or join with a room code.',
+                    ),
                     accent: const Color(0xFF4FD9C5),
                     onTap: () =>
                         Navigator.of(sheetContext)
@@ -1711,8 +1718,11 @@ class _SplashGateState extends State<SplashGate> {
                   const SizedBox(height: 12),
                   _FriendPlayChoiceCard(
                     icon: Icons.people_alt_rounded,
-                    title: 'Two Players — Same Device',
-                    subtitle: 'Player 1 • White   /   Player 2 • Black. Board stays fixed.',
+                    title: uiText(context, 'Two Players — Same Device'),
+                    subtitle: uiText(
+                      context,
+                      'Player 1 • White   /   Player 2 • Black. Board stays fixed.',
+                    ),
                     accent: const Color(0xFFE2AE49),
                     onTap: () =>
                         Navigator.of(sheetContext).pop(_FriendPlayChoice.local),
@@ -1829,7 +1839,7 @@ class _SplashGateState extends State<SplashGate> {
                             color: Color(0xFFE2AE49),
                             size: 52,
                           ),
-                          Text(
+                          UiText(
                             personasOnly
                                 ? 'Choose Your AI Rival'
                                 : 'Choose Your Side',
@@ -1840,7 +1850,7 @@ class _SplashGateState extends State<SplashGate> {
                             ),
                           ),
                           SizedBox(height: shortLandscape ? 4 : 8),
-                          Text(
+                          UiText(
                             mode == GameMode.local
                                 ? 'Player 1 side for this match.'
                                 : 'ChessVerseAI will take the opposite side.',
@@ -1929,7 +1939,7 @@ class _SplashGateState extends State<SplashGate> {
                               personasOnly) ...<Widget>[
                             const Align(
                               alignment: Alignment.centerLeft,
-                              child: Text(
+                              child: UiText(
                                 'AI PERSONAS',
                                 style: TextStyle(
                                   color: Color(0xFFE2AE49),
@@ -1989,8 +1999,9 @@ class _SplashGateState extends State<SplashGate> {
                             SizedBox(height: shortLandscape ? 8 : 18),
                             Align(
                               alignment: Alignment.centerLeft,
-                              child: Text(
-                                'CUSTOM AI  •  ${selectedRating.round()} ELO',
+                              child: UiText(
+                                'CUSTOM AI  •  {0} ELO',
+                                values: [selectedRating.round()],
                                 style: const TextStyle(
                                   color: Color(0xFFE2AE49),
                                   fontWeight: FontWeight.w900,
@@ -2077,7 +2088,7 @@ class _SplashGateState extends State<SplashGate> {
                                               ScaffoldMessenger.of(context)
                                                   .showSnackBar(
                                                     const SnackBar(
-                                                      content: Text(
+                                                      content: UiText(
                                                         'Could not delete preset. Check your connection.',
                                                       ),
                                                     ),
@@ -2100,27 +2111,30 @@ class _SplashGateState extends State<SplashGate> {
                                   context: context,
                                   builder: (BuildContext dialogContext) =>
                                       AlertDialog(
-                                        title: const Text('Save AI preset'),
+                                        title: const UiText('Save AI preset'),
                                         content: TextField(
                                           controller: nameController,
                                           autofocus: true,
                                           maxLength: 30,
-                                          decoration: const InputDecoration(
-                                            hintText: 'Example: Tactical Tiger',
+                                          decoration: InputDecoration(
+                                            hintText: uiText(
+                                              context,
+                                              'Example: Tactical Tiger',
+                                            ),
                                           ),
                                         ),
                                         actions: <Widget>[
                                           TextButton(
                                             onPressed: () =>
                                                 Navigator.pop(dialogContext),
-                                            child: const Text('Cancel'),
+                                            child: const UiText('Cancel'),
                                           ),
                                           FilledButton(
                                             onPressed: () => Navigator.pop(
                                               dialogContext,
                                               nameController.text.trim(),
                                             ),
-                                            child: const Text('Save'),
+                                            child: const UiText('Save'),
                                           ),
                                         ],
                                       ),
@@ -2144,7 +2158,7 @@ class _SplashGateState extends State<SplashGate> {
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text(
+                                        content: UiText(
                                           'Could not save preset. Sign in, check connection, or remove an old preset.',
                                         ),
                                       ),
@@ -2153,7 +2167,7 @@ class _SplashGateState extends State<SplashGate> {
                                 }
                               },
                               icon: const Icon(Icons.bookmark_add_rounded),
-                              label: const Text('SAVE ACCOUNT PRESET'),
+                              label: const UiText('SAVE ACCOUNT PRESET'),
                             ),
                           ],
                           SizedBox(height: shortLandscape ? 10 : 22),
@@ -2169,7 +2183,7 @@ class _SplashGateState extends State<SplashGate> {
                                   color: const Color(0xFF5A4B2A),
                                 ),
                               ),
-                              child: const Text(
+                              child: const UiText(
                                 'Balanced match  •  Fair play  •  AI Opponent',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(color: Color(0xFFC7D2DE)),
@@ -2188,8 +2202,9 @@ class _SplashGateState extends State<SplashGate> {
                                 ),
                               ),
                               icon: const Icon(Icons.play_arrow_rounded),
-                              label: Text(
-                                'START AS ${selected.label.toUpperCase()}',
+                              label: UiText(
+                                'START AS {0}',
+                                values: [selected.label.toUpperCase()],
                               ),
                             ),
                           ),
@@ -2295,18 +2310,18 @@ class _SplashGateState extends State<SplashGate> {
     return showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Continue your computer game?'),
-        content: const Text(
+        title: const UiText('Continue your computer game?'),
+        content: const UiText(
           'Continue your paused game now, or create a new one. Starting a new game removes the paused game from this account; completed games stay in My Games.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Continue'),
+            child: const UiText('Continue'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('New Game'),
+            child: const UiText('New Game'),
           ),
         ],
       ),
@@ -2395,9 +2410,9 @@ class _SplashGateState extends State<SplashGate> {
     final StoredAuthSession? session = await const AuthSessionStore().read();
     if (!context.mounted) return;
     if (session == null || session.token.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Sign in to play online.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: UiText('Sign in to play online.')),
+      );
       return;
     }
     final OnlineMatchDto? match = await Navigator.of(context)
@@ -2667,7 +2682,7 @@ class _SplashGateState extends State<SplashGate> {
             }
             Navigator.of(upgradeContext).pop();
             ScaffoldMessenger.of(currentRouteContext).showSnackBar(
-              const SnackBar(content: Text('Progress secured successfully.')),
+              const SnackBar(content: UiText('Progress secured successfully.')),
             );
           },
         ),

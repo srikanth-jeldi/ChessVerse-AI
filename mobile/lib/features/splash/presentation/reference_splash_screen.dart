@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 
 class ReferenceSplashScreen extends StatefulWidget {
@@ -62,8 +63,9 @@ class _ReferenceSplashScreenState extends State<ReferenceSplashScreen>
             child: AnimatedBuilder(
               animation: _controller,
               builder: (BuildContext context, Widget? child) {
-                final double fade =
-                    Curves.easeOutCubic.transform(_controller.value);
+                final double fade = Curves.easeOutCubic.transform(
+                  _controller.value,
+                );
                 final double scale = 0.94 + (0.06 * fade);
                 return Opacity(
                   opacity: fade,
@@ -86,7 +88,7 @@ class _ReferenceSplashScreenState extends State<ReferenceSplashScreen>
                       filterQuality: FilterQuality.high,
                     ),
                     const SizedBox(height: 18),
-                    Text(
+                    UiText(
                       'CHESSVERSEAI',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -97,7 +99,7 @@ class _ReferenceSplashScreenState extends State<ReferenceSplashScreen>
                       ),
                     ),
                     const SizedBox(height: 7),
-                    const Text(
+                    const UiText(
                       'Play · Learn · Master',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -107,7 +109,7 @@ class _ReferenceSplashScreenState extends State<ReferenceSplashScreen>
                       ),
                     ),
                     const Spacer(flex: 3),
-                    const Text(
+                    const UiText(
                       'Loading...',
                       style: TextStyle(
                         color: Color(0xFFD6A84F),
@@ -122,8 +124,9 @@ class _ReferenceSplashScreenState extends State<ReferenceSplashScreen>
                         width: 76,
                         height: 4,
                         child: DecoratedBox(
-                          decoration:
-                              const BoxDecoration(color: Color(0xFF1C2736)),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF1C2736),
+                          ),
                           child: Align(
                             alignment: Alignment.centerLeft,
                             child: AnimatedBuilder(
@@ -251,7 +254,9 @@ class _ReferenceBoardPainter extends CustomPainter {
           ..moveTo(topLeft + (topRight - topLeft) * c / cols, topY)
           ..lineTo(topLeft + (topRight - topLeft) * (c + 1) / cols, topY)
           ..lineTo(
-              bottomLeft + (bottomRight - bottomLeft) * (c + 1) / cols, bottomY)
+            bottomLeft + (bottomRight - bottomLeft) * (c + 1) / cols,
+            bottomY,
+          )
           ..lineTo(bottomLeft + (bottomRight - bottomLeft) * c / cols, bottomY)
           ..close();
         canvas.drawPath(square, (r + c).isEven ? light : dark);

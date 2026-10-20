@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -148,7 +149,7 @@ class _OnboardingHeader extends StatelessWidget {
             child: Align(
               alignment: Alignment.centerLeft,
               child: IconButton(
-                tooltip: 'Previous',
+                tooltip: uiText(context, 'Previous'),
                 onPressed: onBack,
                 icon: const Icon(Icons.arrow_back_rounded),
               ),
@@ -171,7 +172,7 @@ class _OnboardingHeader extends StatelessWidget {
           width: 82,
           child: Align(
             alignment: Alignment.centerRight,
-            child: TextButton(onPressed: onSkip, child: const Text('Skip')),
+            child: TextButton(onPressed: onSkip, child: const UiText('Skip')),
           ),
         ),
       ],
@@ -299,7 +300,7 @@ class _OnboardingCopy extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Flexible(
-            child: Text(
+            child: UiText(
               data.eyebrow,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -319,7 +320,7 @@ class _OnboardingCopy extends StatelessWidget {
         child: FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
-          child: Text(
+          child: UiText(
             data.title,
             maxLines: 2,
             softWrap: false,
@@ -337,7 +338,7 @@ class _OnboardingCopy extends StatelessWidget {
         ),
       ),
       SizedBox(height: compact ? 9 : 14),
-      Text(
+      UiText(
         data.body,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
@@ -368,10 +369,13 @@ class _OnboardingFooter extends StatelessWidget {
   final VoidCallback onNext;
 
   @override
-  Widget build(BuildContext context) => Row(
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
     children: <Widget>[
-      Expanded(
+      SizedBox(
+        height: 18,
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: List<Widget>.generate(
             pageCount,
             (int index) => AnimatedContainer(
@@ -404,11 +408,13 @@ class _OnboardingFooter extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Text(
-                  page == pageCount - 1 ? 'Get Started' : 'Next',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
+                Flexible(
+                  child: UiText(
+                    page == pageCount - 1 ? 'Get Started' : 'Next',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),

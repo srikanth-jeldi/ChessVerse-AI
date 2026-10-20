@@ -72,7 +72,11 @@ class AppLanguageController {
 
   static Future<String> effectiveCode() async {
     final String selected = await selectedCode();
-    return resolveCode(selected);
+    final String resolved = resolveCode(selected);
+    // Seed synchronous label consumers after a cold start. A newer explicit
+    // selection must win if it happened while storage was being read.
+    effectiveLanguageChanges.value ??= resolved;
+    return resolved;
   }
 
   /// Keeps the automatic device option first and presents every explicit

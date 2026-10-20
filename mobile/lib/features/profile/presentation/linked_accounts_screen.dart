@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
@@ -47,7 +48,12 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
         }
       }
     }
-    if (mounted) setState(() { _linked = linked; _error = null; });
+    if (mounted) {
+      setState(() {
+        _linked = linked;
+        _error = null;
+      });
+    }
   }
 
   Future<void> _google() async {
@@ -55,12 +61,15 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
       final GoogleSignIn signIn = GoogleSignIn.instance;
       await signIn.initialize(
         clientId: defaultTargetPlatform == TargetPlatform.iOS
-            ? AppConfig.googleIosClientId : null,
+            ? AppConfig.googleIosClientId
+            : null,
         serverClientId: AppConfig.googleWebClientId,
       );
       final GoogleSignInAccount account = await signIn.authenticate();
       final String? token = account.authentication.idToken;
-      if (token == null) throw const AuthApiException('Google did not return a secure token.');
+      if (token == null) {
+        throw const AuthApiException('Google did not return a secure token.');
+      }
       try {
         _apply(await _api.linkGoogle(widget.token, token));
       } on AuthApiException catch (error) {
@@ -79,7 +88,9 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
         permissions: const <String>['email', 'public_profile'],
         loginBehavior: LoginBehavior.webOnly,
       );
-      if (result.status != LoginStatus.success || result.accessToken == null) return;
+      if (result.status != LoginStatus.success || result.accessToken == null) {
+        return;
+      }
       final String accessToken = result.accessToken!.tokenString;
       try {
         _apply(await _api.linkFacebook(widget.token, accessToken));
@@ -97,11 +108,21 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
   });
 
   Future<void> _run(Future<void> Function() action) async {
-    setState(() { _loading = true; _error = null; });
-    try { await action(); }
-    on AuthApiException catch (e) { if (mounted) setState(() => _error = e.message); }
-    catch (_) { if (mounted) setState(() => _error = 'Sign-in provider could not be updated.'); }
-    finally { if (mounted) setState(() => _loading = false); }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await action();
+    } on AuthApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Sign-in provider could not be updated.');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<String?> _requestPassword() async {
@@ -109,24 +130,27 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
     final String? result = await showDialog<String>(
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('Confirm ChessVerseAI password'),
+        title: const UiText('Confirm ChessVerseAI password'),
         content: TextField(
           controller: controller,
           obscureText: true,
           autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Password',
-            helperText: 'Required because the provider uses a different email.',
+          decoration: InputDecoration(
+            labelText: uiText(context, 'Password'),
+            helperText: uiText(
+              context,
+              'Required because the provider uses a different email.',
+            ),
           ),
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('CANCEL'),
+            child: const UiText('CANCEL'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, controller.text),
-            child: const Text('CONFIRM'),
+            child: const UiText('CONFIRM'),
           ),
         ],
       ),
@@ -138,30 +162,61 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('LINKED ACCOUNTS')),
-    body: ListView(padding: const EdgeInsets.all(20), children: <Widget>[
-      const Text('Use Email, Google or Facebook to open the same ChessVerseAI profile. Coins, XP, games and subscriptions stay on one player account.'),
-      if (_error != null) Padding(padding: const EdgeInsets.only(top: 16), child: Text(_error!, style: const TextStyle(color: Colors.redAccent))),
-      const SizedBox(height: 20),
-      if (_loading) const Center(child: CircularProgressIndicator()),
-      if (!_loading) ...<Widget>[
-        _provider('Google', 'google', Icons.g_mobiledata_rounded, _google),
-        const SizedBox(height: 12),
-        _provider('Facebook', 'facebook', Icons.facebook_rounded, _facebook),
-        const SizedBox(height: 16),
-        const ListTile(leading: Icon(Icons.email_outlined), title: Text('ChessVerseAI Email'), subtitle: Text('Available through Login and Forgot password')),
+    appBar: AppBar(title: const UiText('LINKED ACCOUNTS')),
+    body: ListView(
+      padding: const EdgeInsets.all(20),
+      children: <Widget>[
+        const UiText(
+          'Use Email, Google or Facebook to open the same ChessVerseAI profile. Coins, XP, games and subscriptions stay on one player account.',
+        ),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Text(
+              _error!,
+              style: const TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        const SizedBox(height: 20),
+        if (_loading) const Center(child: CircularProgressIndicator()),
+        if (!_loading) ...<Widget>[
+          _provider('Google', 'google', Icons.g_mobiledata_rounded, _google),
+          const SizedBox(height: 12),
+          _provider('Facebook', 'facebook', Icons.facebook_rounded, _facebook),
+          const SizedBox(height: 16),
+          const ListTile(
+            leading: Icon(Icons.email_outlined),
+            title: UiText('ChessVerseAI Email'),
+            subtitle: UiText('Available through Login and Forgot password'),
+          ),
+        ],
       ],
-    ]),
+    ),
   );
 
-  Widget _provider(String label, String key, IconData icon, Future<void> Function() link) {
+  Widget _provider(
+    String label,
+    String key,
+    IconData icon,
+    Future<void> Function() link,
+  ) {
     final bool connected = _linked[key] == true;
     return ListTile(
-      leading: Icon(icon), title: Text(label),
-      subtitle: Text(connected ? 'Linked' : 'Not linked'),
-      trailing: connected
-          ? OutlinedButton(onPressed: () => _unlink(key), child: const Text('UNLINK'))
-          : FilledButton(onPressed: link, child: const Text('LINK')),
+      leading: Icon(icon),
+      title: Text(label),
+      subtitle: UiText(connected ? 'Linked' : 'Not linked'),
+      trailing: SizedBox(
+        width: 96,
+        child: connected
+            ? OutlinedButton(
+                onPressed: () => _unlink(key),
+                child: const UiText('UNLINK', textAlign: TextAlign.center),
+              )
+            : FilledButton(
+                onPressed: link,
+                child: const UiText('LINK', textAlign: TextAlign.center),
+              ),
+      ),
     );
   }
 }

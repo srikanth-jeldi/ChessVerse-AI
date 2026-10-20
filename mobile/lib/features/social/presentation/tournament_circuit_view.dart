@@ -1,3 +1,5 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -103,7 +105,7 @@ class TournamentCircuitView extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Text(
+                          UiText(
                             'WORLD CHESS CIRCUIT',
                             style: TextStyle(
                               color: Color(0xFFF1C76B),
@@ -113,7 +115,7 @@ class TournamentCircuitView extends StatelessWidget {
                             ),
                           ),
                           SizedBox(height: 4),
-                          Text(
+                          UiText(
                             'Season 01 · Compete across iconic cities',
                             style: TextStyle(color: Color(0xFF9FB0C1)),
                           ),
@@ -293,7 +295,7 @@ class _CircuitHero extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(
+              UiText(
                 'SEASON 01',
                 style: TextStyle(
                   color: Color(0xFF77B8FF),
@@ -302,12 +304,12 @@ class _CircuitHero extends StatelessWidget {
                 ),
               ),
               SizedBox(height: 5),
-              Text(
+              UiText(
                 'Your road to the crown',
                 style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
               ),
               SizedBox(height: 5),
-              Text(
+              UiText(
                 'City cups · Knockout brackets · Cosmetic rewards',
                 style: TextStyle(color: Color(0xFFB5C1CE), height: 1.25),
               ),
@@ -316,8 +318,9 @@ class _CircuitHero extends StatelessWidget {
         ),
         Column(
           children: <Widget>[
-            Text(
-              '$circuitPoints CP',
+            UiText(
+              '{0} CP',
+              values: [circuitPoints],
               style: const TextStyle(
                 color: Color(0xFFFFD66F),
                 fontSize: 13,
@@ -333,7 +336,7 @@ class _CircuitHero extends StatelessWidget {
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const Text(
+            const UiText(
               'FAIR PLAY',
               style: TextStyle(
                 color: Color(0xFF89A3AF),
@@ -387,7 +390,7 @@ class _CircuitProgress extends StatelessWidget {
               const Icon(Icons.route_rounded, color: Color(0xFFE2B54E)),
               const SizedBox(width: 9),
               const Expanded(
-                child: Text(
+                child: UiText(
                   'SEASON PROGRESSION',
                   style: TextStyle(
                     fontWeight: FontWeight.w900,
@@ -395,8 +398,9 @@ class _CircuitProgress extends StatelessWidget {
                   ),
                 ),
               ),
-              Text(
-                '$points / $maximum CP',
+              UiText(
+                '{0} / {1} CP',
+                values: [points, maximum],
                 style: const TextStyle(
                   color: Color(0xFFFFD66F),
                   fontWeight: FontWeight.w900,
@@ -760,7 +764,7 @@ class _WeeklyChampions extends StatelessWidget {
             Icon(Icons.emoji_events_rounded, color: Color(0xFFFFD66F)),
             SizedBox(width: 9),
             Expanded(
-              child: Text(
+              child: UiText(
                 'THIS WEEK\'S CHAMPIONS',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -860,13 +864,13 @@ class _EmptyCircuit extends StatelessWidget {
         children: <Widget>[
           Icon(Icons.public_rounded, size: 64, color: Color(0xFFE0B14A)),
           SizedBox(height: 16),
-          Text(
+          UiText(
             'The next circuit is being prepared',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
           ),
           SizedBox(height: 7),
-          Text(
+          UiText(
             'Pull to refresh for newly announced city tournaments.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Color(0xFF9FB0C1)),

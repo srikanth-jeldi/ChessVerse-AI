@@ -1,3 +1,5 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -96,7 +98,7 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(
+        title: UiText(
           value.joined
               ? 'Withdraw from tournament?'
               : 'Confirm tournament registration',
@@ -109,11 +111,11 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('CANCEL'),
+            child: const UiText('CANCEL'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(value.joined ? 'WITHDRAW' : 'REGISTER NOW'),
+            child: UiText(value.joined ? 'WITHDRAW' : 'REGISTER NOW'),
           ),
         ],
       ),
@@ -136,7 +138,7 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
+            content: UiText(
               value.joined
                   ? 'Tournament withdrawal complete. Entry coins returned.'
                   : 'Registration confirmed. We will place you in the bracket automatically.',
@@ -189,7 +191,7 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
                           ? Icons.verified_rounded
                           : Icons.how_to_reg_rounded,
                     ),
-              label: Text(
+              label: UiText(
                 value!.joined ? 'REGISTRATION CONFIRMED' : 'REGISTER NOW',
                 style: const TextStyle(fontWeight: FontWeight.w900),
               ),
@@ -280,11 +282,13 @@ class TournamentDetailContent extends StatelessWidget {
                     status,
                     const SizedBox(height: 16),
                   ],
-                  const _SectionHeading(
+                  _SectionHeading(
                     icon: Icons.account_tree_rounded,
-                    title: 'TOURNAMENT BRACKET',
-                    subtitle:
-                        'Rounds advance automatically after verified results',
+                    title: uiText(context, 'TOURNAMENT BRACKET'),
+                    subtitle: uiText(
+                      context,
+                      'Rounds advance automatically after verified results',
+                    ),
                   ),
                   const SizedBox(height: 12),
                   if (detail.rounds.isEmpty)
@@ -410,7 +414,7 @@ class _TournamentPreparation extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(
+                  UiText(
                     'AI TOURNAMENT PREPARATION',
                     style: TextStyle(
                       color: Color(0xFFFFD66F),
@@ -418,7 +422,7 @@ class _TournamentPreparation extends StatelessWidget {
                       letterSpacing: .8,
                     ),
                   ),
-                  Text(
+                  UiText(
                     'Evidence from your latest tracked games',
                     style: TextStyle(color: Color(0xFF9FB3C2), fontSize: 12),
                   ),
@@ -449,29 +453,30 @@ class _TournamentPreparation extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 5),
-        Text(
-          '${readiness.confidence} • ${readiness.gamesAnalysed} games',
+        UiText(
+          '{0} • {1} games',
+          values: [readiness.confidence, readiness.gamesAnalysed],
           style: const TextStyle(color: Color(0xFF72B9FF), fontSize: 11),
         ),
         const SizedBox(height: 14),
         _PreparationItem(
           icon: Icons.auto_stories_rounded,
-          title: 'OPENING CHECK',
+          title: uiText(context, 'OPENING CHECK'),
           body: readiness.openingInsight,
         ),
         _PreparationItem(
           icon: Icons.timer_outlined,
-          title: 'CLOCK PLAN',
+          title: uiText(context, 'CLOCK PLAN'),
           body: readiness.timeAdvice,
         ),
         _PreparationItem(
           icon: Icons.school_rounded,
-          title: 'RECOMMENDED LESSON',
+          title: uiText(context, 'RECOMMENDED LESSON'),
           body: readiness.recommendedLesson,
         ),
         _PreparationItem(
           icon: Icons.speed_rounded,
-          title: 'TIME CONTROL',
+          title: uiText(context, 'TIME CONTROL'),
           body: readiness.timeControlAdvice,
         ),
       ],
@@ -617,8 +622,9 @@ class _TournamentRewardVault extends StatelessWidget {
             Row(
               children: <Widget>[
                 Expanded(
-                  child: Text(
-                    '3D CITY REWARD VAULT • $cadence',
+                  child: UiText(
+                    '3D CITY REWARD VAULT • {0}',
+                    values: [cadence],
                     style: const TextStyle(
                       color: Color(0xFFFFD66F),
                       fontWeight: FontWeight.w900,
@@ -626,8 +632,9 @@ class _TournamentRewardVault extends StatelessWidget {
                     ),
                   ),
                 ),
-                Text(
-                  '${detail.minimumPlayers}+ PLAYERS',
+                UiText(
+                  '{0}+ PLAYERS',
+                  values: [detail.minimumPlayers],
                   style: const TextStyle(
                     color: Color(0xFF63DFC9),
                     fontSize: 11,
@@ -648,27 +655,28 @@ class _TournamentRewardVault extends StatelessWidget {
               children: <Widget>[
                 _RewardChip(
                   icon: Icons.emoji_events_rounded,
-                  label: 'CHAMPION',
+                  label: uiText(context, 'CHAMPION'),
                   coins: detail.championBonus,
                   color: const Color(0xFFFFD66F),
                 ),
                 _RewardChip(
                   icon: Icons.military_tech_rounded,
-                  label: 'RUNNER-UP',
+                  label: uiText(context, 'RUNNER-UP'),
                   coins: detail.runnerUpBonus,
                   color: const Color(0xFFC7D7E7),
                 ),
                 _RewardChip(
                   icon: Icons.verified_rounded,
-                  label: 'PARTICIPATION',
+                  label: uiText(context, 'PARTICIPATION'),
                   coins: detail.participationBonus,
                   color: const Color(0xFF63DFC9),
                 ),
               ],
             ),
             const SizedBox(height: 11),
-            Text(
-              'Champion also wins the live ${detail.prizePool}-coin entry pool. Every verified entrant receives the city badge.',
+            UiText(
+              'Champion also wins the live {0}-coin entry pool. Every verified entrant receives the city badge.',
+              values: [detail.prizePool],
               style: const TextStyle(color: Color(0xFFB9C9D7), height: 1.35),
             ),
           ],
@@ -714,22 +722,25 @@ class _RewardChip extends StatelessWidget {
       children: <Widget>[
         Icon(icon, color: color, size: 20),
         const SizedBox(width: 7),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              label,
-              style: const TextStyle(
-                color: Color(0xFFAFC0CE),
-                fontSize: 9,
-                fontWeight: FontWeight.w800,
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFFAFC0CE),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            ),
-            Text(
-              '+$coins COINS',
-              style: TextStyle(color: color, fontWeight: FontWeight.w900),
-            ),
-          ],
+              UiText(
+                '+{0} COINS',
+                values: [coins],
+                style: TextStyle(color: color, fontWeight: FontWeight.w900),
+              ),
+            ],
+          ),
         ),
       ],
     ),
@@ -756,7 +767,7 @@ class _TournamentHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 490,
+    constraints: const BoxConstraints(minHeight: 490),
     clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(28),
@@ -770,35 +781,43 @@ class _TournamentHero extends StatelessWidget {
       ],
     ),
     child: Stack(
-      fit: StackFit.expand,
+      fit: StackFit.loose,
       children: <Widget>[
-        Image.asset(theme.artwork, fit: BoxFit.cover),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: <Color>[
-                theme.colors.first.withValues(alpha: .35),
-                theme.colors[1].withValues(alpha: .72),
-                const Color(0xFF040A12),
-              ],
+        Positioned.fill(child: Image.asset(theme.artwork, fit: BoxFit.cover)),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[
+                  theme.colors.first.withValues(alpha: .35),
+                  theme.colors[1].withValues(alpha: .72),
+                  const Color(0xFF040A12),
+                ],
+              ),
             ),
           ),
         ),
         Padding(
           padding: const EdgeInsets.all(22),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: <Widget>[
                   _StatusBadge(status: detail.status, label: _schedule),
-                  const Spacer(),
-                  const _StatusBadge(status: 'FAIR', label: 'FAIR PLAY'),
+
+                  _StatusBadge(
+                    status: 'FAIR',
+                    label: uiText(context, 'FAIR PLAY'),
+                  ),
                 ],
               ),
-              const Spacer(),
+              const SizedBox(height: 48),
               SizedBox(
                 width: 54,
                 height: 54,
@@ -842,29 +861,29 @@ class _TournamentHero extends StatelessWidget {
                   _HeroStat(
                     icon: Icons.timer_outlined,
                     value: '${detail.minutes}+0',
-                    label: 'TIME',
+                    label: uiText(context, 'TIME'),
                   ),
                   _HeroStat(
                     icon: Icons.groups_rounded,
                     value: '${detail.players}/${detail.capacity}',
-                    label: 'PLAYERS',
+                    label: uiText(context, 'PLAYERS'),
                   ),
                   _HeroStat(
                     icon: Icons.account_tree_rounded,
                     value: detail.currentRound > 0
                         ? '${detail.currentRound}'
                         : '—',
-                    label: 'ROUND',
+                    label: uiText(context, 'ROUND'),
                   ),
                   _HeroStat(
                     icon: Icons.monetization_on_rounded,
                     value: '${detail.entryCoins}',
-                    label: 'ENTRY',
+                    label: uiText(context, 'ENTRY'),
                   ),
                   _HeroStat(
                     icon: Icons.emoji_events_rounded,
                     value: '${detail.prizePool}',
-                    label: 'LIVE POOL',
+                    label: uiText(context, 'LIVE POOL'),
                   ),
                 ],
               ),
@@ -921,7 +940,7 @@ class _RegistrationPanel extends StatelessWidget {
                   ),
                   const SizedBox(width: 9),
                   Flexible(
-                    child: Text(
+                    child: UiText(
                       detail.status == 'FINISHED'
                           ? 'TOURNAMENT FINISHED'
                           : detail.joined
@@ -948,13 +967,17 @@ class _RegistrationPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                '${(detail.capacity - detail.players).clamp(0, detail.capacity)} places remaining',
+              UiText(
+                '{0} places remaining',
+                values: [
+                  (detail.capacity - detail.players).clamp(0, detail.capacity),
+                ],
                 style: const TextStyle(color: Color(0xFFAAB9C7)),
               ),
               const SizedBox(height: 6),
-              Text(
-                '${detail.entryCoins} play coins reserved on join • ${detail.prizePool} current prize pool',
+              UiText(
+                '{0} play coins reserved on join • {1} current prize pool',
+                values: [detail.entryCoins, detail.prizePool],
                 style: const TextStyle(
                   color: Color(0xFFFFD66F),
                   fontWeight: FontWeight.w700,
@@ -962,7 +985,7 @@ class _RegistrationPanel extends StatelessWidget {
               ),
               if (detail.status == 'FINISHED') ...<Widget>[
                 const SizedBox(height: 8),
-                const Text(
+                const UiText(
                   'Registration is closed because this tournament is complete. Return to the circuit and choose a tournament marked Registration Open.',
                   style: TextStyle(color: Color(0xFFC1CED9), height: 1.35),
                 ),
@@ -977,7 +1000,7 @@ class _RegistrationPanel extends StatelessWidget {
                   TextButton.icon(
                     onPressed: onEarnCoins,
                     icon: const Icon(Icons.smart_display_rounded),
-                    label: const Text('Earn free coins'),
+                    label: const UiText('Earn free coins'),
                   ),
               ],
             ],
@@ -1044,10 +1067,13 @@ class _TournamentGuide extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: <Widget>[
-      const _SectionHeading(
+      _SectionHeading(
         icon: Icons.menu_book_rounded,
-        title: 'HOW TO PLAY',
-        subtitle: 'Join, find your board and advance through the circuit',
+        title: uiText(context, 'HOW TO PLAY'),
+        subtitle: uiText(
+          context,
+          'Join, find your board and advance through the circuit',
+        ),
       ),
       const SizedBox(height: 12),
       LayoutBuilder(
@@ -1190,7 +1216,7 @@ class _OfficialRules extends StatelessWidget {
               Icon(Icons.gavel_rounded, color: Color(0xFFFFD66F)),
               SizedBox(width: 10),
               Expanded(
-                child: Text(
+                child: UiText(
                   'OFFICIAL TOURNAMENT RULES',
                   style: TextStyle(
                     fontWeight: FontWeight.w900,
@@ -1229,13 +1255,16 @@ class _OfficialRules extends StatelessWidget {
               ),
             ),
           const Divider(height: 24, color: Color(0xFF385066)),
-          const Wrap(
+          Wrap(
             spacing: 16,
             runSpacing: 8,
             children: <Widget>[
-              _PointsRule(label: 'REGISTER', value: '+100 CP'),
-              _PointsRule(label: 'EACH WIN', value: '+250 CP'),
-              _PointsRule(label: 'CHAMPION', value: '+1000 CP'),
+              _PointsRule(label: uiText(context, 'REGISTER'), value: '+100 CP'),
+              _PointsRule(label: uiText(context, 'EACH WIN'), value: '+250 CP'),
+              _PointsRule(
+                label: uiText(context, 'CHAMPION'),
+                value: '+1000 CP',
+              ),
             ],
           ),
         ],
@@ -1250,8 +1279,8 @@ class _PointsRule extends StatelessWidget {
   final String label, value;
 
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
+  Widget build(BuildContext context) => Wrap(
+    crossAxisAlignment: WrapCrossAlignment.center,
     children: <Widget>[
       Text(
         label,
@@ -1411,21 +1440,24 @@ class _PairingCard extends StatelessWidget {
       ),
       child: Column(
         children: <Widget>[
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
             children: <Widget>[
-              Text(
-                'BOARD ${pairing.board}',
+              UiText(
+                'BOARD {0}',
+                values: [pairing.board],
                 style: const TextStyle(
                   color: Color(0xFF77B9EE),
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              const Spacer(),
+
               if (pairing.mine)
                 const Padding(
                   padding: EdgeInsets.only(right: 8),
-                  child: Text(
+                  child: UiText(
                     'YOUR BOARD',
                     style: TextStyle(
                       color: Color(0xFFFFD66F),
@@ -1545,7 +1577,7 @@ class _ChampionCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Text(
+              const UiText(
                 'CIRCUIT CHAMPION',
                 style: TextStyle(
                   color: Color(0xFFFFD66F),
@@ -1563,8 +1595,9 @@ class _ChampionCard extends StatelessWidget {
               ),
               if (runnerUp != null) ...<Widget>[
                 const SizedBox(height: 5),
-                Text(
-                  'Runner-up • ${runnerUp!.name}',
+                UiText(
+                  'Runner-up • {0}',
+                  values: [runnerUp!.name],
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: Color(0xFFC7D7E7)),
                 ),
@@ -1591,13 +1624,13 @@ class _BracketPending extends StatelessWidget {
       children: <Widget>[
         Icon(Icons.account_tree_outlined, size: 48, color: Color(0xFFE2B54E)),
         SizedBox(height: 12),
-        Text(
+        UiText(
           'Bracket unlocks when the tournament starts',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
         ),
         SizedBox(height: 7),
-        Text(
+        UiText(
           'Registered players are seeded automatically and every result is server verified.',
           textAlign: TextAlign.center,
           style: TextStyle(color: Color(0xFFAAB9C7), height: 1.35),
@@ -1654,8 +1687,8 @@ class _HeroStat extends StatelessWidget {
       color: const Color(0xCC07121E),
       borderRadius: BorderRadius.circular(12),
     ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
+    child: Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: <Widget>[
         Icon(icon, color: const Color(0xFF72BDFC), size: 19),
         const SizedBox(width: 7),
@@ -1694,12 +1727,14 @@ class _StatusBadge extends StatelessWidget {
             size: 10,
           ),
           const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w900,
-              letterSpacing: .5,
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: .5,
+              ),
             ),
           ),
         ],
@@ -1723,7 +1758,7 @@ class _FairPlayNotice extends StatelessWidget {
         Icon(Icons.verified_user_rounded, color: Color(0xFF5DE1C9)),
         SizedBox(width: 11),
         Expanded(
-          child: Text(
+          child: UiText(
             'Server-validated moves · Authoritative clocks · Auditable tournament results',
             style: TextStyle(color: Color(0xFFB8D8D3), height: 1.3),
           ),
@@ -1755,7 +1790,7 @@ class _LoadError extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh),
-            label: const Text('Retry'),
+            label: const UiText('Retry'),
           ),
         ],
       ),

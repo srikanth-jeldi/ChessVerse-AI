@@ -316,7 +316,10 @@ class _MissionCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
             ],
-            Row(
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: <Widget>[
                 Text(
                   '${mission.progress}/${mission.target}',
@@ -325,7 +328,7 @@ class _MissionCard extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const Spacer(),
+
                 if (mission.claimed)
                   Text(
                     copy.text('missions.claimed'),

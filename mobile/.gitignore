@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local side-by-side UI-test Firebase package mapping.
+/android/app/src/debug/google-services.json

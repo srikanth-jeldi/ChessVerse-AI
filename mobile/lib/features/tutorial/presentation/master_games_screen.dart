@@ -1,3 +1,5 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -79,7 +81,7 @@ class _MasterGamesScreenState extends State<MasterGamesScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(copy.text('master.title')),
-            const Text(
+            const UiText(
               'Learn from legendary turning points.',
               style: TextStyle(color: Color(0xFF9DB4CA), fontSize: 11),
             ),
@@ -166,6 +168,7 @@ class _MasterCatalogHero extends StatelessWidget {
     builder: (BuildContext context, BoxConstraints constraints) {
       final bool compact = constraints.maxWidth < 560;
       final Widget copyBlock = Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
@@ -245,8 +248,9 @@ class _MasterCatalogHero extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            '${completed.length}/$total  MASTER MOMENTS',
+          UiText(
+            '{0}/{1}  MASTER MOMENTS',
+            values: [completed.length, total],
             style: const TextStyle(
               color: Color(0xFF86D8FF),
               fontSize: 11,
@@ -257,7 +261,7 @@ class _MasterCatalogHero extends StatelessWidget {
         ],
       );
       return Container(
-        height: compact ? 340 : 300,
+        constraints: BoxConstraints(minHeight: compact ? 340 : 300),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
           border: Border.all(color: const Color(0xFF63C8FF), width: 1.2),
@@ -269,24 +273,28 @@ class _MasterCatalogHero extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(27),
           child: Stack(
-            fit: StackFit.expand,
+            fit: StackFit.loose,
             children: <Widget>[
-              const Image(
-                image: AssetImage(
-                  'assets/backgrounds/master-games-hall-v1.webp',
+              const Positioned.fill(
+                child: Image(
+                  image: AssetImage(
+                    'assets/backgrounds/master-games-hall-v1.webp',
+                  ),
+                  fit: BoxFit.cover,
+                  alignment: Alignment.centerRight,
                 ),
-                fit: BoxFit.cover,
-                alignment: Alignment.centerRight,
               ),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: <Color>[
-                      Color(0xF2081C30),
-                      Color(0xD9081C30),
-                      Color(0x33030B13),
-                    ],
-                    stops: <double>[0, .58, 1],
+              const Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: <Color>[
+                        Color(0xF2081C30),
+                        Color(0xD9081C30),
+                        Color(0x33030B13),
+                      ],
+                      stops: <double>[0, .58, 1],
+                    ),
                   ),
                 ),
               ),
@@ -496,8 +504,9 @@ class _MasterGameCard extends StatelessWidget {
                     Row(
                       children: <Widget>[
                         Expanded(
-                          child: Text(
-                            '${lesson.white} vs ${lesson.black}',
+                          child: UiText(
+                            '{0} vs {1}',
+                            values: [lesson.white, lesson.black],
                             style: const TextStyle(
                               color: Color(0xFFF5EBD5),
                               fontFamily: 'serif',
@@ -1052,7 +1061,7 @@ class _MasterMoveBreakdown extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Text(
+          const UiText(
             'CRYSTAL-CLEAR MOVE BREAKDOWN',
             style: TextStyle(
               color: Color(0xFFFFD56A),
@@ -1063,7 +1072,7 @@ class _MasterMoveBreakdown extends StatelessWidget {
           const SizedBox(height: 13),
           _MasterDetailRow(
             icon: Icons.flag_outlined,
-            title: 'The master’s plan',
+            title: uiText(context, 'The master’s plan'),
             body: idea,
             color: const Color(0xFF62E3C2),
           ),
@@ -1089,7 +1098,7 @@ class _MasterMoveBreakdown extends StatelessWidget {
             const SizedBox(height: 11),
             _MasterDetailRow(
               icon: Icons.route_rounded,
-              title: 'How the plan continues',
+              title: uiText(context, 'How the plan continues'),
               body:
                   '${line.skip(2).join(' → ')}. Each following move keeps the original idea alive instead of starting an unrelated plan.',
               color: const Color(0xFF6FC5FF),
@@ -1098,7 +1107,7 @@ class _MasterMoveBreakdown extends StatelessWidget {
           const SizedBox(height: 11),
           _MasterDetailRow(
             icon: Icons.school_outlined,
-            title: 'What you should remember',
+            title: uiText(context, 'What you should remember'),
             body: switch (lesson.style) {
               MasterThinkingStyle.attack => 'When the king is exposed, calculate checks, captures and threats before counting material.',
               MasterThinkingStyle.calculation => 'Compare candidate moves and calculate the opponent’s strongest reply—not the reply you hope for.',
@@ -1349,8 +1358,9 @@ class _StoryStage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        Text(
-          '${lesson.white}\nvs ${lesson.black}',
+        UiText(
+          '{0}\nvs {1}',
+          values: [lesson.white, lesson.black],
           style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
         ),
         const SizedBox(height: 16),

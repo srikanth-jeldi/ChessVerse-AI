@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 
 import '../../auth/data/auth_session_store.dart';
@@ -29,7 +30,11 @@ class _PuzzleSprintLeaderboardScreenState
   Future<void> _load() async {
     setState(() => _loading = true);
     final session = await const AuthSessionStore().read();
-    if (!mounted || session == null) return;
+    if (!mounted) return;
+    if (session == null) {
+      setState(() => _loading = false);
+      return;
+    }
     try {
       final values = await Future.wait(<Future<List<PuzzleSprintResultDto>>>[
         _api.leaderboard(session.token, _mode),
@@ -49,7 +54,7 @@ class _PuzzleSprintLeaderboardScreenState
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: const Color(0xFF061524),
-    appBar: AppBar(title: const Text('PUZZLE RUSH RECORDS')),
+    appBar: AppBar(title: const UiText('PUZZLE RUSH RECORDS')),
     body: _loading
         ? const Center(child: CircularProgressIndicator())
         : ListView(
@@ -59,15 +64,15 @@ class _PuzzleSprintLeaderboardScreenState
                 segments: const <ButtonSegment<PuzzleSprintMode>>[
                   ButtonSegment(
                     value: PuzzleSprintMode.rush,
-                    label: Text('RUSH'),
+                    label: UiText('RUSH'),
                   ),
                   ButtonSegment(
                     value: PuzzleSprintMode.survival,
-                    label: Text('SURVIVAL'),
+                    label: UiText('SURVIVAL'),
                   ),
                   ButtonSegment(
                     value: PuzzleSprintMode.mateInOne,
-                    label: Text('MATE 1'),
+                    label: UiText('MATE 1'),
                   ),
                 ],
                 selected: <PuzzleSprintMode>{_mode},
@@ -139,8 +144,9 @@ class _ResultTile extends StatelessWidget {
         result.playerName,
         style: const TextStyle(fontWeight: FontWeight.w800),
       ),
-      subtitle: Text(
-        '${result.attempted} attempted • ${result.durationSeconds}s',
+      subtitle: UiText(
+        '{0} attempted • {1}s',
+        values: [result.attempted, result.durationSeconds],
       ),
       trailing: Text(
         '${result.score}',

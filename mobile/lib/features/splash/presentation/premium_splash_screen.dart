@@ -1,3 +1,4 @@
+import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter/material.dart';
 
 class PremiumSplashScreen extends StatefulWidget {
@@ -21,9 +22,10 @@ class _PremiumSplashScreenState extends State<PremiumSplashScreen>
       duration: const Duration(milliseconds: 1200),
     )..forward();
     _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
-    _scale = Tween<double>(begin: 0.92, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
+    _scale = Tween<double>(
+      begin: 0.92,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
   }
 
   @override
@@ -101,21 +103,19 @@ class _PremiumSplashScreenState extends State<PremiumSplashScreen>
                       const SizedBox(height: 24),
                       Text(
                         'ChessVerseAI',
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineMedium
+                        style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.5,
                             ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
+                      UiText(
                         'Think deeper. Move smarter.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: const Color(0xFFD6A84F),
-                              letterSpacing: 0.2,
-                            ),
+                          color: const Color(0xFFD6A84F),
+                          letterSpacing: 0.2,
+                        ),
                       ),
                     ],
                   ),

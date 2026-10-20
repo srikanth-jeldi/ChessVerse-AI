@@ -110,7 +110,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
             const Icon(Icons.monetization_on_rounded, color: Color(0xFFD6A84F)),
             const SizedBox(width: 10),
             const Expanded(
-              child: Text(
+              child: UiText(
                 'Not enough play coins. Claim the free daily reward or watch rewarded videos—no purchase needed.',
                 style: TextStyle(color: Color(0xFFFFE2A3)),
               ),
@@ -118,7 +118,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
             const SizedBox(width: 10),
             FilledButton(
               onPressed: _openEarnCoins,
-              child: const Text('Earn free coins'),
+              child: const UiText('Earn free coins'),
             ),
           ],
         ),
@@ -351,12 +351,12 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
           color: Color(0xFF58DFC9),
           size: 44,
         ),
-        title: const Text(
+        title: const UiText(
           'No online player found',
           textAlign: TextAlign.center,
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
-        content: const Text(
+        content: const UiText(
           'No suitable player is online right now. Would you like to continue '
           'this match against ChessVerseAI? Your selected coin entry will not '
           'be used for a computer match.',
@@ -367,12 +367,12 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
         actions: <Widget>[
           OutlinedButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('SEARCH LATER'),
+            child: const UiText('SEARCH LATER'),
           ),
           FilledButton.icon(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             icon: const Icon(Icons.smart_toy_rounded),
-            label: const Text('PLAY COMPUTER'),
+            label: const UiText('PLAY COMPUTER'),
           ),
         ],
       ),
@@ -495,7 +495,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
               onCopyCode: () {
                 Clipboard.setData(ClipboardData(text: waiting.roomCode));
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Invite code copied')),
+                  const SnackBar(content: UiText('Invite code copied')),
                 );
               },
               onCancel: () => unawaited(_cancelWaiting()),
@@ -549,7 +549,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                       ),
                       SizedBox(width: wideLayout ? 18 : 12),
                       Expanded(
-                        child: Text(
+                        child: UiText(
                           widget.initialMode == OnlineLobbyMode.random
                               ? 'Play Online'
                               : 'Play with Friends',
@@ -571,7 +571,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                     ],
                   ),
                   SizedBox(height: wideLayout ? 2 : 8),
-                  Text(
+                  UiText(
                     widget.initialMode == OnlineLobbyMode.random
                         ? 'Find a live opponent from around the world.'
                         : 'Create a private room or join your friend with a code.',
@@ -626,7 +626,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
-                                  child: Text(
+                                  child: UiText(
                                     'Random Match',
                                     maxLines: 1,
                                     style:
@@ -653,7 +653,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                               ],
                             ),
                             const SizedBox(height: 8),
-                            const Text(
+                            const UiText(
                               'We’ll find a player for you from around the world.',
                             ),
                             if (compactLobby) ...<Widget>[
@@ -726,7 +726,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                     Icons.bolt_rounded,
                                     size: wideLayout ? 22 : 20,
                                   ),
-                                  label: const Text('Find Match'),
+                                  label: const UiText('Find Match'),
                                 ),
                               ),
                             ),
@@ -768,7 +768,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                 ),
                                 const SizedBox(width: 14),
                                 const Expanded(
-                                  child: Text(
+                                  child: UiText(
                                     'Play with Friend',
                                     style: TextStyle(
                                       fontSize: 20,
@@ -780,7 +780,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                             ),
                             const SizedBox(height: 8),
                             if (_match == null)
-                              const Text(
+                              const UiText(
                                 'Create a private room or join one using a room code.',
                               )
                             else ...<Widget>[
@@ -797,7 +797,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                     ),
                               ),
                               const SizedBox(height: 6),
-                              const Text(
+                              const UiText(
                                 'Waiting for opponent… this screen reconnects automatically.',
                                 textAlign: TextAlign.center,
                               ),
@@ -809,12 +809,12 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                   );
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text('Invite code copied'),
+                                      content: UiText('Invite code copied'),
                                     ),
                                   );
                                 },
                                 icon: const Icon(Icons.copy_rounded),
-                                label: const Text('Copy invite code'),
+                                label: const UiText('Copy invite code'),
                               ),
                             ],
                           ],
@@ -827,9 +827,9 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                     TextField(
                       controller: _roomController,
                       onChanged: (_) => setState(() {}),
-                      decoration: const InputDecoration(
-                        labelText: 'Enter room code',
-                        hintText: 'e.g. ABCD1234',
+                      decoration: InputDecoration(
+                        labelText: uiText(context, 'Enter room code'),
+                        hintText: uiText(context, 'e.g. ABCD1234'),
                         suffixIcon: Icon(Icons.copy_rounded),
                         border: OutlineInputBorder(),
                       ),
@@ -849,7 +849,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                   () => widget.api.createRoom(widget.token),
                                 ),
                           icon: const Icon(Icons.group_add_rounded),
-                          label: const Text('Create Room'),
+                          label: const UiText('Create Room'),
                         ),
                         FilledButton.icon(
                           onPressed:
@@ -862,7 +862,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                   ),
                                 ),
                           icon: const Icon(Icons.sports_esports_rounded),
-                          label: const Text('Join Room'),
+                          label: const UiText('Join Room'),
                         ),
                       ],
                     ),
@@ -894,14 +894,14 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
-                                Text(
+                                UiText(
                                   'Reconnect',
                                   style: TextStyle(
                                     fontSize: 17,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
-                                Text('Reconnect to your last game.'),
+                                UiText('Reconnect to your last game.'),
                               ],
                             ),
                           ),
@@ -930,7 +930,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                         ),
                         SizedBox(width: 14),
                         Expanded(
-                          child: Text(
+                          child: UiText(
                             'Moves are validated by ChessVerseAI servers.\n'
                             'Active matches restore after an app restart.',
                             style: TextStyle(
@@ -1016,7 +1016,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              Text(
+                              UiText(
                                 'Online 2 Players',
                                 style: textTheme.headlineLarge?.copyWith(
                                   fontWeight: FontWeight.w900,
@@ -1024,7 +1024,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                 ),
                               ),
                               const SizedBox(height: 5),
-                              const Text(
+                              const UiText(
                                 'Play online with a random opponent or invite a friend to a private room.',
                                 style: TextStyle(
                                   color: Color(0xFFB8C3D1),
@@ -1081,7 +1081,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
-                                Text(
+                                UiText(
                                   'Random Match',
                                   maxLines: 1,
                                   style: textTheme.headlineMedium?.copyWith(
@@ -1090,7 +1090,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                const Text(
+                                const UiText(
                                   'We’ll find a player for you\nfrom around the world.',
                                   style: TextStyle(
                                     color: Color(0xFFC8D1DD),
@@ -1132,7 +1132,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                       Icons.bolt_rounded,
                                       size: 21,
                                     ),
-                                    label: const Text('Find Match'),
+                                    label: const UiText('Find Match'),
                                   ),
                                 ),
                               ],
@@ -1176,7 +1176,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                       ),
                                     ),
                                     const SizedBox(width: 16),
-                                    const Text(
+                                    const UiText(
                                       'Play with Friend',
                                       style: TextStyle(
                                         fontSize: 24,
@@ -1188,7 +1188,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                 const SizedBox(height: 8),
                                 const Padding(
                                   padding: EdgeInsets.only(left: 72),
-                                  child: Text(
+                                  child: UiText(
                                     'Create a private room or join\none using a room code.',
                                     style: TextStyle(
                                       color: Color(0xFFB8C3D1),
@@ -1203,9 +1203,12 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                   onChanged: (_) => setState(() {}),
                                   textCapitalization:
                                       TextCapitalization.characters,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Enter room code',
-                                    hintText: 'e.g. ABCD1234',
+                                  decoration: InputDecoration(
+                                    labelText: uiText(
+                                      context,
+                                      'Enter room code',
+                                    ),
+                                    hintText: uiText(context, 'e.g. ABCD1234'),
                                     suffixIcon: Icon(Icons.copy_rounded),
                                     border: OutlineInputBorder(),
                                   ),
@@ -1246,7 +1249,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                       color: teal,
                                       size: 27,
                                     ),
-                                    label: const Text('Create Room'),
+                                    label: const UiText('Create Room'),
                                   ),
                                 ),
                                 const SizedBox(height: 14),
@@ -1268,7 +1271,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                       Icons.sports_esports_rounded,
                                       size: 27,
                                     ),
-                                    label: const Text('Join Room'),
+                                    label: const UiText('Join Room'),
                                   ),
                                 ),
                               ],
@@ -1281,8 +1284,8 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                     _DesktopOnlineActionRow(
                       icon: Icons.sync_rounded,
                       iconColor: const Color(0xFF3CA6FF),
-                      title: 'Reconnect',
-                      subtitle: 'Reconnect to your last game.',
+                      title: uiText(context, 'Reconnect'),
+                      subtitle: uiText(context, 'Reconnect to your last game.'),
                       onTap: _loading
                           ? null
                           : () =>
@@ -1384,7 +1387,7 @@ class _DesktopOnlineValidationRow extends StatelessWidget {
       children: <Widget>[
         Icon(Icons.verified_user_outlined, color: Color(0xFF43D6C1), size: 48),
         SizedBox(width: 22),
-        Text(
+        UiText(
           'Moves are validated by ChessVerseAI servers.\nActive matches restore after an app restart.',
           style: TextStyle(
             color: Color(0xFFB8C3D1),
@@ -1480,7 +1483,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Text(
+            const UiText(
               'FINDING YOUR RIVAL',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -1548,7 +1551,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                 );
               },
             ),
-            Text(
+            UiText(
               widget.randomSearch
                   ? 'Searching worldwide players...'
                   : 'Waiting for your friend...',
@@ -1566,7 +1569,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
             ),
             const SizedBox(height: 18),
             if (!widget.randomSearch) ...<Widget>[
-              const Text(
+              const UiText(
                 'SHARE ROOM CODE',
                 style: TextStyle(
                   color: Color(0xFFAAA69E),
@@ -1588,11 +1591,11 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
               TextButton.icon(
                 onPressed: widget.onCopyCode,
                 icon: const Icon(Icons.copy_rounded),
-                label: const Text('Copy code'),
+                label: const UiText('Copy code'),
               ),
               const SizedBox(height: 8),
             ],
-            const Text(
+            const UiText(
               'Keep this screen open. Your match starts automatically.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Color(0xFFAAA69E), fontSize: 12),
@@ -1601,7 +1604,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
             OutlinedButton.icon(
               onPressed: widget.onCancel,
               icon: const Icon(Icons.close_rounded),
-              label: const Text('Cancel search'),
+              label: const UiText('Cancel search'),
             ),
           ],
         ),
@@ -1679,8 +1682,9 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                         constraints: const BoxConstraints(maxWidth: 1320),
                         child: Column(
                           children: <Widget>[
-                            Text(
-                              'RANKED RAPID • ${widget.preferences.timeControlMinutes} MIN',
+                            UiText(
+                              'RANKED RAPID • {0} MIN',
+                              values: [widget.preferences.timeControlMinutes],
                               style: const TextStyle(
                                 color: gold,
                                 fontSize: 14,
@@ -1689,7 +1693,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                               ),
                             ),
                             SizedBox(height: compactHeight ? 8 : 12),
-                            const Text(
+                            const UiText(
                               'FINDING YOUR RIVAL',
                               textAlign: TextAlign.center,
                               style: TextStyle(
@@ -1702,7 +1706,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                               ),
                             ),
                             const SizedBox(height: 7),
-                            const Text(
+                            const UiText(
                               'Searching worldwide for the best available match',
                               style: TextStyle(
                                 color: Color(0xFFB5BEC8),
@@ -1806,7 +1810,10 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                             widget.onlinePlayerCount
                                                 ?.toString() ??
                                             '—',
-                                        label: 'Players online',
+                                        label: uiText(
+                                          context,
+                                          'Players online',
+                                        ),
                                       ),
                                     ),
                                     const _MobileFactDivider(),
@@ -1814,7 +1821,10 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                       child: _MobileSearchFact(
                                         icon: Icons.schedule_rounded,
                                         value: '< ${remaining}s',
-                                        label: 'Estimated wait',
+                                        label: uiText(
+                                          context,
+                                          'Estimated wait',
+                                        ),
                                       ),
                                     ),
                                     const _MobileFactDivider(),
@@ -1825,7 +1835,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                             widget.preferences.ratingRange == 0
                                             ? 'Open'
                                             : '±${widget.preferences.ratingRange}',
-                                        label: 'Rating range',
+                                        label: uiText(context, 'Rating range'),
                                       ),
                                     ),
                                   ],
@@ -1852,7 +1862,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                     ),
                                   ),
                                   icon: const Icon(Icons.close_rounded),
-                                  label: const Text('CANCEL SEARCH'),
+                                  label: const UiText('CANCEL SEARCH'),
                                 ),
                               ),
                             ),
@@ -1860,9 +1870,9 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                               onPressed: () =>
                                   _showMobileSearchSettings(context),
                               icon: const Icon(Icons.settings_rounded),
-                              label: const Text('SEARCH SETTINGS'),
+                              label: const UiText('SEARCH SETTINGS'),
                             ),
-                            const Text(
+                            const UiText(
                               'Keep this screen open. Your match starts automatically.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
@@ -1965,7 +1975,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Text(
+                          UiText(
                             'CHESSVERSEAI MATCHMAKING',
                             style: TextStyle(
                               color: gold,
@@ -1975,7 +1985,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                             ),
                           ),
                           SizedBox(height: 2),
-                          Text(
+                          UiText(
                             'Finding the strongest available rival',
                             style: TextStyle(
                               color: Color(0xFF9FB1C2),
@@ -1988,7 +1998,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                     _SearchFact(
                       icon: Icons.public_rounded,
                       value: widget.onlinePlayerCount?.toString() ?? '—',
-                      label: 'Online now',
+                      label: uiText(context, 'Online now'),
                     ),
                   ],
                 ),
@@ -2055,7 +2065,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                       color: Color(0xFF071A2A),
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Text(
+                                    child: const UiText(
                                       'VS',
                                       style: TextStyle(
                                         color: Colors.white,
@@ -2069,7 +2079,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                             },
                           ),
                           const SizedBox(height: 12),
-                          const Text(
+                          const UiText(
                             'SEARCHING',
                             style: TextStyle(
                               color: teal,
@@ -2121,19 +2131,19 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                       _SearchFact(
                         icon: Icons.timer_outlined,
                         value: '${remaining}s',
-                        label: 'Search window',
+                        label: uiText(context, 'Search window'),
                       ),
                       const _SearchDivider(),
-                      const _SearchFact(
+                      _SearchFact(
                         icon: Icons.speed_rounded,
                         value: '10 min',
-                        label: 'Rapid chess',
+                        label: uiText(context, 'Rapid chess'),
                       ),
                       const _SearchDivider(),
-                      const _SearchFact(
+                      _SearchFact(
                         icon: Icons.tune_rounded,
                         value: 'Open pool',
-                        label: 'Rating range',
+                        label: uiText(context, 'Rating range'),
                       ),
                       const Spacer(),
                       OutlinedButton.icon(
@@ -2147,7 +2157,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                           ),
                         ),
                         icon: const Icon(Icons.close_rounded, size: 19),
-                        label: const Text('Cancel search'),
+                        label: const UiText('Cancel search'),
                       ),
                     ],
                   ),
@@ -2205,7 +2215,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                     Row(
                       children: <Widget>[
                         IconButton(
-                          tooltip: 'Cancel search',
+                          tooltip: uiText(context, 'Cancel search'),
                           onPressed: widget.onCancel,
                           icon: const Icon(
                             Icons.arrow_back_ios_new_rounded,
@@ -2213,8 +2223,9 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                           ),
                         ),
                         Expanded(
-                          child: Text(
-                            'RANKED RAPID • ${widget.preferences.timeControlMinutes} MIN',
+                          child: UiText(
+                            'RANKED RAPID • {0} MIN',
+                            values: [widget.preferences.timeControlMinutes],
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: gold,
@@ -2225,14 +2236,14 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                           ),
                         ),
                         IconButton(
-                          tooltip: 'Search settings',
+                          tooltip: uiText(context, 'Search settings'),
                           onPressed: () => _showMobileSearchSettings(context),
                           icon: const Icon(Icons.tune_rounded, color: gold),
                         ),
                       ],
                     ),
                     const SizedBox(height: 5),
-                    const Text(
+                    const UiText(
                       'FINDING YOUR RIVAL',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -2243,7 +2254,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                       ),
                     ),
                     const SizedBox(height: 3),
-                    const Text(
+                    const UiText(
                       'Searching worldwide for the best available match',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Color(0xFFA8B4C1), fontSize: 12),
@@ -2275,7 +2286,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                 icon: Icons.person_rounded,
                                 title: playerName,
                                 rating: rating,
-                                subtitle: 'Worldwide',
+                                subtitle: uiText(context, 'Worldwide'),
                               ),
                             ),
                           ),
@@ -2306,7 +2317,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                     ),
                                   ],
                                 ),
-                                child: const Text(
+                                child: const UiText(
                                   'VS',
                                   style: TextStyle(
                                     color: gold,
@@ -2419,7 +2430,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                         );
                       },
                     ),
-                    const Text(
+                    const UiText(
                       'SEARCH TIME',
                       style: TextStyle(
                         color: Color(0xFFAAB5C1),
@@ -2456,7 +2467,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                               icon: Icons.groups_rounded,
                               value:
                                   widget.onlinePlayerCount?.toString() ?? '—',
-                              label: 'Online',
+                              label: uiText(context, 'Online'),
                             ),
                           ),
                           const _MobileFactDivider(),
@@ -2464,7 +2475,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                             child: _MobileSearchFact(
                               icon: Icons.schedule_rounded,
                               value: '${remaining}s',
-                              label: 'Window',
+                              label: uiText(context, 'Window'),
                             ),
                           ),
                           const _MobileFactDivider(),
@@ -2474,14 +2485,14 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                               value: widget.preferences.ratingRange == 0
                                   ? 'Open'
                                   : '±${widget.preferences.ratingRange}',
-                              label: 'Range',
+                              label: uiText(context, 'Range'),
                             ),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 9),
-                    const Text(
+                    const UiText(
                       'Keep this screen open. Your match starts automatically.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Color(0xFF94A2AF), fontSize: 12),
@@ -2501,13 +2512,13 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                           ),
                         ),
                         icon: const Icon(Icons.close_rounded),
-                        label: const Text('CANCEL SEARCH'),
+                        label: const UiText('CANCEL SEARCH'),
                       ),
                     ),
                     TextButton.icon(
                       onPressed: () => _showMobileSearchSettings(context),
                       icon: const Icon(Icons.tune_rounded),
-                      label: const Text('SEARCH SETTINGS'),
+                      label: const UiText('SEARCH SETTINGS'),
                     ),
                   ],
                 ),
@@ -2524,154 +2535,158 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
     String region = widget.preferences.region;
     int range = widget.preferences.ratingRange;
     int entryCoins = widget.preferences.entryCoins;
-    final _SearchPreferences?
-    selected = await showModalBottomSheet<_SearchPreferences>(
-      context: context,
-      backgroundColor: const Color(0xFF071725),
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (BuildContext sheetContext) => StatefulBuilder(
-        builder: (BuildContext context, StateSetter setSheetState) =>
-            MediaQuery.withClampedTextScaling(
-              maxScaleFactor: 1.1,
-              child: SafeArea(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    24,
-                    8,
-                    24,
-                    28 + MediaQuery.viewInsetsOf(context).bottom,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      const Text(
-                        'Search settings',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                        ),
+    final _SearchPreferences? selected =
+        await showModalBottomSheet<_SearchPreferences>(
+          context: context,
+          backgroundColor: const Color(0xFF071725),
+          showDragHandle: true,
+          isScrollControlled: true,
+          builder: (BuildContext sheetContext) => StatefulBuilder(
+            builder: (BuildContext context, StateSetter setSheetState) =>
+                MediaQuery.withClampedTextScaling(
+                  maxScaleFactor: 1.1,
+                  child: SafeArea(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(
+                        24,
+                        8,
+                        24,
+                        28 + MediaQuery.viewInsetsOf(context).bottom,
                       ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<int>(
-                        isExpanded: true,
-                        initialValue: minutes,
-                        decoration: const InputDecoration(
-                          labelText: 'Time control',
-                          prefixIcon: Icon(Icons.speed_rounded),
-                        ),
-                        items: const <DropdownMenuItem<int>>[
-                          DropdownMenuItem(
-                            value: 3,
-                            child: Text('Blitz • 3 min'),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          const UiText(
+                            'Search settings',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
-                          DropdownMenuItem(
-                            value: 5,
-                            child: Text('Blitz • 5 min'),
+                          const SizedBox(height: 16),
+                          DropdownButtonFormField<int>(
+                            isExpanded: true,
+                            initialValue: minutes,
+                            decoration: InputDecoration(
+                              labelText: uiText(context, 'Time control'),
+                              prefixIcon: Icon(Icons.speed_rounded),
+                            ),
+                            items: const <DropdownMenuItem<int>>[
+                              DropdownMenuItem(
+                                value: 3,
+                                child: UiText('Blitz • 3 min'),
+                              ),
+                              DropdownMenuItem(
+                                value: 5,
+                                child: UiText('Blitz • 5 min'),
+                              ),
+                              DropdownMenuItem(
+                                value: 10,
+                                child: UiText('Rapid • 10 min'),
+                              ),
+                              DropdownMenuItem(
+                                value: 15,
+                                child: UiText('Rapid • 15 min'),
+                              ),
+                            ],
+                            onChanged: (int? value) =>
+                                setSheetState(() => minutes = value ?? 10),
                           ),
-                          DropdownMenuItem(
-                            value: 10,
-                            child: Text('Rapid • 10 min'),
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<int>(
+                            isExpanded: true,
+                            initialValue: entryCoins,
+                            decoration: InputDecoration(
+                              labelText: uiText(context, 'Play coin entry'),
+                              prefixIcon: Icon(Icons.monetization_on_rounded),
+                            ),
+                            items: const <DropdownMenuItem<int>>[
+                              DropdownMenuItem(
+                                value: 100,
+                                child: UiText('100 entry • 200 prize'),
+                              ),
+                              DropdownMenuItem(
+                                value: 200,
+                                child: UiText('200 entry • 400 prize'),
+                              ),
+                              DropdownMenuItem(
+                                value: 500,
+                                child: UiText('500 entry • 1,000 prize'),
+                              ),
+                            ],
+                            onChanged: (int? value) =>
+                                setSheetState(() => entryCoins = value ?? 100),
                           ),
-                          DropdownMenuItem(
-                            value: 15,
-                            child: Text('Rapid • 15 min'),
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<String>(
+                            isExpanded: true,
+                            initialValue: region,
+                            decoration: InputDecoration(
+                              labelText: uiText(context, 'Region'),
+                              prefixIcon: Icon(Icons.public_rounded),
+                            ),
+                            items: const <DropdownMenuItem<String>>[
+                              DropdownMenuItem(
+                                value: 'WORLDWIDE',
+                                child: UiText('Worldwide'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'COUNTRY',
+                                child: UiText('My country'),
+                              ),
+                            ],
+                            onChanged: (String? value) => setSheetState(
+                              () => region = value ?? 'WORLDWIDE',
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<int>(
+                            isExpanded: true,
+                            initialValue: range,
+                            decoration: InputDecoration(
+                              labelText: uiText(context, 'Rating range'),
+                              prefixIcon: Icon(Icons.tune_rounded),
+                            ),
+                            items: const <DropdownMenuItem<int>>[
+                              DropdownMenuItem(
+                                value: 100,
+                                child: UiText('±100 rating'),
+                              ),
+                              DropdownMenuItem(
+                                value: 250,
+                                child: UiText('±250 rating'),
+                              ),
+                              DropdownMenuItem(
+                                value: 500,
+                                child: UiText('±500 rating'),
+                              ),
+                              DropdownMenuItem(
+                                value: 0,
+                                child: UiText('Open pool'),
+                              ),
+                            ],
+                            onChanged: (int? value) =>
+                                setSheetState(() => range = value ?? 0),
+                          ),
+                          const SizedBox(height: 18),
+                          FilledButton.icon(
+                            onPressed: () => Navigator.of(sheetContext).pop((
+                              timeControlMinutes: minutes,
+                              region: region,
+                              ratingRange: range,
+                              entryCoins: entryCoins,
+                            )),
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const UiText('APPLY & RESTART SEARCH'),
                           ),
                         ],
-                        onChanged: (int? value) =>
-                            setSheetState(() => minutes = value ?? 10),
                       ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<int>(
-                        isExpanded: true,
-                        initialValue: entryCoins,
-                        decoration: const InputDecoration(
-                          labelText: 'Play coin entry',
-                          prefixIcon: Icon(Icons.monetization_on_rounded),
-                        ),
-                        items: const <DropdownMenuItem<int>>[
-                          DropdownMenuItem(
-                            value: 100,
-                            child: Text('100 entry • 200 prize'),
-                          ),
-                          DropdownMenuItem(
-                            value: 200,
-                            child: Text('200 entry • 400 prize'),
-                          ),
-                          DropdownMenuItem(
-                            value: 500,
-                            child: Text('500 entry • 1,000 prize'),
-                          ),
-                        ],
-                        onChanged: (int? value) =>
-                            setSheetState(() => entryCoins = value ?? 100),
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        isExpanded: true,
-                        initialValue: region,
-                        decoration: const InputDecoration(
-                          labelText: 'Region',
-                          prefixIcon: Icon(Icons.public_rounded),
-                        ),
-                        items: const <DropdownMenuItem<String>>[
-                          DropdownMenuItem(
-                            value: 'WORLDWIDE',
-                            child: Text('Worldwide'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'COUNTRY',
-                            child: Text('My country'),
-                          ),
-                        ],
-                        onChanged: (String? value) =>
-                            setSheetState(() => region = value ?? 'WORLDWIDE'),
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<int>(
-                        isExpanded: true,
-                        initialValue: range,
-                        decoration: const InputDecoration(
-                          labelText: 'Rating range',
-                          prefixIcon: Icon(Icons.tune_rounded),
-                        ),
-                        items: const <DropdownMenuItem<int>>[
-                          DropdownMenuItem(
-                            value: 100,
-                            child: Text('±100 rating'),
-                          ),
-                          DropdownMenuItem(
-                            value: 250,
-                            child: Text('±250 rating'),
-                          ),
-                          DropdownMenuItem(
-                            value: 500,
-                            child: Text('±500 rating'),
-                          ),
-                          DropdownMenuItem(value: 0, child: Text('Open pool')),
-                        ],
-                        onChanged: (int? value) =>
-                            setSheetState(() => range = value ?? 0),
-                      ),
-                      const SizedBox(height: 18),
-                      FilledButton.icon(
-                        onPressed: () => Navigator.of(sheetContext).pop((
-                          timeControlMinutes: minutes,
-                          region: region,
-                          ratingRange: range,
-                          entryCoins: entryCoins,
-                        )),
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('APPLY & RESTART SEARCH'),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ),
-      ),
-    );
+          ),
+        );
     if (selected != null && selected != widget.preferences) {
       widget.onPreferencesChanged(selected);
     }
@@ -2894,7 +2909,7 @@ class _WideSearchCore extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: const Text(
+                    child: const UiText(
                       'VS',
                       style: TextStyle(
                         color: gold,
@@ -2909,7 +2924,7 @@ class _WideSearchCore extends StatelessWidget {
             );
           },
         ),
-        const Text(
+        const UiText(
           'SEARCH TIME',
           style: TextStyle(
             color: Color(0xFFAAB5C1),
@@ -3027,7 +3042,7 @@ class _SearchingRivalCard extends StatelessWidget {
             ? _WideSearchPlayerCard(
                 accent: accent,
                 icon: avatar,
-                title: 'Searching…',
+                title: uiText(context, 'Searching…'),
                 rating: '????',
                 detail: 'Best match',
                 footer: 'Worldwide',
@@ -3036,9 +3051,9 @@ class _SearchingRivalCard extends StatelessWidget {
                 key: const ValueKey<String>('mobile-rival-card'),
                 accent: accent,
                 icon: avatar,
-                title: 'Searching…',
+                title: uiText(context, 'Searching…'),
                 rating: 'Best match',
-                subtitle: 'Worldwide',
+                subtitle: uiText(context, 'Worldwide'),
               );
         return AnimatedSwitcher(
           duration: const Duration(milliseconds: 620),
@@ -3266,8 +3281,9 @@ class _CoinPoolBanner extends StatelessWidget {
               size: 22,
             ),
             const SizedBox(width: 8),
-            Text(
-              '$entryCoins + $entryCoins  =  ${entryCoins * 2} COIN POOL',
+            UiText(
+              '{0} + {1}  =  {2} COIN POOL',
+              values: [entryCoins, entryCoins, entryCoins * 2],
               style: const TextStyle(
                 color: Color(0xFFFFE2A3),
                 fontWeight: FontWeight.w900,
@@ -3338,7 +3354,7 @@ class _CoinStakeSelector extends StatelessWidget {
               Expanded(
                 child: _StakeSummary(
                   icon: Icons.account_balance_wallet_rounded,
-                  label: 'BALANCE',
+                  label: uiText(context, 'BALANCE'),
                   value: balance == null
                       ? 'Checking…'
                       : formatCoinAmount(balance!),
@@ -3349,7 +3365,7 @@ class _CoinStakeSelector extends StatelessWidget {
               Expanded(
                 child: _StakeSummary(
                   icon: Icons.emoji_events_rounded,
-                  label: 'WINNER GETS',
+                  label: uiText(context, 'WINNER GETS'),
                   value: '${formatCoinAmount(entryCoins * 2)} COINS',
                   color: teal,
                   alignEnd: true,
@@ -3358,7 +3374,7 @@ class _CoinStakeSelector extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          const Text(
+          const UiText(
             'SELECT MATCH ENTRY',
             style: TextStyle(
               color: Color(0xFFAFC1CF),
@@ -3426,8 +3442,9 @@ class _CoinStakeSelector extends StatelessWidget {
                                               : const Color(0xFF647684)),
                                   ),
                                   const SizedBox(height: 3),
-                                  Text(
-                                    '${formatCoinAmount(coins)} ENTRY',
+                                  UiText(
+                                    '{0} ENTRY',
+                                    values: [formatCoinAmount(coins)],
                                     maxLines: 1,
                                     style: TextStyle(
                                       color: selected
@@ -3439,8 +3456,9 @@ class _CoinStakeSelector extends StatelessWidget {
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
-                                  Text(
-                                    '${formatCoinAmount(coins * 2)} PRIZE',
+                                  UiText(
+                                    '{0} PRIZE',
+                                    values: [formatCoinAmount(coins * 2)],
                                     maxLines: 1,
                                     style: TextStyle(
                                       color: selected
@@ -3621,8 +3639,9 @@ class _OpponentFoundViewState extends State<_OpponentFoundView>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      Text(
-                        'RANKED RAPID • ${(match.whiteTimeMs ~/ 60000).clamp(1, 60)} MIN',
+                      UiText(
+                        'RANKED RAPID • {0} MIN',
+                        values: [(match.whiteTimeMs ~/ 60000).clamp(1, 60)],
                         style: const TextStyle(
                           color: gold,
                           fontSize: 12,
@@ -3631,7 +3650,7 @@ class _OpponentFoundViewState extends State<_OpponentFoundView>
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Text(
+                      UiText(
                         'RIVAL FOUND',
                         style: TextStyle(
                           color: Color(0xFFF4EFE5),
@@ -3641,7 +3660,7 @@ class _OpponentFoundViewState extends State<_OpponentFoundView>
                           letterSpacing: 1.6,
                         ),
                       ),
-                      const Text(
+                      const UiText(
                         'Your match is ready',
                         style: TextStyle(
                           color: Color(0xFFB7C1CB),
@@ -3662,8 +3681,13 @@ class _OpponentFoundViewState extends State<_OpponentFoundView>
                               color: gold.withValues(alpha: .65),
                             ),
                           ),
-                          child: Text(
-                            '${match.entryCoins} + ${match.entryCoins}  •  ${match.rewardPoolCoins} COIN POOL',
+                          child: UiText(
+                            '{0} + {1}  •  {2} COIN POOL',
+                            values: [
+                              match.entryCoins,
+                              match.entryCoins,
+                              match.rewardPoolCoins,
+                            ],
                             style: const TextStyle(
                               color: gold,
                               fontWeight: FontWeight.w900,
@@ -3736,7 +3760,7 @@ class _OpponentFoundViewState extends State<_OpponentFoundView>
                                         ),
                                       ],
                                     ),
-                                    child: Text(
+                                    child: UiText(
                                       'VS',
                                       style: TextStyle(
                                         color: gold,
@@ -3787,7 +3811,7 @@ class _OpponentFoundViewState extends State<_OpponentFoundView>
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: <Widget>[
-                                    const Text(
+                                    const UiText(
                                       'MATCH STARTS IN',
                                       style: TextStyle(
                                         fontSize: 10,
@@ -3833,24 +3857,24 @@ class _OpponentFoundViewState extends State<_OpponentFoundView>
                               ),
                             ),
                             const _MobileFactDivider(),
-                            const Expanded(
+                            Expanded(
                               child: _FoundFact(
                                 icon: Icons.shield_outlined,
-                                label: 'Rated Match',
+                                label: uiText(context, 'Rated Match'),
                               ),
                             ),
                             const _MobileFactDivider(),
-                            const Expanded(
+                            Expanded(
                               child: _FoundFact(
                                 icon: Icons.wifi_rounded,
-                                label: 'Live server',
+                                label: uiText(context, 'Live server'),
                               ),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 13),
-                      const Text(
+                      const UiText(
                         'Preparing the board and synchronizing clocks...',
                         textAlign: TextAlign.center,
                         style: TextStyle(
