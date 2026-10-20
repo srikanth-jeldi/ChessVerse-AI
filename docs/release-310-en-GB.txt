@@ -1,0 +1,4 @@
+<en-GB>
+Fixed translated app names: ChessVerseAI now stays unchanged across all 34 supported languages.
+Includes improved translations, layouts for smaller screens and right-to-left languages, clearer connection messages and startup stability improvements.
+</en-GB>

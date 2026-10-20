@@ -1,0 +1,7 @@
+Build 310 / version 1.3.43
+Production package: com.epitomehub.chessverse
+Change: preserve ChessVerseAI / ChessVerse brand names in all translated UI copy.
+Validation: 3 localization regression tests passed before version bump; bundled AAB checked for 34 catalogs with 935 keys each and unchanged brand tokens. Release signature verified. 12 native libraries verified across armeabi-v7a, arm64-v8a and x86_64.
+Artifact: artifacts/release-1.3.43-310/ChessVerseAI-1.3.43-build310.aab
+SHA256: b68e67ae1c7026972784605cced5f19b1c861b27cfd192cc77c071bd8cd392d3
+No new physical-device test or Play upload performed for this brand-only correction. Existing native ANR investigation limitations still apply.
