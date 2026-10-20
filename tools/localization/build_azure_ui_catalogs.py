@@ -18,6 +18,12 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "mobile/assets/i18n/ui"
 CACHE = ROOT / ".build-tmp/ui-translation-cache"
 TOKEN = re.compile(r"\{\d+\}")
+BRAND = re.compile(r"ChessVerseAI|CHESSVERSEAI|ChessVerse")
+PROTECTED = re.compile(r"\{\d+\}|ChessVerseAI|CHESSVERSEAI|ChessVerse")
+
+
+def brands_preserved(source, value):
+    return collections.Counter(BRAND.findall(source)) == collections.Counter(BRAND.findall(value))
 # Product names, file formats and score units remain unchanged intentionally.
 UNCHANGED = {
     "CHESSVERSEAI", "CHESSVERSEAI ELO", "ChessVerse", "ChessVerseAI",
@@ -32,7 +38,7 @@ CONTEXT = {
     "Challenge Now": "Challenge this player now",
     "AI Review My Game": "Review my chess game with AI",
     "3D CITY REWARD VAULT • {0}": "Rewards in the 3D city • {0}",
-    "CHESSVERSEAI MATCHMAKING": "Find a chess opponent in ChessVerseAI",
+    "CHESSVERSEAI MATCHMAKING": "Find a chess opponent in CHESSVERSEAI",
     "ChessVerseAI Email": "Email address for ChessVerseAI",
     "UNLOCKED": "Unlocked",
     "{0} · Due {1}": "{0} · Scheduled for review: {1}",
@@ -80,7 +86,7 @@ def translate(batch, language, config):
     texts = []
     for source in batch:
         text = html.escape(CONTEXT.get(source, source))
-        text = TOKEN.sub(lambda m: '<span class="notranslate">' + m[0] + "</span>", text)
+        text = PROTECTED.sub(lambda m: '<span class="notranslate">' + m[0] + "</span>", text)
         texts.append({"Text": text})
     url = endpoint + "/translate?" + urllib.parse.urlencode({
         "api-version": "3.0", "from": "en", "to": target, "textType": "html",
@@ -110,6 +116,8 @@ def translate(batch, language, config):
         value = "".join(parser.parts).strip()
         if not value or collections.Counter(TOKEN.findall(source)) != collections.Counter(TOKEN.findall(value)):
             raise ValueError(f"Invalid translation placeholders: {language}: {source}")
+        if not brands_preserved(source, value):
+            raise ValueError(f"Translated product name: {language}: {source}")
         values.append(value)
     return values
 
@@ -131,7 +139,7 @@ def main():
             catalog = {**cached, **catalog}
         missing = [
             key for key in sources
-            if key not in catalog or (
+            if key not in catalog or not brands_preserved(key, catalog[key]) or (
                 language != "te" and catalog[key] == key and key not in UNCHANGED
                 and re.search(r"[A-Za-z]", key)
             )
@@ -148,6 +156,9 @@ def main():
         if language == "te":
             catalog.update(json.loads((Path(__file__).parent / "ui_te_overrides.json").read_text(encoding="utf-8")))
         output = {key: catalog[key] for key in sources}
+        for key, value in output.items():
+            if not brands_preserved(key, value):
+                raise ValueError(f"Override translated product name: {language}: {key}")
         path.write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(f"{language}: saved {len(output)} labels", flush=True)
 
