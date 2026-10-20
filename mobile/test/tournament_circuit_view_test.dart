@@ -4,7 +4,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test(
+    'custom tournaments keep their names instead of index-based city names',
+    () {
+      for (var index = 0; index < 10; index++) {
+        expect(
+          CircuitTheme.forName('Blitz Warriors Members Cup', index).city,
+          'Blitz Warriors Members Cup',
+        );
+        expect(
+          CircuitTheme.forName('Blitz Warriors Members Cup', index).subtitle,
+          isEmpty,
+        );
+      }
+      expect(CircuitTheme.forName('Dubai Gold Open', 0).city, 'DUBAI');
+    },
+  );
   final tournaments = <TournamentDto>[
+    const TournamentDto(
+      id: 'cancelled-club',
+      name: 'Cancelled club challenge',
+      description: 'This must not appear as an upcoming city tournament.',
+      minutes: 5,
+      players: 0,
+      capacity: 32,
+      status: 'CANCELLED',
+      joined: true,
+      clubId: 'club-1',
+    ),
     TournamentDto(
       id: 'hyd-finished',
       name: 'Hyderabad Royal Cup',
@@ -13,10 +40,23 @@ void main() {
       players: 64,
       capacity: 128,
       status: 'FINISHED',
-      joined: false,
+      joined: true,
       startsAt: DateTime.now().subtract(const Duration(days: 2)),
       endsAt: DateTime.now().subtract(const Duration(days: 1)),
       champion: const TournamentPlayerDto('champion-1', 'Srikanth', null),
+    ),
+    TournamentDto(
+      id: 'hyd-older',
+      name: ' Hyderabad  Royal Cup ',
+      description: 'Older edition with a previous winner.',
+      minutes: 10,
+      players: 12,
+      capacity: 128,
+      status: 'FINISHED',
+      joined: true,
+      startsAt: DateTime.now().subtract(const Duration(days: 6)),
+      endsAt: DateTime.now().subtract(const Duration(days: 5)),
+      champion: const TournamentPlayerDto('older', 'Older winner', null),
     ),
     TournamentDto(
       id: 'hyd',
@@ -71,6 +111,8 @@ void main() {
       expect(find.text('SEASON PROGRESSION'), findsOneWidget);
       expect(find.text("THIS WEEK'S CHAMPIONS"), findsOneWidget);
       expect(find.text('Srikanth'), findsOneWidget);
+      expect(find.text('Older winner'), findsNothing);
+      expect(find.text('Cancelled club challenge'), findsNothing);
       expect(find.text('1250 / 5000 CP'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('HYDERABAD'),

@@ -25,7 +25,11 @@ class TournamentCircuitView extends StatelessWidget {
   List<TournamentDto> get _currentTournaments {
     final bySeries = <String, TournamentDto>{};
     for (final event in tournaments) {
-      final key = event.name.trim().toLowerCase();
+      if (event.status == 'CANCELLED' ||
+          (event.clubId != null && event.status == 'FINISHED')) {
+        continue;
+      }
+      final key = _seriesKey(event);
       final current = bySeries[key];
       if (current == null || _prefer(event, current)) {
         bySeries[key] = event;
@@ -47,12 +51,18 @@ class TournamentCircuitView extends StatelessWidget {
           (a, b) =>
               (b.endsAt ?? b.startsAt!).compareTo(a.endsAt ?? a.startsAt!),
         );
-    return champions;
+    // Recurring editions retain their history, but the summary shows only the
+    // latest winner for each circuit rather than repeating the same city.
+    final seen = <String>{};
+    return champions.where((event) => seen.add(_seriesKey(event))).toList();
   }
+
+  String _seriesKey(TournamentDto event) => event.clubId != null
+      ? 'club:${event.clubId}:${event.id}'
+      : event.name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
   bool _prefer(TournamentDto candidate, TournamentDto current) {
     int priority(TournamentDto event) {
-      if (event.joined) return 40;
       return switch (event.status) {
         'ACTIVE' => 30,
         'OPEN' => 20,
@@ -65,6 +75,10 @@ class TournamentCircuitView extends StatelessWidget {
     final currentPriority = priority(current);
     if (candidatePriority != currentPriority) {
       return candidatePriority > currentPriority;
+    }
+    if ((candidate.status == 'ACTIVE' || candidate.status == 'OPEN') &&
+        candidate.joined != current.joined) {
+      return candidate.joined;
     }
     final candidateStart = candidate.startsAt;
     final currentStart = current.startsAt;
@@ -227,6 +241,7 @@ class CircuitTheme {
   ];
 
   static CircuitTheme forTournament(TournamentDto event, int index) {
+    if (event.clubId != null) return _custom(event.name, index);
     return forName(event.name, index);
   }
 
@@ -239,7 +254,19 @@ class CircuitTheme {
     if (name.contains('new york') || name.contains('grand final')) {
       return themes[4];
     }
-    return themes[index % themes.length];
+    return _custom(tournamentName, index);
+  }
+
+  static CircuitTheme _custom(String name, int index) {
+    final artwork = themes[index % themes.length];
+    return CircuitTheme(
+      name.trim(),
+      '',
+      Icons.groups_rounded,
+      artwork.colors,
+      artwork.artwork,
+      artwork.trophyArtwork,
+    );
   }
 }
 
@@ -632,6 +659,8 @@ class _CircuitCardState extends State<_CircuitCard> {
                   const SizedBox(height: 7),
                   Text(
                     theme.city,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 27,
                       fontWeight: FontWeight.w900,

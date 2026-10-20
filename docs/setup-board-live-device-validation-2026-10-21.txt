@@ -1,0 +1,47 @@
+Set Up Board physical-device validation — 2026-10-21
+
+Device: Samsung SM-F415F, Android 12, wireless ADB.
+Isolated package: com.epitomehub.chessverse.uitest, 1.3.44 (311).
+Production application data was not cleared or replaced.
+The test build uses the production API; live ad IDs are disabled.
+
+Verified manually on device:
+- Analysis > Set Up Board opens the editor; placed White queen on d4.
+- White-to-move cloud analysis for Ke1/Qd4/Ke8 returned d4g7 (#9),
+  d4a7 (#9), e1f2 (+6.83), and a replayable principal variation.
+- Black-to-move for the same position returned e8f7 (+5.13),
+  e8e7 (+5.14), e8f8 (+5.19). Scores use White's perspective.
+- Human White, Black to move: AI moved Ke8-e7, then YOUR TURN.
+- Human White, White to move: Qd4-e4 accepted; AI replied Ke8-f7.
+- Human Black, White to move in a kings-only setup: AI moved Ke1-d2;
+  human Ke8-e7 accepted; AI replied Kd2-e3. Board rotated for Black.
+These are targeted smoke tests, not proof of all positions/devices or
+absence of future crashes/ANRs. No paid ad impressions were tested.
+
+Tournament investigation:
+- Read-only production PostgreSQL audit: Hyderabad and Dubai city events
+  are recurring editions, not duplicated rows for the same occurrence.
+- Two Hyderabad winners from separate editions appeared in the summary.
+- Unknown/custom tournament names inherited a city title by list index.
+  A cancelled Blitz Warriors club challenge was displayed as DUBAI GOLD OPEN.
+- Joined completed/cancelled editions could outrank current open editions.
+
+Client fixes:
+- One latest champion per city series in the weekly summary.
+- Status takes priority over historical joined membership.
+- Exclude cancelled events and finished club events from current cards.
+- Preserve actual custom/club tournament titles; scope club entries by ID.
+- Cap long card titles at two lines with ellipsis.
+No tournament records, registrations, results, rewards or coins deleted.
+No backend deployment needed for these presentation changes.
+
+Automated validation: tournament_circuit_view_test.dart: 3 passed at
+390px and 1100px, including older champion suppression and custom titles.
+Existing release-311 AAB predates these tournament presentation changes.
+
+Final patched APK physical verification:
+- Weekly champions showed one Hyderabad winner instead of two.
+- After Tokyo, the next card was the real Dubai Gold Open, entry fee 500,
+  3/128 active entries; the cancelled club event mislabelled Dubai was gone.
+- Targeted Flutter analysis: no issues found.
+- Test device auto-rotate restored after testing.
