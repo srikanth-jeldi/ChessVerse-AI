@@ -1,0 +1,35 @@
+Release 1.3.45 (312): Tournament presentation fixes
+
+Changes
+- Keep one latest weekly champion per city series.
+- Prefer active/open editions over historical joined editions.
+- Hide cancelled events and finished club events from current cards.
+- Display actual club/custom event names instead of index-selected city names.
+- Keep separate club event identities and constrain long card titles.
+- Includes all release-311 Set Up Board and analysis features.
+
+Validation
+- Targeted tournament widget tests: 3 passed (390px and 1100px).
+- Targeted Flutter analysis: no issues found.
+- git diff --check passed.
+- Physical Samsung SM-F415F / Android 12: latest Hyderabad champion shown
+  once; real Dubai Gold Open visible after Tokyo; cancelled club card removed.
+- Physical Set Up Board: White/Black-to-move live production analysis and
+  both human playing colours against AI verified. See
+  setup-board-live-device-validation-2026-10-21.txt for exact moves and limits.
+- Physical tests used the isolated debug package from the same feature code;
+  the signed production AAB has not been installed through Play testing.
+- Existing 34-language catalogs unchanged from release 311.
+
+Release scope
+- No backend mutation/deployment or tournament history deletion.
+- No Play Console upload/publication performed.
+- These checks do not establish freedom from all future crashes or ANRs.
+
+Final bundle verification
+- Signed AAB: artifacts/release-1.3.45-312/ChessVerseAI-1.3.45-build312.aab
+- Package com.epitomehub.chessverse; versionName 1.3.45; versionCode 312.
+- jarsigner: jar verified. Upload certificate matches release 311.
+- 34 bundled language catalogs x 962 labels; brand names preserved;
+  local Translator configuration absent.
+- SHA256: d88d608dab283c0befe91561af87c51eb3b0ae24c06cf7ac054e8e444bf9cc77

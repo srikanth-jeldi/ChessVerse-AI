@@ -1,0 +1,10 @@
+<en-GB>
+Tournament improvements:
+- Fixed duplicate-looking Hyderabad and Dubai tournament cards.
+- Club tournaments now display their correct names.
+- Cancelled events no longer appear in the current tournament list.
+- Weekly champions show the latest winner for each city tournament.
+- Improved selection of current events over older joined editions.
+
+Also includes Set Up Board, position analysis and Play against AI with White or Black to move.
+</en-GB>
