@@ -41,3 +41,21 @@ Validation
   computer game store). A new game adopts the current authenticated session;
   an existing destination paused game is preserved rather than overwritten.
   Fresh online matchmaking also reads the current authenticated session.
+- Final post-login ownership analyzer: no issues found (4 scoped entry points including main.dart).
+
+Final AAB
+- Source: mobile 80225814; deployed backend 688d2849.
+- Production package com.epitomehub.chessverse; version 1.3.47 / code 314.
+- Release build successful; jarsigner verified; upload certificate matches
+  previous releases (SHA256 13:51:47:31:9B:FD:93:7B:65:6C:A4:2D:0B:9D:5F:70:FD:2A:32:FB:26:CB:B7:46:F6:A8:9F:CC:81:8B:09:E0).
+- AAB upload file: 85,391,680 bytes. All 3 Dart symbol files archived separately.
+- SHA256: f9cd40377dec2cb869a4e77974e2ec7c47fcac4aa3aafee820fb05ec74994a48
+- Bundletool 1.18.3 maximum compressed device download estimates:
+  armeabi-v7a: 24,444,389 bytes (24.44 MB)
+  arm64-v8a: 24,710,141 bytes (24.71 MB)
+  x86_64: 24,887,508 bytes (24.89 MB)
+- All ABIs pass the strict 25,000,000-byte budget. Play Console must confirm
+  actual Play delivery size after upload.
+- Completeness verification passed: all 290 baseline asset/native paths,
+  12 native libraries and 34 catalogs preserved. Existing translation values,
+  native dependencies, fonts and audio match build 313.
