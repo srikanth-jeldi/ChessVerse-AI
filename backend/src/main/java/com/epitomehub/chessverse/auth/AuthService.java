@@ -331,16 +331,17 @@ class AuthService {
         OAuthIdentity identity =
                 oauthIdentities.findByProviderAndSubject("google", google.subject()).orElse(null);
         if (identity != null && !java.util.Objects.equals(identity.player.id, guest.id)) {
-            // The secure-account screen is itself a Google sign-in surface. If
-            // the selected Google identity already owns an account, complete
-            // that sign-in instead of trapping the user on the guest-upgrade
-            // page. The numbered guest remains attached to the installation,
-            // so none of its progress is overwritten or deleted.
+            mergeGuestHistory(guest.id, identity.player.id);
             applyProviderPhoto(identity.player, google.photoUrl());
             identity.player.updatedAt = Instant.now();
             players.save(identity.player);
             recordActivity(identity.player, "LOGIN", "GOOGLE");
             return createSession(identity.player);
+        }
+
+        if (!jdbcTemplate.queryForList("select target_id from guest_progress_merge where guest_id = ?", guest.id).isEmpty()) {
+            throw new AuthException(HttpStatus.CONFLICT,
+                    "This guest progress has already been saved to another account.");
         }
 
         String email = normalizeEmail(google.email());
@@ -370,6 +371,41 @@ class AuthService {
         sessions.deleteByPlayerId(guest.id);
         recordActivity(guest, "REGISTERED", "GOOGLE");
         return createSession(guest);
+    }
+
+    /** Called inside the Google upgrade transaction, after BOTH identities are verified. */
+    private void mergeGuestHistory(UUID guestId, UUID targetId) {
+        // Stable lock order also serializes target history and duplicate requests.
+        jdbcTemplate.queryForList(
+                "select id from player_account where id in (?, ?) order by id for update",
+                guestId, targetId);
+        List<UUID> claims = jdbcTemplate.query(
+                "select target_id from guest_progress_merge where guest_id = ?",
+                (rs, row) -> rs.getObject(1, UUID.class), guestId);
+        if (!claims.isEmpty()) {
+            if (!claims.getFirst().equals(targetId)) {
+                throw new AuthException(HttpStatus.CONFLICT,
+                        "This guest progress has already been saved to another account.");
+            }
+            // A later login may have new guest games; only missing IDs are copied.
+        }
+        jdbcTemplate.update("""
+                insert into computer_game_history(player_id, game_id, draft, created_at)
+                select ?, g.game_id, g.draft, g.created_at from computer_game_history g
+                where g.player_id = ? and not exists (
+                    select 1 from computer_game_history t where t.player_id = ? and t.game_id = g.game_id)
+                """, targetId, guestId, targetId);
+        jdbcTemplate.update("""
+                insert into player_mistake_backup(player_id, mistake_id, snapshot, updated_at)
+                select ?, g.mistake_id, g.snapshot, g.updated_at from player_mistake_backup g
+                where g.player_id = ? and not exists (
+                    select 1 from player_mistake_backup t where t.player_id = ? and t.mistake_id = g.mistake_id)
+                """, targetId, guestId, targetId);
+        if (claims.isEmpty()) {
+            jdbcTemplate.update("insert into guest_progress_merge(guest_id, target_id) values (?, ?)", guestId, targetId);
+        }
+        // Never import a guest wallet, reward claim, purchase, daily streak or
+        // unfinished game slot. Existing account balances and games stay intact.
     }
 
     @Transactional

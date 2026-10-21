@@ -21,7 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:auth-controller;MODE=PostgreSQL;DATABASE_TO_UPPER=false")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class AuthControllerTest {
@@ -42,6 +42,64 @@ class AuthControllerTest {
 
     @Autowired
     org.springframework.jdbc.core.JdbcTemplate activityJdbc;
+
+    @org.junit.jupiter.api.BeforeEach
+    void createGuestMergeTables() throws Exception {
+        for (String migration : java.util.List.of("V51__computer_game_slot.sql",
+                "V85__personal_mistake_backup.sql", "V90__guest_progress_merge.sql")) {
+            var resource = new org.springframework.core.io.ClassPathResource("db/migration/" + migration);
+            String sql = resource.getContentAsString(java.nio.charset.StandardCharsets.UTF_8)
+                    .replaceAll("(?i)create table ", "create table if not exists ");
+            for (String statement : sql.split(";")) {
+                if (!statement.isBlank()) activityJdbc.execute(statement);
+            }
+        }
+    }
+
+    @Test
+    void guestMergeIsIdempotentAccountBoundAndDoesNotCopyCoins() throws Exception {
+        String suffix = java.util.UUID.randomUUID().toString();
+        when(googleIdentityVerifier.verify(suffix)).thenReturn(
+                new GoogleIdentityVerifier.VerifiedGoogleIdentity(suffix, suffix + "@example.com", "Merge Player", null));
+        var target = objectMapper.readTree(mockMvc.perform(post("/api/auth/google")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"idToken\":\"" + suffix + "\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var guest = objectMapper.readTree(mockMvc.perform(post("/api/auth/guest")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"installationId\":\"" + suffix + "\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var guestId = java.util.UUID.fromString(guest.path("player").path("id").asText());
+        var targetId = java.util.UUID.fromString(target.path("player").path("id").asText());
+        // The production wallet is JDBC-managed, so create its shape in this JPA-only test profile.
+        activityJdbc.execute("create table if not exists player_wallet (player_id uuid primary key, coin_balance bigint not null, diamond_balance bigint default 0, created_at timestamp with time zone default current_timestamp, updated_at timestamp with time zone default current_timestamp)");
+        activityJdbc.update("insert into player_wallet(player_id,coin_balance) values (?,?)", guestId, 50);
+        activityJdbc.update("insert into player_wallet(player_id,coin_balance) values (?,?)", targetId, 250);
+        activityJdbc.update("insert into computer_game_history(player_id,game_id,draft) values (?,?,?)", guestId, "guest-game", "guest-original");
+        activityJdbc.update("insert into computer_game_history(player_id,game_id,draft) values (?,?,?)", targetId, "existing-game", "existing-original");
+        activityJdbc.update("insert into player_mistake_backup(player_id,mistake_id,snapshot,updated_at) values (?,?,?,current_timestamp)", guestId, "1-1", "guest-mistake");
+        for (int retry = 0; retry < 2; retry++) {
+            mockMvc.perform(post("/api/auth/google/upgrade")
+                    .header("Authorization", "Bearer " + guest.path("token").asText())
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"idToken\":\"" + suffix + "\"}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.player.id").value(targetId.toString()));
+        }
+        org.assertj.core.api.Assertions.assertThat(activityJdbc.queryForObject(
+                "select count(*) from computer_game_history where player_id=?", Integer.class, targetId)).isEqualTo(2);
+        org.assertj.core.api.Assertions.assertThat(activityJdbc.queryForObject(
+                "select count(*) from player_mistake_backup where player_id=?", Integer.class, targetId)).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(activityJdbc.queryForObject(
+                "select coin_balance from player_wallet where player_id=?", Long.class, targetId)).isEqualTo(250L);
+        org.assertj.core.api.Assertions.assertThat(activityJdbc.queryForObject(
+                "select coin_balance from player_wallet where player_id=?", Long.class, guestId)).isEqualTo(50L);
+        String other = "other-" + suffix;
+        when(googleIdentityVerifier.verify(other)).thenReturn(
+                new GoogleIdentityVerifier.VerifiedGoogleIdentity(other, other + "@example.com", "Other", null));
+        mockMvc.perform(post("/api/auth/google").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"idToken\":\"" + other + "\"}")).andExpect(status().isOk());
+        mockMvc.perform(post("/api/auth/google/upgrade")
+                .header("Authorization", "Bearer " + guest.path("token").asText())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"idToken\":\"" + other + "\"}"))
+                .andExpect(status().isConflict());
+    }
 
     @Test
     void countryReportPreservesLocaleProvenance() throws Exception {
