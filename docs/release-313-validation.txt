@@ -1,0 +1,46 @@
+Release 1.3.46 (313): Android download size budget
+
+Target: compressed device download <= 25,000,000 bytes for every supported ABI.
+This is not the AAB upload size or installed storage footprint.
+
+Baseline 312 bundletool estimates (minimum / maximum bytes):
+x86_64: 33,254,321 / 33,529,056
+arm64-v8a: 33,051,288 / 33,326,037
+armeabi-v7a: 32,873,774 / 33,148,498
+
+Changes
+- Optimised 193 WebP assets; 7,765,436 source bytes saved.
+- Gameplay pieces keep their original pixel dimensions and alpha channels.
+- Trophy previews capped at 512px, badges 384px, collection previews 640px,
+  backgrounds 1280px longest edge, and matchmaking preview 640px,
+  preserving aspect ratios.
+- All asset paths retained. No native library, ABI, font, language or audio
+  removed. No dependency changes or game/network/ads logic changes.
+- Dart debug information separated into archived symbol files for diagnosis.
+- Version bumped from 1.3.45+312 to 1.3.46+313.
+
+Validation
+- 20 Flutter tests passed: piece decoding/resolution, tournament layouts,
+  localization catalogs, and decoding every bundled WebP with Flutter.
+- Visual comparison of original/optimised board background and premium
+  knight showed preserved recognisability at the same gameplay resolution.
+- Earlier build-311/312 physical tests cover unchanged game/setup logic;
+  this does not mean all devices or every future ANR/crash is ruled out.
+- No Play Store upload or backend deployment performed.
+
+Final signed bundle validation
+- Production package: com.epitomehub.chessverse; version 1.3.46 (313).
+- jarsigner verified the bundle (expected self-signed certificate warnings).
+- Final maximum compressed download estimates from bundletool 1.18.3:
+  armeabi-v7a: 24,525,242 bytes (24.53 MB)
+  arm64-v8a: 24,794,087 bytes (24.79 MB)
+  x86_64: 24,968,241 bytes (24.97 MB)
+- All three estimates pass the strict 25,000,000-byte budget. Actual Play
+  delivery size must still be checked in Play Console after upload.
+- Completeness check passed: all 290 baseline asset/native paths retained,
+  12 native libraries, all 34 unchanged localization catalogs. Native
+  dependencies, fonts and audio match baseline bytes.
+- Final matchmaking image adjustment passed the Flutter decode test again.
+- AAB upload size: 85,434,072 bytes; it includes all device architectures.
+- SHA256: b0f2bb71d76483b4e248ea131a50e47930cdf09667543cfe99cc30dea9b26909
+- Guest conversion/merge proposals are not implemented in this size release.

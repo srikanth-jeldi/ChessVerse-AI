@@ -1,0 +1,6 @@
+<en-GB>
+Smaller downloads with optimised artwork and collection previews.
+All supported device architectures, languages and chess sets are retained.
+Includes tournament fixes for duplicate-looking cards, correct club event names and current-event filtering.
+Set up custom boards, analyse positions and play against AI with White or Black to move.
+</en-GB>
