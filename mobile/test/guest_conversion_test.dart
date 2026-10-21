@@ -50,6 +50,35 @@ void main() {
     },
   );
 
+  test(
+    'daily reset and ten-day deferral remain feature and identity scoped',
+    () async {
+      var time = DateTime(2026, 10, 21, 12);
+      final trial = GuestFeatureTrial(now: () => time);
+      expect(await trial.consume('one', GuestFeature.review), true);
+      expect(await trial.consume('one', GuestFeature.review), true);
+      expect(await trial.consume('one', GuestFeature.review), false);
+      time = time.add(const Duration(days: 1));
+      expect(await trial.consume('one', GuestFeature.review), true);
+      expect(await trial.consume('one', GuestFeature.review), true);
+      final until = await trial.defer('one', GuestFeature.review);
+      time = time.add(const Duration(days: 1));
+      expect(
+        (await trial.attempt('one', GuestFeature.review)).lockedUntil,
+        until,
+      );
+      expect(await trial.defer('one', GuestFeature.review), until);
+      expect(await trial.consume('one', GuestFeature.mistakeBank), true);
+      expect(await trial.consume('two', GuestFeature.review), true);
+      time = until.subtract(const Duration(milliseconds: 1));
+      expect(await trial.consume('one', GuestFeature.review), false);
+      time = until;
+      expect(await trial.consume('one', GuestFeature.review), true);
+      expect(await trial.consume('one', GuestFeature.review), true);
+      expect(await trial.consume('one', GuestFeature.review), false);
+    },
+  );
+
   test('merge restores games once, stays account bound, does not copy streak/coins', () async {
     await LocalGameArchive.activateIdentity('guest:one');
     LocalGameArchive.markDailyChallengeComplete('daily-guest');
@@ -83,9 +112,17 @@ void main() {
     expect(await LocalGameArchive.hasActiveIdentity('guest:one'), true);
     // Simulate an existing account restored from cloud before pending merge.
     await LocalGameArchive.activateIdentity('account:target');
-    LocalGameArchive.addGame(SavedGameRecord(mode: 'Computer', result: 'Draw',
-      detail: 'Draw', moves: ['d4'], playedAt: DateTime.utc(2026, 10, 20),
-      whitePlayer: 'Existing player', blackPlayer: 'AI'));
+    LocalGameArchive.addGame(
+      SavedGameRecord(
+        mode: 'Computer',
+        result: 'Draw',
+        detail: 'Draw',
+        moves: ['d4'],
+        playedAt: DateTime.utc(2026, 10, 20),
+        whitePlayer: 'Existing player',
+        blackPlayer: 'AI',
+      ),
+    );
     final recovery = await storage.read(key: 'guest.progress.pending.v1');
     await GuestProgressMerge.restore('account:target');
     expect(LocalGameArchive.games.length, 2);
@@ -135,12 +172,17 @@ void main() {
         .toList();
     expect(languages.length, 34);
     for (final path in languages) {
+      FlutterSecureStorage.setMockInitialValues({});
       final code = path.split('/').last.split('.').first;
       debugPrint('Guest layout: ' + code);
       final copy = jsonDecode(
         (await tester.runAsync(() => rootBundle.loadString(path)))!,
       ) as Map;
       expect(copy['Save your chess progress'], isNotEmpty);
+      expect(
+        copy['Free access to this feature reopens in {days} days. You can keep playing as a guest.'],
+        contains('{days}'),
+      );
       await tester.runAsync(() => UiCopy.load(code));
       await const AuthSessionStore().write(
         StoredAuthSession(
@@ -193,6 +235,16 @@ void main() {
       await tester.tap(find.text(UiCopy.text('Not now')));
       await tester.pumpAndSettle();
       expect(result, false, reason: code);
+      expect(find.byType(SnackBar), findsOneWidget, reason: code);
+      expect(tester.takeException(), isNull, reason: '$code cooldown');
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byType(AlertDialog),
+        findsNothing,
+        reason: '$code no repeat popup',
+      );
+      expect(tester.takeException(), isNull, reason: '$code cooldown repeat');
       await tester.pumpWidget(
         MaterialApp(
           builder: (context, child) => Directionality(

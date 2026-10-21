@@ -965,5 +965,8 @@
   "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "Vos deux utilisations gratuites sont terminées. Continuez avec Google pour sauvegarder vos parties et Mistake Bank. Votre progression actuelle reste en sécurité.",
   "Not now": "Pas maintenant",
   "Continue with Google": "Continuez avec Google",
-  "Save your games and Mistake Bank with your free Google account.": "Sauvegardez vos parties et faites une banque d’erreurs avec votre compte Google gratuit."
+  "Save your games and Mistake Bank with your free Google account.": "Sauvegardez vos parties et faites une banque d’erreurs avec votre compte Google gratuit.",
+  "Your two free uses for today are complete. Sign in to continue, or choose Not now to pause free access to this feature for 10 days.": "Vos deux utilisations gratuites pour aujourd’hui sont terminées. Connectez-vous pour continuer, ou choisissez Pas maintenant pour mettre en pause l’accès gratuit à cette fonctionnalité pendant 10 jours.",
+  "Free access to this feature reopens in {days} days. You can keep playing as a guest.": "L’accès gratuit à cette fonctionnalité se rouvre dans {days} jours. Vous pouvez continuer à jouer en tant qu’invité.",
+  "Login now": "Connectez-vous maintenant"
 }

@@ -1,0 +1,10 @@
+Release 315 / 1.3.48
+Guest timer: two uses per local calendar day per feature; explicit Not now starts a ten-day per-feature cooldown; repeated attempts do not extend the deadline. Signed-in users bypass the guest quota.
+All 34 languages include the new messages and retain the days placeholder.
+Validation: guest_conversion_test.dart: 5 tests passed, including 34-language layouts at 320x480 / 1.4 text scale, cooldown expiry and daily reset, concurrent quota checks, account merge without coin copying.
+Scoped Flutter analyzer: no issues found.
+No backend changes. No real-device test or Play Store upload performed for this release.
+Final AAB: release build successful, jarsigner verified; manifest 1.3.48 / 315.
+All 34 language catalogs, 290 baseline asset/native paths and 12 native libraries retained. Existing catalog values, native dependencies, fonts and audio preserved.
+Bundletool maximum compressed download estimates: armeabi-v7a 24,447,794 bytes; arm64-v8a 24,711,850 bytes; x86_64 24,890,061 bytes. All below 25,000,000 bytes. Play Console must confirm actual delivery after upload.
+AAB SHA256: 920239e63d7a4fa13a6c65d4010e973fbc1a1df222fd22687b854aec0094616a

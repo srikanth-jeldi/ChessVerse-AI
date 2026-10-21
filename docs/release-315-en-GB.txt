@@ -1,0 +1,6 @@
+<en-GB>
+Guest AI Review and Mistake Bank now include two free uses per feature each day.
+Choosing Not now pauses free access to that feature for 10 days, with a countdown and an option to sign in sooner.
+Improved login reminders and layouts across 34 languages.
+Your guest games remain available while you decide when to sign in.
+</en-GB>

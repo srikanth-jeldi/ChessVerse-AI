@@ -965,5 +965,8 @@
   "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "2回の無料使用は完了しました。Googleでゲームとミスバンクを保存し続けてください。現在の進行状況は安全に保たれます。",
   "Not now": "今はダメだ",
   "Continue with Google": "Googleで続けてください",
-  "Save your games and Mistake Bank with your free Google account.": "無料のGoogleアカウントでゲームとミスバンクを保存しましょう。"
+  "Save your games and Mistake Bank with your free Google account.": "無料のGoogleアカウントでゲームとミスバンクを保存しましょう。",
+  "Your two free uses for today are complete. Sign in to continue, or choose Not now to pause free access to this feature for 10 days.": "本日の2回の無料利用は完了しました。続行するにはサインインするか、「Not Now」を選択して10日間の無料アクセスを一時停止してください。",
+  "Free access to this feature reopens in {days} days. You can keep playing as a guest.": "この機能の無料アクセスは{days}日後に再開されます。ゲストとしてプレイを続けられます。",
+  "Login now": "今すぐログイン"
 }
