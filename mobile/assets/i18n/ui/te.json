@@ -960,5 +960,10 @@
   "Alternative move": "ప్రత్యామ్నాయ కదలిక",
   "Use the arrows to explore this line.": "ఈ పంక్తిని అన్వేషించడానికి బాణం గుర్తులను ఉపయోగించండి.",
   "Position FEN": "స్థానం ఫెన్",
-  "No castling or en passant rights in the starting position.": "ప్రారంభ స్థానంలో కాస్లింగ్ లేదా ఎన్ పాసెంట్ హక్కులు లేవు."
+  "No castling or en passant rights in the starting position.": "ప్రారంభ స్థానంలో కాస్లింగ్ లేదా ఎన్ పాసెంట్ హక్కులు లేవు.",
+  "Save your chess progress": "మీ చదరంగం పురోగతిని సేవ్ చేయండి",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "మీ రెండు ఉచిత ఉపయోగాలు పూర్తయ్యాయి. మీ ఆటలను సేవ్ చేయడానికి గూగుల్ తో కొనసాగండి మరియు పొరపాటు బ్యాంక్. మీ ప్రస్తుత పురోగతి సురక్షితంగా ఉంటుంది.",
+  "Not now": "ఇప్పుడు కాదు",
+  "Continue with Google": "గూగుల్ తో కొనసాగండి",
+  "Save your games and Mistake Bank with your free Google account.": "మీ ఉచిత గూగుల్ ఖాతాతో మీ ఆటలు మరియు తప్పు బ్యాంకును సేవ్ చేయండి."
 }

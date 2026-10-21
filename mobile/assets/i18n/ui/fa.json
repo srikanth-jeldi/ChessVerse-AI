@@ -960,5 +960,10 @@
   "Alternative move": "حرکت جایگزین",
   "Use the arrows to explore this line.": "از فلش ها برای کاوش این خط استفاده کنید.",
   "Position FEN": "موقعیت FEN",
-  "No castling or en passant rights in the starting position.": "در موقعیت شروع، نه قلعه گیری و نه حق عبور وجود دارد."
+  "No castling or en passant rights in the starting position.": "در موقعیت شروع، نه قلعه گیری و نه حق عبور وجود دارد.",
+  "Save your chess progress": "پیشرفت شطرنج خود را ذخیره کنید",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "دو استفاده رایگان شما کامل شده است. با گوگل ادامه دهید تا بازی ها و بانک اشتباهات خود را ذخیره کنید. پیشرفت فعلی شما امن باقی می ماند.",
+  "Not now": "الان نه",
+  "Continue with Google": "ادامه کار با گوگل",
+  "Save your games and Mistake Bank with your free Google account.": "بازی های خود را ذخیره کنید و با حساب گوگل رایگان خود بانک اشتباه کنید."
 }

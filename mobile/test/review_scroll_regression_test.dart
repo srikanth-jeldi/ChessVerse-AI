@@ -28,6 +28,10 @@ void main() {
           tester.view.viewPadding = padding;
           addTearDown(tester.view.reset);
           FlutterSecureStorage.setMockInitialValues({
+            'auth.token': 'layout-test-token',
+            'auth.expiresAt': '2099-01-01T00:00:00Z',
+            'auth.displayName': 'Layout player',
+            'auth.isGuest': 'false',
             'settings.language': language,
           });
           AppLanguageController.effectiveLanguageChanges.value = null;
@@ -108,9 +112,7 @@ void main() {
           expect(find.text('1 / 3'), findsOneWidget);
           await tester.tap(
             find.descendant(
-              of: find.byKey(
-                const ValueKey<String>('review-mode-toggle'),
-              ),
+              of: find.byKey(const ValueKey<String>('review-mode-toggle')),
               matching: find.text(
                 CoachLocalizations(language).text('moveByMove'),
               ),

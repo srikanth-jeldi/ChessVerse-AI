@@ -960,5 +960,10 @@
   "Alternative move": "Hoja mbadala",
   "Use the arrows to explore this line.": "Tumia mishale kuchunguza mstari huu.",
   "Position FEN": "Nafasi ya FEN",
-  "No castling or en passant rights in the starting position.": "Hakuna haki za castling au en passant katika nafasi ya kuanzia."
+  "No castling or en passant rights in the starting position.": "Hakuna haki za castling au en passant katika nafasi ya kuanzia.",
+  "Save your chess progress": "Hifadhi maendeleo yako ya chess",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "Matumizi yako mawili ya bure yamekamilika. Endelea na Google ili kuhifadhi michezo yako na Benki ya Makosa. Maendeleo yako yaliyopo yanabaki salama.",
+  "Not now": "Sio sasa",
+  "Continue with Google": "Endelea na Google",
+  "Save your games and Mistake Bank with your free Google account.": "Hifadhi michezo yako na Mistake Bank ukitumia akaunti yako ya Google bila malipo."
 }

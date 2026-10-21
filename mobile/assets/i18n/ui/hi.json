@@ -960,5 +960,10 @@
   "Alternative move": "वैकल्पिक चाल",
   "Use the arrows to explore this line.": "इस रेखा का पता लगाने के लिए तीरों का उपयोग करें।",
   "Position FEN": "स्थिति FEN",
-  "No castling or en passant rights in the starting position.": "प्रारंभिक स्थिति में कोई कैसलिंग या एन निष्क्रिय अधिकार नहीं।"
+  "No castling or en passant rights in the starting position.": "प्रारंभिक स्थिति में कोई कैसलिंग या एन निष्क्रिय अधिकार नहीं।",
+  "Save your chess progress": "अपनी शतरंज की प्रगति को बचाएं",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "आपके दो मुफ़्त उपयोग पूरे हो गए हैं. अपने गेम और Mistake Bank को सेव करने के लिए Google के साथ जारी रखें. आपकी मौजूदा प्रगति सुरक्षित रहती है.",
+  "Not now": "अभी नहीं",
+  "Continue with Google": "Google के साथ जारी रखें",
+  "Save your games and Mistake Bank with your free Google account.": "अपने गेम और Mistake Bank को अपने मुफ़्त Google खाते से सेव करें."
 }

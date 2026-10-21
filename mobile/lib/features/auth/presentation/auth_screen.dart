@@ -15,6 +15,7 @@ import '../../../core/diagnostics/app_diagnostics.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/auth_api.dart';
 import '../data/auth_session_store.dart';
+import '../data/guest_progress_merge.dart';
 import 'web_google_button.dart';
 import 'chat_access_copy.dart';
 
@@ -46,6 +47,7 @@ class AuthScreen extends StatefulWidget {
     this.guestUpgradeToken,
     this.googleChatOnly = false,
     this.chatLanguage = 'en',
+    this.googleAccessMessage,
     super.key,
   });
 
@@ -53,6 +55,7 @@ class AuthScreen extends StatefulWidget {
   final String? guestUpgradeToken;
   final bool googleChatOnly;
   final String chatLanguage;
+  final String? googleAccessMessage;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -63,6 +66,8 @@ class _AuthScreenState extends State<AuthScreen> {
   static const AuthSessionStore _sessionStore = AuthSessionStore();
 
   bool _loginMode = true;
+  StoredAuthSession? _upgradingGuest;
+  String? _upgradingPlayerId;
   bool _verificationMode = false;
   bool _loading = false;
   bool _facebookSigningIn = false;
@@ -132,10 +137,16 @@ class _AuthScreenState extends State<AuthScreen> {
                 children: [
                   const Icon(Icons.lock_outline, size: 48),
                   const SizedBox(height: 20),
-                  Text(
-                    googleChatMessage(widget.chatLanguage),
-                    textAlign: TextAlign.center,
-                  ),
+                  if (widget.googleAccessMessage != null)
+                    UiText(
+                      widget.googleAccessMessage!,
+                      textAlign: TextAlign.center,
+                    )
+                  else
+                    Text(
+                      googleChatMessage(widget.chatLanguage),
+                      textAlign: TextAlign.center,
+                    ),
                   const SizedBox(height: 24),
                   if (_loading)
                     const CircularProgressIndicator()
@@ -1594,7 +1605,7 @@ class _AuthScreenState extends State<AuthScreen> {
       final String? upgradeToken = widget.guestUpgradeToken;
       final Map<String, dynamic> data = upgradeToken == null
           ? await _authApi.post('google', <String, String>{'idToken': idToken})
-          : await _authApi.upgradeGuestWithGoogle(upgradeToken, idToken);
+          : await _upgradeGoogle(upgradeToken, idToken);
       await _completeAuthentication(data, photoUrl: account.photoUrl);
     } on AuthApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
@@ -1610,6 +1621,16 @@ class _AuthScreenState extends State<AuthScreen> {
         });
       }
     }
+  }
+
+  Future<Map<String, dynamic>> _upgradeGoogle(
+    String token,
+    String idToken,
+  ) async {
+    _upgradingGuest = await _sessionStore.read();
+    final previous = await _authApi.currentPlayer(token);
+    _upgradingPlayerId = previous['id']?.toString();
+    return _authApi.upgradeGuestWithGoogle(token, idToken);
   }
 
   Future<void> _completeAuthentication(
@@ -1664,6 +1685,16 @@ class _AuthScreenState extends State<AuthScreen> {
       ),
       sessionId: _nonBlankString(data['sessionId']),
     );
+    final previousGuest = _upgradingGuest;
+    final nextIdentity = await _sessionStore.progressIdentity(session);
+    if (previousGuest?.isGuest == true && !isGuest) {
+      // Persist recovery data before switching the stored session/active archive.
+      await GuestProgressMerge.save(
+        previous: await _sessionStore.progressIdentity(previousGuest!),
+        target: nextIdentity,
+        samePlayer: _upgradingPlayerId == player['id']?.toString(),
+      );
+    }
     try {
       if (_rememberMe || isGuest) {
         await _sessionStore.write(session);
@@ -1681,6 +1712,12 @@ class _AuthScreenState extends State<AuthScreen> {
           reason: 'Authenticated session could not be persisted',
         ),
       );
+      // Keep the target-bound recovery snapshot and source archive intact.
+      // Never switch the archive while the stored session still owns the guest.
+      if (previousGuest?.isGuest == true && !isGuest) rethrow;
+    }
+    if (!isGuest) {
+      await GuestProgressMerge.restore(nextIdentity);
     }
     if (!mounted) return;
     await widget.onAuthenticated(

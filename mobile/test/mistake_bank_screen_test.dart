@@ -142,7 +142,12 @@ void main() {
     Future<List<EngineCandidateLine>> Function(String fen)? analyze,
     Future<RewardedCoinOutcome> Function()? rewardedHint,
   }) async {
-    FlutterSecureStorage.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({
+      'auth.token': 'layout-test-token',
+      'auth.expiresAt': '2099-01-01T00:00:00Z',
+      'auth.displayName': 'Layout player',
+      'auth.isGuest': 'false',
+    });
     LocalGameArchive.clearAccountScopedCloudState();
     await AppLanguageController.select(language);
     DesktopNavigationBridge.coinBalance.value = 1125;

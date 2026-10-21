@@ -960,5 +960,10 @@
   "Alternative move": "ബദൽ നീക്കം",
   "Use the arrows to explore this line.": "ഈ ലൈൻ പര്യവേക്ഷണം ചെയ്യാൻ അമ്പടയാളങ്ങൾ ഉപയോഗിക്കുക.",
   "Position FEN": "പൊസിഷൻ ഫെൻ",
-  "No castling or en passant rights in the starting position.": "ആരംഭ സ്ഥാനത്ത് കാസ്ലിംഗ് അല്ലെങ്കിൽ എൻ പാസന്റ് അവകാശങ്ങളില്ല."
+  "No castling or en passant rights in the starting position.": "ആരംഭ സ്ഥാനത്ത് കാസ്ലിംഗ് അല്ലെങ്കിൽ എൻ പാസന്റ് അവകാശങ്ങളില്ല.",
+  "Save your chess progress": "നിങ്ങളുടെ ചെസ്സ് പുരോഗതി സംരക്ഷിക്കുക",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "നിങ്ങളുടെ രണ്ട് സൗജന്യ ഉപയോഗങ്ങൾ പൂർത്തിയായി. നിങ്ങളുടെ ഗെയിമുകളും തെറ്റ് ബാങ്കും സംരക്ഷിക്കാൻ ഗൂഗിളുമായി തുടരുക. നിങ്ങളുടെ നിലവിലുള്ള പുരോഗതി സുരക്ഷിതമായി തുടരുന്നു.",
+  "Not now": "ഇപ്പൊ വേണ്ട",
+  "Continue with Google": "ഗൂഗിളിനൊപ്പം തുടരുക",
+  "Save your games and Mistake Bank with your free Google account.": "നിങ്ങളുടെ സൌജന്യ ഗൂഗിൾ അക്കൗണ്ട് ഉപയോഗിച്ച് നിങ്ങളുടെ ഗെയിമുകളും തെറ്റ് ബാങ്കും സംരക്ഷിക്കുക."
 }

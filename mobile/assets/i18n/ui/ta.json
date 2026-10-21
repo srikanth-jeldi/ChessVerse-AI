@@ -960,5 +960,10 @@
   "Alternative move": "மாற்று நகர்வு",
   "Use the arrows to explore this line.": "இந்த வரியை ஆராய அம்புகளைப் பயன்படுத்தவும்.",
   "Position FEN": "நிலை FEN",
-  "No castling or en passant rights in the starting position.": "தொடக்க நிலையில் காஸ்ட்லிங் அல்லது en passant உரிமைகள் இல்லை."
+  "No castling or en passant rights in the starting position.": "தொடக்க நிலையில் காஸ்ட்லிங் அல்லது en passant உரிமைகள் இல்லை.",
+  "Save your chess progress": "உங்கள் சதுரங்க முன்னேற்றத்தை சேமிக்கவும்",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "உங்கள் இரண்டு இலவச பயன்பாடுகள் நிறைவடைந்தன. உங்கள் கேம்கள் மற்றும் தவறு வங்கியைச் சேமிக்க Google உடன் தொடரவும். உங்கள் தற்போதைய முன்னேற்றம் பாதுகாப்பாக இருக்கும்.",
+  "Not now": "இப்போது இல்லை",
+  "Continue with Google": "Google உடன் தொடரவும்",
+  "Save your games and Mistake Bank with your free Google account.": "உங்கள் இலவச Google கணக்குடன் உங்கள் கேம்கள் மற்றும் தவறு வங்கியை சேமிக்கவும்."
 }

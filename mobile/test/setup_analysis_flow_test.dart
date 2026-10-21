@@ -77,7 +77,16 @@ void main() {
       'signed-out',
     ]) {
       testWidgets('setup $state ${lang.code} narrow enlarged', (tester) async {
-        FlutterSecureStorage.setMockInitialValues({});
+        FlutterSecureStorage.setMockInitialValues(
+          state == 'signed-out'
+              ? {}
+              : {
+                  'auth.token': 'layout-test-token',
+                  'auth.expiresAt': '2099-01-01T00:00:00Z',
+                  'auth.displayName': 'Layout player',
+                  'auth.isGuest': 'false',
+                },
+        );
         await tester.runAsync(() => UiCopy.load(lang.code));
         tester.view.physicalSize = const Size(320, 640);
         tester.view.devicePixelRatio = 1;
@@ -150,6 +159,12 @@ void main() {
   testWidgets('analysis retry succeeds and preserves chosen black position', (
     tester,
   ) async {
+    FlutterSecureStorage.setMockInitialValues({
+      'auth.token': 'layout-test-token',
+      'auth.expiresAt': '2099-01-01T00:00:00Z',
+      'auth.displayName': 'Layout player',
+      'auth.isGuest': 'false',
+    });
     await tester.runAsync(() => UiCopy.load('en'));
     var attempts = 0;
     await tester.pumpWidget(

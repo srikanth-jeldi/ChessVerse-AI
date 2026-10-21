@@ -14,6 +14,9 @@ import '../domain/mistake_challenge.dart';
 import '../domain/mistake_lesson_engine.dart';
 import '../data/engine_candidates_api.dart';
 import '../../auth/data/auth_session_store.dart';
+import '../../auth/data/guest_feature_trial.dart';
+import '../../auth/presentation/guest_feature_gate.dart';
+import '../../../core/app_ui_localizations.dart';
 
 import 'package:flutter/material.dart';
 
@@ -133,6 +136,8 @@ class MistakeBankScreen extends StatefulWidget {
 }
 
 class _MistakeBankScreenState extends State<MistakeBankScreen> {
+  bool _trialReady = false;
+  bool _trialAllowed = false;
   static const AcademyProgressStore _progressStore = AcademyProgressStore();
   late List<MistakeBankItem> _allItems;
   List<MistakeBankItem> _items = <MistakeBankItem>[];
@@ -278,6 +283,18 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
       if (mounted) setState(() => _loadingReviews = false);
     }
     unawaited(syncAcademyMistakeBank());
+    if (mounted) await _checkTrial();
+  }
+
+  Future<void> _checkTrial() async {
+    final allowed =
+        _allItems.isEmpty ||
+        await GuestFeatureGate.allow(context, GuestFeature.mistakeBank);
+    if (!mounted) return;
+    setState(() {
+      _trialAllowed = allowed;
+      _trialReady = true;
+    });
   }
 
   void _onLanguage() {
@@ -748,8 +765,34 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   );
 
   Widget _buildScreen(BuildContext context) {
-    if (_loadingReviews || !_languageReady) {
+    if (_loadingReviews || !_languageReady || !_trialReady) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (!_trialAllowed) {
+      return Scaffold(
+        appBar: AppBar(title: Text(m('title'))),
+        body: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_outline_rounded, size: 48),
+                const SizedBox(height: 16),
+                const UiText(
+                  'Save your chess progress',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: _checkTrial,
+                  child: const UiText('Continue with Google'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
     if (_items.isEmpty) {
       return DesktopNavigationShell(

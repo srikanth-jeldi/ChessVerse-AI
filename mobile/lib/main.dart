@@ -18,6 +18,7 @@ import 'core/analytics/app_analytics.dart';
 import 'core/academy_activity.dart';
 import 'features/analysis/domain/mistake_bank_sync.dart';
 import 'features/analysis/data/personal_mistake_backup.dart';
+import 'features/auth/data/guest_progress_merge.dart';
 import 'features/academy/presentation/my_academy_screen.dart';
 import 'core/ai_bot_preset_store.dart';
 import 'core/ai_personas.dart';
@@ -580,9 +581,11 @@ class _SplashGateState extends State<SplashGate> {
       // retain another account's premium selection while offline.
     }
     if (!mounted) return;
-    await LocalGameArchive.activateIdentity(
-      await _sessionStore.progressIdentity(restoredSession),
+    final restoredIdentity = await _sessionStore.progressIdentity(
+      restoredSession,
     );
+    await GuestProgressMerge.restore(restoredIdentity);
+    await LocalGameArchive.activateIdentity(restoredIdentity);
     if (!mounted) return;
     _enableCloudSync(restoredSession.token);
     setState(() {
@@ -2678,18 +2681,12 @@ class _SplashGateState extends State<SplashGate> {
       MaterialPageRoute<void>(
         builder: (BuildContext upgradeContext) => AuthScreen(
           guestUpgradeToken: session.token,
-          onAuthenticated: (ChessVerseAuthResult result) {
-            if (!mounted) return;
-            setState(() {
-              _playerName = result.playerName;
-              _username = result.username;
-              _email = result.email;
-              _photoUrl = result.photoUrl;
-              _isGuest = result.isGuest;
-            });
-            if (result.token != null) {
-              _enableCloudSync(result.token!);
-              unawaited(_syncCloudProgress(result.token!));
+          onAuthenticated: (ChessVerseAuthResult result) async {
+            await _acceptChatGoogleLogin(result, null);
+            if (!mounted ||
+                !upgradeContext.mounted ||
+                !currentRouteContext.mounted) {
+              return;
             }
             Navigator.of(upgradeContext).pop();
             ScaffoldMessenger.of(currentRouteContext).showSnackBar(

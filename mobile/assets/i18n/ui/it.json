@@ -960,5 +960,10 @@
   "Alternative move": "Mossa alternativa",
   "Use the arrows to explore this line.": "Usa le frecce per esplorare questa linea.",
   "Position FEN": "Posizione FEN",
-  "No castling or en passant rights in the starting position.": "Niente roaco o diritti en passant nella posizione iniziale."
+  "No castling or en passant rights in the starting position.": "Niente roaco o diritti en passant nella posizione iniziale.",
+  "Save your chess progress": "Salva i progressi degli scacchi",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "I tuoi due usi gratuiti sono completi. Continua con Google per salvare le tue partite e Errore Bank. Il tuo progresso attuale rimane al sicuro.",
+  "Not now": "Non ora",
+  "Continue with Google": "Continua con Google",
+  "Save your games and Mistake Bank with your free Google account.": "Salva le tue partite e Errori Banca con il tuo account Google gratuito."
 }

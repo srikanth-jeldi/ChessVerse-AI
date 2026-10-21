@@ -960,5 +960,10 @@
   "Alternative move": "ಪರ್ಯಾಯ ಕ್ರಮ[ಬದಲಾಯಿಸಿ]",
   "Use the arrows to explore this line.": "ಈ ರೇಖೆಯನ್ನು ಅನ್ವೇಷಿಸಲು ಬಾಣಗಳನ್ನು ಬಳಸಿ.",
   "Position FEN": "ಸ್ಥಾನ FEN",
-  "No castling or en passant rights in the starting position.": "ಆರಂಭಿಕ ಸ್ಥಾನದಲ್ಲಿ ಯಾವುದೇ ಕ್ಯಾಸ್ಲಿಂಗ್ ಅಥವಾ ಎನ್ ಪಾಸೆಂಟ್ ಹಕ್ಕುಗಳಿಲ್ಲ."
+  "No castling or en passant rights in the starting position.": "ಆರಂಭಿಕ ಸ್ಥಾನದಲ್ಲಿ ಯಾವುದೇ ಕ್ಯಾಸ್ಲಿಂಗ್ ಅಥವಾ ಎನ್ ಪಾಸೆಂಟ್ ಹಕ್ಕುಗಳಿಲ್ಲ.",
+  "Save your chess progress": "ನಿಮ್ಮ ಚೆಸ್ ಪ್ರಗತಿಯನ್ನು ಉಳಿಸಿ",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "ನಿಮ್ಮ ಎರಡು ಉಚಿತ ಬಳಕೆಗಳು ಪೂರ್ಣಗೊಂಡಿವೆ. ನಿಮ್ಮ ಆಟಗಳನ್ನು ಉಳಿಸಲು ಗೂಗಲ್ ನೊಂದಿಗೆ ಮುಂದುವರಿಯಿರಿ ಮತ್ತು ಮಿಸ್ಟೇಟ್ ಬ್ಯಾಂಕ್. ನಿಮ್ಮ ಅಸ್ತಿತ್ವದಲ್ಲಿರುವ ಪ್ರಗತಿ ಸುರಕ್ಷಿತವಾಗಿರುತ್ತದೆ.",
+  "Not now": "ಈಗ ಅಲ್ಲ",
+  "Continue with Google": "ಗೂಗಲ್ ನೊಂದಿಗೆ ಮುಂದುವರಿಯಿರಿ",
+  "Save your games and Mistake Bank with your free Google account.": "ನಿಮ್ಮ ಉಚಿತ ಗೂಗಲ್ ಖಾತೆಯೊಂದಿಗೆ ನಿಮ್ಮ ಆಟಗಳು ಮತ್ತು ಮಿಸ್ಟೇಟ್ ಬ್ಯಾಂಕ್ ಅನ್ನು ಉಳಿಸಿ."
 }

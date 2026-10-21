@@ -960,5 +960,10 @@
   "Alternative move": "מהלך חלופי",
   "Use the arrows to explore this line.": "השתמש בחצים כדי לחקור את הקו הזה.",
   "Position FEN": "עמדה FEN",
-  "No castling or en passant rights in the starting position.": "אין זכות קסטלינג או אנ-פאסנט בעמדת הזינוק."
+  "No castling or en passant rights in the starting position.": "אין זכות קסטלינג או אנ-פאסנט בעמדת הזינוק.",
+  "Save your chess progress": "שמור את ההתקדמות שלך בשחמט",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "שני השימושים החינמיים שלך הושלמו. המשך עם גוגל כדי לשמור את המשחקים שלך ואת בנק הטעויות. ההתקדמות הקיימת שלך נשארת בטוחה.",
+  "Not now": "לא עכשיו",
+  "Continue with Google": "המשך עם גוגל",
+  "Save your games and Mistake Bank with your free Google account.": "שמור את המשחקים שלך ובצע בנק טעויות עם חשבון הגוגל החינמי שלך."
 }

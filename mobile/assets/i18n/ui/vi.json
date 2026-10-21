@@ -960,5 +960,10 @@
   "Alternative move": "Nước đi thay thế",
   "Use the arrows to explore this line.": "Dùng mũi tên để khám phá đường này.",
   "Position FEN": "Vị trí FEN",
-  "No castling or en passant rights in the starting position.": "Không có quyền castling hoặc en passant ở vị trí xuất phát."
+  "No castling or en passant rights in the starting position.": "Không có quyền castling hoặc en passant ở vị trí xuất phát.",
+  "Save your chess progress": "Lưu tiến trình cờ vua của bạn",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "Hai lần sử dụng miễn phí của bạn đã hoàn tất. Tiếp tục sử dụng Google để lưu trò chơi và Ngân hàng Lỗi của bạn. Tiến trình hiện tại của bạn sẽ được giữ an toàn.",
+  "Not now": "Không phải bây giờ",
+  "Continue with Google": "Tiếp tục với Google",
+  "Save your games and Mistake Bank with your free Google account.": "Lưu trò chơi và Mistake Bank của bạn bằng tài khoản Google miễn phí."
 }

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/app_ui_localizations.dart';
 import '../../auth/data/auth_session_store.dart';
+import '../../auth/data/guest_feature_trial.dart';
+import '../../auth/presentation/guest_feature_gate.dart';
 import '../data/engine_candidates_api.dart';
 import '../domain/pgn_position_reconstructor.dart';
 
@@ -25,6 +27,7 @@ class _SetupAnalysisScreenState extends State<SetupAnalysisScreen> {
   int _selected = 0;
   bool _loading = true;
   String? _error;
+  bool _trialGranted = false;
 
   @override
   void initState() {
@@ -69,6 +72,19 @@ class _SetupAnalysisScreenState extends State<SetupAnalysisScreen> {
                 2,
           )
           .toList();
+      if (!mounted) return;
+      if (lines.isNotEmpty && !_trialGranted) {
+        if (!await GuestFeatureGate.allow(context, GuestFeature.review)) {
+          if (mounted) {
+            setState(
+              () =>
+                  _error = 'Sign in to analyse this position, then try again.',
+            );
+          }
+          return;
+        }
+        _trialGranted = true;
+      }
       if (!mounted) return;
       setState(() {
         _lines = lines;

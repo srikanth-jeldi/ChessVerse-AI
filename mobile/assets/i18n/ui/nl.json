@@ -960,5 +960,10 @@
   "Alternative move": "Alternatieve zet",
   "Use the arrows to explore this line.": "Gebruik de pijlen om deze lijn te verkennen.",
   "Position FEN": "Positie FEN",
-  "No castling or en passant rights in the starting position.": "Geen rokade of en passant-rechten in de startpositie."
+  "No castling or en passant rights in the starting position.": "Geen rokade of en passant-rechten in de startpositie.",
+  "Save your chess progress": "Bewaar je schaakvoortgang",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "Je twee gratis gebruiken zijn voltooid. Ga verder met Google om je games en Mistake Bank op te slaan. Je huidige voortgang blijft veilig.",
+  "Not now": "Niet nu",
+  "Continue with Google": "Ga verder met Google",
+  "Save your games and Mistake Bank with your free Google account.": "Sla je games op en Mistake Bank met je gratis Google-account."
 }

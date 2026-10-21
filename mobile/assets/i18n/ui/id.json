@@ -960,5 +960,10 @@
   "Alternative move": "Langkah alternatif",
   "Use the arrows to explore this line.": "Gunakan panah untuk menjelajahi garis ini.",
   "Position FEN": "Posisi FEN",
-  "No castling or en passant rights in the starting position.": "Tidak ada hak castling atau en passant di posisi starter."
+  "No castling or en passant rights in the starting position.": "Tidak ada hak castling atau en passant di posisi starter.",
+  "Save your chess progress": "Simpan kemajuan catur Anda",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "Dua penggunaan gratis Anda sudah selesai. Lanjutkan dengan Google untuk menyimpan game dan Error Bank Anda. Kemajuan Anda yang sudah ada tetap aman.",
+  "Not now": "Tidak sekarang",
+  "Continue with Google": "Lanjutkan dengan Google",
+  "Save your games and Mistake Bank with your free Google account.": "Simpan game dan Error Bank Anda dengan akun Google gratis Anda."
 }

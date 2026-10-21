@@ -31,6 +31,10 @@ void main() {
           (l) => l.code != 'system',
         )) {
           FlutterSecureStorage.setMockInitialValues({
+            'auth.token': 'layout-test-token',
+            'auth.expiresAt': '2099-01-01T00:00:00Z',
+            'auth.displayName': 'Layout player',
+            'auth.isGuest': 'false',
             'settings.language': language.code,
           });
           AppLanguageController.effectiveLanguageChanges.value = null;
@@ -169,7 +173,13 @@ void main() {
     tester.view.physicalSize = const Size(360, 800);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    FlutterSecureStorage.setMockInitialValues({'settings.language': 'en'});
+    FlutterSecureStorage.setMockInitialValues({
+      'auth.token': 'layout-test-token',
+      'auth.expiresAt': '2099-01-01T00:00:00Z',
+      'auth.displayName': 'Layout player',
+      'auth.isGuest': 'false',
+      'settings.language': 'en',
+    });
     AppLanguageController.effectiveLanguageChanges.value = null;
     final report = AiReviewReport.fromMoves(
       const <String>[],

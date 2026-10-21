@@ -960,5 +960,10 @@
   "Alternative move": "替代动作",
   "Use the arrows to explore this line.": "用箭头探索这条线。",
   "Position FEN": "位置 FEN",
-  "No castling or en passant rights in the starting position.": "起始位置没有易位或过客权利。"
+  "No castling or en passant rights in the starting position.": "起始位置没有易位或过客权利。",
+  "Save your chess progress": "保存你的国际象棋进度",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "你的两次免费使用已完成。继续使用谷歌保存你的游戏和错误银行。你现有的进度将保持安全。",
+  "Not now": "现在不行",
+  "Continue with Google": "继续用谷歌",
+  "Save your games and Mistake Bank with your free Google account.": "用你的免费谷歌账户保存你的游戏和Mistake Bank。"
 }

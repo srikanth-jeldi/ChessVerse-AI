@@ -960,5 +960,10 @@
   "Alternative move": "Alternatif hamle",
   "Use the arrows to explore this line.": "Bu çizgiyi keşfetmek için okları kullanın.",
   "Position FEN": "Pozisyon FEN",
-  "No castling or en passant rights in the starting position.": "Başlangıç pozisyonunda rok veya en passant hakları yok."
+  "No castling or en passant rights in the starting position.": "Başlangıç pozisyonunda rok veya en passant hakları yok.",
+  "Save your chess progress": "Sabunç ilerlemenizi kaydedin",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "İki ücretsiz kullanımınız tamamlandı. Oyunlarınızı ve Mistake Bank'ı kaydetmek için Google ile devam edin. Mevcut ilerlemeniz güvende kalır.",
+  "Not now": "Şimdi değil",
+  "Continue with Google": "Google ile devam edin",
+  "Save your games and Mistake Bank with your free Google account.": "Oyunlarınızı ve Mistake Bank'ı ücretsiz Google hesabınızla kaydedin."
 }

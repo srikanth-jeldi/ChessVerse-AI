@@ -960,5 +960,10 @@
   "Alternative move": "代替の動き",
   "Use the arrows to explore this line.": "矢印を使ってこの線を探索してください。",
   "Position FEN": "ポジションFEN",
-  "No castling or en passant rights in the starting position.": "スタートポジションでのキャスリングやアンパッサントの権利はありません。"
+  "No castling or en passant rights in the starting position.": "スタートポジションでのキャスリングやアンパッサントの権利はありません。",
+  "Save your chess progress": "チェスの進行状況を保存してください",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "2回の無料使用は完了しました。Googleでゲームとミスバンクを保存し続けてください。現在の進行状況は安全に保たれます。",
+  "Not now": "今はダメだ",
+  "Continue with Google": "Googleで続けてください",
+  "Save your games and Mistake Bank with your free Google account.": "無料のGoogleアカウントでゲームとミスバンクを保存しましょう。"
 }

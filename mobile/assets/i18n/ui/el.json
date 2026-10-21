@@ -960,5 +960,10 @@
   "Alternative move": "Εναλλακτική κίνηση",
   "Use the arrows to explore this line.": "Χρησιμοποιήστε τα βέλη για να εξερευνήσετε αυτήν τη γραμμή.",
   "Position FEN": "Θέση FEN",
-  "No castling or en passant rights in the starting position.": "Δεν υπάρχουν δικαιώματα ροκέ ή en passant στην αρχική θέση."
+  "No castling or en passant rights in the starting position.": "Δεν υπάρχουν δικαιώματα ροκέ ή en passant στην αρχική θέση.",
+  "Save your chess progress": "Αποθηκεύστε την πρόοδό σας στο σκάκι",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "Οι δύο δωρεάν χρήσεις σας ολοκληρώθηκαν. Συνεχίστε με το Google για να αποθηκεύσετε τα παιχνίδια σας και το Mistake Bank. Η υπάρχουσα πρόοδός σας παραμένει ασφαλής.",
+  "Not now": "Οχι τώρα",
+  "Continue with Google": "Συνεχίστε με το Google",
+  "Save your games and Mistake Bank with your free Google account.": "Αποθηκεύστε τα παιχνίδια σας και το Mistake Bank με τον δωρεάν λογαριασμό σας Google."
 }

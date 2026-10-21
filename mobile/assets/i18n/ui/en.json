@@ -960,5 +960,10 @@
   "Alternative move": "Alternative move",
   "Use the arrows to explore this line.": "Use the arrows to explore this line.",
   "Position FEN": "Position FEN",
-  "No castling or en passant rights in the starting position.": "No castling or en passant rights in the starting position."
+  "No castling or en passant rights in the starting position.": "No castling or en passant rights in the starting position.",
+  "Save your chess progress": "Save your chess progress",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.",
+  "Not now": "Not now",
+  "Continue with Google": "Continue with Google",
+  "Save your games and Mistake Bank with your free Google account.": "Save your games and Mistake Bank with your free Google account."
 }

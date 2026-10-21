@@ -960,5 +960,10 @@
   "Alternative move": "Альтернативный ход",
   "Use the arrows to explore this line.": "Используйте стрелки, чтобы исследовать эту линию.",
   "Position FEN": "Позиция FEN",
-  "No castling or en passant rights in the starting position.": "Нет рокировки или права en passant в стартовой позиции."
+  "No castling or en passant rights in the starting position.": "Нет рокировки или права en passant в стартовой позиции.",
+  "Save your chess progress": "Сохраняйте свой прогресс в шахматах",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "Ваши два бесплатных использования завершены. Продолжайте использовать Google, чтобы сохранить свои игры и Error Bank. Ваш текущий прогресс остаётся в безопасности.",
+  "Not now": "Не сейчас",
+  "Continue with Google": "Продолжайте с Google",
+  "Save your games and Mistake Bank with your free Google account.": "Сохраняйте свои игры и банк ошибок с помощью бесплатного аккаунта Google."
 }

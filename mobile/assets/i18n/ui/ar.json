@@ -960,5 +960,10 @@
   "Alternative move": "حركة بديلة",
   "Use the arrows to explore this line.": "استخدم الأسهم لاستكشاف هذا الخط.",
   "Position FEN": "الموقع: FEN",
-  "No castling or en passant rights in the starting position.": "لا يوجد تنصل أو حق السير في وضع البداية."
+  "No castling or en passant rights in the starting position.": "لا يوجد تنصل أو حق السير في وضع البداية.",
+  "Save your chess progress": "احفظ تقدمك في الشطرنج",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "استخداماتك المجانية الاثنتان اكتملت. استمر مع جوجل لحفظ ألعابك وبنك الأخطاء. تقدمك الحالي سيبقى آمنا.",
+  "Not now": "ليس الآن",
+  "Continue with Google": "تابع مع جوجل",
+  "Save your games and Mistake Bank with your free Google account.": "احفظ ألعابك وسجل الأخطاء في حساب جوجل المجاني الخاص بك."
 }

@@ -19,6 +19,8 @@ import '../../../core/widgets/chessverse_card.dart';
 import '../../../core/widgets/ai_language_picker.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../../auth/presentation/google_chat_gate.dart';
+import '../../auth/presentation/guest_feature_gate.dart';
+import '../../auth/data/guest_feature_trial.dart';
 import '../data/ai_coach_api.dart';
 import '../data/engine_candidates_api.dart';
 import '../domain/ai_review_report.dart';
@@ -111,6 +113,10 @@ Future<void> showAdaptiveAiReview(
   ValueChanged<AiMoveInsight>? onRetryPosition,
   VoidCallback? onGeneratePuzzles,
 }) async {
+  if (!await GuestFeatureGate.allow(context, GuestFeature.review) ||
+      !context.mounted) {
+    return;
+  }
   final String languageCode = await AppLanguageController.effectiveCode();
   if (!context.mounted) return;
   final Size viewport = MediaQuery.sizeOf(context);

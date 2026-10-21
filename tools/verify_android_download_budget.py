@@ -10,6 +10,8 @@ parser.add_argument('--bundle', type=Path, required=True)
 parser.add_argument('--baseline', type=Path, required=True)
 parser.add_argument('--size-csv', type=Path, required=True)
 parser.add_argument('--max-bytes', type=int, default=25_000_000)
+parser.add_argument('--allow-catalog-additions', action='store_true',
+                    help='Allow new translations while preserving every baseline key/value')
 args = parser.parse_args()
 
 with zipfile.ZipFile(args.baseline) as old, zipfile.ZipFile(args.bundle) as new:
@@ -30,7 +32,11 @@ with zipfile.ZipFile(args.baseline) as old, zipfile.ZipFile(args.bundle) as new:
     catalogs = sorted(n for n in new_names if '/assets/i18n/ui/' in n and n.endswith('.json'))
     assert len(catalogs) == 34
     for name in catalogs:
-        assert old.read(name) == new.read(name), f'Catalog changed: {name}'
+        if args.allow_catalog_additions:
+            previous, current = json.loads(old.read(name)), json.loads(new.read(name))
+            assert all(current.get(key) == value for key, value in previous.items()), f'Baseline translation changed: {name}'
+        else:
+            assert old.read(name) == new.read(name), f'Catalog changed: {name}'
 
 with args.size_csv.open(encoding='utf-8-sig') as stream:
     rows = list(csv.DictReader(stream))
@@ -41,5 +47,5 @@ print(json.dumps({
     'download_estimates': rows,
     'preserved_asset_and_native_paths': len(protected),
     'native_libraries': libs,
-    'unchanged_language_catalogs': len(catalogs),
+    'preserved_language_catalogs': len(catalogs),
 }, indent=2))

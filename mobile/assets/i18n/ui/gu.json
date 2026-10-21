@@ -960,5 +960,10 @@
   "Alternative move": "વૈકલ્પિક ચાલ",
   "Use the arrows to explore this line.": "આ રેખાનું અન્વેષણ કરવા માટે તીરનો ઉપયોગ કરો.",
   "Position FEN": "સ્થાન FEN",
-  "No castling or en passant rights in the starting position.": "પ્રારંભિક સ્થિતિમાં કોઈ કેસલિંગ અથવા એન પેસન્ટ અધિકારો નથી."
+  "No castling or en passant rights in the starting position.": "પ્રારંભિક સ્થિતિમાં કોઈ કેસલિંગ અથવા એન પેસન્ટ અધિકારો નથી.",
+  "Save your chess progress": "તમારી ચેસની પ્રગતિ સાચવો",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "તમારા બે મફત ઉપયોગો પૂર્ણ થયા છે. તમારી રમતો અને ભૂલ બેંકને સાચવવા માટે ગૂગલ સાથે ચાલુ રાખો. તમારી હાલની પ્રગતિ સલામત રહે છે.",
+  "Not now": "હમણાં નહિ",
+  "Continue with Google": "ગૂગલ સાથે ચાલુ રાખો",
+  "Save your games and Mistake Bank with your free Google account.": "તમારા મફત ગૂગલ એકાઉન્ટ સાથે તમારી રમતો અને ભૂલ બેંક સાચવો."
 }

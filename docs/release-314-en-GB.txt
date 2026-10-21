@@ -1,0 +1,6 @@
+<en-GB>
+Try game analysis and Mistake Bank twice as a guest, then continue with Google to save your progress.
+Guest games and Mistake Bank progress now merge when signing into an existing Google-linked account, without transferring or duplicating coin rewards.
+Improved sign-in messages across all 34 languages.
+Includes smaller downloads while retaining all supported device architectures and chess sets.
+</en-GB>

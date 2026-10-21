@@ -960,5 +960,10 @@
   "Alternative move": "ทางเลือก",
   "Use the arrows to explore this line.": "ใช้ลูกศรเพื่อสํารวจเส้นนี้",
   "Position FEN": "ตําแหน่ง FEN",
-  "No castling or en passant rights in the starting position.": "ไม่มีสิทธิ์ในการป้อมปราการหรือในตําแหน่งเริ่มต้น"
+  "No castling or en passant rights in the starting position.": "ไม่มีสิทธิ์ในการป้อมปราการหรือในตําแหน่งเริ่มต้น",
+  "Save your chess progress": "บันทึกความคืบหน้าในการเล่นหมากรุกของคุณ",
+  "Your two free uses are complete. Continue with Google to save your games and Mistake Bank. Your existing progress stays safe.": "การใช้งานฟรีสองครั้งของคุณเสร็จสมบูรณ์แล้วดําเนินการกับ Google เพื่อบันทึกเกมและ Mistake Bank ต่อไปความคืบหน้าที่มีอยู่ของคุณจะปลอดภัย",
+  "Not now": "ไม่ใช่ตอนนี้",
+  "Continue with Google": "ดําเนินการต่อกับ Google",
+  "Save your games and Mistake Bank with your free Google account.": "บันทึกเกมและ Mistake Bank ของคุณด้วยบัญชี Google ฟรีของคุณ"
 }

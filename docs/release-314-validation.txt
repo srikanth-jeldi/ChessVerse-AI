@@ -1,0 +1,39 @@
+Release 1.3.47 (314): Guest conversion and safe account merge
+
+Behaviour
+- Two persistent guest uses per feature: review/position analysis share one
+  counter; Mistake Bank has a separate counter. Third access prompts Google
+  sign-in. Empty Mistake Bank and failed/empty position analysis do not count.
+- No startup sign-in prompt. Prompt is dismissible; signed-in accounts bypass
+  the trial regardless of their authentication provider.
+- New Google identity keeps the same server player and wallet. Local archive
+  identity is upgraded without deleting guest progress.
+- Existing Google-linked account receives missing server computer game IDs
+  and private Mistake Bank records. Local saved games and SRS practice records
+  are merged, with a durable, target-bound recovery snapshot.
+- Existing target wallet, reward ledger, purchases, streak and unfinished game
+  are not copied from the guest. A guest archive cannot be claimed by a second
+  target account. Same-account retries deduplicate by game/mistake ID.
+- Google token verification and a valid source guest session are required.
+- Trial counters are stored on the device, not an anti-abuse server quota.
+- New copy bundled in all 34 languages; ChessVerseAI name remains unchanged.
+- Three onboarding wide previews reduced to 1024px longest edge to retain
+  download-size headroom. Gameplay pieces/native dependencies unchanged.
+
+Validation
+- Backend: 39 tests passed (19 auth, 16 economy, 4 private mistake backup).
+- Guest token verification in backend tests uses mocked Google identity
+  verification; this is not a real Google OAuth/device acceptance test.
+- Release is not uploaded to Play Store by this task.
+- Final Flutter review/setup/image suite: 213 tests passed, including loaded,
+  empty, error, loading and retry states across all 34 languages.
+- Final auth/guest suite: 9 tests passed, including all 34 prompt and Google
+  screen translations at 320x480 with 1.4 text scale and RTL direction.
+  Bengali large-text overflow was reproduced and fixed with a scrollable dialog.
+- Guest archive recovery replay retains existing games, deduplicates imported
+  guest games and keeps SRS review progress without copying daily streaks.
+- Scoped analyzer: no issues found. Final follow-up changes add scrolling and
+  preserve the recovery snapshot if session persistence fails.
+- Backend source 688d2849 deployed successfully through workflow 39556033951;
+  API health and readiness returned UP. Flyway migration V90 is required.
+- No real-device Google OAuth acceptance test was performed for this release.
