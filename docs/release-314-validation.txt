@@ -37,3 +37,7 @@ Validation
 - Backend source 688d2849 deployed successfully through workflow 39556033951;
   API health and readiness returned UP. Flyway migration V90 is required.
 - No real-device Google OAuth acceptance test was performed for this release.
+- Post-login board ownership: 12 targeted tests passed (guest conversion and
+  computer game store). A new game adopts the current authenticated session;
+  an existing destination paused game is preserved rather than overwritten.
+  Fresh online matchmaking also reads the current authenticated session.

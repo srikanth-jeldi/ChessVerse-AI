@@ -784,6 +784,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   int _blackSeconds = 10 * 60;
   bool _signedIn = false;
   String? _authToken;
+  String? _currentAccountDisplayName;
   bool _awaitingCode = false;
   bool _authLoading = false;
   bool _authHasError = false;
@@ -2592,6 +2593,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   String get _playerDisplayName {
+    if (_currentAccountDisplayName != null) return _currentAccountDisplayName!;
     final String trimmed = widget.initialPlayerName?.trim() ?? '';
     if (trimmed.isNotEmpty) {
       return trimmed;
@@ -4169,7 +4171,46 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       );
       if (replace != true || !mounted) return;
     }
-    if (!confirmed) await _persistComputerDraft(force: true);
+    var accountChanged = false;
+    if (_gameMode == GameMode.computer && _draftOwner != null) {
+      try {
+        final owner = await ComputerGameStore.prepareAfterAccountChange(
+          _draftOwner!,
+        );
+        if (!mounted) return;
+        if (owner != null) {
+          final session = await _sessionStore.read();
+          if (!mounted) return;
+          _draftOwner = owner;
+          _authToken = owner;
+          _currentAccountDisplayName = session?.displayName;
+          accountChanged = true;
+        }
+      } on ComputerGameConflict {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: UiText(
+                'Your account can keep one paused computer game. Completed history stays saved.',
+              ),
+            ),
+          );
+        }
+        return;
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: UiText(
+                'Game was not synced, but you can keep playing or start again.',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+    }
+    if (!confirmed && !accountChanged) await _persistComputerDraft(force: true);
     if (!mounted || _draftConflict) return;
     _draftId = DateTime.now().microsecondsSinceEpoch.toString();
     _lastDraftFingerprint = null;
@@ -5323,8 +5364,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _showOnlineMatchmakingInfo() async {
-    String? token = _authToken;
-    token ??= (await _sessionStore.read())?.token;
+    final String? token = (await _sessionStore.read())?.token;
     if (!mounted) return;
     if (token == null || token.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(

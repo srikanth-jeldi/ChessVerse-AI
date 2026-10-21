@@ -94,6 +94,17 @@ class ComputerGameStore {
 
   static Future<String> activeOwner() async =>
       (await const AuthSessionStore().read())?.token ?? '';
+
+  /// A sign-in inside the review can change the owner while the board stays
+  /// mounted. Claim only an empty destination slot before starting a new game.
+  static Future<String?> prepareAfterAccountChange(String previousOwner) async {
+    final owner = await activeOwner();
+    if (owner == previousOwner) return null;
+    if (owner.isEmpty) throw StateError('Sign in to sync My Games');
+    await prepare(owner, null); // Conflict preserves an existing paused game.
+    return owner;
+  }
+
   static Future<T> _serial<T>(Future<T> Function() action) {
     final result = _pending.then((_) => action());
     _pending = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
