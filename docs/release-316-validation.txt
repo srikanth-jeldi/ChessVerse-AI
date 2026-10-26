@@ -14,3 +14,7 @@ Temporary guest used for read-only API smoke test was deleted after testing.
 Puzzle ad analyzer: no issues. Shared five-minute cooldown and daily cap remain; no-fill never blocks the next puzzle.
 Device: Samsung SM-F415F build 315 was detected. Pairing/connect succeeded repeatedly but wireless ports disconnected. Build 316 installation did not complete; no real-device QA pass claimed.
 Play Store upload/rollout not performed. External invite email delivery not yet end-to-end verified.
+Final backend reminder mitigation deployed successfully at commit 096cace0234d5088f00381ddfeb8a6b2049cccda: https://github.com/srikanth-jeldi/ChessVerse-AI/actions/runs/40307067509
+Additional tournament reminder tests: 3 passed. Production readiness UP after deployment.
+Cloud voice availability: live synthesis returned audio successfully for all 34 configured languages (short localized samples); 9 initial 429 rate-limit responses were retried after the window. This validates endpoint/voice availability, not native-speaker quality or live automatic game commentary. Test guest accounts were removed.
+Automatic move-by-move voice commentary is NOT implemented in build 316.

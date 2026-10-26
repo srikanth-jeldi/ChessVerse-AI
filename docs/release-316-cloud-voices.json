@@ -1,0 +1,240 @@
+[
+  {
+    "language": "ar",
+    "status": 200,
+    "voice": "ar-SA-ZariyahNeural",
+    "bytes": 23904,
+    "milliseconds": 1203
+  },
+  {
+    "language": "bn",
+    "status": 200,
+    "voice": "bn-IN-TanishaaNeural",
+    "bytes": 22320,
+    "milliseconds": 1250
+  },
+  {
+    "language": "de",
+    "status": 200,
+    "voice": "de-DE-KatjaNeural",
+    "bytes": 22464,
+    "milliseconds": 516
+  },
+  {
+    "language": "el",
+    "status": 200,
+    "voice": "el-GR-AthinaNeural",
+    "bytes": 21456,
+    "milliseconds": 609
+  },
+  {
+    "language": "en",
+    "status": 200,
+    "voice": "en-US-JennyNeural",
+    "bytes": 20160,
+    "milliseconds": 500
+  },
+  {
+    "language": "es",
+    "status": 200,
+    "voice": "es-ES-ElviraNeural",
+    "bytes": 23472,
+    "milliseconds": 453
+  },
+  {
+    "language": "fa",
+    "status": 200,
+    "voice": "fa-IR-DilaraNeural",
+    "bytes": 22752,
+    "milliseconds": 453
+  },
+  {
+    "language": "fr",
+    "status": 200,
+    "voice": "fr-FR-DeniseNeural",
+    "bytes": 19584,
+    "milliseconds": 672
+  },
+  {
+    "language": "gu",
+    "status": 200,
+    "voice": "gu-IN-DhwaniNeural",
+    "bytes": 23040,
+    "milliseconds": 438
+  },
+  {
+    "language": "he",
+    "status": 200,
+    "voice": "he-IL-HilaNeural",
+    "bytes": 24192,
+    "milliseconds": 610
+  },
+  {
+    "language": "hi",
+    "status": 200,
+    "voice": "hi-IN-SwaraNeural",
+    "bytes": 24768,
+    "milliseconds": 406
+  },
+  {
+    "language": "id",
+    "status": 200,
+    "voice": "id-ID-GadisNeural",
+    "bytes": 27504,
+    "milliseconds": 594
+  },
+  {
+    "language": "it",
+    "status": 200,
+    "voice": "it-IT-ElsaNeural",
+    "bytes": 13680,
+    "milliseconds": 562
+  },
+  {
+    "language": "ja",
+    "status": 200,
+    "voice": "ja-JP-NanamiNeural",
+    "bytes": 28512,
+    "milliseconds": 406
+  },
+  {
+    "language": "kn",
+    "status": 200,
+    "voice": "kn-IN-SapnaNeural",
+    "bytes": 22320,
+    "milliseconds": 812
+  },
+  {
+    "language": "ko",
+    "status": 200,
+    "voice": "ko-KR-SunHiNeural",
+    "bytes": 24480,
+    "milliseconds": 484
+  },
+  {
+    "language": "ml",
+    "status": 200,
+    "voice": "ml-IN-SobhanaNeural",
+    "bytes": 22608,
+    "milliseconds": 609
+  },
+  {
+    "language": "mr",
+    "status": 200,
+    "voice": "mr-IN-AarohiNeural",
+    "bytes": 22464,
+    "milliseconds": 453
+  },
+  {
+    "language": "ms",
+    "status": 200,
+    "voice": "ms-MY-YasminNeural",
+    "bytes": 27648,
+    "milliseconds": 813
+  },
+  {
+    "language": "nl",
+    "status": 200,
+    "voice": "nl-NL-ColetteNeural",
+    "bytes": 25920,
+    "milliseconds": 781
+  },
+  {
+    "language": "pa",
+    "status": 200,
+    "voice": "pa-IN-VaaniNeural",
+    "bytes": 17280,
+    "milliseconds": 1063
+  },
+  {
+    "language": "pl",
+    "status": 200,
+    "voice": "pl-PL-ZofiaNeural",
+    "bytes": 20448,
+    "milliseconds": 500
+  },
+  {
+    "language": "pt",
+    "status": 200,
+    "voice": "pt-BR-FranciscaNeural",
+    "bytes": 18144,
+    "milliseconds": 453
+  },
+  {
+    "language": "ru",
+    "status": 200,
+    "voice": "ru-RU-SvetlanaNeural",
+    "bytes": 27792,
+    "milliseconds": 547
+  },
+  {
+    "language": "sv",
+    "status": 200,
+    "voice": "sv-SE-SofieNeural",
+    "bytes": 25056,
+    "milliseconds": 688
+  },
+  {
+    "language": "sw",
+    "status": 200,
+    "voice": "sw-KE-ZuriNeural",
+    "bytes": 23760,
+    "milliseconds": 828
+  },
+  {
+    "language": "ta",
+    "status": 200,
+    "voice": "ta-IN-PallaviNeural",
+    "bytes": 20016,
+    "milliseconds": 438
+  },
+  {
+    "language": "te",
+    "status": 200,
+    "voice": "te-IN-ShrutiNeural",
+    "bytes": 16848,
+    "milliseconds": 500
+  },
+  {
+    "language": "th",
+    "status": 200,
+    "voice": "th-TH-PremwadeeNeural",
+    "bytes": 15408,
+    "milliseconds": 500
+  },
+  {
+    "language": "tr",
+    "status": 200,
+    "voice": "tr-TR-EmelNeural",
+    "bytes": 23760,
+    "milliseconds": 406
+  },
+  {
+    "language": "uk",
+    "status": 200,
+    "voice": "uk-UA-PolinaNeural",
+    "bytes": 22320,
+    "milliseconds": 547
+  },
+  {
+    "language": "ur",
+    "status": 200,
+    "voice": "ur-PK-UzmaNeural",
+    "bytes": 21600,
+    "milliseconds": 516
+  },
+  {
+    "language": "vi",
+    "status": 200,
+    "voice": "vi-VN-HoaiMyNeural",
+    "bytes": 23760,
+    "milliseconds": 531
+  },
+  {
+    "language": "zh",
+    "status": 200,
+    "voice": "zh-CN-XiaoxiaoNeural",
+    "bytes": 17856,
+    "milliseconds": 344
+  }
+]
