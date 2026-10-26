@@ -10,6 +10,9 @@ Changes
   remain unchanged for game selection.
 - Literal ChessVerseAI wordmark protected from translation.
 - Board sound effects no longer request Android audio focus over narration.
+- Re-encoded the 1280x720 grandmaster table background from 172142 to 101916
+  bytes; dimensions and design retained and visually checked. No assets or
+  native architectures removed.
 
 Checks completed
 - Backend speech tests: 6 passed.
@@ -33,3 +36,15 @@ Limits
 - No promise of zero crashes/ANRs or human-level emotional speech.
 - Signed bundle, compressed size and protected-assets check results are saved
   alongside the release artifact when verification finishes.
+
+Final release verification
+- Production package com.epitomehub.chessverse, version 1.3.54, code 321.
+- JAR signature verification passed; production AdMob app ID present.
+- Bundletool maximum compressed download estimates (bytes):
+  armeabi-v7a 24548011; arm64-v8a 24791020; x86_64 24971416.
+  All below the 25000000-byte budget; actual Play delivery can vary.
+- Baseline asset paths, native dependencies, fonts and audio retained.
+- All 34 bundled catalogs, four portraits and re-encoded background match
+  final working-tree files byte for byte.
+- AAB: artifacts/release-1.3.54-321/ChessVerseAI-1.3.54-build321.aab
+  SHA256SUMS.txt and dart-symbols are stored alongside it.
