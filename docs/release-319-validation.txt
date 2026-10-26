@@ -1,0 +1,50 @@
+ChessVerseAI 1.3.52 (319) - automatic voice coach - 2026-10-26
+Source commit: 117666a5. No backend change required.
+
+Observed on user's Samsung SM-F415F (production build 318 installed):
+Android dumpsys audio showed STREAM_MUSIC speaker volume 0/15. This prevents
+audibility even when playback succeeds. This observation establishes current
+device state, not its state at the exact time of the reported screenshot.
+Set media volume to 5/15 for the authorized audio test.
+
+App fixes:
+- Voice toggle now performs a localized spoken readiness check when enabled.
+- Automatic speech is independent of move sound effects and the visual coach
+  toggle; its own opt-in toggle controls it.
+- Cloud/audio/translation failures show a localized, rate-limited message.
+- Engine review failures also report the unavailable voice path when enabled.
+- Failed playback no longer consumes the successful-speech 20-second cooldown.
+- Great engine classifications now receive their own truthful commentary.
+- Three new phrases translated in all 34 catalogs; previous values preserved.
+- Existing cancellation guards for later moves, undo/reset, route changes,
+  disabled voice, game completion and language changes preserved.
+
+Verification:
+- Live production engine review e2e4 returned Best.
+- All 34 supported languages returned HTTP 200 audio/mpeg with nonempty audio
+  for translated coach text. Initial rapid batch hit the expected 20-request
+  speech rate limit; remaining 14 passed after the window reset. No rate-limit
+  bypass or production configuration changes.
+- 12 voice/cloud tests passed, including failed-playback retry, cooldown,
+  cancellation, stale audio and complete 34-language phrase coverage.
+- Flutter analyzer: no issues.
+- Side-by-side debug test app installed on Samsung; production app/data retained.
+- On-device English readiness clip prepared and playback completed (6048 ms).
+- Played e2e4, AI replied e7e5, Best review displayed. Automatic English coach
+  clip prepared (4296 ms) and playback completed at 22:07:53.
+- Changed coach language to Telugu and played g1f3. Automatic commentary clip
+  prepared (4200 ms) and playback completed at 22:11:04.
+- User was asked to confirm hearing the speaker; no confirmation received yet.
+  Device playback logs are not a claim of human listening or native-speaker QA
+  across all 34 languages. Other 32 languages have API verification, not device
+  playback verification.
+
+Signed production AAB verified: version 319, production AdMob app ID,
+34 catalogs and all 290 baseline asset/native paths retained.
+Bundletool maximum estimated compressed download sizes:
+armeabi-v7a: 24,507,685 bytes
+arm64-v8a: 24,754,120 bytes
+x86_64: 24,929,233 bytes
+All below 25,000,000 bytes. Final Play delivery size may vary.
+Dart symbols and SHA256 accompany the AAB. No Play upload/rollout performed.
+No claim that unrelated native ANRs are resolved.
