@@ -6,6 +6,26 @@ import 'package:chessverse_ai/core/audio/live_move_voice.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test(
+    'failed playback does not suppress the next move for 20 seconds',
+    () async {
+      final voice = LiveMoveVoice()..enabled = true;
+      var attempts = 0;
+      for (final ply in [1, 3]) {
+        await voice.review(
+          ply: ply,
+          classification: 'Great',
+          isCurrent: () => true,
+          speak: (_, valid) async {
+            attempts++;
+            return attempts > 1 && valid();
+          },
+        );
+      }
+      expect(attempts, 2);
+    },
+  );
+
   test('opt-in, cooldown, duplicate and out-of-order results', () async {
     var now = DateTime(2026);
     final voice = LiveMoveVoice(now: () => now);
@@ -16,6 +36,7 @@ void main() {
       isCurrent: () => true,
       speak: (text, valid) async {
         if (valid()) spoken.add(text);
+        return valid();
       },
     );
     await review(1);
@@ -47,6 +68,7 @@ void main() {
         speak: (_, valid) async {
           await ready.future;
           played = valid();
+          return played;
         },
       );
       voice.cancel(newGame: true);
@@ -84,11 +106,14 @@ void main() {
       for (final text in [
         'Automatic voice coach',
         'Short cloud voice tips after reviewed moves. Internet required.',
+        'Automatic voice coach is ready. I will give you short tips after your moves.',
+        'Voice could not play. Check your connection and media volume, then turn voice off and on to retry.',
         ...[
           'Blunder',
           'Mistake',
           'Inaccuracy',
           'Best',
+          'Great',
         ].map((c) => LiveMoveVoice.phrase(c)!),
       ]) {
         expect(catalog[text], isA<String>(), reason: '${file.path}: $text');

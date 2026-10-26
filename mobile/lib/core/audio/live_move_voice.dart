@@ -14,6 +14,7 @@ class LiveMoveVoice {
     'Mistake' => 'That move gives your opponent an advantage. Your review shows a safer choice.',
     'Inaccuracy' => 'There was a more accurate move here. Check your review when you are ready.',
     'Best' => 'Well played! You found the strongest move.',
+    'Great' => 'Good move. Keep checking your opponent’s threats.',
     _ => null,
   };
 
@@ -29,7 +30,7 @@ class LiveMoveVoice {
     required int ply,
     required String classification,
     required bool Function() isCurrent,
-    required Future<void> Function(String phrase, bool Function() canSpeak)
+    required Future<bool> Function(String phrase, bool Function() canSpeak)
     speak,
   }) async {
     if (!enabled || !isCurrent() || ply <= _lastPly) return;
@@ -41,11 +42,11 @@ class LiveMoveVoice {
             now.difference(_lastSpoken!) < const Duration(seconds: 20))) {
       return;
     }
-    _lastSpoken = now;
     final generation = ++_generation;
     bool current() => enabled && generation == _generation && isCurrent();
     try {
-      await speak(text, current);
+      final played = await speak(text, current);
+      if (played && current()) _lastSpoken = _now();
     } on Object {
       // Optional audio must never fail or delay the game.
     }

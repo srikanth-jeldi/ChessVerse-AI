@@ -1,0 +1,7 @@
+<en-GB>
+• Improved automatic voice coaching across 34 languages.
+• Hear a voice check when enabling the coach, with clear feedback if audio cannot play.
+• Voice coaching now works independently of move sound effects.
+• Improved move commentary and recovery after failed playback.
+• Includes redesigned profiles, weekly coin rankings and recent layout fixes.
+</en-GB>

@@ -775,8 +775,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   final LiveMoveVoice _liveVoice = LiveMoveVoice();
   CloudNarrationService? _liveNarrator;
   final Map<String, Map<String, String>> _voiceCatalogs = {};
+  int _voiceToggleEpoch = 0;
+  DateTime? _lastVoiceError;
 
   void _stopLiveVoice({bool newGame = false}) {
+    _voiceToggleEpoch++;
     _liveVoice.cancel(newGame: newGame);
     unawaited(_liveNarrator?.stop().catchError((Object _) {}));
   }
@@ -789,6 +792,65 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     } on Object {
       // The session toggle still works when preference storage is unavailable.
     }
+    if (enabled && mounted && _liveVoice.enabled) {
+      final epoch = ++_voiceToggleEpoch;
+      final language = AppLanguageController.resolveCode(_coachLanguageCode);
+      await _playLiveVoice(
+        'Automatic voice coach is ready. I will give you short tips after your moves.',
+        language,
+        () =>
+            mounted &&
+            _liveVoice.enabled &&
+            epoch == _voiceToggleEpoch &&
+            language == AppLanguageController.resolveCode(_coachLanguageCode) &&
+            (ModalRoute.of(context)?.isCurrent ?? false),
+      );
+    }
+  }
+
+  Future<bool> _playLiveVoice(
+    String source,
+    String language,
+    bool Function() current,
+  ) async {
+    try {
+      final catalog = _voiceCatalogs[language] ??= Map<String, String>.from(
+        jsonDecode(await rootBundle.loadString('assets/i18n/ui/$language.json'))
+            as Map,
+      );
+      final text = catalog[source];
+      if (!current()) return false;
+      _liveNarrator ??= CloudNarrationService(preferImmediateLocal: false);
+      final played =
+          text != null &&
+          await _liveNarrator!.speak(
+            text: text,
+            language: language,
+            allowLocalFallback: false,
+            canSpeak: current,
+          );
+      if (!played && current()) _showLiveVoiceError();
+      return played;
+    } on Object {
+      if (current()) _showLiveVoiceError();
+      return false;
+    }
+  }
+
+  void _showLiveVoiceError() {
+    final now = DateTime.now();
+    if (_lastVoiceError != null &&
+        now.difference(_lastVoiceError!) < const Duration(seconds: 30)) {
+      return;
+    }
+    _lastVoiceError = now;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: UiText(
+          'Voice could not play. Check your connection and media volume, then turn voice off and on to retry.',
+        ),
+      ),
+    );
   }
 
   Future<void> _loadLiveVoice() async {
@@ -815,30 +877,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       isCurrent: () =>
           mounted &&
           !_computerPaused &&
-          _coachEnabled &&
-          _soundEnabled &&
           _gameMode == GameMode.computer &&
           _gameResultTitle == null &&
           epoch == _moveReviewEpoch &&
           _moves.length <= ply + 1 &&
           language == AppLanguageController.resolveCode(_coachLanguageCode) &&
           (ModalRoute.of(context)?.isCurrent ?? false),
-      speak: (source, canSpeak) async {
-        final catalog = _voiceCatalogs[language] ??= Map<String, String>.from(
-          jsonDecode(
-            await rootBundle.loadString('assets/i18n/ui/$language.json'),
-          ) as Map,
-        );
-        final text = catalog[source];
-        if (text == null || !canSpeak()) return;
-        _liveNarrator ??= CloudNarrationService(preferImmediateLocal: false);
-        await _liveNarrator!.speak(
-          text: text,
-          language: language,
-          allowLocalFallback: false,
-          canSpeak: canSpeak,
-        );
-      },
+      speak: (source, canSpeak) => _playLiveVoice(source, language, canSpeak),
     );
   }
 
@@ -3589,6 +3634,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _scheduleMoveQualityDismiss();
     } on EngineApiException {
       // Keep the immediate on-device coach feedback when analysis is offline.
+      if (mounted &&
+          reviewEpoch == _moveReviewEpoch &&
+          _liveVoice.enabled &&
+          _gameMode == GameMode.computer &&
+          (ModalRoute.of(context)?.isCurrent ?? false)) {
+        _showLiveVoiceError();
+      }
     }
   }
 
@@ -4715,7 +4767,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _setSoundEnabled(bool value) {
     setState(() => _soundEnabled = value);
-    if (!value) _stopLiveVoice();
     ChessSoundService.instance.enabled = value;
   }
 
