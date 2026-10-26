@@ -31,3 +31,12 @@ Combined-release UI regression: 11 additional tests passed (club invitations, to
 
 Integrated AI game screen: rotation/resizing with insets passed after adding a dedicated Material surface and scrollable coach controls. Existing hint/analysis disposed-screen tests also passed. One initial layout test needed its existing delayed AI callback drained after disposal; the final rerun passed. All 34 toggle-layout cases passed again. Scoped total: 28 distinct passing tests.
 Size preparation: compacted catalog JSON without changing existing key/value pairs; losslessly recompressed the white knight PNG, preserving every RGBA pixel and all non-IDAT PNG metadata chunks.
+
+Final signed AAB verified: ChessVerseAI-1.3.50-build317.aab, 85,932,279 bytes. SHA256 F02EB9846407940BC4F64C8021A5D238DEFD7890946D357ED31560A0122154A0.
+Manifest verified version317, production AdMob app ID ca-app-pub-9061518700917881~6936057902. All 290 baseline asset/native paths, native dependency bytes, fonts/audio and 34 catalog key/value baselines preserved.
+Maximum bundletool compressed downloads: armeabi-v7a 24,540,585; arm64-v8a 24,777,358; x86_64 24,952,946 bytes. All below 25,000,000 bytes.
+Production backend readiness UP after checks.
+Physical Samsung phone reconnected. Direct release update was rejected with INSTALL_FAILED_UPDATE_INCOMPATIBLE (installed Play signature differs from upload-key signature). No app was uninstalled or data cleared. Side-by-side device test follows.
+
+Final device status: side-by-side debug APK built successfully from the final release source (com.epitomehub.chessverse.uitest), with ignored debug-only Firebase configuration. During installation the phone disappeared from ADB. Last observed connection port 192.168.0.192:40465 refused reconnection and mDNS discovery was empty. Therefore no real-device UI/voice/gameplay pass is claimed for build317. The production Play app and its data remain intact.
+Release artifacts are ready; Play Store upload/rollout is not performed.
