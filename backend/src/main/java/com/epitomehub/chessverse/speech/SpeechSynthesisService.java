@@ -28,6 +28,13 @@ class SpeechSynthesisService {
     }
 
     SpeechAudio synthesize(String text, String language, String tone) {
+        return synthesize(text, language, tone, null);
+    }
+
+    SpeechAudio synthesize(String text, String language, String tone, String gender) {
+        if (gender != null && !java.util.Set.of("female", "male").contains(gender)) {
+            throw new SpeechException(HttpStatus.BAD_REQUEST, "Unsupported voice gender.");
+        }
         String delivery = tone == null ? "neutral" : tone;
         if (!java.util.Set.of("neutral", "encouraging", "gentle", "caution").contains(delivery)) {
             throw new SpeechException(HttpStatus.BAD_REQUEST, "Unsupported voice tone.");
@@ -37,7 +44,7 @@ class SpeechSynthesisService {
         if (cleanText.length() > MAX_TEXT_LENGTH) {
             throw new SpeechException(HttpStatus.BAD_REQUEST, "Narration text must be 2,400 characters or fewer.");
         }
-        SpeechVoiceCatalog.Voice voice = SpeechVoiceCatalog.resolve(language);
+        SpeechVoiceCatalog.Voice voice = SpeechVoiceCatalog.resolve(language, gender);
         if (voice == null) throw new SpeechException(HttpStatus.BAD_REQUEST, "This narration language is not supported.");
         String cacheKey = sha256(voice.name() + '\n' + delivery + '\n' + cleanText);
         SpeechAudio cached = cache.getIfPresent(cacheKey);

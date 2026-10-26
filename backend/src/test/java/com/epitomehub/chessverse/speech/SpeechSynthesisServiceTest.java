@@ -9,6 +9,19 @@ import org.springframework.http.HttpStatus;
 
 class SpeechSynthesisServiceTest {
     @Test
+    void maleAndFemaleCoachesNeverShareCachedAudio() {
+        AtomicInteger calls = new AtomicInteger();
+        var service = new SpeechSynthesisService(ssml -> { calls.incrementAndGet(); return new byte[]{1}; });
+        var female = service.synthesize("Hello", "te", "gentle", "female");
+        var male = service.synthesize("Hello", "te", "gentle", "male");
+        assertEquals("te-IN-ShrutiNeural", female.voice());
+        assertEquals("te-IN-MohanNeural", male.voice());
+        assertNotEquals(female.etag(), male.etag());
+        assertTrue(service.synthesize("Hello", "te", "gentle", "male").cacheHit());
+        assertEquals(2, calls.get());
+        assertThrows(SpeechException.class, () -> service.synthesize("Hello", "te", "gentle", "<voice>"));
+    }
+    @Test
     void coachingToneChangesProsodyAndCacheWithoutAcceptingMarkup() {
         java.util.List<String> requests = new java.util.ArrayList<>();
         var service = new SpeechSynthesisService(ssml -> { requests.add(ssml); return new byte[]{1}; });
@@ -72,6 +85,9 @@ class SpeechSynthesisServiceTest {
             var voice = SpeechVoiceCatalog.resolve(language);
             assertNotNull(voice, language);
             assertTrue(voice.name().endsWith("Neural"), language);
+            var male = SpeechVoiceCatalog.resolve(language, "male");
+            assertNotNull(male, language);
+            assertNotEquals(voice.name(), male.name(), language);
         }
     }
 }
