@@ -78,8 +78,17 @@ class CloudNarrationService {
 
   void Function(CloudNarrationState state)? onStateChanged;
 
-  Future<bool> speak({required String text, required String language}) async {
-    if (_disposed) return false;
+  Future<bool> speak({
+    required String text,
+    required String language,
+    bool allowLocalFallback = true,
+    bool Function()? canSpeak,
+  }) async {
+    bool current() => !_disposed && (canSpeak?.call() ?? true);
+    Future<bool> fallback(String text) async => current() && allowLocalFallback
+        ? _speakLocalFallback(text, language)
+        : false;
+    if (!current()) return false;
     final String cleanText = text.trim();
     if (cleanText.isEmpty || cleanText.length > 2400) return false;
     final String cacheKey = '$language\u0000$cleanText';
@@ -90,8 +99,11 @@ class CloudNarrationService {
     final String normalizedLanguage = language.toLowerCase();
     final bool english =
         normalizedLanguage == 'en' || normalizedLanguage.startsWith('en-');
-    if (audio == null && _preferImmediateLocal && english) {
-      return _speakLocalFallback(cleanText, language);
+    if (audio == null &&
+        _preferImmediateLocal &&
+        english &&
+        allowLocalFallback) {
+      return fallback(cleanText);
     }
     try {
       audio ??= await _fetchAudio(
@@ -99,15 +111,17 @@ class CloudNarrationService {
         language,
         cacheKey,
       ).timeout(const Duration(seconds: 8));
+      if (!current()) return false;
       if (audio == null) {
-        return await _speakLocalFallback(cleanText, language);
+        return await fallback(cleanText);
       }
       await _player.stop();
+      if (!current()) return false;
       await _player.play(BytesSource(audio));
       return true;
     } on Object {
       onStateChanged?.call(CloudNarrationState.stopped);
-      return _speakLocalFallback(cleanText, language);
+      return fallback(cleanText);
     }
   }
 

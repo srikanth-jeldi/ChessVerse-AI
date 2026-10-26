@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:chessverse_ai/core/audio/cloud_narration_service.dart';
 import 'package:flutter/foundation.dart';
@@ -31,6 +32,31 @@ void main() {
     messenger.setMockMethodCallHandler(audioEvents, null);
     messenger.setMockMethodCallHandler(audioGlobal, null);
     messenger.setMockMethodCallHandler(audioPlayer, null);
+  });
+
+  test('cancelled live cloud fetch never falls back or plays late', () async {
+    final response = Completer<http.Response>();
+    var current = true;
+    var fallbacks = 0;
+    final service = CloudNarrationService(
+      tokenProvider: () async => 'session-token',
+      client: MockClient((_) => response.future),
+      localSpeaker: (_, _) async {
+        fallbacks++;
+        return true;
+      },
+    );
+    final speech = service.speak(
+      text: 'Cancelled move commentary',
+      language: 'te',
+      allowLocalFallback: false,
+      canSpeak: () => current,
+    );
+    current = false;
+    response.complete(http.Response('offline', 503));
+    expect(await speech, false);
+    expect(fallbacks, 0);
+    await service.dispose();
   });
 
   test(

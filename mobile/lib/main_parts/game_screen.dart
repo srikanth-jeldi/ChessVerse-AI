@@ -772,6 +772,54 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   String _coachNote = 'Select a coin to see legal moves.';
   String _coachLanguageCode = AppLanguageController.systemCode;
   bool _coachLanguageLoaded = false;
+  final LiveMoveVoice _liveVoice = LiveMoveVoice();
+  CloudNarrationService? _liveNarrator;
+  final Map<String, Map<String, String>> _voiceCatalogs = {};
+
+  void _stopLiveVoice({bool newGame = false}) {
+    _liveVoice.cancel(newGame: newGame);
+    unawaited(_liveNarrator?.stop().catchError((Object _) {}));
+  }
+
+  Future<void> _toggleLiveVoice(bool enabled) async {
+    setState(() => _liveVoice.enabled = enabled);
+    if (!enabled) _stopLiveVoice();
+    try {
+      await const AppPreferences().writeBool('liveMoveVoice', enabled);
+    } on Object {
+      // The session toggle still works when preference storage is unavailable.
+    }
+  }
+
+  Future<void> _loadLiveVoice() async {
+    try {
+      final enabled = await const AppPreferences().readBool('liveMoveVoice', fallback: false);
+      if (mounted) setState(() => _liveVoice.enabled = enabled);
+    } on Object {
+      // Voice is opt-in; unavailable storage leaves it off.
+    }
+  }
+
+  Future<void> _speakMoveReview(String classification, int ply, int epoch) async {
+    final language = AppLanguageController.resolveCode(_coachLanguageCode);
+    await _liveVoice.review(
+      ply: ply, classification: classification,
+      isCurrent: () => mounted && !_computerPaused && _coachEnabled && _soundEnabled &&
+          _gameMode == GameMode.computer && _gameResultTitle == null &&
+          epoch == _moveReviewEpoch && _moves.length <= ply + 1 &&
+          language == AppLanguageController.resolveCode(_coachLanguageCode) &&
+          (ModalRoute.of(context)?.isCurrent ?? false),
+      speak: (source, canSpeak) async {
+        final catalog = _voiceCatalogs[language] ??= Map<String, String>.from(
+          jsonDecode(await rootBundle.loadString('assets/i18n/ui/$language.json')) as Map);
+        final text = catalog[source];
+        if (text == null || !canSpeak()) return;
+        _liveNarrator ??= CloudNarrationService(preferImmediateLocal: false);
+        await _liveNarrator!.speak(text: text, language: language,
+            allowLocalFallback: false, canSpeak: canSpeak);
+      },
+    );
+  }
   BoardSkin _skin = BoardSkin.royalWalnut;
   GameMode _gameMode = GameMode.computer;
   double _aiLevel = 4;
@@ -880,6 +928,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     super.initState();
     unawaited(_loadGamePreferences());
     unawaited(_loadCoachLanguage());
+    unawaited(_loadLiveVoice());
     AppLanguageController.effectiveLanguageChanges.addListener(
       _onCoachLanguageChanged,
     );
@@ -1048,6 +1097,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _onCoachLanguageChanged() {
+    _stopLiveVoice();
     final language = AppLanguageController.effectiveLanguageChanges.value;
     if (!mounted || language == null) return;
     setState(() {
@@ -1105,6 +1155,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _liveVoice.cancel();
+    unawaited(_liveNarrator?.dispose().catchError((Object _) {}));
     WidgetsBinding.instance.removeObserver(this);
     _draftAutosaveTimer?.cancel();
     unawaited(_persistComputerDraft(force: true));
@@ -1134,6 +1186,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _computerPaused = state != AppLifecycleState.resumed;
+    if (_computerPaused) _stopLiveVoice();
     if (_computerPaused && _gameMode == GameMode.computer) {
       _aiMoveEpoch++;
       _aiThinking = false;
@@ -1248,6 +1301,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Future<void> _pauseComputerAndLeave() async {
     if (_leavingComputerGame) return;
     _leavingComputerGame = true;
+    _stopLiveVoice();
     _computerPaused = true;
     _aiMoveEpoch++;
     _aiThinking = false;
@@ -1484,7 +1538,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     )
                   : BoardStage(palette: palette, child: board);
 
-              final Widget studioCoach = !_coachLanguageLoaded
+              Widget studioCoach = !_coachLanguageLoaded
                   ? const Center(child: CircularProgressIndicator())
                   : _StudioCoachPanel(
                       gameMode: _gameMode,
@@ -1548,6 +1602,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       onNextPuzzle: _startGameAfterResult,
                       onBackToAcademy: () => Navigator.of(context).pop(),
                     );
+              if (_gameMode == GameMode.computer) {
+                studioCoach = SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  LiveVoiceToggle(
+                    enabled: _liveVoice.enabled,
+                    onChanged: _toggleLiveVoice,
+                  ),
+                  studioCoach,
+                ]));
+              }
               final bool yourTurn = switch (_gameMode) {
                 GameMode.computer =>
                   sideToMoveWhite == _humanPlaysWhite && !_aiThinking,
@@ -3336,7 +3399,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _selectedSquare = null;
     });
 
-    if (moveCommitted && _gameMode != GameMode.online) _trackHumanPlay();
+    if (moveCommitted && _gameMode != GameMode.online) {
+      _stopLiveVoice();
+      _trackHumanPlay();
+    }
     if (promotionSquare != null && promotionWhite != null) {
       _showPromotionPicker(promotionSquare!, promotionWhite!).then((_) {
         _scheduleComputerDraftSave();
@@ -3492,6 +3558,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         LocalGameArchive.updateLatestGameReviews(_moveReviews);
         _notifyAnalysisReadyIfComplete();
       }
+      unawaited(_speakMoveReview(classification, ply, reviewEpoch));
       _scheduleMoveQualityDismiss();
     } on EngineApiException {
       // Keep the immediate on-device coach feedback when analysis is offline.
@@ -4307,6 +4374,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _aiWatchdogTimer?.cancel();
     _aiMoveEpoch++;
     _moveReviewEpoch++;
+    _stopLiveVoice(newGame: true);
     setState(() {
       _applyPlayerSideNames(_playerDisplayName);
       _dailyChallenge = challenge;
@@ -4620,6 +4688,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _setSoundEnabled(bool value) {
     setState(() => _soundEnabled = value);
+    if (!value) _stopLiveVoice();
     ChessSoundService.instance.enabled = value;
   }
 
@@ -5141,6 +5210,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               ? _history.length - 2
               : _history.length - 1);
     if (snapshotIndex < 0) return;
+    _moveReviewEpoch++;
+    _stopLiveVoice(newGame: true);
     _aiMoveEpoch++;
     _aiWatchdogTimer?.cancel();
     setState(() {
@@ -5492,7 +5563,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 ),
                 child: OnlineMatchmakingSheet(
                   api: _onlineApi,
-                  token: token!,
+                  token: token,
                   onProfile: _openProfile,
                   onAiFallback: (String rivalName) async {
                     if (!mounted) return;

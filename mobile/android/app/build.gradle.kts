@@ -18,6 +18,13 @@ val sideBySideUiTest = providers.gradleProperty("sideBySideUiTest")
 val admobAndroidAppId = providers.gradleProperty("ADMOB_ANDROID_APP_ID")
     .orElse(providers.environmentVariable("ADMOB_ANDROID_APP_ID"))
     .orElse("ca-app-pub-3940256099942544~3347511713")
+// Never silently ship Google's sample application ID in a release bundle.
+if (gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }) {
+    require(admobAndroidAppId.get().matches(Regex("ca-app-pub-[0-9]+~[0-9]+")) &&
+            !admobAndroidAppId.get().startsWith("ca-app-pub-3940256099942544")) {
+        "Configure the production ADMOB_ANDROID_APP_ID before building a release."
+    }
+}
 if (keystorePropertiesFile.exists()) {
     FileInputStream(keystorePropertiesFile).use {
         keystoreProperties.load(it)

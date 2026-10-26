@@ -1,0 +1,33 @@
+ChessVerseAI 1.3.50 (317) - validation record, 26 October 2026
+
+Implemented in this release:
+- Optional automatic voice coach during computer practice. Uses completed engine reviews only; no extra engine requests and no awaited speech in the move pipeline.
+- Beginner-friendly short feedback for Best, Inaccuracy, Mistake and Blunder in all 34 bundled languages. Telugu phrasing manually adjusted. Other translations are machine-translated and require native-speaker feedback for idiom/pronunciation quality.
+- Default off, persistent opt-in, visible mute switch, 20-second minimum speech interval, duplicate/out-of-order review suppression, stale-fetch cancellation on mute/reset/undo/lifecycle change. Online competitive matches do not expose this feature.
+- Cloud neural narration only for automatic commentary. If cloud audio is unavailable, gameplay and text review continue; no automatic robotic local fallback. Existing manually requested lesson narration keeps its fallback.
+- New control tested at 320px, 200% text scale and RTL across 34 language catalogs.
+- Corrected release AdMob App ID, verified against AdMob app settings for com.epitomehub.chessverse. Build 316's local manifest contained Google's sample App ID despite production ad-unit IDs. No claim that this alone explains historical fill/revenue changes. Release guard now rejects the sample App ID.
+- Existing post-match ads, rewarded options and every-third-completed-puzzle cadence included. Ads remain subject to availability, cooldown and daily caps; no ad is inserted during a move.
+- All release-316 club invitations, tournament entry/resume, draw banner, report readability and trophy changes included.
+
+Backend:
+Requested half-hour tournament reminder restoration is live at 87d3fd0a8e19e58029904ceae4e5f484d315d515.
+Successful deployment: https://github.com/srikanth-jeldi/ChessVerse-AI/actions/runs/40308702418
+Applies to active registered entrants in the final two hours before OPEN events start, with delivery deduplication per slot. It stops at start; existing quiet-hours rules remain.
+
+Automated results:
+14 focused tests passed: voice policy, cancellation, offline failure isolation, 34 catalog coverage, multilingual toggle layout, cloud narration and puzzle ad cadence.
+Scoped analyzer (main.dart, core/audio, live voice toggle): no issues.
+
+Outstanding verification:
+See final artifact verification for signed bundle, size and device results.
+The background Android binder ANR on Itel A515W / build311 remains unconfirmed resolved. See release-316-anr-investigation.txt; this update must not be described as a proven ANR fix.
+Real commercial ad fill/reward settlement, native-speaker listening in every language and new-user invitation email acceptance are not proven by automated tests.
+No Play Store upload or rollout is performed by this task.
+
+Live cloud test: 34/34 new localized warning phrases returned HTTP 200 and non-empty neural-voice audio. Results in release-317-cloud-voices.json. Requests paced; disposable test account removed.
+
+Combined-release UI regression: 11 additional tests passed (club invitations, tournament details, draw banner, analysis status, trophies), including 34-language and small-screen cases. Total focused and regression tests: 25.
+
+Integrated AI game screen: rotation/resizing with insets passed after adding a dedicated Material surface and scrollable coach controls. Existing hint/analysis disposed-screen tests also passed. One initial layout test needed its existing delayed AI callback drained after disposal; the final rerun passed. All 34 toggle-layout cases passed again. Scoped total: 28 distinct passing tests.
+Size preparation: compacted catalog JSON without changing existing key/value pairs; losslessly recompressed the white knight PNG, preserving every RGBA pixel and all non-IDAT PNG metadata chunks.

@@ -1,0 +1,7 @@
+<en-GB>
+• Optional voice coaching during AI games, with simple move feedback in 34 languages.
+• Improved tournament entry, resume controls and evening schedules, with reminders every 30 minutes before the start.
+• Invite friends to clubs by email, including new players.
+• Clearer draw results, readable analysis reports and tournament trophies.
+• Improved ad configuration and puzzle ads after every three completions, subject to availability and cooldowns.
+</en-GB>
