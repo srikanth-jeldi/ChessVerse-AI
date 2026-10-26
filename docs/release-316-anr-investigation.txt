@@ -12,3 +12,4 @@ Safe mitigation: deduplicate tournament reminders by event + scheduled start, ra
 No ads/SDK or device model has been disabled. No claim that AI analysis caused this ANR.
 Remaining confirmation: affected Itel device bugreport/Perfetto or service-start evidence, and post-release Crashlytics data. Samsung phone testing cannot prove this Itel-specific issue resolved.
 Voice coach proposal: opt-in short mistake/blunder warnings during AI practice, using already-computed evaluation and a verified explanation, with mute/cooldown and no competitive-game hints. Not implemented in build 316.
+Follow-up: The user explicitly requested repeated 30-minute tournament reminders. The once-per-event reminder mitigation described above has been withdrawn in favour of per-half-hour delivery keys (still limited to active entrants and the last two hours before start). This change must not be represented as an ANR fix.
