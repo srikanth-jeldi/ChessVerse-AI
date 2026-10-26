@@ -2397,19 +2397,52 @@ class _AiPersonaStrip extends StatelessWidget {
             const SizedBox(height: 10),
             LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
-                final double textScale =
-                    MediaQuery.textScalerOf(context).scale(14) / 14;
-                final int columns =
-                    (constraints.maxWidth / (180 * textScale))
-                        .floor()
-                        .clamp(1, wide ? 4 : 2);
+                final int columns = wide ? 4 : 2;
                 const double spacing = 12;
                 final double cardWidth =
                     (constraints.maxWidth - (spacing * (columns - 1))) /
                     columns;
-                final double cardHeight =
-                    (wide ? 210 : 230) *
-                    textScale;
+                final double cardPadding = cardWidth < 155 ? 10 : 14;
+                final titleStyle = TextStyle(
+                  color: const Color(0xFFFFF8ED),
+                  fontWeight: FontWeight.w900,
+                  fontSize: cardWidth < 155 ? 12 : 14,
+                  height: 1.1,
+                );
+                const descriptionStyle = TextStyle(
+                  color: Color(0xFFD5E0E8),
+                  fontSize: 11,
+                );
+                double textHeight(String source, TextStyle style) {
+                  final painter = TextPainter(
+                    text: TextSpan(
+                      text: UiCopy.text(source),
+                      style: DefaultTextStyle.of(context).style.merge(style),
+                    ),
+                    textDirection: Directionality.of(context),
+                    textScaler: MediaQuery.textScalerOf(context),
+                  )..layout(maxWidth: cardWidth - 2 * cardPadding);
+                  final height = painter.height;
+                  painter.dispose();
+                  return height;
+                }
+
+                double cardHeight = wide ? 174 : 184;
+                for (final persona in aiPersonas) {
+                  final needed =
+                      2 * cardPadding +
+                      40 +
+                      8 +
+                      textHeight(persona.name, titleStyle) +
+                      4 +
+                      textHeight(
+                        persona.tagline.split(' · ').first,
+                        descriptionStyle,
+                      ) +
+                      8 +
+                      32;
+                  if (needed > cardHeight) cardHeight = needed.ceilToDouble();
+                }
                 return GridView.builder(
                   key: const ValueKey<String>('ai-persona-grid'),
                   shrinkWrap: true,
@@ -2525,27 +2558,12 @@ class _AiPersonaStrip extends StatelessWidget {
                                       ],
                                     ),
                                     const SizedBox(height: 8),
-                                    UiText(
-                                      persona.name,
-                                      maxLines: 3,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: const Color(0xFFFFF8ED),
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: cardWidth < 155 ? 12 : 14,
-                                        height: 1.1,
-                                      ),
-                                    ),
+                                    UiText(persona.name, style: titleStyle),
                                     const SizedBox(height: 4),
                                     Expanded(
                                       child: UiText(
                                         persona.tagline.split(' · ').first,
-                                        maxLines: 3,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Color(0xFFD5E0E8),
-                                          fontSize: 11,
-                                        ),
+                                        style: descriptionStyle,
                                       ),
                                     ),
                                     SizedBox(

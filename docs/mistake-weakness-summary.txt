@@ -1,0 +1,29 @@
+Mistake Bank weakness summary — development changes after build 321
+
+- Restored compact two-column AI rival cards on phones. Text measurement sets
+  only the height needed by translated names/descriptions. Wide screens use
+  four columns. Existing translations, images and selection IDs retained.
+- Added a 7/30-day weakness summary with labelled horizontal bars and category
+  counts: Tactics, King safety, Opening, Endgame, Time pressure and Other.
+- Category expansion lists matching saved positions; train the whole category
+  or one position using the existing mistake practice and review scheduler.
+- Categories overlap. Counts describe retained playable reviewed positions,
+  not error percentages or a complete account analytics history (bank cap 100).
+- Themes come from stored coaching analysis. Endgame also uses a conservative
+  board-phase heuristic (both kings present and at most four non-pawn pieces).
+- Time pressure requires a recorded mover clock of 0–30 seconds. New reviewed
+  timed online moves capture that clock. Untimed computer games and old/imported
+  reviews without clock evidence are not inferred to be time-pressure mistakes.
+- Cloud reanalysis retains known clocks only when ply, FEN and played move match.
+- Opponent-only reviews and ambiguous both-side reviews excluded from personal
+  summary. Date filtering has no old-data fallback and excludes future games.
+- Existing spaced repetition already supports 1/3/7/14/30 days; reused unchanged.
+
+Validation
+- Compact home layouts: 34 language tests at 320px/enlarged text, including
+  two-column and translated-text clipping assertions, passed.
+- Final weakness summary, practice screen and account backup suite: 101 passed.
+- Earlier bank/SRS regressions also passed; scoped analyzer reports no issues.
+- All 34 UI catalogs contain summary labels; Telugu copy manually refined.
+- New summary not yet verified on a physical phone. No new AAB generated in
+  this change; the previously delivered build 321 does not contain these edits.

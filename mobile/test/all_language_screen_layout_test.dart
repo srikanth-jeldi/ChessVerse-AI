@@ -151,6 +151,10 @@ void main() {
         final error = tester.takeException();
         expect(error, isNull, reason: '${screen.key}/${language.code}');
         if (screen.key == 'home') {
+          final rivalGrid = tester.widget<GridView>(find.byKey(
+            const ValueKey<String>('ai-persona-grid')));
+          expect((rivalGrid.gridDelegate as
+            SliverGridDelegateWithFixedCrossAxisCount).crossAxisCount, 2);
           for (final source in <String>[
             'Mira the Mentor', 'Nova the Tactician',
             'Sage the Strategist', 'Onyx the Guardian',

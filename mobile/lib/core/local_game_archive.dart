@@ -12,6 +12,7 @@ class SavedMoveReview {
     required this.bestMove,
     required this.classification,
     this.coachingTheme = 'calculation',
+    this.clockSecondsBefore,
     required this.centipawnLoss,
     this.evaluationBeforeCp,
     this.evaluationAfterCp,
@@ -28,6 +29,8 @@ class SavedMoveReview {
   final String bestMove;
   final String classification;
   final String coachingTheme;
+  /// Actual mover clock at the move, null for untimed or missing clock data.
+  final int? clockSecondsBefore;
   final int centipawnLoss;
   final int? evaluationBeforeCp;
   final int? evaluationAfterCp;
@@ -37,6 +40,19 @@ class SavedMoveReview {
   final String explanation;
   final List<String> principalVariation;
 
+  static List<SavedMoveReview> retainRecordedClocks(
+    List<SavedMoveReview> incoming, List<SavedMoveReview> previous,
+  ) {
+    String key(SavedMoveReview r) => '${r.ply}|${r.fenBefore}|${r.playedMove}';
+    final clocks = {for (final r in previous) key(r): r.clockSecondsBefore};
+    return incoming.map((r) {
+      final clock = r.clockSecondsBefore ?? clocks[key(r)];
+      return clock == r.clockSecondsBefore ? r : SavedMoveReview.fromJson({
+        ...r.toJson(), 'clockSecondsBefore': clock,
+      });
+    }).toList();
+  }
+
   factory SavedMoveReview.fromJson(Map<String, dynamic> json) {
     return SavedMoveReview(
       ply: (json['ply'] as num?)?.toInt() ?? 0,
@@ -45,6 +61,7 @@ class SavedMoveReview {
       bestMove: json['bestMove'] as String? ?? '',
       classification: json['classification'] as String? ?? 'Unreviewed',
       coachingTheme: json['coachingTheme'] as String? ?? 'calculation',
+      clockSecondsBefore: (json['clockSecondsBefore'] as num?)?.toInt(),
       centipawnLoss: (json['centipawnLoss'] as num?)?.toInt() ?? 0,
       evaluationBeforeCp: (json['evaluationBeforeCp'] as num?)?.toInt(),
       evaluationAfterCp: (json['evaluationAfterCp'] as num?)?.toInt(),
@@ -66,6 +83,7 @@ class SavedMoveReview {
     'bestMove': bestMove,
     'classification': classification,
     'coachingTheme': coachingTheme,
+    'clockSecondsBefore': clockSecondsBefore,
     'centipawnLoss': centipawnLoss,
     'evaluationBeforeCp': evaluationBeforeCp,
     'evaluationAfterCp': evaluationAfterCp,
@@ -547,7 +565,7 @@ class LocalGameArchive {
       bookPlies: current.bookPlies,
       firstDeviationPly: current.firstDeviationPly,
       initialFen: current.initialFen,
-      moveReviews: List<SavedMoveReview>.from(reviews)
+      moveReviews: SavedMoveReview.retainRecordedClocks(reviews, current.moveReviews)
         ..sort((SavedMoveReview a, SavedMoveReview b) => a.ply - b.ply),
     );
     unawaited(_persistGames());
@@ -589,7 +607,8 @@ class LocalGameArchive {
       bookPlies: bookPlies ?? current.bookPlies,
       firstDeviationPly: firstDeviationPly ?? current.firstDeviationPly,
       initialFen: current.initialFen,
-      moveReviews: reviews ?? current.moveReviews,
+      moveReviews: reviews == null ? current.moveReviews :
+          SavedMoveReview.retainRecordedClocks(reviews, current.moveReviews),
     );
     unawaited(_persistGames());
     activityRevision.value++;

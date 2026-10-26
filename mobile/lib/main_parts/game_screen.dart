@@ -778,11 +778,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Future<void> _changeVoiceCoach() async {
     _stopLiveVoice();
-    final coach = await Navigator.of(context).push<CoachPersona>(MaterialPageRoute(
-      builder: (_) => CoachPickerScreen(languageCode: AppLanguageController.resolveCode(_coachLanguageCode)),
-    ));
+    final coach = await Navigator.of(context).push<CoachPersona>(
+      MaterialPageRoute(
+        builder: (_) => CoachPickerScreen(
+          languageCode: AppLanguageController.resolveCode(_coachLanguageCode),
+        ),
+      ),
+    );
     if (mounted && coach != null) setState(() => _voiceCoach = coach);
   }
+
   final Map<String, Map<String, String>> _voiceCatalogs = {};
   int _voiceToggleEpoch = 0;
   DateTime? _lastVoiceError;
@@ -1703,7 +1708,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       TextButton.icon(
                         onPressed: _changeVoiceCoach,
                         icon: const Icon(Icons.record_voice_over),
-                        label: UiText('Change coach: {0}', values: [_voiceCoach.name]),
+                        label: UiText(
+                          'Change coach: {0}',
+                          values: [_voiceCoach.name],
+                        ),
                       ),
                       studioCoach,
                     ],
@@ -3284,6 +3292,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     String? onlineUci;
     int? onlineExpectedPly;
     String? engineReviewFen;
+    int? engineReviewClockSeconds;
     String? engineReviewMove;
     int? engineReviewPly;
 
@@ -3356,6 +3365,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if ((_gameMode == GameMode.computer || _gameMode == GameMode.online) &&
           widget.useRemoteEngine) {
         engineReviewFen = _toFen();
+        if (_gameMode == GameMode.online) {
+          engineReviewClockSeconds = whitesTurn ? _whiteSeconds : _blackSeconds;
+        }
         engineReviewMove = '$from$square';
       }
       _saveSnapshot();
@@ -3515,6 +3527,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             engineReviewFen!,
             engineReviewMove!,
             engineReviewPly!,
+            clockSecondsBefore: engineReviewClockSeconds,
           ),
         );
       }
@@ -3568,8 +3581,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Future<void> _reviewPlayerMoveWithEngine(
     String fen,
     String playedMove,
-    int ply,
-  ) async {
+    int ply, {
+    int? clockSecondsBefore,
+  }) async {
     // Multiple half-moves can finish analysis out of order. They all belong
     // to the same game epoch and must be retained; only a board reset makes
     // an outstanding result stale.
@@ -3638,6 +3652,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             bestMove: bestMove,
             classification: classification,
             coachingTheme: engine['coachingTheme'] as String? ?? 'calculation',
+            clockSecondsBefore: clockSecondsBefore,
             centipawnLoss: centipawnLoss,
             evaluationBeforeCp: evaluationBeforeCp,
             evaluationAfterCp: cp,

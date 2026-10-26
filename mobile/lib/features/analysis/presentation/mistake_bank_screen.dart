@@ -35,6 +35,7 @@ import '../../../core/widgets/chessverse_card.dart';
 import '../../../core/widgets/desktop_navigation_shell.dart';
 import '../../tutorial/data/academy_progress_store.dart';
 import '../domain/mistake_bank.dart';
+import 'mistake_weakness_card.dart';
 import '../domain/pgn_position_reconstructor.dart';
 
 class MistakeBankEntryCard extends StatelessWidget {
@@ -141,6 +142,23 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
   static const AcademyProgressStore _progressStore = AcademyProgressStore();
   late List<MistakeBankItem> _allItems;
   List<MistakeBankItem> _items = <MistakeBankItem>[];
+  bool _showWeaknesses = true;
+
+  void _practiseWeaknesses(List<MistakeBankItem> items) {
+    if (items.isEmpty || _savingReview || _replyPending) return;
+    setState(() {
+      _items = items;
+      _index = 0;
+      _showWeaknesses = false;
+    });
+    _startPractice(true);
+  }
+
+  Widget _weaknessSummary() => MistakeWeaknessCard(
+    items: _allItems,
+    onPractice: _practiseWeaknesses,
+    enabled: !_savingReview && !_replyPending,
+  );
   Map<String, MistakeReview> _reviews = {};
   bool _savingReview = false;
   bool _hadMistake = false;
@@ -800,28 +818,35 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
         child: Scaffold(
           backgroundColor: AppColors.background,
           appBar: AppBar(title: Text(m('title')), actions: [_languageButton()]),
-          body: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(28),
-              child: ChessVerseCard(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    const Icon(
-                      Icons.verified_rounded,
-                      size: 64,
-                      color: Color(0xFF63D2B8),
+          body: SingleChildScrollView(
+            child: Column(
+              children: [
+                _weaknessSummary(),
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(28),
+                    child: ChessVerseCard(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          const Icon(
+                            Icons.verified_rounded,
+                            size: 64,
+                            color: Color(0xFF63D2B8),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _allItems.isEmpty
+                                ? t('historyEmpty')
+                                : coachExtraText('noMistakes', _language),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _allItems.isEmpty
-                          ? t('historyEmpty')
-                          : coachExtraText('noMistakes', _language),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
@@ -867,6 +892,14 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
+                          if (_showWeaknesses) _weaknessSummary(),
+                          if (!_showWeaknesses)
+                            TextButton.icon(
+                              onPressed: () =>
+                                  setState(() => _showWeaknesses = true),
+                              icon: const Icon(Icons.bar_chart_rounded),
+                              label: const UiText('My weaknesses'),
+                            ),
                           _MistakeProgress(
                             current: _index + 1,
                             total: _items.length,
