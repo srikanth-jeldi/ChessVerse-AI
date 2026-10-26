@@ -223,6 +223,20 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('practice board retains animation while instruction layout changes', (tester) async {
+    await open(tester, review());
+    await tap(tester, 'e2');
+    final target = find.byKey(const ValueKey('mistake-square-e4'));
+    await tester.ensureVisible(target);
+    await tester.tap(target);
+    await tester.pump();
+    final initial = tester.widget<Positioned>(find.byKey(const ValueKey('practice-piece-e4'))).top!;
+    await tester.pump(const Duration(milliseconds: 80));
+    final middle = tester.widget<Positioned>(find.byKey(const ValueKey('practice-piece-e4'))).top!;
+    expect(middle, lessThan(initial));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('guided success remains due; clean self-test advances mastery', (
     tester,
   ) async {

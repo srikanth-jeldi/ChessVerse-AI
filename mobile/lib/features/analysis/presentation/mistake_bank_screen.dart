@@ -36,6 +36,7 @@ import '../../../core/widgets/desktop_navigation_shell.dart';
 import '../../tutorial/data/academy_progress_store.dart';
 import '../domain/mistake_bank.dart';
 import 'mistake_weakness_card.dart';
+import 'animated_practice_pieces.dart';
 import '../domain/pgn_position_reconstructor.dart';
 
 class MistakeBankEntryCard extends StatelessWidget {
@@ -1064,6 +1065,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
                           ],
                           if (_challengeLine.isNotEmpty)
                             _MistakeBoard(
+                              key: ValueKey('practice-board-${item.id}'),
                               language: _language,
                               fen: _previewing
                                   ? _previewPositions[_previewIndex]
@@ -1252,6 +1254,7 @@ class _MistakeProgress extends StatelessWidget {
 
 class _MistakeBoard extends StatelessWidget {
   const _MistakeBoard({
+    super.key,
     required this.fen,
     required this.onSquare,
     this.selectedSquare,
@@ -1295,7 +1298,6 @@ class _MistakeBoard extends StatelessWidget {
   );
 
   Widget _buildBoard(BuildContext context) {
-    final Map<String, String> board = pieces;
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
@@ -1303,68 +1305,76 @@ class _MistakeBoard extends StatelessWidget {
           aspectRatio: 1,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(24),
-            child: GridView.builder(
-              primary: false,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 64,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 8,
-              ),
-              itemBuilder: (BuildContext context, int index) {
-                final int row = flipped ? 7 - index ~/ 8 : index ~/ 8;
-                final int col = flipped ? 7 - index % 8 : index % 8;
-                final String square =
-                    '${String.fromCharCode(97 + col)}${8 - row}';
-                final bool selected = square == selectedSquare;
-                final bool wrong = square == wrongTarget;
-                final bool hint = square == hintFrom || square == hintTo;
-                return InkWell(
-                  key: ValueKey<String>('mistake-square-$square'),
-                  onTap: () => onSquare(square),
-                  child: ColoredBox(
-                    color: wrong
-                        ? const Color(0xFFFF6B6B)
-                        : selected
-                        ? const Color(0xFF73BFFF)
-                        : hint
-                        ? const Color(0xFF59E4C8)
-                        : (row + col).isEven
-                        ? const Color(0xFFD8C5A7)
-                        : const Color(0xFF6D4A32),
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: Center(child: _piece(board['$row-$col'])),
-                        ),
-                        if (col == (flipped ? 7 : 0))
-                          Positioned(
-                            top: 1,
-                            left: 2,
-                            child: Text(
-                              '${8 - row}',
-                              style: const TextStyle(
-                                fontSize: 9,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                        if (row == (flipped ? 0 : 7))
-                          Positioned(
-                            bottom: 1,
-                            right: 2,
-                            child: Text(
-                              String.fromCharCode(97 + col),
-                              style: const TextStyle(
-                                fontSize: 9,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
+            child: Stack(
+              children: [
+                GridView.builder(
+                  primary: false,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 64,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 8,
                   ),
-                );
-              },
+                  itemBuilder: (BuildContext context, int index) {
+                    final int row = flipped ? 7 - index ~/ 8 : index ~/ 8;
+                    final int col = flipped ? 7 - index % 8 : index % 8;
+                    final String square =
+                        '${String.fromCharCode(97 + col)}${8 - row}';
+                    final bool selected = square == selectedSquare;
+                    final bool wrong = square == wrongTarget;
+                    final bool hint = square == hintFrom || square == hintTo;
+                    return InkWell(
+                      key: ValueKey<String>('mistake-square-$square'),
+                      onTap: () => onSquare(square),
+                      child: ColoredBox(
+                        color: wrong
+                            ? const Color(0xFFFF6B6B)
+                            : selected
+                            ? const Color(0xFF73BFFF)
+                            : hint
+                            ? const Color(0xFF59E4C8)
+                            : (row + col).isEven
+                            ? const Color(0xFFD8C5A7)
+                            : const Color(0xFF6D4A32),
+                        child: Stack(
+                          children: [
+                            if (col == (flipped ? 7 : 0))
+                              Positioned(
+                                top: 1,
+                                left: 2,
+                                child: Text(
+                                  '${8 - row}',
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                            if (row == (flipped ? 0 : 7))
+                              Positioned(
+                                bottom: 1,
+                                right: 2,
+                                child: Text(
+                                  String.fromCharCode(97 + col),
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                Positioned.fill(
+                  child: AnimatedPracticePieces(
+                    fen: fen,
+                    flipped: flipped,
+                    pieceBuilder: _piece,
+                  ),
+                ),
+              ],
             ),
           ),
         ),

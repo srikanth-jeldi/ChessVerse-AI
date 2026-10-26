@@ -82,20 +82,28 @@ class _MistakeWeaknessCardState extends State<MistakeWeaknessCard> {
     return ExpansionTile(
       key: ValueKey('weakness-${category.name}'),
       tilePadding: EdgeInsets.zero,
-      title: UiText(category.label),
-      trailing: Text(
-        missingClock ? '—' : '${matching.length}',
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+      title: Row(
+        children: [
+          Expanded(child: UiText(category.label)),
+          const SizedBox(width: 8),
+          Text(
+            missingClock ? '—' : '${matching.length}',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+        ],
       ),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 8, bottom: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            LinearProgressIndicator(
-              value: items.isEmpty ? 0 : matching.length / items.length,
-              minHeight: 7,
-              color: const Color(0xFF63D2B8),
+            ExcludeSemantics(
+              child: LinearProgressIndicator(
+                value: items.isEmpty ? 0 : matching.length / items.length,
+                minHeight: 7,
+                color: const Color(0xFF63D2B8),
+                backgroundColor: const Color(0xFF263A46),
+              ),
             ),
             if (missingClock) const UiText('Clock data unavailable'),
           ],

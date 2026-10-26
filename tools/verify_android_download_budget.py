@@ -14,6 +14,8 @@ parser.add_argument('--allow-catalog-additions', action='store_true',
                     help='Allow new translations while preserving every baseline key/value')
 parser.add_argument('--allow-brand-correction', action='store_true',
                     help='Allow only CHESSVERSE to be restored to the literal brand fragment')
+parser.add_argument('--allow-translation-change', action='append', default=[],
+                    help='Explicitly reviewed locale:key correction; retains the key and nonempty text')
 args = parser.parse_args()
 
 with zipfile.ZipFile(args.baseline) as old, zipfile.ZipFile(args.bundle) as new:
@@ -39,6 +41,9 @@ with zipfile.ZipFile(args.baseline) as old, zipfile.ZipFile(args.bundle) as new:
             assert all(current.get(key) == value or (
                 args.allow_brand_correction and key == 'CHESSVERSE'
                 and current.get(key) == 'CHESSVERSE'
+            ) or (
+                f'{Path(name).stem}:{key}' in args.allow_translation_change
+                and isinstance(current.get(key), str) and current[key].strip()
             ) for key, value in previous.items()), f'Baseline translation changed: {name}'
         else:
             assert old.read(name) == new.read(name), f'Catalog changed: {name}'
@@ -53,4 +58,5 @@ print(json.dumps({
     'preserved_asset_and_native_paths': len(protected),
     'native_libraries': libs,
     'preserved_language_catalogs': len(catalogs),
+    'reviewed_translation_changes': args.allow_translation_change,
 }, indent=2))

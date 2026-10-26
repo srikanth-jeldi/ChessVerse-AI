@@ -63,6 +63,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _useAccountPhoto = true;
   bool _uploadingPhoto = false;
   List<TournamentAchievementDto> _tournamentAchievements = const [];
+  int _accountRevision = 0;
 
   @override
   void initState() {
@@ -75,27 +76,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!widget.isGuest) unawaited(_loadTournamentAchievements());
   }
 
+  @override
+  void didUpdateWidget(covariant ProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final accountChanged =
+        oldWidget.username != widget.username ||
+        oldWidget.email != widget.email ||
+        oldWidget.isGuest != widget.isGuest;
+    if (accountChanged || oldWidget.playerName != widget.playerName) {
+      _displayName = widget.playerName.trim().isEmpty
+          ? 'ChessVerseAI Player'
+          : widget.playerName.trim();
+    }
+    if (accountChanged || oldWidget.profilePhotoUrl != widget.profilePhotoUrl) {
+      _profilePhotoUrl = widget.profilePhotoUrl;
+    }
+    if (accountChanged) {
+      _accountRevision++;
+      _tournamentAchievements = const [];
+      _loadPhotoPreference();
+      if (!widget.isGuest) unawaited(_loadTournamentAchievements());
+    }
+  }
+
   Future<void> _loadTournamentAchievements() async {
+    final revision = _accountRevision;
     try {
       final session = await const AuthSessionStore().read();
       if (session == null) return;
       final achievements = await const CommunityApi().tournamentAchievements(
         session.token,
       );
-      if (mounted) setState(() => _tournamentAchievements = achievements);
+      if (mounted && revision == _accountRevision) {
+        setState(() => _tournamentAchievements = achievements);
+      }
     } on Object {
       // Profile remains usable while the network or tournament service is down.
     }
   }
 
   Future<void> _loadPhotoPreference() async {
+    final revision = _accountRevision;
     try {
       final bool value = await const AppPreferences().readBool(
         _useAccountPhotoPreference,
         fallback: true,
       );
       final session = await const AuthSessionStore().read();
-      if (mounted) {
+      if (mounted && revision == _accountRevision) {
         setState(() {
           _useAccountPhoto = value;
           _profilePhotoUrl ??= session?.photoUrl;

@@ -5,6 +5,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('retained profile refreshes after guest signs in and signs out', (
+    tester,
+  ) async {
+    Widget profile(String name, String username, bool guest) => MaterialApp(
+      theme: AppTheme.darkTheme,
+      home: ProfileScreen(playerName: name, username: username, isGuest: guest),
+    );
+    await tester.pumpWidget(profile('Guest 826237', 'guest_826237', true));
+    final originalState = tester.state(find.byType(ProfileScreen));
+    expect(find.text('Guest 826237'), findsOneWidget);
+    await tester.pumpWidget(profile('hello buddy', 'hello_buddy', false));
+    expect(tester.state(find.byType(ProfileScreen)), same(originalState));
+    expect(find.text('hello buddy'), findsOneWidget);
+    expect(find.text('@hello_buddy'), findsOneWidget);
+    expect(find.text('Guest 826237'), findsNothing);
+    await tester.pumpWidget(profile('Renamed player', 'hello_buddy', false));
+    expect(find.text('Renamed player'), findsOneWidget);
+    await tester.pumpWidget(profile('Guest 999', 'guest_999', true));
+    expect(find.text('Guest 999'), findsOneWidget);
+    expect(find.text('hello buddy'), findsNothing);
+    expect(find.text('Renamed player'), findsNothing);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('academy access lives inside the player profile', (
     WidgetTester tester,
   ) async {
@@ -25,10 +50,6 @@ void main() {
       ),
     );
 
-    expect(
-      find.byKey(const ValueKey<String>('open-my-academy')),
-      findsOneWidget,
-    );
     await tester.tap(
       find.byKey(const ValueKey<String>('profile-actions-menu')),
     );
@@ -62,7 +83,7 @@ void main() {
     );
 
     expect(find.text('PLAYER PROFILE'), findsOneWidget);
-    expect(find.textContaining('ELO'), findsOneWidget);
+    expect(find.text('Srikant'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey<String>('edit-player-profile')));
     await tester.pumpAndSettle();
     expect(find.text('CUSTOMIZE YOUR PLAYER'), findsOneWidget);

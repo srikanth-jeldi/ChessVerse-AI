@@ -67,6 +67,13 @@ void main() {
       ))));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+      for (final bar in tester.widgetList<LinearProgressIndicator>(
+          find.byType(LinearProgressIndicator))) {
+        final fill = bar.color!.computeLuminance();
+        final track = bar.backgroundColor!.computeLuminance();
+        expect((fill + .05) / (track + .05), greaterThan(3),
+          reason: 'Zero and partial bars must be visibly distinct from the track');
+      }
       await tester.tap(find.byKey(const ValueKey('weakness-days-30')));
       await tester.pumpAndSettle();
       final category = find.byKey(const ValueKey('weakness-kingSafety'));

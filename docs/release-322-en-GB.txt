@@ -1,0 +1,9 @@
+<en-GB>
+Explore My Weaknesses in Mistake Bank with 7- and 30-day charts and categories.
+Practise positions from your chosen category or revisit individual mistakes.
+Smoother piece movements in mistake practice and continuation previews.
+Restored compact AI rival cards with improved translated text layouts.
+Fixed profile details staying on the guest name after sign-in.
+Clearer feedback when sign-in is not completed.
+Updated labels across 34 languages.
+</en-GB>

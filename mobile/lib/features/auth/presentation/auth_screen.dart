@@ -161,7 +161,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   if (_error != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 16),
-                      child: Text(_error!),
+                      child: Semantics(liveRegion: true, child: Text(_error!)),
                     ),
                 ],
               ),
@@ -1455,7 +1455,17 @@ class _AuthScreenState extends State<AuthScreen> {
         // back. Browser OAuth is consistent across Android devices.
         loginBehavior: LoginBehavior.webOnly,
       );
-      if (result.status == LoginStatus.cancelled) return;
+      if (result.status == LoginStatus.cancelled) {
+        AppDiagnostics.log('facebook_sign_in_failed', {'code': 'cancelled'});
+        if (mounted) {
+          setState(
+            () => _error = UiCopy.text(
+              'Sign-in was not completed. Please try again.',
+            ),
+          );
+        }
+        return;
+      }
       if (result.status != LoginStatus.success || result.accessToken == null) {
         throw AuthApiException(
           result.message ?? 'Facebook sign-in failed. Please try again.',
@@ -1555,8 +1565,14 @@ class _AuthScreenState extends State<AuthScreen> {
       AppDiagnostics.log('google_sign_in_failed', <String, Object?>{
         'code': error.code.name,
       });
-      if (error.code != GoogleSignInExceptionCode.canceled && mounted) {
-        setState(() => _error = 'Google sign-in failed. Please try again.');
+      if (mounted) {
+        // Android CredentialManager also reports some OAuth configuration
+        // failures as canceled. Never silently send the player back to login.
+        setState(
+          () => _error = error.code == GoogleSignInExceptionCode.canceled
+              ? UiCopy.text('Sign-in was not completed. Please try again.')
+              : 'Google sign-in failed. Please try again.',
+        );
       }
     } on AuthApiException catch (error) {
       AppDiagnostics.log('google_sign_in_failed', <String, Object?>{

@@ -1,4 +1,4 @@
-Mistake Bank weakness summary — development changes after build 321
+Mistake Bank weakness summary — build 322 (1.3.55)
 
 - Restored compact two-column AI rival cards on phones. Text measurement sets
   only the height needed by translated names/descriptions. Wide screens use
@@ -25,5 +25,51 @@ Validation
 - Final weakness summary, practice screen and account backup suite: 101 passed.
 - Earlier bank/SRS regressions also passed; scoped analyzer reports no issues.
 - All 34 UI catalogs contain summary labels; Telugu copy manually refined.
-- New summary not yet verified on a physical phone. No new AAB generated in
-  this change; the previously delivered build 321 does not contain these edits.
+- Final animation/weakness/practice regression suite: 97 passed, plus two
+  targeted regression tests for full-screen animation and the saved queen move.
+- Physical Samsung SM-F415F: Telugu compact two-column rival cards, 7/30-day
+  summary, category expansion and practice entry checked. Corrected chart track
+  contrast so zero counts no longer look like full bars. Missing clocks show
+  unknown rather than a fabricated time-pressure count.
+- Practice pieces use 220ms easeOutCubic movement, with legal adjacent FEN
+  matching, castling rook movement, captures, promotion, en passant and reverse
+  preview. Unrelated positions/orientation changes snap; reduced motion honored.
+- Final device download estimates (bundletool MAX): ARM32 24,529,998 bytes;
+  ARM64 24,773,720; x86_64 24,950,582. All below 25,000,000 bytes.
+- All 294 baseline asset/native paths retained, with 34 UI catalogs. All native
+  dependencies (except the changed app code), fonts and audio retained byte for
+  byte. One onboarding background compressed at unchanged dimensions.
+- The existing Telugu Tactics translation was intentionally refined from
+  వ్యూహాలు to ఎత్తుగడలు; the verification explicitly permits only that correction.
+- Signed production AAB generated; signature and AdMob application ID verified.
+  No Play Store upload or production rollout performed in this task.
+
+Login investigation (27 October)
+- Physical test app reports google_sign_in_failed code=canceled after account
+  selection. Its debug Firebase config uses com.epitomehub.chessverse.uitest,
+  but the listed Android OAuth clients use the production package. Cloud OAuth
+  registration must be checked before attributing this to a confirmed cause.
+- Google and Facebook cancellation now show a localized retry message rather
+  than silently returning. One Google cancellation/retry regression and nine
+  existing login/guest regression tests pass.
+- After the user created the Android OAuth client for the UI test package and
+  debug SHA-1, the physical Samsung test app completed Google login and opened
+  Home as the existing hello buddy account (Level 18, 280 coins). This process
+  contained no recorded sign-in failures. This verifies the UI-test Google flow;
+  production Play-signed login and the Facebook root cause remain unverified.
+  The balance display alone does not verify duplicate-credit prevention.
+- User subsequently reported Guest 826237 still shown in Profile despite Home
+  showing the authenticated account. ProfileScreen cached its name/photo only
+  in initState. Added didUpdateWidget synchronization and account-revision
+  checks for asynchronous photo/achievement loads. Retained-widget regression
+  covers guest-to-account, display-name changes, and account-to-guest transitions.
+  This passed automatically. All four profile/login regression tests pass.
+  Corrected test APK installed on Samsung; retained Profile account section
+  switched from guest upgrade to linked-account controls after authentication.
+  User then confirmed both Facebook and Google are working. Final profile-name
+  visual comparison was not completed before that confirmation.
+- Final signed AAB rebuilt with login feedback and retained-profile refresh.
+  Signature, production AdMob ID, asset/native completeness and the updated
+  device download estimates above verified successfully on 27 October.
+- Physical practice-animation smoothness remains unconfirmed; automated
+  intermediate-frame tests pass, but the captured phone recording is inconclusive.
