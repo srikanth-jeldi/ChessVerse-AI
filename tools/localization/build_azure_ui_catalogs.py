@@ -18,15 +18,15 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "mobile/assets/i18n/ui"
 CACHE = ROOT / ".build-tmp/ui-translation-cache"
 TOKEN = re.compile(r"\{\d+\}")
-BRAND = re.compile(r"ChessVerseAI|CHESSVERSEAI|ChessVerse")
-PROTECTED = re.compile(r"\{\d+\}|ChessVerseAI|CHESSVERSEAI|ChessVerse")
+BRAND = re.compile(r"ChessVerse(?:\s*AI)?", re.IGNORECASE)
+PROTECTED = re.compile(r"\{\d+\}|ChessVerse(?:\s*AI)?", re.IGNORECASE)
 
 
 def brands_preserved(source, value):
     return collections.Counter(BRAND.findall(source)) == collections.Counter(BRAND.findall(value))
 # Product names, file formats and score units remain unchanged intentionally.
 UNCHANGED = {
-    "CHESSVERSEAI", "CHESSVERSEAI ELO", "ChessVerse", "ChessVerseAI",
+    "CHESSVERSEAI", "CHESSVERSEAI ELO", "ChessVerse", "ChessVerseAI", "CHESSVERSE",
     "AI", "GIF", "FEN (.fen)", "PGN (.pgn)", "VS", "ELO",
     "+{0} XP", "{0} XP", "{0} CP", "{0} / {1} CP",
     "{0} • {1} • {2}cp", "~{0} Elo",

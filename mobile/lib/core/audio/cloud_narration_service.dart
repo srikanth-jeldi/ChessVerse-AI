@@ -83,6 +83,7 @@ class CloudNarrationService {
     required String language,
     bool allowLocalFallback = true,
     String tone = 'neutral',
+    String voiceGender = 'female',
     bool Function()? canSpeak,
   }) async {
     bool current() => !_disposed && (canSpeak?.call() ?? true);
@@ -92,7 +93,8 @@ class CloudNarrationService {
     if (!current()) return false;
     final String cleanText = text.trim();
     if (cleanText.isEmpty || cleanText.length > 2400) return false;
-    final String cacheKey = '$language\u0000$tone\u0000$cleanText';
+    final String cacheKey =
+        '$language\u0000$tone\u0000$voiceGender\u0000$cleanText';
     Uint8List? audio = _memoryCache.remove(cacheKey);
     if (audio != null) _memoryCache[cacheKey] = audio;
     // Browser speech must begin directly inside the user's click gesture.
@@ -112,6 +114,7 @@ class CloudNarrationService {
         language,
         cacheKey,
         tone,
+        voiceGender,
       ).timeout(const Duration(seconds: 8));
       if (!current()) return false;
       if (audio == null) {
@@ -133,14 +136,16 @@ class CloudNarrationService {
     required String text,
     required String language,
     String tone = 'neutral',
+    String voiceGender = 'female',
   }) async {
     if (_disposed) return;
     final String cleanText = text.trim();
     if (cleanText.isEmpty || cleanText.length > 2400) return;
-    final String cacheKey = '$language\u0000$tone\u0000$cleanText';
+    final String cacheKey =
+        '$language\u0000$tone\u0000$voiceGender\u0000$cleanText';
     if (_memoryCache.containsKey(cacheKey)) return;
     try {
-      await _fetchAudio(cleanText, language, cacheKey, tone);
+      await _fetchAudio(cleanText, language, cacheKey, tone, voiceGender);
     } on Object {
       // Local browser/device speech remains the safe fallback on button press.
     }
@@ -151,6 +156,7 @@ class CloudNarrationService {
     String language,
     String cacheKey,
     String tone,
+    String voiceGender,
   ) {
     final Uint8List? cached = _memoryCache[cacheKey];
     if (cached != null) return Future<Uint8List?>.value(cached);
@@ -160,6 +166,7 @@ class CloudNarrationService {
         language,
         cacheKey,
         tone,
+        voiceGender,
       );
       // `whenComplete` creates a second Future. If the download fails and that
       // Future is detached, Flutter reports an uncaught fatal error even when
@@ -182,6 +189,7 @@ class CloudNarrationService {
     String language,
     String cacheKey,
     String tone,
+    String voiceGender,
   ) async {
     final String? token;
     if (_tokenProvider != null) {
@@ -205,6 +213,7 @@ class CloudNarrationService {
             'text': text,
             'language': language,
             if (tone != 'neutral') 'tone': tone,
+            if (voiceGender != 'female') 'voiceGender': voiceGender,
           });
     final http.StreamedResponse response = await _client
         .send(request)

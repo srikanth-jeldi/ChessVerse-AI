@@ -774,6 +774,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   bool _coachLanguageLoaded = false;
   final LiveMoveVoice _liveVoice = LiveMoveVoice();
   CloudNarrationService? _liveNarrator;
+  CoachPersona _voiceCoach = CoachPersona.mira;
+
+  Future<void> _changeVoiceCoach() async {
+    _stopLiveVoice();
+    final coach = await Navigator.of(context).push<CoachPersona>(MaterialPageRoute(
+      builder: (_) => CoachPickerScreen(languageCode: AppLanguageController.resolveCode(_coachLanguageCode)),
+    ));
+    if (mounted && coach != null) setState(() => _voiceCoach = coach);
+  }
   final Map<String, Map<String, String>> _voiceCatalogs = {};
   int _voiceToggleEpoch = 0;
   DateTime? _lastVoiceError;
@@ -830,6 +839,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             allowLocalFallback: false,
             canSpeak: current,
             tone: tone,
+            voiceGender: _voiceCoach.gender,
           );
       if (!played && current()) _showLiveVoiceError();
       return played;
@@ -856,6 +866,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _loadLiveVoice() async {
+    final coach = await CoachPersona.load();
+    if (mounted) setState(() => _voiceCoach = coach);
     try {
       final enabled = await const AppPreferences().readBool(
         'liveMoveVoice',
@@ -885,11 +897,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           language == AppLanguageController.resolveCode(_coachLanguageCode) &&
           (ModalRoute.of(context)?.isCurrent ?? false),
       speak: (source, canSpeak) => _playLiveVoice(
-        source,
+        _voiceCoach.review(classification, source),
         language,
         canSpeak,
         tone: switch (classification) {
-          'Best' || 'Great' => 'encouraging',
+          'Best' || 'Great' => _voiceCoach.tone,
           'Blunder' => 'caution',
           _ => 'gentle',
         },
@@ -1687,6 +1699,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       LiveVoiceToggle(
                         enabled: _liveVoice.enabled,
                         onChanged: _toggleLiveVoice,
+                      ),
+                      TextButton.icon(
+                        onPressed: _changeVoiceCoach,
+                        icon: const Icon(Icons.record_voice_over),
+                        label: UiText('Change coach: {0}', values: [_voiceCoach.name]),
                       ),
                       studioCoach,
                     ],

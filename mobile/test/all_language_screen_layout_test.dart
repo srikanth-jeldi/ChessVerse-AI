@@ -151,6 +151,35 @@ void main() {
         final error = tester.takeException();
         expect(error, isNull, reason: '${screen.key}/${language.code}');
         if (screen.key == 'home') {
+          for (final source in <String>[
+            'Mira the Mentor', 'Nova the Tactician',
+            'Sage the Strategist', 'Onyx the Guardian',
+            'Friendly beginner practice', 'Sharp attacks',
+            'Calm positional play', 'Solid defence',
+          ]) {
+            expect(find.text(UiCopy.text(source)), findsWidgets);
+            for (final element in find.text(UiCopy.text(source)).evaluate()) {
+              final paragraphs = find.descendant(
+                of: find.byWidget(element.widget), matching: find.byType(RichText));
+              for (final paragraph in paragraphs.evaluate()) {
+                final render = paragraph.renderObject;
+                if (render is RenderParagraph) {
+                  expect(render.didExceedMaxLines, isFalse,
+                    reason: '${language.code}: truncated opponent text $source');
+                }
+              }
+            }
+            if (language.code != 'en') {
+              expect(UiCopy.text(source), isNot(source));
+              expect(find.text(source), findsNothing);
+            }
+          }
+          expect(
+            find.byWidgetPredicate(
+              (w) => w is Text && w.textSpan?.toPlainText() == 'ChessVerseAI',
+            ),
+            findsOneWidget,
+          );
           final train = find.byKey(
             const ValueKey<String>('personal-training-action'),
           );

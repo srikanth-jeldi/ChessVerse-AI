@@ -1,0 +1,23 @@
+Coach portraits, build 321
+
+Created with the built-in imagegen tool, then edited using imagegen to add
+the exact ChessVerseAI wordmark embroidered on each jacket. Fictional adults;
+no real-person reference or voice cloning used.
+
+Prompt direction: premium square illustrated portrait of an approachable adult
+Indian chess coach, dark navy backdrop, softly lit face and visible tailored
+jacket; Mira female friendly in teal, Tara female tactical in burgundy, Arjun
+male calm in blue, Vikram male confident in black. Consistent visual family,
+warm expressions, no unrelated text. Edit: preserve face, pose and background;
+add small readable gold ChessVerseAI embroidery on the jacket chest.
+
+Final assets (384px WebP):
+mobile/assets/coaches/mira.webp
+mobile/assets/coaches/tara.webp
+mobile/assets/coaches/arjun.webp
+mobile/assets/coaches/vikram.webp
+
+These are four coaching personas, not four unique voice identities. Female
+personas share the locale's female Azure voice; male personas share its male
+voice. Text and supported tone settings differ. Telugu voices do not expose
+an emotional style catalog. No claim of human-level emotion or naturalness.

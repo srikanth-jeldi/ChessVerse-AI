@@ -34,6 +34,36 @@ void main() {
     messenger.setMockMethodCallHandler(audioPlayer, null);
   });
 
+  test('male and female coach previews use separate cached audio', () async {
+    final genders = <String?>[];
+    final service = CloudNarrationService(
+      tokenProvider: () async => 'token',
+      client: MockClient((request) async {
+        genders.add(
+          (jsonDecode(request.body) as Map)['voiceGender'] as String?,
+        );
+        return http.Response.bytes(
+          [73, 68, 51, 4],
+          200,
+          headers: {'content-type': 'audio/mpeg'},
+        );
+      }),
+    );
+    await service.prepare(text: 'Coach gender cache test', language: 'te');
+    await service.prepare(
+      text: 'Coach gender cache test',
+      language: 'te',
+      voiceGender: 'male',
+    );
+    await service.prepare(
+      text: 'Coach gender cache test',
+      language: 'te',
+      voiceGender: 'male',
+    );
+    expect(genders, [null, 'male']);
+    await service.dispose();
+  });
+
   test(
     'coaching tone is sent and cached separately from neutral narration',
     () async {

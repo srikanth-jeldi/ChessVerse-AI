@@ -1,0 +1,35 @@
+ChessVerseAI 1.3.54+321 — validation, 27 October 2026
+
+Changes
+- Four selectable coach personas, illustrated branded portraits, descriptions,
+  cloud preview and persistent selection from Profile or the AI game.
+- Male/female Azure speech selection for all 34 supported languages; gender
+  included in client audio cache identity. Existing calls default to female.
+- Corrected home opponent and selection-sheet localization. Cards switch to
+  fewer columns on narrow screens or enlarged fonts. Internal opponent IDs
+  remain unchanged for game selection.
+- Literal ChessVerseAI wordmark protected from translation.
+- Board sound effects no longer request Android audio focus over narration.
+
+Checks completed
+- Backend speech tests: 6 passed.
+- Final Flutter coach, audio cache, localization and audio focus tests: 52 passed.
+- Home layout and opponent label clipping tests: 34 passed at 320px, 1.3 scale.
+- Earlier coach portrait layout tests with fonts: 34 languages passed at 1.5 scale.
+- Scoped coach selector/persona static analysis: no issues.
+- Live cloud synthesis: 70 successes (male/female for all 34 languages plus
+  the other two Telugu personas). Rate-limit retry used; test guest deleted.
+- Backend commit eaaedfaa deployed successfully by workflow 40380999535.
+- Test APK installed on Samsung SM-F415F. User heard all four previews and
+  confirmed the two female personas share a voice and two male personas share
+  a voice. These are distinct coaching styles, not four unique speakers.
+
+Limits
+- Machine translation is not a native-speaker review of all 34 languages.
+- Physical-device confirmation covers Telugu previews; every-move playback in
+  every language and all device models has not been verified.
+- Final responsive opponent layout was regression-tested; the phone preview
+  confirmation preceded this last layout correction.
+- No promise of zero crashes/ANRs or human-level emotional speech.
+- Signed bundle, compressed size and protected-assets check results are saved
+  alongside the release artifact when verification finishes.

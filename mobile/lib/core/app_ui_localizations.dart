@@ -25,8 +25,15 @@ abstract final class UiCopy {
     if (request == _request) language.value = resolved;
   }
 
-  static String text(String source) =>
-      _catalogs[language.value]?[normalize(source)] ?? source;
+  static String text(String source) {
+    final key = normalize(source);
+    // Brand fragments must never be sent through a language catalog.
+    if (RegExp(r'^chessverse\s*ai$', caseSensitive: false).hasMatch(key)) {
+      return 'ChessVerseAI';
+    }
+    if (key.toLowerCase() == 'chessverse') return 'ChessVerse';
+    return _catalogs[language.value]?[key] ?? source;
+  }
 
   static String format(String source, List<Object?> values) =>
       text(source).replaceAllMapped(RegExp(r'\{(\d+)\}'), (match) {

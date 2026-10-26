@@ -178,6 +178,16 @@ class ChessSoundService {
     }
     try {
       await player.stop();
+      // Brief board effects must not steal focus and pause the voice coach.
+      await player.setAudioContext(
+        AudioContext(
+          android: const AudioContextAndroid(
+            audioFocus: AndroidAudioFocus.none,
+            usageType: AndroidUsageType.game,
+            contentType: AndroidContentType.sonification,
+          ),
+        ),
+      );
       await player.setVolume(volume);
       await player.play(AssetSource(assetPath));
     } catch (_) {

@@ -12,6 +12,8 @@ parser.add_argument('--size-csv', type=Path, required=True)
 parser.add_argument('--max-bytes', type=int, default=25_000_000)
 parser.add_argument('--allow-catalog-additions', action='store_true',
                     help='Allow new translations while preserving every baseline key/value')
+parser.add_argument('--allow-brand-correction', action='store_true',
+                    help='Allow only CHESSVERSE to be restored to the literal brand fragment')
 args = parser.parse_args()
 
 with zipfile.ZipFile(args.baseline) as old, zipfile.ZipFile(args.bundle) as new:
@@ -34,7 +36,10 @@ with zipfile.ZipFile(args.baseline) as old, zipfile.ZipFile(args.bundle) as new:
     for name in catalogs:
         if args.allow_catalog_additions:
             previous, current = json.loads(old.read(name)), json.loads(new.read(name))
-            assert all(current.get(key) == value for key, value in previous.items()), f'Baseline translation changed: {name}'
+            assert all(current.get(key) == value or (
+                args.allow_brand_correction and key == 'CHESSVERSE'
+                and current.get(key) == 'CHESSVERSE'
+            ) for key, value in previous.items()), f'Baseline translation changed: {name}'
         else:
             assert old.read(name) == new.read(name), f'Catalog changed: {name}'
 

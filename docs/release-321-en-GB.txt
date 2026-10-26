@@ -1,0 +1,6 @@
+<en-GB>
+Meet your AI coaches: choose a coaching style, preview the voice and switch coaches anytime.
+Improved translations for AI opponents and coach descriptions across 34 languages.
+Kept the ChessVerseAI name consistent in every language.
+Improved voice playback during games and layouts for smaller screens.
+</en-GB>

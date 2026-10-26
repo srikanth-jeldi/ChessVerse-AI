@@ -35,6 +35,8 @@ import 'core/ads/post_match_ad_service.dart';
 import 'core/audio/chess_sound_service.dart';
 import 'core/audio/cloud_narration_service.dart';
 import 'core/audio/live_move_voice.dart';
+import 'core/coach_persona.dart';
+import 'features/coaches/coach_picker_screen.dart';
 import 'core/auth/facebook_sdk_ready.dart';
 import 'core/app_preferences.dart';
 import 'core/app_update_prompt.dart';
@@ -1992,8 +1994,8 @@ class _SplashGateState extends State<SplashGate> {
                                     persona.icon,
                                     color: persona.accent,
                                   ),
-                                  title: Text(persona.name),
-                                  subtitle: Text(persona.tagline),
+                                  title: UiText(persona.name),
+                                  subtitle: UiText(persona.tagline),
                                   trailing: active
                                       ? Icon(
                                           Icons.check_circle_rounded,

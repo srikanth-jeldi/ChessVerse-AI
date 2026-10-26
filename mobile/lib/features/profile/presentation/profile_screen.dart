@@ -17,6 +17,7 @@ import '../../../core/app_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/data/auth_session_store.dart';
 import '../../social/data/community_api.dart';
+import '../../coaches/coach_picker_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({
@@ -205,6 +206,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             uploading: _uploadingPhoto,
           ),
           const SizedBox(height: 18),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.record_voice_over),
+              title: const UiText('My Coach'),
+              subtitle: const UiText('Choose your coaching style'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CoachPickerScreen()),
+              ),
+            ),
+          ),
           _SectionCard(
             title: uiText(context, 'PLAYER PROGRESS'),
             icon: Icons.military_tech_rounded,

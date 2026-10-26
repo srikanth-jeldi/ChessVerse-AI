@@ -1870,12 +1870,11 @@ class _BrandWordmark extends StatelessWidget {
       TextSpan(
         children: <InlineSpan>[
           TextSpan(
-            text: uiText(context, 'CHESSVERSE'),
+            text: 'ChessVerse',
             style: TextStyle(color: Color(0xFFE6F4FF)),
           ),
-          const TextSpan(text: ' '),
           TextSpan(
-            text: uiText(context, 'AI'),
+            text: 'AI',
             style: TextStyle(color: AppColors.accentGold),
           ),
         ],
@@ -2398,12 +2397,19 @@ class _AiPersonaStrip extends StatelessWidget {
             const SizedBox(height: 10),
             LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
-                final int columns = wide ? 4 : 2;
+                final double textScale =
+                    MediaQuery.textScalerOf(context).scale(14) / 14;
+                final int columns =
+                    (constraints.maxWidth / (180 * textScale))
+                        .floor()
+                        .clamp(1, wide ? 4 : 2);
                 const double spacing = 12;
                 final double cardWidth =
                     (constraints.maxWidth - (spacing * (columns - 1))) /
                     columns;
-                final double cardHeight = wide ? 174 : 184;
+                final double cardHeight =
+                    (wide ? 210 : 230) *
+                    textScale;
                 return GridView.builder(
                   key: const ValueKey<String>('ai-persona-grid'),
                   shrinkWrap: true,
@@ -2519,9 +2525,9 @@ class _AiPersonaStrip extends StatelessWidget {
                                       ],
                                     ),
                                     const SizedBox(height: 8),
-                                    Text(
+                                    UiText(
                                       persona.name,
-                                      maxLines: 1,
+                                      maxLines: 3,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         color: const Color(0xFFFFF8ED),
@@ -2532,9 +2538,9 @@ class _AiPersonaStrip extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 4),
                                     Expanded(
-                                      child: Text(
+                                      child: UiText(
                                         persona.tagline.split(' · ').first,
-                                        maxLines: 2,
+                                        maxLines: 3,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           color: Color(0xFFD5E0E8),

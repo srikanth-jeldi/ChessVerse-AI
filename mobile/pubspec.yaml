@@ -1,7 +1,7 @@
 name: chessverse_ai
 description: Cross-platform ChessVerse AI application.
 publish_to: "none"
-version: 1.3.53+320
+version: 1.3.54+321
 
 environment:
   sdk: ">=3.13.0 <4.0.0"
@@ -74,6 +74,7 @@ flutter:
         - asset: assets/fonts/ChessVerseSerif.ttf
   uses-material-design: true
   assets:
+    - assets/coaches/
     - assets/i18n/ui/
     # Bundle runtime audio only; alternate source recordings stay in the repository.
     - assets/audio/check-warning.wav

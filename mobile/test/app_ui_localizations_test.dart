@@ -13,7 +13,7 @@ void main() {
       jsonDecode(await rootBundle.loadString('assets/i18n/ui/en.json')) as Map,
     );
     final placeholders = RegExp(r'\{\d+\}');
-    final brands = RegExp(r'ChessVerseAI|CHESSVERSEAI|ChessVerse');
+    final brands = RegExp(r'ChessVerse(?:\s*AI)?', caseSensitive: false);
     for (final language in AppLanguageController.supported.where(
       (language) => language.code != 'system',
     )) {
@@ -57,6 +57,29 @@ void main() {
       }
     }
   });
+
+  test(
+    'brand and uppercase wordmark fragments never translate in any locale',
+    () async {
+      for (final language in AppLanguageController.supported.where(
+        (l) => l.code != 'system',
+      )) {
+        await UiCopy.load(language.code);
+        expect(UiCopy.text('CHESSVERSE'), 'ChessVerse', reason: language.code);
+        expect(
+          UiCopy.text('ChessVerseAI'),
+          'ChessVerseAI',
+          reason: language.code,
+        );
+        expect(
+          UiCopy.text('CHESSVERSE AI'),
+          'ChessVerseAI',
+          reason: language.code,
+        );
+      }
+      await UiCopy.load('en');
+    },
+  );
 
   test('format preserves user values and chess notation without recursive replacement', () async {
     await UiCopy.load('en');
