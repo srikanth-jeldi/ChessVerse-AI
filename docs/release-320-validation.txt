@@ -1,0 +1,46 @@
+ChessVerseAI 1.3.53 (320) - every-move voice coaching
+Date: 2026-10-26
+Mobile source: 1e85c031. Backend source: 1c2da553.
+Backend workflow 40363871816 completed successfully; backend healthy.
+
+Changes:
+- Removed the 20-second successful-speech cooldown. Each new, current human
+  move review in Play vs AI can produce a short comment, including repeated
+  classifications. Duplicate and out-of-order results remain suppressed.
+- New player moves stop older commentary. No backlog of stale voice tips.
+  Slow/offline analysis cannot guarantee a spoken comment for every rapid move;
+  current-board relevance and responsive gameplay take precedence.
+- Short supportive phrases for Best, Great, Inaccuracy, Mistake and Blunder;
+  an unknown classification uses neutral wording, not an invented assessment.
+- All six phrases available in all 34 catalogs. Simplified caution wording
+  avoids a difficult metaphor. Telugu phrasing manually adjusted for natural
+  spoken language after detecting an overly literal machine translation.
+- Optional validated speech tone: encouraging, gentle, caution; absent tone
+  remains neutral for existing clients/lessons. Conservative pitch/rate changes
+  instead of unsupported emotional style tags. Tone participates in both mobile
+  and server caches. Input text is XML-escaped and arbitrary SSML is disallowed.
+- Good moves: slightly brighter pitch and pace. Blunders: slower delivery.
+  This does not claim human-level acting or identical emotional expression in
+  every language. Other 33 languages have not had native-speaker review.
+
+Verification:
+- 13 Flutter voice/cloud tests passed after final copy edits: immediate repeated
+  moves, opt-in, deduplication, stale results, cancellation, failures, complete
+  34-language phrase coverage, authenticated requests and tone-separated cache.
+- 5 backend speech tests passed: backward compatibility, escaping, limits,
+  34 voice mappings, tone validation, prosody and tone-separated cache.
+- Flutter analyzer: no issues.
+- Live cloud run succeeded for 34 languages with tones distributed across the
+  set; after final copy edits, caution synthesis succeeded for all 34 languages.
+  Final Telugu encouraging/gentle/caution MP3 samples also succeeded. Requests
+  were paced four seconds apart; disposable test accounts deleted.
+- Phone disconnected before the new every-move build could be installed.
+  Earlier build 319 English/Telugu device playback and user confirmation do not
+  substitute for build 320 device testing. New device port requested.
+
+SSML reference:
+https://learn.microsoft.com/en-us/azure/ai-services/speech-service/speech-synthesis-markup-voice
+
+Final signed production AAB verified: version 320, production AdMob app ID, all 290 baseline asset/native paths and all 34 catalogs preserved. Original fonts/audio and baseline translations retained. Dart symbols and SHA256 included.
+Bundletool maximum estimated download bytes: armeabi-v7a 24,518,952; arm64-v8a 24,764,874; x86_64 24,940,297. All below 25,000,000 bytes; actual Play delivery size may differ. No Play Console upload/rollout performed.
+
