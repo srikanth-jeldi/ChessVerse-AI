@@ -24,6 +24,14 @@ class SpeechSynthesisService {
     }
 
     SpeechAudio synthesize(String text, String language) {
+        return synthesize(text, language, null);
+    }
+
+    SpeechAudio synthesize(String text, String language, String tone) {
+        String delivery = tone == null ? "neutral" : tone;
+        if (!java.util.Set.of("neutral", "encouraging", "gentle", "caution").contains(delivery)) {
+            throw new SpeechException(HttpStatus.BAD_REQUEST, "Unsupported voice tone.");
+        }
         String cleanText = text == null ? "" : text.strip();
         if (cleanText.isEmpty()) throw new SpeechException(HttpStatus.BAD_REQUEST, "Narration text is required.");
         if (cleanText.length() > MAX_TEXT_LENGTH) {
@@ -31,18 +39,22 @@ class SpeechSynthesisService {
         }
         SpeechVoiceCatalog.Voice voice = SpeechVoiceCatalog.resolve(language);
         if (voice == null) throw new SpeechException(HttpStatus.BAD_REQUEST, "This narration language is not supported.");
-        String cacheKey = sha256(voice.name() + '\n' + cleanText);
+        String cacheKey = sha256(voice.name() + '\n' + delivery + '\n' + cleanText);
         SpeechAudio cached = cache.getIfPresent(cacheKey);
         if (cached != null) return cached.withCacheHit(true);
-        byte[] bytes = gateway.synthesize(ssml(cleanText, voice));
+        byte[] bytes = gateway.synthesize(ssml(cleanText, voice, delivery));
         SpeechAudio created = new SpeechAudio(bytes, voice.locale(), voice.name(), cacheKey, false);
         cache.put(cacheKey, created);
         return created;
     }
 
-    private String ssml(String text, SpeechVoiceCatalog.Voice voice) {
+    private String ssml(String text, SpeechVoiceCatalog.Voice voice, String tone) {
+        // Conservative prosody works across the 34 configured neural voices.
+        // Emotional express-as styles are not universally supported.
+        String rate = switch (tone) { case "encouraging" -> "+2%"; case "caution" -> "-8%"; default -> "-5%"; };
+        String pitch = switch (tone) { case "encouraging" -> "+3%"; case "gentle" -> "+1%"; default -> "+0%"; };
         return "<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\""
-                + voice.locale() + "\"><voice name=\"" + voice.name() + "\"><prosody rate=\"-5%\">"
+                + voice.locale() + "\"><voice name=\"" + voice.name() + "\"><prosody rate=\"" + rate + "\" pitch=\"" + pitch + "\">"
                 + escapeXml(text) + "</prosody></voice></speak>";
     }
 

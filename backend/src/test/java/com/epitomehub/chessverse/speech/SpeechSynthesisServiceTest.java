@@ -9,6 +9,21 @@ import org.springframework.http.HttpStatus;
 
 class SpeechSynthesisServiceTest {
     @Test
+    void coachingToneChangesProsodyAndCacheWithoutAcceptingMarkup() {
+        java.util.List<String> requests = new java.util.ArrayList<>();
+        var service = new SpeechSynthesisService(ssml -> { requests.add(ssml); return new byte[]{1}; });
+        var warm = service.synthesize("Good <move>!", "te", "encouraging");
+        var careful = service.synthesize("Good <move>!", "te", "caution");
+        assertNotEquals(warm.etag(), careful.etag());
+        assertTrue(requests.get(0).contains("rate=\"+2%\" pitch=\"+3%\""));
+        assertTrue(requests.get(1).contains("rate=\"-8%\""));
+        assertTrue(requests.get(0).contains("&lt;move&gt;"));
+        assertTrue(service.synthesize("Good <move>!", "te", "encouraging").cacheHit());
+        assertEquals(2, requests.size());
+        assertThrows(SpeechException.class, () -> service.synthesize("hello", "en", "<voice>"));
+        assertEquals(2, requests.size());
+    }
+    @Test
     void escapesSsmlAndCachesIdenticalNarration() {
         AtomicInteger calls = new AtomicInteger();
         StringBuilder captured = new StringBuilder();

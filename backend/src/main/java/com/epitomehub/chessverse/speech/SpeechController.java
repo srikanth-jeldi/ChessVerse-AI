@@ -31,7 +31,7 @@ class SpeechController {
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @Valid @RequestBody SpeechRequest request) {
         authentication.requireBearer(authorization);
-        SpeechSynthesisService.SpeechAudio audio = speech.synthesize(request.text(), request.language());
+        SpeechSynthesisService.SpeechAudio audio = speech.synthesize(request.text(), request.language(), request.tone());
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("audio/mpeg"))
                 .cacheControl(CacheControl.noStore())
@@ -45,5 +45,8 @@ class SpeechController {
 
     record SpeechRequest(
             @NotBlank @Size(max = SpeechSynthesisService.MAX_TEXT_LENGTH) String text,
-            @NotBlank @Pattern(regexp = "^[A-Za-z]{2,3}([_-][A-Za-z]{2,4})?$") String language) {}
+            @NotBlank @Pattern(regexp = "^[A-Za-z]{2,3}([_-][A-Za-z]{2,4})?$") String language,
+            @Pattern(regexp = "^(neutral|encouraging|gentle|caution)$") String tone) {
+        SpeechRequest(String text, String language) { this(text, language, null); }
+    }
 }

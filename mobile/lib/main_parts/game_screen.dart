@@ -811,8 +811,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   Future<bool> _playLiveVoice(
     String source,
     String language,
-    bool Function() current,
-  ) async {
+    bool Function() current, {
+    String tone = 'neutral',
+  }) async {
     try {
       final catalog = _voiceCatalogs[language] ??= Map<String, String>.from(
         jsonDecode(await rootBundle.loadString('assets/i18n/ui/$language.json'))
@@ -828,6 +829,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             language: language,
             allowLocalFallback: false,
             canSpeak: current,
+            tone: tone,
           );
       if (!played && current()) _showLiveVoiceError();
       return played;
@@ -878,12 +880,20 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           mounted &&
           !_computerPaused &&
           _gameMode == GameMode.computer &&
-          _gameResultTitle == null &&
           epoch == _moveReviewEpoch &&
           _moves.length <= ply + 1 &&
           language == AppLanguageController.resolveCode(_coachLanguageCode) &&
           (ModalRoute.of(context)?.isCurrent ?? false),
-      speak: (source, canSpeak) => _playLiveVoice(source, language, canSpeak),
+      speak: (source, canSpeak) => _playLiveVoice(
+        source,
+        language,
+        canSpeak,
+        tone: switch (classification) {
+          'Best' || 'Great' => 'encouraging',
+          'Blunder' => 'caution',
+          _ => 'gentle',
+        },
+      ),
     );
   }
 

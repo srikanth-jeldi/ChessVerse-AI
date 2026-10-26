@@ -1,0 +1,7 @@
+<en-GB>
+• Automatic voice coaching now responds after every reviewed move.
+• Warmer praise and calmer guidance, translated across 34 languages.
+• Improved speaking pace and pitch for different move outcomes.
+• Old commentary stops when you make a new move, keeping play responsive.
+• Includes recent profile, coin-ranking and layout improvements.
+</en-GB>

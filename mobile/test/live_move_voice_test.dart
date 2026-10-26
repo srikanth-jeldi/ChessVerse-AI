@@ -26,34 +26,37 @@ void main() {
     },
   );
 
-  test('opt-in, cooldown, duplicate and out-of-order results', () async {
-    var now = DateTime(2026);
-    final voice = LiveMoveVoice(now: () => now);
-    final spoken = <String>[];
-    Future<void> review(int ply, [String grade = 'Blunder']) => voice.review(
-      ply: ply,
-      classification: grade,
-      isCurrent: () => true,
-      speak: (text, valid) async {
-        if (valid()) spoken.add(text);
-        return valid();
-      },
-    );
-    await review(1);
-    expect(spoken, isEmpty);
-    voice.enabled = true;
-    await review(1);
-    await review(1);
-    await review(3);
-    now = now.add(const Duration(seconds: 21));
-    await review(1);
-    await review(5, 'Unknown');
-    await review(7, 'Best');
-    expect(spoken, [
-      LiveMoveVoice.phrase('Blunder'),
-      LiveMoveVoice.phrase('Best'),
-    ]);
-  });
+  test(
+    'every move speaks without cooldown; duplicates and stale reviews do not',
+    () async {
+      final voice = LiveMoveVoice();
+      final spoken = <String>[];
+      Future<void> review(int ply, [String grade = 'Blunder']) => voice.review(
+        ply: ply,
+        classification: grade,
+        isCurrent: () => true,
+        speak: (text, valid) async {
+          if (valid()) spoken.add(text);
+          return valid();
+        },
+      );
+      await review(1);
+      expect(spoken, isEmpty);
+      voice.enabled = true;
+      await review(1);
+      await review(1);
+      await review(3);
+      await review(1);
+      await review(5, 'Unknown');
+      await review(7, 'Best');
+      expect(spoken, [
+        LiveMoveVoice.phrase('Blunder'),
+        LiveMoveVoice.phrase('Blunder'),
+        LiveMoveVoice.phrase('Unknown'),
+        LiveMoveVoice.phrase('Best'),
+      ]);
+    },
+  );
 
   test(
     'pending audio invalidated by mute, navigation, undo or reset',
@@ -114,6 +117,7 @@ void main() {
           'Inaccuracy',
           'Best',
           'Great',
+          'Unknown',
         ].map((c) => LiveMoveVoice.phrase(c)!),
       ]) {
         expect(catalog[text], isA<String>(), reason: '${file.path}: $text');

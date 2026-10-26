@@ -34,6 +34,42 @@ void main() {
     messenger.setMockMethodCallHandler(audioPlayer, null);
   });
 
+  test(
+    'coaching tone is sent and cached separately from neutral narration',
+    () async {
+      final tones = <String?>[];
+      final service = CloudNarrationService(
+        tokenProvider: () async => 'session-token',
+        client: MockClient((request) async {
+          tones.add((jsonDecode(request.body) as Map)['tone'] as String?);
+          return http.Response.bytes(
+            [73, 68, 51, 4],
+            200,
+            headers: {'content-type': 'audio/mpeg'},
+          );
+        }),
+      );
+      await service.prepare(
+        text: 'Tone cache regression',
+        language: 'te',
+        tone: 'encouraging',
+      );
+      await service.prepare(
+        text: 'Tone cache regression',
+        language: 'te',
+        tone: 'caution',
+      );
+      await service.prepare(
+        text: 'Tone cache regression',
+        language: 'te',
+        tone: 'encouraging',
+      );
+      await service.prepare(text: 'Tone cache regression', language: 'te');
+      expect(tones, ['encouraging', 'caution', null]);
+      await service.dispose();
+    },
+  );
+
   test('cancelled live cloud fetch never falls back or plays late', () async {
     final response = Completer<http.Response>();
     var current = true;

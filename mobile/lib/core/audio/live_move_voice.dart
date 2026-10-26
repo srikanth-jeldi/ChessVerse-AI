@@ -2,27 +2,24 @@ import 'dart:async';
 
 /// Reuses completed engine reviews. Never launches analysis or queues speech.
 class LiveMoveVoice {
-  LiveMoveVoice({DateTime Function()? now}) : _now = now ?? DateTime.now;
-  final DateTime Function() _now;
-  DateTime? _lastSpoken;
   int _generation = 0;
   int _lastPly = 0;
   bool enabled = false;
 
   static String? phrase(String classification) => switch (classification) {
-    'Blunder' => 'That move was a big mistake. Take a moment to check the safer move in your review.',
-    'Mistake' => 'That move gives your opponent an advantage. Your review shows a safer choice.',
-    'Inaccuracy' => 'There was a more accurate move here. Check your review when you are ready.',
-    'Best' => 'Well played! You found the strongest move.',
-    'Great' => 'Good move. Keep checking your opponent’s threats.',
-    _ => null,
+    'Blunder' => 'Oh, careful! That was a big mistake. Take a breath; keep looking for a way back.',
+    'Mistake' =>
+      'Careful, that helps your opponent. Stay calm and look for a safer plan.',
+    'Inaccuracy' => 'Almost! There was a stronger move. Keep an eye on your opponent’s threats.',
+    'Best' => 'Excellent! That was the strongest move. Keep it up!',
+    'Great' => 'Nicely played! That was a good choice. Stay focused!',
+    _ => 'Move played. Let’s see what your opponent does next.',
   };
 
   void cancel({bool newGame = false}) {
     _generation++;
     if (newGame) {
       _lastPly = 0;
-      _lastSpoken = null;
     }
   }
 
@@ -36,17 +33,11 @@ class LiveMoveVoice {
     if (!enabled || !isCurrent() || ply <= _lastPly) return;
     _lastPly = ply;
     final text = phrase(classification);
-    final now = _now();
-    if (text == null ||
-        (_lastSpoken != null &&
-            now.difference(_lastSpoken!) < const Duration(seconds: 20))) {
-      return;
-    }
+    if (text == null) return;
     final generation = ++_generation;
     bool current() => enabled && generation == _generation && isCurrent();
     try {
-      final played = await speak(text, current);
-      if (played && current()) _lastSpoken = _now();
+      await speak(text, current);
     } on Object {
       // Optional audio must never fail or delay the game.
     }
