@@ -634,7 +634,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     gameNavigator.maybePop();
                   }
                 },
-                child: const UiText('Back to My Games'),
+                child: const UiActionText('Back to My Games'),
               ),
             ],
           ),
@@ -793,33 +793,55 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Future<void> _loadLiveVoice() async {
     try {
-      final enabled = await const AppPreferences().readBool('liveMoveVoice', fallback: false);
+      final enabled = await const AppPreferences().readBool(
+        'liveMoveVoice',
+        fallback: false,
+      );
       if (mounted) setState(() => _liveVoice.enabled = enabled);
     } on Object {
       // Voice is opt-in; unavailable storage leaves it off.
     }
   }
 
-  Future<void> _speakMoveReview(String classification, int ply, int epoch) async {
+  Future<void> _speakMoveReview(
+    String classification,
+    int ply,
+    int epoch,
+  ) async {
     final language = AppLanguageController.resolveCode(_coachLanguageCode);
     await _liveVoice.review(
-      ply: ply, classification: classification,
-      isCurrent: () => mounted && !_computerPaused && _coachEnabled && _soundEnabled &&
-          _gameMode == GameMode.computer && _gameResultTitle == null &&
-          epoch == _moveReviewEpoch && _moves.length <= ply + 1 &&
+      ply: ply,
+      classification: classification,
+      isCurrent: () =>
+          mounted &&
+          !_computerPaused &&
+          _coachEnabled &&
+          _soundEnabled &&
+          _gameMode == GameMode.computer &&
+          _gameResultTitle == null &&
+          epoch == _moveReviewEpoch &&
+          _moves.length <= ply + 1 &&
           language == AppLanguageController.resolveCode(_coachLanguageCode) &&
           (ModalRoute.of(context)?.isCurrent ?? false),
       speak: (source, canSpeak) async {
         final catalog = _voiceCatalogs[language] ??= Map<String, String>.from(
-          jsonDecode(await rootBundle.loadString('assets/i18n/ui/$language.json')) as Map);
+          jsonDecode(
+            await rootBundle.loadString('assets/i18n/ui/$language.json'),
+          ) as Map,
+        );
         final text = catalog[source];
         if (text == null || !canSpeak()) return;
         _liveNarrator ??= CloudNarrationService(preferImmediateLocal: false);
-        await _liveNarrator!.speak(text: text, language: language,
-            allowLocalFallback: false, canSpeak: canSpeak);
+        await _liveNarrator!.speak(
+          text: text,
+          language: language,
+          allowLocalFallback: false,
+          canSpeak: canSpeak,
+        );
       },
     );
   }
+
   BoardSkin _skin = BoardSkin.royalWalnut;
   GameMode _gameMode = GameMode.computer;
   double _aiLevel = 4;
@@ -1246,11 +1268,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialog, false),
-            child: const UiText('Keep playing'),
+            child: const UiActionText('Keep playing'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialog, true),
-            child: const UiText('Return to tournament'),
+            child: const UiActionText('Return to tournament'),
           ),
         ],
       ),
@@ -1603,13 +1625,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       onBackToAcademy: () => Navigator.of(context).pop(),
                     );
               if (_gameMode == GameMode.computer) {
-                studioCoach = SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  LiveVoiceToggle(
-                    enabled: _liveVoice.enabled,
-                    onChanged: _toggleLiveVoice,
+                studioCoach = SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      LiveVoiceToggle(
+                        enabled: _liveVoice.enabled,
+                        onChanged: _toggleLiveVoice,
+                      ),
+                      studioCoach,
+                    ],
                   ),
-                  studioCoach,
-                ]));
+                );
               }
               final bool yourTurn = switch (_gameMode) {
                 GameMode.computer =>
@@ -2457,11 +2484,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   onPressed: loading
                       ? null
                       : () => Navigator.of(dialogContext).pop(),
-                  child: const UiText('Cancel'),
+                  child: const UiActionText('Cancel'),
                 ),
                 FilledButton(
                   onPressed: loading ? null : submit,
-                  child: UiText(
+                  child: UiActionText(
                     codeSent ? 'Update password' : 'Send reset code',
                   ),
                 ),
@@ -2670,11 +2697,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const UiText('Cancel'),
+                  child: const UiActionText('Cancel'),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.pop(dialogContext, true),
-                  child: const UiText('New Game'),
+                  child: const UiActionText('New Game'),
                 ),
               ],
             ),
@@ -4299,11 +4326,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const UiText('Cancel'),
+              child: const UiActionText('Cancel'),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const UiText('New Game'),
+              child: const UiActionText('New Game'),
             ),
           ],
         ),
@@ -4480,11 +4507,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const UiText('Cancel'),
+            child: const UiActionText('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const UiText('New game'),
+            child: const UiActionText('New game'),
           ),
         ],
       ),
@@ -4831,12 +4858,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                             TextButton(
                               onPressed: () =>
                                   Navigator.pop(dialogContext, false),
-                              child: const UiText('Skip'),
+                              child: const UiActionText('Skip'),
                             ),
                             FilledButton(
                               onPressed: () =>
                                   Navigator.pop(dialogContext, true),
-                              child: const UiText('Watch ad'),
+                              child: const UiActionText('Watch ad'),
                             ),
                           ],
                         ),
@@ -6257,11 +6284,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const UiText('Decline'),
+              child: const UiActionText('Decline'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const UiText('Accept draw'),
+              child: const UiActionText('Accept draw'),
             ),
           ],
         ),

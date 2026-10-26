@@ -242,7 +242,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
           actions: [
             TextButton(
               onPressed: sending ? null : () => Navigator.pop(context),
-              child: const UiText('Close without sending'),
+              child: const UiActionText('Close without sending'),
             ),
             FilledButton(
               onPressed: sending
@@ -276,7 +276,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                         }
                       }
                     },
-              child: UiText(sending ? 'Saving…' : 'Submit to coach'),
+              child: UiActionText(sending ? 'Saving…' : 'Submit to coach'),
             ),
           ],
         ),
@@ -330,7 +330,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const UiText('Close'),
+              child: const UiActionText('Close'),
             ),
           ],
         ),
@@ -406,7 +406,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                           FilledButton.icon(
                             onPressed: busy ? null : join,
                             icon: const Icon(Icons.school),
-                            label: const UiText('Accept invitation'),
+                            label: const UiActionText('Accept invitation'),
                           ),
                         ],
                       ),
@@ -577,7 +577,7 @@ class _MyAcademyScreenState extends State<MyAcademyScreen> {
                                       ? Icons.check_circle
                                       : Icons.play_arrow,
                                 ),
-                                label: UiText(
+                                label: UiActionText(
                                   a['completed_at'] != null
                                       ? 'Completed'
                                       : a['kind'] == 'OPENINGS' ||

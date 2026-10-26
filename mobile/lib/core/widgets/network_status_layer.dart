@@ -105,11 +105,11 @@ class _NetworkStatusLayerState extends State<NetworkStatusLayer> {
                           FilledButton.icon(
                             onPressed: _controller.checkNow,
                             icon: const Icon(Icons.refresh_rounded),
-                            label: const UiText('Retry connection'),
+                            label: const UiActionText('Retry connection'),
                           ),
                           TextButton(
                             onPressed: _controller.continueOffline,
-                            child: const UiText('Continue offline'),
+                            child: const UiActionText('Continue offline'),
                           ),
                         ],
                       ),

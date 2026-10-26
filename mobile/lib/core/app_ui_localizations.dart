@@ -105,6 +105,35 @@ class UiText extends StatelessWidget {
   );
 }
 
+/// Complete single-line action text. The button still owns its tap target;
+/// only its label scales down when a translation cannot fit the available width.
+/// Prefer giving actions a full row before using this constrained fallback.
+class UiActionText extends UiText {
+  const UiActionText(
+    super.data, {
+    super.values,
+    super.key,
+    super.style,
+    super.strutStyle,
+    super.textAlign,
+    super.textDirection,
+    super.locale,
+    super.softWrap = false,
+    super.overflow = TextOverflow.visible,
+    super.textScaler,
+    super.maxLines = 1,
+    super.semanticsLabel,
+    super.semanticsIdentifier,
+    super.textWidthBasis,
+    super.textHeightBehavior,
+    super.selectionColor,
+  });
+
+  @override
+  Widget build(BuildContext context) =>
+      FittedBox(fit: BoxFit.scaleDown, child: super.build(context));
+}
+
 class UiLanguageHost extends StatefulWidget {
   const UiLanguageHost({required this.builder, super.key});
   final Widget Function(BuildContext, Locale) builder;

@@ -107,11 +107,11 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const UiText('CANCEL'),
+            child: const UiActionText('CANCEL'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: UiText(value.joined ? 'WITHDRAW' : 'REGISTER NOW'),
+            child: UiActionText(value.joined ? 'WITHDRAW' : 'REGISTER NOW'),
           ),
         ],
       ),
@@ -163,36 +163,57 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
     final value = detail;
     return Scaffold(
       backgroundColor: const Color(0xFF030A12),
-      bottomNavigationBar: const BannerAdSlot(),
+      // Reserve real layout space: an overlaid FAB obscured the final
+      // fair-play card, especially with long translations and large text.
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (value?.status == 'OPEN')
+              Padding(
+                key: const ValueKey<String>('tournament-action-footer'),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    key: const ValueKey<String>('tournament-sticky-register'),
+                    onPressed: busy ? null : _toggle,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFE0AD42),
+                      foregroundColor: const Color(0xFF07111B),
+                      minimumSize: const Size(0, 56),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                    ),
+                    icon: busy
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            value!.joined
+                                ? Icons.verified_rounded
+                                : Icons.how_to_reg_rounded,
+                          ),
+                    label: UiActionText(
+                      value!.joined ? 'REGISTRATION CONFIRMED' : 'REGISTER NOW',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ),
+              ),
+            const BannerAdSlot(),
+          ],
+        ),
+      ),
       appBar: AppBar(
         backgroundColor: const Color(0xFF071421),
         title: Text(value?.name ?? 'World Chess Circuit'),
       ),
-      floatingActionButton: value?.status == 'OPEN'
-          ? FloatingActionButton.extended(
-              key: const ValueKey<String>('tournament-sticky-register'),
-              onPressed: busy ? null : _toggle,
-              backgroundColor: const Color(0xFFE0AD42),
-              foregroundColor: const Color(0xFF07111B),
-              icon: busy
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFF07111B),
-                      ),
-                    )
-                  : Icon(
-                      value!.joined
-                          ? Icons.verified_rounded
-                          : Icons.how_to_reg_rounded,
-                    ),
-              label: UiText(
-                value!.joined ? 'REGISTRATION CONFIRMED' : 'REGISTER NOW',
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-            )
-          : null,
       body: error != null
           ? _LoadError(message: error!, onRetry: _load)
           : value == null
@@ -1023,7 +1044,7 @@ class _RegistrationPanel extends StatelessWidget {
                   TextButton.icon(
                     onPressed: onEarnCoins,
                     icon: const Icon(Icons.smart_display_rounded),
-                    label: const UiText('Earn free coins'),
+                    label: const UiActionText('Earn free coins'),
                   ),
               ],
             ],
@@ -1519,7 +1540,7 @@ class _PairingCard extends StatelessWidget {
                     ? null
                     : () => onOpenMatch!(pairing.matchId!),
                 icon: const Icon(Icons.play_arrow_rounded),
-                label: UiText(
+                label: UiActionText(
                   pairing.status == 'ACTIVE'
                       ? 'Enter / Resume game'
                       : 'View result',
@@ -1788,6 +1809,7 @@ class _FairPlayNotice extends StatelessWidget {
   const _FairPlayNotice();
   @override
   Widget build(BuildContext context) => Container(
+    key: const ValueKey<String>('tournament-fair-play-notice'),
     padding: const EdgeInsets.all(15),
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(18),
@@ -1831,7 +1853,7 @@ class _LoadError extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh),
-            label: const UiText('Retry'),
+            label: const UiActionText('Retry'),
           ),
         ],
       ),

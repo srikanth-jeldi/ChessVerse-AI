@@ -575,7 +575,7 @@ class _ReviewedPositionRetryDialogState
                     key: const ValueKey<String>('position-retry-hint'),
                     onPressed: _hintStage < 3 ? _showRetryHint : null,
                     icon: const Icon(Icons.lightbulb_rounded),
-                    label: UiText(
+                    label: UiActionText(
                       'Hint {0}/3',
                       values: [(_hintStage + 1).clamp(1, 3)],
                     ),

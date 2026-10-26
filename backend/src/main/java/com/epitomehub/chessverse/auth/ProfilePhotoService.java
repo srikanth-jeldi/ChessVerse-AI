@@ -45,12 +45,19 @@ class ProfilePhotoService {
                 .orElseThrow(() -> new AuthException(HttpStatus.NOT_FOUND, "Player was not found."));
         try {
             Files.createDirectories(root);
-            for (String old : new String[]{"jpg", "png", "webp", "gif", "bmp", "avif", "heic", "heif"}) {
-                Files.deleteIfExists(root.resolve(player.id + "." + old));
-            }
             Path destination = root.resolve(player.id + "." + extension).normalize();
             if (!destination.getParent().equals(root)) throw new IOException("Invalid destination");
-            Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
+            Path temporary = Files.createTempFile(root, "avatar-", ".tmp");
+            try {
+                try (var input = file.getInputStream()) {
+                    Files.copy(input, temporary, StandardCopyOption.REPLACE_EXISTING);
+                }
+                Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE);
+            } finally { Files.deleteIfExists(temporary); }
+            for (String old : new String[]{"jpg", "png", "webp", "gif", "bmp", "avif", "heic", "heif"}) {
+                if (!old.equals(extension)) Files.deleteIfExists(root.resolve(player.id + "." + old));
+            }
         } catch (IOException exception) {
             throw new AuthException(HttpStatus.INTERNAL_SERVER_ERROR, "Profile photo could not be saved.");
         }

@@ -991,6 +991,58 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('online lobby enlarged text does not overflow player cards', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(1.3)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: OnlineMatchmakingSheet(
+            api: _PreferenceOnlineApi(),
+            token: 'test-token',
+            onProfile: _noop,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Find Match'));
+    await tester.pump();
+
+    expect(find.text('FINDING YOUR RIVAL'), findsOneWidget);
+    expect(
+      find.text('Searching worldwide for the best available match'),
+      findsOneWidget,
+    );
+    expect(find.text('VS'), findsOneWidget);
+    expect(find.text('SEARCH SETTINGS'), findsOneWidget);
+    expect(find.text('CANCEL SEARCH'), findsOneWidget);
+    final Size playerCard = tester.getSize(
+      find.byKey(const ValueKey<String>('mobile-player-card')),
+    );
+    final Size rivalCard = tester.getSize(
+      find.byKey(const ValueKey<String>('mobile-rival-card')),
+    );
+    expect(rivalCard.height, greaterThanOrEqualTo(112));
+    expect(playerCard.height, greaterThanOrEqualTo(112));
+    expect(
+      tester.getBottomRight(find.text('CANCEL SEARCH')).dy,
+      lessThanOrEqualTo(tester.view.physicalSize.height),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('desktop online lobby keeps complete navigation', (
     WidgetTester tester,
   ) async {

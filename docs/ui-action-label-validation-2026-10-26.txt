@@ -1,0 +1,36 @@
+UI action-label verification - 2026-10-26
+
+Changes (not included in the previously built production AAB 317):
+- Home personal-training action now occupies a full row, minimum height 48.
+- Reusable UiActionText preserves complete single-line action labels, scaling down only when constrained. Body text retains normal wrapping.
+- Adopted by translated buttons across authentication, analysis, puzzles, community, settings and game dialogs.
+- Shared ChessVerseButton translates labels and uses minimum rather than fixed height.
+- Tournament registration action reserves bottom layout space above the banner; it no longer floats over the fair-play card.
+
+Verification:
+- 23 initial screen states x 34 languages at 320px / text scale 1.3, including RTL: 782 passed. Button labels assert no clipping or multiple lines.
+- Tournament suite: 5 passed, including open registration footer with both registration states and 34 languages / text scale 1.6.
+- Additional home action width, minimum height and tap callback assertions: 34 passed.
+- flutter analyze --no-pub: No issues found.
+- Debug arm64 APK built and installed successfully as com.epitomehub.chessverse.uitest. Production app/data preserved.
+- Device connection dropped after installation before launch. Actual visual verification remains pending; not all loaded states, keyboard states or popups are covered by the initial-screen matrix.
+
+Badge investigation:
+- Academy Scout, Tactical Eye, Puzzle Hunter and Opening Sage are FRAME cosmetic shop items.
+- Backend supports owning/equipping these via frame_item_id.
+- No gameplay, hint or rating benefit found. Profile currently displays earned reward badges; selected shop frame display wiring was not found.
+- No badge behavior changes made in this patch.
+
+Device follow-up:
+- Discovered connection port 38005 and connected to Samsung SM-F415F.
+- Launched side-by-side test package, skipped onboarding, entered as test guest and reached home successfully.
+- Captured home UI hierarchy (.build-tmp/chessverse-ui2.xml).
+- Connection dropped during scroll toward TRAIN card (input service Broken pipe / device offline). TRAIN visual inspection remains pending. Do not count this as complete real-device verification.
+
+Device follow-up (successful connection at 192.168.0.192:44213):
+- Paired Samsung SM-F415F, launched test app, retained test guest session.
+- Scrolled to home training card. UI hierarchy shows TRAIN bounds [87,1792][993,1927], width 906 physical pixels; full card-width action rather than old narrow trailing action.
+- Tapped TRAIN at [540,1859]; fresh UI hierarchy confirms navigation to PUZZLE ACADEMY / Your Adaptive Sprint / SOLVE NOW.
+- Evidence: .build-tmp/chessverse-after.xml and .build-tmp/chessverse-train-tap.xml.
+- Android lastanr reports no ANR since boot. This is not proof that all crashes or ANRs are resolved.
+- Screen capture commands stalled; pixel-level visual confirmation of the training card remains unverified. Device functional verification is English only; 34-language checks are automated.

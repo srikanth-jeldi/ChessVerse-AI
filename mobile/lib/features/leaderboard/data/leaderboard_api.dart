@@ -159,6 +159,14 @@ class LeaderboardDto {
 class LeaderboardApi {
   const LeaderboardApi();
 
+  Future<Map<String, dynamic>> coinRankings(String token, String period) =>
+      _request(
+        token,
+        'GET',
+        Uri.parse('${AppConfig.apiBaseUrl}/api/v1/leaderboard/coins')
+            .replace(queryParameters: {'period': period}),
+      );
+
   Future<LeaderboardDto> load(
     String token, {
     required String scope,

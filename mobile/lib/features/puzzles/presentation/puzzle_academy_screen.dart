@@ -687,7 +687,7 @@ class _SprintModeStrip extends StatelessWidget {
                 key: const ValueKey<String>('sprint-records'),
                 onPressed: onRecords,
                 icon: const Icon(Icons.leaderboard_rounded),
-                label: const UiText('LEADERBOARD & MY HISTORY'),
+                label: const UiActionText('LEADERBOARD & MY HISTORY'),
               ),
             ),
           ],
@@ -911,7 +911,7 @@ class _PuzzleSprintSheetState extends State<_PuzzleSprintSheet> {
                     ? Icons.hourglass_top_rounded
                     : Icons.play_arrow_rounded,
               ),
-              label: UiText(
+              label: UiActionText(
                 _launching
                     ? 'OPENING BOARD…'
                     : _lastAttemptSolved == false
@@ -1130,7 +1130,7 @@ class _PuzzleHero extends StatelessWidget {
                             ),
                           ),
                           icon: const Icon(Icons.sports_esports_rounded),
-                          label: const UiText(
+                          label: const UiActionText(
                             'SOLVE NOW',
                             style: TextStyle(fontWeight: FontWeight.w900),
                           ),
@@ -1474,7 +1474,7 @@ class _TrainingStatsPanel extends StatelessWidget {
               ),
             ),
             icon: const Icon(Icons.bar_chart_rounded),
-            label: const UiText(
+            label: const UiActionText(
               'VIEW INSIGHTS',
               style: TextStyle(letterSpacing: 1.2),
             ),
@@ -1604,7 +1604,7 @@ class _TrainingInsightsSheet extends StatelessWidget {
                     key: const ValueKey<String>('continue-recommended-puzzles'),
                     onPressed: () => onDifficulty(recommended),
                     icon: const Icon(Icons.play_arrow_rounded),
-                    label: UiText(
+                    label: UiActionText(
                       'CONTINUE {0} TRAINING',
                       values: [recommended.name.toUpperCase()],
                     ),

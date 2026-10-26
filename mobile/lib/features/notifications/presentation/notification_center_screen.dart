@@ -93,7 +93,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
             const SizedBox(height: 12),
             Text(_error!),
             const SizedBox(height: 12),
-            FilledButton(onPressed: _load, child: const UiText('Retry')),
+            FilledButton(onPressed: _load, child: const UiActionText('Retry')),
           ],
         ),
       );

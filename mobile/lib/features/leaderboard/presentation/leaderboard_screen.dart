@@ -10,6 +10,7 @@ import '../../auth/data/auth_session_store.dart';
 import '../../online/data/online_match_api.dart';
 import '../../social/presentation/social_hub_screen.dart';
 import '../data/leaderboard_api.dart';
+import 'coin_rankings_screen.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({
@@ -44,6 +45,7 @@ class LeaderboardScreen extends StatefulWidget {
 class _LeaderboardScreenState extends State<LeaderboardScreen> {
   static const LeaderboardApi _api = LeaderboardApi();
   String _scope = 'global';
+  bool _ratingMode = false;
   late Future<LeaderboardDto> _leaderboard = _load();
   bool _naturalUserRowVisible = false;
 
@@ -134,6 +136,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_ratingMode) {
+      return CoinRankingsScreen(
+        onRating: () => setState(() => _ratingMode = true),
+      );
+    }
     final Size viewport = MediaQuery.sizeOf(context);
     final bool wide =
         AppBreakpoints.isTabletOrLarger(context) && viewport.width >= 700;
@@ -145,6 +152,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2),
         ),
         actions: <Widget>[
+          IconButton(
+            tooltip: UiCopy.text('Coin rankings'),
+            onPressed: () => setState(() => _ratingMode = false),
+            icon: const Icon(Icons.monetization_on_outlined),
+          ),
           TextButton.icon(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
@@ -156,7 +168,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               ),
             ),
             icon: const Icon(Icons.groups_rounded, color: Color(0xFF56DEC8)),
-            label: const UiText(
+            label: const UiActionText(
               'Friends',
               style: TextStyle(
                 color: Color(0xFF56DEC8),
@@ -911,7 +923,10 @@ class _ErrorState extends StatelessWidget {
           const SizedBox(height: 12),
           Text(message, textAlign: TextAlign.center),
           const SizedBox(height: 14),
-          FilledButton(onPressed: onRetry, child: const UiText('Try again')),
+          FilledButton(
+            onPressed: onRetry,
+            child: const UiActionText('Try again'),
+          ),
         ],
       ),
     ),

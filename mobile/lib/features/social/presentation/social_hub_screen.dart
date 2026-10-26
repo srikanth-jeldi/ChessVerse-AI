@@ -235,11 +235,11 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
               actions: <Widget>[
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: const UiText('CANCEL'),
+                  child: const UiActionText('CANCEL'),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.pop(context, true),
-                  child: const UiText('CREATE'),
+                  child: const UiActionText('CREATE'),
                 ),
               ],
             ),
@@ -406,7 +406,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const UiText('Cancel'),
+                          child: const UiActionText('Cancel'),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -421,7 +421,7 @@ class _SocialHubScreenState extends State<SocialHubScreen> {
                               Navigator.pop(context, controller.text.trim()),
                           child: const FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: UiText(
+                            child: UiActionText(
                               'Send Request',
                               maxLines: 1,
                               style: TextStyle(fontWeight: FontWeight.w900),
@@ -1121,7 +1121,9 @@ class _CommunitySection extends StatelessWidget {
                       key: const ValueKey<String>('create-club-tournament'),
                       onPressed: onCreateClubTournament,
                       icon: const Icon(Icons.add_rounded),
-                      label: const UiText('CREATE PRIVATE CLUB TOURNAMENT'),
+                      label: const UiActionText(
+                        'CREATE PRIVATE CLUB TOURNAMENT',
+                      ),
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -1485,7 +1487,7 @@ class _EmptyCommunity extends StatelessWidget {
           key: const ValueKey<String>('empty-chat-find-friends'),
           onPressed: onFindFriends,
           icon: const Icon(Icons.person_add_alt_1_rounded),
-          label: const UiText('FIND OR ADD FRIENDS'),
+          label: const UiActionText('FIND OR ADD FRIENDS'),
         ),
       ],
     ),
@@ -3336,7 +3338,7 @@ class _FriendFinder extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: onAdd,
           icon: const Icon(Icons.person_add_alt_1_rounded),
-          label: const UiText('Add friend'),
+          label: const UiActionText('Add friend'),
         ),
       ],
     ),
@@ -3691,7 +3693,7 @@ class _SocialPlayerProfile extends StatelessWidget {
                         onChallenge();
                       },
                       icon: const Icon(Icons.castle_rounded, size: 30),
-                      label: const UiText(
+                      label: const UiActionText(
                         'CHALLENGE',
                         style: TextStyle(
                           fontSize: 17,
@@ -3834,7 +3836,10 @@ class _ChallengeCard extends StatelessWidget {
                 tooltip: uiText(context, 'Decline'),
                 icon: const Icon(Icons.close_rounded),
               ),
-              FilledButton(onPressed: onAccept, child: const UiText('Play')),
+              FilledButton(
+                onPressed: onAccept,
+                child: const UiActionText('Play'),
+              ),
             ],
           ),
   );
@@ -3853,7 +3858,7 @@ class _Error extends StatelessWidget {
         const SizedBox(height: 12),
         Text(message),
         const SizedBox(height: 12),
-        FilledButton(onPressed: retry, child: const UiText('Retry')),
+        FilledButton(onPressed: retry, child: const UiActionText('Retry')),
       ],
     ),
   );

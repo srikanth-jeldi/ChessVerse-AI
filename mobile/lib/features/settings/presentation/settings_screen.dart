@@ -610,7 +610,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               )
                             : const Icon(Icons.delete_forever_rounded),
-                        label: UiText(
+                        label: UiActionText(
                           _deletingAccount
                               ? 'Deleting account…'
                               : 'Delete account permanently',
@@ -763,11 +763,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const UiText('Cancel'),
+            child: const UiActionText('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const UiText('Logout'),
+            child: const UiActionText('Logout'),
           ),
         ],
       ),
@@ -787,14 +787,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const UiText('Keep account'),
+            child: const UiActionText('Keep account'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFFB3261E),
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: const UiText('Delete forever'),
+            child: const UiActionText('Delete forever'),
           ),
         ],
       ),
@@ -881,7 +881,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 onPressed: () =>
                                     Navigator.pop(sheetContext, pendingValue),
                                 icon: const Icon(Icons.check_rounded),
-                                label: const UiText('Apply'),
+                                label: const UiActionText('Apply'),
                               ),
                             ],
                           ),

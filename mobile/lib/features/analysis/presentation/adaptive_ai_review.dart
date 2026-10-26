@@ -2190,7 +2190,7 @@ class _LinePlayerDialogState extends State<_LinePlayerDialog> {
     actions: <Widget>[
       TextButton(
         onPressed: () => Navigator.of(context).pop(),
-        child: const UiText('Close'),
+        child: const UiActionText('Close'),
       ),
     ],
   );
@@ -2440,7 +2440,7 @@ class _CandidateMoveTile extends StatelessWidget {
                       ),
                     ),
                     icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                    label: const UiText('Try this line'),
+                    label: const UiActionText('Try this line'),
                   ),
                 ],
               ],

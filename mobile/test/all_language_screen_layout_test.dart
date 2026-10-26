@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart';
 import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:chessverse_ai/features/puzzles/presentation/puzzle_academy_screen.dart';
@@ -29,6 +30,7 @@ import 'package:chessverse_ai/core/app_language.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 void main() {
+  var trainingTaps = 0;
   final screens = <String, Widget Function()>{
     'daily_challenge': () => const DailyChallengeScreen(),
     'learn': () => const LearnChessScreen(),
@@ -60,7 +62,9 @@ void main() {
       onLocalGame: () {},
       onOnlineGame: () {},
       onAnalysis: () {},
-      onPuzzles: () {},
+      onPuzzles: () {
+        trainingTaps++;
+      },
       onSavedGames: () {},
       onLearnChess: () {},
       onProfile: () {},
@@ -92,7 +96,9 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             locale: Locale(language.code),
-            supportedLocales: AppLanguageController.supported.where((l) => l.code != 'system').map((l) => Locale(l.code)),
+            supportedLocales: AppLanguageController.supported
+                .where((l) => l.code != 'system')
+                .map((l) => Locale(l.code)),
             localizationsDelegates: GlobalMaterialLocalizations.delegates,
             theme: ChessVerseTheme.dark(),
             builder: (context, child) => MediaQuery(
@@ -111,9 +117,51 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 500));
         FlutterError.onError = originalErrorHandler;
+        for (final element
+            in find
+                .byWidgetPredicate((w) => w is ButtonStyleButton)
+                .evaluate()) {
+          final button = find.byWidget(element.widget);
+          for (final rich
+              in find
+                  .descendant(of: button, matching: find.byType(RichText))
+                  .evaluate()) {
+            final render = rich.renderObject;
+            if (render is! RenderParagraph) continue;
+            final painter = TextPainter(
+              text: render.text,
+              textDirection: render.textDirection,
+              textScaler: render.textScaler,
+            )..layout(maxWidth: render.size.width + 1);
+            expect(
+              render.didExceedMaxLines,
+              isFalse,
+              reason:
+                  '${screen.key}/${language.code}: clipped ${render.text.toPlainText()}',
+            );
+            expect(
+              painter.computeLineMetrics().length,
+              lessThanOrEqualTo(1),
+              reason:
+                  '${screen.key}/${language.code}: wrapped ${render.text.toPlainText()}',
+            );
+            painter.dispose();
+          }
+        }
         final error = tester.takeException();
         expect(error, isNull, reason: '${screen.key}/${language.code}');
         if (screen.key == 'home') {
+          final train = find.byKey(
+            const ValueKey<String>('personal-training-action'),
+          );
+          expect(train, findsOneWidget);
+          expect(tester.getSize(train).width, greaterThan(200));
+          expect(tester.getSize(train).height, greaterThanOrEqualTo(48));
+          await tester.ensureVisible(train);
+          await tester.pump();
+          final before = trainingTaps;
+          await tester.tap(train);
+          expect(trainingTaps, before + 1);
           expect(find.text(UiCopy.text('Play Now')), findsWidgets);
           if (UiCopy.text('Play Now') != 'Play Now') {
             expect(find.text('Play Now'), findsNothing);

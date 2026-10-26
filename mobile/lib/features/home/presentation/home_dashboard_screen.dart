@@ -985,66 +985,78 @@ class _PersonalTrainingCard extends StatelessWidget {
           BoxShadow(color: Color(0x2800D7C0), blurRadius: 24),
         ],
       ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            padding: const EdgeInsets.all(11),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0x2259E4C8),
-              border: Border.all(color: const Color(0xFF59E4C8)),
-            ),
-            child: const Icon(
-              Icons.psychology_alt_rounded,
-              color: Color(0xFF59E4C8),
-            ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: <Widget>[
+              Container(
+                padding: const EdgeInsets.all(11),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0x2259E4C8),
+                  border: Border.all(color: const Color(0xFF59E4C8)),
+                ),
+                child: const Icon(
+                  Icons.psychology_alt_rounded,
+                  color: Color(0xFF59E4C8),
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const UiText(
+                      'TODAY’S AI TRAINING',
+                      style: TextStyle(
+                        color: AppColors.accentGold,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: .9,
+                        fontSize: 11,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      activated
+                          ? '$focus • 60% targeted practice'
+                          : 'Balanced starter sprint',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      activated ? profile.recommendationReason : 'Complete an AI-reviewed game and tomorrow’s set will adapt to your recurring mistakes.',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFFA8BAC7),
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                const UiText(
-                  'TODAY’S AI TRAINING',
-                  style: TextStyle(
-                    color: AppColors.accentGold,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: .9,
-                    fontSize: 11,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  activated
-                      ? '$focus • 60% targeted practice'
-                      : 'Balanced starter sprint',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  activated ? profile.recommendationReason : 'Complete an AI-reviewed game and tomorrow’s set will adapt to your recurring mistakes.',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFFA8BAC7),
-                    fontSize: 12,
-                    height: 1.3,
-                  ),
-                ),
-              ],
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            key: const ValueKey<String>('personal-training-action'),
+            onPressed: onTrain,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, 48),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 100,
-            child: FilledButton.icon(
-              onPressed: onTrain,
-              icon: const Icon(Icons.play_arrow_rounded, size: 18),
-              label: const UiText('TRAIN', textAlign: TextAlign.center),
+            icon: const Icon(Icons.play_arrow_rounded, size: 18),
+            label: const UiActionText(
+              'TRAIN',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              softWrap: false,
             ),
           ),
         ],
@@ -1207,7 +1219,7 @@ class _WideDashboardRowState extends State<_WideDashboardRow> {
                         const SizedBox(height: 14),
                         FilledButton(
                           onPressed: widget.onDailyChallenge,
-                          child: const UiText('Solve Puzzle'),
+                          child: const UiActionText('Solve Puzzle'),
                         ),
                       ],
                     ),
@@ -1280,7 +1292,10 @@ class _CompactDailyPuzzle extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            FilledButton(onPressed: onTap, child: const UiText('Solve Puzzle')),
+            FilledButton(
+              onPressed: onTap,
+              child: const UiActionText('Solve Puzzle'),
+            ),
           ],
         ),
       ),
@@ -1755,7 +1770,7 @@ class _PlayerHeader extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: wide ? 12 : 9, vertical: 9),
       ),
       icon: const Icon(Icons.card_giftcard_rounded, size: 19),
-      label: const UiText(
+      label: const UiActionText(
         'Free Coins',
         style: TextStyle(fontWeight: FontWeight.w800),
       ),
@@ -2070,9 +2085,7 @@ class _CarouselHero extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: wide
-                                  ? 40
-                                  : 22,
+                              fontSize: wide ? 40 : 22,
                               height: 1,
                               fontWeight: FontWeight.w900,
                             ),
@@ -2098,7 +2111,7 @@ class _CarouselHero extends StatelessWidget {
                           : null,
                       onPressed: data.onTap,
                       icon: const Icon(Icons.arrow_forward_rounded, size: 17),
-                      label: UiText(data.buttonLabel),
+                      label: UiActionText(data.buttonLabel),
                     ),
                     if (data.statusLabel != null ||
                         data.countdownTarget != null)
@@ -2552,7 +2565,7 @@ class _AiPersonaStrip extends StatelessWidget {
                                             onChallenge(persona.name),
                                         child: FittedBox(
                                           fit: BoxFit.scaleDown,
-                                          child: UiText(
+                                          child: UiActionText(
                                             'Challenge Now',
                                             maxLines: 1,
                                             softWrap: false,

@@ -786,7 +786,7 @@ class _MistakeBankScreenState extends State<MistakeBankScreen> {
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: _checkTrial,
-                  child: const UiText('Continue with Google'),
+                  child: const UiActionText('Continue with Google'),
                 ),
               ],
             ),

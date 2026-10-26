@@ -1,0 +1,27 @@
+Coin league / profile upload / matchmaking - 2026-10-26
+
+Implementation (not deployed, no production AAB generated for these changes):
+- Profile upload visible for guest and signed-in users, including game-opened profile routes without a parent upload callback.
+- File picker allows all files; actual image bytes must decode on the device. Common raster formats and platform-supported codecs are normalised to a maximum 512-pixel PNG. Animated images use their first frame. Not a promise to decode every possible image format.
+- 20 MB input limit, 40 megapixel image limit; size checked before reading the file. Existing avatar file survives a failed write.
+- Coin rankings are the default, with Weekly / Overall tabs and separate ELO access.
+- Net won entry coins only; returned stake, ads, purchases, free grants and weekly prizes excluded. Completed, settled matches require at least 4 half-moves. Maximum 3 wins against the same opponent per India calendar day. Designated test player excluded on either side.
+- Ties: qualifying wins, earliest last qualifying win, stable player ID.
+- Prizes: first 500, second 300, third 200 virtual coins. Latest settled week winners displayed. Fewer than 3 eligible players means fewer prizes; no fabricated winners.
+- Monday 00:00 Asia/Kolkata week boundary. Migration starts prizes at the next complete Monday week; no retroactive historical rewards.
+- Scheduler hourly, play/all service only; transaction-scoped PostgreSQL advisory lock, unique weekly records and stable economy references. Missed weeks catch up after restart.
+- Matchmaking mobile player cards use minimum/content-driven height instead of fixed 112px. Added rotating gold search arc using existing animation controller.
+- 26 new copy entries translated in all 34 catalogs. Existing translations verified unchanged and compact JSON preserved.
+
+Validation:
+- 818 Flutter tests passed: 782 initial-screen language cases, 34 loaded coin-ranking cases at 320px/1.6 text scale with Weekly/Overall interaction, 2 photo codec cases.
+- 2 matchmaking tests passed, including enlarged text reproduction.
+- 11 backend tests passed: 5 league (scoring, boundaries, test exclusions, duplicate awards and 500/300/200 amounts), 5 rating, 1 atomic avatar replacement.
+- Read-only PostgreSQL query validation against live schema succeeded: 12 qualifying players / 1400 winnings at inspection; 71 finished matches, 18 settled coin matches. No production schema or wallet changes performed.
+- Local Docker daemon unavailable, so no isolated PostgreSQL concurrent payout integration run. Payout transaction safety covered structurally and by unit tests, not a live payout trial.
+- Latest features have not been installed or visually tested on the phone; prior device checks were for the earlier TRAIN button fix.
+
+Rollout remaining:
+- Review and deploy backend with V92 migration before distributing the mobile update, otherwise /leaderboard/coins will be unavailable.
+- Build/release next AAB and run phone photo upload + new coin-screen smoke tests against deployed backend.
+- No Git push or Play Store submission performed in this change batch.

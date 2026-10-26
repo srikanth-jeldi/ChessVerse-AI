@@ -262,7 +262,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     key: const ValueKey('analysis-set-up-board'),
                     onPressed: widget.onSetUpBoard,
                     icon: const Icon(Icons.dashboard_customize_outlined),
-                    label: const UiText(
+                    label: const UiActionText(
                       'Set Up Board',
                       textAlign: TextAlign.center,
                     ),

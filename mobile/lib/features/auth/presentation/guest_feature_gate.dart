@@ -41,11 +41,11 @@ abstract final class GuestFeatureGate {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialog, false),
-            child: const UiText('Not now'),
+            child: const UiActionText('Not now'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialog, true),
-            child: const UiText('Continue with Google'),
+            child: const UiActionText('Continue with Google'),
           ),
         ],
       ),
@@ -85,7 +85,7 @@ abstract final class GuestFeatureGate {
               onPressed: () {
                 _login(context, session);
               },
-              child: const UiText('Login now'),
+              child: const UiActionText('Login now'),
             ),
           ],
         ),

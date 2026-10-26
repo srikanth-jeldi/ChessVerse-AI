@@ -118,7 +118,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
             const SizedBox(width: 10),
             FilledButton(
               onPressed: _openEarnCoins,
-              child: const UiText('Earn free coins'),
+              child: const UiActionText('Earn free coins'),
             ),
           ],
         ),
@@ -367,12 +367,12 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
         actions: <Widget>[
           OutlinedButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const UiText('SEARCH LATER'),
+            child: const UiActionText('SEARCH LATER'),
           ),
           FilledButton.icon(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             icon: const Icon(Icons.smart_toy_rounded),
-            label: const UiText('PLAY COMPUTER'),
+            label: const UiActionText('PLAY COMPUTER'),
           ),
         ],
       ),
@@ -726,7 +726,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                     Icons.bolt_rounded,
                                     size: wideLayout ? 22 : 20,
                                   ),
-                                  label: const UiText('Find Match'),
+                                  label: const UiActionText('Find Match'),
                                 ),
                               ),
                             ),
@@ -814,7 +814,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                   );
                                 },
                                 icon: const Icon(Icons.copy_rounded),
-                                label: const UiText('Copy invite code'),
+                                label: const UiActionText('Copy invite code'),
                               ),
                             ],
                           ],
@@ -849,7 +849,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                   () => widget.api.createRoom(widget.token),
                                 ),
                           icon: const Icon(Icons.group_add_rounded),
-                          label: const UiText('Create Room'),
+                          label: const UiActionText('Create Room'),
                         ),
                         FilledButton.icon(
                           onPressed:
@@ -862,7 +862,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                   ),
                                 ),
                           icon: const Icon(Icons.sports_esports_rounded),
-                          label: const UiText('Join Room'),
+                          label: const UiActionText('Join Room'),
                         ),
                       ],
                     ),
@@ -1132,7 +1132,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                       Icons.bolt_rounded,
                                       size: 21,
                                     ),
-                                    label: const UiText('Find Match'),
+                                    label: const UiActionText('Find Match'),
                                   ),
                                 ),
                               ],
@@ -1249,7 +1249,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                       color: teal,
                                       size: 27,
                                     ),
-                                    label: const UiText('Create Room'),
+                                    label: const UiActionText('Create Room'),
                                   ),
                                 ),
                                 const SizedBox(height: 14),
@@ -1271,7 +1271,7 @@ class _OnlineMatchmakingSheetState extends State<OnlineMatchmakingSheet> {
                                       Icons.sports_esports_rounded,
                                       size: 27,
                                     ),
-                                    label: const UiText('Join Room'),
+                                    label: const UiActionText('Join Room'),
                                   ),
                                 ),
                               ],
@@ -1591,7 +1591,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
               TextButton.icon(
                 onPressed: widget.onCopyCode,
                 icon: const Icon(Icons.copy_rounded),
-                label: const UiText('Copy code'),
+                label: const UiActionText('Copy code'),
               ),
               const SizedBox(height: 8),
             ],
@@ -1604,7 +1604,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
             OutlinedButton.icon(
               onPressed: widget.onCancel,
               icon: const Icon(Icons.close_rounded),
-              label: const UiText('Cancel search'),
+              label: const UiActionText('Cancel search'),
             ),
           ],
         ),
@@ -1862,7 +1862,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                                     ),
                                   ),
                                   icon: const Icon(Icons.close_rounded),
-                                  label: const UiText('CANCEL SEARCH'),
+                                  label: const UiActionText('CANCEL SEARCH'),
                                 ),
                               ),
                             ),
@@ -1870,7 +1870,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                               onPressed: () =>
                                   _showMobileSearchSettings(context),
                               icon: const Icon(Icons.settings_rounded),
-                              label: const UiText('SEARCH SETTINGS'),
+                              label: const UiActionText('SEARCH SETTINGS'),
                             ),
                             const UiText(
                               'Keep this screen open. Your match starts automatically.',
@@ -2157,7 +2157,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                           ),
                         ),
                         icon: const Icon(Icons.close_rounded, size: 19),
-                        label: const UiText('Cancel search'),
+                        label: const UiActionText('Cancel search'),
                       ),
                     ],
                   ),
@@ -2364,6 +2364,19 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                           child: Stack(
                             alignment: Alignment.center,
                             children: <Widget>[
+                              if (!MediaQuery.disableAnimationsOf(context))
+                                Transform.rotate(
+                                  angle: _pulse.value * math.pi * 2,
+                                  child: const SizedBox.square(
+                                    dimension: 202,
+                                    child: CircularProgressIndicator(
+                                      value: .22,
+                                      strokeWidth: 3,
+                                      color: Color(0xFFF0B84B),
+                                    ),
+                                  ),
+                                ),
+
                               for (int index = 0; index < 4; index++)
                                 Builder(
                                   builder: (BuildContext context) {
@@ -2512,13 +2525,13 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                           ),
                         ),
                         icon: const Icon(Icons.close_rounded),
-                        label: const UiText('CANCEL SEARCH'),
+                        label: const UiActionText('CANCEL SEARCH'),
                       ),
                     ),
                     TextButton.icon(
                       onPressed: () => _showMobileSearchSettings(context),
                       icon: const Icon(Icons.tune_rounded),
-                      label: const UiText('SEARCH SETTINGS'),
+                      label: const UiActionText('SEARCH SETTINGS'),
                     ),
                   ],
                 ),
@@ -2678,7 +2691,7 @@ class _MatchSearchingViewState extends State<_MatchSearchingView>
                               entryCoins: entryCoins,
                             )),
                             icon: const Icon(Icons.refresh_rounded),
-                            label: const UiText('APPLY & RESTART SEARCH'),
+                            label: const UiActionText('APPLY & RESTART SEARCH'),
                           ),
                         ],
                       ),
@@ -2966,7 +2979,7 @@ class _MobileMatchPlayerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
-    height: 112,
+    constraints: const BoxConstraints(minHeight: 112),
     padding: const EdgeInsets.all(8),
     decoration: BoxDecoration(
       color: const Color(0xD9071928),
@@ -2974,6 +2987,7 @@ class _MobileMatchPlayerCard extends StatelessWidget {
       border: Border.all(color: accent.withValues(alpha: .75)),
     ),
     child: Column(
+      mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
         Container(

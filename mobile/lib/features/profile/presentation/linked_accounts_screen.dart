@@ -146,11 +146,11 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const UiText('CANCEL'),
+            child: const UiActionText('CANCEL'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, controller.text),
-            child: const UiText('CONFIRM'),
+            child: const UiActionText('CONFIRM'),
           ),
         ],
       ),
@@ -210,11 +210,14 @@ class _LinkedAccountsScreenState extends State<LinkedAccountsScreen> {
         child: connected
             ? OutlinedButton(
                 onPressed: () => _unlink(key),
-                child: const UiText('UNLINK', textAlign: TextAlign.center),
+                child: const UiActionText(
+                  'UNLINK',
+                  textAlign: TextAlign.center,
+                ),
               )
             : FilledButton(
                 onPressed: link,
-                child: const UiText('LINK', textAlign: TextAlign.center),
+                child: const UiActionText('LINK', textAlign: TextAlign.center),
               ),
       ),
     );

@@ -172,7 +172,10 @@ class _OnboardingHeader extends StatelessWidget {
           width: 82,
           child: Align(
             alignment: Alignment.centerRight,
-            child: TextButton(onPressed: onSkip, child: const UiText('Skip')),
+            child: TextButton(
+              onPressed: onSkip,
+              child: const UiActionText('Skip'),
+            ),
           ),
         ),
       ],
@@ -409,7 +412,7 @@ class _OnboardingFooter extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Flexible(
-                  child: UiText(
+                  child: UiActionText(
                     page == pageCount - 1 ? 'Get Started' : 'Next',
                     style: const TextStyle(
                       fontWeight: FontWeight.w900,

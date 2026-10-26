@@ -175,7 +175,7 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
                 () => _pieces = <String, String>{'e1': 'wK', 'e8': 'bK'},
               ),
               icon: const Icon(Icons.delete_sweep_rounded),
-              label: const UiText('CLEAR'),
+              label: const UiActionText('CLEAR'),
             ),
           ],
         ),
@@ -402,7 +402,7 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
             key: const ValueKey('position-analyse'),
             onPressed: _analyse,
             icon: const Icon(Icons.analytics_outlined),
-            label: const UiText(
+            label: const UiActionText(
               'Analyse Position',
               textAlign: TextAlign.center,
             ),
@@ -415,7 +415,10 @@ class _PositionCreatorScreenState extends State<PositionCreatorScreen> {
             key: const ValueKey<String>('position-start-ai'),
             onPressed: _start,
             icon: const Icon(Icons.smart_toy_rounded),
-            label: const UiText('Play against AI', textAlign: TextAlign.center),
+            label: const UiActionText(
+              'Play against AI',
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
       ],

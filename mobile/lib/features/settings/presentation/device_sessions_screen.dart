@@ -111,7 +111,7 @@ class _DeviceSessionsScreenState extends State<DeviceSessionsScreen> {
               OutlinedButton.icon(
                 onPressed: _logoutAll,
                 icon: const Icon(Icons.phonelink_erase_rounded),
-                label: const UiText('Sign out on all devices'),
+                label: const UiActionText('Sign out on all devices'),
               ),
             ],
           ),

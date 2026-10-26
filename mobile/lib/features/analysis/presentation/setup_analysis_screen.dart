@@ -184,7 +184,10 @@ class _SetupAnalysisScreenState extends State<SetupAnalysisScreen> {
                 ] else if (_error != null) ...[
                   UiText(_error!, textAlign: TextAlign.center),
                   const SizedBox(height: 12),
-                  FilledButton(onPressed: _load, child: const UiText('Retry')),
+                  FilledButton(
+                    onPressed: _load,
+                    child: const UiActionText('Retry'),
+                  ),
                 ] else if (_lines.isEmpty)
                   const UiText(
                     'No playable engine line was returned. The position may be finished.',

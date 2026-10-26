@@ -893,7 +893,7 @@ class _SplashGateState extends State<SplashGate> {
                 const SizedBox(height: 20),
                 FilledButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const UiText('AWESOME!'),
+                  child: const UiActionText('AWESOME!'),
                 ),
               ],
             ),
@@ -2150,14 +2150,14 @@ class _SplashGateState extends State<SplashGate> {
                                           TextButton(
                                             onPressed: () =>
                                                 Navigator.pop(dialogContext),
-                                            child: const UiText('Cancel'),
+                                            child: const UiActionText('Cancel'),
                                           ),
                                           FilledButton(
                                             onPressed: () => Navigator.pop(
                                               dialogContext,
                                               nameController.text.trim(),
                                             ),
-                                            child: const UiText('Save'),
+                                            child: const UiActionText('Save'),
                                           ),
                                         ],
                                       ),
@@ -2190,7 +2190,7 @@ class _SplashGateState extends State<SplashGate> {
                                 }
                               },
                               icon: const Icon(Icons.bookmark_add_rounded),
-                              label: const UiText('SAVE ACCOUNT PRESET'),
+                              label: const UiActionText('SAVE ACCOUNT PRESET'),
                             ),
                           ],
                           SizedBox(height: shortLandscape ? 10 : 22),
@@ -2225,7 +2225,7 @@ class _SplashGateState extends State<SplashGate> {
                                 ),
                               ),
                               icon: const Icon(Icons.play_arrow_rounded),
-                              label: UiText(
+                              label: UiActionText(
                                 'START AS {0}',
                                 values: [selected.label.toUpperCase()],
                               ),
@@ -2340,11 +2340,11 @@ class _SplashGateState extends State<SplashGate> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const UiText('Continue'),
+            child: const UiActionText('Continue'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const UiText('New Game'),
+            child: const UiActionText('New Game'),
           ),
         ],
       ),

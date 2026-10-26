@@ -3,6 +3,10 @@ import 'package:chessverse_ai/core/app_ui_localizations.dart';
 import 'dart:async';
 import 'dart:typed_data';
 
+import '../../../core/profile_photo_codec.dart';
+
+import '../../auth/data/auth_api.dart';
+
 import '../../../core/widgets/login_bonus_message.dart';
 
 import 'package:file_picker/file_picker.dart';
@@ -89,7 +93,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _useAccountPhotoPreference,
         fallback: true,
       );
-      if (mounted) setState(() => _useAccountPhoto = value);
+      final session = await const AuthSessionStore().read();
+      if (mounted) {
+        setState(() {
+          _useAccountPhoto = value;
+          _profilePhotoUrl ??= session?.photoUrl;
+        });
+      }
     } on Object {
       // Account-provider photo remains the safe default when local preference
       // storage is unavailable.
@@ -102,7 +112,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final RewardSnapshot rewards = LocalGameArchive.rewards();
     final String? accountEmail = _publicAccountEmail(widget.email);
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color(0xFF061522),
       appBar: AppBar(
         title: const UiText('PLAYER PROFILE'),
         centerTitle: false,
@@ -191,6 +201,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             accountPhotoUrl: _useAccountPhoto ? _profilePhotoUrl : null,
             isGuest: widget.isGuest,
             onEdit: _editProfile,
+            onPhoto: _uploadingPhoto ? null : _changeProfilePhoto,
+            uploading: _uploadingPhoto,
           ),
           const SizedBox(height: 18),
           _SectionCard(
@@ -240,7 +252,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   key: const ValueKey<String>('view-rewards-and-badges'),
                   onPressed: () => _showRewards(rewards),
                   icon: const Icon(Icons.redeem_rounded),
-                  label: const UiText('VIEW REWARDS & BADGES'),
+                  label: const UiActionText('VIEW REWARDS & BADGES'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF62E4D1),
                     side: const BorderSide(color: Color(0x8062E4D1)),
@@ -291,31 +303,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 if (!widget.isGuest &&
-                    widget.onProfilePhotoChanged != null) ...<Widget>[
-                  const SizedBox(height: 14),
-                  OutlinedButton.icon(
-                    key: const ValueKey<String>('change-profile-photo'),
-                    onPressed: _uploadingPhoto ? null : _changeProfilePhoto,
-                    icon: _uploadingPhoto
-                        ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.add_a_photo_rounded),
-                    label: UiText(
-                      _uploadingPhoto
-                          ? 'UPLOADING PHOTO…'
-                          : 'CHANGE PROFILE PHOTO',
-                    ),
-                  ),
-                ],
-                if (!widget.isGuest &&
                     widget.onLinkedAccounts != null) ...<Widget>[
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: () => widget.onLinkedAccounts!.call(),
                     icon: const Icon(Icons.link_rounded),
-                    label: const UiText('SECURITY & LINKED ACCOUNTS'),
+                    label: const UiActionText('SECURITY & LINKED ACCOUNTS'),
                   ),
                 ],
                 if (widget.onAcademy != null) ...<Widget>[
@@ -324,7 +317,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     key: const ValueKey<String>('open-my-academy'),
                     onPressed: widget.onAcademy,
                     icon: const Icon(Icons.groups_rounded),
-                    label: const UiText('MY ACADEMY'),
+                    label: const UiActionText('MY ACADEMY'),
                   ),
                 ],
                 if (widget.isGuest &&
@@ -335,7 +328,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     key: const ValueKey<String>('secure-guest-progress'),
                     onPressed: () => widget.onSecureProgress!.call(),
                     icon: const Icon(Icons.security_rounded),
-                    label: const UiText('SECURE PROGRESS'),
+                    label: const UiActionText('SECURE PROGRESS'),
                   ),
                 ],
               ],
@@ -449,18 +442,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
 
   Future<void> _changeProfilePhoto() async {
-    final file = await FilePicker.pickFile(type: FileType.image);
-    final bytes = await file?.readAsBytes();
-    if (file == null || bytes == null || !mounted) return;
-    if (bytes.length > 5 * 1024 * 1024) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: UiText('Choose an image up to 5 MB.')),
-      );
-      return;
-    }
+    if (_uploadingPhoto) return;
     setState(() => _uploadingPhoto = true);
     try {
-      final url = await widget.onProfilePhotoChanged!(bytes, file.name);
+      final file = await FilePicker.pickFile(type: FileType.any);
+      if (file == null || !mounted) return;
+      if (await file.length() > 20 * 1024 * 1024) {
+        throw const FormatException('Choose an image up to 20 MB.');
+      }
+      final upload = await normalizeProfilePhoto(await file.readAsBytes());
+      final url =
+          await (widget.onProfilePhotoChanged?.call(upload, 'profile.png') ??
+              _uploadPhotoDirectly(upload));
       if (!mounted) return;
       setState(() {
         _profilePhotoUrl = url ?? _profilePhotoUrl;
@@ -473,11 +466,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     } on Object catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: UiText(
+            error is FormatException ? error.message : 'Unable to update photo. Choose a supported image and try again.',
+          ),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _uploadingPhoto = false);
     }
+  }
+
+  Future<String?> _uploadPhotoDirectly(Uint8List bytes) async {
+    const store = AuthSessionStore();
+    final session = await store.read();
+    if (session == null) {
+      throw const FormatException('Sign in to update your profile photo.');
+    }
+    final player = await const AuthApi().uploadProfilePhoto(
+      session.token,
+      bytes,
+      'profile.png',
+    );
+    final url = player['photoUrl'] as String?;
+    await store.write(
+      StoredAuthSession(
+        token: session.token,
+        expiresAt: session.expiresAt,
+        displayName: session.displayName,
+        username: session.username,
+        email: session.email,
+        photoUrl: url,
+        isGuest: session.isGuest,
+        refreshToken: session.refreshToken,
+        refreshExpiresAt: session.refreshExpiresAt,
+        sessionId: session.sessionId,
+      ),
+    );
+    return url;
   }
 
   Future<void> _editProfile() async {
@@ -517,8 +544,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ).showSnackBar(const SnackBar(content: UiText('Player profile saved')));
     } on Object catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: UiText(
+            error is FormatException ? error.message : 'Unable to update photo. Choose a supported image and try again.',
+          ),
+        ),
+      );
     }
   }
 
@@ -726,115 +758,134 @@ class _ProfileHero extends StatelessWidget {
     this.accountPhotoUrl,
     required this.isGuest,
     required this.onEdit,
+    required this.onPhoto,
+    required this.uploading,
   });
-
-  final String playerName;
-  final String username;
-  final String country;
-  final int level;
-  final int avatar;
+  final String playerName, username, country;
+  final int level, avatar;
   final String? accountPhotoUrl;
-  final bool isGuest;
+  final bool isGuest, uploading;
   final VoidCallback onEdit;
+  final VoidCallback? onPhoto;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        image: const DecorationImage(
-          image: AssetImage('assets/backgrounds/home-rankings-hero-v1.webp'),
-          fit: BoxFit.cover,
-          alignment: Alignment.centerRight,
-          opacity: .32,
-          filterQuality: FilterQuality.high,
-        ),
-        borderRadius: BorderRadius.circular(26),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[Color(0xFF173A43), Color(0xFF091927)],
-        ),
-        border: Border.all(color: const Color(0xFF9A7133)),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x55000000),
-            blurRadius: 30,
-            offset: Offset(0, 16),
-          ),
-        ],
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(24),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF143B43), Color(0xFF0B1C30)],
       ),
-      child: Column(
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              _ProfilePicture(
-                accountPhotoUrl: accountPhotoUrl,
-                avatar: avatar,
-                size: 76,
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      playerName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
+      borderRadius: BorderRadius.circular(28),
+      border: Border.all(color: const Color(0xFF397777)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(
+          child: InkWell(
+            borderRadius: BorderRadius.circular(64),
+            onTap: onPhoto,
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Stack(
+                children: [
+                  _ProfilePicture(
+                    accountPhotoUrl: accountPhotoUrl,
+                    avatar: avatar,
+                    size: 104,
+                  ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFD166),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFF0B1C30),
+                          width: 3,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt_rounded,
+                        color: Color(0xFF0B1C30),
+                        size: 18,
                       ),
                     ),
-                    Text(
-                      '@$username',
-                      style: const TextStyle(
-                        color: Color(0xFF63D2B8),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        '${_flag(country)} $country  •  ${_levelTitle(level)}',
-                        style: const TextStyle(color: Color(0xFFB8C8CE)),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              IconButton.filledTonal(
-                key: const ValueKey<String>('edit-player-profile'),
-                tooltip: uiText(context, 'Edit profile'),
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit_rounded),
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: <Widget>[
-              _HeroMetric(
-                label: uiText(context, 'STATUS'),
-                value: isGuest ? 'GUEST ONLINE' : 'VERIFIED',
-              ),
-              const _Divider(),
-              _HeroMetric(
-                label: uiText(context, 'EST. STRENGTH'),
-                value: '${_elo(level)} ELO',
-              ),
-              const _Divider(),
-              _HeroMetric(label: uiText(context, 'ARENA'), value: 'READY'),
-            ],
+        ),
+        const SizedBox(height: 16),
+        Text(
+          playerName,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
           ),
-        ],
-      ),
-    );
-  }
+        ),
+        const SizedBox(height: 5),
+        Text(
+          '@$username',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Color(0xFF68E0CD), fontSize: 16),
+        ),
+        const SizedBox(height: 14),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            Chip(
+              avatar: const Icon(Icons.public, size: 16),
+              label: Text('${_flag(country)} $country'),
+            ),
+            Chip(
+              avatar: Icon(
+                isGuest ? Icons.person_outline : Icons.verified_outlined,
+                size: 16,
+              ),
+              label: UiText(isGuest ? 'Guest Player' : 'VERIFIED'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        FilledButton.icon(
+          key: const ValueKey<String>('change-profile-photo'),
+          onPressed: onPhoto,
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFFFD166),
+            foregroundColor: const Color(0xFF0B1C30),
+            minimumSize: const Size(0, 48),
+          ),
+          icon: uploading
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.add_a_photo_rounded),
+          label: UiActionText(
+            uploading ? 'UPLOADING PHOTO…' : 'CHANGE PROFILE PHOTO',
+          ),
+        ),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          key: const ValueKey<String>('edit-player-profile'),
+          onPressed: onEdit,
+          icon: const Icon(Icons.edit_outlined),
+          label: const UiActionText('Edit profile'),
+          style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
+        ),
+      ],
+    ),
+  );
 }
 
 class _ProfileEditorSheet extends StatefulWidget {
@@ -1300,7 +1351,7 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
                   );
                 },
                 icon: const Icon(Icons.save_rounded),
-                label: const UiText(
+                label: const UiActionText(
                   'SAVE PLAYER PROFILE',
                   style: TextStyle(fontWeight: FontWeight.w900),
                 ),
@@ -1404,43 +1455,6 @@ class _Avatar extends StatelessWidget {
       ),
     );
   }
-}
-
-class _HeroMetric extends StatelessWidget {
-  const _HeroMetric({required this.label, required this.value});
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: <Widget>[
-          Text(
-            label,
-            style: const TextStyle(color: Color(0xFF78929E), fontSize: 9),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFFF6E7C2),
-              fontWeight: FontWeight.w900,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Divider extends StatelessWidget {
-  const _Divider();
-  @override
-  Widget build(BuildContext context) =>
-      Container(width: 1, height: 28, color: const Color(0xFF34505B));
 }
 
 class _SectionCard extends StatelessWidget {

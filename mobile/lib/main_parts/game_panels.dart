@@ -58,7 +58,7 @@ class _GameStudioHeader extends StatelessWidget {
                 key: const ValueKey<String>('desktop-back-to-home'),
                 onPressed: onHome,
                 icon: const Icon(Icons.arrow_back_rounded),
-                label: const UiText('Back to Home'),
+                label: const UiActionText('Back to Home'),
               ),
             SizedBox(width: compact ? 10 : 16),
             if (onPause != null)
@@ -66,7 +66,7 @@ class _GameStudioHeader extends StatelessWidget {
                 key: const ValueKey('pause-computer-game'),
                 onPressed: onPause,
                 icon: const Icon(Icons.pause_circle_outline),
-                label: const UiText('Pause & Save'),
+                label: const UiActionText('Pause & Save'),
               ),
             Row(
               children: <Widget>[
@@ -1698,7 +1698,7 @@ class GamePanel extends StatelessWidget {
               key: const ValueKey<String>('rename-player-two'),
               onPressed: onEditBlackPlayer,
               icon: const Icon(Icons.manage_accounts_outlined),
-              label: UiText('Player 2: {0}', values: [blackPlayerName]),
+              label: UiActionText('Player 2: {0}', values: [blackPlayerName]),
             ),
           ],
           if (gameMode == GameMode.daily) ...<Widget>[
@@ -1905,7 +1905,7 @@ class GamePanel extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: onHint,
                   icon: const Icon(Icons.psychology_alt_rounded),
-                  label: const UiText('Hint'),
+                  label: const UiActionText('Hint'),
                 ),
               ),
               const SizedBox(width: 10),
@@ -1913,7 +1913,7 @@ class GamePanel extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: onAnalyze,
                   icon: const Icon(Icons.analytics_rounded),
-                  label: const UiText('Analyze'),
+                  label: const UiActionText('Analyze'),
                 ),
               ),
             ],

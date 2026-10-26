@@ -496,7 +496,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                         _PgnReviewChoice(playerSide: side, reviewScope: scope),
                       ),
                       icon: const Icon(Icons.psychology_alt_rounded),
-                      label: const UiText(
+                      label: const UiActionText(
                         'IMPORT & START LEARNING',
                         style: TextStyle(fontWeight: FontWeight.w900),
                       ),
@@ -846,12 +846,12 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
           actions: <Widget>[
             OutlinedButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const UiText('KEEP IT'),
+              child: const UiActionText('KEEP IT'),
             ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
               onPressed: () => Navigator.pop(context, true),
-              child: const UiText('DELETE'),
+              child: const UiActionText('DELETE'),
             ),
           ],
         ),
@@ -1122,7 +1122,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                         onPressed: widget.onPlayAgain == null
                             ? null
                             : _startNewGame,
-                        child: const UiText(
+                        child: const UiActionText(
                           'New Game',
                           textAlign: TextAlign.center,
                         ),
@@ -1151,7 +1151,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                               await widget.onResume!(draft);
                               if (mounted) await _refresh();
                             },
-                      child: const UiText(
+                      child: const UiActionText(
                         'Continue',
                         textAlign: TextAlign.center,
                       ),
@@ -1746,12 +1746,12 @@ class _MultiSelectToolbar extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: onExportPgn,
           icon: const Icon(Icons.description_outlined),
-          label: const UiText('PGN FILES'),
+          label: const UiActionText('PGN FILES'),
         ),
         OutlinedButton.icon(
           onPressed: onExportFen,
           icon: const Icon(Icons.grid_on_rounded),
-          label: const UiText('FEN FILES'),
+          label: const UiActionText('FEN FILES'),
         ),
         IconButton(
           tooltip: uiText(context, 'Cancel selection'),
@@ -2135,7 +2135,7 @@ class _OnlineMatchReplayScreenState extends State<OnlineMatchReplayScreen> {
                             ? null
                             : () => setState(() => _ply--),
                         icon: const Icon(Icons.skip_previous_rounded),
-                        label: const UiText('Previous'),
+                        label: const UiActionText('Previous'),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -2145,7 +2145,7 @@ class _OnlineMatchReplayScreenState extends State<OnlineMatchReplayScreen> {
                             ? null
                             : () => setState(() => _ply++),
                         icon: const Icon(Icons.skip_next_rounded),
-                        label: const UiText('Next'),
+                        label: const UiActionText('Next'),
                       ),
                     ),
                   ],

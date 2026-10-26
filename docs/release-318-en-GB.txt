@@ -1,0 +1,7 @@
+<en-GB>
+• Redesigned profile with easier photo uploads and clearer progress.
+• New weekly and overall coin rankings, with 500/300/200-coin prizes for weekly leaders.
+• Improved opponent search animation and fixed matchmaking card overflow.
+• Fixed button text wrapping and tournament footer overlap.
+• Improved layouts and translations across 34 languages.
+</en-GB>

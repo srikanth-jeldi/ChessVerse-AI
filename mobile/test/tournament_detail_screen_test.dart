@@ -9,6 +9,92 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets(
+    'open registration footer never covers final green card in 34 languages',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 700);
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(bottom: 24);
+      addTearDown(tester.view.reset);
+      final manifest = (await tester.runAsync(
+        () => AssetManifest.loadFromAssetBundle(rootBundle),
+      ))!;
+      final paths = manifest.listAssets().where(
+        (p) => p.startsWith('assets/i18n/ui/') && p.endsWith('.json'),
+      );
+      expect(paths.length, 34);
+      for (final path in paths) {
+        final code = path.split('/').last.split('.').first;
+        await tester.runAsync(() => UiCopy.load(code));
+        for (final joined in [false, true]) {
+          final detail = TournamentDetailDto(
+            id: 'hyd',
+            name: 'Hyderabad Royal Cup',
+            description: '',
+            minutes: 10,
+            players: 12,
+            capacity: 128,
+            status: 'OPEN',
+            joined: joined,
+            currentRound: 0,
+            rounds: const [],
+          );
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Directionality(
+                textDirection: {'ar', 'fa', 'ur', 'he'}.contains(code)
+                    ? TextDirection.rtl
+                    : TextDirection.ltr,
+                child: MediaQuery(
+                  data: const MediaQueryData(
+                    textScaler: TextScaler.linear(1.6),
+                    padding: EdgeInsets.only(bottom: 24),
+                  ),
+                  child: TournamentDetailScreen(
+                    key: ValueKey('$code-$joined'),
+                    id: 'hyd',
+                    token: 'test',
+                    api: _TournamentApi(detail),
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final list = tester.state<ScrollableState>(
+            find.byType(Scrollable).first,
+          );
+          list.position.jumpTo(list.position.maxScrollExtent);
+          await tester.pumpAndSettle();
+          final card = tester.getRect(
+            find.byKey(const ValueKey('tournament-fair-play-notice')),
+          );
+          final footer = tester.getRect(
+            find.byKey(const ValueKey('tournament-action-footer')),
+          );
+          expect(
+            card.bottom,
+            lessThanOrEqualTo(footer.top),
+            reason: '$code joined=$joined',
+          );
+          expect(card.top, greaterThanOrEqualTo(0), reason: code);
+          expect(
+            footer.bottom,
+            lessThanOrEqualTo(676),
+            reason: '$code safe area',
+          );
+          expect(
+            tester.takeException(),
+            isNull,
+            reason: '$code joined=$joined',
+          );
+        }
+      }
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.runAsync(() => UiCopy.load('en'));
+    },
+  );
+
   final detail = TournamentDetailDto(
     id: 'hyd',
     name: 'Hyderabad Royal Cup',

@@ -129,7 +129,7 @@ class MoveHistoryScreen extends StatelessWidget {
             );
           }),
           const SizedBox(height: 20),
-          FilledButton(onPressed: null, child: UiText('Close')),
+          FilledButton(onPressed: null, child: UiActionText('Close')),
         ],
       ),
     );
@@ -178,9 +178,9 @@ class GameResultScreen extends StatelessWidget {
           ),
           _ResultMetric(label: uiText(context, 'Time Taken'), value: '07:23'),
           const SizedBox(height: 24),
-          FilledButton(onPressed: null, child: UiText('New Game')),
+          FilledButton(onPressed: null, child: UiActionText('New Game')),
           const SizedBox(height: 10),
-          OutlinedButton(onPressed: null, child: UiText('Back to Home')),
+          OutlinedButton(onPressed: null, child: UiActionText('Back to Home')),
         ],
       ),
     );
@@ -373,7 +373,10 @@ class _DangerButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton(
       onPressed: null,
-      child: Text(label, style: const TextStyle(color: AppColors.danger)),
+      child: UiActionText(
+        label,
+        style: const TextStyle(color: AppColors.danger),
+      ),
     );
   }
 }
@@ -555,7 +558,7 @@ class _SavedGameReviewSheet extends StatelessWidget {
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const UiText('Close review'),
+                child: const UiActionText('Close review'),
               ),
             ],
           ),

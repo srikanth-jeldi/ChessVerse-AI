@@ -140,7 +140,7 @@ class _ClubInvitationsPanelState extends State<ClubInvitationsPanel> {
                       ? null
                       : () => _respond(invitation, true),
                   icon: const Icon(Icons.check),
-                  label: const UiText(
+                  label: const UiActionText(
                     'Accept invitation',
                     textAlign: TextAlign.center,
                   ),
@@ -149,7 +149,7 @@ class _ClubInvitationsPanelState extends State<ClubInvitationsPanel> {
                   onPressed: _responding
                       ? null
                       : () => _respond(invitation, false),
-                  child: const UiText('Decline'),
+                  child: const UiActionText('Decline'),
                 ),
               ],
             ),

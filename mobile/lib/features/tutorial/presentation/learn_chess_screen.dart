@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/academy_story_localizations.dart';
 import '../../../core/app_language.dart';
+import '../../../core/app_ui_localizations.dart';
 import '../../../core/layout/app_breakpoints.dart';
 import '../../../core/chess_piece_appearance.dart';
 import '../../../core/layout/responsive_page.dart';
@@ -1442,7 +1443,7 @@ class _CoachHero extends StatelessWidget {
                   ),
                 ),
                 icon: const Icon(Icons.play_arrow_rounded),
-                label: Text(
+                label: UiActionText(
                   copy.text('hero.continue'),
                   style: const TextStyle(fontWeight: FontWeight.w900),
                 ),

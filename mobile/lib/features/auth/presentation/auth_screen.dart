@@ -457,7 +457,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
               icon: const Icon(Icons.bolt_rounded),
-              label: const UiText(
+              label: const UiActionText(
                 'Play as Guest',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
               ),
@@ -476,7 +476,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             ),
             icon: const Icon(Icons.person_outline_rounded, size: 20),
-            label: const UiText(
+            label: const UiActionText(
               'Sign In or Create Account',
               style: TextStyle(fontWeight: FontWeight.w800),
             ),
@@ -721,7 +721,7 @@ class _AuthScreenState extends State<AuthScreen> {
           OutlinedButton.icon(
             onPressed: _loading ? null : _loginGuestWithEmail,
             icon: const Icon(Icons.mail_outline_rounded),
-            label: const UiText('LOGIN WITH EMAIL'),
+            label: const UiActionText('LOGIN WITH EMAIL'),
           ),
         ],
         if (widget.guestUpgradeToken == null) ...<Widget>[
@@ -932,7 +932,7 @@ class _AuthScreenState extends State<AuthScreen> {
               onPressed: _loading || !_canResendVerification
                   ? null
                   : _resendVerificationCode,
-              child: const UiText('Resend code'),
+              child: const UiActionText('Resend code'),
             ),
           ],
         ),
@@ -1000,7 +1000,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   visualDensity: VisualDensity.compact,
                 ),
                 onPressed: _loading ? null : _forgotPassword,
-                child: const UiText(
+                child: const UiActionText(
                   'Forgot password?',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.accentGold, fontSize: 13),
@@ -1043,7 +1043,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : const Icon(Icons.login_rounded),
-        label: UiText(
+        label: UiActionText(
           _verificationMode
               ? 'Verify & Continue'
               : _loginMode
@@ -1296,7 +1296,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 onPressed: _loading || !_canResendVerification
                                     ? null
                                     : _resendVerificationCode,
-                                child: const UiText('Resend code'),
+                                child: const UiActionText('Resend code'),
                               ),
                             ],
                           ),
@@ -1347,7 +1347,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               const Expanded(child: UiText('Remember me')),
                               TextButton(
                                 onPressed: _loading ? null : _forgotPassword,
-                                child: const UiText('Forgot password?'),
+                                child: const UiActionText('Forgot password?'),
                               ),
                             ],
                           ),
@@ -1372,7 +1372,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                     ),
                                   )
                                 : const Icon(Icons.login_rounded),
-                            label: UiText(
+                            label: UiActionText(
                               _verificationMode
                                   ? 'Verify & Continue'
                                   : _loginMode
@@ -1386,7 +1386,9 @@ class _AuthScreenState extends State<AuthScreen> {
                           OutlinedButton.icon(
                             onPressed: _loading ? null : _continueAsGuest,
                             icon: const Icon(Icons.person_pin_circle_outlined),
-                            label: const UiText('Continue as Guest Player'),
+                            label: const UiActionText(
+                              'Continue as Guest Player',
+                            ),
                           ),
                         const SizedBox(height: 10),
                         Row(
@@ -1401,7 +1403,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                       icon: const Icon(
                                         Icons.g_mobiledata_rounded,
                                       ),
-                                      label: UiText(
+                                      label: UiActionText(
                                         widget.guestUpgradeToken == null
                                             ? 'Google'
                                             : 'SECURE WITH GOOGLE',
@@ -1416,7 +1418,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           OutlinedButton.icon(
                             onPressed: _loading ? null : _signInWithFacebook,
                             icon: const Icon(Icons.facebook_rounded),
-                            label: const UiText('Facebook Login'),
+                            label: const UiActionText('Facebook Login'),
                           ),
                         const SizedBox(height: 16),
                         UiText(
@@ -2012,7 +2014,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   onPressed: submitting
                       ? null
                       : () => Navigator.of(dialogContext).pop(),
-                  child: const UiText('Cancel'),
+                  child: const UiActionText('Cancel'),
                 ),
                 FilledButton(
                   onPressed: submitting
@@ -2156,7 +2158,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   onPressed: submitting
                       ? null
                       : () => Navigator.of(dialogContext).pop(false),
-                  child: const UiText('Cancel'),
+                  child: const UiActionText('Cancel'),
                 ),
                 FilledButton(
                   onPressed: submitting
